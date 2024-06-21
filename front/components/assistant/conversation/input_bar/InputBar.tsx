@@ -26,6 +26,8 @@ import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
+const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
+
 // AGENT MENTION
 
 function AgentMention({
@@ -57,7 +59,7 @@ export function AssistantInputBar({
   conversationId,
   stickyMentions,
   additionalAgentConfiguration,
-  actions = INPUT_BAR_ACTIONS.slice(),
+  actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
 }: {
@@ -361,7 +363,7 @@ export function FixedAssistantInputBar({
   stickyMentions,
   conversationId,
   additionalAgentConfiguration,
-  actions = INPUT_BAR_ACTIONS.slice(),
+  actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
@@ -377,7 +379,7 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl duration-700 animate-in fade-in sm:pb-8">
+    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
       <AssistantInputBar
         owner={owner}
         onSubmit={onSubmit}

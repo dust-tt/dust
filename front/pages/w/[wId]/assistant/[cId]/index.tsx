@@ -1,36 +1,21 @@
-import type {
-  AgentMessageWithRankType,
-  UserMessageWithRankType,
-  UserType,
-} from "@dust-tt/types";
-import type { AgentMention, MentionType } from "@dust-tt/types";
-import { cloneDeep } from "lodash";
+import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import React from "react";
 
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
-import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
-import {
-  createPlaceholderUserMessage,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useConversationMessages } from "@app/lib/swr";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
-    conversationId: string;
+    conversationId: string | null;
     user: UserType;
   }
 >(async (context, auth) => {
@@ -39,13 +24,26 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const subscription = auth.subscription();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
+    const { cId } = context.query;
+
+    if (typeof cId === "string") {
+      return {
+        redirect: {
+          destination: `/w/${context.query.wId}/join?cId=${cId}`,
+          permanent: false,
+        },
+      };
+    }
+
     return {
       redirect: {
-        destination: `/w/${context.query.wId}/join?cId=${context.query.cId}`,
+        destination: "/",
         permanent: false,
       },
     };
   }
+
+  const { cId } = context.params;
 
   return {
     props: {
@@ -54,53 +52,36 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
-      conversationId: context.params?.cId as string,
+      conversationId: getValidConversationId(cId),
     },
   };
 });
 
-/**
- * If no message pages exist, create a single page with the optimistic message.
- * If message pages exist, add the optimistic message to the first page, since
- * the message pages array is not yet reversed.
- */
-export function updateMessagePagesWithOptimisticData(
-  currentMessagePages: FetchConversationMessagesResponse[] | undefined,
-  messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
-): FetchConversationMessagesResponse[] {
-  if (!currentMessagePages || currentMessagePages.length === 0) {
-    return [
-      {
-        messages: [messageOrPlaceholder],
-        hasMore: false,
-        lastValue: null,
-      },
-    ];
-  }
-
-  // We need to deep clone here, since SWR relies on the reference.
-  const updatedMessages = cloneDeep(currentMessagePages);
-  updatedMessages.at(0)?.messages.push(messageOrPlaceholder);
-
-  return updatedMessages;
-}
-
 export default function AssistantConversation({
-  conversationId,
+  conversationId: initialConversationId,
   owner,
   subscription,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [conversationKey, setConversationKey] = useState<string | null>(null);
   const router = useRouter();
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
-  const [planLimitReached, setPlanLimitReached] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
 
-  const { mutateMessages } = useConversationMessages({
-    conversationId,
-    workspaceId: owner.sId,
-    limit: 50,
-  });
+  // This useEffect handles whether to change the key of the ConversationContainer
+  // or not. Altering the key forces a re-render of the component. A random number
+  // is used in the key to maintain the component during the transition from new
+  // to the conversation view. The key is reset when navigating to a new conversation.
+  useEffect(() => {
+    const { cId } = router.query;
+    const conversationId = getValidConversationId(cId);
+
+    if (conversationId && initialConversationId) {
+      // Set conversation id as key if it exists.
+      setConversationKey(conversationId);
+    } else if (!conversationId && !initialConversationId) {
+      // Force re-render by setting a new key with a random number.
+      setConversationKey(`new_${Math.random() * 1000}`);
+    }
+  }, [router.query, setConversationKey, initialConversationId]);
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -117,105 +98,22 @@ export default function AssistantConversation({
     };
   }, [owner.sId, router]);
 
-  const handleSubmit = async (
-    input: string,
-    mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
-  ) => {
-    const messageData = { input, mentions, contentFragments };
-
-    try {
-      // Update the local state immediately and fire the
-      // request. Since the API will return the updated
-      // data, there is no need to start a new revalidation
-      // and we can directly populate the cache.
-      await mutateMessages(
-        async (currentMessagePages) => {
-          const result = await submitMessage({
-            owner,
-            user,
-            conversationId,
-            messageData,
-          });
-
-          // Replace placeholder message with API response.
-          if (result.isOk()) {
-            const { message } = result.value;
-
-            return updateMessagePagesWithOptimisticData(
-              currentMessagePages,
-              message
-            );
-          }
-
-          if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: result.error.title,
-              description: result.error.message,
-              type: "error",
-            });
-          }
-
-          throw result.error;
-        },
-        {
-          // Add optimistic data placeholder.
-          optimisticData: (currentMessagePages) => {
-            const lastMessageRank =
-              currentMessagePages?.at(0)?.messages.at(-1)?.rank ?? 0;
-
-            const placeholderMessage = createPlaceholderUserMessage({
-              input,
-              mentions,
-              user,
-              lastMessageRank,
-            });
-            return updateMessagePagesWithOptimisticData(
-              currentMessagePages,
-              placeholderMessage
-            );
-          },
-          revalidate: false,
-          // Rollback optimistic update on errors.
-          rollbackOnError: true,
-          populateCache: true,
-        }
-      );
-    } catch (err) {
-      // If the API errors, the original data will be
-      // rolled back by SWR automatically.
-      console.error("Failed to post message:", err);
-    }
-  };
-
   return (
-    <>
-      <ConversationViewer
-        owner={owner}
-        user={user}
-        conversationId={conversationId}
-        onStickyMentionsChange={setStickyMentions}
-        key={conversationId}
-      />
-      <FixedAssistantInputBar
-        owner={owner}
-        onSubmit={handleSubmit}
-        stickyMentions={stickyMentions}
-        conversationId={conversationId}
-      />
-      <ReachedLimitPopup
-        isOpened={planLimitReached}
-        onClose={() => setPlanLimitReached(false)}
-        subscription={subscription}
-        owner={owner}
-        code="message_limit"
-      />
-    </>
+    <ConversationContainer
+      // Key ensures the component re-renders when conversation changes except for shallow browse.
+      key={conversationKey}
+      conversationId={initialConversationId}
+      owner={owner}
+      subscription={subscription}
+      user={user}
+    />
   );
 }
 
 AssistantConversation.getLayout = (page: ReactElement, pageProps: any) => {
   return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
 };
+
+function getValidConversationId(cId: unknown) {
+  return typeof cId === "string" && cId !== "new" ? cId : null;
+}

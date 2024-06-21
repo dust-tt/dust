@@ -15,8 +15,10 @@ import type {
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React from "react";
 import { useInView } from "react-intersection-observer";
 
+import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -29,7 +31,6 @@ import {
   useConversations,
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { updateMessagePagesWithOptimisticData } from "@app/pages/w/[wId]/assistant/[cId]";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -60,8 +61,6 @@ interface ConversationViewerProps {
   hideReactions?: boolean;
   isFading?: boolean;
   isInModal?: boolean;
-  // Use a key to trigger a re-render whenever the conversation changes.
-  key: string;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   owner: WorkspaceType;
   user: UserType;
@@ -72,15 +71,21 @@ interface ConversationViewerProps {
  * @param isInModal is the conversation happening in a side modal, i.e. when testing an assistant?
  * @returns
  */
-export default function ConversationViewer({
-  owner,
-  user,
-  conversationId,
-  onStickyMentionsChange,
-  isInModal = false,
-  hideReactions = false,
-  isFading = false,
-}: ConversationViewerProps) {
+const ConversationViewer = React.forwardRef<
+  HTMLDivElement,
+  ConversationViewerProps
+>(function ConversationViewer(
+  {
+    owner,
+    user,
+    conversationId,
+    onStickyMentionsChange,
+    isInModal = false,
+    hideReactions = false,
+    isFading = false,
+  },
+  ref
+) {
   const {
     conversation,
     isConversationError,
@@ -198,29 +203,34 @@ export default function ConversationViewer({
     isValidating,
   ]);
 
+  const lastUserMessage = useMemo(() => {
+    return latestPage?.messages.findLast(
+      (message) =>
+        isUserMessageType(message) &&
+        message.visibility !== "deleted" &&
+        message.user?.id === user.id
+    );
+  }, [latestPage, user.id]);
+
+  const agentMentions = useMemo(() => {
+    if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
+      return [];
+    }
+    return lastUserMessage.mentions.filter(isAgentMention);
+  }, [lastUserMessage]);
+
   // Handle sticky mentions changes.
   useEffect(() => {
     if (!onStickyMentionsChange) {
       return;
     }
 
-    const lastUserMessage = latestPage?.messages.findLast(
-      (message) =>
-        isUserMessageType(message) &&
-        message.visibility !== "deleted" &&
-        message.user?.id === user.id
-    );
-
-    if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
-      return;
+    if (agentMentions.length > 0) {
+      onStickyMentionsChange(agentMentions);
     }
+  }, [agentMentions, onStickyMentionsChange]);
 
-    const { mentions } = lastUserMessage;
-    const agentMentions = mentions.filter(isAgentMention);
-    onStickyMentionsChange(agentMentions);
-  }, [latestPage, onStickyMentionsChange, user.id]);
-
-  const { ref, inView: isTopOfListVisible } = useInView();
+  const { ref: viewRef, inView: isTopOfListVisible } = useInView();
 
   // On page load or when new data is loaded, check if the top of the list
   // is visible and there is more data to load. If so, set the current
@@ -351,15 +361,6 @@ export default function ConversationViewer({
 
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
 
-  if (isConversationLoading) {
-    return <div className="flex flex-1"></div>;
-  } else if (isConversationError) {
-    return <div className="flex flex-1">Error loading conversation</div>;
-  }
-  if (!conversation) {
-    return <div className="flex flex-1">No conversation here</div>;
-  }
-
   return (
     <div
       className={classNames(
@@ -367,10 +368,16 @@ export default function ConversationViewer({
         isFading ? "animate-fadeout" : "",
         isInModal ? "pt-4" : "sm:px-4"
       )}
+      ref={ref}
     >
+      {isConversationError && (
+        <div className="flex flex-1" ref={ref}>
+          Error loading conversation
+        </div>
+      )}
       {/* Invisible span to detect when the user has scrolled to the top of the list. */}
       {hasMore && !isMessagesLoading && !prevFirstMessageId && (
-        <span ref={ref} className="py-4" />
+        <span ref={viewRef} className="py-4" />
       )}
       {(isMessagesLoading || prevFirstMessageId) && (
         <div className="flex justify-center py-4">
@@ -378,32 +385,35 @@ export default function ConversationViewer({
         </div>
       )}
 
-      {groupedMessages.map((group) => {
-        return group.map((message) => {
-          return (
-            <MessageItem
-              key={`message-${message.sId}`}
-              conversationId={conversation.sId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              ref={
-                message.sId === prevFirstMessageId
-                  ? prevFirstMessageRef
-                  : undefined
-              }
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-              latestMentions={latestMentions}
-            />
-          );
-        });
-      })}
+      {conversation &&
+        groupedMessages.map((group) => {
+          return group.map((message) => {
+            return (
+              <MessageItem
+                key={`message-${message.sId}`}
+                conversationId={conversation.sId}
+                hideReactions={hideReactions}
+                isInModal={isInModal}
+                message={message}
+                owner={owner}
+                reactions={reactions}
+                ref={
+                  message.sId === prevFirstMessageId
+                    ? prevFirstMessageRef
+                    : undefined
+                }
+                user={user}
+                isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+                latestMentions={latestMentions}
+              />
+            );
+          });
+        })}
     </div>
   );
-}
+});
+
+export default ConversationViewer;
 
 // Grouping messages into arrays based on their type, associating content_fragments with the upcoming following user_message.
 // Example:

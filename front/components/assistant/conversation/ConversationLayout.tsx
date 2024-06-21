@@ -35,6 +35,9 @@ export default function ConversationLayout({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [detailViewContent, setDetailViewContent] = useState("");
+  const [activeConversationId, setActiveConversationId] = useState(
+    conversationId !== "new" ? conversationId : null
+  );
 
   const handleCloseModal = () => {
     const currentPathname = router.pathname;
@@ -52,10 +55,24 @@ export default function ConversationLayout({
   useEffect(() => {
     const handleRouteChange = () => {
       const assistantSId = router.query.assistantDetails ?? [];
+      // We use shallow browsing when creating a new conversation.
+      // Monitor router to update conversation info.
+      const conversationId = router.query.cId ?? "";
+
       if (assistantSId && typeof assistantSId === "string") {
         setDetailViewContent(assistantSId);
       } else {
         setDetailViewContent("");
+      }
+
+      if (
+        conversationId &&
+        typeof conversationId === "string" &&
+        conversationId !== activeConversationId
+      ) {
+        setActiveConversationId(
+          conversationId !== "new" ? conversationId : null
+        );
       }
     };
 
@@ -66,10 +83,15 @@ export default function ConversationLayout({
     return () => {
       router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [router.query, router.events]);
+  }, [
+    router.query,
+    router.events,
+    setActiveConversationId,
+    activeConversationId,
+  ]);
 
   const { conversation } = useConversation({
-    conversationId,
+    conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
 
@@ -79,6 +101,7 @@ export default function ConversationLayout({
         <AppLayout
           subscription={subscription}
           owner={owner}
+          // TODO(2024-06-20 flav) Consider removing.
           isWideMode={!!conversation}
           pageTitle={
             conversation?.title

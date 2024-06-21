@@ -640,7 +640,7 @@ export function useConversationMessages({
   workspaceId,
   limit,
 }: {
-  conversationId: string;
+  conversationId: string | null;
   workspaceId: string;
   limit: number;
 }) {
@@ -649,6 +649,10 @@ export function useConversationMessages({
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
     useSWRInfinite(
       (pageIndex: number, previousPageData) => {
+        if (!conversationId) {
+          return null;
+        }
+
         // If we have reached the last page and there are no more
         // messages or the previous page has no messages, return null.
         if (
@@ -820,6 +824,45 @@ export function useAgentConfigurations({
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
     mutateAgentConfigurations: mutate,
+  };
+}
+
+export function useProgressiveAgentConfigurations({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const {
+    agentConfigurations: initialAgentConfigurations,
+    isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
+  } = useAgentConfigurations({
+    workspaceId,
+    agentsGetView: "assistants-search",
+    limit: 24,
+    includes: ["usage"],
+  });
+
+  const {
+    agentConfigurations: agentConfigurationsWithAuthors,
+    isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
+    mutateAgentConfigurations,
+  } = useAgentConfigurations({
+    workspaceId,
+    agentsGetView: "assistants-search",
+    includes: ["authors", "usage"],
+  });
+
+  const isLoading =
+    isInitialAgentConfigurationsLoading ||
+    isAgentConfigurationsWithAuthorsLoading;
+  const agentConfigurations = isAgentConfigurationsWithAuthorsLoading
+    ? initialAgentConfigurations
+    : agentConfigurationsWithAuthors;
+
+  return {
+    agentConfigurations,
+    isLoading,
+    mutateAgentConfigurations,
   };
 }
 

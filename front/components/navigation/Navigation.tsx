@@ -116,10 +116,10 @@ export function Navigation({
       <Transition
         show={isNavigationBarOpen}
         as={Fragment}
-        enter="transition-all duration-500 ease-out"
+        enter="transition-all duration-150 ease-out"
         enterFrom="flex-none lg:w-0 h-full"
         enterTo="flex flex-1 lg:w-80"
-        leave="transition-all duration-500 ease-out"
+        leave="transition-all duration-150 ease-out"
         leaveFrom="flex flex-1 lg:w-80"
         leaveTo="flex-none h-full lg:w-0"
       >
