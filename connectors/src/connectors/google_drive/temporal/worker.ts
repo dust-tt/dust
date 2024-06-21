@@ -11,14 +11,36 @@ import {
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
-import { QUEUE_NAME } from "./config";
+import {
+  GDRIVE_FULL_SYNC_QUEUE_NAME,
+  GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
+} from "./config";
 
-export async function runGoogleWorker() {
+export async function runGoogleWorkers() {
   const { connection, namespace } = await getTemporalWorkerConnection();
-  const worker = await Worker.create({
+  const workerFullSync = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: { ...activities, ...sync_status },
-    taskQueue: QUEUE_NAME,
+    taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
+    maxConcurrentActivityTaskExecutions: 15,
+    connection,
+    maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
+    reuseV8Context: true,
+    namespace,
+    interceptors: {
+      activityInbound: [
+        (ctx: Context) => {
+          return new ActivityInboundLogInterceptor(ctx, logger);
+        },
+        () => new GoogleDriveCastKnownErrorsInterceptor(),
+      ],
+    },
+  });
+
+  const workerIncrementalSync = await Worker.create({
+    workflowsPath: require.resolve("./workflows"),
+    activities: { ...activities, ...sync_status },
+    taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 30,
     connection,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -34,5 +56,5 @@ export async function runGoogleWorker() {
     },
   });
 
-  await worker.run();
+  await Promise.all([workerFullSync.run(), workerIncrementalSync.run()]);
 }
