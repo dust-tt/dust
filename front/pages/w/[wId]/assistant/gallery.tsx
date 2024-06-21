@@ -1,6 +1,4 @@
 import {
-  Button,
-  DropdownMenu,
   DustIcon,
   Page,
   PlanetIcon,
@@ -24,9 +22,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
+import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
+import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { compareAgentsForSort } from "@app/lib/assistant";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { subFilter } from "@app/lib/utils";
@@ -70,7 +71,7 @@ export default function AssistantsGallery({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const [orderBy, setOrderBy] = useState<"name" | "usage">("name");
+  const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
 
   const [agentsGetView, setAgentsGetView] = useState<AgentsGetViewType>("all");
 
@@ -124,6 +125,16 @@ export default function AssistantsGallery({
       }
       break;
     }
+    case "magic": {
+      agentsToDisplay = agentConfigurations.filter((a) => {
+        return (
+          subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
+          a.status === "active"
+        );
+      });
+      agentsToDisplay.sort(compareAgentsForSort);
+      break;
+    }
     default:
       assertNever(orderBy);
   }
@@ -165,6 +176,14 @@ export default function AssistantsGallery({
     );
   };
 
+  useEffect(() => {
+    if (agentsGetView === "global") {
+      setOrderBy("magic");
+    } else {
+      setOrderBy("usage");
+    }
+  }, [agentsGetView]);
+
   const tabs: {
     label: string;
     current: boolean;
@@ -197,40 +216,6 @@ export default function AssistantsGallery({
       },
     ],
     [agentsGetView]
-  );
-
-  // Headless UI does not inherently handle Portal-based rendering,
-  // leading to dropdown menus being hidden by parent divs with overflow settings.
-  // Adapts layout for smaller screens.
-  const SearchOrderDropdown = (
-    <div className="shrink-0">
-      <DropdownMenu>
-        <DropdownMenu.Button>
-          <Button
-            type="select"
-            labelVisible={true}
-            label={`Order by: ${orderBy}`}
-            variant="tertiary"
-            hasMagnifying={false}
-            size="sm"
-          />
-        </DropdownMenu.Button>
-        <DropdownMenu.Items origin="topLeft">
-          <DropdownMenu.Item
-            key="name"
-            label="Name"
-            onClick={() => setOrderBy("name")}
-          />
-          <DropdownMenu.Item
-            key="usage"
-            label="Usage"
-            onClick={() => {
-              setOrderBy("usage");
-            }}
-          />
-        </DropdownMenu.Items>
-      </DropdownMenu>
-    </div>
   );
 
   return (
@@ -273,7 +258,9 @@ export default function AssistantsGallery({
                 setAssistantSearch(s);
               }}
             />
-            <div className="block md:hidden">{SearchOrderDropdown}</div>
+            <div className="block md:hidden">
+              <SearchOrderDropdown orderBy={orderBy} setOrderBy={setOrderBy} />
+            </div>
           </div>
           <div className="flex flex-row space-x-4">
             <Tab
@@ -281,7 +268,13 @@ export default function AssistantsGallery({
               tabs={tabs}
               setCurrentTab={setAgentsGetView}
             />
-            <div className="hidden md:block">{SearchOrderDropdown}</div>
+            <div className="hidden md:block">
+              <SearchOrderDropdown
+                orderBy={orderBy}
+                setOrderBy={setOrderBy}
+                disabled={agentsGetView === "global"}
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
