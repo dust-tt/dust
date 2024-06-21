@@ -356,7 +356,7 @@ function CiteBlock(props: ReactMarkdownProps) {
   }
 }
 
-export function TableBlock({ children }: { children: React.ReactNode }) {
+function TableBlock({ children }: { children: React.ReactNode }) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const handleCopyTable = () => {
@@ -434,7 +434,7 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function TableHeadBlock({ children }: { children: React.ReactNode }) {
+function TableHeadBlock({ children }: { children: React.ReactNode }) {
   return (
     <thead className="bg-structure-50 px-2 py-2 dark:bg-structure-50-dark">
       {children}
@@ -442,11 +442,11 @@ export function TableHeadBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function TableBodyBlock({ children }: { children: React.ReactNode }) {
+function TableBodyBlock({ children }: { children: React.ReactNode }) {
   return <tbody className="bg-white">{children}</tbody>;
 }
 
-export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
+function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
     <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-element-700 dark:text-element-700-dark">
       {children}
@@ -454,7 +454,7 @@ export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function TableDataBlock({ children }: { children: React.ReactNode }) {
+function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
     <td className="px-6 py-4 text-sm text-element-800 dark:text-element-800-dark">
       {children}
