@@ -47,7 +47,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
-export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 100_000;
+export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 export const CREATIVITY_LEVELS = Object.entries(
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
