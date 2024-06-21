@@ -10,6 +10,7 @@ import {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { isEmailValid } from "@app/lib/utils";
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
@@ -39,7 +40,7 @@ export default handleAuth({
       defaultAuthorizationParams.screen_hint = screen_hint;
     }
 
-    if (isString(login_hint)) {
+    if (isString(login_hint) && isEmailValid(login_hint)) {
       defaultAuthorizationParams.login_hint = login_hint;
     }
 

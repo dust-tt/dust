@@ -157,13 +157,13 @@ export default function Welcome({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               name="firstName"
-              placeholder=""
+              placeholder="First Name"
               value={firstName}
               onChange={setFirstName}
             />
             <Input
               name="lastName"
-              placeholder=""
+              placeholder="Last Name"
               value={lastName}
               onChange={setLastName}
             />
