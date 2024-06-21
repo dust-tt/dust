@@ -1,11 +1,12 @@
-import type { Bucket } from "@google-cloud/storage";
+import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import { createHash } from "blake3";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { Sequelize } from "sequelize";
 
-import type { CheckFunction } from "../types";
+import type { CheckFunction } from "@app/lib/production_checks/types";
+import { withRetries } from "@app/lib/utils/retries";
 
 const { CORE_DATABASE_URI, SERVICE_ACCOUNT, DUST_DATA_SOURCES_BUCKET } =
   process.env;
@@ -93,13 +94,21 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   });
 };
 
+async function getFiles({ bucket, path }: { bucket: Bucket; path: string }) {
+  return bucket.getFiles({ prefix: path });
+}
+
+async function deleteFile({ file }: { file: File }) {
+  return file.delete();
+}
+
 async function deleteAllFilesFromFolder(
   logger: pino.Logger<LoggerOptions>,
   bucket: Bucket,
   seen: Set<string>,
   path: string
 ) {
-  const [files] = await bucket.getFiles({ prefix: path });
+  const [files] = await withRetries(getFiles)({ bucket, path });
 
   await Promise.all(
     files.map((f) => {
@@ -113,7 +122,7 @@ async function deleteAllFilesFromFolder(
           "Scrubbing"
         );
 
-        return f.delete();
+        return withRetries(deleteFile)({ file: f });
       }
     })
   );
