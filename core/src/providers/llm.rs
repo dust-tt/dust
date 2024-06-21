@@ -555,7 +555,11 @@ impl LLMChatRequest {
                     let mut generations = store.llm_chat_cache_get(&project, self).await?;
                     match generations.len() {
                         0 => None,
-                        _ => Some(generations.remove(0)),
+                        _ => {
+                            let mut generation = generations.remove(0);
+                            generation.usage = None;
+                            Some(generation)
+                        }
                     }
                 }
             }
