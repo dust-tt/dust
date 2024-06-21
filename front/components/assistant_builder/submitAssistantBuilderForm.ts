@@ -2,9 +2,10 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, removeNulls } from "@dust-tt/types";
+import { assertNever, Err, Ok, removeNulls } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
@@ -40,14 +41,15 @@ export async function submitAssistantBuilderForm({
   };
   isDraft?: boolean;
   useMultiActions: boolean;
-}): Promise<LightAgentConfigurationType | AgentConfigurationType> {
+}): Promise<
+  Result<LightAgentConfigurationType | AgentConfigurationType, Error>
+> {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
   let { handle, description, instructions, avatarUrl } = builderState;
   if (!handle || !description || !instructions || !avatarUrl) {
     if (!isDraft) {
-      // should be unreachable
-      // we keep this for TS
-      throw new Error("Form not valid");
+      // Should be unreachable we keep this for TS
+      throw new Error("Form not valid (unreachable)");
     } else {
       handle = handle?.trim() || "Preview";
       description = description?.trim() || "Preview";
@@ -219,7 +221,14 @@ export async function submitAssistantBuilderForm({
   );
 
   if (!res.ok) {
-    throw new Error("An error occurred while saving the configuration.");
+    try {
+      const error = await res.json();
+      return new Err(new Error(error.error.message));
+    } catch (e) {
+      return new Err(
+        new Error("An error occurred while saving the configuration.")
+      );
+    }
   }
 
   const newAgentConfiguration: {
@@ -254,9 +263,11 @@ export async function submitAssistantBuilderForm({
     );
 
     if (!slackLinkRes.ok) {
-      throw new Error("An error occurred while linking Slack channels.");
+      return new Err(
+        new Error("An error occurred while linking Slack channels.")
+      );
     }
   }
 
-  return newAgentConfiguration.agentConfiguration;
+  return new Ok(newAgentConfiguration.agentConfiguration);
 }

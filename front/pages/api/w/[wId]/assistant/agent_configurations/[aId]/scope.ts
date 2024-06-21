@@ -131,9 +131,9 @@ async function handler(
       }
 
       const legacySingleActionMode = !owner.flags.includes("multi_actions");
-      let result: Result<AgentConfigurationType, Error>;
+      let agentConfigurationRes: Result<AgentConfigurationType, Error>;
       if (legacySingleActionMode) {
-        result = await createOrUpgradeAgentConfiguration({
+        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
           auth,
           assistant: {
             ...assistant,
@@ -146,7 +146,7 @@ async function handler(
           legacySingleActionMode: true,
         });
       } else {
-        result = await createOrUpgradeAgentConfiguration({
+        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
           auth,
           assistant: {
             ...assistant,
@@ -159,12 +159,12 @@ async function handler(
         });
       }
 
-      if (result.isErr()) {
+      if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
+            type: "assistant_saving_error",
+            message: `Error updating assistant: ${agentConfigurationRes.error.message}`,
           },
         });
       }

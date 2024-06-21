@@ -1171,7 +1171,7 @@ export async function createAgentActionConfiguration(
     description: string | null;
   },
   agentConfiguration: LightAgentConfigurationType
-): Promise<AgentActionConfigurationType> {
+): Promise<Result<AgentActionConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -1207,7 +1207,7 @@ export async function createAgentActionConfiguration(
           processConfigurationId: null,
         });
 
-        return {
+        return new Ok({
           id: retrievalConfig.id,
           sId: retrievalConfig.sId,
           type: "retrieval_configuration",
@@ -1217,7 +1217,7 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           name: action.name || DEFAULT_RETRIEVAL_ACTION_NAME,
           description: action.description,
-        };
+        });
       });
     }
     case "dust_app_run_configuration": {
@@ -1228,7 +1228,7 @@ export async function createAgentActionConfiguration(
         agentConfigurationId: agentConfiguration.id,
       });
 
-      return {
+      return new Ok({
         id: dustAppRunConfig.id,
         sId: dustAppRunConfig.sId,
         type: "dust_app_run_configuration",
@@ -1236,7 +1236,7 @@ export async function createAgentActionConfiguration(
         appId: action.appId,
         name: action.app.name,
         description: action.app.description,
-      };
+      });
     }
     case "tables_query_configuration": {
       return frontSequelize.transaction(async (t) => {
@@ -1263,14 +1263,14 @@ export async function createAgentActionConfiguration(
           )
         );
 
-        return {
+        return new Ok({
           id: tablesQueryConfig.id,
           sId: tablesQueryConfig.sId,
           type: "tables_query_configuration",
           tables: action.tables,
           name: action.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
           description: action.description,
-        };
+        });
       });
     }
     case "process_configuration": {
@@ -1301,7 +1301,7 @@ export async function createAgentActionConfiguration(
           processConfigurationId: processConfig.id,
         });
 
-        return {
+        return new Ok({
           id: processConfig.id,
           sId: processConfig.sId,
           type: "process_configuration",
@@ -1311,7 +1311,7 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           name: action.name || DEFAULT_PROCESS_ACTION_NAME,
           description: action.description,
-        };
+        });
       });
     }
     case "websearch_configuration": {
@@ -1322,13 +1322,13 @@ export async function createAgentActionConfiguration(
         description: action.description,
       });
 
-      return {
+      return new Ok({
         id: websearchConfig.id,
         sId: websearchConfig.sId,
         type: "websearch_configuration",
         name: action.name || DEFAULT_WEBSEARCH_ACTION_NAME,
         description: action.description,
-      };
+      });
     }
     case "browse_configuration": {
       const browseConfig = await AgentBrowseConfiguration.create({
@@ -1338,13 +1338,13 @@ export async function createAgentActionConfiguration(
         description: action.description,
       });
 
-      return {
+      return new Ok({
         id: browseConfig.id,
         sId: browseConfig.sId,
         type: "browse_configuration",
         name: action.name || DEFAULT_BROWSE_ACTION_NAME,
         description: action.description,
-      };
+      });
     }
     default:
       assertNever(action);

@@ -8,7 +8,13 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import { isEqual } from "lodash";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -198,6 +204,7 @@ export function usePreviewAssistant({
   const [isFading, setIsFading] = useState(false);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const sendNotification = React.useContext(SendNotificationsContext);
 
   // Some state to keep track of the previous builderState
   const previousBuilderState = useRef<AssistantBuilderState>(builderState);
@@ -232,7 +239,7 @@ export function usePreviewAssistant({
       // No changes since the last submission
       return;
     }
-    const a = await submitAssistantBuilderForm({
+    const aRes = await submitAssistantBuilderForm({
       owner,
       builderState: {
         handle: builderState.handle,
@@ -254,11 +261,20 @@ export function usePreviewAssistant({
       useMultiActions: multiActionsMode,
     });
 
+    if (!aRes.isOk()) {
+      sendNotification({
+        title: "Error saving Draft Assistant",
+        description: aRes.error.message,
+        type: "error",
+      });
+      return;
+    }
+
     animate();
 
     // Use setTimeout to delay the execution of setDraftAssistant by 500 milliseconds
     setTimeout(() => {
-      setDraftAssistant(a);
+      setDraftAssistant(aRes.value);
       setHasChanged(false);
     }, animationLength / 2);
   }, [
@@ -274,6 +290,7 @@ export function usePreviewAssistant({
     builderState.maxToolsUsePerRun,
     builderState.templateId,
     multiActionsMode,
+    sendNotification,
   ]);
 
   useEffect(() => {

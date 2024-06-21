@@ -252,8 +252,8 @@ async function handler(
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "internal_server_error",
-            message: agentConfigurationRes.error.message,
+            type: "assistant_saving_error",
+            message: `Error saving assistant: ${agentConfigurationRes.error.message}`,
           },
         });
       }
@@ -304,7 +304,7 @@ export async function createOrUpgradeAgentConfiguration({
   const { actions } = assistant;
 
   if (legacySingleActionMode && actions.length > 1) {
-    throw new Error("Only one action is supported in legacy mode.");
+    return new Err(new Error(`Only one action is supported in legacy mode`));
   }
 
   const maxToolsUsePerRun = assistant.maxToolsUsePerRun ?? actions.length;
@@ -314,10 +314,12 @@ export async function createOrUpgradeAgentConfiguration({
     // Enforce that every action has a name and a description and that every name is unique.
     const actionsWithoutName = actions.filter((action) => !action.name);
     if (actionsWithoutName.length) {
-      throw new Error(
-        `Every action must have a name. Missing names for: ${actionsWithoutName
-          .map((action) => action.type)
-          .join(", ")}`
+      return new Err(
+        Error(
+          `Every action must have a name. Missing names for: ${actionsWithoutName
+            .map((action) => action.type)
+            .join(", ")}`
+        )
       );
     }
     const actionNames = new Set<string>();
@@ -327,7 +329,7 @@ export async function createOrUpgradeAgentConfiguration({
         throw new Error(`unreachable: action.name is required.`);
       }
       if (actionNames.has(action.name)) {
-        throw new Error(`Duplicate action name: ${action.name}`);
+        return new Err(new Error(`Duplicate action name: ${action.name}`));
       }
       actionNames.add(action.name);
     }
@@ -352,106 +354,129 @@ export async function createOrUpgradeAgentConfiguration({
 
   const actionConfigs: AgentActionConfigurationType[] = [];
 
-  try {
-    for (const action of actions) {
-      if (action.type === "retrieval_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "retrieval_configuration",
-              query: action.query,
-              relativeTimeFrame: action.relativeTimeFrame,
-              topK: action.topK,
-              dataSources: action.dataSources,
-              name: action.name ?? null,
-              description: action.description ?? null,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "dust_app_run_configuration") {
-        const app = await getApp(auth, action.appId);
-        if (!app) {
-          return new Err(new Error(`App ${action.appId} not found`));
-        }
-
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "dust_app_run_configuration",
-              app,
-              appWorkspaceId: action.appWorkspaceId,
-              appId: action.appId,
-              name: action.name ?? null,
-              description: action.description ?? null,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "tables_query_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "tables_query_configuration",
-              tables: action.tables,
-              name: action.name ?? null,
-              description: action.description ?? null,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "process_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "process_configuration",
-              dataSources: action.dataSources,
-              relativeTimeFrame: action.relativeTimeFrame,
-              tagsFilter: action.tagsFilter,
-              schema: action.schema,
-              name: action.name ?? null,
-              description: action.description ?? null,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "websearch_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "websearch_configuration",
-              name: action.name ?? null,
-              description: action.description ?? null,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "browse_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "browse_configuration",
-              name: action.name ?? null,
-              description: action.description ?? null,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else {
-        assertNever(action);
+  for (const action of actions) {
+    if (action.type === "retrieval_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "retrieval_configuration",
+          query: action.query,
+          relativeTimeFrame: action.relativeTimeFrame,
+          topK: action.topK,
+          dataSources: action.dataSources,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
       }
+      actionConfigs.push(res.value);
+    } else if (action.type === "dust_app_run_configuration") {
+      const app = await getApp(auth, action.appId);
+      if (!app) {
+        return new Err(new Error(`App ${action.appId} not found`));
+      }
+
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "dust_app_run_configuration",
+          app,
+          appWorkspaceId: action.appWorkspaceId,
+          appId: action.appId,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "tables_query_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "tables_query_configuration",
+          tables: action.tables,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "process_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "process_configuration",
+          dataSources: action.dataSources,
+          relativeTimeFrame: action.relativeTimeFrame,
+          tagsFilter: action.tagsFilter,
+          schema: action.schema,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "websearch_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "websearch_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "browse_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "browse_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else {
+      assertNever(action);
     }
-  } catch (e) {
-    // If we fail to create an action, we should delete the agent configuration
-    // we just created and re-throw the error.
-    await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-    throw e;
   }
 
   const agentConfiguration: AgentConfigurationType = {
