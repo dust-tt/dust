@@ -141,12 +141,6 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
  * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
  * the same order, and returns the smallest index of the last character of a in
  * b.
- *
- * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
- * out' in b. e.g.
- * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
- * - 'gp4' and 'gpt-4', spread is 5
- * - 'gp4' and 'gemni-pro4', spread is 10
  */
 function subFilterLastIndex(a: string, b: string) {
   let i = 0;
@@ -163,11 +157,6 @@ function subFilterLastIndex(a: string, b: string) {
 /**
  * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
  * the same order, and returns the biggest index of the first character of a in b.
- * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
- * out' in b. e.g.
- * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
- * - 'gp4' and 'gpt-4', spread is 5
- * - 'gp4' and 'gemni-pro4', spread is 10
  */
 function subFilterFirstIndex(a: string, b: string) {
   let i = a.length - 1;
@@ -179,6 +168,26 @@ function subFilterFirstIndex(a: string, b: string) {
     j--;
   }
   return i === -1 ? j + 1 : -1;
+}
+
+/* Measures how much string a is 'spread out' in string b, assuming a is a
+ * subfilter of b;  e.g.
+ * - 'god' in 'sqlGod': spread is 3 (index of d minus index of g in 'sqlGod')
+ * - 'gp4' in 'gpt-4': spread is 5
+ * - 'gp4' in 'gemni-pro4': spread is 10
+ *
+ *  If a is not a subfilter of b, returns -1. If a can be considered "spread" in
+ *  multiple places in b, returns the minimal spread for the first occurrence.
+ */
+function spreadLength(a: string, b: string) {
+  const lastIndex = subFilterLastIndex(a, b);
+  if (lastIndex === -1) {
+    return -1;
+  }
+
+  const firstIndex = subFilterFirstIndex(a, b.substring(0, lastIndex));
+
+  return lastIndex - firstIndex;
 }
 
 /**
@@ -195,26 +204,24 @@ export function subFilter(a: string, b: string) {
  * lexicographic order
  */
 export function compareForFuzzySort(query: string, a: string, b: string) {
-  const subFilterFirstIndexA = subFilterFirstIndex(query, a);
-  if (subFilterFirstIndexA === -1) {
+  const spreadA = spreadLength(query, a);
+  if (spreadA === -1) {
     return 1;
   }
 
-  const subFilterFirstIndexB = subFilterFirstIndex(query, b);
-  if (subFilterFirstIndexB === -1) {
+  const spreadB = spreadLength(query, b);
+  if (spreadB === -1) {
     return -1;
+  }
+
+  if (spreadA !== spreadB) {
+    return spreadA - spreadB;
   }
 
   const subFilterLastIndexA = subFilterLastIndex(query, a);
   const subFilterLastIndexB = subFilterLastIndex(query, b);
-  const distanceA = subFilterLastIndexA - subFilterFirstIndexA;
-  const distanceB = subFilterLastIndexB - subFilterFirstIndexB;
-  if (distanceA !== distanceB) {
-    return distanceA - distanceB;
-  }
-
-  if (subFilterFirstIndexA !== subFilterFirstIndexB) {
-    return subFilterFirstIndexA - subFilterFirstIndexB;
+  if (subFilterLastIndexA !== subFilterLastIndexB) {
+    return subFilterLastIndexA - subFilterLastIndexB;
   }
 
   if (a.length !== b.length) {
