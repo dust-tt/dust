@@ -421,12 +421,12 @@ export function assertStripeSubscriptionItemIsValid({
     }
 
     if (
-      item.price.recurring.interval !== "month" ||
+      !["month", "year"].includes(item.price.recurring.interval) ||
       item.price.recurring.interval_count !== 1
     ) {
       return new Err({
         invalidity_message:
-          "Subscription recurring price has invalid interval, only 1-month intervals are allowed.",
+          "Subscription recurring price has invalid interval, only 1-month or 1-year intervals are allowed.",
       });
     }
   }
