@@ -6,7 +6,7 @@ import type {
   NangoConnectionId,
   Result,
 } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
@@ -18,6 +18,7 @@ import {
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -41,9 +42,19 @@ export async function createMicrosoftConnector(
 ) {
   const client = await getClient(connectionId);
 
-  // Sanity checks
-  await getSites(client);
-  await getTeams(client);
+  try {
+    // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
+    await getSites(client);
+    await getTeams(client);
+  } catch (err) {
+    logger.error(
+      {
+        err,
+      },
+      "Error creating Microsoft connector"
+    );
+    return new Err(new Error("Error creating Microsoft connector"));
+  }
 
   const connector = await ConnectorResource.makeNew(
     "microsoft",
