@@ -921,20 +921,11 @@ export async function retrievalActionTypesFromAgentMessageIds(
  * Retrieval meta-prompt
  */
 
-export function retrievalMetaPrompt() {
-  return (
-    "Focus on retrieved data and be factual." +
-    " To cite retrieved documents from data sources use the markdown directive :cite[REFERENCE]" +
-    " (eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX])." +
-    " Use citations as close as possible to the information you are citing."
-  );
-}
-
 export function retrievalMetaPromptMutiActions() {
   return (
-    "To cite documents retrieved with a 2-letter REFERENCE, " +
+    "To cite documents retrieved with a 2-character REFERENCE, " +
     "use the markdown directive :cite[REFERENCE] " +
-    "(eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
+    "(eg :cite[xx] or :cite[xx,xx] but not :cite[xx][xx]). " +
     "Ensure citations are placed as close as possible to the related information."
   );
 }
@@ -948,10 +939,10 @@ const getRand = rand("chawarma");
 
 const getRefs = () => {
   if (REFS === null) {
-    REFS = "abcdefghijklmnopqrstuvwxyz"
+    REFS = "abcdefghijklmnopqrstuvwxyz0123456789"
       .split("")
       .map((c) => {
-        return "123456789".split("").map((n) => {
+        return "abcdefghijklmnopqrstuvwxyz0123456789".split("").map((n) => {
           return `${c}${n}`;
         });
       })
