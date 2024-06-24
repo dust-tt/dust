@@ -606,13 +606,27 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           }[];
 
           if (refsOffset + topK > getRefs().length) {
-            // This is a stream dropping error since the guardrails put in place should prevent this
-            // from ever happeaning (max 16 actions per step and sharing of topK among actions of
-            // the same type).
-            throw new Error(
-              "The retrieval actions exhausted the total number of references available: " +
-                `refsOffset=${refsOffset} topK=${topK}`
+            logger.error(
+              {
+                refsOffset,
+                topK,
+                conversationId: conversation.sId,
+                panic: true,
+              },
+              "Exhausted the total number of references available"
             );
+            yield {
+              type: "retrieval_error",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: "retrieval_references_exhausted",
+                message:
+                  "The retrieval actions exhausted the total number of references available for citations",
+              },
+            };
+            return;
           }
 
           const refs = getRefs().slice(refsOffset, refsOffset + topK);

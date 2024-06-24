@@ -12,19 +12,17 @@ import type {
   GlobalAgentStatus,
 } from "@dust-tt/types";
 import {
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-  GPT_4O_MODEL_CONFIG,
-  isProviderWhitelisted,
-} from "@dust-tt/types";
-import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
   GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4O_MODEL_CONFIG,
+  isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
