@@ -66,7 +66,6 @@ function LinksList({
           href={link.href}
           key={index}
           description={link.description}
-          hasAction={false}
         />
       ))}
     </Item.List>
@@ -203,8 +202,7 @@ export function HelpDrawer({
             owner={owner}
             onSubmit={handleHelpSubmit}
             conversationId={null}
-            hideAttachment={true}
-            hideQuickActions={true}
+            actions={[]}
             disableAutoFocus={true}
           />
         </div>
