@@ -320,6 +320,12 @@ export async function constructPromptMultiActions(
   context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
+    if (userMessage.context.fullName) {
+      context += `user_full_name: ${userMessage.context.fullName}\n`;
+    }
+    if (userMessage.context.email) {
+      context += `user_email: ${userMessage.context.email}\n`;
+    }
   }
 
   // INSTRUCTIONS section
