@@ -197,8 +197,8 @@ export function HelpDrawer({
             </div>
           </Button.List>
         )}
-        <div className="flex flex-col gap-2 [&>*]:pl-px">
-          <div className="text-base font-bold">Ask questions</div>
+        <div className="flex flex-col gap-4 [&>*]:pl-px">
+          <Page.SectionHeader title="Ask questions" />
           <AssistantInputBar
             owner={owner}
             onSubmit={handleHelpSubmit}

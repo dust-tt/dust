@@ -303,9 +303,7 @@ export function AssistantInputBar({
         </div>
       )}
 
-      <div
-        className={classNames("flex flex-1 px-0", isFloating ? "sm:px-4" : "")}
-      >
+      <div className={classNames("flex flex-1 px-0")}>
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
           <div
             className={classNames(
