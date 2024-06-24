@@ -6,13 +6,13 @@ services:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
     volumes:
-      - dustvolume:/postgres
+      - dustvolume:/var/lib/postgresql/data
     ports:
       - 5432:5432
   qdrant_primary:
     image: "qdrant/qdrant"
     volumes:
-      - dustvolume:/qdrant_primary
+      - dustvolume:/qdrant/storage
     ports:
       - "6334:6334"
       - "6333:6333"
@@ -31,14 +31,14 @@ services:
   qdrant_secondary:
     image: "qdrant/qdrant"
     volumes:
-      - dustvolume:/qdrant_secondary
+      - dustvolume:/qdrant/storage
     environment:
       QDRANT__CLUSTER__ENABLED: "true"
     ulimits:
       nofile:
         soft: 64000
         hard: 64000
-    command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335"]
+    command: ["./qdrant", "--bootstrap", "http://qdrant_secondary:6335"]
     depends_on:
       qdrant_primary:
         condition: service_healthy # Ensure qdrant is healthy before starting qdrant_primary.
