@@ -586,6 +586,7 @@ export async function getParsedDatabase(
     title,
     parentId,
     parentType: parentType as ParsedNotionPage["parentType"],
+    archived: database.archived,
   };
 }
 
