@@ -332,7 +332,7 @@ const DataSourcePage = ({
         "Are you sure you want to access this sensible user data? (Access will be logged)"
       )
     ) {
-      void router.push(
+      window.open(
         `/poke/${owner.sId}/data_sources/${
           dataSource.name
         }/view?documentId=${encodeURIComponent(documentId)}`
