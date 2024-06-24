@@ -438,9 +438,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const modelId =
         args.modelId ?? CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId;
-      const model = SUPPORTED_MODEL_CONFIGS.find(
-        (m) => m.modelId === modelId && m.supportsMultiActions
-      );
+      const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
       if (!model) {
         throw new Error(`Model not found: modelId='${modelId}'`);
       }

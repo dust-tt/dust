@@ -306,8 +306,7 @@ export async function* runMultiActionsAgent(
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
       m.modelId === agentConfiguration.model.modelId &&
-      m.providerId === agentConfiguration.model.providerId &&
-      m.supportsMultiActions
+      m.providerId === agentConfiguration.model.providerId
   );
 
   if (!model) {

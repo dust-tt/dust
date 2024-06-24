@@ -152,7 +152,6 @@ export type ModelConfigurationType = {
   largeModel: boolean;
   description: string;
   shortDescription: string;
-  supportsMultiActions: boolean;
   isLegacy: boolean;
 
   // Allows configuring parsing of special delimiters in the streamed model output.
@@ -179,7 +178,6 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "OpenAI's advanced model for complex tasks (128k context).",
   shortDescription: "OpenAI's most capable model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
@@ -192,7 +190,6 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "OpenAI's GPT-4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
@@ -206,7 +203,6 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "OpenAI's cost-effective and high throughput model (16k context).",
   shortDescription: "OpenAI's fast model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 
@@ -221,7 +217,6 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
   shortDescription: "Anthropic's powerful model.",
-  supportsMultiActions: true,
   isLegacy: false,
   delimitersConfiguration: {
     incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
@@ -270,7 +265,6 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic latest Claude 3.5 Sonnet model, their most intelligent model.",
   shortDescription: "Anthropic's smartest model.",
-  supportsMultiActions: true,
   isLegacy: false,
   delimitersConfiguration: {
     incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
@@ -319,7 +313,6 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
   shortDescription: "Anthropic's quick model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -332,7 +325,6 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's smartest model.",
-  supportsMultiActions: false,
   isLegacy: true,
 };
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -346,7 +338,6 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's low-latency and high throughput model (100k context)",
   shortDescription: "Anthropic's fast model.",
-  supportsMultiActions: false,
   isLegacy: true,
 };
 
@@ -360,7 +351,6 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Mistral's latest `large` model (32k context).",
   shortDescription: "Mistral's large model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
@@ -373,8 +363,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Mistral's latest `medium` model (32k context).",
   shortDescription: "Mistral's smartest model.",
-  supportsMultiActions: false,
-  isLegacy: false,
+  isLegacy: true,
 };
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -386,7 +375,6 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description: "Mistral's latest model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's fast model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 
@@ -401,7 +389,6 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Google's best model for scaling across a wide range of tasks (1m context).",
   shortDescription: "Google's smartest model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 
@@ -416,7 +403,6 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Google's lightweight, fast and cost-efficient model (1m context).",
   shortDescription: "Google's smartest model.",
-  supportsMultiActions: true,
   isLegacy: false,
 };
 
