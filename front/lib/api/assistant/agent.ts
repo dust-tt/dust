@@ -324,7 +324,7 @@ export async function* runMultiActionsAgent(
 
   let fallbackPrompt = "You are a conversational assistant";
   if (agentConfiguration.actions.length) {
-    fallbackPrompt += " with access to function calling.";
+    fallbackPrompt += " with access to tool use.";
   } else {
     fallbackPrompt += ".";
   }
