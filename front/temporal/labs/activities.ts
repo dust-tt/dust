@@ -322,7 +322,7 @@ export async function processTranscriptActivity(
   const msg = {
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "team@dust.help",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
     html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
