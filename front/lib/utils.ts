@@ -1,5 +1,4 @@
 import type { LightAgentConfigurationType } from "@dust-tt/types";
-import assert from "assert";
 import { hash as blake3 } from "blake3";
 import { v4 as uuidv4 } from "uuid";
 
