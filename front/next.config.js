@@ -71,7 +71,7 @@ module.exports = {
       // Exclude the specific file from optimization
       jsRule.exclude = [
         ...(jsRule.exclude || []),
-        /.*/, // Adjust the path to your specific file
+        /pages\/iframe.tsx/, // Adjust the path to your specific file
       ];
     }
     return config;
