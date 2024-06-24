@@ -202,9 +202,12 @@ export function AgentMessage({
               chainOfThoughts: [event.chainOfThought],
             };
           }
-          // Otherwise, we don't do anything, because we already have this chain of thought in the chainOfThoughts array
-          // (and it wasn't being streamed as regular tokens, so we don't need to clear the content)
-          return m;
+          // Otherwise, we insert an empty COT so that any future COT (if any) gets appended to that one.
+          // Here, we do not need to clear the content because the COT was already being streamed as COT tokens.
+          return {
+            ...m,
+            chainOfThoughts: [...m.chainOfThoughts, ""],
+          };
         });
         break;
 
@@ -486,7 +489,9 @@ export function AgentMessage({
 
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
 
-    const chainOfThought = agentMessage.chainOfThoughts.join("");
+    const chainOfThought = agentMessage.chainOfThoughts
+      .filter((cot) => !!cot) // Remove empty chain of thoughts.
+      .join("");
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />
