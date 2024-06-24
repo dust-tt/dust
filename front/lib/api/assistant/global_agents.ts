@@ -31,7 +31,11 @@ import {
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import {
+  DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/names";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -780,9 +784,15 @@ async function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(owner)
-    : getSmallWhitelistedModel(owner);
+  const modelConfiguration = (() => {
+    // If we can use Sonnet 3.5, we use it. Otherwise we use the default model.
+    if (auth.isUpgraded() && isProviderWhitelisted(owner, "anthropic")) {
+      return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+    }
+    return auth.isUpgraded()
+      ? getLargeWhitelistedModel(owner)
+      : getSmallWhitelistedModel(owner);
+  })();
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
@@ -857,9 +867,12 @@ async function _getDustGlobalAgent(
     versionAuthorId: null,
     name,
     description,
-    instructions:
-      "Assist the user based on the retrieved data from their workspace." +
-      `\n${BREVITY_PROMPT}`,
+    instructions: `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
+# When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
+1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
+3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
+4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.`,
     pictureUrl,
     status: "active",
     scope: "global",
@@ -868,7 +881,7 @@ async function _getDustGlobalAgent(
     actions: [
       {
         id: -1,
-        sId: GLOBAL_AGENTS_SID.DUST + "-action",
+        sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
         type: "retrieval_configuration",
         query: "auto",
         relativeTimeFrame: "auto",
@@ -881,8 +894,22 @@ async function _getDustGlobalAgent(
         name: DEFAULT_RETRIEVAL_ACTION_NAME,
         description: `The user's entire workspace data sources`,
       },
+      {
+        id: -2,
+        sId: GLOBAL_AGENTS_SID.DUST + "-websearch-action",
+        type: "websearch_configuration",
+        name: DEFAULT_WEBSEARCH_ACTION_NAME,
+        description: null,
+      },
+      {
+        id: -3,
+        sId: GLOBAL_AGENTS_SID.DUST + "-browse-action",
+        type: "browse_configuration",
+        name: DEFAULT_BROWSE_ACTION_NAME,
+        description: null,
+      },
     ],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 3,
     templateId: null,
   };
 }
