@@ -1,0 +1,11 @@
+{
+  "apiFolder": "pages/api",
+  "schemaFolders": ["lib/models/"],
+  "definition": {
+    "openapi": "3.0.3",
+    "info": {
+      "title": "Dust.tt API Documentation",
+      "version": "1.0"
+    }
+  }
+}

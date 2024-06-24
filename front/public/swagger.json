@@ -1,0 +1,47 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dust.tt API Documentation",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/v1/w/{wId}/assistant/conversations": {
+      "post": {
+        "description": "Create a new conversation.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostConversationsRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The conversation."
+          }
+        }
+      }
+    },
+    "/api/feature_flags": {
+      "get": {
+        "description": "Get the feature flags for the workspace.",
+        "responses": {
+          "200": {
+            "description": "The feature flags for the workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceFeatureFlagsResponseBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "tags": []
+}
