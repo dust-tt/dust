@@ -40,10 +40,10 @@ export async function createMicrosoftConnector(
   connectionId: NangoConnectionId
 ) {
   const client = await getClient(connectionId);
+
+  // Sanity checks
   await getSites(client);
   await getTeams(client);
-
-  //   const webhook = await registerWebhook(client, `drives/${drives[0].id}/root`);
 
   const connector = await ConnectorResource.makeNew(
     "microsoft",
