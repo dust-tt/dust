@@ -18,6 +18,7 @@ import {
   BaseAction,
   cloneBaseConfig,
   DustProdActionRegistry,
+  isDevelopment,
   Ok,
   PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
@@ -35,10 +36,7 @@ import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/acti
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  isDevelopment,
-  PRODUCTION_DUST_WORKSPACE_ID,
-} from "@app/lib/development";
+import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/development";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
