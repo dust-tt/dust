@@ -40,13 +40,9 @@ async function handler(
         visibility: "published",
       });
 
-      const filteredTemplates = templates.filter((t) => {
-        return t.presetAction === "reply" || t.presetActions.length > 0;
-      });
-
       return res
         .status(200)
-        .json({ templates: filteredTemplates.map((t) => t.toListJSON()) });
+        .json({ templates: templates.map((t) => t.toListJSON()) });
 
     default:
       return apiError(req, res, {

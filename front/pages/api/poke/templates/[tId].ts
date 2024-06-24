@@ -128,7 +128,6 @@ async function handler(
         handle: body.handle,
         helpActions: body.helpActions ?? null,
         helpInstructions: body.helpInstructions ?? null,
-        presetAction: body.presetAction,
         presetActions: body.presetActions,
         timeFrameDuration: body.timeFrameDuration
           ? parseInt(body.timeFrameDuration)
