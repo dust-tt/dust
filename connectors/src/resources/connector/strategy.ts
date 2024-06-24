@@ -6,10 +6,7 @@ import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence"
 import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspace } from "@connectors/lib/models/intercom";
-import type {
-  MicrosoftConfiguration,
-  MicrosoftTeamsConfiguration,
-} from "@connectors/lib/models/microsoft";
+import type { MicrosoftConfiguration } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
@@ -17,10 +14,7 @@ import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/con
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
 import { IntercomConnectorStrategy } from "@connectors/resources/connector/intercom";
-import {
-  MicrosoftConnectorStrategy as MicrosoftConnectorStrategy,
-  MicrosoftTeamsConnectorStrategy,
-} from "@connectors/resources/connector/microsoft";
+import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/microsoft";
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";

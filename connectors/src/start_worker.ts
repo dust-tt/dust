@@ -4,7 +4,6 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
-import { runMicrosoftTeamsWorker } from "@connectors/connectors/microsoft/teams/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 

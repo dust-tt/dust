@@ -1,9 +1,6 @@
 import type { Transaction } from "sequelize";
 
-import {
-  MicrosoftConfiguration,
-  MicrosoftTeamsConfiguration,
-} from "@connectors/lib/models/microsoft";
+import { MicrosoftConfiguration } from "@connectors/lib/models/microsoft";
 import type {
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -30,36 +27,6 @@ export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
     transaction: Transaction
   ): Promise<void> {
     await MicrosoftConfiguration.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-  }
-}
-
-export class MicrosoftTeamsConnectorStrategy
-  implements ConnectorProviderStrategy
-{
-  async makeNew(
-    connector: ConnectorResource,
-    blob: WithCreationAttributes<MicrosoftConfiguration>,
-    transaction: Transaction
-  ): Promise<void> {
-    await MicrosoftTeamsConfiguration.create(
-      {
-        ...blob,
-        connectorId: connector.id,
-      },
-      { transaction }
-    );
-  }
-
-  async delete(
-    connector: ConnectorResource,
-    transaction: Transaction
-  ): Promise<void> {
-    await MicrosoftTeamsConfiguration.destroy({
       where: {
         connectorId: connector.id,
       },

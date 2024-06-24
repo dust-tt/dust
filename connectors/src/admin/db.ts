@@ -29,10 +29,7 @@ import {
   IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
-import {
-  MicrosoftConfiguration,
-  MicrosoftTeamsConfiguration,
-} from "@connectors/lib/models/microsoft";
+import { MicrosoftConfiguration } from "@connectors/lib/models/microsoft";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
