@@ -28,7 +28,7 @@ export async function getFilesAndFolders(
   const parent = parentId ? `items/${parentId}` : "root";
   const res = await client
     .api(`/drives/${driveId}/${parent}/children`)
-    .select("id,displayName")
+    .select("id,name,createdDateTime,file,folder")
     .get();
   return res.value;
 }

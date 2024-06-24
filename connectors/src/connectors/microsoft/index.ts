@@ -12,13 +12,27 @@ import { Client } from "@microsoft/microsoft-graph-client";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
 import {
+  getChannelAsContentNode,
+  getDriveAsContentNode,
+  getFolderAsContentNode,
+  getSiteAsContentNode,
+  getSitesRootAsContentNode,
+  getTeamAsContentNode,
+  getTeamsRootAsContentNode,
+} from "@connectors/connectors/microsoft/lib/content_nodes";
+import {
+  getChannels,
+  getDrives,
+  getFolders,
   getSites,
   getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+// import { MicrosoftConfigurationResource } from "@connectors/resources/connector/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -91,9 +105,44 @@ export async function stopMicrosoftConnector(
   throw Error("Not implemented");
 }
 
-export async function deleteMicrosoftConnector(connectorId: ModelId) {
-  console.log("deleteMicrosoftConnector", connectorId);
-  throw Error("Not implemented");
+export async function deleteMicrosoftConnector(
+  connectorId: ModelId,
+  force = false
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Could not find connector with id ${connectorId}`)
+    );
+  }
+
+  const nangoRes = await nangoDeleteConnection(
+    connector.connectionId,
+    microsoftConfig.getRequiredNangoMicrosoftConnectorId()
+  );
+  if (nangoRes.isErr()) {
+    if (!force) {
+      return nangoRes;
+    } else {
+      logger.error(
+        {
+          err: nangoRes.error,
+        },
+        "Error deleting connection from Nango"
+      );
+    }
+  }
+
+  const res = await connector.delete();
+  if (res.isErr()) {
+    logger.error(
+      { connectorId, error: res.error },
+      "Error cleaning up Microsoft connector."
+    );
+    return res;
+  }
+
+  return new Ok(undefined);
 }
 
 export async function pauseMicrosoftConnector(
@@ -135,6 +184,7 @@ export async function cleanupMicrosoftConnector(
 export async function retrieveMicrosoftConnectorPermissions({
   connectorId,
   parentInternalId,
+  filterPermission,
   viewType,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ContentNode[], Error>
@@ -145,7 +195,87 @@ export async function retrieveMicrosoftConnectorPermissions({
     parentInternalId,
     viewType
   );
-  throw Error("Not implemented");
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Could not find connector with id ${connectorId}`)
+    );
+  }
+
+  const client = await getClient(connector.connectionId);
+  const nodes = [];
+
+  // const selectedResources =
+  //   await MicrosoftConfigurationResource.listRootsByConnectorId(
+  //     connector.type
+  //   ).map((r) => r.internalId);
+
+  if (!parentInternalId) {
+    nodes.push(getSitesRootAsContentNode());
+    nodes.push(getTeamsRootAsContentNode());
+  } else {
+    const [resourceType, part1, part2] = parentInternalId.split("/");
+
+    switch (resourceType) {
+      case "sites-root":
+        nodes.push(
+          ...(await getSites(client)).map((n) => getSiteAsContentNode(n))
+        );
+        break;
+      case "teams-root":
+        nodes.push(
+          ...(await getTeams(client)).map((n) => getTeamAsContentNode(n))
+        );
+        break;
+      case "team":
+        nodes.push(
+          ...(await getChannels(client, part1 as string)).map((n) =>
+            getChannelAsContentNode(n, parentInternalId)
+          )
+        );
+        break;
+      case "site":
+        nodes.push(
+          ...(await getDrives(client, part1 as string)).map((n) =>
+            getDriveAsContentNode(n, parentInternalId)
+          )
+        );
+        break;
+      case "drive":
+        console.log("drive", part1);
+        nodes.push(
+          ...(await getFolders(client, part1 as string)).map((n) =>
+            getFolderAsContentNode(n, part1 as string, parentInternalId)
+          )
+        );
+        break;
+      case "folder":
+        console.log("folder", part1, part2);
+        nodes.push(
+          ...(await getFolders(client, part1 as string, part2 as string)).map(
+            (n) => getFolderAsContentNode(n, part1 as string, parentInternalId)
+          )
+        );
+        break;
+    }
+  }
+
+  const nodesWithPermissions = nodes;
+  // const nodesWithPermissions = nodes.map((res) => ({
+  //   ...res,
+  //   permission: (selectedResources.includes(res.internalId)
+  //     ? "read"
+  //     : "none") as ConnectorPermission,
+  // }));
+
+  if (filterPermission) {
+    return new Ok(
+      nodesWithPermissions.filter((n) => n.permission === filterPermission)
+    );
+  }
+
+  return new Ok(nodesWithPermissions);
 }
 
 export async function setMicrosoftConnectorPermissions(
@@ -153,7 +283,22 @@ export async function setMicrosoftConnectorPermissions(
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
   console.log("setMicrosoftConnectorPermissions", connectorId, permissions);
-  throw Error("Not implemented");
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Could not find connector with id ${connectorId}`)
+    );
+  }
+
+  // const selectedResources =
+  //   await MicrosoftConfigurationResource.listRootsByConnectorId(
+  //     connector.type
+  //   ).map((r) => r.internalId);
+
+  // MicrosoftConfigurationResource.setPermissions(connectorId, permissions);
+
+  return new Ok(undefined);
 }
 
 export async function getMicrosoftConfig(
