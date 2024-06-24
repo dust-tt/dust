@@ -412,7 +412,7 @@ export async function upsertDatabaseWorkflow({
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
 
-  await deletePageOrdatabaseIfArchived({
+  await deletePageOrDatabaseIfArchived({
     connectorId,
     objectId: databaseId,
     objectType: "database",
