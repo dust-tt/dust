@@ -998,13 +998,15 @@ export async function garbageCollect({
   });
 }
 
-export async function deletePageIfArchived({
+export async function deletePageOrDatabaseIfArchived({
   connectorId,
-  pageId,
+  objectId,
+  objectType,
   loggerArgs,
 }: {
   connectorId: ModelId;
-  pageId: string;
+  objectId: string;
+  objectType: "page" | "database";
   loggerArgs: Record<string, string | number>;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -1016,25 +1018,61 @@ export async function deletePageIfArchived({
 
   const localLogger = logger.child({
     ...loggerArgs,
-    pageId,
+    objectId,
+    objectType,
     dataSourceName: connector.dataSourceName,
     workspaceId: connector.workspaceId,
   });
 
+  if (objectType === "page") {
+    const notionPageModel = await NotionPage.findOne({
+      where: {
+        connectorId,
+        notionPageId: objectId,
+      },
+    });
+    if (!notionPageModel) {
+      logger.info("deletePageIfArchived: Page not found in DB.");
+      return;
+    }
+  }
+  if (objectType === "database") {
+    const notionDatabaseModel = await NotionDatabase.findOne({
+      where: {
+        connectorId: connector.id,
+        notionDatabaseId: objectId,
+      },
+    });
+    if (!notionDatabaseModel) {
+      logger.info("deleteDatabaseIfArchived: Database not found in DB.");
+      return;
+    }
+  }
+
   const resourceIsAccessible = await isAccessibleAndUnarchived(
     accessToken,
-    pageId,
-    "page",
+    objectId,
+    objectType,
     localLogger
   );
 
   if (!resourceIsAccessible) {
-    await deletePage({
-      connectorId,
-      dataSourceConfig,
-      pageId,
-      logger: localLogger,
-    });
+    if (objectType === "page") {
+      await deletePage({
+        connectorId,
+        dataSourceConfig,
+        pageId: objectId,
+        logger: localLogger,
+      });
+    }
+    if (objectType === "database") {
+      await deleteDatabase({
+        connectorId,
+        dataSourceConfig,
+        databaseId: objectId,
+        logger: localLogger,
+      });
+    }
   }
 }
 

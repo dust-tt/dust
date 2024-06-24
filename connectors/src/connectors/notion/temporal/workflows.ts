@@ -34,7 +34,7 @@ const {
   getDiscoveredResourcesFromCache,
   upsertDatabaseStructuredDataFromCache,
   upsertDatabaseInConnectorsDb,
-  deletePageIfArchived,
+  deletePageOrdatabaseIfArchived,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -328,9 +328,10 @@ export async function upsertPageWorkflow({
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
 
-  await deletePageIfArchived({
+  await deletePageOrdatabaseIfArchived({
     connectorId,
-    pageId,
+    objectId: pageId,
+    objectType: "page",
     loggerArgs,
   });
 
@@ -410,6 +411,13 @@ export async function upsertDatabaseWorkflow({
   } while (discoveredResources);
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
+  await deletePageOrdatabaseIfArchived({
+    connectorId,
+    objectId: databaseId,
+    objectType: "database",
+    loggerArgs,
+  });
 }
 
 /*
