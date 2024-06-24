@@ -55,10 +55,6 @@ export async function createNotionConnector(
 
   let connector: ConnectorResource;
   try {
-    const notionConfigurationBlob = {
-      useDualWorkflow: true,
-    };
-
     connector = await ConnectorResource.makeNew(
       "notion",
       {
@@ -67,7 +63,7 @@ export async function createNotionConnector(
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
       },
-      notionConfigurationBlob
+      {}
     );
   } catch (e) {
     logger.error({ error: e }, "Error creating notion connector.");
