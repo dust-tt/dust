@@ -193,10 +193,18 @@ export function AgentMessage({
 
       case "agent_chain_of_thought":
         setStreamedAgentMessage((m) => {
-          return {
-            ...m,
-            chainOfThoughts: [...m.chainOfThoughts, event.chainOfThought],
-          };
+          if (m.chainOfThoughts.length === 0) {
+            // We don't have any chain of thoughts yet. This means the chain of thought was being streamed as regular tokens.
+            // In this case, we clear the content and add the chain of thought.
+            return {
+              ...m,
+              content: "",
+              chainOfThoughts: [event.chainOfThought],
+            };
+          }
+          // Otherwise, we don't do anything, because we already have this chain of thought in the chainOfThoughts array
+          // (and it wasn't being streamed as regular tokens, so we don't need to clear the content)
+          return m;
         });
         break;
 
