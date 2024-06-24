@@ -294,36 +294,3 @@ function alphanumFromByte(byte: number) {
   }
   return index === 62 ? 45 : 95;
 }
-
-// TO BE DELETED BEFORE MERGING
-function checkUniform() {
-  const sIds = new Set<string>();
-  for (let i = 0; i < 100000; i++) {
-    sIds.add(generateModelSId());
-  }
-  // quick check just for the sake of it
-  assert(sIds.size === 100000);
-
-  // now the real uniformity check
-  const sIdArray = Array.from(sIds);
-  const charMap: Record<string, number> = {};
-  for (const sId of sIdArray) {
-    for (const char of sId) {
-      if (!charMap[char]) {
-        charMap[char] = 1;
-      } else {
-        charMap[char]++;
-      }
-    }
-  }
-
-  console.log(charMap);
-  for (const char in charMap) {
-    assert(
-      charMap[char] > ((100_000 * 12) / 64) * 0.98 &&
-        charMap[char] < ((100_000 * 12) / 64) * 1.02
-    );
-  }
-}
-
-checkUniform();
