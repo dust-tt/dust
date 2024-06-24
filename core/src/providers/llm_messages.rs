@@ -77,6 +77,9 @@ pub struct FunctionChatMessage {
     pub role: ChatMessageRole,
 }
 
+// Enum representing different types of chat messages, where the `role` field
+// (mapped to ChatMessageRole) is used to determine the specific variant.
+
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(tag = "role", rename_all = "lowercase")]
 pub enum ChatMessage {
