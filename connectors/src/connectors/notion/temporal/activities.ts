@@ -1032,7 +1032,7 @@ export async function deletePageOrDatabaseIfArchived({
       },
     });
     if (!notionPageModel) {
-      logger.info("deletePageIfArchived: Page not found in DB.");
+      logger.info("deletePageOrDatabaseIfArchived: Page not found in DB.");
       return;
     }
   }
@@ -1044,7 +1044,7 @@ export async function deletePageOrDatabaseIfArchived({
       },
     });
     if (!notionDatabaseModel) {
-      logger.info("deleteDatabaseIfArchived: Database not found in DB.");
+      logger.info("deletePageOrDatabaseIfArchived: Database not found in DB.");
       return;
     }
   }
