@@ -147,10 +147,10 @@ pub trait Provider {
 
 pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
     match t {
-        ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
-        ProviderID::AzureOpenAI => Box::new(AzureOpenAIProvider::new()),
         ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
-        ProviderID::Mistral => Box::new(MistralProvider::new()),
+        ProviderID::AzureOpenAI => Box::new(AzureOpenAIProvider::new()),
         ProviderID::GoogleAiStudio => Box::new(GoogleAiStudioProvider::new()),
+        ProviderID::Mistral => Box::new(MistralProvider::new()),
+        ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
     }
 }

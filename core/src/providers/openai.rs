@@ -2,7 +2,7 @@ use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
 use crate::providers::llm::{
-    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
+    ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
@@ -31,6 +31,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+
+use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -244,10 +246,11 @@ impl From<OpenAIChatMessageRole> for ChatMessageRole {
     }
 }
 
+// TODO:
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: OpenAIChatMessageRole,
-    pub content: Option<String>,
+    pub content: Option<ContentBlock>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -256,9 +259,22 @@ pub struct OpenAIChatMessage {
     pub tool_call_id: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAICompletionChatMessage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub role: OpenAIChatMessageRole,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<OpenAIToolCall>>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenAIChatChoice {
-    pub message: OpenAIChatMessage,
+    pub message: OpenAICompletionChatMessage,
     pub index: usize,
     pub finish_reason: Option<String>,
 }
@@ -275,10 +291,10 @@ pub struct OpenAIChatCompletion {
 // This code performs a type conversion with information loss when converting to ChatFunctionCall.
 // It only supports one tool call, so it takes the first one from the vector of OpenAIToolCall,
 // hence potentially discarding other tool calls.
-impl TryFrom<&OpenAIChatMessage> for ChatMessage {
+impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
     type Error = anyhow::Error;
 
-    fn try_from(cm: &OpenAIChatMessage) -> Result<Self, Self::Error> {
+    fn try_from(cm: &OpenAICompletionChatMessage) -> Result<Self, Self::Error> {
         let role = ChatMessageRole::from(cm.role.clone());
         let content = match cm.content.as_ref() {
             Some(c) => Some(c.clone()),
@@ -311,13 +327,12 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             None => None,
         };
 
-        Ok(ChatMessage {
+        Ok(AssistantChatMessage {
             content,
             role,
             name,
             function_call,
             function_calls,
-            function_call_id: None,
         })
     }
 }
@@ -326,34 +341,48 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        // If `function_call_id` is present, `role` must be `function` and should be mapped to `Tool`.
-        // This is to maintain backward compatibility with the original `function` role used for content fragments.
-        let (role, tool_call_id) = match cm.function_call_id.as_ref() {
-            Some(fcid) => match OpenAIChatMessageRole::from(&cm.role) {
-                OpenAIChatMessageRole::Function => {
-                    Ok((OpenAIChatMessageRole::Tool, Some(fcid.clone())))
-                }
-                _ => Err(anyhow!(
-                    "`function_call_id` is provided but `role` is not set to `function`"
-                )),
-            },
-            _ => Ok((OpenAIChatMessageRole::from(&cm.role), None)),
-        }?;
-
-        Ok(OpenAIChatMessage {
-            content: cm.content.clone(),
-            name: cm.name.clone(),
-            role,
-            tool_call_id,
-            tool_calls: match cm.function_calls.as_ref() {
-                Some(fc) => Some(
-                    fc.into_iter()
-                        .map(|f| OpenAIToolCall::try_from(f))
-                        .collect::<Result<Vec<OpenAIToolCall>, _>>()?,
-                ),
-                None => None,
-            },
-        })
+        match cm {
+            ChatMessage::Assistant(assistant_msg) => Ok(OpenAIChatMessage {
+                content: match &assistant_msg.content {
+                    Some(c) => Some(ContentBlock::Text(c.clone())),
+                    None => None,
+                },
+                name: assistant_msg.name.clone(),
+                role: OpenAIChatMessageRole::from(&assistant_msg.role),
+                tool_calls: match assistant_msg.function_calls.as_ref() {
+                    Some(fc) => Some(
+                        fc.into_iter()
+                            .map(|f| OpenAIToolCall::try_from(f))
+                            .collect::<Result<Vec<OpenAIToolCall>, _>>()?,
+                    ),
+                    None => None,
+                },
+                tool_call_id: None,
+            }),
+            ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
+                content: Some(ContentBlock::Text(function_msg.content.clone())),
+                name: None,
+                // If `function_call_id` is present, `role` must be `function` and should be mapped to `Tool`.
+                // This is to maintain backward compatibility with the original `function` role used for content fragments.
+                role: OpenAIChatMessageRole::Tool,
+                tool_calls: None,
+                tool_call_id: Some(function_msg.function_call_id.clone()),
+            }),
+            ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
+                content: Some(ContentBlock::Text(system_msg.content.clone())),
+                name: system_msg.name.clone(),
+                role: OpenAIChatMessageRole::from(&system_msg.role),
+                tool_calls: None,
+                tool_call_id: None,
+            }),
+            ChatMessage::User(user_msg) => Ok(OpenAIChatMessage {
+                content: Some(user_msg.content.clone()),
+                name: user_msg.name.clone(),
+                role: OpenAIChatMessageRole::from(&user_msg.role),
+                tool_calls: None,
+                tool_call_id: None,
+            }),
+        }
     }
 }
 
@@ -1161,7 +1190,7 @@ pub async fn streamed_chat_completion(
                 .choices
                 .iter()
                 .map(|c| OpenAIChatChoice {
-                    message: OpenAIChatMessage {
+                    message: OpenAICompletionChatMessage {
                         content: Some("".to_string()),
                         name: None,
                         role: OpenAIChatMessageRole::System,
@@ -1963,7 +1992,7 @@ impl LLM for OpenAILLM {
             completions: c
                 .choices
                 .iter()
-                .map(|c| ChatMessage::try_from(&c.message))
+                .map(|c| AssistantChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
             usage: c.usage.map(|usage| LLMTokenUsage {
                 prompt_tokens: usage.prompt_tokens,

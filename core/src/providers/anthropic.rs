@@ -1,6 +1,6 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{
-    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, Tokens, LLM,
+    ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, Tokens, LLM,
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
@@ -23,6 +23,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::llm::{ChatFunction, ChatFunctionCall};
+use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -197,82 +198,107 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let role = AnthropicChatMessageRole::try_from(&cm.role)
-            .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
+        let role = match cm.get_role() {
+            Some(r) => AnthropicChatMessageRole::try_from(r)
+                .map_err(|e| anyhow!("Error converting role: {:?}", e)),
+            None => Err(anyhow!("Role is required.")),
+        }?;
 
-        // Handling meta prompt.
-        let meta_prompt = match cm.role {
-            // If function_call_id is not set Anthropic has no way to correlate the tool_use with
-            // the tool_result.
-            ChatMessageRole::Function if cm.function_call_id.is_none() => cm
-                .name
-                .as_ref()
-                .map_or(String::new(), |name| format!("[tool: {}] ", name)),
-            _ => String::new(),
-        };
+        match cm {
+            ChatMessage::Assistant(assistant_msg) => {
+                // Handling tool_uses.
+                let tool_uses = match assistant_msg.function_calls.as_ref() {
+                    Some(fc) => Some(
+                        fc.iter()
+                            .map(|function_call| {
+                                let value = serde_json::from_str(function_call.arguments.as_str())?;
 
-        // Handling tool_uses.
-        let tool_uses = match cm.function_calls.as_ref() {
-            Some(fc) => Some(
-                fc.iter()
-                    .map(|function_call| {
-                        let value = serde_json::from_str(function_call.arguments.as_str())?;
+                                Ok(AnthropicContent {
+                                    r#type: AnthropicContentType::ToolUse,
+                                    text: None,
+                                    tool_use: Some(AnthropicContentToolUse {
+                                        name: function_call.name.clone(),
+                                        id: function_call.id.clone(),
+                                        input: value,
+                                    }),
+                                    tool_result: None,
+                                })
+                            })
+                            .collect::<Result<Vec<AnthropicContent>>>()?,
+                    ),
+                    None => None,
+                };
 
-                        Ok(AnthropicContent {
-                            r#type: AnthropicContentType::ToolUse,
-                            text: None,
-                            tool_use: Some(AnthropicContentToolUse {
-                                name: function_call.name.clone(),
-                                id: function_call.id.clone(),
-                                input: value,
-                            }),
-                            tool_result: None,
-                        })
-                    })
-                    .collect::<Result<Vec<AnthropicContent>>>()?,
-            ),
-            None => None,
-        };
-
-        // Handling tool_result.
-        let tool_result = match cm.function_call_id.as_ref() {
-            Some(fcid) => Some(AnthropicContent {
-                r#type: AnthropicContentType::ToolResult,
-                tool_use: None,
-                tool_result: Some(AnthropicContentToolResult {
-                    tool_use_id: fcid.clone(),
-                    content: cm.content.clone(),
-                }),
-                text: None,
-            }),
-            None => None,
-        };
-
-        // Handling text.
-        let text = cm
-            .function_call_id
-            .is_none()
-            .then(|| {
-                cm.content.as_ref().map(|text| AnthropicContent {
+                // Handling text.
+                let text = assistant_msg.content.as_ref().map(|text| AnthropicContent {
                     r#type: AnthropicContentType::Text,
-                    text: Some(format!("{}{}", meta_prompt, text)),
+                    text: Some(text.clone()),
                     tool_result: None,
                     tool_use: None,
+                });
+
+                // Combining all content into one vector using iterators.
+                let content_vec = text
+                    .into_iter()
+                    .chain(tool_uses.into_iter().flatten())
+                    .collect::<Vec<AnthropicContent>>();
+
+                Ok(AnthropicChatMessage {
+                    content: content_vec,
+                    role,
                 })
-            })
-            .flatten();
+            }
+            ChatMessage::Function(function_msg) => {
+                // Handling tool_result.
+                let tool_result = AnthropicContent {
+                    r#type: AnthropicContentType::ToolResult,
+                    tool_use: None,
+                    tool_result: Some(AnthropicContentToolResult {
+                        tool_use_id: function_msg.function_call_id.clone(),
+                        // TODO(2024-06-24 flav) This does not need to be Optionable.
+                        content: Some(function_msg.content.clone()),
+                    }),
+                    text: None,
+                };
 
-        // Combining all content into one vector using iterators.
-        let content_vec = text
-            .into_iter()
-            .chain(tool_uses.into_iter().flatten())
-            .chain(tool_result.into_iter())
-            .collect::<Vec<AnthropicContent>>();
-
-        Ok(AnthropicChatMessage {
-            content: content_vec,
-            role,
-        })
+                Ok(AnthropicChatMessage {
+                    content: vec![tool_result],
+                    role,
+                })
+            }
+            ChatMessage::User(user_msg) => match &user_msg.content {
+                ContentBlock::ImageContent(_) => {
+                    Err(anyhow!("Vision is not supported for Anthropic."))
+                }
+                ContentBlock::Text(t) => Ok(AnthropicChatMessage {
+                    content: vec![AnthropicContent {
+                        r#type: AnthropicContentType::Text,
+                        text: Some(t.clone()),
+                        tool_result: None,
+                        tool_use: None,
+                    }],
+                    role,
+                }),
+                ContentBlock::TextContent(tc) => Ok(AnthropicChatMessage {
+                    content: vec![AnthropicContent {
+                        r#type: AnthropicContentType::Text,
+                        text: Some(tc.text.clone()),
+                        tool_result: None,
+                        tool_use: None,
+                    }],
+                    role,
+                }),
+            },
+            ChatMessage::System(system_msg) => Ok(AnthropicChatMessage {
+                content: vec![AnthropicContent {
+                    r#type: AnthropicContentType::Text,
+                    text: Some(system_msg.content.clone()),
+                    tool_result: None,
+                    tool_use: None,
+                }],
+                role,
+            }),
+        }
     }
 }
 
@@ -387,7 +413,7 @@ impl TryFrom<StreamChatResponse> for ChatResponse {
 // It takes the first tool call from the vector of AnthropicResponseContent,
 // potentially discarding others. Anthropic often returns the CoT content as a first message,
 // which gets combined with the first tool call in the resulting ChatMessage.
-impl TryFrom<ChatResponse> for ChatMessage {
+impl TryFrom<ChatResponse> for AssistantChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cr: ChatResponse) -> Result<Self, Self::Error> {
@@ -426,13 +452,12 @@ impl TryFrom<ChatResponse> for ChatMessage {
             None
         };
 
-        Ok(ChatMessage {
+        Ok(AssistantChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
             function_call,
             function_calls,
-            function_call_id: None,
         })
     }
 }
@@ -1543,11 +1568,8 @@ impl LLM for AnthropicLLM {
         }
 
         let system = match messages.get(0) {
-            Some(cm) => match cm.role {
-                ChatMessageRole::System => match cm.content.as_ref() {
-                    Some(c) => Some(c.clone()),
-                    None => None,
-                },
+            Some(cm) => match cm {
+                ChatMessage::System(system_msg) => Some(system_msg.content.clone()),
                 _ => None,
             },
             None => None,
@@ -1639,7 +1661,7 @@ impl LLM for AnthropicLLM {
                 prompt_tokens: c.usage.input_tokens,
                 completion_tokens: c.usage.output_tokens,
             }),
-            completions: ChatMessage::try_from(c).into_iter().collect(),
+            completions: AssistantChatMessage::try_from(c).into_iter().collect(),
             provider_request_id: request_id,
         })
     }
