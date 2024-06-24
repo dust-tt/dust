@@ -62,6 +62,6 @@ export const ACTION_SPECIFICATIONS: Record<
       "Navigate the web (browse any provided links, make a google search, etc.)",
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
-    flag: "websearch_action",
+    flag: null,
   },
 };
