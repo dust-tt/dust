@@ -51,6 +51,24 @@ type LightGoogledrive = {
 
 export const statsDClient = new StatsD();
 
+let LAST_ACTIVITY = new Date();
+
+export async function mySuperActivity(i: string) {
+  console.log(
+    `~~~~~~~~~~~ Activity started`,
+    new Date().getTime() - LAST_ACTIVITY.getTime(),
+    i,
+    new Date()
+  );
+  LAST_ACTIVITY = new Date();
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(i);
+    }, 1);
+  });
+}
+
 export async function getDrives(
   connectorId: ModelId
 ): Promise<LightGoogledrive[]> {
