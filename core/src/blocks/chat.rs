@@ -346,6 +346,10 @@ impl Block for Chat {
                                 Some(Value::String(fid)),
                             ) => Ok(ChatMessage::FunctionChatMessage(FunctionChatMessage {
                                 role: ChatMessageRole::Function,
+                                name: match o.get("name") {
+                                    Some(Value::String(n)) => Some(n.clone()),
+                                    _ => None,
+                                },
                                 content: c.clone(),
                                 function_call_id: fid.clone(),
                             })),

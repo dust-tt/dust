@@ -23,7 +23,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::llm::{ChatFunction, ChatFunctionCall};
-use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock, SystemChatMessage};
+use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -201,7 +201,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
         let role = match cm.get_role() {
             Some(r) => AnthropicChatMessageRole::try_from(r)
                 .map_err(|e| anyhow!("Error converting role: {:?}", e)),
-            None => Err(anyhow!("Role is required!")),
+            None => Err(anyhow!("Role is required.")),
         }?;
 
         match cm {
@@ -267,7 +267,9 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                 })
             }
             ChatMessage::UserChatMessage(user_msg) => match &user_msg.content {
-                ContentBlock::ImageContent(_) => Err(anyhow!("Vision not supported for Anthropic")),
+                ContentBlock::ImageContent(_) => {
+                    Err(anyhow!("Vision is not supported for Anthropic."))
+                }
                 ContentBlock::Text(t) => Ok(AnthropicChatMessage {
                     content: vec![AnthropicContent {
                         r#type: AnthropicContentType::Text,
