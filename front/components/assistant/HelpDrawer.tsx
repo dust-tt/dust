@@ -204,6 +204,7 @@ export function HelpDrawer({
             conversationId={null}
             actions={[]}
             disableAutoFocus={true}
+            isFloatingWithoutMargin={true}
           />
         </div>
       </div>
