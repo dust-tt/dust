@@ -1,116 +1,92 @@
-import { cacheWithRedis } from "@dust-tt/types";
-import OpenAI from "openai";
+import { Button, Spinner } from "@dust-tt/sparkle";
+import CodeEditor from "@uiw/react-textarea-code-editor";
 import React, { useEffect } from "react";
 import ReactDOMServer from "react-dom/server";
 
-async function generateCode() {
-  const openai = new OpenAI({
-    apiKey: process.env["DUST_MANAGED_OPENAI_API_KEY"], // This is the default and can be omitted
+import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
+
+const DEFAULT_INSTRUCTIONS = ` Above are the instructions provided by the user.
+
+Based on the code instructions provided below, write Javascript code to be interpreted in the user's web browser in a secure iframe of dimension 600px x 600px (white background) as part of a conversation with an assistant.
+
+Files can be made available as part of the conversation and can be read using the following library:
+
+\`\`\`
+async FileTransferAPI.getFile(name: string): Promise<File>
+\`\`\`
+
+The \`File\` object is a browser File object. Here is how to use it:
+\`\`\`
+const file = await FileTransferAPI.getFile(fileNmae);
+
+// for text file:
+const text = await file.text();
+// for binary file:
+const arrayBuffer = await file.arrayBuffer();
+\`\`\`
+
+The function you have to implement is the following:
+
+\`\`\`
+// Perform a computation to return a result or generate files or inject content in the iFrame mainView div and returns the result of the computation if applicable, the files generated if applicable and whether to show the iFrame to the user.
+function async fn(mainView: Element) : { result: string|null, files: File[], showIframe: boolean }
+\`\`\`
+
+Only implement this function and do not attempt to call it. 
+You have access to the following Javascript libraries:
+- papaparse v5.4.1: to parse CSV files
+- d3 v7.9.0: for data visualization
+
+
+It will be executed in the following environment:
+
+\`\`\`
+<html>
+  ...
+  // show imports and security measures. Your code snippet basically
+  <script>
+    let mainView = $('#mainView');
+    const { result, files, showIframe } = await fn(mainView)
+    submitToConversation(result, files);
+  <body>
+    <div id="mainView"/>
+  </body>
+</html>
+\`\`\`
+
+Based on the instructions provided you can do one or multiple of the following:
+
+- Using \`results\`: generate a result object that will be returned to the conversation (eg, the result of a computation). These objects must be small. If there is more than a few hundred bytes of information to return, use a file. Return \`null\` otherwise.
+- Using \`files\`: attach files to the conversation that will be available for the user to download and other assistants to use for their own computations. Return \`[]\` otherwise.
+- Decide whether to show the iframe to the user or not. Return \`true\` or \`false\`.`;
+
+type SerializedFile = {
+  name: string;
+  content: ArrayBuffer;
+  mimeType: string;
+};
+
+async function serializeFile(file: File): Promise<SerializedFile> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function (readerEvent) {
+      resolve({
+        name: file.name,
+        content: readerEvent.target?.result as ArrayBuffer,
+        mimeType: file.type,
+      });
+    };
+    reader.onerror = (error) => {
+      reject(error);
+    };
+    reader.readAsArrayBuffer(file);
   });
-  console.log("Will talk to Openai");
-  const chatCompletion = await openai.chat.completions.create({
-    messages: [
-      {
-        role: "system",
-        content: `
-          Above are the instructions provided by the user.
-
-  Based on the code instructions provided below, write Javascript code to be interpreted in the user's web browser in a secure iframe of dimension 600px x 600px (white background) as part of a conversation with an assistant.
-
-  Files can be made available as part of the conversation and can be read using the following library:
-
-  \`\`\`
-  async FileTransferAPI.getFile(fileId: string): {fileId: string, content: any}
-  \`\`\`
-
-  The function you have to implement is the following:
-
-  \`\`\`
-  // Perform a computation to return a result or generate files or inject content in the iFrame mainView div and returns the result of the computation if applicable, the files generated if applicable and whether to show the iFrame to the user.
-  function async fn(mainView: HtmlDiv) : { result: any, files: { content: any, name: string, description: string }[], showIframe: boolean }
-  \`\`\`
-
-  It will be executed in the following environment:
-
-  \`\`\`
-  <html>
-    ...
-    // show imports and security measures. Your code snippet basically
-    <script>
-      let mainView = $('#mainView');
-      const { result, files, showIframe } = await fn(mainView)
-      submitToConversation(result, files);
-    <body>
-      <div id="mainView"/>
-    </body>
-  </html>
-  \`\`\`
-
-  Based on the instructions provided you can do one or multiple of the following:
-
-  - Using \`results\`: generate a result object that will be returned to the conversation (eg, the result of a computation). These objects must be small. If there is more than a few hundred bytes of information to return, use a file. Return \`null\` otherwise.
-  - Using \`files\`: attach files to the conversation that will be available for the user to download and other assistants to use for their own computations. Return \`[]\` otherwise.
-  - Decide whether to show the iframe to the user or not. Return \`true\` or \`false\`.
-           `,
-      },
-      {
-        role: "user",
-        content: `
-        I have the following CSV file, can you add a column to it that divie de price per the number of rooms?
-        Show me the result on screen and provide me the file to download
-
-<file name="houses.csv">
-House Id;	# of rooms;	Year built;	Price
-1;	5;	2020;	$600,000
-2;	4;	1920;	$300,000
-</file>
-            `,
-      },
-    ],
-    model: "gpt-4-turbo",
-    temperature: 0.2,
-  });
-
-  console.log("Got response from Openai");
-  console.log(JSON.stringify(chatCompletion, null, 2));
-
-  const markdownText = chatCompletion.choices[0].message.content || "";
-  const code = markdownText.split("```")[1] || markdownText;
-  const lines = code.split("\n");
-  if (lines.length > 0) {
-    if (lines[0].trim().toLowerCase().startsWith("javascript")) {
-      // lines[0] = lines[0].replace("javascript", "//javascript");
-      lines.shift();
-    }
-    if (lines[0].trim().toLowerCase() === "js") {
-      lines.shift();
-    }
-    if (lines[0].trim().toLowerCase() === "jsx") {
-      lines.shift();
-    }
-  }
-
-  const finalCode = lines.length > 0 ? lines.join("\n") : code;
-
-  return finalCode;
 }
 
-const cachedGenerateCode = cacheWithRedis(
-  generateCode,
-  () => {
-    return `5`;
-  },
-  10 * 60 * 1000
-);
-
-export async function getServerSideProps() {
-  const finalCode = await cachedGenerateCode();
-  console.log("code is ~~", finalCode);
-  return {
-    props: {
-      code: finalCode,
-    },
-  };
+async function deserializeFile(serializedFile: SerializedFile): Promise<File> {
+  return new File([serializedFile.content], serializedFile.name, {
+    type: serializedFile.mimeType,
+  });
 }
 
 function Iframe({ code }: { code: string }) {
@@ -118,46 +94,69 @@ function Iframe({ code }: { code: string }) {
   // Having it here allows us to write it in a way that is checked at compile time,
   // and transfer it easily to the iframe at runtime using the class.toString() method.
   class FileTransferAPI {
-    // Returns the content of `fileId`.
-    // @param fileId string
-    // @returns any
-    static async getFile(
-      fileId: string
-    ): Promise<{ id: string; content: any }> {
+    // Returns the content of `name`.
+    // @param name string
+    // @returns { name: string, content: ArrayBuffer, mimeType: string }
+    static async getFile(name: string): Promise<File> {
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           window.removeEventListener("message", onMessage);
-          reject(new Error("Timeout"));
+          reject(new Error(`Timeout while waiting for file ${name}`));
         }, 5000);
 
-        const onMessage = (event) => {
-          console.log(
-            "Message received in iframe!",
-            event.data,
-            `fileId: ${fileId}`
-          );
-          if (event.data.fileId === fileId) {
+        const onMessage = async (event: MessageEvent) => {
+          if (event.data.name === name) {
             window.removeEventListener("message", onMessage);
             clearTimeout(timeout);
-            resolve({ id: event.data.fileId, content: event.data.content });
+            const serializedFile = event.data as SerializedFile;
+            const file = await deserializeFile(serializedFile);
+            console.log(
+              "File received in iframe",
+              file,
+              serializedFile,
+              await file.text()
+            );
+            resolve(file);
           }
         };
 
-        window.top?.postMessage({ command: "getFile", fileId: fileId }, "*");
+        window.top?.postMessage({ command: "getFile", name: name }, "*");
         window.addEventListener("message", onMessage);
       });
     }
 
-    static async saveFile(fileId: string, content: string): Promise<void> {
-      window.top?.postMessage({ command: "saveFile", fileId, content }, "*");
+    static async saveFile(name: string, content: string): Promise<void> {
+      window.top?.postMessage(
+        { command: "saveFile", name: name, content },
+        "*"
+      );
     }
+  }
+
+  function registerErrorHandler() {
+    function onError(message: string) {
+      const errorDiv = document.getElementById("error");
+      if (errorDiv) {
+        errorDiv.innerHTML = message;
+      } else {
+        console.error("Error div not found");
+      }
+    }
+    console.log("Registering error handler");
+    window.onerror = function (message: Event | string) {
+      // @ts-expect-error event is a string hopefully
+      onError(message);
+    };
+    window.onunhandledrejection = function (event) {
+      onError(event.reason);
+    };
   }
 
   // This function will execute the code provided by the model and handle its output to communicate with the host page.
   async function executeFn(
     fn: (mainView: HTMLElement) => {
-      result: any;
-      files: { content: any; name: string; description: string }[];
+      result: string | null;
+      files: File[];
       showIframe: boolean;
     }
   ) {
@@ -166,9 +165,35 @@ function Iframe({ code }: { code: string }) {
       throw new Error("Main view not found");
     }
     const result = await fn(view);
-    for (const file of result.files) {
-      await FileTransferAPI.saveFile(file.name, file.content);
+    for (const browserFile of result.files) {
+      // Create a URL for the file
+      const url = URL.createObjectURL(browserFile);
+
+      // Create an anchor element and set the download attribute
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = browserFile.name;
+      a.innerHTML = "Click here to download" + browserFile.name;
+
+      // Programmatically click the anchor element to trigger the download
+      // document.getElementById('result').appendChild(a);
     }
+    if (result.result) {
+      const resultDiv = document.getElementById("result");
+      if (resultDiv) {
+        resultDiv.innerText = result.result;
+      }
+    }
+  }
+
+  if (code.trim().length === 0) {
+    return (
+      <html>
+        <body>
+          <h1>No code provided</h1>
+        </body>
+      </html>
+    );
   }
 
   return (
@@ -176,23 +201,36 @@ function Iframe({ code }: { code: string }) {
       <head>
         <meta
           httpEquiv="Content-Security-Policy"
-          content="script-src 'self' 'unsafe-inline' https://dustcdn.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net"
+          content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://dustcdn.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net"
         />
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.js"></script>
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/pixi.min.js"></script>
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.js"></script>
+
         <script
           dangerouslySetInnerHTML={{
             __html: `
             ${FileTransferAPI.toString()}
+
+            ${serializeFile.toString()}
+
+            ${deserializeFile.toString()}
+
+            ${registerErrorHandler.toString()}
+            registerErrorHandler();
         `,
           }}
         ></script>
       </head>
       <body>
+        <h3>Code execution block</h3>
         <div id="mainview"></div>
-        <h1>My first iframe</h1>
+
+        <div id="result"></div>
+        <div id="error"></div>
         <script
           dangerouslySetInnerHTML={{
             __html: `          
@@ -210,27 +248,39 @@ function Iframe({ code }: { code: string }) {
   );
 }
 
-export default function Home({ code }: { code: string }) {
-  const [iframeCode, setIframeCode] = React.useState("");
+export default function Home() {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const [instructions, setInstructions] = React.useState(DEFAULT_INSTRUCTIONS);
+  const [prompt, setPrompt] = React.useState(
+    `I want to see a stacked bar plot of the number of agent usage per day?
+    I want to get an overlay of the count, the date  and the agent id on mouse over. Thanks.`
+  );
+  const [code, setCode] = React.useState("");
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [model, setModel] = React.useState("gpt-3.5-turbo");
+  const filesContent = React.useRef<File[]>([]);
 
   useEffect(() => {
-    window.onmessage = (event) => {
+    window.onmessage = async (event) => {
       console.log("Message received in host!", event);
       if (event.data.command === "getFile") {
         // iframe request to get a file from the host
         // We are returning an harcoded file.
-        iframeRef.current?.contentWindow.postMessage(
-          {
-            fileId: event.data.fileId,
-            content: `
-House Id;	# of rooms;	Year built;	Price
-1;	5;	2020;	$600,000
-2;	4;	1920;	$300,000
-`.trim(),
-          },
-          "*"
+        const file = filesContent.current.find(
+          (file) => file.name === event.data.name
         );
+        if (!file) {
+          console.error(
+            "File not found",
+            event.data.name,
+            filesContent.current.map((f) => f.name)
+          );
+          return;
+        }
+        console.log("Sending file to iframe", file);
+        const serializedFile = await serializeFile(file);
+        // @ts-expect-error contentWindow is not null
+        iframeRef.current?.contentWindow.postMessage(serializedFile, "*");
       } else if (event.data.command === "saveFile") {
         // iframe request to save a file to the host
         console.log("Saving file to host", event.data);
@@ -238,23 +288,151 @@ House Id;	# of rooms;	Year built;	Price
     };
   }, []);
 
-  useEffect(() => {
-    setIframeCode(code);
-  }, [code]);
+  const getFileDescription = async (file: File) => {
+    try {
+      const res = await handleFileUploadToText(file);
+      if (res.isErr()) {
+        console.error(res.error);
+        return "";
+      } else {
+        return (
+          res.value.content.split("\n").slice(0, 5).join("\n") +
+          "(truncated...)\n"
+        );
+      }
+    } catch (e) {
+      console.error(e);
+      return "";
+    }
+  };
+
+  const submit = async () => {
+    setCode("");
+    setIsLoading(true);
+    try {
+      const descriptions = await Promise.all(
+        filesContent.current.map(getFileDescription)
+      );
+      const instructionsWithFiles =
+        instructions +
+        `\n\n
+        You have access to the following files:\n
+        ` +
+        filesContent.current
+          .map((file, i) => ({
+            file: file,
+            description: descriptions[i],
+          }))
+          .map(
+            ({ file, description }) =>
+              `<file name="${file.name}" mimeType="${file.type}">\n${description}</file>`
+          )
+          .join("\n");
+
+      const res = await fetch("/api/iframe", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          instructions: instructionsWithFiles,
+          prompt,
+          model,
+        }),
+      });
+      const data: { code: string } = await res.json();
+      setCode(data.code);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <>
+      <h1>Instructions</h1>
       <div id="rootarico">
-        {iframeCode && (
-          <iframe
-            ref={iframeRef}
-            sandbox="allow-scripts"
-            width={700}
-            height={700}
-            style={{
-              overflow: "hidden",
-            }}
-            srcDoc={ReactDOMServer.renderToString(<Iframe code={code} />)}
+        <div>
+          <textarea
+            style={{ width: "70%", height: "200px" }}
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
           />
+          <h1>Prompt</h1>
+          <textarea
+            style={{ width: "70%", height: "200px" }}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+          <h1>Attach files to your prompt</h1>
+          <input
+            type="file"
+            multiple={true}
+            onChange={(e) => {
+              filesContent.current = Array.from(e.target.files || []);
+            }}
+          />
+          <h1>Choose gpt-3.5 or gpt-4</h1>
+          <select
+            onChange={(e) => {
+              setModel(e.target.value);
+            }}
+          >
+            <option value="gpt-4-turbo">gpt-4-turbo</option>
+          </select>
+          <div style={{ height: "50px" }}></div>
+          <Button
+            label="Submit"
+            onClick={async () => {
+              submit().catch(console.error);
+            }}
+          />
+          {isLoading && <Spinner size="md" />}
+        </div>
+
+        <hr />
+
+        {code && (
+          <>
+            <div className="flex flex-row">
+              <div>
+                <h1>Output</h1>
+                <div style={{ border: "1px solid red" }}>
+                  <iframe
+                    ref={iframeRef}
+                    sandbox="allow-scripts"
+                    width={700}
+                    height={700}
+                    style={{
+                      overflow: "hidden",
+                    }}
+                    srcDoc={ReactDOMServer.renderToString(
+                      <Iframe code={code} />
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h1>Code</h1>
+                <div>
+                  This is the code returned by the model being displayed here to
+                  help you understand what is happening
+                </div>
+                <CodeEditor
+                  value={code}
+                  language="js"
+                  placeholder="Please enter JS code."
+                  onChange={(evn) => setCode(evn.target.value)}
+                  padding={15}
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    fontFamily:
+                      "ui-monospace,SFMono-Regular,SF Mono,Consolas,Liberation Mono,Menlo,monospace",
+                  }}
+                />
+              </div>
+            </div>
+          </>
         )}
       </div>
     </>

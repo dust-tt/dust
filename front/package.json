@@ -86,6 +86,7 @@
     "moment-timezone": "^0.5.43",
     "next": "^14.2.3",
     "openai": "^4.28.0",
+    "papaparse": "^5.4.1",
     "pdfjs-dist": "^4.2.67",
     "pegjs": "^0.10.0",
     "pg": "^8.8.0",
