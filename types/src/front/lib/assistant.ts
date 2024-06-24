@@ -178,7 +178,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
-  description: "OpenAI's advanced model for complex tasks (128k context).",
+  description: "OpenAI's GPT-4 Turbo model for complex tasks (128k context).",
   shortDescription: "OpenAI's most capable model.",
   isLegacy: false,
 };
@@ -203,7 +203,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 24, // 12_288
   largeModel: false,
   description:
-    "OpenAI's cost-effective and high throughput model (16k context).",
+    "OpenAI's GPT 3.5 Turbo model, cost-effective and high throughput (16k context).",
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
 };
@@ -258,9 +258,8 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
-  description:
-    "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
-  shortDescription: "Anthropic's powerful model.",
+  description: "Anthropic's Claude 3 Opus model (200k context).",
+  shortDescription: "Anthropic's largest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
 };
@@ -272,9 +271,8 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
-  description:
-    "Anthropic latest Claude 3.5 Sonnet model, their most intelligent model.",
-  shortDescription: "Anthropic's smartest model.",
+  description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
+  shortDescription: "Anthropic's latest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
 };
@@ -287,8 +285,8 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
-    "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
-  shortDescription: "Anthropic's quick model.",
+    "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
+  shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -300,7 +298,7 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "Anthropic's Claude 2 model (200k context).",
-  shortDescription: "Anthropic's smartest model.",
+  shortDescription: "Anthropic's legacy model.",
   isLegacy: true,
 };
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -313,7 +311,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description:
     "Anthropic's low-latency and high throughput model (100k context)",
-  shortDescription: "Anthropic's fast model.",
+  shortDescription: "Anthropic's legacy model.",
   isLegacy: true,
 };
 
@@ -325,7 +323,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 56, // 28_672
   largeModel: true,
-  description: "Mistral's latest `large` model (32k context).",
+  description: "Mistral's `large` model (32k context).",
   shortDescription: "Mistral's large model.",
   isLegacy: false,
 };
@@ -337,8 +335,8 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 56, // 28_672
   largeModel: true,
-  description: "Mistral's latest `medium` model (32k context).",
-  shortDescription: "Mistral's smartest model.",
+  description: "Mistral's `medium` model (32k context).",
+  shortDescription: "Mistral's legacy model.",
   isLegacy: true,
 };
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
@@ -349,8 +347,8 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 56, // 28_672
   largeModel: false,
-  description: "Mistral's latest model (8x7B Instruct, 32k context).",
-  shortDescription: "Mistral's fast model.",
+  description: "Mistral's `small` model (8x7B Instruct, 32k context).",
+  shortDescription: "Mistral's cost-effective model.",
   isLegacy: false,
 };
 
@@ -364,7 +362,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "Google's best model for scaling across a wide range of tasks (1m context).",
-  shortDescription: "Google's smartest model.",
+  shortDescription: "Google's large model.",
   isLegacy: false,
 };
 
@@ -378,7 +376,7 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "Google's lightweight, fast and cost-efficient model (1m context).",
-  shortDescription: "Google's smartest model.",
+  shortDescription: "Google's cost-effective model.",
   isLegacy: false,
 };
 

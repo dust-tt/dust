@@ -12,19 +12,19 @@ import type {
   GlobalAgentStatus,
 } from "@dust-tt/types";
 import {
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
+  GPT_4O_MODEL_CONFIG,
   isProviderWhitelisted,
 } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -180,15 +180,15 @@ async function _getGPT4GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gpt4",
-    description: GPT_4_TURBO_MODEL_CONFIG.description,
+    description: GPT_4O_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     model: {
-      providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-      modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+      providerId: GPT_4O_MODEL_CONFIG.providerId,
+      modelId: GPT_4O_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
@@ -279,14 +279,7 @@ async function _getClaude3HaikuGlobalAgent({
     versionAuthorId: null,
     name: "claude-3-haiku",
     description: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.description,
-    instructions:
-      "Your name is claude-3-haiku, but you are not meant to generate haikus." +
-      " Users will mention you using @claude-3-haiku, but this does not mean" +
-      " they are asking you to generate a haiku. Just answer their questions" +
-      " and ignore the fact that they are referring to you as claude-3-haiku." +
-      " Do not ever talk about haikus or the fact that you have been asked to" +
-      " never generate haikus. Just answer the questions as if they were not" +
-      " mentioning haikus at all.",
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -294,43 +287,6 @@ async function _getClaude3HaikuGlobalAgent({
     model: {
       providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
-      temperature: 0.7,
-    },
-    actions: [],
-    maxToolsUsePerRun: 0,
-    templateId: null,
-  };
-}
-
-async function _getClaude3SonnetGlobalAgent({
-  auth,
-  settings,
-}: {
-  auth: Authenticator;
-  settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
-  let status = settings?.status ?? "active";
-  if (!auth.isUpgraded()) {
-    status = "disabled_free_workspace";
-  }
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
-    version: 0,
-    versionCreatedAt: null,
-    versionAuthorId: null,
-    name: "claude-3-sonnet",
-    description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions:
-      "Your name is claude-3-sonnet, but that does not mean you're expected to generate sonnets unless instructed.",
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-    status,
-    scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
-    model: {
-      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
@@ -357,7 +313,7 @@ async function _getClaude3OpusGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3",
+    name: "claude-3-opus",
     description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
@@ -367,6 +323,42 @@ async function _getClaude3OpusGlobalAgent({
     model: {
       providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [],
+    maxToolsUsePerRun: 0,
+    templateId: null,
+  };
+}
+
+async function _getClaude3GlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): Promise<AgentConfigurationType> {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "claude-3",
+    description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
 
@@ -394,7 +386,7 @@ async function _getMistralLargeGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral-large",
+    name: "mistral",
     description: MISTRAL_LARGE_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
@@ -964,7 +956,7 @@ export async function getGlobalAgent(
       agentConfiguration = await _getClaude3OpusGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
-      agentConfiguration = await _getClaude3SonnetGlobalAgent({
+      agentConfiguration = await _getClaude3GlobalAgent({
         auth,
         settings,
       });
@@ -1040,7 +1032,15 @@ export async function getGlobalAgent(
 const RETIRED_GLOABL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+  GLOBAL_AGENTS_SID.SLACK,
+  GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
+  GLOBAL_AGENTS_SID.NOTION,
+  GLOBAL_AGENTS_SID.GITHUB,
+  GLOBAL_AGENTS_SID.INTERCOM,
 ];
 
 export async function getGlobalAgents(
