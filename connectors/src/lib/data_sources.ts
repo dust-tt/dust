@@ -11,6 +11,8 @@ import {
 import { MAX_CHUNK_SIZE } from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
+import http from "http";
+import https from "https";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -22,8 +24,12 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const axiosWithTimeout = axios.create();
-axiosWithTimeout.defaults.timeout = 60000;
+const axiosWithTimeout = axios.create({
+  timeout: 60000,
+  // Ensure client timeout is lower than the target server timeout.
+  httpAgent: new http.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
+  httpsAgent: new https.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
+});
 
 const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {
