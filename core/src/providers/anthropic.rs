@@ -205,7 +205,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
         }?;
 
         match cm {
-            ChatMessage::AssistantChatMessage(assistant_msg) => {
+            ChatMessage::Assistant(assistant_msg) => {
                 // Handling tool_uses.
                 let tool_uses = match assistant_msg.function_calls.as_ref() {
                     Some(fc) => Some(
@@ -248,7 +248,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                     role,
                 })
             }
-            ChatMessage::FunctionChatMessage(function_msg) => {
+            ChatMessage::Function(function_msg) => {
                 // Handling tool_result.
                 let tool_result = AnthropicContent {
                     r#type: AnthropicContentType::ToolResult,
@@ -266,7 +266,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                     role,
                 })
             }
-            ChatMessage::UserChatMessage(user_msg) => match &user_msg.content {
+            ChatMessage::User(user_msg) => match &user_msg.content {
                 ContentBlock::ImageContent(_) => {
                     Err(anyhow!("Vision is not supported for Anthropic."))
                 }
@@ -289,7 +289,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                     role,
                 }),
             },
-            ChatMessage::SystemChatMessage(system_msg) => Ok(AnthropicChatMessage {
+            ChatMessage::System(system_msg) => Ok(AnthropicChatMessage {
                 content: vec![AnthropicContent {
                     r#type: AnthropicContentType::Text,
                     text: Some(system_msg.content.clone()),
@@ -1569,7 +1569,7 @@ impl LLM for AnthropicLLM {
 
         let system = match messages.get(0) {
             Some(cm) => match cm {
-                ChatMessage::SystemChatMessage(system_msg) => Some(system_msg.content.clone()),
+                ChatMessage::System(system_msg) => Some(system_msg.content.clone()),
                 _ => None,
             },
             None => None,

@@ -423,7 +423,7 @@ impl Block for LLM {
         {
             true => {
                 let prompt = self.prompt(env)?;
-                let messages = vec![ChatMessage::UserChatMessage(UserChatMessage {
+                let messages = vec![ChatMessage::User(UserChatMessage {
                     role: ChatMessageRole::User,
                     name: None,
                     content: ContentBlock::Text(prompt.clone()),

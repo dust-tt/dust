@@ -164,7 +164,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
         }?;
 
         match cm {
-            ChatMessage::AssistantChatMessage(assistant_msg) => Ok(MistralChatMessage {
+            ChatMessage::Assistant(assistant_msg) => Ok(MistralChatMessage {
                 role: mistral_role,
                 content: assistant_msg.content.clone(),
                 tool_calls: match assistant_msg.function_calls.as_ref() {
@@ -177,13 +177,13 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 },
                 tool_call_id: None,
             }),
-            ChatMessage::FunctionChatMessage(function_msg) => Ok(MistralChatMessage {
+            ChatMessage::Function(function_msg) => Ok(MistralChatMessage {
                 role: mistral_role,
                 content: Some(function_msg.content.clone()),
                 tool_calls: None,
                 tool_call_id: Some(sanitize_tool_call_id(&function_msg.function_call_id)),
             }),
-            ChatMessage::UserChatMessage(user_msg) => Ok(MistralChatMessage {
+            ChatMessage::User(user_msg) => Ok(MistralChatMessage {
                 role: mistral_role,
                 content: match &user_msg.content {
                     ContentBlock::ImageContent(_) => {
@@ -195,7 +195,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 tool_calls: None,
                 tool_call_id: None,
             }),
-            ChatMessage::SystemChatMessage(system_msg) => Ok(MistralChatMessage {
+            ChatMessage::System(system_msg) => Ok(MistralChatMessage {
                 role: mistral_role,
                 content: Some(system_msg.content.clone()),
                 tool_calls: None,

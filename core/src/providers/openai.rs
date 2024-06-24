@@ -342,7 +342,7 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
         match cm {
-            ChatMessage::AssistantChatMessage(assistant_msg) => Ok(OpenAIChatMessage {
+            ChatMessage::Assistant(assistant_msg) => Ok(OpenAIChatMessage {
                 content: match &assistant_msg.content {
                     Some(c) => Some(ContentBlock::Text(c.clone())),
                     None => None,
@@ -359,7 +359,7 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                 },
                 tool_call_id: None,
             }),
-            ChatMessage::FunctionChatMessage(function_msg) => Ok(OpenAIChatMessage {
+            ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
                 content: Some(ContentBlock::Text(function_msg.content.clone())),
                 name: None,
                 // If `function_call_id` is present, `role` must be `function` and should be mapped to `Tool`.
@@ -368,14 +368,14 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                 tool_calls: None,
                 tool_call_id: Some(function_msg.function_call_id.clone()),
             }),
-            ChatMessage::SystemChatMessage(system_msg) => Ok(OpenAIChatMessage {
+            ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
                 content: Some(ContentBlock::Text(system_msg.content.clone())),
                 name: system_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&system_msg.role),
                 tool_calls: None,
                 tool_call_id: None,
             }),
-            ChatMessage::UserChatMessage(user_msg) => Ok(OpenAIChatMessage {
+            ChatMessage::User(user_msg) => Ok(OpenAIChatMessage {
                 content: Some(user_msg.content.clone()),
                 name: user_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&user_msg.role),

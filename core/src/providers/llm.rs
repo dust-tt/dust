@@ -75,20 +75,6 @@ pub struct ChatFunctionCall {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct ChatMessage {
-    pub role: ChatMessageRole,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<ChatFunctionCall>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_calls: Option<Vec<ChatFunctionCall>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ChatFunction {
     pub name: String,
     pub description: Option<String>,

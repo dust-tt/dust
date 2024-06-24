@@ -148,7 +148,7 @@ impl TryFrom<&ChatMessage> for Content {
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
         match cm {
-            ChatMessage::AssistantChatMessage(assistant_msg) => {
+            ChatMessage::Assistant(assistant_msg) => {
                 let parts = match assistant_msg.function_calls {
                     Some(ref fcs) => fcs
                         .iter()
@@ -182,7 +182,7 @@ impl TryFrom<&ChatMessage> for Content {
                     parts: Some(parts),
                 })
             }
-            ChatMessage::FunctionChatMessage(function_msg) => Ok(Content {
+            ChatMessage::Function(function_msg) => Ok(Content {
                 role: String::from("function"),
                 parts: Some(vec![Part {
                     text: None,
@@ -190,7 +190,7 @@ impl TryFrom<&ChatMessage> for Content {
                     function_response: GoogleAIStudioFunctionResponse::try_from(function_msg).ok(),
                 }]),
             }),
-            ChatMessage::UserChatMessage(user_msg) => {
+            ChatMessage::User(user_msg) => {
                 let text = match &user_msg.content {
                     ContentBlock::ImageContent(_) => {
                         Err(anyhow!("Vision is not supported for Google AI Studio."))
@@ -208,7 +208,7 @@ impl TryFrom<&ChatMessage> for Content {
                     }]),
                 })
             }
-            ChatMessage::SystemChatMessage(system_msg) => Ok(Content {
+            ChatMessage::System(system_msg) => Ok(Content {
                 role: String::from("user"),
                 parts: Some(vec![Part {
                     // System is passed as a Content. We transform it here but it will be removed
@@ -507,7 +507,7 @@ impl LLM for GoogleAiStudioLLM {
         // Remove system message if first.
         let system = match messages.get(0) {
             Some(cm) => match cm {
-                ChatMessage::SystemChatMessage(_) => Some(Content::try_from(cm)?),
+                ChatMessage::System(_) => Some(Content::try_from(cm)?),
                 _ => None,
             },
             None => None,

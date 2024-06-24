@@ -323,140 +323,9 @@ impl Block for Chat {
                 .into_iter()
                 .map(|v| match v {
                     Value::Object(o) => {
-                        let role = match o.get("role") {
-                            Some(Value::String(r)) => {
-                                // Convert ParseError to anyhow::Error
-                                ChatMessageRole::from_str(r).map_err(|e| anyhow!(e))
-                            }
-                            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
-                        }?;
+                        let chat_message: ChatMessage = serde_json::from_value(Value::Object(o))?;
 
-                        match (
-                            role,
-                            o.get("content"),
-                            o.get("function_call"),
-                            o.get("function_calls"),
-                            o.get("function_call_id"),
-                        ) {
-                            (
-                                ChatMessageRole::Function,
-                                Some(Value::String(c)),
-                                None,
-                                None,
-                                Some(Value::String(fid)),
-                            ) => Ok(ChatMessage::FunctionChatMessage(FunctionChatMessage {
-                                role: ChatMessageRole::Function,
-                                name: match o.get("name") {
-                                    Some(Value::String(n)) => Some(n.clone()),
-                                    _ => None,
-                                },
-                                content: c.clone(),
-                                function_call_id: fid.clone(),
-                            })),
-                            (ChatMessageRole::User, Some(c), None, None, None) => {
-                                let content: ContentBlock = serde_json::from_value(c.clone())
-                                    .map_err(|e| anyhow!("Error parsing content: {}", e))?;
-
-                                Ok(ChatMessage::UserChatMessage(UserChatMessage {
-                                    role: ChatMessageRole::User,
-                                    name: match o.get("name") {
-                                        Some(Value::String(n)) => Some(n.clone()),
-                                        _ => None,
-                                    },
-                                    content,
-                                }))
-                            }
-                            (ChatMessageRole::System, Some(Value::String(c)), None, None, None) => {
-                                Ok(ChatMessage::SystemChatMessage(SystemChatMessage {
-                                    role: ChatMessageRole::System,
-                                    name: match o.get("name") {
-                                        Some(Value::String(n)) => Some(n.clone()),
-                                        _ => None,
-                                    },
-                                    content: c.clone(),
-                                }))
-                            }
-                            // TODO: Improve assistant check.
-                            (
-                                ChatMessageRole::Assistant,
-                                None,
-                                Some(Value::Object(fc)),
-                                None,
-                                None,
-                            ) => {
-                                // parse function call into ChatFunctionCall
-                                match (fc.get("name"), fc.get("arguments"), fc.get("id")) {
-                                    (
-                                        Some(Value::String(n)),
-                                        Some(Value::String(a)),
-                                        Some(Value::String(id)),
-                                    ) => Ok(ChatMessage::AssistantChatMessage(
-                                        AssistantChatMessage {
-                                            role: ChatMessageRole::Assistant,
-                                            name: match o.get("name") {
-                                                Some(Value::String(n)) => Some(n.clone()),
-                                                _ => None,
-                                            },
-                                            content: None,
-                                            function_call: Some(ChatFunctionCall {
-                                                id: id.clone(),
-                                                name: n.clone(),
-                                                arguments: a.clone(),
-                                            }),
-                                            function_calls: None,
-                                        },
-                                    )),
-                                    _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
-                                }
-                            }
-                            (
-                                ChatMessageRole::Assistant,
-                                None,
-                                None,
-                                Some(Value::Array(fcs)),
-                                None,
-                            ) => {
-                                let function_calls = fcs
-                                    .into_iter()
-                                    .map(|fc| {
-                                        match (fc.get("name"), fc.get("arguments"), fc.get("id")) {
-                                            (
-                                                Some(Value::String(n)),
-                                                Some(Value::String(a)),
-                                                Some(Value::String(id)),
-                                            ) => Ok(ChatFunctionCall {
-                                                id: id.clone(),
-                                                name: n.clone(),
-                                                arguments: a.clone(),
-                                            }),
-                                            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
-                                        }
-                                    })
-                                    .collect::<Result<Vec<_>, _>>()?;
-
-                                Ok(ChatMessage::AssistantChatMessage(AssistantChatMessage {
-                                    role: ChatMessageRole::Assistant,
-                                    name: None,
-                                    content: None,
-                                    function_call: None,
-                                    function_calls: Some(function_calls),
-                                }))
-                            }
-                            (
-                                ChatMessageRole::Assistant,
-                                Some(Value::String(c)),
-                                None,
-                                None,
-                                None,
-                            ) => Ok(ChatMessage::AssistantChatMessage(AssistantChatMessage {
-                                role: ChatMessageRole::Assistant,
-                                name: None,
-                                content: Some(c.clone()),
-                                function_call: None,
-                                function_calls: None,
-                            })),
-                            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
-                        }
+                        Ok(chat_message)
                     }
                     _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
                 })
@@ -540,7 +409,7 @@ impl Block for Chat {
         if i.len() > 0 {
             messages.insert(
                 0,
-                ChatMessage::SystemChatMessage(SystemChatMessage {
+                ChatMessage::System(SystemChatMessage {
                     role: ChatMessageRole::System,
                     name: None,
                     content: i,
