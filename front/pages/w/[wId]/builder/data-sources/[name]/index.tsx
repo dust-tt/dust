@@ -63,6 +63,7 @@ const {
   NANGO_CONFLUENCE_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_INTERCOM_CONNECTOR_ID = "",
+  NANGO_MICROSOFT_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
   NANGO_SLACK_CONNECTOR_ID = "",
@@ -85,6 +86,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     notionConnectorId: string;
     googleDriveConnectorId: string;
     intercomConnectorId: string;
+    microsoftConnectorId: string;
   };
   githubAppUrl: string;
   gaTrackingId: string;
@@ -146,6 +148,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
         intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
+        microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
       gaTrackingId: GA_TRACKING_ID,
@@ -941,6 +944,7 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
     "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
   intercom:
     "You cannot select another Intercom Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+  microsoft: `Microsoft / mismatch error.`,
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
@@ -965,6 +969,7 @@ function getRenderingConfigForConnectorProvider(
   switch (connectorProvider) {
     case "confluence":
     case "google_drive":
+    case "microsoft":
       return {
         ...commonConfig,
         displayDataSourceDetailsModal: true,
@@ -1033,6 +1038,7 @@ function ManagedDataSourceView({
     notionConnectorId: string;
     googleDriveConnectorId: string;
     intercomConnectorId: string;
+    microsoftConnectorId: string;
   };
   githubAppUrl: string;
   plan: PlanType;
@@ -1081,6 +1087,7 @@ function ManagedDataSourceView({
         intercom: nangoConfig.intercomConnectorId,
         notion: nangoConfig.notionConnectorId,
         slack: nangoConfig.slackConnectorId,
+        microsoft: nangoConfig.microsoftConnectorId,
       }[provider];
 
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
@@ -1226,6 +1233,7 @@ function ManagedDataSourceView({
                 case "github":
                 case "notion":
                 case "intercom":
+                case "microsoft":
                   return `Manage Dust connection to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
                 case "webcrawler":
                   return `Manage Website`;
@@ -1324,6 +1332,7 @@ function ManagedDataSourceView({
                     case "github":
                     case "notion":
                     case "intercom":
+                    case "microsoft":
                       return (
                         <>
                           Selected resources will be accessible to all members

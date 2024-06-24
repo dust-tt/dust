@@ -98,6 +98,7 @@ const providerMap: Record<string, ConnectorProviderDocumentType> = {
   "managed-google_drive": "google_drive",
   "managed-github": "github",
   "managed-confluence": "confluence",
+  "managed-microsoft": "microsoft",
   "managed-intercom": "intercom",
 };
 

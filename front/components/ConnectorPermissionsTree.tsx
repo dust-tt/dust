@@ -33,6 +33,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
     selected: "read",
     unselected: "none",
   },
+  microsoft: undefined,
   notion: undefined,
   github: undefined,
   intercom: {

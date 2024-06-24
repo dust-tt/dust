@@ -23,6 +23,7 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   }
 > = {
   confluence: { singular: "space", plural: "spaces" },
+  microsoft: { singular: "folder", plural: "folders" },
   notion: { singular: "page", plural: "pages" },
   google_drive: { singular: "folder", plural: "folders" },
   slack: { singular: "channel", plural: "channels" },

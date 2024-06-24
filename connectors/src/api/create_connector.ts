@@ -95,6 +95,7 @@ const _createConnectorAPIHandler = async (
       case "confluence":
       case "google_drive":
       case "intercom":
+      case "microsoft":
       case "slack": {
         const connectorCreator =
           CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
