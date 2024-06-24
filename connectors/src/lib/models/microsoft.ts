@@ -106,7 +106,7 @@ MicrosoftConfigurationRoot.init(
     modelName: "microsoft_configuration_roots",
     indexes: [
       { fields: ["connectorId", "resourceId"], unique: true },
-      { fields: ["connectorId", "resourceType"], unique: true },
+      { fields: ["connectorId", "resourceType"], unique: false },
     ],
   }
 );
