@@ -56,13 +56,7 @@ export async function searchNotionPagesForQuery({
   }));
 }
 
-export async function findNotionUrl({
-  connectorId,
-  url,
-}: {
-  connectorId: ModelId;
-  url: string;
-}): Promise<NotionFindUrlResponseType> {
+function pageOrDbIdFromUrl(url: string) {
   // parse URL
   const u = new URL(url);
   const last = u.pathname.split("/").pop();
@@ -84,6 +78,18 @@ export async function findNotionUrl({
     id.slice(16, 20) +
     "-" +
     id.slice(20);
+
+  return pageOrDbId;
+}
+
+export async function findNotionUrl({
+  connectorId,
+  url,
+}: {
+  connectorId: ModelId;
+  url: string;
+}): Promise<NotionFindUrlResponseType> {
+  const pageOrDbId = pageOrDbIdFromUrl(url);
 
   const page = await NotionPage.findOne({
     where: {
@@ -128,27 +134,7 @@ export async function checkNotionUrl({
 }) {
   const notionAccessToken = await getNotionAccessToken(connectionId);
 
-  // parse URL
-  const u = new URL(url);
-  const last = u.pathname.split("/").pop();
-  if (!last) {
-    throw new Error(`Unhandled URL (could not get "last"): ${url}`);
-  }
-  const id = last.split("-").pop();
-  if (!id || id.length !== 32) {
-    throw new Error(`Unhandled URL (could not get 32 char ID): ${url}`);
-  }
-
-  const pageOrDbId =
-    id.slice(0, 8) +
-    "-" +
-    id.slice(8, 12) +
-    "-" +
-    id.slice(12, 16) +
-    "-" +
-    id.slice(16, 20) +
-    "-" +
-    id.slice(20);
+  const pageOrDbId = pageOrDbIdFromUrl(url);
 
   const page = await retrievePage({
     accessToken: notionAccessToken,
