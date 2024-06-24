@@ -29,7 +29,6 @@ import {
   getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
-import type { MicrosoftResourceType } from "@connectors/lib/models/microsoft";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
