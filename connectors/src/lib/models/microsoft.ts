@@ -9,7 +9,15 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-export type MicrosoftResourceType = "file" | "message";
+export type MicrosoftResourceType =
+  | "site"
+  | "team"
+  | "drive"
+  | "folder"
+  | "file"
+  | "page"
+  | "channel"
+  | "message";
 
 export class MicrosoftConfiguration extends Model<
   InferAttributes<MicrosoftConfiguration>,
@@ -51,7 +59,7 @@ MicrosoftConfiguration.init(
 
 ConnectorModel.hasMany(MicrosoftConfiguration);
 
-// MicrosoftConfigurationRoot stores the folders/channels selected by the user to sync.
+// MicrosoftConfigurationRoot stores the drive/folders/channels selected by the user to sync.
 export class MicrosoftConfigurationRoot extends Model<
   InferAttributes<MicrosoftConfigurationRoot>,
   InferCreationAttributes<MicrosoftConfigurationRoot>
