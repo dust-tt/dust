@@ -10,7 +10,6 @@ export async function getSites(client: Client) {
 }
 
 export async function getDrives(client: Client, siteId: string) {
-  console.log("Site ID", siteId);
   const res = await client
     .api(`/sites/${siteId}/drives`)
     .select("id,name")
@@ -81,6 +80,5 @@ export async function registerWebhook(client: Client, resource: string) {
     clientState: "optional-client-specific-string",
   });
 
-  console.log("Webhook", res);
   return res.value as MicrosoftGraph.Subscription;
 }
