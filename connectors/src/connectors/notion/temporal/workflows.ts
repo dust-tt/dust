@@ -34,6 +34,7 @@ const {
   getDiscoveredResourcesFromCache,
   upsertDatabaseStructuredDataFromCache,
   upsertDatabaseInConnectorsDb,
+  deletePageOrDatabaseIfArchived,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -320,7 +321,19 @@ export async function upsertPageWorkflow({
     }
   } while (discoveredResources);
 
+  const loggerArgs = {
+    connectorId,
+    pageId,
+  };
+
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
+  await deletePageOrDatabaseIfArchived({
+    connectorId,
+    objectId: pageId,
+    objectType: "page",
+    loggerArgs,
+  });
 
   return { skipped };
 }
@@ -398,6 +411,13 @@ export async function upsertDatabaseWorkflow({
   } while (discoveredResources);
 
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
+  await deletePageOrDatabaseIfArchived({
+    connectorId,
+    objectId: databaseId,
+    objectType: "database",
+    loggerArgs,
+  });
 }
 
 /*

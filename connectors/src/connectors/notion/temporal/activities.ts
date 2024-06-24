@@ -8,6 +8,7 @@ import { assertNever, getNotionDatabaseTableId, slugify } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
+import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
@@ -715,6 +716,71 @@ export async function garbageCollectorMarkAsSeen({
   return { newPageIds, newDatabaseIds };
 }
 
+export async function deletePage({
+  connectorId,
+  dataSourceConfig,
+  pageId,
+  logger,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  pageId: string;
+  logger: Logger;
+}) {
+  logger.info("Deleting page.");
+  await deleteFromDataSource(dataSourceConfig, `notion-${pageId}`);
+  const notionPage = await NotionPage.findOne({
+    where: {
+      connectorId,
+      notionPageId: pageId,
+    },
+  });
+  if (notionPage?.parentType === "database" && notionPage.parentId) {
+    const parentDatabase = await NotionDatabase.findOne({
+      where: {
+        connectorId,
+        notionDatabaseId: notionPage.parentId,
+      },
+    });
+    if (parentDatabase) {
+      const tableId = `notion-${parentDatabase.notionDatabaseId}`;
+      const rowId = `notion-${notionPage.notionPageId}`;
+      await deleteTableRow({ dataSourceConfig, tableId, rowId });
+    }
+  }
+  await notionPage?.destroy();
+}
+
+export async function deleteDatabase({
+  connectorId,
+  dataSourceConfig,
+  databaseId,
+  logger,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  databaseId: string;
+  logger: Logger;
+}) {
+  logger.info("Deleting database.");
+  const notionDatabase = await NotionDatabase.findOne({
+    where: {
+      connectorId,
+      notionDatabaseId: databaseId,
+    },
+  });
+  if (notionDatabase) {
+    const tableId = `notion-${notionDatabase.notionDatabaseId}`;
+    await deleteTable({ dataSourceConfig, tableId });
+  }
+  await NotionDatabase.destroy({
+    where: {
+      connectorId,
+      notionDatabaseId: databaseId,
+    },
+  });
+}
+
 // - for all pages/database that have a lastSeenTs < runTimestamp
 //   - query notion API and check if we can access the resource
 //   - if the resource is not accessible, delete it from the database (and from the data source if it's a page)
@@ -877,50 +943,24 @@ export async function garbageCollect({
 
         continue;
       }
+
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
       if (x.resourceType === "page") {
-        iterationLogger.info("Deleting page.");
-        await deleteFromDataSource(dataSourceConfig, `notion-${x.resourceId}`);
+        await deletePage({
+          connectorId: connector.id,
+          dataSourceConfig,
+          pageId: x.resourceId,
+          logger: iterationLogger,
+        });
         deletedPagesCount++;
-        const notionPage = await NotionPage.findOne({
-          where: {
-            connectorId: connector.id,
-            notionPageId: x.resourceId,
-          },
-        });
-        if (notionPage?.parentType === "database" && notionPage.parentId) {
-          const parentDatabase = await NotionDatabase.findOne({
-            where: {
-              connectorId: connector.id,
-              notionDatabaseId: notionPage.parentId,
-            },
-          });
-          if (parentDatabase) {
-            const tableId = `notion-${parentDatabase.notionDatabaseId}`;
-            const rowId = `notion-${notionPage.notionPageId}`;
-            await deleteTableRow({ dataSourceConfig, tableId, rowId });
-          }
-        }
-        await notionPage?.destroy();
       } else {
-        iterationLogger.info("Deleting database.");
+        await deleteDatabase({
+          connectorId: connector.id,
+          dataSourceConfig,
+          databaseId: x.resourceId,
+          logger: iterationLogger,
+        });
         deletedDatabasesCount++;
-        const notionDatabase = await NotionDatabase.findOne({
-          where: {
-            connectorId: connector.id,
-            notionDatabaseId: x.resourceId,
-          },
-        });
-        if (notionDatabase) {
-          const tableId = `notion-${notionDatabase.notionDatabaseId}`;
-          await deleteTable({ dataSourceConfig, tableId });
-        }
-        await NotionDatabase.destroy({
-          where: {
-            connectorId: connector.id,
-            notionDatabaseId: x.resourceId,
-          },
-        });
       }
     }
 
@@ -956,6 +996,84 @@ export async function garbageCollect({
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
+}
+
+export async function deletePageOrDatabaseIfArchived({
+  connectorId,
+  objectId,
+  objectType,
+  loggerArgs,
+}: {
+  connectorId: ModelId;
+  objectId: string;
+  objectType: "page" | "database";
+  loggerArgs: Record<string, string | number>;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const accessToken = await getNotionAccessToken(connector.connectionId);
+
+  const localLogger = logger.child({
+    ...loggerArgs,
+    objectId,
+    objectType,
+    dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
+  });
+
+  if (objectType === "page") {
+    const notionPageModel = await NotionPage.findOne({
+      where: {
+        connectorId,
+        notionPageId: objectId,
+      },
+    });
+    if (!notionPageModel) {
+      logger.info("deletePageOrDatabaseIfArchived: Page not found in DB.");
+      return;
+    }
+  }
+  if (objectType === "database") {
+    const notionDatabaseModel = await NotionDatabase.findOne({
+      where: {
+        connectorId: connector.id,
+        notionDatabaseId: objectId,
+      },
+    });
+    if (!notionDatabaseModel) {
+      logger.info("deletePageOrDatabaseIfArchived: Database not found in DB.");
+      return;
+    }
+  }
+
+  const resourceIsAccessible = await isAccessibleAndUnarchived(
+    accessToken,
+    objectId,
+    objectType,
+    localLogger
+  );
+
+  if (!resourceIsAccessible) {
+    if (objectType === "page") {
+      await deletePage({
+        connectorId,
+        dataSourceConfig,
+        pageId: objectId,
+        logger: localLogger,
+      });
+    }
+    if (objectType === "database") {
+      await deleteDatabase({
+        connectorId,
+        dataSourceConfig,
+        databaseId: objectId,
+        logger: localLogger,
+      });
+    }
+  }
 }
 
 async function findResourcesNotSeenInGarbageCollectionRun(
