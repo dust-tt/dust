@@ -7,6 +7,7 @@ import {
   Drive,
   Github,
   Intercom,
+  Microsoft,
   Notion,
   Slack,
 } from "@sparkle/logo/platforms";
@@ -19,6 +20,7 @@ export type CitationType =
   | "github"
   | "google_drive"
   | "intercom"
+  | "microsoft"
   | "notion"
   | "slack";
 
@@ -41,6 +43,7 @@ const typeIcons = {
   github: Github,
   google_drive: Drive,
   intercom: Intercom,
+  microsoft: Microsoft,
   notion: Notion,
   slack: Slack,
 };
