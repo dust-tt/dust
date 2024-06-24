@@ -1,4 +1,4 @@
-import { Button, HeartAltIcon } from "@dust-tt/sparkle";
+import { HeartAltIcon, Icon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -63,19 +63,14 @@ export function HelpAndQuickGuideWrapper({
       {/* Quick start guide CTA */}
       <div
         id="quick-start-guide-button"
-        className="fixed right-6 top-2 z-50 lg:bottom-6 lg:right-6 lg:top-auto"
+        className="fixed right-6 top-2 z-50 transition-transform duration-300 ease-in-out hover:scale-110 lg:bottom-4 lg:right-4 lg:top-auto"
       >
-        <Button
-          icon={HeartAltIcon}
-          labelVisible={false}
-          label="Quick Start Guide"
+        <div
+          className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border border-emerald-500 bg-emerald-400 shadow-lg transition-colors duration-300 ease-in-out hover:border-emerald-400 hover:bg-emerald-300"
           onClick={() => setIsHelpDrawerOpen(true)}
-          size="md"
-          variant="primary"
-          hasMagnifying={true}
-          disabledTooltip={true}
-          className="!border-emerald-600 !bg-brand"
-        />
+        >
+          <Icon visual={HeartAltIcon} className="text-white" size="md" />
+        </div>
       </div>
     </>
   );

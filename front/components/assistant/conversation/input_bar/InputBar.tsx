@@ -62,6 +62,7 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
+  isFloatingWithoutMargin = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -75,6 +76,7 @@ export function AssistantInputBar({
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
+  isFloatingWithoutMargin?: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -303,7 +305,12 @@ export function AssistantInputBar({
         </div>
       )}
 
-      <div className={classNames("flex flex-1 px-0")}>
+      <div
+        className={classNames(
+          "flex flex-1 px-0",
+          isFloating ? (isFloatingWithoutMargin ? "" : "sm:px-4") : ""
+        )}
+      >
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
           <div
             className={classNames(
