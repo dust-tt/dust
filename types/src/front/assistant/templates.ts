@@ -2,19 +2,8 @@ import * as t from "io-ts";
 import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
-import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
-import { BrowseConfigurationType } from "./actions/browse";
-import { DustAppRunConfigurationType } from "./actions/dust_app_run";
-import { ProcessConfigurationType } from "./actions/process";
-import type { TimeframeUnit } from "./actions/retrieval";
-import {
-  RetrievalConfigurationType,
-  TimeframeUnitCodec,
-} from "./actions/retrieval";
-import { TablesQueryConfigurationType } from "./actions/tables_query";
-import { WebsearchConfigurationType } from "./actions/websearch";
-import { AgentAction, AgentActionConfigurationType } from "./agent";
+import { TimeframeUnitCodec } from "./actions/retrieval";
 import { AssistantCreativityLevelCodec } from "./builder";
 
 // TAGS
@@ -105,23 +94,6 @@ const TemplateTagCodeTypeCodec = t.keyof({
   ...TEMPLATES_TAGS_CONFIG,
 });
 
-// SINGLE ACTION MODE
-
-export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
-  reply: "Reply only",
-  dust_app_run_configuration: "Run Dust app",
-  retrieval_configuration: "Search data sources",
-  tables_query_configuration: "Query tables",
-  process_configuration: "Extract data",
-  websearch_configuration: "Web search",
-  browse_configuration: "Browse",
-} as const;
-export type ActionPreset = keyof typeof ACTION_PRESETS;
-export const ActionPresetCodec = ioTsEnum<ActionPreset>(
-  Object.keys(ACTION_PRESETS),
-  "ActionPreset"
-);
-
 // MULTI ACTION MODE
 
 type MultiActionType =
@@ -174,7 +146,6 @@ export const CreateTemplateFormSchema = t.type({
   timeFrameUnit: t.union([TimeframeUnitCodec, t.literal(""), t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
-  presetAction: ActionPresetCodec,
   presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,
@@ -184,85 +155,3 @@ export const CreateTemplateFormSchema = t.type({
 });
 
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
-
-export function getAgentActionConfigurationType(
-  action: ActionPreset,
-  timeFrameDuration?: number | null,
-  timeFrameUnit?: TimeframeUnit | null
-): AgentActionConfigurationType | null {
-  switch (action) {
-    case "reply":
-      return null;
-
-    case "retrieval_configuration":
-      return {
-        dataSources: [],
-        id: -1,
-        query: "auto",
-        relativeTimeFrame: "auto",
-        sId: "template",
-        topK: "auto",
-        type: "retrieval_configuration",
-        name: "search_data_sources",
-        description: "Search the workspace's internal data sources.",
-      } satisfies RetrievalConfigurationType;
-
-    case "tables_query_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        tables: [],
-        type: "tables_query_configuration",
-        name: "query_tables",
-        description: "Query the workspace's internal tables.",
-      } satisfies TablesQueryConfigurationType;
-
-    case "dust_app_run_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        type: "dust_app_run_configuration",
-        appWorkspaceId: "template",
-        appId: "template",
-        name: "run_dust_app",
-        description: "Run a Dust app.",
-      } satisfies DustAppRunConfigurationType;
-
-    case "process_configuration":
-      return {
-        dataSources: [],
-        id: -1,
-        tagsFilter: null,
-        relativeTimeFrame: {
-          duration: timeFrameDuration || 1,
-          unit: timeFrameUnit || "day",
-        },
-        sId: "template",
-        schema: [],
-        type: "process_configuration",
-        name: "extract_structured_data_from_data_sources",
-        description: "Process the workspace's internal data sources.",
-      } satisfies ProcessConfigurationType;
-
-    case "websearch_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        type: "websearch_configuration",
-        name: "web_search",
-        description: "Search the web.",
-      } satisfies WebsearchConfigurationType;
-
-    case "browse_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        type: "browse_configuration",
-        name: "browse",
-        description: "Browse a page.",
-      } satisfies BrowseConfigurationType;
-
-    default:
-      assertNever(action);
-  }
-}

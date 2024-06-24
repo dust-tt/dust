@@ -10,7 +10,6 @@ import type {
   TemplateTagCodeType,
 } from "@dust-tt/types";
 import {
-  ACTION_PRESETS,
   ASSISTANT_CREATIVITY_LEVELS,
   CreateTemplateFormSchema,
   generateTailwindBackgroundColors,
@@ -30,7 +29,6 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
@@ -331,6 +329,7 @@ function PresetActionsField({
                 </PokeFormItem>
               </div>
             ))}
+            <br />
             <PokeButton
               variant="secondary"
               onClick={(e) => {
@@ -568,7 +567,6 @@ function TemplatesPage({
       presetInstructions: "",
       presetModelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       presetTemperature: "balanced",
-      presetAction: "reply",
       helpInstructions: "",
       helpActions: "",
       emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
@@ -577,8 +575,6 @@ function TemplatesPage({
       visibility: "draft",
     },
   });
-
-  const presetAction = form.watch("presetAction");
 
   useEffect(() => {
     if (assistantTemplate) {
@@ -668,39 +664,6 @@ function TemplatesPage({
                   value: acl,
                 }))}
               />
-              <div>
-                <SelectField
-                  control={form.control}
-                  name="presetAction"
-                  title="Preset Action"
-                  options={Object.entries(ACTION_PRESETS).map(([k, v]) => ({
-                    value: k,
-                    display: v,
-                  }))}
-                />
-                {presetAction === "process_configuration" && (
-                  <div className={"flex flex-row items-center gap-4 pb-4"}>
-                    <InputField
-                      control={form.control}
-                      name="timeFrameDuration"
-                      title="From the last"
-                      placeholder="1"
-                      type="number"
-                    />
-                    <SelectField
-                      control={form.control}
-                      name="timeFrameUnit"
-                      title="Unit"
-                      options={Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
-                        (v) => ({
-                          value: v[0],
-                          display: v[1],
-                        })
-                      )}
-                    />
-                  </div>
-                )}
-              </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <PickerInputField
@@ -757,8 +720,8 @@ function TemplatesPage({
             <TextareaField
               control={form.control}
               name="helpActions"
-              title="Help Actions"
-              placeholder="Actions help bubble..."
+              title="Help Tools"
+              placeholder="Tools help bubble..."
               previewMardown={true}
             />
             <PresetActionsField
@@ -766,7 +729,6 @@ function TemplatesPage({
               name="presetActions"
               title="Preset Tools"
             />
-
             <div className="space flex gap-2">
               <PokeButton
                 onClick={form.handleSubmit(onSubmit)}

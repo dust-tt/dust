@@ -1,5 +1,4 @@
 import type {
-  ActionPreset,
   AssistantCreativityLevel,
   ModelIdType,
   ModelProviderIdType,
@@ -39,7 +38,6 @@ export class TemplateModel extends Model<
   declare presetTemperature: AssistantCreativityLevel;
   declare presetProviderId: ModelProviderIdType;
   declare presetModelId: ModelIdType;
-  declare presetAction: ActionPreset; // @todo[daph] Remove this field once templates are migrated to multi-ations.
   declare presetActions: TemplateActionType[];
 
   declare timeFrameDuration: number | null;
@@ -106,10 +104,6 @@ TemplateModel.init(
       allowNull: false,
     },
     presetModelId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    presetAction: {
       type: DataTypes.STRING,
       allowNull: false,
     },

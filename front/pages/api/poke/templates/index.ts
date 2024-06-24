@@ -97,7 +97,6 @@ async function handler(
         handle: body.handle,
         helpActions: body.helpActions ?? null,
         helpInstructions: body.helpInstructions ?? null,
-        presetAction: body.presetAction,
         presetActions: body.presetActions,
         presetDescription: null,
         presetInstructions: body.presetInstructions ?? null,

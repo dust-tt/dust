@@ -1,6 +1,6 @@
 import { ContextItem, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationType } from "@dust-tt/types";
-import { ACTION_PRESETS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 
@@ -81,7 +81,7 @@ const DataSourcePage = ({
                       {a.actions.map((action, index) => (
                         <div key={index}>
                           <div className="font-bold">
-                            Action {index + 1}: {ACTION_PRESETS[action.type]}
+                            Action {index + 1}: {action.type}
                           </div>
                           <JsonViewer
                             value={action}
