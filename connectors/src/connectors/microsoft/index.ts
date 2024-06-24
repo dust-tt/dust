@@ -284,12 +284,12 @@ export async function setMicrosoftConnectorPermissions(
   await MicrosoftConfigurationRootResource.batchMakeNew(
     Object.entries(permissions)
       .filter(([, permission]) => permission === "read")
-      .map(([resourceId]) => {
-        const [resourceType, ...rest] = resourceId.split("/");
+      .map(([id]) => {
+        const [resourceType, resourceId] = splitId(id);
         return {
           connectorId: connector.id,
-          resourceId: rest.join("/"),
-          resourceType: resourceType as MicrosoftResourceType,
+          resourceId,
+          resourceType,
         };
       })
   );

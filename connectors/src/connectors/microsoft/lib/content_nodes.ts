@@ -1,9 +1,12 @@
 import type { ContentNode } from "@dust-tt/types";
 
-export function splitId(internalId: string): [string, string] {
+import type { MicrosoftResourceType } from "@connectors/lib/models/microsoft";
+import { isValidResourceType } from "@connectors/lib/models/microsoft";
+
+export function splitId(internalId: string): [MicrosoftResourceType, string] {
   const [resourceType, ...rest] = internalId.split("/");
 
-  if (!resourceType) {
+  if (!resourceType || !isValidResourceType(resourceType)) {
     throw new Error(`Invalid internalId: ${internalId}`);
   }
 

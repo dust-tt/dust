@@ -9,15 +9,27 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-export type MicrosoftResourceType =
-  | "site"
-  | "team"
-  | "drive"
-  | "folder"
-  | "file"
-  | "page"
-  | "channel"
-  | "message";
+export const MICROSOFT_RESOURCE_TYPES = [
+  "sites-root",
+  "teams-root",
+  "site",
+  "team",
+  "drive",
+  "folder",
+  "file",
+  "page",
+  "channel",
+  "message",
+] as const;
+export type MicrosoftResourceType = (typeof MICROSOFT_RESOURCE_TYPES)[number];
+
+export function isValidResourceType(
+  resourceType: string
+): resourceType is MicrosoftResourceType {
+  return MICROSOFT_RESOURCE_TYPES.includes(
+    resourceType as MicrosoftResourceType
+  );
+}
 
 export class MicrosoftConfigurationModel extends Model<
   InferAttributes<MicrosoftConfigurationModel>,
