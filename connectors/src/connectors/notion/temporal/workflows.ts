@@ -34,6 +34,7 @@ const {
   getDiscoveredResourcesFromCache,
   upsertDatabaseStructuredDataFromCache,
   upsertDatabaseInConnectorsDb,
+  deletePageIfArchived,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -320,7 +321,18 @@ export async function upsertPageWorkflow({
     }
   } while (discoveredResources);
 
+  const loggerArgs = {
+    connectorId,
+    pageId,
+  };
+
   await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
+  await deletePageIfArchived({
+    connectorId,
+    pageId,
+    loggerArgs,
+  });
 
   return { skipped };
 }
