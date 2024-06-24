@@ -6,7 +6,9 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
+  DocumentDuplicateIcon,
   DropdownMenu,
+  EyeIcon,
   ListAddIcon,
   ListIcon,
   ListRemoveIcon,
@@ -404,30 +406,6 @@ export const DropdownExample = () => {
 
       <div className="s-h-12" />
       <div className="s-flex s-gap-6">
-        <div className="s-text-sm">SubMenu</div>
-        <DropdownMenu>
-          <DropdownMenu.Button type="select" label="No action" />
-          <DropdownMenu.Items origin="topLeft" width={200}>
-            <DropdownMenu.Item label="No action" href="#" />
-            <DropdownMenu.Item label="Search data sources" href="#" />
-            <DropdownMenu.Item label="Advanced actions" hasChildren={true}>
-              <DropdownMenu.Items origin="topLeft" width={360} marginLeft={40}>
-                <DropdownMenu.Item
-                  label="Retrieve most recent content from data sources"
-                  href="#"
-                />
-                <DropdownMenu.Item
-                  label="Run a Dust application and retrieve the output"
-                  href="#"
-                />
-              </DropdownMenu.Items>
-            </DropdownMenu.Item>
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
-
-      <div className="s-h-12" />
-      <div className="s-flex s-gap-6">
         <div className="s-text-sm">With custom button</div>
         <DropdownMenu>
           <DropdownMenu.Button>
@@ -463,12 +441,40 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button icon={RobotIcon} />
           <DropdownMenu.Items origin="topRight">
-            <div className="s-flex s-flex-col s-gap-2 s-p-3">
+            <div className="s-flex s-flex-col s-gap-2">
               testing custom stuff
               <Button label="hello" />
               <SliderToggle selected={isToggled} onClick={handleToggle} />
             </div>
           </DropdownMenu.Items>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <Button
+              variant="tertiary"
+              size="xs"
+              icon={EyeIcon}
+              label="See the error"
+            />
+          </DropdownMenu.Button>
+          <div className="relative bottom-6 z-30">
+            <DropdownMenu.Items origin="topLeft" width={320}>
+              <div className="text-sm font-normal text-warning-800">
+                Hello error messange!
+              </div>
+              <div className="self-end">
+                <Button
+                  variant="tertiary"
+                  size="xs"
+                  icon={DocumentDuplicateIcon}
+                  label={"Copy"}
+                  onClick={() =>
+                    void navigator.clipboard.writeText("Hello error messange!")
+                  }
+                />
+              </div>
+            </DropdownMenu.Items>
+          </div>
         </DropdownMenu>
       </div>
       <div className="s-h-12" />

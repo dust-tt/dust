@@ -10,7 +10,7 @@ const meta = {
 
 export default meta;
 
-export const DropdownExample = () => {
+export const NotificationExample = () => {
   return (
     <>
       <div className="s-flex s-gap-6">

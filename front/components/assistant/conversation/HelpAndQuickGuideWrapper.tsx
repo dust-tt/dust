@@ -1,4 +1,4 @@
-import { Button, HeartAltIcon } from "@dust-tt/sparkle";
+import { HeartAltIcon, Icon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -7,6 +7,7 @@ import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import { classNames } from "@app/lib/utils";
 
 interface HelpAndQuickGuideWrapperProps {
   owner: WorkspaceType;
@@ -63,19 +64,21 @@ export function HelpAndQuickGuideWrapper({
       {/* Quick start guide CTA */}
       <div
         id="quick-start-guide-button"
-        className="fixed right-6 top-2 z-50 lg:bottom-6 lg:right-6 lg:top-auto"
+        className="fixed bottom-0 right-0 xl:bottom-4 xl:right-4 xl:z-50"
       >
-        <Button
-          icon={HeartAltIcon}
-          labelVisible={false}
-          label="Quick Start Guide"
+        <div
+          className={classNames(
+            "flex cursor-pointer items-center justify-center shadow-lg",
+            "h-12 w-12 xl:h-14 xl:w-14",
+            "rounded-tl-2xl xl:rounded-full",
+            "transition-colors transition-transform duration-300 ease-in-out",
+            "border border-emerald-500 bg-emerald-400",
+            "hover:scale-110 hover:border-emerald-400 hover:bg-emerald-300"
+          )}
           onClick={() => setIsHelpDrawerOpen(true)}
-          size="md"
-          variant="primary"
-          hasMagnifying={true}
-          disabledTooltip={true}
-          className="!border-emerald-600 !bg-brand"
-        />
+        >
+          <Icon visual={HeartAltIcon} className="text-white" size="md" />
+        </div>
       </div>
     </>
   );

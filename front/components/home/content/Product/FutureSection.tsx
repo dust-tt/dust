@@ -31,7 +31,7 @@ export function FutureSection() {
         </div>
         <div
           className={classNames(
-            "col-span-12",
+            "col-span-12 pt-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
             "md:grid-cols-3 md:gap-y-16",
             "2xl:col-span-10 2xl:col-start-2"
@@ -108,34 +108,24 @@ export function FutureSection() {
               </>
             }
           >
-            <div
-              className={classNames(
-                "flex w-full flex-wrap gap-4",
-                "sm:col-span-5 sm:col-start-2",
-                "lg:col-span-4 lg:col-start-4",
-                "xl:col-span-3 xl:col-start-4 xl:pl-0",
-                "2xl:col-start-5 2xl:pl-6"
-              )}
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
             >
-              <Hover3D
-                depth={-20}
-                perspective={1000}
-                className={classNames("relative")}
-              >
-                <Div3D depth={-20}>
-                  <img src="/static/landing/apps/apps1.png" />
-                </Div3D>
-                <Div3D depth={0} className="absolute top-0">
-                  <img src="/static/landing/apps/apps2.png" />
-                </Div3D>
-                <Div3D depth={15} className="absolute top-0">
-                  <img src="/static/landing/apps/apps3.png" />
-                </Div3D>
-                <Div3D depth={60} className="absolute top-0">
-                  <img src="/static/landing/apps/apps4.png" />
-                </Div3D>
-              </Hover3D>
-            </div>
+              <Div3D depth={-20}>
+                <img src="/static/landing/apps/apps1.png" />
+              </Div3D>
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/apps/apps2.png" />
+              </Div3D>
+              <Div3D depth={15} className="absolute top-0">
+                <img src="/static/landing/apps/apps3.png" />
+              </Div3D>
+              <Div3D depth={60} className="absolute top-0">
+                <img src="/static/landing/apps/apps4.png" />
+              </Div3D>
+            </Hover3D>
           </ImgBlock>
         </div>
       </Grid>

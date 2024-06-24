@@ -58,15 +58,14 @@ function LinksList({
 }) {
   return (
     <Item.List>
-      {title && <Item.SectionHeader label={title} />}
+      {title && <Item.SectionHeader label={title} variant="secondary" />}
       {linksList.map((link, index) => (
-        <Item.Navigation
+        <Item.Link
           icon={link.icon}
           label={link.title}
           href={link.href}
           key={index}
           description={link.description}
-          hasAction={false}
         />
       ))}
     </Item.List>
@@ -197,14 +196,15 @@ export function HelpDrawer({
             </div>
           </Button.List>
         )}
-        <div className="flex flex-col gap-2 [&>*]:pl-px">
-          <div className="text-base font-bold">Ask questions</div>
+        <div className="flex flex-col gap-4 [&>*]:pl-px">
+          <Page.SectionHeader title="Ask questions" />
           <AssistantInputBar
             owner={owner}
             onSubmit={handleHelpSubmit}
             conversationId={null}
             actions={[]}
             disableAutoFocus={true}
+            isFloatingWithoutMargin={true}
           />
         </div>
       </div>
