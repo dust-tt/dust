@@ -29,7 +29,6 @@ async function main() {
         );
         await NotionConnectorState.create({
           connectorId: connector.id,
-          useDualWorkflow: true,
         });
       }
     }

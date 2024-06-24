@@ -40,9 +40,7 @@ export async function launchNotionSyncWorkflow(
     );
   }
 
-  const useDualWorkflow = notionConnectorState.useDualWorkflow;
-
-  const workflow = await getNotionWorkflow(dataSourceConfig);
+  const workflow = await getNotionWorkflow(dataSourceConfig, "never");
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
@@ -60,11 +58,11 @@ export async function launchNotionSyncWorkflow(
         connectorId,
         startFromTs,
         forceResync,
-        garbageCollectionMode: useDualWorkflow ? "never" : "auto",
+        garbageCollectionMode: "never",
       },
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getNotionWorkflowId(dataSourceConfig),
+    workflowId: getNotionWorkflowId(dataSourceConfig, "never"),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -78,9 +76,7 @@ export async function launchNotionSyncWorkflow(
     "launchNotionSyncWorkflow: Started Notion sync workflow."
   );
 
-  if (useDualWorkflow) {
-    await launchNotionGarbageCollectorWorkflow(connectorId);
-  }
+  await launchNotionGarbageCollectorWorkflow(connectorId);
 }
 
 export async function launchNotionGarbageCollectorWorkflow(
@@ -150,7 +146,7 @@ export async function stopNotionSyncWorkflow(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const workflow = await getNotionWorkflow(dataSourceConfig);
+  const workflow = await getNotionWorkflow(dataSourceConfig, "never");
 
   if (!workflow) {
     logger.warn(
@@ -186,9 +182,7 @@ export async function stopNotionSyncWorkflow(
     "Terminated Notion sync workflow."
   );
 
-  if (notionConnectorState.useDualWorkflow) {
-    await stopNotionGarbageCollectorWorkflow(connectorId);
-  }
+  await stopNotionGarbageCollectorWorkflow(connectorId);
 }
 
 export async function stopNotionGarbageCollectorWorkflow(
@@ -238,7 +232,7 @@ export async function stopNotionGarbageCollectorWorkflow(
 
 export async function getNotionWorkflow(
   dataSourceInfo: DataSourceInfo,
-  gargbageCollectionMode: NotionGarbageCollectionMode = "auto"
+  gargbageCollectionMode: NotionGarbageCollectionMode
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;

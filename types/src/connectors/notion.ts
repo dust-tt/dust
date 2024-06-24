@@ -8,11 +8,11 @@ import * as t from "io-ts";
 export type PageObjectProperties = PageObjectResponse["properties"];
 export type PropertyKeys = keyof PageObjectProperties;
 export type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
-export type NotionGarbageCollectionMode = "always" | "auto" | "never";
+export type NotionGarbageCollectionMode = "always" | "never";
 
 export function getNotionWorkflowId(
   dataSourceInfo: { workspaceId: string; dataSourceName: string },
-  gargbageCollectionMode: NotionGarbageCollectionMode = "auto"
+  gargbageCollectionMode: NotionGarbageCollectionMode
 ) {
   let wfName = "workflow-notion";
   if (gargbageCollectionMode === "always") {
