@@ -38,10 +38,12 @@ export function metaPromptForProvider(
       return "When using tools, generate valid and properly escaped JSON arguments.";
     case "anthropic":
       // see https://docs.anthropic.com/en/docs/tool-use#tool-use-best-practices-and-limitations
-      return (
-        "Do not reflect on the quality of the returned search results in your response. " +
-        "Be extremely concise in your thinking phases."
-      );
+      return `Do not reflect on the quality of the returned search results in your response.
+<tools_instructions>
+When using tools to answer the user's question, the assistant should follow these guidelines:
+
+1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
+</tools_instructions>`;
     case "mistral":
       return null;
     case "google_ai_studio":
