@@ -612,8 +612,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
             // from ever happeaning (max 16 actions per step and sharing of topK among actions of
             // the same type).
             throw new Error(
-              "The retrieval actions exhausted the total number of references available: " + 
-              `refsOffset=${refsOffset} topK=${topK}`
+              "The retrieval actions exhausted the total number of references available: " +
+                `refsOffset=${refsOffset} topK=${topK}`
             );
           }
 
