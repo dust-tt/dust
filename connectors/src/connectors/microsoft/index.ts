@@ -28,10 +28,15 @@ import {
   getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import type { MicrosoftResourceType } from "@connectors/lib/models/microsoft";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import {
+  MicrosoftConfigurationResource,
+  MicrosoftConfigurationRootResource,
+} from "@connectors/resources/connector/microsoft";
 // import { MicrosoftConfigurationResource } from "@connectors/resources/connector/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -206,16 +211,17 @@ export async function retrieveMicrosoftConnectorPermissions({
   const client = await getClient(connector.connectionId);
   const nodes = [];
 
-  // const selectedResources =
-  //   await MicrosoftConfigurationResource.listRootsByConnectorId(
-  //     connector.type
-  //   ).map((r) => r.internalId);
+  const selectedResources = (
+    await MicrosoftConfigurationRootResource.listRootsByConnectorId(
+      connector.id
+    )
+  ).map((r) => r.resourceType + "/" + r.resourceId);
 
   if (!parentInternalId) {
     nodes.push(getSitesRootAsContentNode());
     nodes.push(getTeamsRootAsContentNode());
   } else {
-    const [resourceType, part1, part2] = parentInternalId.split("/");
+    const [resourceType, ...rest] = parentInternalId.split("/");
 
     switch (resourceType) {
       case "sites-root":
@@ -230,44 +236,43 @@ export async function retrieveMicrosoftConnectorPermissions({
         break;
       case "team":
         nodes.push(
-          ...(await getChannels(client, part1 as string)).map((n) =>
+          ...(await getChannels(client, rest[0] as string)).map((n) =>
             getChannelAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "site":
         nodes.push(
-          ...(await getDrives(client, part1 as string)).map((n) =>
+          ...(await getDrives(client, rest[0] as string)).map((n) =>
             getDriveAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "drive":
-        console.log("drive", part1);
         nodes.push(
-          ...(await getFolders(client, part1 as string)).map((n) =>
-            getFolderAsContentNode(n, part1 as string, parentInternalId)
+          ...(await getFolders(client, rest[0] as string)).map((n) =>
+            getFolderAsContentNode(n, rest[0] as string, parentInternalId)
           )
         );
         break;
       case "folder":
-        console.log("folder", part1, part2);
         nodes.push(
-          ...(await getFolders(client, part1 as string, part2 as string)).map(
-            (n) => getFolderAsContentNode(n, part1 as string, parentInternalId)
+          ...(
+            await getFolders(client, rest[0] as string, rest[1] as string)
+          ).map((n) =>
+            getFolderAsContentNode(n, rest[1] as string, parentInternalId)
           )
         );
         break;
     }
   }
 
-  const nodesWithPermissions = nodes;
-  // const nodesWithPermissions = nodes.map((res) => ({
-  //   ...res,
-  //   permission: (selectedResources.includes(res.internalId)
-  //     ? "read"
-  //     : "none") as ConnectorPermission,
-  // }));
+  const nodesWithPermissions = nodes.map((res) => ({
+    ...res,
+    permission: (selectedResources.includes(res.internalId)
+      ? "read"
+      : "none") as ConnectorPermission,
+  }));
 
   if (filterPermission) {
     return new Ok(
@@ -291,12 +296,27 @@ export async function setMicrosoftConnectorPermissions(
     );
   }
 
-  // const selectedResources =
-  //   await MicrosoftConfigurationResource.listRootsByConnectorId(
-  //     connector.type
-  //   ).map((r) => r.internalId);
+  await MicrosoftConfigurationRootResource.batchMakeNew(
+    Object.entries(permissions)
+      .filter(([, permission]) => permission === "read")
+      .map(([resourceId]) => {
+        const [resourceType, ...rest] = resourceId.split("/");
+        return {
+          connectorId: connector.id,
+          resourceId: rest.join("/"),
+          resourceType: resourceType as MicrosoftResourceType,
+        };
+      })
+  );
 
-  // MicrosoftConfigurationResource.setPermissions(connectorId, permissions);
+  await MicrosoftConfigurationRootResource.batchDelete(
+    Object.entries(permissions)
+      .filter(([, permission]) => permission === "none")
+      .map(([resourceId]) => {
+        const [, ...rest] = resourceId.split("/");
+        return rest.join("/");
+      })
+  );
 
   return new Ok(undefined);
 }
