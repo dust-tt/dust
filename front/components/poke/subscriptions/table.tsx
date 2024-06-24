@@ -10,6 +10,7 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import type { PlanType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
+import { isDevelopment } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 import Link from "next/link";
@@ -28,7 +29,6 @@ import type { SubscriptionsDisplayType } from "@app/components/poke/subscription
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { isDevelopment } from "@app/lib/development";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr";
 

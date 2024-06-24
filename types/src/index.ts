@@ -64,6 +64,7 @@ export * from "./front/user";
 export * from "./front/workspace";
 export * from "./shared/cache";
 export * from "./shared/deployment";
+export * from "./shared/env";
 export * from "./shared/message_classification";
 export * from "./shared/model_id";
 export * from "./shared/nango_errors";

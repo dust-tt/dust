@@ -20,6 +20,7 @@ import {
   BaseAction,
   cloneBaseConfig,
   DustProdActionRegistry,
+  isDevelopment,
   isRetrievalConfiguration,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
@@ -30,10 +31,7 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  isDevelopment,
-  PRODUCTION_DUST_WORKSPACE_ID,
-} from "@app/lib/development";
+import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/development";
 import {
   AgentRetrievalAction,
   RetrievalDocument,

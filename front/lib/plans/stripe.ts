@@ -1,10 +1,9 @@
 import type { BillingPeriod, Result, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
-import { isDevelopment } from "@app/lib/development";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
