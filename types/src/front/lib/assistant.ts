@@ -208,6 +208,48 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
 };
 
+const ANTHROPIC_DELIMITERS_CONFIGURATION = {
+  incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
+  delimiters: [
+    {
+      openingPattern: "<thinking>",
+      closingPattern: "</thinking>",
+      isChainOfThought: true,
+      swallow: false,
+    },
+    {
+      openingPattern: "<search_quality_reflection>",
+      closingPattern: "</search_quality_reflection>",
+      isChainOfThought: true,
+      swallow: false,
+    },
+    {
+      openingPattern: "<reflecting>",
+      closingPattern: "</reflecting>",
+      isChainOfThought: true,
+      swallow: false,
+    },
+    {
+      openingPattern: "<search_quality_score>",
+      closingPattern: "</search_quality_score>",
+      isChainOfThought: true,
+      swallow: true,
+    },
+    {
+      openingPattern: "<result>",
+      closingPattern: "</result>",
+      isChainOfThought: false,
+      swallow: false,
+    },
+    {
+      openingPattern: "<response>",
+      closingPattern: "</response>",
+      isChainOfThought: false,
+      swallow: false,
+    },
+  ],
+};
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -220,41 +262,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
   shortDescription: "Anthropic's powerful model.",
   isLegacy: false,
-  delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
-    delimiters: [
-      {
-        openingPattern: "<thinking>",
-        closingPattern: "</thinking>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_reflection>",
-        closingPattern: "</search_quality_reflection>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<reflecting>",
-        closingPattern: "</reflecting>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_score>",
-        closingPattern: "</search_quality_score>",
-        isChainOfThought: true,
-        swallow: true,
-      },
-      {
-        openingPattern: "<result>",
-        closingPattern: "</result>",
-        isChainOfThought: false,
-        swallow: false,
-      },
-    ],
-  },
+  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -268,41 +276,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic latest Claude 3.5 Sonnet model, their most intelligent model.",
   shortDescription: "Anthropic's smartest model.",
   isLegacy: false,
-  delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
-    delimiters: [
-      {
-        openingPattern: "<thinking>",
-        closingPattern: "</thinking>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_reflection>",
-        closingPattern: "</search_quality_reflection>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<reflecting>",
-        closingPattern: "</reflecting>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_score>",
-        closingPattern: "</search_quality_score>",
-        isChainOfThought: true,
-        swallow: true,
-      },
-      {
-        openingPattern: "<result>",
-        closingPattern: "</result>",
-        isChainOfThought: false,
-        swallow: false,
-      },
-    ],
-  },
+  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
