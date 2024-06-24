@@ -92,7 +92,7 @@ async function handler(
   const remamining = await rateLimiter({
     key: `code-interpreter-${user.id}`,
     maxPerTimeframe: 100,
-    timeframeSeconds: 60 * 24,
+    timeframeSeconds: 60 * 30,
     logger: logger,
   });
   if (remamining <= 0) {
