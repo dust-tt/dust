@@ -33,10 +33,7 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import {
-  MicrosoftConfigurationResource,
-  MicrosoftConfigurationRootResource,
-} from "@connectors/resources/connector/microsoft";
+import { MicrosoftConfigurationRootResource } from "@connectors/resources/connector/microsoft";
 // import { MicrosoftConfigurationResource } from "@connectors/resources/connector/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -190,17 +187,9 @@ export async function retrieveMicrosoftConnectorPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-  viewType,
 }: Parameters<ConnectorPermissionRetriever>[0]): Promise<
   Result<ContentNode[], Error>
 > {
-  console.log(
-    "retrieveMicrosoftConnectorPermissions",
-    connectorId,
-    parentInternalId,
-    viewType
-  );
-
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(
@@ -287,8 +276,6 @@ export async function setMicrosoftConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  console.log("setMicrosoftConnectorPermissions", connectorId, permissions);
-
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(

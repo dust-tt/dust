@@ -19,16 +19,16 @@ export type MicrosoftResourceType =
   | "channel"
   | "message";
 
-export class MicrosoftConfiguration extends Model<
-  InferAttributes<MicrosoftConfiguration>,
-  InferCreationAttributes<MicrosoftConfiguration>
+export class MicrosoftConfigurationModel extends Model<
+  InferAttributes<MicrosoftConfigurationModel>,
+  InferCreationAttributes<MicrosoftConfigurationModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
-MicrosoftConfiguration.init(
+MicrosoftConfigurationModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -57,12 +57,12 @@ MicrosoftConfiguration.init(
   }
 );
 
-ConnectorModel.hasMany(MicrosoftConfiguration);
+ConnectorModel.hasMany(MicrosoftConfigurationModel);
 
 // MicrosoftConfigurationRoot stores the drive/folders/channels selected by the user to sync.
-export class MicrosoftConfigurationRoot extends Model<
-  InferAttributes<MicrosoftConfigurationRoot>,
-  InferCreationAttributes<MicrosoftConfigurationRoot>
+export class MicrosoftConfigurationRootModel extends Model<
+  InferAttributes<MicrosoftConfigurationRootModel>,
+  InferCreationAttributes<MicrosoftConfigurationRootModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -71,7 +71,7 @@ export class MicrosoftConfigurationRoot extends Model<
   declare resourceType: MicrosoftResourceType;
   declare resourceId: string;
 }
-MicrosoftConfigurationRoot.init(
+MicrosoftConfigurationRootModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -110,12 +110,12 @@ MicrosoftConfigurationRoot.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftConfigurationRoot);
+ConnectorModel.hasMany(MicrosoftConfigurationRootModel);
 
 // MicrosftResource stores files/folders/channels and other resources synced from Microsoft.
-export class MicrosoftResource extends Model<
-  InferAttributes<MicrosoftResource>,
-  InferCreationAttributes<MicrosoftResource>
+export class MicrosoftResourceModel extends Model<
+  InferAttributes<MicrosoftResourceModel>,
+  InferCreationAttributes<MicrosoftResourceModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -131,7 +131,7 @@ export class MicrosoftResource extends Model<
   declare mimeType: string;
   declare parentId: string | null;
 }
-MicrosoftResource.init(
+MicrosoftResourceModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -201,23 +201,23 @@ MicrosoftResource.init(
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftResource);
+ConnectorModel.hasMany(MicrosoftResourceModel);
 
 // Delta token are used for creating a diff from the last calls.
 // On every delta call, we store the new delta token to be used in the next call
 // For each configured root resource, we store a delta token.
-export class MicrosoftDelta extends Model<
-  InferAttributes<MicrosoftDelta>,
-  InferCreationAttributes<MicrosoftDelta>
+export class MicrosoftDeltaModel extends Model<
+  InferAttributes<MicrosoftDeltaModel>,
+  InferCreationAttributes<MicrosoftDeltaModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare resourceId: ForeignKey<MicrosoftConfigurationRoot["resourceId"]>;
+  declare resourceId: ForeignKey<MicrosoftConfigurationRootModel["resourceId"]>;
   declare deltaToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
-MicrosoftDelta.init(
+MicrosoftDeltaModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -253,5 +253,5 @@ MicrosoftDelta.init(
     indexes: [{ fields: ["connectorId", "resourceId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(MicrosoftDelta);
-MicrosoftConfigurationRoot.hasOne(MicrosoftDelta);
+ConnectorModel.hasMany(MicrosoftDeltaModel);
+MicrosoftConfigurationRootModel.hasOne(MicrosoftDeltaModel);
