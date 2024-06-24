@@ -48,6 +48,7 @@ import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
+const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsability of the caller based on the emitted events).
@@ -168,13 +169,15 @@ export async function* runMultiActionsAgentLoop(
             "[ASSISTANT_TRACE] Action inputs generation"
           );
 
+          // We received the actions to run, but will enforce a limit on the number of actions (16)
+          // which is very high. Over that the latency will just be too high. This is a guardrail
+          // against the model outputing something unreasonable.
+          event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
+
           yield event;
 
-          const actionIndexByType: Record<string, number> = {};
           const eventStreamGenerators = event.actions.map(
-            ({ action, inputs, functionCallId, specification }) => {
-              const index = actionIndexByType[action.type] ?? 0;
-              actionIndexByType[action.type] = index + 1;
+            ({ action, inputs, functionCallId, specification }, index) => {
               return runAction(auth, {
                 configuration: configuration,
                 actionConfiguration: action,
@@ -185,7 +188,8 @@ export async function* runMultiActionsAgentLoop(
                 specification,
                 functionCallId,
                 step: i,
-                indexForType: index,
+                stepActionIndex: index,
+                stepActions: event.actions.map((a) => a.action),
               });
             }
           );
@@ -715,7 +719,8 @@ async function* runAction(
     specification,
     functionCallId,
     step,
-    indexForType,
+    stepActionIndex,
+    stepActions,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: AgentActionConfigurationType;
@@ -726,7 +731,8 @@ async function* runAction(
     specification: AgentActionSpecification | null;
     functionCallId: string | null;
     step: number;
-    indexForType: number;
+    stepActionIndex: number;
+    stepActions: AgentActionConfigurationType[];
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
@@ -748,8 +754,8 @@ async function* runAction(
         step,
       },
       {
-        // We allocate 32 refs per retrieval action.
-        refsOffset: indexForType * 32,
+        stepActionIndex,
+        stepActions,
       }
     );
 

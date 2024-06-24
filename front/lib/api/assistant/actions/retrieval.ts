@@ -1,6 +1,8 @@
 import type {
+  AgentActionConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
+  ModelConfigurationType,
   ModelId,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
@@ -18,6 +20,7 @@ import {
   BaseAction,
   cloneBaseConfig,
   DustProdActionRegistry,
+  isRetrievalConfiguration,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
@@ -264,6 +267,62 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok(spec);
   }
 
+  // stepTopKAndRefsOffsetForAction returns the references offset and the number of documents an
+  // action will use as part of the current step. We share topK among multiple instances of a same
+  // retrieval action so that we don't overflow the context when the model asks for many retrievals
+  // at the same time. Based on the nature of the retrieval actions (query being `auto` or `null`),
+  // the topK can vary (exhaustive or not). So we need all the actions of the current step to
+  // properly split the topK among them and decide which slice of references we will allocate to the
+  // current action.
+  static stepTopKAndRefsOffsetForAction({
+    action,
+    model,
+    stepActionIndex,
+    stepActions,
+  }: {
+    action: RetrievalConfigurationType;
+    model: ModelConfigurationType;
+    stepActionIndex: number;
+    stepActions: AgentActionConfigurationType[];
+  }): { topK: number; refsOffset: number } {
+    const topKForAction = (
+      action: RetrievalConfigurationType,
+      actionCount: number
+    ) => {
+      let topK = 16;
+      if (action.topK === "auto") {
+        if (action.query === "none") {
+          topK = model.recommendedExhaustiveTopK;
+        } else {
+          topK = model.recommendedTopK;
+        }
+      } else {
+        topK = action.topK;
+      }
+      // We split the topK among the actions that are uses of the same action configuration.
+      return Math.ceil(topK / actionCount);
+    };
+
+    const actionCounts: Record<string, number> = {};
+    stepActions.forEach((a) => {
+      actionCounts[a.sId] = actionCounts[a.sId] ?? 0;
+      actionCounts[a.sId]++;
+    });
+
+    let refsOffset = 0;
+    for (let i = 0; i < stepActionIndex; i++) {
+      const r = stepActions[i];
+      if (isRetrievalConfiguration(r)) {
+        refsOffset += topKForAction(r, actionCounts[stepActions[i].sId]);
+      }
+    }
+
+    return {
+      topK: topKForAction(action, actionCounts[action.sId]),
+      refsOffset,
+    };
+  }
+
   // This method is in charge of running the retrieval and creating an AgentRetrievalAction object in
   // the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does not
   // create any generic model related to the conversation. It is possible for an AgentRetrievalAction
@@ -280,7 +339,13 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       functionCallId,
       step,
     }: BaseActionRunParams,
-    { refsOffset = 0 }: { refsOffset?: number }
+    {
+      stepActionIndex,
+      stepActions,
+    }: {
+      stepActionIndex: number;
+      stepActions: AgentActionConfigurationType[];
+    }
   ): AsyncGenerator<
     RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
     void
@@ -330,17 +395,13 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const { model } = agentConfiguration;
 
-    let topK = 16;
-    if (actionConfiguration.topK === "auto") {
-      const supportedModel = getSupportedModelConfig(model);
-      if (actionConfiguration.query === "none") {
-        topK = supportedModel.recommendedExhaustiveTopK;
-      } else {
-        topK = supportedModel.recommendedTopK;
-      }
-    } else {
-      topK = actionConfiguration.topK;
-    }
+    const { topK, refsOffset } =
+      RetrievalConfigurationServerRunner.stepTopKAndRefsOffsetForAction({
+        action: actionConfiguration,
+        model: getSupportedModelConfig(model),
+        stepActionIndex,
+        stepActions,
+      });
 
     // Create the AgentRetrievalAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs
@@ -546,7 +607,17 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
             token_count: number;
           }[];
 
-          const refs = getRefs().slice(refsOffset, refsOffset + v.length);
+          if (refsOffset + topK > getRefs().length) {
+            // This is a stream dropping error since the guardrails put in place should prevent this
+            // from ever happeaning (max 16 actions per step and sharing of topK among actions of
+            // the same type).
+            throw new Error(
+              "The retrieval actions exhausted the total number of references available: " +
+                `refsOffset=${refsOffset} topK=${topK}`
+            );
+          }
+
+          const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
           documents = v.map((d, i) => {
             const reference = refs[i % refs.length];
