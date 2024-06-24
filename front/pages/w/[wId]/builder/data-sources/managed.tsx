@@ -545,6 +545,29 @@ export default function DataSourcesView({
             .filter(
               (ds) => !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide
             )
+            .sort((a, b) => {
+              if (a.status === b.status) {
+                return a.name.localeCompare(b.name);
+              }
+
+              if (a.status === "built") {
+                return -1;
+              }
+
+              if (b.status === "built") {
+                return 1;
+              }
+
+              if (a.status === "rolling_out") {
+                return -1;
+              }
+
+              if (b.status === "rolling_out") {
+                return 1;
+              }
+
+              return 0;
+            })
             .map((ds) => {
               const isBuilt =
                 ds.status === "built" ||
