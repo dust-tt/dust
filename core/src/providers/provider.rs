@@ -1,4 +1,4 @@
-// use crate::providers::anthropic::AnthropicProvider;
+use crate::providers::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::LLM;
@@ -149,8 +149,8 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
     match t {
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
         ProviderID::AzureOpenAI => Box::new(AzureOpenAIProvider::new()),
-        _ => unimplemented!()
-        // ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
+        ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
+        _ => unimplemented!(),
         // ProviderID::Mistral => Box::new(MistralProvider::new()),
         // ProviderID::GoogleAiStudio => Box::new(GoogleAiStudioProvider::new()),
     }

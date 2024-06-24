@@ -1,4 +1,8 @@
-use serde::{Deserialize, Serialize};
+use anyhow::anyhow;
+use serde::{
+    de::{self, DeserializeOwned, Error},
+    Deserialize, Deserializer, Serialize,
+};
 
 use super::llm::{ChatFunctionCall, ChatMessageRole};
 
@@ -79,3 +83,15 @@ pub enum ChatMessage {
     UserChatMessage(UserChatMessage),
     SystemChatMessage(SystemChatMessage),
 }
+
+impl ChatMessage {
+    pub fn get_role(&self) -> Option<&ChatMessageRole> {
+        match self {
+            ChatMessage::AssistantChatMessage(msg) => Some(&msg.role),
+            ChatMessage::FunctionChatMessage(msg) => Some(&msg.role),
+            ChatMessage::UserChatMessage(msg) => Some(&msg.role),
+            ChatMessage::SystemChatMessage(msg) => Some(&msg.role),
+        }
+    }
+}
+

@@ -104,7 +104,7 @@ pub struct LLMChatGeneration {
     pub created: u64,
     pub provider: String,
     pub model: String,
-    pub completions: Vec<ChatMessage>,
+    pub completions: Vec<AssistantChatMessage>,
     pub usage: Option<LLMTokenUsage>,
     pub provider_request_id: Option<String>,
 }
