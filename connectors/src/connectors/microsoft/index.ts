@@ -19,6 +19,7 @@ import {
   getSitesRootAsContentNode,
   getTeamAsContentNode,
   getTeamsRootAsContentNode,
+  splitId,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
   getChannels,
@@ -33,9 +34,8 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import { MicrosoftConfigurationRootResource } from "@connectors/resources/connector/microsoft";
-// import { MicrosoftConfigurationResource } from "@connectors/resources/connector/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { MicrosoftConfigurationRootResource } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 async function getClient(connectionId: NangoConnectionId) {
@@ -210,7 +210,7 @@ export async function retrieveMicrosoftConnectorPermissions({
     nodes.push(getSitesRootAsContentNode());
     nodes.push(getTeamsRootAsContentNode());
   } else {
-    const [resourceType, ...rest] = parentInternalId.split("/");
+    const [resourceType, resourceId] = splitId(parentInternalId);
 
     switch (resourceType) {
       case "sites-root":
@@ -225,31 +225,29 @@ export async function retrieveMicrosoftConnectorPermissions({
         break;
       case "team":
         nodes.push(
-          ...(await getChannels(client, rest[0] as string)).map((n) =>
+          ...(await getChannels(client, resourceId)).map((n) =>
             getChannelAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "site":
         nodes.push(
-          ...(await getDrives(client, rest[0] as string)).map((n) =>
+          ...(await getDrives(client, resourceId)).map((n) =>
             getDriveAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "drive":
         nodes.push(
-          ...(await getFolders(client, rest[0] as string)).map((n) =>
-            getFolderAsContentNode(n, rest[0] as string, parentInternalId)
+          ...(await getFolders(client, resourceId)).map((n) =>
+            getFolderAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "folder":
         nodes.push(
-          ...(
-            await getFolders(client, rest[0] as string, rest[1] as string)
-          ).map((n) =>
-            getFolderAsContentNode(n, rest[1] as string, parentInternalId)
+          ...(await getFolders(client, resourceId)).map((n) =>
+            getFolderAsContentNode(n, parentInternalId)
           )
         );
         break;

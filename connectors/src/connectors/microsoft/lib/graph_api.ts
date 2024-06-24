@@ -22,10 +22,11 @@ export async function getDrives(
 
 export async function getFilesAndFolders(
   client: Client,
-  driveId: string,
-  parentId?: string
+  parentId: string
 ): Promise<MicrosoftGraph.DriveItem[]> {
-  const parent = parentId ? `items/${parentId}` : "root";
+  const [driveId, folderId] = parentId.split("/");
+
+  const parent = folderId ? `items/${folderId}` : "root";
   const res = await client
     .api(`/drives/${driveId}/${parent}/children`)
     .select("id,name,createdDateTime,file,folder")
@@ -35,10 +36,9 @@ export async function getFilesAndFolders(
 
 export async function getFolders(
   client: Client,
-  driveId: string,
-  parentId?: string
+  parentId: string
 ): Promise<MicrosoftGraph.DriveItem[]> {
-  const res = await getFilesAndFolders(client, driveId, parentId);
+  const res = await getFilesAndFolders(client, parentId);
   return res.filter((item) => item.folder);
 }
 

@@ -1,18 +1,12 @@
-import type { Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
 
-import {
-  MicrosoftConfigurationModel,
-  MicrosoftConfigurationRootModel,
-} from "@connectors/lib/models/microsoft";
-import { BaseResource } from "@connectors/resources/base_resource";
+import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type {
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 
 export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
   async makeNew(
@@ -20,12 +14,12 @@ export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,
     transaction: Transaction
   ): Promise<void> {
-    await MicrosoftConfigurationModel.create(
+    await MicrosoftConfigurationResource.makeNew(
       {
         ...blob,
         connectorId: connector.id,
       },
-      { transaction }
+      transaction
     );
   }
 
@@ -33,124 +27,14 @@ export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await MicrosoftConfigurationModel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-  }
-}
-
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftConfigurationResource
-  extends ReadonlyAttributesType<MicrosoftConfigurationModel> {}
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfigurationModel> {
-  static model: ModelStatic<MicrosoftConfigurationModel> =
-    MicrosoftConfigurationModel;
-
-  constructor(
-    model: ModelStatic<MicrosoftConfigurationModel>,
-    blob: Attributes<MicrosoftConfigurationModel>
-  ) {
-    super(MicrosoftConfigurationModel, blob);
-  }
-
-  static async makeNew(
-    connector: ConnectorResource,
-    blob: WithCreationAttributes<MicrosoftConfigurationModel>,
-    transaction: Transaction
-  ): Promise<MicrosoftConfigurationResource> {
-    const config = await MicrosoftConfigurationModel.create(
-      {
-        ...blob,
-        connectorId: connector.id,
-      },
-      { transaction }
+    const resource = await MicrosoftConfigurationResource.fetchByConnectorId(
+      connector.id
     );
-
-    return new this(this.model, config.get());
-  }
-
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await MicrosoftConfigurationModel.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
-      transaction,
-    });
-
-    return new Ok(undefined);
-  }
-}
-
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftConfigurationRootResource
-  extends ReadonlyAttributesType<MicrosoftConfigurationRootModel> {}
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class MicrosoftConfigurationRootResource extends BaseResource<MicrosoftConfigurationRootModel> {
-  static model: ModelStatic<MicrosoftConfigurationRootModel> =
-    MicrosoftConfigurationRootModel;
-
-  constructor(
-    model: ModelStatic<MicrosoftConfigurationRootModel>,
-    blob: Attributes<MicrosoftConfigurationRootModel>
-  ) {
-    super(MicrosoftConfigurationRootModel, blob);
-  }
-
-  static async makeNew(
-    blob: WithCreationAttributes<MicrosoftConfigurationRootModel>
-  ) {
-    const resource = await MicrosoftConfigurationRootModel.create(blob);
-    return new this(this.model, resource.get());
-  }
-
-  static async batchMakeNew(
-    blobs: WithCreationAttributes<MicrosoftConfigurationRootModel>[]
-  ) {
-    const resources = await MicrosoftConfigurationRootModel.bulkCreate(blobs);
-    return resources.map((resource) => new this(this.model, resource.get()));
-  }
-
-  static async batchDelete(resourceIds: string[], transaction?: Transaction) {
-    return MicrosoftConfigurationRootModel.destroy({
-      where: {
-        resourceId: resourceIds,
-      },
-      transaction,
-    });
-  }
-
-  static async listRootsByConnectorId(
-    connectorId: number
-  ): Promise<MicrosoftConfigurationRootResource[]> {
-    const resources = await MicrosoftConfigurationRootModel.findAll({
-      where: {
-        connectorId,
-      },
-    });
-
-    return resources.map((resource) => new this(this.model, resource.get()));
-  }
-
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await MicrosoftConfigurationRootModel.destroy({
-      where: {
-        id: this.id,
-      },
-      transaction,
-    });
-
-    return new Ok(undefined);
+    if (!resource) {
+      throw new Error(
+        `No MicrosoftConfigurationResource found for connector ${connector.id}`
+      );
+    }
+    await resource.delete(transaction);
   }
 }

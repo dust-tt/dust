@@ -1,5 +1,15 @@
 import type { ContentNode } from "@dust-tt/types";
 
+export function splitId(internalId: string): [string, string] {
+  const [resourceType, ...rest] = internalId.split("/");
+
+  if (!resourceType) {
+    throw new Error(`Invalid internalId: ${internalId}`);
+  }
+
+  return [resourceType, rest.join("/")];
+}
+
 export function getSitesRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
@@ -96,9 +106,11 @@ export function getDriveAsContentNode(
 }
 export function getFolderAsContentNode(
   folder: microsoftgraph.DriveItem,
-  driveId: string,
   parentInternalId: string
 ): ContentNode {
+  const [, parentId] = splitId(parentInternalId);
+  const [driveId] = parentId.split("/");
+
   return {
     provider: "microsoft",
     internalId: `folder/${driveId}/${folder.id}`,
