@@ -6,19 +6,55 @@ import type {
   NangoConnectionId,
   Result,
 } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import { Client } from "@microsoft/microsoft-graph-client";
 
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
+import {
+  getSites,
+  getTeams,
+} from "@connectors/connectors/microsoft/lib/graph_api";
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+async function getClient(connectionId: NangoConnectionId) {
+  const nangoConnectionId = connectionId;
+
+  const msAccessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: microsoftConfig.getRequiredNangoMicrosoftConnectorId(),
+    useCache: false,
+  });
+
+  return Client.init({
+    authProvider: (done) => done(null, msAccessToken),
+  });
+}
 
 export async function createMicrosoftConnector(
   dataSourceConfig: DataSourceConfig,
   connectionId: NangoConnectionId
-): Promise<Result<string, Error>> {
-  console.log("createMicrosoftConnector", dataSourceConfig, connectionId);
+) {
+  const client = await getClient(connectionId);
+
+  try {
+    // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
+    await getSites(client);
+    await getTeams(client);
+  } catch (err) {
+    logger.error(
+      {
+        err,
+      },
+      "Error creating Microsoft connector"
+    );
+    return new Err(new Error("Error creating Microsoft connector"));
+  }
 
   const connector = await ConnectorResource.makeNew(
     "microsoft",
