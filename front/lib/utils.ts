@@ -8,15 +8,13 @@ export function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function new_id() {
+export function generateModelSId(): string {
   const u = uuidv4();
   const b = blake3(u);
-  return Buffer.from(b).toString("hex");
-}
-
-export function generateModelSId(): string {
-  const sId = new_id();
-  return sId.slice(0, 10);
+  return Buffer.from(b)
+    .map((x) => alphanumFromByte(x))
+    .toString()
+    .slice(0, 10);
 }
 
 export function client_side_new_id() {
@@ -270,4 +268,28 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
     return sanitizedObj;
   }
   return obj;
+}
+
+/**
+ * Given a byte, returns a character from the set [A-Za-z0-9_-].
+ */
+function alphanumFromByte(byte: number) {
+  // 64 possibilities enable a round modulo on the bytes, guaranteeing uniformity
+  // (otherwise, the modulo would be biased towards the first possibilities)
+  const index = byte % 64;
+  const CHAR_A = 65;
+  const CHAR_a = 97;
+  const CHAR_0 = 48;
+
+  if (index < 26) {
+    return CHAR_A + index;
+  }
+
+  if (index < 52) {
+    return CHAR_a + index - 26;
+  }
+  if (index < 62) {
+    return CHAR_0 + index - 52;
+  }
+  return index === 62 ? 45 : 95;
 }
