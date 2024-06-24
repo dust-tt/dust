@@ -63,6 +63,17 @@ module.exports = {
       tls: false,
       dgram: false,
     };
+
+    const jsRule = config.module.rules.find(
+      (rule) => rule.test && rule.test.toString().includes("js")
+    );
+    if (jsRule) {
+      // Exclude the specific file from optimization
+      jsRule.exclude = [
+        ...(jsRule.exclude || []),
+        /.*/, // Adjust the path to your specific file
+      ];
+    }
     return config;
   },
 };
