@@ -66,6 +66,7 @@ export const ParsedNotionDatabaseSchema = t.type({
     t.literal("workspace"),
   ]),
   parentId: t.string,
+  archived: t.boolean,
 });
 
 export type ParsedNotionDatabase = t.TypeOf<typeof ParsedNotionDatabaseSchema>;

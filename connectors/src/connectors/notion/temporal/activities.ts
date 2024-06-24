@@ -763,6 +763,7 @@ export async function deleteDatabase({
   logger: Logger;
 }) {
   logger.info("Deleting database.");
+  await deleteFromDataSource(dataSourceConfig, `notion-database-${databaseId}`);
   const notionDatabase = await NotionDatabase.findOne({
     where: {
       connectorId,
