@@ -51,19 +51,6 @@ impl From<AnthropicChatMessageRole> for ChatMessageRole {
     }
 }
 
-impl TryFrom<&ChatMessageRole> for AnthropicChatMessageRole {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &ChatMessageRole) -> Result<Self, Self::Error> {
-        match value {
-            ChatMessageRole::Assistant => Ok(AnthropicChatMessageRole::Assistant),
-            ChatMessageRole::System => Ok(AnthropicChatMessageRole::User),
-            ChatMessageRole::User => Ok(AnthropicChatMessageRole::User),
-            ChatMessageRole::Function => Ok(AnthropicChatMessageRole::User),
-        }
-    }
-}
-
 impl ToString for AnthropicChatMessageRole {
     fn to_string(&self) -> String {
         match self {
@@ -198,6 +185,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        // TODO:
         let role = match cm.get_role() {
             Some(r) => AnthropicChatMessageRole::try_from(r)
                 .map_err(|e| anyhow!("Error converting role: {:?}", e)),
@@ -245,7 +233,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 
                 Ok(AnthropicChatMessage {
                     content: content_vec,
-                    role,
+                    role: AnthropicChatMessageRole::Assistant,
                 })
             }
             ChatMessage::Function(function_msg) => {
@@ -263,7 +251,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 
                 Ok(AnthropicChatMessage {
                     content: vec![tool_result],
-                    role,
+                    role: AnthropicChatMessageRole::User,
                 })
             }
             ChatMessage::User(user_msg) => match &user_msg.content {
@@ -277,7 +265,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                         tool_result: None,
                         tool_use: None,
                     }],
-                    role,
+                    role: AnthropicChatMessageRole::User,
                 }),
                 ContentBlock::TextContent(tc) => Ok(AnthropicChatMessage {
                     content: vec![AnthropicContent {
@@ -286,7 +274,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                         tool_result: None,
                         tool_use: None,
                     }],
-                    role,
+                    role: AnthropicChatMessageRole::User,
                 }),
             },
             ChatMessage::System(system_msg) => Ok(AnthropicChatMessage {
@@ -296,7 +284,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                     tool_result: None,
                     tool_use: None,
                 }],
-                role,
+                role: AnthropicChatMessageRole::User,
             }),
         }
     }

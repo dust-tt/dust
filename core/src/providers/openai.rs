@@ -246,7 +246,6 @@ impl From<OpenAIChatMessageRole> for ChatMessageRole {
     }
 }
 
-// TODO:
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: OpenAIChatMessageRole,

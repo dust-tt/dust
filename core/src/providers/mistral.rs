@@ -64,19 +64,6 @@ impl From<MistralChatMessageRole> for ChatMessageRole {
     }
 }
 
-impl TryFrom<&ChatMessageRole> for MistralChatMessageRole {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &ChatMessageRole) -> Result<Self, Self::Error> {
-        match value {
-            ChatMessageRole::Assistant => Ok(MistralChatMessageRole::Assistant),
-            ChatMessageRole::System => Ok(MistralChatMessageRole::System),
-            ChatMessageRole::User => Ok(MistralChatMessageRole::User),
-            ChatMessageRole::Function => Ok(MistralChatMessageRole::Tool),
-        }
-    }
-}
-
 impl ToString for MistralChatMessageRole {
     fn to_string(&self) -> String {
         match self {
@@ -157,15 +144,9 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let mistral_role = match cm.get_role() {
-            Some(r) => MistralChatMessageRole::try_from(r)
-                .map_err(|e| anyhow!("Error converting role: {:?}", e)),
-            None => Err(anyhow!("Role is required.")),
-        }?;
-
         match cm {
             ChatMessage::Assistant(assistant_msg) => Ok(MistralChatMessage {
-                role: mistral_role,
+                role: MistralChatMessageRole::Assistant,
                 content: assistant_msg.content.clone(),
                 tool_calls: match assistant_msg.function_calls.as_ref() {
                     Some(fc) => Some(
@@ -178,13 +159,13 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 tool_call_id: None,
             }),
             ChatMessage::Function(function_msg) => Ok(MistralChatMessage {
-                role: mistral_role,
+                role: MistralChatMessageRole::Tool,
                 content: Some(function_msg.content.clone()),
                 tool_calls: None,
                 tool_call_id: Some(sanitize_tool_call_id(&function_msg.function_call_id)),
             }),
             ChatMessage::User(user_msg) => Ok(MistralChatMessage {
-                role: mistral_role,
+                role: MistralChatMessageRole::User,
                 content: match &user_msg.content {
                     ContentBlock::ImageContent(_) => {
                         Err(anyhow!("Vision is not supported for Mistral."))?
@@ -196,7 +177,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 tool_call_id: None,
             }),
             ChatMessage::System(system_msg) => Ok(MistralChatMessage {
-                role: mistral_role,
+                role: MistralChatMessageRole::System,
                 content: Some(system_msg.content.clone()),
                 tool_calls: None,
                 tool_call_id: None,
