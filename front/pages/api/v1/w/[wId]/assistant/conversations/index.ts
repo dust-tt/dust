@@ -32,11 +32,6 @@ export type PostConversationsResponseBody = {
  * /api/v1/w/{wId}/assistant/conversations:
  *   post:
  *     description: Create a new conversation.
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             $ref: "#/components/schemas/PostConversationsRequestBody"
  *     responses:
  *       200:
  *         description: The conversation.

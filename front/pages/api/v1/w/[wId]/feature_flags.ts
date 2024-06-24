@@ -16,10 +16,6 @@ export type WorkspaceFeatureFlagsResponseBody = {
  *     responses:
  *       200:
  *         description: The feature flags for the workspace.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/WorkspaceFeatureFlagsResponseBody'
  */
 async function handler(
   req: NextApiRequest,
