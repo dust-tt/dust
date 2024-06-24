@@ -30,7 +30,7 @@ export const DataTableExample = () => {
       name="Test table"
       enableCopy={true}
       showLimit={3}
-      downLoadButton={downloadButton}
+      downloadButton={downloadButton}
     />
   );
 };
