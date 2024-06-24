@@ -228,12 +228,13 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }),
     };
 
-    const prompt = await constructPromptMultiActions(
-      auth,
+    const prompt = await constructPromptMultiActions(auth, {
       userMessage,
       agentConfiguration,
-      "Process the retrieved data to extract structured information based on the provided schema."
-    );
+      fallbackPrompt:
+        "Process the retrieved data to extract structured information based on the provided schema.",
+      model: supportedModel,
+    });
 
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-process"].config

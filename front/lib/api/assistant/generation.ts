@@ -4,6 +4,7 @@ import type {
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
+  ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
@@ -16,7 +17,6 @@ import {
   isContentFragmentType,
   isRetrievalConfiguration,
   isUserMessageType,
-  metaPromptForProvider,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -299,16 +299,24 @@ export async function renderConversationForModelMultiActions({
 
 export async function constructPromptMultiActions(
   auth: Authenticator,
-  userMessage: UserMessageType,
-  configuration: AgentConfigurationType,
-  fallbackPrompt?: string
+  {
+    userMessage,
+    agentConfiguration,
+    fallbackPrompt,
+    model,
+  }: {
+    userMessage: UserMessageType;
+    agentConfiguration: AgentConfigurationType;
+    fallbackPrompt?: string;
+    model: ModelConfigurationType;
+  }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
   const owner = auth.workspace();
 
   // CONTEXT section
   let context = "CONTEXT:\n";
-  context += `assistant: @${configuration.name}\n`;
+  context += `assistant: @${agentConfiguration.name}\n`;
   context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
@@ -316,8 +324,8 @@ export async function constructPromptMultiActions(
 
   // INSTRUCTIONS section
   let instructions = "INSTRUCTIONS:\n";
-  if (configuration.instructions) {
-    instructions += `${configuration.instructions}\n`;
+  if (agentConfiguration.instructions) {
+    instructions += `${agentConfiguration.instructions}\n`;
   } else if (fallbackPrompt) {
     instructions += `${fallbackPrompt}\n`;
   }
@@ -352,27 +360,30 @@ export async function constructPromptMultiActions(
   }
 
   // ADDITIONAL INSTRUCTIONS section
-  let additionalInstructions = "ADDITIONAL INSTRUCTIONS:\n";
-  let hasAdditionalInstructions = false;
+  let additionalInstructions = "";
 
-  const hasRetrievalAction = configuration.actions.some((action) =>
+  const hasRetrievalAction = agentConfiguration.actions.some((action) =>
     isRetrievalConfiguration(action)
   );
   if (hasRetrievalAction) {
     additionalInstructions += `${retrievalMetaPromptMutiActions()}\n`;
-    hasAdditionalInstructions = true;
   }
-  const providerMetaPrompt = metaPromptForProvider(
-    configuration.model.providerId
-  );
+
+  const providerMetaPrompt = model.metaPrompt;
   if (providerMetaPrompt) {
     additionalInstructions += `\n${providerMetaPrompt}\n`;
-    hasAdditionalInstructions = true;
+  }
+
+  if (agentConfiguration.actions.length) {
+    const toolMetaPrompt = model.toolUseMetaPrompt;
+    if (toolMetaPrompt) {
+      additionalInstructions += `\n${toolMetaPrompt}\n`;
+    }
   }
 
   let prompt = `${context}\n${instructions}`;
-  if (hasAdditionalInstructions) {
-    prompt += `\n${additionalInstructions}`;
+  if (additionalInstructions) {
+    prompt += `\nADDITIONAL INSTRUCTIONS:\n${additionalInstructions}`;
   }
   return prompt;
 }
