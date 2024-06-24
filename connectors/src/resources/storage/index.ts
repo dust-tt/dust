@@ -13,7 +13,7 @@ const acquireAttempts = new WeakMap();
 new Sequelize(dbConfig.getRequiredDatabaseURI(), {
   pool: {
     // Default is 5.
-    max: isDevelopment() ? 5 : 30,
+    max: isDevelopment() ? 5 : 10,
   },
   logging: false,
   hooks: {
