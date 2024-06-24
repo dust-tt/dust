@@ -38,10 +38,12 @@ export function metaPromptForProvider(
       return "When using tools, generate valid and properly escaped JSON arguments.";
     case "anthropic":
       // see https://docs.anthropic.com/en/docs/tool-use#tool-use-best-practices-and-limitations
-      return (
-        "Do not reflect on the quality of the returned search results in your response. " +
-        "Be extremely concise in your thinking phases."
-      );
+      return `Do not reflect on the quality of the returned search results in your response.
+<tools_instructions>
+When using tools to answer the user's question, the assistant should follow these guidelines:
+
+1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
+</tools_instructions>`;
     case "mistral":
       return null;
     case "google_ai_studio":
@@ -206,6 +208,48 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
 };
 
+const ANTHROPIC_DELIMITERS_CONFIGURATION = {
+  incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
+  delimiters: [
+    {
+      openingPattern: "<thinking>",
+      closingPattern: "</thinking>",
+      isChainOfThought: true,
+      swallow: false,
+    },
+    {
+      openingPattern: "<search_quality_reflection>",
+      closingPattern: "</search_quality_reflection>",
+      isChainOfThought: true,
+      swallow: false,
+    },
+    {
+      openingPattern: "<reflecting>",
+      closingPattern: "</reflecting>",
+      isChainOfThought: true,
+      swallow: false,
+    },
+    {
+      openingPattern: "<search_quality_score>",
+      closingPattern: "</search_quality_score>",
+      isChainOfThought: true,
+      swallow: true,
+    },
+    {
+      openingPattern: "<result>",
+      closingPattern: "</result>",
+      isChainOfThought: false,
+      swallow: false,
+    },
+    {
+      openingPattern: "<response>",
+      closingPattern: "</response>",
+      isChainOfThought: false,
+      swallow: false,
+    },
+  ],
+};
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -218,41 +262,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
   shortDescription: "Anthropic's powerful model.",
   isLegacy: false,
-  delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
-    delimiters: [
-      {
-        openingPattern: "<thinking>",
-        closingPattern: "</thinking>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_reflection>",
-        closingPattern: "</search_quality_reflection>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<reflecting>",
-        closingPattern: "</reflecting>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_score>",
-        closingPattern: "</search_quality_score>",
-        isChainOfThought: true,
-        swallow: true,
-      },
-      {
-        openingPattern: "<result>",
-        closingPattern: "</result>",
-        isChainOfThought: false,
-        swallow: false,
-      },
-    ],
-  },
+  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -266,41 +276,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic latest Claude 3.5 Sonnet model, their most intelligent model.",
   shortDescription: "Anthropic's smartest model.",
   isLegacy: false,
-  delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
-    delimiters: [
-      {
-        openingPattern: "<thinking>",
-        closingPattern: "</thinking>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_reflection>",
-        closingPattern: "</search_quality_reflection>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<reflecting>",
-        closingPattern: "</reflecting>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_score>",
-        closingPattern: "</search_quality_score>",
-        isChainOfThought: true,
-        swallow: true,
-      },
-      {
-        openingPattern: "<result>",
-        closingPattern: "</result>",
-        isChainOfThought: false,
-        swallow: false,
-      },
-    ],
-  },
+  delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
