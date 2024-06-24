@@ -5,6 +5,8 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import {
   MicrosoftConfigurationModel,
   MicrosoftConfigurationRootModel,
+  MicrosoftDeltaModel,
+  MicrosoftResourceModel,
 } from "@connectors/lib/models/microsoft";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
@@ -57,6 +59,27 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await MicrosoftResourceModel.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+
+    await MicrosoftDeltaModel.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+
+    await MicrosoftConfigurationRootModel.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+
     await MicrosoftConfigurationModel.destroy({
       where: {
         connectorId: this.connectorId,
