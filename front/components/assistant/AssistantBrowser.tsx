@@ -133,7 +133,7 @@ export function AssistantBrowser({
                 <Button
                   variant="primary"
                   icon={PlusIcon}
-                  label="Create An Assistant"
+                  label="Create an Assistant"
                   size="sm"
                 />
               </div>
@@ -141,7 +141,7 @@ export function AssistantBrowser({
                 <Button
                   variant="primary"
                   icon={PlusIcon}
-                  label="Create An Assistant"
+                  label="Create an Assistant"
                   labelVisible={false}
                   size="sm"
                   className="sm:hidden"

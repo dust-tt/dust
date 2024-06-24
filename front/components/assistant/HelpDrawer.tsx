@@ -58,9 +58,9 @@ function LinksList({
 }) {
   return (
     <Item.List>
-      {title && <Item.SectionHeader label={title} />}
+      {title && <Item.SectionHeader label={title} variant="secondary" />}
       {linksList.map((link, index) => (
-        <Item.Navigation
+        <Item.Link
           icon={link.icon}
           label={link.title}
           href={link.href}
@@ -203,7 +203,8 @@ export function HelpDrawer({
             owner={owner}
             onSubmit={handleHelpSubmit}
             conversationId={null}
-            actions={[]}
+            hideAttachment={true}
+            hideQuickActions={true}
             disableAutoFocus={true}
           />
         </div>
