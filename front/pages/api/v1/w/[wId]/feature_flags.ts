@@ -10,13 +10,33 @@ export type WorkspaceFeatureFlagsResponseBody = {
 
 /**
  * @swagger
- * /api/feature_flags:
+ * /api/v1/w/{wId}/feature_flags:
  *   get:
- *     description: Get the feature flags for the workspace.
+ *     summary: Get the feature flags for the workspace
+ *     description: Get the feature flags for the workspace identified by {wId}.
+ *     tags:
+ *       - Feature Flags
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: The feature flags for the workspace.
+ *         description: Feature flags for the workspace
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feature_flags:
+ *                   type: array
+ *                   items:
+ *                     type: string
  */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<WorkspaceFeatureFlagsResponseBody>>
