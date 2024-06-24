@@ -10,7 +10,10 @@ const SvgAi21 = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <g clipPath="url(#Ai21_svg__a)">
-      <rect width={24} height={24} fill="currentColor" rx={4} />
+      <path
+        fill="currentColor"
+        d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4Z"
+      />
       <path
         fill="#fff"
         fillRule="evenodd"

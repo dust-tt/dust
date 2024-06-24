@@ -11,13 +11,11 @@ const SvgClipboardCheck = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M17.5 6 14 9.5l-2-2L10.5 9l3.5 3.5 5-5L17.5 6Z"
+      d="M16 16v5H3V7.992L8 8V3h13l-.003 13H16Zm-2 0H8v-6H5v9h9v-3Zm4.997-2L19 5h-9v9h8.997Z"
     />
     <path
       fill="currentColor"
-      fillRule="evenodd"
-      d="M17 22v-5h4.997L22 2H7v5c-.495 0-.99.002-1.485.004-1.172.004-2.344.008-3.515-.011V22h15ZM7 17h8v3H4V9h3v8ZM9 4h11l-.003 11H9V4Z"
-      clipRule="evenodd"
+      d="M16.5 7 14 9.5 12.5 8 11 9.5l3 3 4-4L16.5 7Z"
     />
   </svg>
 );
