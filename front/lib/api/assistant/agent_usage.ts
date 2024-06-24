@@ -198,6 +198,11 @@ export async function agentMentionsUserCount(
             as: "userMessage",
             attributes: [], // No attributes are necessary here for grouping
             required: true,
+            where: {
+              userId: {
+                [Op.not]: null,
+              },
+            },
           },
           {
             model: Conversation,
@@ -246,6 +251,11 @@ export async function agentMentionsCount(
             as: "userMessage",
             attributes: [],
             required: true,
+            where: {
+              userId: {
+                [Op.not]: null,
+              },
+            },
           },
           {
             model: Conversation,
