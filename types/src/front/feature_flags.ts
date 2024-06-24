@@ -3,7 +3,6 @@ export const WHITELISTABLE_FEATURES = [
   "usage_data_api",
   "okta_enterprise_connection",
   "labs_transcripts",
-  "websearch_action",
   "document_tracker",
   "microsoft_connector",
 ] as const;
