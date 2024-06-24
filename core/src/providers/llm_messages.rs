@@ -28,9 +28,9 @@ pub struct ImageContent {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum ContentBlock {
+    ImageContent(ImageContent),
     Text(String),
     TextContent(TextContent),
-    ImageContent(ImageContent),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -73,6 +73,7 @@ pub struct AssistantChatMessage {
 pub struct FunctionChatMessage {
     pub content: String,
     pub function_call_id: String,
+    pub name: Option<String>,
     pub role: ChatMessageRole,
 }
 
