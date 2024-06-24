@@ -238,6 +238,12 @@ const ANTHROPIC_DELIMITERS_CONFIGURATION = {
   ],
 };
 
+const ANTHROPIC_TOOL_USE_META_PROMPT = `<tools_instructions>
+When using tools to answer the user's question, the assistant should follow these guidelines:
+
+1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
+</tools_instructions>`;
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -251,8 +257,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's powerful model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
-  toolUseMetaPrompt:
-    "Do not reflect on the quality of the returned search results in your response.",
+  toolUseMetaPrompt: `Do not reflect on the quality of the returned search results in your response.\n${ANTHROPIC_TOOL_USE_META_PROMPT}`,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -267,11 +272,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's smartest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
-  toolUseMetaPrompt: `<tools_instructions>
-When using tools to answer the user's question, the assistant should follow these guidelines:
-
-1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
-</tools_instructions>`,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -285,6 +286,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
   shortDescription: "Anthropic's quick model.",
   isLegacy: false,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
