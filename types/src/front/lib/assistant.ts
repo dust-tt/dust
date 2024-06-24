@@ -1,6 +1,5 @@
 import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
-import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
 
 /**
@@ -29,29 +28,6 @@ export const ModelProviderIdCodec =
 export const EmbeddingProviderCodec = ioTsEnum<
   (typeof EMBEDDING_PROVIDER_IDS)[number]
 >(EMBEDDING_PROVIDER_IDS);
-
-export function metaPromptForProvider(
-  providerId: ModelProviderIdType
-): string | null {
-  switch (providerId) {
-    case "openai":
-      return "When using tools, generate valid and properly escaped JSON arguments.";
-    case "anthropic":
-      // see https://docs.anthropic.com/en/docs/tool-use#tool-use-best-practices-and-limitations
-      return `Do not reflect on the quality of the returned search results in your response.
-<tools_instructions>
-When using tools to answer the user's question, the assistant should follow these guidelines:
-
-1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
-</tools_instructions>`;
-    case "mistral":
-      return null;
-    case "google_ai_studio":
-      return null;
-    default:
-      assertNever(providerId);
-  }
-}
 
 export function isProviderWhitelisted(
   owner: WorkspaceType,
@@ -168,7 +144,16 @@ export type ModelConfigurationType = {
     // the next event before emitting tokens.
     incompleteDelimiterRegex?: RegExp;
   };
+
+  // This meta-prompt is injected into the assistant's system instructions every time.
+  metaPrompt?: string;
+
+  // This meta-prompt is injected into the assistant's system instructions if the assistant is in a tool-use context.
+  toolUseMetaPrompt?: string;
 };
+
+const OPEN_AI_TOOL_USE_META_PROMPT =
+  "When using tools, generate valid and properly escaped JSON arguments.";
 
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -181,6 +166,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT-4 Turbo model for complex tasks (128k context).",
   shortDescription: "OpenAI's most capable model.",
   isLegacy: false,
+  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -193,6 +179,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT-4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
+  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
 };
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -206,6 +193,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's GPT 3.5 Turbo model, cost-effective and high throughput (16k context).",
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
+  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -250,6 +238,12 @@ const ANTHROPIC_DELIMITERS_CONFIGURATION = {
   ],
 };
 
+const ANTHROPIC_TOOL_USE_META_PROMPT = `<tools_instructions>
+When using tools to answer the user's question, the assistant should follow these guidelines:
+
+1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
+</tools_instructions>`;
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -262,6 +256,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's largest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  toolUseMetaPrompt: `Do not reflect on the quality of the returned search results in your response.\n${ANTHROPIC_TOOL_USE_META_PROMPT}`,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -275,6 +270,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's latest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -288,6 +284,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",

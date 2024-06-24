@@ -300,13 +300,6 @@ export async function* runMultiActionsAgent(
   | AgentActionsEvent
   | AgentChainOfThoughtEvent
 > {
-  const prompt = await constructPromptMultiActions(
-    auth,
-    userMessage,
-    agentConfiguration,
-    "You are a conversational assistant with access to function calling."
-  );
-
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
       m.modelId === agentConfiguration.model.modelId &&
@@ -328,6 +321,20 @@ export async function* runMultiActionsAgent(
     };
     return;
   }
+
+  let fallbackPrompt = "You are a conversational assistant";
+  if (agentConfiguration.actions.length) {
+    fallbackPrompt += " with access to tool use.";
+  } else {
+    fallbackPrompt += ".";
+  }
+
+  const prompt = await constructPromptMultiActions(auth, {
+    userMessage,
+    agentConfiguration,
+    fallbackPrompt,
+    model,
+  });
 
   const MIN_GENERATION_TOKENS = 2048;
 
