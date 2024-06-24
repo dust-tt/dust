@@ -1,4 +1,5 @@
 import type { LightAgentConfigurationType } from "@dust-tt/types";
+import assert from "assert";
 import { hash as blake3 } from "blake3";
 import { v4 as uuidv4 } from "uuid";
 
@@ -8,15 +9,13 @@ export function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function new_id() {
+export function generateModelSId(): string {
   const u = uuidv4();
   const b = blake3(u);
-  return Buffer.from(b).toString("hex");
-}
-
-export function generateModelSId(): string {
-  const sId = new_id();
-  return sId.slice(0, 10);
+  return Buffer.from(b)
+    .map((x) => alphanumFromByte(x))
+    .toString()
+    .slice(0, 10);
 }
 
 export function client_side_new_id() {
@@ -271,3 +270,60 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
   }
   return obj;
 }
+
+/**
+ * Given a byte, returns a character from the set [A-Za-z0-9_-].
+ */
+function alphanumFromByte(byte: number) {
+  // 64 possibilities enable a round modulo on the bytes, guaranteeing uniformity
+  // (otherwise, the modulo would be biased towards the first possibilities)
+  const index = byte % 64;
+  const CHAR_A = 65;
+  const CHAR_a = 97;
+  const CHAR_0 = 48;
+
+  if (index < 26) {
+    return CHAR_A + index;
+  }
+
+  if (index < 52) {
+    return CHAR_a + index - 26;
+  }
+  if (index < 62) {
+    return CHAR_0 + index - 52;
+  }
+  return index === 62 ? 45 : 95;
+}
+
+// TO BE DELETED BEFORE MERGING
+function checkUniform() {
+  const sIds = new Set<string>();
+  for (let i = 0; i < 100000; i++) {
+    sIds.add(generateModelSId());
+  }
+  // quick check just for the sake of it
+  assert(sIds.size === 100000);
+
+  // now the real uniformity check
+  const sIdArray = Array.from(sIds);
+  const charMap: Record<string, number> = {};
+  for (const sId of sIdArray) {
+    for (const char of sId) {
+      if (!charMap[char]) {
+        charMap[char] = 1;
+      } else {
+        charMap[char]++;
+      }
+    }
+  }
+
+  console.log(charMap);
+  for (const char in charMap) {
+    assert(
+      charMap[char] > ((100_000 * 12) / 64) * 0.98 &&
+        charMap[char] < ((100_000 * 12) / 64) * 1.02
+    );
+  }
+}
+
+checkUniform();

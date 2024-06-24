@@ -1,7 +1,6 @@
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { new_id } from "@app/lib/utils";
 
 async function main() {
   const users = await User.findAll();
@@ -24,6 +23,7 @@ async function main() {
           });
 
           if (!m) {
+            // @ts-expect-error new_id deprecated after #5755
             const uId = new_id();
 
             const w = await Workspace.create({

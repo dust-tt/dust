@@ -1,22 +1,22 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-
 import type { KeyType, ModelId } from "@dust-tt/types";
 import type { LightWorkspaceType, Result } from "@dust-tt/types";
 import { formatUserFullName, redactString } from "@dust-tt/types";
+import { hash as blake3 } from "blake3";
 import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { new_id } from "@app/lib/utils";
 
 export interface KeyAuthType {
   id: ModelId;
@@ -37,7 +37,8 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async makeNew(blob: Omit<CreationAttributes<KeyModel>, "secret">) {
-    const secret = `sk-${new_id().slice(0, 32)}`;
+    const new_id = Buffer.from(blake3(uuidv4())).toString("hex");
+    const secret = `sk-${new_id.slice(0, 32)}`;
 
     const key = await KeyResource.model.create({
       ...blob,
