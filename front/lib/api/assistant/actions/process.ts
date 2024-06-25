@@ -234,6 +234,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       fallbackPrompt:
         "Process the retrieved data to extract structured information based on the provided schema.",
       model: supportedModel,
+      hasAvailableActions: false,
     });
 
     const config = cloneBaseConfig(

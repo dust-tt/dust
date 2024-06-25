@@ -304,11 +304,13 @@ export async function constructPromptMultiActions(
     agentConfiguration,
     fallbackPrompt,
     model,
+    hasAvailableActions,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
     fallbackPrompt?: string;
     model: ModelConfigurationType;
+    hasAvailableActions: boolean;
   }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -380,7 +382,7 @@ export async function constructPromptMultiActions(
     additionalInstructions += `\n${providerMetaPrompt}\n`;
   }
 
-  if (agentConfiguration.actions.length) {
+  if (hasAvailableActions) {
     const toolMetaPrompt = model.toolUseMetaPrompt;
     if (toolMetaPrompt) {
       additionalInstructions += `\n${toolMetaPrompt}\n`;

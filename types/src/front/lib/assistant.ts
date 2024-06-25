@@ -242,6 +242,7 @@ const ANTHROPIC_TOOL_USE_META_PROMPT = `<tools_instructions>
 When using tools to answer the user's question, the assistant should follow these guidelines:
 
 1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
+2. Do not reflect on the quality of the returned search results in the response.
 </tools_instructions>`;
 
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -256,7 +257,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's largest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
-  toolUseMetaPrompt: `Do not reflect on the quality of the returned search results in your response.\n${ANTHROPIC_TOOL_USE_META_PROMPT}`,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
