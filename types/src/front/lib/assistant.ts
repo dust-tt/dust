@@ -241,8 +241,9 @@ const ANTHROPIC_DELIMITERS_CONFIGURATION = {
 const ANTHROPIC_TOOL_USE_META_PROMPT = `<tools_instructions>
 When using tools to answer the user's question, the assistant should follow these guidelines:
 
-1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. Never emit any text beyond this thinking sentence before using the tool.
+1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. The <thinking> section must never be longer than a single sentence. It is forbidden to emit any text outside of <thinking> tags before using a tool.
 2. Do not reflect on the quality of the returned search results in the response.
+3. The response to the user must be wrapped in <response> tags.
 </tools_instructions>`;
 
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {

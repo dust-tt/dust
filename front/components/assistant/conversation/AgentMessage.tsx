@@ -199,7 +199,7 @@ export function AgentMessage({
             return {
               ...m,
               content: "",
-              chainOfThoughts: [event.chainOfThought],
+              chainOfThoughts: [event.chainOfThought, ""],
             };
           }
           // Otherwise, we insert an empty COT so that any future COT (if any) gets appended to that one.
@@ -491,7 +491,7 @@ export function AgentMessage({
 
     const chainOfThought = agentMessage.chainOfThoughts
       .filter((cot) => !!cot) // Remove empty chain of thoughts.
-      .join("");
+      .join("\n");
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />
