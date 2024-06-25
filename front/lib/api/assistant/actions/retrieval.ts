@@ -3,7 +3,6 @@ import type {
   AgentConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
-  ModelConfigurationType,
   ModelId,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
@@ -22,7 +21,6 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   isDevelopment,
-  isRetrievalConfiguration,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
