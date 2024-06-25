@@ -1,10 +1,8 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { rateLimiter } from "@dust-tt/types";
+import { DustAPI, rateLimiter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import OpenAI from "openai";
 
-import { getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -24,29 +22,34 @@ async function generateCode({
   prompt: string;
 }) {
   console.log("Will talk to Openai", instructions, prompt);
-  const openai = new OpenAI({
-    apiKey: process.env["DUST_MANAGED_OPENAI_API_KEY"], // This is the default and can be omitted
-  });
-  console.log("Will talk to Openai");
-  const chatCompletion = await openai.chat.completions.create({
-    messages: [
-      {
-        role: "system",
-        content: instructions,
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-    model: "gpt-4",
-    temperature: 0.2,
-  });
 
-  console.log("Got response from Openai");
-  console.log(JSON.stringify(chatCompletion, null, 2));
+  console.log("Will talk to Dust");
 
-  const markdownText = chatCompletion.choices[0].message.content || "";
+  const prodCredentials = await prodAPICredentialsForOwner(null);
+  const api = new DustAPI(prodCredentials, logger);
+  const result = await api.runApp(
+    {
+      workspaceId: "0ec9852c2f",
+      appId: "L-3r-eQ0d9",
+      appHash:
+        "7eff7dd3add34020e74423f08b3388daed2db0318cc4f6e7c4ba92c457142d64",
+    },
+    {
+      MODEL: {
+        provider_id: "anthropic",
+        model_id: "claude-3-5-sonnet-20240620",
+        function_call: null,
+        use_cache: true,
+      },
+    },
+    [{ instructions: instructions, prompt: prompt }]
+  );
+  if (result.isErr()) {
+    throw new Error("Failed to generate code" + result.error.message);
+  }
+  const markdownText = result.value.results[0][0].value.message.content;
+  console.log("~~~~~~~ markdown text", markdownText);
+
   const code = markdownText.split("```")[1] || markdownText;
   const lines = code.split("\n");
   if (lines.length > 0) {
@@ -75,22 +78,10 @@ async function handler(
     WithAPIErrorReponse<PostUserMetadataResponseBody | GetCodeResponseBody>
   >
 ): Promise<void> {
-  const session = await getSession(req, res);
-
   // This functions retrieves the full user including all workspaces.
-  const user = await getUserFromSession(session);
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "The user was not found.",
-      },
-    });
-  }
 
   const remamining = await rateLimiter({
-    key: `code-interpreter-${user.id}`,
+    key: `code-interpreter}`,
     maxPerTimeframe: 100,
     timeframeSeconds: 60 * 30,
     logger: logger,
@@ -101,25 +92,6 @@ async function handler(
       api_error: {
         type: "rate_limit_error",
         message: "You have exceeded the rate limit.",
-      },
-    });
-  }
-
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "The user was not found.",
-      },
-    });
-  }
-  if (!user.email.includes("@dust.tt")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "user_not_found",
-        message: "Only Dust users can access this endpoint.",
       },
     });
   }
