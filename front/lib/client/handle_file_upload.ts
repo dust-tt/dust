@@ -1,18 +1,20 @@
-import type { ContentFragmentContentType, Result } from "@dust-tt/types";
+import type { Result, SupportedContentFragmentType } from "@dust-tt/types";
 import {
-  isSupportedTextContentFormat,
-  supportedTextFormat,
+  isSupportedTextContentFragmentType,
+  supportedTextContentFragment,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.mjs`;
 
-export async function handleFileUploadToText(
-  file: File
-): Promise<
+export async function handleFileUploadToText(file: File): Promise<
   Result<
-    { title: string; content: string; contentType: ContentFragmentContentType },
+    {
+      title: string;
+      content: string;
+      contentType: SupportedContentFragmentType;
+    },
     Error
   >
 > {
@@ -21,7 +23,7 @@ export async function handleFileUploadToText(
       const content = e.target?.result;
       if (content && typeof content === "string") {
         const contentType = file.type;
-        if (!isSupportedTextContentFormat(contentType)) {
+        if (!isSupportedTextContentFragmentType(contentType)) {
           return resolve(new Err(new Error("Unsupported file type.")));
         }
         return resolve(
@@ -70,7 +72,7 @@ export async function handleFileUploadToText(
           text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
         }
         const contentType = file.type;
-        if (!isSupportedTextContentFormat(contentType)) {
+        if (!isSupportedTextContentFragmentType(contentType)) {
           return resolve(new Err(new Error("Unsupported file type.")));
         }
         return resolve(
@@ -95,7 +97,7 @@ export async function handleFileUploadToText(
         const fileReader = new FileReader();
         fileReader.onloadend = handleFileLoadedPDF;
         fileReader.readAsArrayBuffer(file);
-      } else if (isSupportedTextContentFormat(file.type)) {
+      } else if (isSupportedTextContentFragmentType(file.type)) {
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
         fileData.readAsText(file);
@@ -104,7 +106,7 @@ export async function handleFileUploadToText(
           new Err(
             new Error(
               "File type not supported. Supported file types: " +
-                supportedTextFormat.join(", ")
+                supportedTextContentFragment.join(", ")
             )
           )
         );

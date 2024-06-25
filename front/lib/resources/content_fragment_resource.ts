@@ -253,7 +253,7 @@ export async function storeContentFragmentText({
 
   await getPrivateUploadBucket().uploadRawContentToBucket({
     content,
-    contentType: contentType,
+    contentType,
     filePath,
   });
 

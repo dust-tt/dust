@@ -1,11 +1,11 @@
 import type {
-  ContentFragmentContentType,
   ContentFragmentType,
   ConversationType,
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
+  SupportedContentFragmentType,
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
@@ -42,7 +42,7 @@ export type ContentFragmentInput = {
 };
 
 export type UploadedContentFragment = ContentFragmentInput & {
-  contentType: ContentFragmentContentType;
+  contentType: SupportedContentFragmentType;
 };
 
 export function createPlaceholderUserMessage({

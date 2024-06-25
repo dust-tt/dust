@@ -144,23 +144,23 @@ export type ContentFragmentContextType = {
 
 // TODO (26/06/2024 jules): remove "slack_thread_content" and "file_attachment"
 // after backfilling data
-export const supportedTextFormat = [
+export const supportedTextContentFragment = [
   "text/plain",
   "text/csv",
   "text/markdown",
   "application/pdf",
-  "slack_thread_content",
   "file_attachment",
 ] as const;
 
-export type SupportedTextFormatType = (typeof supportedTextFormat)[number];
+export type SupportedTextContentFragmentType = (typeof supportedTextContentFragment)[number];
 
 export const supportedContentFragment = [
-  ...supportedTextFormat,
+  ...supportedTextContentFragment,
+  "slack_thread_content",
   "dust-application/slack",
 ] as const;
 
-export type ContentFragmentContentType =
+export type SupportedContentFragmentType =
   (typeof supportedContentFragment)[number];
 
 export type ContentFragmentType = {
@@ -174,7 +174,7 @@ export type ContentFragmentType = {
   textUrl: string;
   textBytes: number | null;
   title: string;
-  contentType: ContentFragmentContentType;
+  contentType: SupportedContentFragmentType;
   context: ContentFragmentContextType;
 };
 
@@ -184,21 +184,21 @@ export function isContentFragmentType(
   return arg.type === "content_fragment";
 }
 
-export function isSupportedContentFormat(
+export function isSupportedContentFragmentType(
   format: unknown
-): format is ContentFragmentContentType {
+): format is SupportedContentFragmentType {
   return (
     typeof format === "string" &&
-    supportedContentFragment.includes(format as ContentFragmentContentType)
+    supportedContentFragment.includes(format as SupportedContentFragmentType)
   );
 }
 
-export function isSupportedTextContentFormat(
+export function isSupportedTextContentFragmentType(
   format: unknown
-): format is SupportedTextFormatType {
+): format is SupportedTextContentFragmentType {
   return (
     typeof format === "string" &&
-    supportedTextFormat.includes(format as SupportedTextFormatType)
+    supportedTextContentFragment.includes(format as SupportedTextContentFragmentType)
   );
 }
 /**

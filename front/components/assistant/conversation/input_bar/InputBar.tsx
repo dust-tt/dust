@@ -4,10 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
-import {
-  isSupportedContentFormat,
-  supportedContentFragment,
-} from "@dust-tt/types";
+import { isSupportedContentFragmentType } from "@dust-tt/types";
 import {
   useCallback,
   useContext,
@@ -206,13 +203,11 @@ export function AssistantInputBar({
                   "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
               });
               return;
-            } else if (!isSupportedContentFormat(file.type)) {
-              const prettyfiedSupportedFormats =
-                supportedContentFragment.join(", ");
+            } else if (!isSupportedContentFragmentType(file.type)) {
               sendNotification({
                 type: "error",
                 title: "Error uploading file.",
-                description: `Unsupported file format, please use any of the following: ${prettyfiedSupportedFormats}`,
+                description: `Unsupported file format.`,
               });
               return;
             }
@@ -423,7 +418,7 @@ export function FixedAssistantInputBar({
 
 function isMarkdownFile(file: File): boolean {
   if (file.type === "") {
-    const fileExtension = file.name.split(".").pop()?.toLowerCase();
+    const fileExtension = file.name.split(".").at(-1)?.toLowerCase();
     // Check if the file extension corresponds to a markdown file
     return fileExtension === "md" || fileExtension === "markdown";
   }

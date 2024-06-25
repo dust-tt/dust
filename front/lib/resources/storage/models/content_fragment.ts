@@ -1,4 +1,4 @@
-import type { ContentFragmentContentType } from "@dust-tt/types";
+import type { SupportedContentFragmentType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -19,7 +19,7 @@ export class ContentFragmentModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare title: string;
-  declare contentType: ContentFragmentContentType;
+  declare contentType: SupportedContentFragmentType;
   declare sourceUrl: string | null; // GCS (upload) or Slack or ...
 
   // The field below should be set for all fragments that are converted to text
