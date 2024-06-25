@@ -7,7 +7,7 @@ import {
 import React, { useState } from "react";
 
 import { XCircle } from "@sparkle/icons/solid";
-import { Citation, IconButton, XMarkIcon } from "@sparkle/index";
+import { Citation, IconButton } from "@sparkle/index";
 
 interface ZoomableImageCitationWrapperProps {
   alt: string;
