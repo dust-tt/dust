@@ -103,15 +103,23 @@ async function handler(
     });
   }
 
-  const { filePath, downloadUrl } = fileAttachmentLocation({
-    workspaceId: owner.sId,
-    conversationId,
-    messageId,
-    contentFormat: "raw",
-  });
-
   switch (req.method) {
-    case "GET":
+    case "GET": {
+      let contentFormat: "raw" | "text" = "raw";
+      if (
+        typeof req.query.format === "string" &&
+        ["raw", "text"].includes(req.query.format)
+      ) {
+        contentFormat = req.query.format as "raw" | "text";
+      }
+
+      const { filePath } = fileAttachmentLocation({
+        workspaceId: owner.sId,
+        conversationId,
+        messageId,
+        contentFormat,
+      });
+
       // redirect to a signed URL
       const [url] = await privateUploadGcs.file(filePath).getSignedUrl({
         version: "v4",
@@ -119,11 +127,22 @@ async function handler(
         // since we redirect, the use is immediate so expiry can be short
         expires: Date.now() + 10 * 1000,
         // remove special chars
-        promptSaveAs: message.title.replace(/[^\w\s.-]/gi, ""),
+        promptSaveAs:
+          message.title.replace(/[^\w\s.-]/gi, "") +
+          (contentFormat === "text" ? ".txt" : ""),
       });
+
       res.redirect(url);
       return;
-    case "POST":
+    }
+    case "POST": {
+      const { filePath, downloadUrl } = fileAttachmentLocation({
+        workspaceId: owner.sId,
+        conversationId,
+        messageId,
+        contentFormat: "raw",
+      });
+
       try {
         const form = new IncomingForm();
         const [, files] = await form.parse(req);
@@ -160,6 +179,7 @@ async function handler(
           error instanceof Error ? error : new Error(JSON.stringify(error))
         );
       }
+    }
     default:
       return apiError(req, res, {
         status_code: 405,
