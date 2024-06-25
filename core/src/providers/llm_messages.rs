@@ -6,8 +6,15 @@ use super::llm::{ChatFunctionCall, ChatMessageRole};
 // User message.
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum TextContentType {
+    Text,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct TextContent {
-    pub r#type: String,
+    #[serde(rename = "type")]
+    pub r#type: TextContentType,
     pub text: String,
 }
 
@@ -17,8 +24,14 @@ pub struct ImageUrlContent {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum ImageContentType {
+    ImageUrl,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ImageContent {
-    pub r#type: String,
+    pub r#type: ImageContentType,
     pub image_url: ImageUrlContent,
 }
 
