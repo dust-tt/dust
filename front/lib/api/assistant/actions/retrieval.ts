@@ -1,8 +1,8 @@
 import type {
   AgentActionConfigurationType,
+  AgentConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
-  ModelConfigurationType,
   ModelId,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
@@ -21,7 +21,6 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   isDevelopment,
-  isRetrievalConfiguration,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
@@ -40,6 +39,8 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { rand } from "@app/lib/utils/seeded_random";
 import logger from "@app/logger/logger";
+
+import { getRunnerforActionConfiguration } from "./runners";
 
 /**
  * TimeFrame parsing
@@ -265,6 +266,40 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok(spec);
   }
 
+  // Retrieval shares topK across retrieval actions of a same step and uses citations for these.
+  getCitationsCount({
+    agentConfiguration,
+    stepActions,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    stepActions: AgentActionConfigurationType[];
+  }): number {
+    const actionCount = stepActions.filter(
+      (a) => a.sId === this.actionConfiguration.sId
+    ).length;
+
+    if (actionCount === 0) {
+      throw new Error("Unexpected: found 0 retrieval actions");
+    }
+
+    const { actionConfiguration } = this;
+    const model = getSupportedModelConfig(agentConfiguration.model);
+
+    let topK = 16;
+    if (actionConfiguration.topK === "auto") {
+      if (actionConfiguration.query === "none") {
+        topK = model.recommendedExhaustiveTopK;
+      } else {
+        topK = model.recommendedTopK;
+      }
+    } else {
+      topK = actionConfiguration.topK;
+    }
+
+    // We split the topK among the actions that are uses of the same action configuration.
+    return Math.ceil(topK / actionCount);
+  }
+
   // stepTopKAndRefsOffsetForAction returns the references offset and the number of documents an
   // action will use as part of the current step. We share topK among multiple instances of a same
   // retrieval action so that we don't overflow the context when the model asks for many retrievals
@@ -272,51 +307,33 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
   // the topK can vary (exhaustive or not). So we need all the actions of the current step to
   // properly split the topK among them and decide which slice of references we will allocate to the
   // current action.
-  static stepTopKAndRefsOffsetForAction({
-    action,
-    model,
+  stepTopKAndRefsOffsetForAction({
+    agentConfiguration,
     stepActionIndex,
     stepActions,
+    refsOffset,
   }: {
-    action: RetrievalConfigurationType;
-    model: ModelConfigurationType;
+    agentConfiguration: AgentConfigurationType;
     stepActionIndex: number;
     stepActions: AgentActionConfigurationType[];
+    refsOffset: number;
   }): { topK: number; refsOffset: number } {
-    const topKForAction = (
-      action: RetrievalConfigurationType,
-      actionCount: number
-    ) => {
-      let topK = 16;
-      if (action.topK === "auto") {
-        if (action.query === "none") {
-          topK = model.recommendedExhaustiveTopK;
-        } else {
-          topK = model.recommendedTopK;
-        }
-      } else {
-        topK = action.topK;
-      }
-      // We split the topK among the actions that are uses of the same action configuration.
-      return Math.ceil(topK / actionCount);
-    };
-
     const actionCounts: Record<string, number> = {};
     stepActions.forEach((a) => {
       actionCounts[a.sId] = actionCounts[a.sId] ?? 0;
       actionCounts[a.sId]++;
     });
 
-    let refsOffset = 0;
     for (let i = 0; i < stepActionIndex; i++) {
       const r = stepActions[i];
-      if (isRetrievalConfiguration(r)) {
-        refsOffset += topKForAction(r, actionCounts[stepActions[i].sId]);
-      }
+      refsOffset += getRunnerforActionConfiguration(r).getCitationsCount({
+        agentConfiguration,
+        stepActions,
+      });
     }
 
     return {
-      topK: topKForAction(action, actionCounts[action.sId]),
+      topK: this.getCitationsCount({ agentConfiguration, stepActions }),
       refsOffset,
     };
   }
@@ -340,9 +357,11 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     {
       stepActionIndex,
       stepActions,
+      citationsRefsOffset,
     }: {
       stepActionIndex: number;
       stepActions: AgentActionConfigurationType[];
+      citationsRefsOffset: number;
     }
   ): AsyncGenerator<
     RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
@@ -391,15 +410,12 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
     }
 
-    const { model } = agentConfiguration;
-
-    const { topK, refsOffset } =
-      RetrievalConfigurationServerRunner.stepTopKAndRefsOffsetForAction({
-        action: actionConfiguration,
-        model: getSupportedModelConfig(model),
-        stepActionIndex,
-        stepActions,
-      });
+    const { topK, refsOffset } = this.stepTopKAndRefsOffsetForAction({
+      agentConfiguration,
+      stepActionIndex,
+      stepActions,
+      refsOffset: citationsRefsOffset,
+    });
 
     // Create the AgentRetrievalAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs

@@ -120,6 +120,9 @@ export async function* runMultiActionsAgentLoop(
   const isLegacyAgent = isLegacyAgentConfiguration(configuration);
   const maxToolsUsePerRun = isLegacyAgent ? 1 : configuration.maxToolsUsePerRun;
 
+  // Citations references offset kept up to date across steps.
+  let citationsRefsOffset = 0;
+
   for (let i = 0; i < maxToolsUsePerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -179,7 +182,7 @@ export async function* runMultiActionsAgentLoop(
           const eventStreamGenerators = event.actions.map(
             ({ action, inputs, functionCallId, specification }, index) => {
               return runAction(auth, {
-                configuration: configuration,
+                configuration,
                 actionConfiguration: action,
                 conversation,
                 userMessage,
@@ -190,6 +193,7 @@ export async function* runMultiActionsAgentLoop(
                 step: i,
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
+                citationsRefsOffset,
               });
             }
           );
@@ -213,6 +217,17 @@ export async function* runMultiActionsAgentLoop(
               yield winner.v.value;
             }
           }
+
+          // After we are done running actions we update the inter step refsOffset.
+          event.actions.forEach(({ action }) => {
+            citationsRefsOffset += getRunnerforActionConfiguration(
+              action
+            ).getCitationsCount({
+              agentConfiguration: configuration,
+              stepActions: event.actions.map((a) => a.action),
+            });
+          });
+
           break;
 
         // Generation events
@@ -739,6 +754,7 @@ async function* runAction(
     step,
     stepActionIndex,
     stepActions,
+    citationsRefsOffset,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: AgentActionConfigurationType;
@@ -751,6 +767,7 @@ async function* runAction(
     step: number;
     stepActionIndex: number;
     stepActions: AgentActionConfigurationType[];
+    citationsRefsOffset: number;
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
@@ -774,6 +791,7 @@ async function* runAction(
       {
         stepActionIndex,
         stepActions,
+        citationsRefsOffset,
       }
     );
 
@@ -988,14 +1006,22 @@ async function* runAction(
   } else if (isWebsearchConfiguration(actionConfiguration)) {
     const eventStream = getRunnerforActionConfiguration(
       actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId: null,
-      step,
-    });
+    ).run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs: inputs,
+        functionCallId: null,
+        step,
+      },
+      {
+        stepActionIndex,
+        stepActions,
+        citationsRefsOffset,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
