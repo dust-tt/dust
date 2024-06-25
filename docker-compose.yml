@@ -6,13 +6,13 @@ services:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
     volumes:
-      - dustvolume:/postgres
+      - pgsql:/var/lib/postgresql/data
     ports:
       - 5432:5432
   qdrant_primary:
     image: "qdrant/qdrant"
     volumes:
-      - dustvolume:/qdrant_primary
+      - qdrant_primary:/qdrant/storage
     ports:
       - "6334:6334"
       - "6333:6333"
@@ -31,7 +31,7 @@ services:
   qdrant_secondary:
     image: "qdrant/qdrant"
     volumes:
-      - dustvolume:/qdrant_secondary
+      - qdrant_secondary:/qdrant/storage
     environment:
       QDRANT__CLUSTER__ENABLED: "true"
     ulimits:
@@ -48,4 +48,6 @@ services:
       - 6379:6379
 
 volumes:
-  dustvolume:
+  pgsql:
+  qdrant_primary:
+  qdrant_secondary:
