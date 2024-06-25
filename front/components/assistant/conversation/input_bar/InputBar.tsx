@@ -13,6 +13,7 @@ import {
 import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
   INPUT_BAR_ACTIONS,
@@ -324,23 +325,14 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col ">
-              {contentFragmentData.length > 0 && (
-                <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
-                  {contentFragmentData.map((cf, i) => (
-                    <Citation
-                      key={`cf-${i}`}
-                      title={cf.title}
-                      size="xs"
-                      description={cf.content?.substring(0, 100)}
-                      onClose={() => {
-                        setContentFragmentData((prev) => {
-                          return prev.filter((_, index) => index !== i);
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+              <InputBarCitations
+                data={contentFragmentData}
+                onRemoveClick={(idx) =>
+                  setContentFragmentData((prev) => {
+                    return prev.filter((_, index) => index !== idx);
+                  })
+                }
+              />
 
               <InputBarContainer
                 actions={actions}
