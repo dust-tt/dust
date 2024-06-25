@@ -185,13 +185,6 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        // TODO:
-        let role = match cm.get_role() {
-            Some(r) => AnthropicChatMessageRole::try_from(r)
-                .map_err(|e| anyhow!("Error converting role: {:?}", e)),
-            None => Err(anyhow!("Role is required.")),
-        }?;
-
         match cm {
             ChatMessage::Assistant(assistant_msg) => {
                 // Handling tool_uses.

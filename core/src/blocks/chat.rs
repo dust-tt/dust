@@ -2,11 +2,8 @@ use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::deno::script::Script;
-use crate::providers::llm::{ChatFunction, ChatFunctionCall, ChatMessageRole, LLMChatRequest};
-use crate::providers::llm_messages::{
-    AssistantChatMessage, ChatMessage, ContentBlock, FunctionChatMessage, SystemChatMessage,
-    UserChatMessage,
-};
+use crate::providers::llm::{ChatFunction, ChatMessageRole, LLMChatRequest};
+use crate::providers::llm_messages::{AssistantChatMessage, ChatMessage, SystemChatMessage};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
