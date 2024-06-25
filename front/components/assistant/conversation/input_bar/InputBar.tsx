@@ -25,6 +25,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
+import { getMimeTypeFromFile } from "@app/lib/file";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -184,14 +185,9 @@ export function AssistantInputBar({
         setIsProcessingContentFragment(true);
         try {
           let totalSize = 0;
-          for (let file of (event?.target as HTMLInputElement)?.files || []) {
+          for (const file of (event?.target as HTMLInputElement)?.files || []) {
             if (!file) {
               return;
-            }
-            if (isMarkdownFile(file)) {
-              // File object does not properly infer markdown type, as a workaround
-              // we need to recreate a copy with the correct type
-              file = copyFileWithMimeType(file, "text/markdown");
             }
             if (file.size > 100_000_000) {
               // Even though we don't display the file size limit in the UI, we still check it here to prevent
@@ -203,7 +199,9 @@ export function AssistantInputBar({
                   "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
               });
               return;
-            } else if (!isSupportedContentFragmentType(file.type)) {
+            } else if (
+              !isSupportedContentFragmentType(getMimeTypeFromFile(file))
+            ) {
               sendNotification({
                 type: "error",
                 title: "Error uploading file.",
@@ -414,24 +412,4 @@ export function FixedAssistantInputBar({
       />
     </div>
   );
-}
-
-function isMarkdownFile(file: File): boolean {
-  if (file.type === "") {
-    const fileExtension = file.name.split(".").at(-1)?.toLowerCase();
-    // Check if the file extension corresponds to a markdown file
-    return fileExtension === "md" || fileExtension === "markdown";
-  }
-  return file.type === "text/markdown";
-}
-
-function copyFileWithMimeType(originalFile: File, mimeType: string): File {
-  // Create a new Blob from the original file data with the new MIME type
-  const blob = new Blob([originalFile], { type: mimeType });
-
-  // Create a new File object with the same name as the original file
-  return new File([blob], originalFile.name, {
-    type: mimeType,
-    lastModified: originalFile.lastModified,
-  });
 }

@@ -14,6 +14,7 @@ import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";
+import { getMimeTypeFromFile } from "@app/lib/file";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 /**
@@ -110,7 +111,7 @@ export async function submitMessage({
               title: contentFragment.title,
               content: contentFragment.content,
               url: null,
-              contentType: contentFragment.file.type,
+              contentType: getMimeTypeFromFile(contentFragment.file),
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",

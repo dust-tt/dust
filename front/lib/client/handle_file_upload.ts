@@ -6,6 +6,8 @@ import {
 import { Err, Ok } from "@dust-tt/types";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
+
+import { getMimeTypeFromFile } from "@app/lib/file";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.mjs`;
 
 export async function handleFileUploadToText(file: File): Promise<
@@ -22,7 +24,7 @@ export async function handleFileUploadToText(file: File): Promise<
     const handleFileLoadedText = (e: ProgressEvent<FileReader>) => {
       const content = e.target?.result;
       if (content && typeof content === "string") {
-        const contentType = file.type;
+        const contentType = getMimeTypeFromFile(file);
         if (!isSupportedTextContentFragmentType(contentType)) {
           return resolve(new Err(new Error("Unsupported file type.")));
         }
@@ -71,7 +73,7 @@ export async function handleFileUploadToText(file: File): Promise<
           });
           text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
         }
-        const contentType = file.type;
+        const contentType = getMimeTypeFromFile(file);
         if (!isSupportedTextContentFragmentType(contentType)) {
           return resolve(new Err(new Error("Unsupported file type.")));
         }
@@ -93,11 +95,12 @@ export async function handleFileUploadToText(file: File): Promise<
     };
 
     try {
-      if (file.type === "application/pdf") {
+      const mimeType = getMimeTypeFromFile(file);
+      if (mimeType === "application/pdf") {
         const fileReader = new FileReader();
         fileReader.onloadend = handleFileLoadedPDF;
         fileReader.readAsArrayBuffer(file);
-      } else if (isSupportedTextContentFragmentType(file.type)) {
+      } else if (isSupportedTextContentFragmentType(mimeType)) {
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
         fileData.readAsText(file);

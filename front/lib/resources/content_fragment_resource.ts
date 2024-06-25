@@ -1,4 +1,9 @@
-import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
+import type {
+  ContentFragmentType,
+  ModelId,
+  Result,
+  SupportedContentFragmentType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -238,7 +243,7 @@ export async function storeContentFragmentText({
   conversationId: string;
   messageId: string;
   content: string;
-  contentType: string;
+  contentType: SupportedContentFragmentType;
 }): Promise<number | null> {
   if (content === "") {
     return null;
