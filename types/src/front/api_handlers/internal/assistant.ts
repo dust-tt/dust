@@ -22,6 +22,8 @@ export const InternalPostContentFragmentRequestBodySchema = t.type({
     t.literal("text/tab-separated-values"),
     t.literal("application/pdf"),
     t.literal("dust-application/slack"),
+    t.literal("file_attachment"),
+    t.literal("slack_thread_content"),
   ]),
   context: t.type({
     profilePictureUrl: t.union([t.string, t.null]),

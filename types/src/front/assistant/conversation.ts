@@ -142,6 +142,8 @@ export type ContentFragmentContextType = {
   profilePictureUrl: string | null;
 };
 
+// TODO (26/06/2024 jules): remove "slack_thread_content" and "file_attachment"
+// after backfilling data
 export const supportedTextFormat = [
   "text/plain",
   "text/csv",
@@ -150,6 +152,8 @@ export const supportedTextFormat = [
   "text/comma-separated-values",
   "text/tab-separated-values",
   "application/pdf",
+  "slack_thread_content",
+  "file_attachment",
 ] as const;
 
 export type SupportedTextFormatType = (typeof supportedTextFormat)[number];
