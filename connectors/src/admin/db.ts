@@ -33,7 +33,7 @@ import {
   MicrosoftConfigurationModel,
   MicrosoftConfigurationRootModel,
   MicrosoftDeltaModel,
-  MicrosoftResourceModel,
+  MicrosoftNodeModel,
 } from "@connectors/lib/models/microsoft";
 import {
   NotionConnectorBlockCacheEntry,
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
   await GoogleDriveSyncToken.sync({ alter: true });
   await MicrosoftConfigurationModel.sync({ alter: true });
   await MicrosoftConfigurationRootModel.sync({ alter: true });
-  await MicrosoftResourceModel.sync({ alter: true });
+  await MicrosoftNodeModel.sync({ alter: true });
   await MicrosoftDeltaModel.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });

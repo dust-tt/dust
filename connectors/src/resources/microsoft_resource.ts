@@ -6,7 +6,7 @@ import {
   MicrosoftConfigurationModel,
   MicrosoftConfigurationRootModel,
   MicrosoftDeltaModel,
-  MicrosoftResourceModel,
+  MicrosoftNodeModel,
 } from "@connectors/lib/models/microsoft";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
@@ -59,7 +59,7 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await MicrosoftResourceModel.destroy({
+    await MicrosoftNodeModel.destroy({
       where: {
         connectorId: this.connectorId,
       },
@@ -127,7 +127,7 @@ export class MicrosoftConfigurationRootResource extends BaseResource<MicrosoftCo
   static async batchDelete(resourceIds: string[], transaction?: Transaction) {
     return MicrosoftConfigurationRootModel.destroy({
       where: {
-        resourceId: resourceIds,
+        nodeId: resourceIds,
       },
       transaction,
     });

@@ -15,10 +15,9 @@ import {
   getChannelAsContentNode,
   getDriveAsContentNode,
   getFolderAsContentNode,
+  getRootNodes,
   getSiteAsContentNode,
-  getSitesRootAsContentNode,
   getTeamAsContentNode,
-  getTeamsRootAsContentNode,
   splitId,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
@@ -203,15 +202,14 @@ export async function retrieveMicrosoftConnectorPermissions({
     await MicrosoftConfigurationRootResource.listRootsByConnectorId(
       connector.id
     )
-  ).map((r) => r.resourceType + "/" + r.resourceId);
+  ).map((r) => r.nodeType + "/" + r.nodeId);
 
   if (!parentInternalId) {
-    nodes.push(getSitesRootAsContentNode());
-    nodes.push(getTeamsRootAsContentNode());
+    nodes.push(...getRootNodes());
   } else {
-    const [resourceType, resourceId] = splitId(parentInternalId);
+    const [nodeType, nodeId] = splitId(parentInternalId);
 
-    switch (resourceType) {
+    switch (nodeType) {
       case "sites-root":
         nodes.push(
           ...(await getSites(client)).map((n) => getSiteAsContentNode(n))
@@ -224,28 +222,28 @@ export async function retrieveMicrosoftConnectorPermissions({
         break;
       case "team":
         nodes.push(
-          ...(await getChannels(client, resourceId)).map((n) =>
+          ...(await getChannels(client, nodeId)).map((n) =>
             getChannelAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "site":
         nodes.push(
-          ...(await getDrives(client, resourceId)).map((n) =>
+          ...(await getDrives(client, nodeId)).map((n) =>
             getDriveAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "drive":
         nodes.push(
-          ...(await getFolders(client, resourceId)).map((n) =>
+          ...(await getFolders(client, nodeId)).map((n) =>
             getFolderAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "folder":
         nodes.push(
-          ...(await getFolders(client, resourceId)).map((n) =>
+          ...(await getFolders(client, nodeId)).map((n) =>
             getFolderAsContentNode(n, parentInternalId)
           )
         );
@@ -284,11 +282,11 @@ export async function setMicrosoftConnectorPermissions(
     Object.entries(permissions)
       .filter(([, permission]) => permission === "read")
       .map(([id]) => {
-        const [resourceType, resourceId] = splitId(id);
+        const [nodeType, nodeId] = splitId(id);
         return {
           connectorId: connector.id,
-          resourceId,
-          resourceType,
+          nodeId,
+          nodeType,
         };
       })
   );
@@ -296,8 +294,8 @@ export async function setMicrosoftConnectorPermissions(
   await MicrosoftConfigurationRootResource.batchDelete(
     Object.entries(permissions)
       .filter(([, permission]) => permission === "none")
-      .map(([resourceId]) => {
-        const [, ...rest] = resourceId.split("/");
+      .map(([nodeId]) => {
+        const [, ...rest] = nodeId.split("/");
         return rest.join("/");
       })
   );

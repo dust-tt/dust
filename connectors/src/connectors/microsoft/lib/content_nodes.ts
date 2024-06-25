@@ -1,16 +1,20 @@
 import type { ContentNode } from "@dust-tt/types";
 
-import type { MicrosoftResourceType } from "@connectors/lib/models/microsoft";
-import { isValidResourceType } from "@connectors/lib/models/microsoft";
+import type { MicrosoftNodeType } from "@connectors/lib/models/microsoft";
+import { isValidNodeType } from "@connectors/lib/models/microsoft";
 
-export function splitId(internalId: string): [MicrosoftResourceType, string] {
+export function splitId(internalId: string): [MicrosoftNodeType, string] {
   const [resourceType, ...rest] = internalId.split("/");
 
-  if (!resourceType || !isValidResourceType(resourceType)) {
+  if (!resourceType || !isValidNodeType(resourceType)) {
     throw new Error(`Invalid internalId: ${internalId}`);
   }
 
   return [resourceType, rest.join("/")];
+}
+
+export function getRootNodes(): ContentNode[] {
+  return [getSitesRootAsContentNode(), getTeamsRootAsContentNode()];
 }
 
 export function getSitesRootAsContentNode(): ContentNode {
