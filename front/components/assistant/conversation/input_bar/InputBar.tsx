@@ -24,7 +24,7 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
+import type { UploadedContentFragment } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -74,7 +74,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
+    contentFragments: UploadedContentFragment[]
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -87,7 +87,7 @@ export function AssistantInputBar({
   const { mutate } = useSWRConfig();
 
   const [contentFragmentData, setContentFragmentData] = useState<
-    { title: string; content: string; file: File }[]
+    UploadedContentFragment[]
   >([]);
 
   const { agentConfigurations: baseAgentConfigurations } =
@@ -173,6 +173,7 @@ export function AssistantInputBar({
           title: cf.title,
           content: cf.content,
           file: cf.file,
+          contentType: cf.contentType,
         };
       })
     );
@@ -237,6 +238,7 @@ export function AssistantInputBar({
                   title: res.value.title,
                   content: res.value.content,
                   file,
+                  contentType: res.value.contentType,
                 },
               ]);
             });
@@ -390,7 +392,7 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
+    contentFragments: UploadedContentFragment[]
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;

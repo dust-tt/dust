@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ContentFragmentContentType, Result } from "@dust-tt/types";
 import {
   isSupportedTextContentFormat,
   supportedTextFormat,
@@ -10,16 +10,25 @@ PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 
 export async function handleFileUploadToText(
   file: File
-): Promise<Result<{ title: string; content: string }, Error>> {
+): Promise<
+  Result<
+    { title: string; content: string; contentType: ContentFragmentContentType },
+    Error
+  >
+> {
   return new Promise((resolve) => {
     const handleFileLoadedText = (e: ProgressEvent<FileReader>) => {
       const content = e.target?.result;
       if (content && typeof content === "string") {
+        const contentType = file.type;
+        if (!isSupportedTextContentFormat(contentType)) {
+          return resolve(new Err(new Error("Unsupported file type.")));
+        }
         return resolve(
           new Ok({
             title: file.name,
             content,
-            contentType: file.type,
+            contentType,
           })
         );
       } else {
@@ -60,11 +69,15 @@ export async function handleFileUploadToText(
           });
           text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
         }
+        const contentType = file.type;
+        if (!isSupportedTextContentFormat(contentType)) {
+          return resolve(new Err(new Error("Unsupported file type.")));
+        }
         return resolve(
           new Ok({
             title: file.name,
             content: text,
-            contentType: file.type,
+            contentType: contentType,
           })
         );
       } catch (e) {

@@ -15,7 +15,7 @@ import React, {
   useState,
 } from "react";
 
-import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
+import type { UploadedContentFragment } from "@app/components/assistant/conversation/lib";
 import {
   createConversationWithMessage,
   submitMessage,
@@ -165,7 +165,7 @@ export function useTryAssistantCore({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
+    contentFragments: UploadedContentFragment[]
   ) => {
     if (!user) {
       return;
