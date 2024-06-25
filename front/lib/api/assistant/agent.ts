@@ -646,7 +646,8 @@ export async function* runMultiActionsAgent(
       messageId: agentMessage.sId,
       error: {
         code: "tool_use_limit_reached",
-        message: "The assistant attempted to use too many tools. Please retry.",
+        message:
+          "The assistant attempted to use too many tools. This model error can be safely retried.",
       },
     } satisfies AgentErrorEvent;
     return;
