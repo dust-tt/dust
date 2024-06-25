@@ -17,8 +17,7 @@ export function generateModelSId(): string {
   const sId = Buffer.from(b)
     .map(uniformByteToCode62)
     .map(alphanumFromCode62)
-    .toString()
-    .slice(0, 10);
+    .toString();
   return sId;
 }
 
