@@ -11,10 +11,19 @@ export function classNames(...classes: string[]) {
 export function generateModelSId(): string {
   const u = uuidv4();
   const b = blake3(u);
-  return Buffer.from(b)
-    .map((x) => alphanumFromByte(x))
+  const sId = Buffer.from(b)
+    .map((x) => uniformAlphanumFromByte(x))
     .toString()
     .slice(0, 10);
+
+  if (sId.length !== 10) {
+    // in very rare cases (if many bytes returned by uniformAlphanumFromByte are 0),
+    // the sId may be less than 10 characters
+    // in that case we can safely retry
+    return generateModelSId();
+  }
+
+  return sId;
 }
 
 export function client_side_new_id() {
@@ -271,11 +280,14 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
 }
 
 /**
- * Given a byte, returns a character from the set [A-Za-z0-9_-].
+ * Given a uniformly random byte, returns a character uniformly distributed from
+ * [A-Za-z0-9], or the null character. The set is 62 characters long, but to ensure uniform
+ * distribution, we need a round modulo from the 256 possible values of a byte.
+ *
+ * Therefore, we use a 64 modulo, and if the result is greater than 61, we
+ * return a null char.
  */
-function alphanumFromByte(byte: number) {
-  // 64 possibilities enable a round modulo on the bytes, guaranteeing uniformity
-  // (otherwise, the modulo would be biased towards the first possibilities)
+function uniformAlphanumFromByte(byte: number) {
   const index = byte % 64;
   const CHAR_A = 65;
   const CHAR_a = 97;
@@ -291,5 +303,5 @@ function alphanumFromByte(byte: number) {
   if (index < 62) {
     return CHAR_0 + index - 52;
   }
-  return index === 62 ? 45 : 95;
+  return 0;
 }
