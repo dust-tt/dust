@@ -1,5 +1,7 @@
 import * as t from "io-ts";
 
+import { getSupportedTextContentFragmentCodec } from "../../assistant/conversation";
+
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(t.type({ configurationId: t.string })),
@@ -13,15 +15,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
-  contentType: t.union([
-    t.literal("text/plain"),
-    t.literal("text/csv"),
-    t.literal("text/markdown"),
-    t.literal("application/pdf"),
-    t.literal("dust-application/slack"),
-    t.literal("file_attachment"),
-    t.literal("slack_thread_content"),
-  ]),
+  contentType: getSupportedTextContentFragmentCodec(),
   context: t.type({
     profilePictureUrl: t.union([t.string, t.null]),
   }),

@@ -1,3 +1,5 @@
+import * as t from "io-ts";
+
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import { ProcessActionType } from "../../front/assistant/actions/process";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
@@ -152,7 +154,8 @@ export const supportedTextContentFragment = [
   "file_attachment",
 ] as const;
 
-export type SupportedTextContentFragmentType = (typeof supportedTextContentFragment)[number];
+export type SupportedTextContentFragmentType =
+  (typeof supportedTextContentFragment)[number];
 
 export const supportedContentFragment = [
   ...supportedTextContentFragment,
@@ -162,6 +165,15 @@ export const supportedContentFragment = [
 
 export type SupportedContentFragmentType =
   (typeof supportedContentFragment)[number];
+
+export function getSupportedTextContentFragmentCodec(): t.Mixed {
+  const [first, second, ...rest] = supportedTextContentFragment;
+  return t.union([
+    t.literal(first),
+    t.literal(second),
+    ...rest.map((value) => t.literal(value)),
+  ]);
+}
 
 export type ContentFragmentType = {
   id: ModelId;
@@ -205,7 +217,9 @@ export function isSupportedTextContentFragmentType(
 ): format is SupportedTextContentFragmentType {
   return (
     typeof format === "string" &&
-    supportedTextContentFragment.includes(format as SupportedTextContentFragmentType)
+    supportedTextContentFragment.includes(
+      format as SupportedTextContentFragmentType
+    )
   );
 }
 /**
