@@ -8,22 +8,18 @@ export function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
+/**
+ * Generates 10-character long model SId from [A-Za-z0-9] characters.
+ */
 export function generateModelSId(): string {
   const u = uuidv4();
-  const b = blake3(u);
+  const b = blake3(u, { length: 10 });
   const sId = Buffer.from(b)
     .map(uniformAlphanumFromByte)
-    .filter((x) => x !== 0)
+    // if the byte is 0, we need to replace it with a random character from our charset
+    .map((x) => (x === 0 ? Math.floor(Math.random() * 62) : x))
     .toString()
     .slice(0, 10);
-
-  if (sId.length !== 10) {
-    // in very rare cases (if many bytes returned by uniformAlphanumFromByte are 0),
-    // the sId may be less than 10 characters
-    // in that case we can safely retry
-    return generateModelSId();
-  }
-
   return sId;
 }
 
