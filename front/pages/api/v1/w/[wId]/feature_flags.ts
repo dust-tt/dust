@@ -12,7 +12,7 @@ export type WorkspaceFeatureFlagsResponseBody = {
  * @swagger
  * /api/v1/w/{wId}/feature_flags:
  *   get:
- *     summary: Get the feature flags for the workspace
+ *     summary: List feature flags
  *     description: Get the feature flags for the workspace identified by {wId}.
  *     tags:
  *       - Workspace
