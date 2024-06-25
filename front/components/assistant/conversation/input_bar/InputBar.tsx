@@ -1,7 +1,14 @@
 import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type {
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
+import {
+  isSupportedContentFormat,
+  isSupportedImageContentFormat,
+  supportedContentFragment,
+} from "@dust-tt/types";
 import {
   useCallback,
   useContext,
@@ -21,7 +28,10 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
+import {
+  handleFileUploadToText,
+  handleImageUpload,
+} from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -194,8 +204,20 @@ export function AssistantInputBar({
                   "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
               });
               return;
+            } else if (isSupportedContentFormat(file.type)) {
+              const prettyfiedSupportedFormats =
+                supportedContentFragment.join(", ");
+              sendNotification({
+                type: "error",
+                title: "Error uploading file.",
+                description: `Unsupported file format, please use any of the following: ${prettyfiedSupportedFormats}`,
+              });
+              return;
             }
-            const res = await handleFileUploadToText(file);
+
+            const res = isSupportedImageContentFormat(file)
+              ? await handleImageUpload(file)
+              : await handleFileUploadToText(file);
 
             if (res.isErr()) {
               sendNotification({
