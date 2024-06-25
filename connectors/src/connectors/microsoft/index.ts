@@ -33,7 +33,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftConfigurationRootResource } from "@connectors/resources/microsoft_resource";
+import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 async function getClient(connectionId: NangoConnectionId) {
@@ -199,9 +199,7 @@ export async function retrieveMicrosoftConnectorPermissions({
   const nodes = [];
 
   const selectedResources = (
-    await MicrosoftConfigurationRootResource.listRootsByConnectorId(
-      connector.id
-    )
+    await MicrosoftRootResource.listRootsByConnectorId(connector.id)
   ).map((r) => r.nodeType + "/" + r.nodeId);
 
   if (!parentInternalId) {
@@ -278,7 +276,7 @@ export async function setMicrosoftConnectorPermissions(
     );
   }
 
-  await MicrosoftConfigurationRootResource.batchMakeNew(
+  await MicrosoftRootResource.batchMakeNew(
     Object.entries(permissions)
       .filter(([, permission]) => permission === "read")
       .map(([id]) => {
@@ -291,7 +289,7 @@ export async function setMicrosoftConnectorPermissions(
       })
   );
 
-  await MicrosoftConfigurationRootResource.batchDelete(
+  await MicrosoftRootResource.batchDelete(
     Object.entries(permissions)
       .filter(([, permission]) => permission === "none")
       .map(([nodeId]) => {

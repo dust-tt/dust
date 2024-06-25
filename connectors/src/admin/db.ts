@@ -31,9 +31,9 @@ import {
 } from "@connectors/lib/models/intercom";
 import {
   MicrosoftConfigurationModel,
-  MicrosoftConfigurationRootModel,
   MicrosoftDeltaModel,
   MicrosoftNodeModel,
+  MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
 import {
   NotionConnectorBlockCacheEntry,
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
   await GoogleDriveSheet.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await MicrosoftConfigurationModel.sync({ alter: true });
-  await MicrosoftConfigurationRootModel.sync({ alter: true });
+  await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
   await MicrosoftDeltaModel.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });

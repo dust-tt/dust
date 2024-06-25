@@ -4,9 +4,9 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import {
   MicrosoftConfigurationModel,
-  MicrosoftConfigurationRootModel,
   MicrosoftDeltaModel,
   MicrosoftNodeModel,
+  MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
@@ -73,7 +73,7 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
       transaction,
     });
 
-    await MicrosoftConfigurationRootModel.destroy({
+    await MicrosoftRootModel.destroy({
       where: {
         connectorId: this.connectorId,
       },
@@ -95,37 +95,34 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftConfigurationRootResource
-  extends ReadonlyAttributesType<MicrosoftConfigurationRootModel> {}
+export interface MicrosoftRootResource
+  extends ReadonlyAttributesType<MicrosoftRootModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class MicrosoftConfigurationRootResource extends BaseResource<MicrosoftConfigurationRootModel> {
-  static model: ModelStatic<MicrosoftConfigurationRootModel> =
-    MicrosoftConfigurationRootModel;
+export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
+  static model: ModelStatic<MicrosoftRootModel> = MicrosoftRootModel;
 
   constructor(
-    model: ModelStatic<MicrosoftConfigurationRootModel>,
-    blob: Attributes<MicrosoftConfigurationRootModel>
+    model: ModelStatic<MicrosoftRootModel>,
+    blob: Attributes<MicrosoftRootModel>
   ) {
-    super(MicrosoftConfigurationRootModel, blob);
+    super(MicrosoftRootModel, blob);
   }
 
-  static async makeNew(
-    blob: WithCreationAttributes<MicrosoftConfigurationRootModel>
-  ) {
-    const resource = await MicrosoftConfigurationRootModel.create(blob);
+  static async makeNew(blob: WithCreationAttributes<MicrosoftRootModel>) {
+    const resource = await MicrosoftRootModel.create(blob);
     return new this(this.model, resource.get());
   }
 
   static async batchMakeNew(
-    blobs: WithCreationAttributes<MicrosoftConfigurationRootModel>[]
+    blobs: WithCreationAttributes<MicrosoftRootModel>[]
   ) {
-    const resources = await MicrosoftConfigurationRootModel.bulkCreate(blobs);
+    const resources = await MicrosoftRootModel.bulkCreate(blobs);
     return resources.map((resource) => new this(this.model, resource.get()));
   }
 
   static async batchDelete(resourceIds: string[], transaction?: Transaction) {
-    return MicrosoftConfigurationRootModel.destroy({
+    return MicrosoftRootModel.destroy({
       where: {
         nodeId: resourceIds,
       },
@@ -135,8 +132,8 @@ export class MicrosoftConfigurationRootResource extends BaseResource<MicrosoftCo
 
   static async listRootsByConnectorId(
     connectorId: number
-  ): Promise<MicrosoftConfigurationRootResource[]> {
-    const resources = await MicrosoftConfigurationRootModel.findAll({
+  ): Promise<MicrosoftRootResource[]> {
+    const resources = await MicrosoftRootModel.findAll({
       where: {
         connectorId,
       },
@@ -146,7 +143,7 @@ export class MicrosoftConfigurationRootResource extends BaseResource<MicrosoftCo
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await MicrosoftConfigurationRootModel.destroy({
+    await MicrosoftRootModel.destroy({
       where: {
         id: this.id,
       },

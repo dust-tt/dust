@@ -69,10 +69,10 @@ MicrosoftConfigurationModel.init(
 
 ConnectorModel.hasMany(MicrosoftConfigurationModel);
 
-// MicrosoftConfigurationRoot stores the drive/folders/channels selected by the user to sync.
-export class MicrosoftConfigurationRootModel extends Model<
-  InferAttributes<MicrosoftConfigurationRootModel>,
-  InferCreationAttributes<MicrosoftConfigurationRootModel>
+// MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
+export class MicrosoftRootModel extends Model<
+  InferAttributes<MicrosoftRootModel>,
+  InferCreationAttributes<MicrosoftRootModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -81,7 +81,7 @@ export class MicrosoftConfigurationRootModel extends Model<
   declare nodeType: MicrosoftNodeType;
   declare nodeId: string;
 }
-MicrosoftConfigurationRootModel.init(
+MicrosoftRootModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -113,14 +113,14 @@ MicrosoftConfigurationRootModel.init(
   },
   {
     sequelize: sequelizeConnection,
-    modelName: "microsoft_configuration_roots",
+    modelName: "microsoft_roots",
     indexes: [
       { fields: ["connectorId", "nodeId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: true },
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftConfigurationRootModel);
+ConnectorModel.hasMany(MicrosoftRootModel);
 
 // MicrosftNode stores files/folders/channels and other nodes synced from Microsoft.
 export class MicrosoftNodeModel extends Model<
@@ -223,7 +223,7 @@ export class MicrosoftDeltaModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare rootId: ForeignKey<MicrosoftConfigurationRootModel["nodeId"]>;
+  declare rootId: ForeignKey<MicrosoftRootModel["nodeId"]>;
   declare deltaToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -264,4 +264,4 @@ MicrosoftDeltaModel.init(
   }
 );
 ConnectorModel.hasMany(MicrosoftDeltaModel);
-MicrosoftConfigurationRootModel.hasOne(MicrosoftDeltaModel);
+MicrosoftRootModel.hasOne(MicrosoftDeltaModel);
