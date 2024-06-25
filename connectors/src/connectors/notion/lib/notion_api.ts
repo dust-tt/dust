@@ -992,13 +992,16 @@ export async function renderDatabaseFromPages({
   );
 
   const content = rows.map((r) =>
-    header.reduce((acc, k, i) => {
-      let v = r[i];
-      if (Array.isArray(v)) {
-        v = v.join(", ");
-      }
-      return { ...acc, [k]: v?.trim?.() ?? "" };
-    }, {} as Record<string, string>)
+    header.reduce(
+      (acc, k, i) => {
+        let v = r[i];
+        if (Array.isArray(v)) {
+          v = v.join(", ");
+        }
+        return { ...acc, [k]: v?.trim?.() ?? "" };
+      },
+      {} as Record<string, string>
+    )
   );
 
   const sanitizedHeaders = getSanitizedHeaders(header);
@@ -1345,7 +1348,7 @@ export async function* iteratePaginatedAPIWithRetries<
   Args extends {
     start_cursor?: string;
   },
-  Item
+  Item,
 >(
   listFn: (args: Args) => Promise<IPaginatedList<Item>>,
   firstPageArgs: Args,

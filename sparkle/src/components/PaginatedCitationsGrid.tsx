@@ -59,11 +59,12 @@ export function PaginatedCitationsGrid({
         })}
       </div>
 
-      
-      <div className={classNames(
-        "s-pt-3",
-        items.length > maxItemsPerPage ? "s-visible" : "s-collapse",
-      )}>
+      <div
+        className={classNames(
+          "s-pt-3",
+          items.length > maxItemsPerPage ? "s-visible" : "s-collapse"
+        )}
+      >
         <Pagination
           itemsCount={items.length}
           maxItemsPerPage={maxItemsPerPage}

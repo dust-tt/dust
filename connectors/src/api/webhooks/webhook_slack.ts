@@ -177,9 +177,8 @@ const _webhookSlackAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    const slackConfigurations = await SlackConfigurationResource.listForTeamId(
-      teamId
-    );
+    const slackConfigurations =
+      await SlackConfigurationResource.listForTeamId(teamId);
     if (slackConfigurations.length === 0) {
       return apiError(req, res, {
         api_error: {
@@ -226,9 +225,8 @@ const _webhookSlackAPIHandler = async (
             // Ignore message_changed events in private messages
             return res.status(200).send();
           }
-          const slackConfig = await SlackConfigurationResource.fetchByActiveBot(
-            teamId
-          );
+          const slackConfig =
+            await SlackConfigurationResource.fetchByActiveBot(teamId);
           if (!slackConfig) {
             return apiError(req, res, {
               api_error: {

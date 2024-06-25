@@ -158,7 +158,7 @@ PriceTable.Item = function ({
     <div
       className={classNames(
         size === "xs"
-          ? " s-gap-2 s-p-2.5 s-text-sm"
+          ? "s-gap-2 s-p-2.5 s-text-sm"
           : "s-gap-3 s-p-4 s-text-base",
         "s-flex s-items-start s-border-b",
         "s-border-structure-100 s-text-element-800",
@@ -224,6 +224,6 @@ interface PriceTableContainerProps {
 
 PriceTable.Container = function ({ children }: PriceTableContainerProps) {
   return (
-    <div className="s-flex s-w-full s-items-stretch  s-gap-3">{children}</div>
+    <div className="s-flex s-w-full s-items-stretch s-gap-3">{children}</div>
   );
 };
