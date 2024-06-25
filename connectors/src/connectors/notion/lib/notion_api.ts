@@ -236,6 +236,9 @@ export async function getPagesAndDatabasesEditedSince(
   for (const pageOrDb of resultsPage.results) {
     if (pageOrDb.object === "page") {
       if (isFullPage(pageOrDb)) {
+        if (pageOrDb.archived) {
+          continue;
+        }
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
 
         // skip pages that have a `lastEditedTime` in the future
@@ -274,6 +277,9 @@ export async function getPagesAndDatabasesEditedSince(
         continue;
       }
       if (isFullDatabase(pageOrDb)) {
+        if (pageOrDb.archived) {
+          continue;
+        }
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
 
         // skip databases that have a `lastEditedTime` in the future
