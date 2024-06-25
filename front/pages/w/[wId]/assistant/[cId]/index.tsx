@@ -8,6 +8,7 @@ import React from "react";
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -80,6 +81,15 @@ export default function AssistantConversation({
     } else if (!conversationId && !initialConversationId) {
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
+
+      // Scroll to the top of the conversation container when clicking on "new".
+      const mainTag = document.getElementById(
+        CONVERSATION_PARENT_SCROLL_DIV_ID["page"]
+      );
+
+      if (mainTag) {
+        mainTag.scrollTo(0, 0);
+      }
     }
   }, [router.query, setConversationKey, initialConversationId]);
 
