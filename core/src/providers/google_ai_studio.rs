@@ -27,7 +27,7 @@ use super::{
         ChatFunction, ChatFunctionCall, ChatMessageRole, LLMChatGeneration, LLMGeneration,
         LLMTokenUsage, LLM,
     },
-    llm_messages::{ChatMessage, ContentBlock, FunctionChatMessage},
+    llm_messages::{ChatMessage, ContentBlock, FunctionChatMessage, MixedContent},
     provider::{Provider, ProviderID},
     tiktoken::tiktoken::{
         cl100k_base_singleton, decode_async, encode_async, tokenize_async, CoreBPE,
@@ -192,11 +192,27 @@ impl TryFrom<&ChatMessage> for Content {
             }),
             ChatMessage::User(user_msg) => {
                 let text = match &user_msg.content {
-                    ContentBlock::ImageContent(_) => {
-                        Err(anyhow!("Vision is not supported for Google AI Studio."))
+                    ContentBlock::Mixed(m) => {
+                        let result = m.iter().try_fold(String::new(), |mut acc, content| {
+                            match content {
+                                MixedContent::ImageContent(_) => {
+                                    Err(anyhow!("Vision is not supported for Google AI Studio."))
+                                }
+                                MixedContent::TextContent(tc) => {
+                                    acc.push_str(&tc.text);
+                                    acc.push(' '); // Add space between texts.
+                                    Ok(acc)
+                                }
+                            }
+                        });
+
+                        match result {
+                            Ok(text) if !text.is_empty() => Ok(text.trim().to_string()), // Trim to remove last space.
+                            Ok(_) => Err(anyhow!("Text is required.")), // Empty string or only spaces.
+                            Err(e) => Err(e),
+                        }
                     }
                     ContentBlock::Text(t) => Ok(t.clone()),
-                    ContentBlock::TextContent(tc) => Ok(tc.text.clone()),
                 }?;
 
                 Ok(Content {

@@ -22,12 +22,19 @@ pub struct ImageContent {
     pub image_url: ImageUrlContent,
 }
 
+// Define an enum for mixed content
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum MixedContent {
+    TextContent(TextContent),
+    ImageContent(ImageContent),
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum ContentBlock {
-    ImageContent(ImageContent),
     Text(String),
-    TextContent(TextContent),
+    Mixed(Vec<MixedContent>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

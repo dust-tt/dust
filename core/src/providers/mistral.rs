@@ -1,5 +1,5 @@
 use super::llm::{ChatFunction, ChatFunctionCall};
-use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
+use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock, MixedContent};
 use super::sentencepiece::sentencepiece::{
     decode_async, encode_async, mistral_instruct_tokenizer_240216_model_v2_base_singleton,
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
@@ -167,11 +167,27 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
             ChatMessage::User(user_msg) => Ok(MistralChatMessage {
                 role: MistralChatMessageRole::User,
                 content: match &user_msg.content {
-                    ContentBlock::ImageContent(_) => {
-                        Err(anyhow!("Vision is not supported for Mistral."))?
+                    ContentBlock::Mixed(m) => {
+                        let result = m.iter().try_fold(String::new(), |mut acc, content| {
+                            match content {
+                                MixedContent::ImageContent(_) => {
+                                    Err(anyhow!("Vision is not supported for Mistral."))
+                                }
+                                MixedContent::TextContent(tc) => {
+                                    acc.push_str(&tc.text);
+                                    acc.push(' '); // Add space between texts.
+                                    Ok(acc)
+                                }
+                            }
+                        });
+
+                        match result {
+                            Ok(text) if !text.is_empty() => Some(text.trim().to_string()), // Trim to remove last space.
+                            Ok(_) => None, // Empty string or only spaces.
+                            Err(e) => return Err(e),
+                        }
                     }
                     ContentBlock::Text(t) => Some(t.clone()),
-                    ContentBlock::TextContent(tc) => Some(tc.text.clone()),
                 },
                 tool_calls: None,
                 tool_call_id: None,

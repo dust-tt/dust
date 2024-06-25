@@ -315,19 +315,9 @@ impl Block for Chat {
             expecting an array of objects with  fields `role`, possibly `name`, \
             and `content` or `function_call(s)`.";
 
-        let mut messages = match messages_value {
-            Value::Array(a) => a
-                .into_iter()
-                .map(|v| match v {
-                    Value::Object(o) => {
-                        let chat_message: ChatMessage = serde_json::from_value(Value::Object(o))?;
-
-                        Ok(chat_message)
-                    }
-                    _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
-                })
-                .collect::<Result<Vec<ChatMessage>>>()?,
-            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT))?,
+        let mut messages: Vec<ChatMessage> = match messages_value {
+            Value::Array(a) => serde_json::from_value(Value::Array(a))?,
+            _ => return Err(anyhow!(MESSAGES_CODE_OUTPUT)),
         };
 
         // Process functions.

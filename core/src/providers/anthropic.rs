@@ -23,7 +23,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::llm::{ChatFunction, ChatFunctionCall};
-use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
+use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock, MixedContent};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -248,22 +248,31 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                 })
             }
             ChatMessage::User(user_msg) => match &user_msg.content {
-                ContentBlock::ImageContent(_) => {
-                    Err(anyhow!("Vision is not supported for Anthropic."))
+                ContentBlock::Mixed(m) => {
+                    let content: Vec<AnthropicContent> = m
+                        .into_iter()
+                        .map(|mb| match mb {
+                            MixedContent::TextContent(tc) => Ok(AnthropicContent {
+                                r#type: AnthropicContentType::Text,
+                                text: Some(tc.text.clone()),
+                                tool_result: None,
+                                tool_use: None,
+                            }),
+                            MixedContent::ImageContent(_) => {
+                                Err(anyhow!("Vision is not supported for Anthropic."))
+                            }
+                        })
+                        .collect::<Result<Vec<AnthropicContent>>>()?;
+
+                    Ok(AnthropicChatMessage {
+                        content,
+                        role: AnthropicChatMessageRole::User,
+                    })
                 }
                 ContentBlock::Text(t) => Ok(AnthropicChatMessage {
                     content: vec![AnthropicContent {
                         r#type: AnthropicContentType::Text,
                         text: Some(t.clone()),
-                        tool_result: None,
-                        tool_use: None,
-                    }],
-                    role: AnthropicChatMessageRole::User,
-                }),
-                ContentBlock::TextContent(tc) => Ok(AnthropicChatMessage {
-                    content: vec![AnthropicContent {
-                        r#type: AnthropicContentType::Text,
-                        text: Some(tc.text.clone()),
                         tool_result: None,
                         tool_use: None,
                     }],
