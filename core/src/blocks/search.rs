@@ -134,7 +134,7 @@ impl Block for Search {
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
-        let provider_id = match config {
+        let (provider_id, num) = match config {
             Some(v) => {
                 let provider_id = match v.get("provider_id") {
                     Some(v) => match v {
@@ -160,7 +160,24 @@ impl Block for Search {
                     ))?,
                 };
 
-                provider_id
+                let num = match v.get("num") {
+                    Some(v) => match v {
+                        Value::Number(t) => match t.as_u64() {
+                            Some(t) => Some(t as usize),
+                            None => Err(anyhow!(
+                                "Invalid `num` in configuration for search block `{}`",
+                                name
+                            ))?,
+                        },
+                        _ => Err(anyhow!(
+                            "Invalid `num` in configuration for search block `{}`",
+                            name
+                        ))?,
+                    },
+                    _ => None,
+                };
+
+                (provider_id, num)
             }
             _ => Err(anyhow!(
                 "Missing configuration for search block `{}`, \
@@ -198,9 +215,14 @@ impl Block for Search {
             },
         }?;
 
+        let num = match num {
+            Some(n) => Some(n),
+            None => self.num,
+        };
+
         let request = match provider_id {
             SearchProviderID::SerpAPI => {
-                let url = match self.num {
+                let url = match num {
                     None => format!(
                         "https://serpapi.com/search?q={}&engine={}&api_key={}",
                         encode(&query),
@@ -230,7 +252,7 @@ impl Block for Search {
 
                 let body = json!({
                     "q": query,
-                    "num": self.num.unwrap_or(10),
+                    "num": num.unwrap_or(8),
                 });
 
                 let request = HttpRequest::new("POST", url, headers, body)?;
