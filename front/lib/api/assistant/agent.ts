@@ -334,6 +334,7 @@ export async function* runMultiActionsAgent(
     agentConfiguration,
     fallbackPrompt,
     model,
+    hasAvailableActions: !!availableActions.length,
   });
 
   const MIN_GENERATION_TOKENS = 2048;
