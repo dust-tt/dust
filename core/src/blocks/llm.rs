@@ -1,8 +1,8 @@
 use crate::blocks::block::{
     find_variables, parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
+use crate::providers::chat_messages::{ChatMessage, ContentBlock, UserChatMessage};
 use crate::providers::llm::{ChatMessageRole, LLMChatRequest, LLMRequest, Tokens};
-use crate::providers::llm_messages::{ChatMessage, ContentBlock, UserChatMessage};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};

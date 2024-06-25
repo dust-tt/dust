@@ -65,8 +65,6 @@ pub struct UserChatMessage {
 #[serde(deny_unknown_fields)]
 pub struct SystemChatMessage {
     pub content: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
     pub role: ChatMessageRole,
 }
 

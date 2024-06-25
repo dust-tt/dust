@@ -13,7 +13,7 @@ use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, info};
 
-use super::llm_messages::{AssistantChatMessage, ChatMessage};
+use super::chat_messages::{AssistantChatMessage, ChatMessage};
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {

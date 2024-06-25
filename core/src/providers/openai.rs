@@ -32,7 +32,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
-use super::llm_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
+use super::chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -369,7 +369,7 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             }),
             ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
                 content: Some(ContentBlock::Text(system_msg.content.clone())),
-                name: system_msg.name.clone(),
+                name: None,
                 role: OpenAIChatMessageRole::from(&system_msg.role),
                 tool_calls: None,
                 tool_call_id: None,

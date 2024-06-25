@@ -13,8 +13,8 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     providers::{
+        chat_messages::AssistantChatMessage,
         llm::Tokens,
-        llm_messages::AssistantChatMessage,
         provider::{ModelError, ModelErrorRetryOptions},
     },
     run::Credentials,
@@ -22,12 +22,12 @@ use crate::{
 };
 
 use super::{
+    chat_messages::{ChatMessage, ContentBlock, FunctionChatMessage, MixedContent},
     embedder::Embedder,
     llm::{
         ChatFunction, ChatFunctionCall, ChatMessageRole, LLMChatGeneration, LLMGeneration,
         LLMTokenUsage, LLM,
     },
-    llm_messages::{ChatMessage, ContentBlock, FunctionChatMessage, MixedContent},
     provider::{Provider, ProviderID},
     tiktoken::tiktoken::{
         cl100k_base_singleton, decode_async, encode_async, tokenize_async, CoreBPE,
