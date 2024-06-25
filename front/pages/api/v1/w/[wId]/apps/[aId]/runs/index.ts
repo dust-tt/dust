@@ -67,6 +67,48 @@ function extractUsageFromExecutions(
   }
 }
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/apps/{appId}/run:
+ *   post:
+ *     summary: Run an app
+ *     description: Run an app of a workspace.
+ *     tags:
+ *       - Apps
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: appId
+ *         required: true
+ *         description: ID of the app
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: App run
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       500:
+ *         description: Internal Server Error.
+ *       404:
+ *         description: Workspace or app not found.
+ *       405:
+ *         description: Method not supported.
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<PostRunResponseBody>>

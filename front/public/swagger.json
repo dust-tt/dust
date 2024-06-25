@@ -11,6 +11,229 @@
     }
   ],
   "paths": {
+    "/api/v1/w/{wId}/apps/{aId}/runs/{runId}": {
+      "get": {
+        "summary": "Retrieve an app run",
+        "description": "Retrieve a run for an app in the workspace identified by {wId}.",
+        "tags": ["Apps"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "aId",
+            "required": true,
+            "description": "ID of the app",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "description": "ID of the run",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "type": "object",
+                      "properties": {
+                        "run_id": {
+                          "type": "string",
+                          "description": "The ID of the run",
+                          "example": 1234
+                        },
+                        "app_id": {
+                          "type": "string",
+                          "description": "The ID of the app",
+                          "example": 1234
+                        },
+                        "status": {
+                          "type": "object",
+                          "properties": {
+                            "run": {
+                              "type": "string",
+                              "description": "The status of the run",
+                              "example": "succeeded"
+                            },
+                            "build": {
+                              "type": "string",
+                              "description": "The status of the build",
+                              "example": "succeeded"
+                            }
+                          }
+                        },
+                        "results": {
+                          "type": "object",
+                          "description": "The results of the run",
+                          "example": {}
+                        },
+                        "specification_hash": {
+                          "type": "string",
+                          "description": "The hash of the app specification",
+                          "example": 1234
+                        },
+                        "traces": {
+                          "type": "array",
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "timestamp": {
+                                  "type": "number",
+                                  "description": "The timestamp of the trace",
+                                  "example": 1234567890
+                                },
+                                "trace": {
+                                  "type": "object",
+                                  "description": "The trace",
+                                  "example": {}
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/apps/{appId}/run": {
+      "post": {
+        "summary": "Run an app",
+        "description": "Run an app of a workspace.",
+        "tags": ["Apps"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "appId",
+            "required": true,
+            "description": "ID of the app",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "App run"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace or app not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/apps": {
+      "get": {
+        "summary": "List apps",
+        "description": "Get all apps of a workspace.",
+        "tags": ["Apps"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Apps of the workspace"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
         "summary": "Get the list of assistants",
@@ -246,6 +469,93 @@
           },
           "500": {
             "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events": {
+      "get": {
+        "summary": "Get events for a message",
+        "description": "Get events for a message in the workspace identified by {wId}.",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "mId",
+            "required": true,
+            "description": "ID of the message",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lastEventId",
+            "description": "ID of the last event received",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "ID of the event"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Type of the event"
+                          },
+                          "data": {
+                            "type": "object",
+                            "description": "Data of the event"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
