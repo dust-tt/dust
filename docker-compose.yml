@@ -12,7 +12,7 @@ services:
   qdrant_primary:
     image: "qdrant/qdrant"
     volumes:
-      - qdrant1:/qdrant/storage
+      - qdrant_primary:/qdrant/storage
     ports:
       - "6334:6334"
       - "6333:6333"
@@ -31,7 +31,7 @@ services:
   qdrant_secondary:
     image: "qdrant/qdrant"
     volumes:
-      - qdrant2:/qdrant/storage
+      - qdrant_secondary:/qdrant/storage
     environment:
       QDRANT__CLUSTER__ENABLED: "true"
     ulimits:
@@ -49,5 +49,5 @@ services:
 
 volumes:
   pgsql:
-  qdrant1:
-  qdrant2:
+  qdrant_primary:
+  qdrant_secondary:
