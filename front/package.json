@@ -5,6 +5,7 @@
     "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",
     "lint": "next lint",
+    "docs": "npx next-swagger-doc-cli swagger.json && npx swagger-cli validate public/swagger.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "tsc": "tsc",
