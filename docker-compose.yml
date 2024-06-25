@@ -38,7 +38,7 @@ services:
       nofile:
         soft: 64000
         hard: 64000
-    command: ["./qdrant", "--bootstrap", "http://qdrant_secondary:6335"]
+    command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335"]
     depends_on:
       qdrant_primary:
         condition: service_healthy # Ensure qdrant is healthy before starting qdrant_primary.
