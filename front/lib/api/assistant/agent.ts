@@ -677,7 +677,7 @@ export async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "action_not_found",
-          message: `Action ${a.name} not found`,
+          message: `The assistant attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
         },
       } satisfies AgentErrorEvent;
       return;
