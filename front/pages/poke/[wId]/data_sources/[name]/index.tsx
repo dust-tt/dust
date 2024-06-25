@@ -575,7 +575,7 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
 
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
-      <div className="flex items-center gap-2 ">
+      <div className="flex items-center gap-2">
         <div>Notion URL</div>
         <div className="grow">
           <Input

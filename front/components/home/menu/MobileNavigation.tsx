@@ -28,7 +28,7 @@ export function MobileNavigation() {
         >
           <ScrollArea className="h-[100vh]">
             <div className="flex flex-col space-y-0 py-12">
-              <div className=" pb-6">
+              <div className="pb-6">
                 <LogoHorizontalColorLogo className="h-6 w-24" />
               </div>
               {menuConfig.mobileNav.map((item, index) => (

@@ -11,14 +11,14 @@ import type { Authenticator } from "@app/lib/auth";
 
 export interface BaseActionConfigurationServerRunnerConstructor<
   T extends BaseActionConfigurationServerRunner<V>,
-  V extends AgentActionConfigurationType
+  V extends AgentActionConfigurationType,
 > {
   new (actionConfiguration: V): T;
 }
 
 export interface BaseActionConfigurationStaticMethods<
   T extends BaseActionConfigurationServerRunner<V>,
-  V extends AgentActionConfigurationType
+  V extends AgentActionConfigurationType,
 > {
   fromActionConfiguration(
     this: BaseActionConfigurationServerRunnerConstructor<T, V>,
@@ -41,13 +41,13 @@ export interface BaseActionRunParams {
 }
 
 export abstract class BaseActionConfigurationServerRunner<
-  T extends AgentActionConfigurationType
+  T extends AgentActionConfigurationType,
 > {
   constructor(protected readonly actionConfiguration: T) {}
 
   static fromActionConfiguration<
     T extends BaseActionConfigurationServerRunner<V>,
-    V extends AgentActionConfigurationType
+    V extends AgentActionConfigurationType,
   >(
     this: BaseActionConfigurationServerRunnerConstructor<T, V>,
     actionConfiguration: V

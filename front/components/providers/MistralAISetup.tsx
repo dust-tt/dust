@@ -183,8 +183,8 @@ export default function MistralAISetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                            ? "Enabling..."
-                            : "Enable"
+                              ? "Enabling..."
+                              : "Enable"
                         }
                       />
                     ) : (

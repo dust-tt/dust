@@ -42,7 +42,7 @@ export default function DatasetPicker({
   }
 
   return (
-    <div className="flex items-center rounded-md  px-2">
+    <div className="flex items-center rounded-md px-2">
       <Menu as="div" className="relative inline-block text-left">
         <div>
           {datasets.length == 0 && !dataset && !readOnly ? (

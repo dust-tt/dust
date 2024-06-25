@@ -67,7 +67,7 @@ export default function Database({
       onBlockNew={onBlockNew}
     >
       <div className="mx-4 flex w-full flex-col gap-2">
-        <div className="flex flex-col flex-col gap-2 pt-4 xl:flex-row">
+        <div className="flex flex-col gap-2 pt-4 xl:flex-row">
           <div className="flex flex-col xl:flex-row xl:space-x-2">
             <div className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
               Table:

@@ -349,8 +349,8 @@ function ConfirmationModal({
                   isLoading
                     ? "Connecting..."
                     : dataSource.connectorProvider === "google_drive"
-                    ? "Acknowledge and Connect"
-                    : "Connect"
+                      ? "Acknowledge and Connect"
+                      : "Connect"
                 }
               />
               {dataSource.guideLink && (
@@ -660,10 +660,10 @@ export default function DataSourcesView({
                           const label = !isBuilt
                             ? "Preview"
                             : !isLoadingByProvider[
-                                ds.connectorProvider as ConnectorProvider
-                              ] && !ds.fetchConnectorError
-                            ? "Connect"
-                            : "Connecting...";
+                                  ds.connectorProvider as ConnectorProvider
+                                ] && !ds.fetchConnectorError
+                              ? "Connect"
+                              : "Connecting...";
 
                           if (!ds || !ds.connector) {
                             return (

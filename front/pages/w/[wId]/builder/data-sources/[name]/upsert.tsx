@@ -346,15 +346,15 @@ export default function DatasourceUpsert({
                   readOnly
                     ? "focus:border-gray-300 focus:ring-0"
                     : "focus:border-action-300 focus:ring-action-300",
-                  downloading ? "text-element-600" : " text-element-900"
+                  downloading ? "text-element-600" : "text-element-900"
                 )}
                 disabled={downloading}
                 value={
                   downloading
                     ? "Downloading..."
                     : uploading
-                    ? "Uploading..."
-                    : text
+                      ? "Uploading..."
+                      : text
                 }
                 onChange={(e) => setText(e.target.value)}
               />

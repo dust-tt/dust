@@ -393,17 +393,17 @@ function DeleteWorkspaceModal({
         <div className="flex flex-col gap-2 pt-4">
           <div>
             {dataSources.length > 0 && (
-              <p className="text-warning mb-4 text-sm ">
+              <p className="text-warning mb-4 text-sm">
                 Delete data sources before deleting the workspace.
               </p>
             )}
             {subscription.plan.code !== FREE_NO_PLAN_CODE && (
-              <p className="text-warning mb-4 text-sm ">
+              <p className="text-warning mb-4 text-sm">
                 Downgrade workspace before deleting its data.
               </p>
             )}
             {isLoading ? (
-              <p className="text-warning mb-4 text-sm ">
+              <p className="text-warning mb-4 text-sm">
                 Deleting workspace data...
                 <Spinner />
               </p>

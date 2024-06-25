@@ -16,14 +16,17 @@ export function AgentMessageActionsDrawer({
   isStreaming,
   onClose,
 }: AgentMessageActionsDrawerProps) {
-  const groupedActionsByStep = actions.reduce((acc, current) => {
-    // Step starts at 0.
-    const currentStep = current.step + 1;
+  const groupedActionsByStep = actions.reduce(
+    (acc, current) => {
+      // Step starts at 0.
+      const currentStep = current.step + 1;
 
-    acc[currentStep] = acc[currentStep] || [];
-    acc[currentStep].push(current);
-    return acc;
-  }, {} as Record<number, AgentActionType[]>);
+      acc[currentStep] = acc[currentStep] || [];
+      acc[currentStep].push(current);
+      return acc;
+    },
+    {} as Record<number, AgentActionType[]>
+  );
 
   return (
     <Modal

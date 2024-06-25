@@ -408,10 +408,13 @@ export function AgentMessage({
     );
 
     setReferences(
-      allDocs.reduce((acc, d) => {
-        acc[d.reference] = d;
-        return acc;
-      }, {} as { [key: string]: RetrievalDocumentType })
+      allDocs.reduce(
+        (acc, d) => {
+          acc[d.reference] = d;
+          return acc;
+        },
+        {} as { [key: string]: RetrievalDocumentType }
+      )
     );
   }, [
     agentMessageToRender.actions,

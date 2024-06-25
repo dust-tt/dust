@@ -160,8 +160,8 @@ async function handler(
   const runFlavor: RunFlavor = req.body.stream
     ? "streaming"
     : req.body.blocking
-    ? "blocking"
-    : "non-blocking";
+      ? "blocking"
+      : "non-blocking";
 
   switch (req.method) {
     case "POST":

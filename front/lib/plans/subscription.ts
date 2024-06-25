@@ -330,9 +330,8 @@ export const pokeUpgradeWorkspaceToPlan = async (
       );
     }
 
-    const isAlreadyOnProPlan = await isSubscriptionOnProPlan(
-      activeSubscription
-    );
+    const isAlreadyOnProPlan =
+      await isSubscriptionOnProPlan(activeSubscription);
 
     if (!isAlreadyOnProPlan) {
       throw new Error(
@@ -385,9 +384,8 @@ export const getCheckoutUrlForUpgrade = async (
 
   // We verify that the workspace is not already subscribed to the Pro plan product.
   if (existingSubscription) {
-    const isAlreadyOnProPlan = await isSubscriptionOnProPlan(
-      existingSubscription
-    );
+    const isAlreadyOnProPlan =
+      await isSubscriptionOnProPlan(existingSubscription);
     if (isAlreadyOnProPlan) {
       throw new Error(
         `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: already subscribed to a Pro plan.`

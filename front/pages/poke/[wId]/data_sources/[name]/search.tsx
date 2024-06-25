@@ -184,12 +184,12 @@ export default function DataSourceView({
                             <div key={chunkId}>
                               <div
                                 className={classNames(
-                                  "flex w-full flex-col rounded-sm "
+                                  "flex w-full flex-col rounded-sm"
                                 )}
                               >
                                 <div className="flex flex-initial items-center justify-center overflow-hidden">
                                   <div className="flex flex-1 flex-row pb-1">
-                                    <div className=" flex-initial text-xs">
+                                    <div className="flex-initial text-xs">
                                       <span className="rounded bg-yellow-100 px-1 py-0.5 text-gray-500">
                                         Score:{" "}
                                         {chunk.score

@@ -323,7 +323,7 @@ export function AssistantInputBar({
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >
-            <div className="relative flex w-full flex-1 flex-col ">
+            <div className="relative flex w-full flex-1 flex-col">
               {contentFragmentData.length > 0 && (
                 <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
                   {contentFragmentData.map((cf, i) => (
