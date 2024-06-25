@@ -1,7 +1,6 @@
 import {
   AssistantPreview,
   Avatar,
-  BookOpenIcon,
   Button,
   Cog6ToothIcon,
   ContextItem,
@@ -250,13 +249,6 @@ export default function WorkspaceAssistants({
                   variant="primary"
                   icon={PlusIcon}
                   label="Create an assistant"
-                />
-              </Link>
-              <Link href={`/w/${owner.sId}/assistant/gallery`}>
-                <Button
-                  variant="primary"
-                  icon={BookOpenIcon}
-                  label="Explore the Gallery"
                 />
               </Link>
             </Button.List>

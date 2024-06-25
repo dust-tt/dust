@@ -173,8 +173,8 @@ export function isContentFragmentType(
 
 /**
  * Visibility of a conversation. Test visibility is for conversations happening
- * when a user 'tests' an assistant not in their list using the "test" button of
- * the assistant gallery: those conversations do not show in users' histories.
+ * when a user 'tests' an assistant not in their list using the "test" button:
+ * those conversations do not show in users' histories.
  */
 export type ConversationVisibility =
   | "unlisted"
