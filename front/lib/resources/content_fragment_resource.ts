@@ -278,22 +278,3 @@ export async function getContentFragmentText({
 
   return getPrivateUploadBucket().fetchFileContent(filePath);
 }
-
-export async function getSignedUrlForContentFragment({
-  workspaceId,
-  conversationId,
-  messageId,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-}) {
-  const fileLocation = fileAttachmentLocation({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "raw",
-  });
-
-  return getPrivateUploadBucket().getSignedUrl(fileLocation.filePath);
-}

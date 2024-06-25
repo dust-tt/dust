@@ -200,7 +200,7 @@ export function AssistantInputBar({
                   "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
               });
               return;
-            } else if (isSupportedContentFormat(file.type)) {
+            } else if (!isSupportedContentFormat(file.type)) {
               const prettyfiedSupportedFormats =
                 supportedContentFragment.join(", ");
               sendNotification({
