@@ -142,9 +142,29 @@ export type ContentFragmentContextType = {
   profilePictureUrl: string | null;
 };
 
-export type ContentFragmentContentType =
-  | "slack_thread_content"
-  | "file_attachment";
+export const supportedTextFormat = [
+  "text/plain",
+  "text/csv",
+  "text/markdown",
+  "text/tsv",
+  "text/comma-separated-values",
+  "text/tab-separated-values",
+  "application/pdf",
+]
+
+export const supportedImageFormat = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg"
+] as const;
+
+export const supportedContentFragment = [
+  ...supportedImageFormat,
+  ...supportedTextFormat,
+  "dust-application/slack"
+];
+
+export type ContentFragmentContentType = typeof supportedContentFragment;
 
 export type ContentFragmentType = {
   id: ModelId;

@@ -37,8 +37,17 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
   content: t.string,
   url: t.union([t.string, t.null]),
   contentType: t.union([
-    t.literal("slack_thread_content"),
-    t.literal("file_attachment"),
+    t.literal("text/plain"),
+    t.literal("text/csv"),
+    t.literal("text/markdown"),
+    t.literal("text/tsv"),
+    t.literal("text/comma-separated-values"),
+    t.literal("text/tab-separated-values"),
+    t.literal("application/pdf"),
+    t.literal("image/png"),
+    t.literal("image/jpeg"),
+    t.literal("image/jpg"),
+    t.literal("dust-application/slack")
   ]),
   context: t.union([
     t.type({
