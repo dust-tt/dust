@@ -20,7 +20,7 @@ import { useInView } from "react-intersection-observer";
 
 import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import MessageItem from "@app/components/assistant/conversation/MessageItem";
+import MessageItem from "@app/components/assistant/conversation/messages/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {
