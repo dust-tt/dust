@@ -422,7 +422,7 @@ impl TryFrom<&String> for OpenAIContentBlockVec {
         Ok(OpenAIContentBlockVec(vec![
             OpenAIContentBlock::TextContent(OpenAITextContent {
                 r#type: OpenAITextContentType::Text,
-                text: t.clone(), // `t` is dereferenced here to clone the actual String
+                text: t.clone(),
             }),
         ]))
     }
