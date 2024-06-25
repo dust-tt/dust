@@ -7,10 +7,10 @@
   "paths": {
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
-        "summary": "Get the agent configurations for the workspace",
+        "summary": "Get the list of assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
         "tags": [
-          "Assistant"
+          "Workspace"
         ],
         "parameters": [
           {
@@ -35,6 +35,164 @@
           },
           "404": {
             "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/content_fragments": {
+      "post": {
+        "summary": "Create a content fragment",
+        "description": "Create a new content fragment in the workspace identified by {wId}.",
+        "tags": [
+          "Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "The title of the content fragment",
+                    "example": "My content fragment"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "The content of the content fragment",
+                    "example": "This is my content fragment"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "The URL of the content fragment",
+                    "example": "https://example.com/content"
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "description": "The content type of the content fragment",
+                    "example": "text/plain"
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "username": {
+                        "type": "string",
+                        "description": "The username of the user who created the content fragment",
+                        "example": "johndoe"
+                      },
+                      "fullName": {
+                        "type": "string",
+                        "description": "The full name of the user who created the content fragment",
+                        "example": "John Doe"
+                      },
+                      "email": {
+                        "type": "string",
+                        "description": "The email of the user who created the content fragment",
+                        "example": "johndoe@example.com"
+                      },
+                      "profilePictureUrl": {
+                        "type": "string",
+                        "description": "The profile picture URL of the user who created the content fragment",
+                        "example": "https://example.com/profile_picture.jpg"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Content fragment created successfully."
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/events": {
+      "get": {
+        "summary": "Get the events for a conversation",
+        "description": "Get the events for a conversation in the workspace identified by {wId}.",
+        "tags": [
+          "Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events for the conversation"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Conversation not found."
           },
           "405": {
             "description": "Method not supported. Only GET is expected."
@@ -87,6 +245,134 @@
           },
           "405": {
             "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/messages": {
+      "post": {
+        "summary": "Create a message",
+        "description": "Create a message in the workspace identified by {wId}.",
+        "tags": [
+          "Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "The content of the message",
+                    "example": "This is my message"
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "timezone": {
+                        "type": "string",
+                        "description": "The timezone of the user who created the message",
+                        "example": "Europe/Paris"
+                      },
+                      "username": {
+                        "type": "string",
+                        "description": "The username of the user who created the message",
+                        "example": "johndoe"
+                      },
+                      "fullName": {
+                        "type": "string",
+                        "description": "The full name of the user who created the message",
+                        "example": "John Doe"
+                      },
+                      "email": {
+                        "type": "string",
+                        "description": "The email of the user who created the message",
+                        "example": "johndoe@example.com"
+                      },
+                      "profilePictureUrl": {
+                        "type": "string",
+                        "description": "The profile picture URL of the user who created the message",
+                        "example": "https://example.com/profile_picture.jpg"
+                      },
+                      "origin": {
+                        "type": "string",
+                        "description": "The origin of the message",
+                        "enum": [
+                          "api",
+                          "web",
+                          "slack",
+                          null
+                        ],
+                        "default": "api",
+                        "example": "api"
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "The content of the message",
+                        "example": "This is my message"
+                      },
+                      "mentions": {
+                        "type": "array",
+                        "items": {
+                          "type": "array",
+                          "description": "The mentions of the message, where configurationId is the ID of the assistant mentioned.",
+                          "example": [
+                            {
+                              "configurationId": "dust"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message created successfully."
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
           },
           "500": {
             "description": "Internal Server Error."
@@ -197,7 +483,7 @@
         "summary": "Get the feature flags for the workspace",
         "description": "Get the feature flags for the workspace identified by {wId}.",
         "tags": [
-          "Feature Flags"
+          "Workspace"
         ],
         "parameters": [
           {

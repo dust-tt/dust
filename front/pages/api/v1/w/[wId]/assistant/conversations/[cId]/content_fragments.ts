@@ -20,6 +20,86 @@ export type PostContentFragmentRequestBody = t.TypeOf<
   typeof PublicPostContentFragmentRequestBodySchema
 >;
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/assistant/conversations/{cId}/content_fragments:
+ *   post:
+ *     summary: Create a content fragment
+ *     description: Create a new content fragment in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The title of the content fragment
+ *                 example: My content fragment
+ *               content:
+ *                 type: string
+ *                 description: The content of the content fragment
+ *                 example: This is my content fragment
+ *               url:
+ *                 type: string
+ *                 description: The URL of the content fragment
+ *                 example: https://example.com/content
+ *               contentType:
+ *                 type: string
+ *                 description: The content type of the content fragment
+ *                 example: text/plain
+ *               context:
+ *                 type: object
+ *                 properties:
+ *                   username:
+ *                     type: string
+ *                     description: The username of the user who created the content fragment
+ *                     example: johndoe
+ *                   fullName:
+ *                     type: string
+ *                     description: The full name of the user who created the content fragment
+ *                     example: John Doe
+ *                   email:
+ *                     type: string
+ *                     description: The email of the user who created the content fragment
+ *                     example: johndoe@example.com
+ *                   profilePictureUrl:
+ *                     type: string
+ *                     description: The profile picture URL of the user who created the content fragment
+ *                     example: https://example.com/profile_picture.jpg
+ *     responses:
+ *       200:
+ *         description: Content fragment created successfully.
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       500:
+ *         description: Internal Server Error.
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<PostContentFragmentsResponseBody>>

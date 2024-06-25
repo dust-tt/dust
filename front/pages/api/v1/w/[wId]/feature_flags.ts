@@ -15,7 +15,7 @@ export type WorkspaceFeatureFlagsResponseBody = {
  *     summary: Get the feature flags for the workspace
  *     description: Get the feature flags for the workspace identified by {wId}.
  *     tags:
- *       - Feature Flags
+ *       - Workspace
  *     parameters:
  *       - in: path
  *         name: wId

@@ -21,6 +21,98 @@ export type PostMessagesResponseBody = {
   agentMessages?: AgentMessageType[];
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/assistant/conversations/{cId}/messages:
+ *   post:
+ *     summary: Create a message
+ *     description: Create a message in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: The content of the message
+ *                 example: This is my message
+ *               context:
+ *                 type: object
+ *                 properties:
+ *                   timezone:
+ *                     type: string
+ *                     description: The timezone of the user who created the message
+ *                     example: Europe/Paris
+ *                   username:
+ *                     type: string
+ *                     description: The username of the user who created the message
+ *                     example: johndoe
+ *                   fullName:
+ *                     type: string
+ *                     description: The full name of the user who created the message
+ *                     example: John Doe
+ *                   email:
+ *                     type: string
+ *                     description: The email of the user who created the message
+ *                     example: johndoe@example.com
+ *                   profilePictureUrl:
+ *                     type: string
+ *                     description: The profile picture URL of the user who created the message
+ *                     example: https://example.com/profile_picture.jpg
+ *                   origin:
+ *                     type: string
+ *                     description: The origin of the message
+ *                     enum:
+ *                       - api
+ *                       - web
+ *                       - slack
+ *                       - null
+ *                     default: api
+ *                     example: api
+ *                   content:
+ *                     type: string
+ *                     description: The content of the message
+ *                     example: This is my message
+ *                   mentions:
+ *                     type: array
+ *                     items:
+ *                       type: array
+ *                       description: The mentions of the message, where configurationId is the ID of the assistant mentioned.
+ *                       example: [{ "configurationId":"dust" }]
+ *     responses:
+ *       200:
+ *         description: Message created successfully.
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       500:
+ *         description: Internal Server Error.
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<PostMessagesResponseBody>>

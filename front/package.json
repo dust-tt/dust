@@ -120,6 +120,7 @@
     "sqlite3": "^5.1.4",
     "sse.js": "^0.6.1",
     "stripe": "^14.2.0",
+    "swagger-cli": "^4.0.4",
     "swr": "^2.2.4",
     "tailwind-merge": "^2.2.1",
     "tailwind-scrollbar-hide": "^1.1.7",
