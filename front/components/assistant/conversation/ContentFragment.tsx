@@ -1,27 +1,20 @@
 import { Citation } from "@dust-tt/sparkle";
 import type { ContentFragmentType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 
 export function ContentFragment({ message }: { message: ContentFragmentType }) {
   let logoType: "document" | "slack" = "document";
-  switch (message.contentType) {
-    case "slack_thread_content":
-    case "dust-application/slack":
-      logoType = "slack";
-      break;
-    case "text/plain":
-    case "text/csv":
-    case "text/markdown":
-    case "text/tsv":
-    case "text/comma-separated-values":
-    case "text/tab-separated-values":
-    case "application/pdf":
-    case "file_attachment":
-      logoType = "document";
-      break;
 
-    default:
-      assertNever(message.contentType);
+  if (message.contentType === "slack_thread_content" ||
+      message.contentType === "dust-application/slack"
+  ) {
+    logoType = "slack";
+  } else if (message.contentType.startsWith("text/") ||
+              message.contentType === "application/pdf" ||
+              message.contentType === "file_attachment"
+  ) {
+    logoType = "document";
+  } else {
+    throw new Error(`Unsupported ContentFragmentType '${message.contentType}'`)
   }
   return (
     <Citation
