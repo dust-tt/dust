@@ -52,6 +52,9 @@ export { Chip };
 import { Citation } from "./components/Citation";
 export { Citation };
 
+import { ZoomableImageCitationWrapper } from "./components/ZoomableImageCitationWrapper";
+export { ZoomableImageCitationWrapper };
+
 import { DropdownMenu } from "./components/DropdownMenu";
 export { DropdownMenu };
 
