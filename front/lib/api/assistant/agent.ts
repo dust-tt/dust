@@ -660,6 +660,16 @@ export async function* runMultiActionsAgent(
     const action = agentActions.find((ac) => ac.name === a.name);
 
     if (!action) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          actionName: a.name,
+        },
+        "Model attempted to run an action that is not part of the agent configuration."
+      );
       yield {
         type: "agent_error",
         created: Date.now(),
@@ -667,7 +677,7 @@ export async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "action_not_found",
-          message: `Action ${a.name} not found`,
+          message: `The assistant attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
         },
       } satisfies AgentErrorEvent;
       return;
