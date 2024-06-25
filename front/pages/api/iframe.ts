@@ -17,14 +17,15 @@ export type GetCodeResponseBody = {
 async function generateCode({
   instructions,
   prompt,
+  model,
 }: {
   instructions: string;
   prompt: string;
+  model: string;
 }) {
-  console.log("Will talk to Openai", instructions, prompt);
+  console.log("Will talk to Dust", instructions, prompt);
 
-  console.log("Will talk to Dust");
-
+  const modelParts = model.split("/");
   const prodCredentials = await prodAPICredentialsForOwner(null);
   const api = new DustAPI(prodCredentials, logger);
   const result = await api.runApp(
@@ -36,8 +37,8 @@ async function generateCode({
     },
     {
       MODEL: {
-        provider_id: "anthropic",
-        model_id: "claude-3-5-sonnet-20240620",
+        provider_id: modelParts[0],
+        model_id: modelParts[1],
         function_call: null,
         use_cache: true,
       },
@@ -102,6 +103,7 @@ async function handler(
       const code = await cachedGenerateCode({
         prompt: req.body.prompt,
         instructions: req.body.instructions,
+        model: req.body.model,
       });
       return res.status(200).json({ code: code });
 

@@ -157,6 +157,15 @@ function Iframe({ code }: { code: string }) {
     };
   }
 
+  function registerScrollPrevent() {
+    document.addEventListener("keydown", function (e) {
+      if (
+        ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].indexOf(e.key) > -1
+      ) {
+        e.preventDefault();
+      }
+    });
+  }
   // This function will execute the code provided by the model and handle its output to communicate with the host page.
   async function executeFn(
     fn: (mainView: HTMLElement) => {
@@ -218,6 +227,9 @@ function Iframe({ code }: { code: string }) {
 
             ${registerErrorHandler.toString()}
             registerErrorHandler();
+
+            ${registerScrollPrevent.toString()}
+            registerScrollPrevent();
         `,
           }}
         ></script>
@@ -252,7 +264,9 @@ export default function Home() {
   );
   const [code, setCode] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
-  const [model, setModel] = React.useState("gpt-3.5-turbo");
+  const [model, setModel] = React.useState(
+    "anthropic/claude-3-5-sonnet-20240620"
+  );
   const filesContent = React.useRef<File[]>([]);
 
   useEffect(() => {
@@ -372,7 +386,11 @@ export default function Home() {
               setModel(e.target.value);
             }}
           >
-            <option value="gpt-4-turbo">gpt-4-turbo</option>
+            <option value="anthropic/claude-3-5-sonnet-20240620">
+              anthropic/claude-3-5-sonnet-20240620
+            </option>
+            <option value="openai/gpt-4-turbo">openai/gpt-4-turbo</option>
+            <option value="openai/gpt-4o">openai/gpt-4o</option>
           </select>
           <div style={{ height: "50px" }}></div>
           <Button
