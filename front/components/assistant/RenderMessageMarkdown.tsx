@@ -108,7 +108,7 @@ function citeDirective() {
           const references = node.children[0]?.value
             .split(",")
             .map((s: string) => s.trim())
-            .filter((s: string) => s.length == 2 || s.length == 3)
+            .filter((s: string) => s.length == 2)
             .map((ref: string) => ({
               counter: counter(ref),
               ref,

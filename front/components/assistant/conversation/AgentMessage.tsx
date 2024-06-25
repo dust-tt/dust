@@ -410,27 +410,28 @@ export function AgentMessage({
     const allDocs = removeNulls(
       retrievalActionsWithDocs.map((a) => a.documents).flat()
     );
-    const allDocsReferences = allDocs.reduce((acc, d) => {
-      acc[d.reference] = d;
-      return acc;
-    }, {} as { [key: string]: RetrievalDocumentType });
+    const allDocsReferences = allDocs.reduce(
+      (acc, d) => {
+        acc[d.reference] = d;
+        return acc;
+      },
+      {} as { [key: string]: RetrievalDocumentType }
+    );
 
     // Websearch actions
     const websearchActionsWithResults = agentMessageToRender.actions
-      .filter(
-        (a) =>
-          isWebsearchActionType(a) &&
-          a.output?.results &&
-          a.output.results.length > 0
-      )
+      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
       .sort((a, b) => a.id - b.id) as WebsearchActionType[];
     const allWebResults = removeNulls(
       websearchActionsWithResults.map((a) => a.output?.results).flat()
     );
-    const allWebReferences = allWebResults.reduce((acc, l) => {
-      acc[l.reference] = l;
-      return acc;
-    }, {} as { [key: string]: WebsearchResultType });
+    const allWebReferences = allWebResults.reduce(
+      (acc, l) => {
+        acc[l.reference] = l;
+        return acc;
+      },
+      {} as { [key: string]: WebsearchResultType }
+    );
 
     // Merge all references
     setReferences({ ...allDocsReferences, ...allWebReferences });

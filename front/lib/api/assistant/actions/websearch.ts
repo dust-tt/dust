@@ -27,7 +27,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { getRefsForActionInStep } from "@app/lib/api/assistant/citations";
+import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import logger from "@app/logger/logger";
@@ -228,7 +228,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       return;
     }
 
-    const { numResults /*, refsOffset*/ } =
+    const { numResults, refsOffset } =
       this.stepNumResultsAndRefsOffsetForAction({
         agentConfiguration,
         stepActionIndex,
@@ -379,10 +379,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
           const rawResults = outputValidation.right.results;
 
           if (rawResults) {
-            const refs = getRefsForActionInStep({
-              stepIndex: step,
-              actionIndex: stepActionIndex,
-            });
+            const refs = getRefs().slice(refsOffset, refsOffset + numResults);
 
             rawResults.forEach((result) => {
               formattedResults.push({
