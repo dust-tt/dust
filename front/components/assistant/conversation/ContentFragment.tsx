@@ -5,10 +5,19 @@ import { assertNever } from "@dust-tt/types";
 export function ContentFragment({ message }: { message: ContentFragmentType }) {
   let logoType: "document" | "slack" = "document";
   switch (message.contentType) {
-    case "slack_thread_content":
+    case "dust-application/slack":
       logoType = "slack";
       break;
-    case "file_attachment":
+    case "text/plain":
+    case "text/csv":
+    case "text/markdown":
+    case "text/tsv":
+    case "text/comma-separated-values":
+    case "text/tab-separated-values":
+    case "application/pdf":
+    case "image/png":
+    case "image/jpeg":
+    case "image/jpg":
       logoType = "document";
       break;
 
