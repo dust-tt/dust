@@ -71,16 +71,16 @@ export function IconToggleButton({
     disabled
       ? iconGroup.disabled
       : selected
-      ? iconGroup.selected
-      : iconGroup.idle,
+        ? iconGroup.selected
+        : iconGroup.idle,
     disabled ? "" : selected ? "" : iconGroup.hover,
     disabled ? "" : iconGroup.active,
     iconGroup.dark.idle,
     disabled
       ? iconGroup.dark.disabled
       : selected
-      ? iconGroup.dark.selected
-      : "",
+        ? iconGroup.dark.selected
+        : "",
     disabled ? "" : selected ? "" : iconGroup.dark.hover,
     disabled ? "" : iconGroup.dark.active
   );

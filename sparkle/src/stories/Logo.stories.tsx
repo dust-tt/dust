@@ -88,7 +88,7 @@ export const DustLogo = () => (
             <LogoHorizontalColorLayer1 className="s-h-8 s-w-32" />
           </Div3D>
           <Div3D depth={25} className="s-absolute s-top-0">
-            <LogoHorizontalColorLayer2 className=" s-h-8 s-w-32" />
+            <LogoHorizontalColorLayer2 className="s-h-8 s-w-32" />
           </Div3D>
         </Hover3D>
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
@@ -101,7 +101,7 @@ export const DustLogo = () => (
             <LogoSquareColorLayer1 className="s-h-16 s-w-16" />
           </Div3D>
           <Div3D depth={25} className="s-absolute s-top-0">
-            <LogoSquareColorLogoLayer2 className=" s-h-16 s-w-16" />
+            <LogoSquareColorLogoLayer2 className="s-h-16 s-w-16" />
           </Div3D>
         </Hover3D>
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">

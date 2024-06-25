@@ -98,8 +98,8 @@ export function Item({
           disabled
             ? "s-text-element-500 dark:s-text-element-500-dark"
             : selected
-            ? "s-text-action-400 dark:s-text-action-600-dark"
-            : iconClasses[style]
+              ? "s-text-action-400 dark:s-text-action-600-dark"
+              : iconClasses[style]
         )}
       />
     );
@@ -131,8 +131,8 @@ export function Item({
             disabled
               ? "s-text-element-600 dark:s-text-element-500-dark"
               : selected
-              ? "s-text-action-500 dark:s-text-action-600-dark"
-              : labelColorClasses[style]
+                ? "s-text-action-500 dark:s-text-action-600-dark"
+                : labelColorClasses[style]
           )}
         >
           {label}
@@ -156,16 +156,16 @@ export function Item({
             ? classNames(
                 "s-shrink-0 s-transition-all s-duration-200 s-ease-out",
                 hasAction === "hover"
-                  ? "s-opacity-0 group-hover:s-opacity-100 "
+                  ? "s-opacity-0 group-hover:s-opacity-100"
                   : "",
                 disabled
                   ? "s-text-element-500 dark:s-text-element-500-dark"
                   : selected
-                  ? "s-text-action-400 s-opacity-100 dark:s-text-action-600-dark"
-                  : classNames(
-                      "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
-                      hasAction ? "group-hover:s-opacity-100" : ""
-                    )
+                    ? "s-text-action-400 s-opacity-100 dark:s-text-action-600-dark"
+                    : classNames(
+                        "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+                        hasAction ? "group-hover:s-opacity-100" : ""
+                      )
               )
             : "s-hidden"
         }

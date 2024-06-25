@@ -65,8 +65,8 @@ const titleClassNames = {
     getWindowWidth() <= breakpoints.sm
       ? "s-text-sm"
       : getWindowWidth() <= breakpoints.md
-      ? "s-text-base"
-      : ""
+        ? "s-text-base"
+        : ""
   }`,
 };
 
@@ -79,8 +79,8 @@ const subtitleClassNames = {
     getWindowWidth() <= breakpoints.sm
       ? "s-text-xs"
       : getWindowWidth() <= breakpoints.md
-      ? "s-text-sm"
-      : ""
+        ? "s-text-sm"
+        : ""
   }`,
 };
 

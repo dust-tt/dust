@@ -28,9 +28,8 @@ export async function upsertNotionPageInConnectorsDb({
   skipReason?: string;
   lastCreatedOrMovedRunTs?: number;
 }): Promise<NotionPage> {
-  const connector = await ConnectorResource.findByDataSourceAndConnection(
-    dataSourceInfo
-  );
+  const connector =
+    await ConnectorResource.findByDataSourceAndConnection(dataSourceInfo);
   if (!connector || connector.type !== "notion") {
     throw new Error("Could not find connector");
   }

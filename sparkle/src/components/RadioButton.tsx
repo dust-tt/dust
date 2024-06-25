@@ -70,8 +70,8 @@ export function RadioButton({
                 choice.disabled
                   ? inputClasses.disabled
                   : choice.value === value
-                  ? inputClasses.selected
-                  : inputClasses.unselected
+                    ? inputClasses.selected
+                    : inputClasses.unselected
               )}
             />
             <span>{choice.label}</span>

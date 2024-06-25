@@ -117,8 +117,8 @@ export function Tab<E>({
             ? tabClasses.stepperSelected
             : tabClasses.stepperDefault
           : tab.current
-          ? tabClasses.selected
-          : tabClasses.default;
+            ? tabClasses.selected
+            : tabClasses.default;
       const iconStateClasses = tab.current
         ? iconClasses.selected
         : iconClasses.default;

@@ -170,8 +170,8 @@ DropdownMenu.Button = function ({
     type === "select"
       ? ChevronUpDown
       : type === "submenu"
-      ? ChevronRight
-      : ChevronDown;
+        ? ChevronRight
+        : ChevronDown;
 
   return (
     <>

@@ -592,9 +592,8 @@ export async function setGoogleDriveConnectorPermissions(
       return res;
     }
   }
-  const incrementalRes = await launchGoogleDriveIncrementalSyncWorkflow(
-    connectorId
-  );
+  const incrementalRes =
+    await launchGoogleDriveIncrementalSyncWorkflow(connectorId);
   if (incrementalRes.isErr()) {
     return incrementalRes;
   }
@@ -882,9 +881,8 @@ export async function unpauseGoogleDriveConnector(connectorId: ModelId) {
   if (r.isErr()) {
     return r;
   }
-  const incrementalSync = await launchGoogleDriveIncrementalSyncWorkflow(
-    connectorId
-  );
+  const incrementalSync =
+    await launchGoogleDriveIncrementalSyncWorkflow(connectorId);
   if (incrementalSync.isErr()) {
     return incrementalSync;
   }
