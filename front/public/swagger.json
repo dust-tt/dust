@@ -234,44 +234,6 @@
         }
       }
     },
-    "/api/v1/w/{wId}/assistant/agent_configurations": {
-      "get": {
-        "summary": "Get the list of assistants",
-        "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "description": "ID of the workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Agent configurations for the workspace"
-          },
-          "400": {
-            "description": "Bad Request. Missing or invalid parameters."
-          },
-          "401": {
-            "description": "Unauthorized. Invalid or missing authentication token."
-          },
-          "404": {
-            "description": "Workspace not found."
-          },
-          "405": {
-            "description": "Method not supported. Only GET is expected."
-          },
-          "500": {
-            "description": "Internal Server Error."
-          }
-        }
-      }
-    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/content_fragments": {
       "post": {
         "summary": "Create a content fragment",
