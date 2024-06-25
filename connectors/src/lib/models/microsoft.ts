@@ -97,7 +97,7 @@ MicrosoftRootModel.init(
     modelName: "microsoft_roots",
     indexes: [
       { fields: ["connectorId", "nodeId"], unique: true },
-      { fields: ["connectorId", "nodeType"], unique: true },
+      { fields: ["connectorId", "nodeType"], unique: false },
     ],
   }
 );
