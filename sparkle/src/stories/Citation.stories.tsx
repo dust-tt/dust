@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { ZoomableCitationWrapper } from "@sparkle/components/ZoomableCitationWrapper";
+import { ZoomableImageCitationWrapper } from "@sparkle/components/ZoomableImageCitationWrapper";
 
 import { Citation } from "../index_with_tw_base";
 
@@ -193,7 +193,7 @@ export const CitationsExample = () => (
     </div>
     <h2>With zoom effect</h2>
     <div className="s-flex s-gap-2">
-      <ZoomableCitationWrapper
+      <ZoomableImageCitationWrapper
         title="With imgSrc"
         // size="xs"
         imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
