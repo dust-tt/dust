@@ -453,8 +453,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
                 content: Some(OpenAIContentBlockVec::try_from(&function_msg.content)?),
                 name: None,
-                // If `function_call_id` is present, `role` must be `function` and should be mapped to `Tool`.
-                // This is to maintain backward compatibility with the original `function` role used for content fragments.
                 role: OpenAIChatMessageRole::Tool,
                 tool_calls: None,
                 tool_call_id: Some(function_msg.function_call_id.clone()),
