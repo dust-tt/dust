@@ -21,7 +21,7 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
       size="xs"
       type={logoType}
       href={message.sourceUrl || undefined}
-      avatarUrl={message.context.profilePictureUrl ?? undefined}
+      avatarSrc={message.context.profilePictureUrl ?? undefined}
     />
   );
 }
