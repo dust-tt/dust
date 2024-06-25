@@ -6,6 +6,7 @@ import {
 } from "@headlessui/react";
 import React, { useState } from "react";
 
+import { XCircle } from "@sparkle/icons/solid";
 import { Citation, IconButton, XMarkIcon } from "@sparkle/index";
 
 interface ZoomableImageCitationWrapperProps {
@@ -39,12 +40,16 @@ export function ZoomableImageCitationWrapper({
         onClose={handleZoomToggle}
         className="s-relative s-z-50 s-transition s-duration-300 s-ease-out data-[closed]:s-opacity-0"
       >
-        <DialogBackdrop className="s-fixed s-inset-0 s-bg-black/30" />
+        <DialogBackdrop className="s-fixed s-inset-0 s-bg-black/70" />
         <div className="s-fixed s-inset-8 s-flex s-w-screen s-items-center s-justify-center s-p-4">
           <DialogPanel className="s-max-w-lg s-space-y-4">
             <DialogTitle>
               <div className="s-flex s-justify-end">
-                <IconButton icon={XMarkIcon} onClick={handleZoomToggle} />
+                <IconButton
+                  icon={XCircle}
+                  onClick={handleZoomToggle}
+                  variant="white"
+                />
               </div>
             </DialogTitle>
             <img src={imgSrc} alt={alt} />
