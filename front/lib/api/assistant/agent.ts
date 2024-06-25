@@ -1227,6 +1227,20 @@ export class TokenEmitter {
           this.chainOfToughtDelimitersOpened += 1;
         } else {
           this.chainOfToughtDelimitersOpened -= 1;
+          if (this.chainOfToughtDelimitersOpened === 0) {
+            // The chain of thought tag is closed.
+            // Yield a newline in the chain of thought to separate the different blocks.
+            const separator = "\n";
+            yield {
+              type: "generation_tokens",
+              created: Date.now(),
+              configurationId: this.agentConfiguration.sId,
+              messageId: this.agentMessage.sId,
+              text: separator,
+              classification: "chain_of_thought",
+            };
+            this.chainOfThought += separator;
+          }
         }
       }
 
@@ -1241,7 +1255,7 @@ export class TokenEmitter {
       } satisfies GenerationTokensEvent;
 
       // Update the buffer
-      this.buffer = this.buffer.substring(index + del.length);
+      this.buffer = this.buffer.substring(del.length);
     }
 
     // Emit the remaining text/chain_of_thought.
