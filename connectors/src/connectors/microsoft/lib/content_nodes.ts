@@ -1,7 +1,7 @@
 import type { ContentNode } from "@dust-tt/types";
 
-import type { MicrosoftNodeType } from "@connectors/lib/models/microsoft";
-import { isValidNodeType } from "@connectors/lib/models/microsoft";
+import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/node_types";
+import { isValidNodeType } from "@connectors/connectors/microsoft/lib/node_types";
 
 export function splitId(internalId: string): [MicrosoftNodeType, string] {
   const [resourceType, ...rest] = internalId.split("/");

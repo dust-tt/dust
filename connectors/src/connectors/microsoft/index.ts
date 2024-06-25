@@ -233,12 +233,6 @@ export async function retrieveMicrosoftConnectorPermissions({
         );
         break;
       case "drive":
-        nodes.push(
-          ...(await getFolders(client, nodeId)).map((n) =>
-            getFolderAsContentNode(n, parentInternalId)
-          )
-        );
-        break;
       case "folder":
         nodes.push(
           ...(await getFolders(client, nodeId)).map((n) =>
