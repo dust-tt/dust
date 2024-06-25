@@ -175,15 +175,15 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                                 }
                                 MixedContent::TextContent(tc) => {
                                     acc.push_str(&tc.text);
-                                    acc.push(' '); // Add space between texts.
+                                    acc.push('\n'); // Add newline between texts.
                                     Ok(acc)
                                 }
                             }
                         });
 
                         match result {
-                            Ok(text) if !text.is_empty() => Some(text.trim().to_string()), // Trim to remove last space.
-                            Ok(_) => None, // Empty string or only spaces.
+                            Ok(text) if !text.is_empty() => Some(text),
+                            Ok(_) => None, // Empty string.
                             Err(e) => return Err(e),
                         }
                     }

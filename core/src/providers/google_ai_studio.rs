@@ -199,16 +199,16 @@ impl TryFrom<&ChatMessage> for Content {
                                     Err(anyhow!("Vision is not supported for Google AI Studio."))
                                 }
                                 MixedContent::TextContent(tc) => {
-                                    acc.push_str(&tc.text);
-                                    acc.push(' '); // Add space between texts.
+                                    acc.push_str(&tc.text.trim());
+                                    acc.push('\n'); // Add newline between texts.
                                     Ok(acc)
                                 }
                             }
                         });
 
                         match result {
-                            Ok(text) if !text.is_empty() => Ok(text.trim().to_string()), // Trim to remove last space.
-                            Ok(_) => Err(anyhow!("Text is required.")), // Empty string or only spaces.
+                            Ok(text) if !text.is_empty() => Ok(text),
+                            Ok(_) => Err(anyhow!("Text is required.")), // Empty string.
                             Err(e) => Err(e),
                         }
                     }
