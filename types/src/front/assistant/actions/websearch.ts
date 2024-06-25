@@ -13,12 +13,28 @@ export type WebsearchConfigurationType = {
   description: string | null;
 };
 
-export const WebsearchResultSchema = t.type({
+// Type fresh out from the Dust app
+const WebsearchAppResultSchema = t.type({
   title: t.string,
   snippet: t.string,
   link: t.string,
 });
-
+export const WebsearchAppActionOutputSchema = t.union([
+  t.type({
+    results: t.array(WebsearchAppResultSchema),
+  }),
+  t.type({
+    results: t.array(WebsearchAppResultSchema),
+    error: t.string,
+  }),
+]);
+// Type after processing in the run loop (to add references)
+const WebsearchResultSchema = t.type({
+  title: t.string,
+  snippet: t.string,
+  link: t.string,
+  reference: t.string,
+});
 export const WebsearchActionOutputSchema = t.union([
   t.type({
     results: t.array(WebsearchResultSchema),

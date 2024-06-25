@@ -934,19 +934,6 @@ export async function retrievalActionTypesFromAgentMessageIds(
 }
 
 /**
- * Retrieval meta-prompt
- */
-
-export function retrievalMetaPromptMutiActions() {
-  return (
-    "To cite documents retrieved with a 2-character REFERENCE, " +
-    "use the markdown directive :cite[REFERENCE] " +
-    "(eg :cite[xx] or :cite[xx,xx] but not :cite[xx][xx]). " +
-    "Ensure citations are placed as close as possible to the related information."
-  );
-}
-
-/**
  * Action execution.
  */
 

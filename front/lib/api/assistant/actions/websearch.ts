@@ -11,6 +11,7 @@ import type {
   WebsearchConfigurationType,
   WebsearchErrorEvent,
   WebsearchParamsEvent,
+  WebsearchResultType,
   WebsearchSuccessEvent,
 } from "@dust-tt/types";
 import {
@@ -18,7 +19,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
-  WebsearchActionOutputSchema,
+  WebsearchAppActionOutputSchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
@@ -26,6 +27,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { getRefsForActionInStep } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import logger from "@app/logger/logger";
@@ -349,7 +351,9 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         }
 
         if (event.content.block_name === "SEARCH_EXTRACT_FINAL" && e.value) {
-          const outputValidation = WebsearchActionOutputSchema.decode(e.value);
+          const outputValidation = WebsearchAppActionOutputSchema.decode(
+            e.value
+          );
           if (isLeft(outputValidation)) {
             logger.error(
               {
@@ -371,7 +375,24 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
             };
             return;
           }
-          output = outputValidation.right;
+          const formattedResults: WebsearchResultType[] = [];
+          const rawResults = outputValidation.right.results;
+
+          if (rawResults) {
+            const refs = getRefsForActionInStep({
+              stepIndex: step,
+              actionIndex: stepActionIndex,
+            });
+
+            rawResults.forEach((result) => {
+              formattedResults.push({
+                ...result,
+                reference: refs.shift() as string,
+              });
+            });
+
+            output = { results: formattedResults };
+          }
         }
       }
     }

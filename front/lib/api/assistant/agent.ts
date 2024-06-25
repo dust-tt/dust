@@ -48,7 +48,7 @@ import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
-const MAX_ACTIONS_PER_STEP = 16;
+export const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsability of the caller based on the emitted events).
