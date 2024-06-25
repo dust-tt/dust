@@ -1,5 +1,9 @@
 import * as t from "io-ts";
 
+import {
+  EmbeddingProviderIdType,
+  ModelProviderIdType,
+} from "../front/lib/assistant";
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
 import { WhitelistableFeature } from "./feature_flags";
@@ -31,6 +35,8 @@ export type LightWorkspaceType = {
   name: string;
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
+  whiteListedProviders: ModelProviderIdType[] | null;
+  defaultEmbeddingProvider: EmbeddingProviderIdType | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {

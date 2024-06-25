@@ -8,8 +8,12 @@ export const CONNECTOR_PROVIDERS = [
   "intercom",
   "notion",
   "slack",
+  "microsoft",
   "webcrawler",
 ] as const;
+
+export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
+
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
 export type LabsConnectorProvider = "google_drive" | "gong";

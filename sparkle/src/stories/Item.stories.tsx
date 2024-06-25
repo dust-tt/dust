@@ -1,7 +1,13 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { DropdownMenu, Item } from "../index_with_tw_base";
+import {
+  ArrowRightIcon,
+  DropdownMenu,
+  Item,
+  LightbulbIcon,
+  PlusIcon,
+} from "../index_with_tw_base";
 import { Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
@@ -54,6 +60,19 @@ export const ListItemExample = () => (
           icon={Cog6ToothIcon}
           description="Desciption of the item"
           disabled
+        />
+        <Item.Navigation
+          label="Item 4"
+          icon={Cog6ToothIcon}
+          description="Custom action icon"
+          action={PlusIcon}
+        />
+
+        <Item.Navigation
+          label="Item 5"
+          icon={Cog6ToothIcon}
+          description="No action icon (so no chevron)"
+          hasAction={false}
         />
       </Item.List>
     </div>
@@ -162,6 +181,17 @@ export const ListItemExample = () => (
           label="@handle"
           visual="https://dust.tt/static/droidavatar/Droid_Teal_2.jpg"
           disabled
+        />
+      </Item.List>
+    </div>
+    <div>
+      Link example:
+      <Item.List className="s-w-40">
+        <Item.Link label="Quick start guide" icon={LightbulbIcon} />
+        <Item.Link
+          label="Building an assistanty"
+          description="description of the avatar"
+          icon={ArrowRightIcon}
         />
       </Item.List>
     </div>

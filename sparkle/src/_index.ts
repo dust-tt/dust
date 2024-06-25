@@ -40,6 +40,9 @@ export { AssistantPreview };
 import { Banner } from "./components/Banner";
 export { Banner };
 
+import { PaginatedCitationsGrid } from "./components/PaginatedCitationsGrid";
+export { PaginatedCitationsGrid };
+
 import { Notification } from "./components/Notification";
 export { Notification };
 
@@ -54,6 +57,9 @@ export { DropdownMenu };
 
 import { Page } from "./components/Page";
 export { Page };
+
+import { Pagination } from "./components/Pagination";
+export { Pagination };
 
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
@@ -136,6 +142,9 @@ export { TextArea };
 import { Markdown } from "./components/Markdown";
 export { Markdown };
 
+import { DataTable } from "./components/DataTable";
+export { DataTable };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
@@ -173,19 +182,29 @@ import {
   Gemini as GeminiLogo,
   Github as GithubLogo,
   GithubWhite as GithubWhiteLogo,
+  Gong as GongLogo,
   Google as GoogleLogo,
+  GoogleDoc as GoogleDocLogo,
+  GooglePdf as GooglePdfLogo,
+  GoogleSlide as GoogleSlideLogo,
+  GoogleSpreadsheet as GoogleSpreadsheetLogo,
   Gpt3 as Gpt3Logo,
   Gpt4 as Gpt4Logo,
   HuggingFace as HuggingFaceLogo,
   Intercom as IntercomLogo,
   Microsoft as MicrosoftLogo,
+  MicrosoftExcel as MicrosoftExcelLogo,
+  MicrosoftPowerpoint as MicrosoftPowerpointLogo,
+  MicrosoftWord as MicrosoftWordLogo,
   Mistral as MistralLogo,
   Notion as NotionLogo,
+  Office as OfficeLogo,
   Openai as OpenaiLogo,
   OpenaiWhite as OpenaiWhiteLogo,
   Replicate as ReplicateLogo,
   Salesforce as SalesforceLogo,
   Slack as SlackLogo,
+  Zapier as ZapierLogo,
 } from "./logo/platforms";
 
 export {
@@ -199,19 +218,29 @@ export {
   GeminiLogo,
   GithubLogo,
   GithubWhiteLogo,
+  GongLogo,
+  GoogleDocLogo,
   GoogleLogo,
+  GooglePdfLogo,
+  GoogleSlideLogo,
+  GoogleSpreadsheetLogo,
   Gpt3Logo,
   Gpt4Logo,
   HuggingFaceLogo,
   IntercomLogo,
+  MicrosoftExcelLogo,
   MicrosoftLogo,
+  MicrosoftPowerpointLogo,
+  MicrosoftWordLogo,
   MistralLogo,
   NotionLogo,
+  OfficeLogo,
   OpenaiLogo,
   OpenaiWhiteLogo,
   ReplicateLogo,
   SalesforceLogo,
   SlackLogo,
+  ZapierLogo,
 };
 
 import {
@@ -245,6 +274,7 @@ import {
   Clock as ClockIcon,
   CloudArrowDown as CloudArrowDownIcon,
   CloudArrowLeftRight as CloudArrowLeftRightIcon,
+  CloudArrowUp as CloudArrowUpIcon,
   CloudX as CloudXIcon,
   Cog6Tooth as Cog6ToothIcon,
   Command as CommandIcon,
@@ -270,6 +300,7 @@ import {
   FullscreenExit as FullscreenExitIcon,
   GlobeAlt as GlobeAltIcon,
   Grab as GrabIcon,
+  HandHeart as HandHeartIcon,
   HandThumbDown as HandThumbDownIcon,
   HandThumbUp as HandThumbUpIcon,
   HeartAlt as HeartAltIcon,
@@ -305,7 +336,6 @@ import {
   Reaction as ReactionIcon,
   Rectangle as RectangleIcon,
   Robot as RobotIcon,
-  RobotShared as RobotSharedIcon,
   Rocket as RocketIcon,
   Scan as ScanIcon,
   Server as ServerIcon,
@@ -314,6 +344,7 @@ import {
   Sparkles as SparklesIcon,
   Square as SquareIcon,
   Square3Stack3D as Square3Stack3DIcon,
+  Star as StarIcon,
   Stop as StopIcon,
   Table as TableIcon,
   Template as TemplateIcon,
@@ -361,6 +392,7 @@ export {
   ClockIcon,
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
+  CloudArrowUpIcon,
   CloudXIcon,
   Cog6ToothIcon,
   CommandIcon,
@@ -386,6 +418,7 @@ export {
   FullscreenIcon,
   GlobeAltIcon,
   GrabIcon,
+  HandHeartIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   HeartAltIcon,
@@ -421,7 +454,6 @@ export {
   ReactionIcon,
   RectangleIcon,
   RobotIcon,
-  RobotSharedIcon,
   RocketIcon,
   ScanIcon,
   ServerIcon,
@@ -430,6 +462,7 @@ export {
   SparklesIcon,
   Square3Stack3DIcon,
   SquareIcon,
+  StarIcon,
   StopIcon,
   TableIcon,
   TemplateIcon,
@@ -477,6 +510,7 @@ import {
   Clock as ClockStrokeIcon,
   CloudArrowDown as CloudArrowDownStrokeIcon,
   CloudArrowLeftRight as CloudArrowLeftRightStrokeIcon,
+  CloudArrowUp as CloudArrowUpStrokeIcon,
   CloudX as CloudXStrokeIcon,
   Cog6Tooth as Cog6ToothStrokeIcon,
   Command as CommandStrokeIcon,
@@ -502,6 +536,7 @@ import {
   FullscreenExit as FullscreenExitStrokeIcon,
   GlobeAlt as GlobeAltStrokeIcon,
   Grab as GrabStrokeIcon,
+  HandHeart as HandHeartStrokeIcon,
   HandThumbDown as HandThumbDownStrokeIcon,
   HandThumbUp as HandThumbUpStrokeIcon,
   HeartAlt as HeartAltStrokeIcon,
@@ -537,7 +572,6 @@ import {
   Reaction as ReactionStrokeIcon,
   Rectangle as RectangleStrokeIcon,
   Robot as RobotStrokeIcon,
-  RobotShared as RobotSharedStrokeIcon,
   Rocket as RocketStrokeIcon,
   Scan as ScanStrokeIcon,
   Server as ServerStrokeIcon,
@@ -546,6 +580,7 @@ import {
   Sparkles as SparklesStrokeIcon,
   Square as SquareStrokeIcon,
   Square3Stack3D as Square3Stack3DStrokeIcon,
+  Star as StarStrokeIcon,
   Stop as StopStrokeIcon,
   Table as TableStrokeIcon,
   Template as TemplateStrokeIcon,
@@ -593,6 +628,7 @@ export {
   ClockStrokeIcon,
   CloudArrowDownStrokeIcon,
   CloudArrowLeftRightStrokeIcon,
+  CloudArrowUpStrokeIcon,
   CloudXStrokeIcon,
   Cog6ToothStrokeIcon,
   CommandLineStrokeIcon,
@@ -618,6 +654,7 @@ export {
   FullscreenStrokeIcon,
   GlobeAltStrokeIcon,
   GrabStrokeIcon,
+  HandHeartStrokeIcon,
   HandThumbDownStrokeIcon,
   HandThumbUpStrokeIcon,
   HeartAltStrokeIcon,
@@ -652,7 +689,6 @@ export {
   QuestionMarkCircleStrokeIcon,
   ReactionStrokeIcon,
   RectangleStrokeIcon,
-  RobotSharedStrokeIcon,
   RobotStrokeIcon,
   RocketStrokeIcon,
   ScanStrokeIcon,
@@ -662,6 +698,7 @@ export {
   SparklesStrokeIcon,
   Square3Stack3DStrokeIcon,
   SquareStrokeIcon,
+  StarStrokeIcon,
   StopStrokeIcon,
   TableStrokeIcon,
   TemplateStrokeIcon,

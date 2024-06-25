@@ -1,9 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, NotionFindUrlResponseType } from "@dust-tt/types";
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
 import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
-import { NotionDatabase } from "@connectors/lib/models/notion";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 
 import { getParsedDatabase, retrievePage } from "./notion_api";
@@ -56,17 +56,7 @@ export async function searchNotionPagesForQuery({
   }));
 }
 
-export async function checkNotionUrl({
-  connectorId,
-  connectionId,
-  url,
-}: {
-  connectorId: ModelId;
-  connectionId: string;
-  url: string;
-}) {
-  const notionAccessToken = await getNotionAccessToken(connectionId);
-
+function pageOrDbIdFromUrl(url: string) {
   // parse URL
   const u = new URL(url);
   const last = u.pathname.split("/").pop();
@@ -88,6 +78,63 @@ export async function checkNotionUrl({
     id.slice(16, 20) +
     "-" +
     id.slice(20);
+
+  return pageOrDbId;
+}
+
+export async function findNotionUrl({
+  connectorId,
+  url,
+}: {
+  connectorId: ModelId;
+  url: string;
+}): Promise<NotionFindUrlResponseType> {
+  const pageOrDbId = pageOrDbIdFromUrl(url);
+
+  const page = await NotionPage.findOne({
+    where: {
+      notionPageId: pageOrDbId,
+      connectorId,
+    },
+  });
+
+  if (page) {
+    logger.info({ pageOrDbId, url, page }, "Page found");
+    page._model;
+    return { page: page.dataValues, db: null };
+  } else {
+    logger.info({ pageOrDbId, url }, "Page not found");
+  }
+
+  const db = await NotionDatabase.findOne({
+    where: {
+      notionDatabaseId: pageOrDbId,
+      connectorId,
+    },
+  });
+
+  if (db) {
+    logger.info({ pageOrDbId, url, db }, "Database found");
+    return { page: null, db: db.dataValues };
+  } else {
+    logger.info({ pageOrDbId, url }, "Database not found");
+  }
+
+  return { page: null, db: null };
+}
+
+export async function checkNotionUrl({
+  connectorId,
+  connectionId,
+  url,
+}: {
+  connectorId: ModelId;
+  connectionId: string;
+  url: string;
+}) {
+  const notionAccessToken = await getNotionAccessToken(connectionId);
+
+  const pageOrDbId = pageOrDbIdFromUrl(url);
 
   const page = await retrievePage({
     accessToken: notionAccessToken,

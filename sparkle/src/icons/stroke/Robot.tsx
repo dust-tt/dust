@@ -11,15 +11,18 @@ const SvgRobot = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M14 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM9 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM16.5 11a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM12 16c1.03 0 2 0 3-1v-1H9v1c1 1 1.97 1 3 1Z"
+      d="M14 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM13.665 15.33a.75.75 0 1 1 .67 1.34l-1.105.554a2.75 2.75 0 0 1-2.46 0l-1.105-.553a.75.75 0 1 1 .67-1.342l1.106.553a1.25 1.25 0 0 0 1.118 0l1.106-.553ZM18 13.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM7.5 15a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"
     />
     <path
       fill="currentColor"
       fillRule="evenodd"
-      d="M18 5a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h12ZM6 7a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1H6Z"
+      d="M9 7a6 6 0 0 0-6 6v3a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4v-3a6 6 0 0 0-6-6H9Zm0 2a4 4 0 0 0-4 4v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3a4 4 0 0 0-4-4H9Z"
       clipRule="evenodd"
     />
-    <path fill="currentColor" d="M0 10h2v6H0v-6ZM22 10h2v6h-2v-6Z" />
+    <path
+      fill="currentColor"
+      d="M0 12a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0v-3ZM23 11a1 1 0 0 0-1 1v3a1 1 0 1 0 2 0v-3a1 1 0 0 0-1-1Z"
+    />
   </svg>
 );
 export default SvgRobot;

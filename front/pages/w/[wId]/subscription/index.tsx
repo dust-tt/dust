@@ -21,9 +21,9 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext, useEffect, useState } from "react";
 
-import { PricePlans } from "@app/components/PlansTables";
+import { subNavigationAdmin } from "@app/components/navigation/config";
+import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { getPriceAsString } from "@app/lib/client/subscription";
@@ -146,6 +146,9 @@ export default function Subscription({
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          billingPeriod: "monthly",
+        }),
       });
 
       if (!res.ok) {
@@ -281,7 +284,6 @@ export default function Subscription({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
       {perSeatPricing && (
@@ -391,7 +393,7 @@ export default function Subscription({
                         {getPriceAsString({
                           currency: perSeatPricing.seatCurrency,
                           priceInCents: perSeatPricing.seatPrice,
-                        })}
+                        })}{" "}
                         per member.
                       </>
                     ) : (

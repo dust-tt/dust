@@ -39,7 +39,7 @@ export function Input({
       {label && (
         <label
           htmlFor={name}
-          className="s-text-sm s-text-element-800 dark:s-text-element-800-dark"
+          className="s-pb-1 s-text-sm s-font-medium s-text-element-700 dark:s-text-element-700-dark"
         >
           {label}
         </label>

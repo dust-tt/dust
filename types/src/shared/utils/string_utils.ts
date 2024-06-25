@@ -69,3 +69,7 @@ export function redactString(str: string, n: number) {
   const redacted = "•".repeat(str.length - n) + str.slice(-n);
   return redacted;
 }
+
+export function truncate(text: string, length: number, omission = "...") {
+  return text.length > length ? `${text.substring(0, 20)}${omission}` : text;
+}

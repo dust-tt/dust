@@ -7,6 +7,7 @@ import {
   PlusIcon,
   SparklesIcon,
   Spinner,
+  TextArea,
   Tooltip,
   XCircleIcon,
   XMarkIcon,
@@ -262,6 +263,9 @@ export function ActionProcess({
   updateAction,
   setEdited,
   dataSources,
+  description,
+  onDescriptionChange,
+  isDescriptionValid,
 }: {
   owner: WorkspaceType;
   instructions: string | null;
@@ -273,7 +277,18 @@ export function ActionProcess({
   ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
-}) {
+} & (
+  | {
+      description: string;
+      onDescriptionChange: (description: string) => void;
+      isDescriptionValid: boolean;
+    }
+  | {
+      description?: undefined;
+      onDescriptionChange?: undefined;
+      isDescriptionValid?: undefined;
+    }
+)) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
@@ -316,11 +331,17 @@ export function ActionProcess({
 
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
-
+    let fullInstructions = `${instructions}`;
+    if (description) {
+      fullInstructions += `\n\nTool description:\n${description}`;
+    }
     if (instructions !== null) {
       setIsGeneratingSchema(true);
       try {
-        const res = await generateSchema({ owner, instructions });
+        const res = await generateSchema({
+          owner,
+          instructions: fullInstructions,
+        });
 
         if (res.isOk()) {
           updateAction((previousAction) => ({
@@ -379,10 +400,10 @@ export function ActionProcess({
       />
 
       <div className="text-sm text-element-700">
-        This action scans selected data sources within the specified time frame,
+        This tool scans selected data sources within the specified time frame,
         extracting information based on a predefined schema. It can process the
-        equivalent to a 1,000-page book (500k tokens). More in the
-        documentation. Learn more about this feature in the{" "}
+        equivalent to a 1,000-page book (500k tokens). Learn more about this
+        feature in the{" "}
         <Hoverable
           onClick={() => {
             window.open(
@@ -499,6 +520,27 @@ export function ActionProcess({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {onDescriptionChange && (
+        <div className="flex flex-col gap-4 pt-8">
+          <div className="font-semibold text-element-800">Tool description</div>
+          <div className="text-sm text-element-600">
+            Clarify what the tool should do and what data it should extract. For
+            example:
+            <span className="block text-element-600">
+              "Extract from the #reading slack channel a list of books,
+              including their title, author, and the reason why they were
+              recommended".
+            </span>
+          </div>
+          <TextArea
+            placeholder={"Extract the list of…"}
+            value={description}
+            onChange={onDescriptionChange}
+            error={!isDescriptionValid ? "Description cannot be empty" : null}
+          />
         </div>
       )}
 

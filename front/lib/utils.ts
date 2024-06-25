@@ -8,15 +8,13 @@ export function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function new_id() {
+export function generateModelSId(): string {
   const u = uuidv4();
   const b = blake3(u);
-  return Buffer.from(b).toString("hex");
-}
-
-export function generateModelSId(): string {
-  const sId = new_id();
-  return sId.slice(0, 10);
+  return Buffer.from(b)
+    .map((x) => alphanumFromByte(x))
+    .toString()
+    .slice(0, 10);
 }
 
 export function client_side_new_id() {
@@ -141,12 +139,6 @@ export const objectToMarkdown = (obj: any, indent = 0) => {
  * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
  * the same order, and returns the smallest index of the last character of a in
  * b.
- *
- * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
- * out' in b. e.g.
- * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
- * - 'gp4' and 'gpt-4', spread is 5
- * - 'gp4' and 'gemni-pro4', spread is 10
  */
 function subFilterLastIndex(a: string, b: string) {
   let i = 0;
@@ -163,11 +155,6 @@ function subFilterLastIndex(a: string, b: string) {
 /**
  * Checks if a is a subfilter of b, i.e. all characters in a are present in b in
  * the same order, and returns the biggest index of the first character of a in b.
- * Used in conjunction with subFilterFirstIndex to compare how much a is 'spread
- * out' in b. e.g.
- * - 'god' and 'sqlGod', spread is 3 (index of d minus index of g in 'sqlGod')
- * - 'gp4' and 'gpt-4', spread is 5
- * - 'gp4' and 'gemni-pro4', spread is 10
  */
 function subFilterFirstIndex(a: string, b: string) {
   let i = a.length - 1;
@@ -179,6 +166,26 @@ function subFilterFirstIndex(a: string, b: string) {
     j--;
   }
   return i === -1 ? j + 1 : -1;
+}
+
+/* Measures how much string a is 'spread out' in string b, assuming a is a
+ * subfilter of b;  e.g.
+ * - 'god' in 'sqlGod': spread is 3 (index of d minus index of g in 'sqlGod')
+ * - 'gp4' in 'gpt-4': spread is 5
+ * - 'gp4' in 'gemni-pro4': spread is 10
+ *
+ *  If a is not a subfilter of b, returns -1. If a can be considered "spread" in
+ *  multiple places in b, returns the minimal spread for the first occurrence.
+ */
+function spreadLength(a: string, b: string) {
+  const lastIndex = subFilterLastIndex(a, b);
+  if (lastIndex === -1) {
+    return -1;
+  }
+
+  const firstIndex = subFilterFirstIndex(a, b.substring(0, lastIndex));
+
+  return lastIndex - firstIndex;
 }
 
 /**
@@ -195,26 +202,24 @@ export function subFilter(a: string, b: string) {
  * lexicographic order
  */
 export function compareForFuzzySort(query: string, a: string, b: string) {
-  const subFilterFirstIndexA = subFilterFirstIndex(query, a);
-  if (subFilterFirstIndexA === -1) {
+  const spreadA = spreadLength(query, a);
+  if (spreadA === -1) {
     return 1;
   }
 
-  const subFilterFirstIndexB = subFilterFirstIndex(query, b);
-  if (subFilterFirstIndexB === -1) {
+  const spreadB = spreadLength(query, b);
+  if (spreadB === -1) {
     return -1;
+  }
+
+  if (spreadA !== spreadB) {
+    return spreadA - spreadB;
   }
 
   const subFilterLastIndexA = subFilterLastIndex(query, a);
   const subFilterLastIndexB = subFilterLastIndex(query, b);
-  const distanceA = subFilterLastIndexA - subFilterFirstIndexA;
-  const distanceB = subFilterLastIndexB - subFilterFirstIndexB;
-  if (distanceA !== distanceB) {
-    return distanceA - distanceB;
-  }
-
-  if (subFilterFirstIndexA !== subFilterFirstIndexB) {
-    return subFilterFirstIndexA - subFilterFirstIndexB;
+  if (subFilterLastIndexA !== subFilterLastIndexB) {
+    return subFilterLastIndexA - subFilterLastIndexB;
   }
 
   if (a.length !== b.length) {
@@ -245,4 +250,46 @@ export function filterAndSortAgents(
 export function trimText(text: string, maxLength = 20, removeNewLines = true) {
   const t = removeNewLines ? text.replaceAll("\n", " ") : text;
   return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
+}
+
+export function sanitizeJSONOutput(obj: unknown): unknown {
+  if (typeof obj === "string") {
+    // eslint-disable-next-line no-control-regex
+    return obj.replace(/\x00/g, "");
+  } else if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeJSONOutput(item));
+  } else if (typeof obj === "object" && obj !== null) {
+    const sanitizedObj: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+      sanitizedObj[key] = sanitizeJSONOutput(
+        (obj as Record<string, unknown>)[key] as unknown
+      );
+    }
+    return sanitizedObj;
+  }
+  return obj;
+}
+
+/**
+ * Given a byte, returns a character from the set [A-Za-z0-9_-].
+ */
+function alphanumFromByte(byte: number) {
+  // 64 possibilities enable a round modulo on the bytes, guaranteeing uniformity
+  // (otherwise, the modulo would be biased towards the first possibilities)
+  const index = byte % 64;
+  const CHAR_A = 65;
+  const CHAR_a = 97;
+  const CHAR_0 = 48;
+
+  if (index < 26) {
+    return CHAR_A + index;
+  }
+
+  if (index < 52) {
+    return CHAR_a + index - 26;
+  }
+  if (index < 62) {
+    return CHAR_0 + index - 52;
+  }
+  return index === 62 ? 45 : 95;
 }

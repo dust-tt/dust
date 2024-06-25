@@ -10,9 +10,8 @@ export type DustAppRunConfigurationType = {
   appWorkspaceId: string;
   appId: string;
 
-  name: string | null;
+  name: string;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export type DustAppParameters = {
@@ -34,4 +33,5 @@ export interface DustAppRunActionType extends BaseAction {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  type: "dust_app_run_action";
 }

@@ -13,12 +13,12 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationApp,
   subNavigationBuild,
-} from "@app/components/sparkle/navigation";
+} from "@app/components/navigation/config";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -141,7 +141,6 @@ export default function CloneView({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",
@@ -249,7 +248,7 @@ export default function CloneView({
                         Description
                       </label>
                       <div className="text-sm font-normal text-gray-400">
-                        optional
+                        optional but highly recommended
                       </div>
                     </div>
                     <div className="mt-1 flex rounded-md shadow-sm">
@@ -263,9 +262,11 @@ export default function CloneView({
                       />
                     </div>
                     <p className="mt-2 text-sm text-gray-500">
-                      A good description will help others discover and
-                      understand the purpose of your app. It is also visible at
-                      the top of your app specification.
+                      This description guides assistants in understanding how to
+                      use your app effectively and determines its relevance in
+                      responding to user inquiries. If you don't provide a
+                      description, members won't be able to select this app in
+                      the Assistant Builder.
                     </p>
                   </div>
 

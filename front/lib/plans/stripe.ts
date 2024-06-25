@@ -1,10 +1,9 @@
-import type { Result, WorkspaceType } from "@dust-tt/types";
+import type { BillingPeriod, Result, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
-import { isDevelopment } from "@app/lib/development";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -28,20 +27,24 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 
 /**
  * Calls the Stripe API to get the price ID for a given product ID.
+ * We use prices metata to find the default price for a given product.
+ * For the Pro plan, the metadata are "IS_DEFAULT_YEARLY_PRICE" and "IS_DEFAULT_MONHTLY_PRICE" and are set to "true".
  */
-async function getPriceId(productId: string): Promise<string | null> {
-  // Return the default price if set
-  const product = await stripe.products.retrieve(productId);
-  if (product.default_price && typeof product.default_price === "string") {
-    return product.default_price;
+async function getDefautPriceFromMetadata(
+  productId: string,
+  key: string
+): Promise<string | null> {
+  const prices = await stripe.prices.list({ product: productId, active: true });
+  for (const price of prices.data) {
+    if (
+      price.metadata &&
+      key in price.metadata &&
+      price.metadata[key] === "true"
+    ) {
+      return price.id;
+    }
   }
 
-  // Otherwise, return the first active price
-  const prices = await stripe.prices.list({ product: productId, active: true });
-  if (prices.data.length > 0) {
-    const [firstActivePrice] = prices.data;
-    return firstActivePrice.id;
-  }
   return null;
 }
 
@@ -54,8 +57,10 @@ async function getPriceId(productId: string): Promise<string | null> {
  */
 export const createProPlanCheckoutSession = async ({
   auth,
+  billingPeriod,
 }: {
   auth: Authenticator;
+  billingPeriod: BillingPeriod;
 }): Promise<string | null> => {
   const owner = auth.workspace();
   if (!owner) {
@@ -74,7 +79,20 @@ export const createProPlanCheckoutSession = async ({
   }
 
   const stripeProductId = getProPlanStripeProductId();
-  const priceId = await getPriceId(stripeProductId);
+  let priceId: string | null = null;
+
+  if (billingPeriod === "yearly") {
+    priceId = await getDefautPriceFromMetadata(
+      stripeProductId,
+      "IS_DEFAULT_YEARLY_PRICE"
+    );
+  } else {
+    priceId = await getDefautPriceFromMetadata(
+      stripeProductId,
+      "IS_DEFAULT_MONHTLY_PRICE"
+    );
+  }
+
   if (!priceId) {
     throw new Error(
       `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: price not found for product ${stripeProductId}.`
@@ -402,12 +420,12 @@ export function assertStripeSubscriptionItemIsValid({
     }
 
     if (
-      item.price.recurring.interval !== "month" ||
+      !["month", "year"].includes(item.price.recurring.interval) ||
       item.price.recurring.interval_count !== 1
     ) {
       return new Err({
         invalidity_message:
-          "Subscription recurring price has invalid interval, only 1-month intervals are allowed.",
+          "Subscription recurring price has invalid interval, only 1-month or 1-year intervals are allowed.",
       });
     }
   }

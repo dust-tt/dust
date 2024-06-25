@@ -14,6 +14,7 @@ import {
   Err,
   isAdmin,
   isBuilder,
+  isDevelopment,
   isUser,
   Ok,
   WHITELISTABLE_FEATURES,
@@ -26,7 +27,6 @@ import type {
 } from "next";
 
 import { renderUserType } from "@app/lib/api/user";
-import { isDevelopment } from "@app/lib/development";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -453,6 +453,8 @@ export class Authenticator {
               ? [...WHITELISTABLE_FEATURES]
               : this._flags,
           ssoEnforced: this._workspace.ssoEnforced,
+          whiteListedProviders: this._workspace.whiteListedProviders,
+          defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
         }
       : null;
   }

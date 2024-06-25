@@ -2,14 +2,16 @@ import type {
   ConnectorProvider,
   CoreAPIDataSource,
   CoreAPIDocument,
+  Result,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import { Authenticator } from "@app/lib/auth";
 import type { DocumentsPostProcessHookType } from "@app/lib/documents_post_process_hooks/hooks";
 import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/lib/documents_post_process_hooks/hooks";
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
+import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 
 export async function runPostUpsertHookActivity(
@@ -36,11 +38,24 @@ export async function runPostUpsertHookActivity(
 
   localLogger.info("Running documents post process hook onUpsert function.");
 
-  const dataSourceDocument = await getDataSourceDocument(
+  const dataSourceDocumentRes = await withRetries(getDataSourceDocument)({
     dataSourceName,
     workspaceId,
-    documentId
-  );
+    documentId,
+  });
+
+  if (dataSourceDocumentRes.isErr()) {
+    localLogger.warn(
+      {
+        error: dataSourceDocumentRes.error,
+      },
+      "Document has been deleted or is unreachable. Skipping post process hook."
+    );
+    return;
+  }
+
+  const dataSourceDocument = dataSourceDocumentRes.value;
+
   const documentText = dataSourceDocument.document.text || "";
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
 
@@ -98,18 +113,24 @@ export async function runPostDeleteHookActivity(
   localLogger.info("Ran documents post process hook ondelete function.");
 }
 
-async function getDataSourceDocument(
-  dataSourceName: string,
-  workspaceId: string,
-  documentId: string
-): Promise<{ document: CoreAPIDocument; data_source: CoreAPIDataSource }> {
+async function getDataSourceDocument({
+  dataSourceName,
+  workspaceId,
+  documentId,
+}: {
+  dataSourceName: string;
+  workspaceId: string;
+  documentId: string;
+}): Promise<
+  Result<{ document: CoreAPIDocument; data_source: CoreAPIDataSource }, Error>
+> {
   const workspace = await Workspace.findOne({
     where: {
       sId: workspaceId,
     },
   });
   if (!workspace) {
-    throw new Error(`Could not find workspace ${workspaceId}`);
+    return new Err(new Error(`Could not find workspace ${workspaceId}`));
   }
 
   const dataSource = await DataSource.findOne({
@@ -119,7 +140,7 @@ async function getDataSourceDocument(
     },
   });
   if (!dataSource) {
-    throw new Error(`Could not find data source ${dataSourceName}`);
+    return new Err(new Error(`Could not find data source ${dataSourceName}`));
   }
   const coreAPI = new CoreAPI(logger);
   const docText = await coreAPI.getDataSourceDocument({
@@ -128,7 +149,7 @@ async function getDataSourceDocument(
     documentId,
   });
   if (docText.isErr()) {
-    throw new Error(`Could not get document text for ${documentId}`);
+    return new Err(new Error(`Could not get document text for ${documentId}`));
   }
-  return docText.value;
+  return new Ok(docText.value);
 }

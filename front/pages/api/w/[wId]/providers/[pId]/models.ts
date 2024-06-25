@@ -94,7 +94,7 @@ async function handler(
 
             let f = [];
             if (embed) {
-              f = mList.filter((m) => m.id === "text-embedding-ada-002");
+              f = mList.filter((m) => m.id.startsWith("text-embedding"));
             } else {
               f = mList.filter((m) => {
                 return (
@@ -130,25 +130,6 @@ async function handler(
           }
           return;
 
-        case "cohere":
-          const cohereModels = [
-            { id: "command" },
-            { id: "command-light" },
-            { id: "command-nightly" },
-            { id: "command-light-nightly" },
-          ];
-          res.status(200).json({ models: cohereModels });
-          return;
-
-        case "ai21":
-          const ai21Models = [
-            { id: "j1-large" },
-            { id: "j1-grande" },
-            { id: "j1-jumbo" },
-          ];
-          res.status(200).json({ models: ai21Models });
-          return;
-
         case "azure_openai":
           const deploymentsRes = await fetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
@@ -171,7 +152,7 @@ async function handler(
 
             let f = [];
             if (embed) {
-              f = mList.filter((d) => d.model === "text-embedding-ada-002");
+              f = mList.filter((d) => d.model.startsWith("text-embedding"));
             } else {
               f = mList.filter((d) => {
                 return (
@@ -222,6 +203,7 @@ async function handler(
                 { id: "claude-2.1" },
                 { id: "claude-3-haiku-20240307" },
                 { id: "claude-3-sonnet-20240229" },
+                { id: "claude-3-5-sonnet-20240620" },
                 { id: "claude-3-opus-20240229" },
               ];
             } else {
@@ -279,7 +261,10 @@ async function handler(
 
         case "google_ai_studio":
           return res.status(200).json({
-            models: [{ id: "gemini-pro" }, { id: "gemini-1.5-pro-latest" }],
+            models: [
+              { id: "gemini-1.5-flash-latest" },
+              { id: "gemini-1.5-pro-latest" },
+            ],
           });
 
         default:

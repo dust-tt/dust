@@ -1,9 +1,12 @@
-import type { RequestError } from "@octokit/types";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
+import { RequestError } from "octokit";
+
+import { ProviderWorkflowError } from "@connectors/lib/error";
+
 export class GithubCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -14,14 +17,15 @@ export class GithubCastKnownErrorsInterceptor
     try {
       return await next(input);
     } catch (err: unknown) {
-      const maybeGhError = err as RequestError;
-
-      if (maybeGhError.status === 403 && maybeGhError.name === "HttpError") {
-        throw {
-          __is_dust_error: true,
-          message: "Github rate limited",
-          type: "github_rate_limited",
-        };
+      if (err instanceof RequestError) {
+        if (err.status === 403 && err.name === "HttpError") {
+          throw new ProviderWorkflowError(
+            "github",
+            "403 - Rate Limit Error",
+            "rate_limit_error",
+            err
+          );
+        }
       }
 
       throw err;

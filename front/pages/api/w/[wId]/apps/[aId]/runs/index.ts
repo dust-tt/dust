@@ -6,7 +6,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { App, Provider, Run } from "@app/lib/models/apps";
+import { App, Provider } from "@app/lib/models/apps";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -146,7 +147,7 @@ async function handler(
       }
 
       await Promise.all([
-        Run.create({
+        RunResource.makeNew({
           dustRunId: dustRun.value.run.run_id,
           appId: app.id,
           runType: "local",
@@ -228,20 +229,15 @@ async function handler(
         : 0;
       const runType = req.query.runType ? req.query.runType : "local";
 
-      const where = {
-        runType,
-        workspaceId: owner.id,
-        appId: app.id,
-      };
+      const userRuns = await RunResource.listByAppAndRunType(
+        owner,
+        { appId: app.id, runType },
+        { limit, offset }
+      );
 
-      const userRuns = await Run.findAll({
-        where: where,
-        limit,
-        offset,
-        order: [["createdAt", "DESC"]],
-      });
-      const totalNumberOfRuns = await Run.count({
-        where,
+      const totalNumberOfRuns = await RunResource.countByAppAndRunType(owner, {
+        appId: app.id,
+        runType,
       });
       const userDustRunIds = userRuns.map((r) => r.dustRunId);
 

@@ -1,6 +1,6 @@
+import { isDevelopment } from "@dust-tt/types";
 import type { Attributes } from "sequelize";
 
-import { isDevelopment } from "@app/lib/development";
 import { Plan } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 

@@ -15,6 +15,8 @@
   },
   "dependencies": {
     "@dust-tt/types": "file:../types",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@microsoft/microsoft-graph-types": "^2.40.0",
     "@nangohq/node": "^0.21.4",
     "@notionhq/client": "^2.2.4",
     "@slack/web-api": "^6.8.1",
@@ -44,6 +46,7 @@
     "lodash.get": "^4.4.2",
     "lodash.last": "^3.0.0",
     "lodash.repeat": "^4.1.0",
+    "mammoth": "^1.7.2",
     "mdast-util-gfm": "^3.0.0",
     "micromark-extension-gfm": "^3.0.0",
     "minimist": "^1.2.8",

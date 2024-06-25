@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EmbedderVector {
@@ -107,6 +107,15 @@ impl EmbedderRequest {
                     "Retry querying"
                 );
             },
+            |err| {
+                error!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    err_msg = err.message,
+                    request_id = err.request_id.as_deref().unwrap_or(""),
+                    "EmbedderRequest model error",
+                );
+            },
         )
         .await;
 
@@ -165,8 +174,6 @@ impl EmbedderRequest {
 
 #[derive(Debug, ValueEnum, Clone, PartialEq)]
 pub enum SupportedEmbedderModels {
-    #[clap(name = "text-embedding-ada-002")]
-    TextEmbeddingAda002,
     #[clap(name = "text-embedding-3-large-1536")]
     TextEmbedding3Large1536,
     #[clap(name = "mistral-embed")]
@@ -176,7 +183,6 @@ pub enum SupportedEmbedderModels {
 impl fmt::Display for SupportedEmbedderModels {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SupportedEmbedderModels::TextEmbeddingAda002 => write!(f, "text-embedding-ada-002"),
             SupportedEmbedderModels::TextEmbedding3Large1536 => {
                 write!(f, "text-embedding-3-large-1536")
             }
@@ -193,10 +199,7 @@ pub struct EmbedderProvidersModelMap;
 impl EmbedderProvidersModelMap {
     fn get_models(provider: &ProviderID) -> Result<Vec<SupportedEmbedderModels>> {
         match provider {
-            &ProviderID::OpenAI => Ok(vec![
-                SupportedEmbedderModels::TextEmbeddingAda002,
-                SupportedEmbedderModels::TextEmbedding3Large1536,
-            ]),
+            &ProviderID::OpenAI => Ok(vec![SupportedEmbedderModels::TextEmbedding3Large1536]),
             &ProviderID::Mistral => Ok(vec![SupportedEmbedderModels::MistralEmbed]),
             _ => Err(anyhow!("Provider not supported for embeddings.")),
         }

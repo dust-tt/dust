@@ -1,6 +1,6 @@
 import { ContentMessage } from "@dust-tt/sparkle";
 import type { AppType, WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, slugify } from "@dust-tt/types";
 import { useState } from "react";
 
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
@@ -8,6 +8,10 @@ import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSe
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderDustAppConfiguration,
+} from "@app/components/assistant_builder/types";
+import {
+  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
+  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
 } from "@app/components/assistant_builder/types";
 
 export function isActionDustAppRunValid(
@@ -18,18 +22,20 @@ export function isActionDustAppRunValid(
 
 export function ActionDustAppRun({
   owner,
-  actionConfigration,
+  action,
   updateAction,
   setEdited,
   dustApps,
 }: {
   owner: WorkspaceType;
-  actionConfigration: AssistantBuilderDustAppConfiguration | null;
-  updateAction: (
-    setNewAction: (
-      previousAction: AssistantBuilderDustAppConfiguration
-    ) => AssistantBuilderDustAppConfiguration
-  ) => void;
+  action: AssistantBuilderActionConfiguration;
+  updateAction: (args: {
+    actionName: string;
+    actionDescription: string;
+    getNewActionConfig: (
+      old: AssistantBuilderActionConfiguration["configuration"]
+    ) => AssistantBuilderActionConfiguration["configuration"];
+  }) => void;
   setEdited: (edited: boolean) => void;
   dustApps: AppType[];
 }) {
@@ -37,15 +43,21 @@ export function ActionDustAppRun({
 
   const deleteDustApp = () => {
     setEdited(true);
-    updateAction((previousAction) => ({
-      ...previousAction,
-      app: null,
-    }));
+    updateAction({
+      actionName:
+        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
+      actionDescription:
+        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
+      getNewActionConfig: (previousAction) => ({
+        ...previousAction,
+        app: null,
+      }),
+    });
   };
 
   const noDustApp = dustApps.length === 0;
 
-  if (!actionConfigration) {
+  if (!action.configuration) {
     return null;
   }
 
@@ -57,12 +69,16 @@ export function ActionDustAppRun({
           setShowDustAppsModal(isOpen);
         }}
         dustApps={dustApps}
-        onSave={({ app }) => {
+        onSave={(app) => {
           setEdited(true);
-          updateAction((previousAction) => ({
-            ...previousAction,
-            app,
-          }));
+          updateAction({
+            actionName: slugify(app.name),
+            actionDescription: app.description ?? "",
+            getNewActionConfig: (previousAction) => ({
+              ...previousAction,
+              app,
+            }),
+          });
         }}
       />
 
@@ -119,7 +135,9 @@ export function ActionDustAppRun({
           </div>
           <DustAppSelectionSection
             show={true}
-            dustAppConfiguration={actionConfigration}
+            dustAppConfiguration={
+              action.configuration as AssistantBuilderDustAppConfiguration
+            }
             openDustAppModal={() => {
               setShowDustAppsModal(true);
             }}

@@ -5,6 +5,7 @@ import { TablesQueryActionType } from "../../front/assistant/actions/tables_quer
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
+import { BrowseActionType } from "./actions/browse";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -51,12 +52,15 @@ export type MessageWithRankType = WithRank<MessageType>;
  * User messages
  */
 
+export type UserMessageOrigin = "slack" | "web" | "api";
+
 export type UserMessageContext = {
   username: string;
   timezone: string;
   fullName: string | null;
   email: string | null;
   profilePictureUrl: string | null;
+  origin: UserMessageOrigin | null;
 };
 
 export type UserMessageType = {
@@ -86,7 +90,8 @@ export type AgentActionType =
   | DustAppRunActionType
   | TablesQueryActionType
   | ProcessActionType
-  | WebsearchActionType;
+  | WebsearchActionType
+  | BrowseActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -114,6 +119,7 @@ export type AgentMessageType = {
   status: AgentMessageStatus;
   actions: AgentActionType[];
   content: string | null;
+  chainOfThoughts: string[];
   error: {
     code: string;
     message: string;
@@ -148,6 +154,7 @@ export type ContentFragmentType = {
   visibility: MessageVisibility;
   version: number;
   sourceUrl: string | null;
+  textUrl: string;
   textBytes: number | null;
   title: string;
   contentType: ContentFragmentContentType;

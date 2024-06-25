@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 import {
   ChatBubbleBottomCenterText,
@@ -39,7 +39,7 @@ const visualTable = {
   channel: ChatBubbleBottomCenterText,
 };
 
-export interface TreeItemProps {
+interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
   variant?: "file" | "folder" | "database" | "channel";
@@ -47,9 +47,19 @@ export interface TreeItemProps {
   checkbox?: CheckboxProps;
   onChevronClick?: () => void;
   collapsed?: boolean;
+  defaultCollapsed?: boolean;
   className?: string;
   actions?: React.ReactNode;
+}
+
+export interface TreeItemPropsWithChildren extends TreeItemProps {
+  renderTreeItems?: never;
   children?: React.ReactNode;
+}
+
+export interface TreeItemPropsWithRender extends TreeItemProps {
+  renderTreeItems: () => React.ReactNode;
+  children?: never;
 }
 
 Tree.Item = function ({
@@ -61,9 +71,32 @@ Tree.Item = function ({
   checkbox,
   onChevronClick,
   collapsed,
-  children,
+  defaultCollapsed,
   actions,
-}: TreeItemProps) {
+  renderTreeItems,
+  children,
+}: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
+  const [collapsedState, setCollapsedState] = useState<boolean>(
+    defaultCollapsed ?? true
+  );
+
+  const isControlledCollapse = collapsed !== undefined;
+
+  const effectiveCollapsed = isControlledCollapse ? collapsed : collapsedState;
+  const effectiveOnChevronClick = isControlledCollapse
+    ? onChevronClick
+    : () => setCollapsedState(!collapsedState);
+
+  const getChildren = () => {
+    if (effectiveCollapsed) {
+      return [];
+    }
+
+    return typeof renderTreeItems === "function" ? renderTreeItems() : children;
+  };
+
+  const childrenToRender = getChildren();
+
   return (
     <>
       <div
@@ -74,10 +107,14 @@ Tree.Item = function ({
       >
         {type === "node" && (
           <IconButton
-            icon={children && !collapsed ? ChevronDown : ChevronRight}
+            icon={
+              childrenToRender && !effectiveCollapsed
+                ? ChevronDown
+                : ChevronRight
+            }
             size="sm"
             variant="secondary"
-            onClick={onChevronClick}
+            onClick={effectiveOnChevronClick}
           />
         )}
         {type === "leaf" && <div className="s-w-5"></div>}
@@ -100,8 +137,8 @@ Tree.Item = function ({
           </div>
         </div>
       </div>
-      {React.Children.count(children) > 0 && (
-        <div className="s-pl-5">{!collapsed && children}</div>
+      {React.Children.count(childrenToRender) > 0 && (
+        <div className="s-pl-5">{childrenToRender}</div>
       )}
     </>
   );

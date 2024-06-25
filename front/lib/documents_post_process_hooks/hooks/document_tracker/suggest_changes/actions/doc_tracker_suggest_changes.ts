@@ -1,4 +1,9 @@
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+  getLargeWhitelistedModel,
+} from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
@@ -8,15 +13,23 @@ import { callAction } from "@app/lib/actions/helpers";
 // it takes {source_document, target_document} a
 // it returns {match: false} or {match: true, suggested_changes: string}
 export async function callDocTrackerSuggestChangesAction(
-  workspaceId: string,
+  owner: WorkspaceType,
   sourceDocument: string,
   targetDocument: string
 ): Promise<t.TypeOf<typeof DocTrackerSuggestChangesActionValueSchema>> {
   const action = DustProdActionRegistry["doc-tracker-suggest-changes"];
+
+  const model = getLargeWhitelistedModel(owner);
+  if (!model) {
+    throw new Error("Could not find a whitelisted model for the workspace.");
+  }
+
   const config = cloneBaseConfig(action.config);
+  config.SUGGEST_CHANGES.provider_id = model.providerId;
+  config.SUGGEST_CHANGES.model_id = model.modelId;
 
   const res = await callAction({
-    workspaceId,
+    owner,
     input: { source_document: sourceDocument, target_document: targetDocument },
     action,
     config,

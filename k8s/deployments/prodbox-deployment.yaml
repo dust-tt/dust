@@ -53,11 +53,11 @@ spec:
             requests:
               cpu: 4000m
               memory: 4Gi
-              ephemeral-storage: 4Gi
+              ephemeral-storage: 16Gi
             limits:
               cpu: 4000m
               memory: 4Gi
-              ephemeral-storage: 4Gi
+              ephemeral-storage: 16Gi
 
       volumes:
         - name: cert-volume

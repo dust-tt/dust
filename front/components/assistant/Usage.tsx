@@ -43,12 +43,6 @@ export function assistantUsageMessage({
         </>
       );
     }
-
-    const usersWithAgentInListCount = boldIfRequested(
-      `${usage.usersWithAgentInListCount} member${pluralize(
-        usage.usersWithAgentInListCount
-      )}`
-    );
     const messageCount = boldIfRequested(
       `${usage.messageCount} time${pluralize(usage.messageCount)}`
     );
@@ -58,11 +52,9 @@ export function assistantUsageMessage({
 
     return (
       <>
-        {`${
-          assistantName ? "@" + assistantName : "This assistant"
-        } is active for`}{" "}
-        {usersWithAgentInListCount} and has been used {messageCount} by{" "}
-        {userCount} in the last {usage.timePeriodSec / (60 * 60 * 24)} days.
+        {assistantName ? "@" + assistantName : "This assistant"} has been used{" "}
+        {messageCount} by {userCount} in the last{" "}
+        {usage.timePeriodSec / (60 * 60 * 24)} days.
       </>
     );
   }

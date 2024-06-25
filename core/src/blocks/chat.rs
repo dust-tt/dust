@@ -438,19 +438,19 @@ impl Block for Chat {
                                             parameters: Some(p.clone()),
                                         }),
                                         _ => Err(anyhow!(
-                                "Invalid functions code output, expecting an array of objects with
+                                "Invalid functions code output, expecting an array of objects with \
                                  fields `name`, `description`, and `parameters`."
                             )),
                                     }
                                 }
                                 _ => Err(anyhow!(
-                                "Invalid functions code output, expecting an array of objects with
+                                "Invalid functions code output, expecting an array of objects with \
                                  fields `name`, `description`, and `parameters`."
                             )),
                             })
                             .collect::<Result<Vec<ChatFunction>>>()?,
                         _ => Err(anyhow!(
-                            "Invalid functions code output, expecting an array of objects with
+                            "Invalid functions code output, expecting an array of objects with \
                              fields `name`, `description`, and `parameters`."
                         ))?,
                     },
@@ -467,7 +467,7 @@ impl Block for Chat {
                 s => {
                     functions.iter().find(|f| f.name == s).ok_or(anyhow!(
                         "Invalid `function_call` in configuration for chat block `{}`: \
-                         function name `{}` not found in functions. Possible values are
+                         function name `{}` not found in functions. Possible values are \
                          'auto', 'none' or the name of one of the functions.",
                         name,
                         s
@@ -570,7 +570,9 @@ impl Block for Chat {
                         // move tx to event_sender
                     });
                 }
-                request.execute(env.credentials.clone(), Some(tx)).await?
+                request
+                    .execute(env.credentials.clone(), Some(tx), env.run_id.clone())
+                    .await?
             }
             false => {
                 request
@@ -579,6 +581,7 @@ impl Block for Chat {
                         env.project.clone(),
                         env.store.clone(),
                         use_cache,
+                        env.run_id.clone(),
                     )
                     .await?
             }
@@ -595,6 +598,8 @@ impl Block for Chat {
             })?,
             meta: Some(json!({
                 "logs": all_logs,
+                "token_usage": g.usage,
+                "provider_request_id": g.provider_request_id,
             })),
         })
     }

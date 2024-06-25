@@ -32,7 +32,6 @@ export class AgentRetrievalConfiguration extends Model<
 
   declare name: string | null;
   declare description: string | null;
-  declare forceUseAtIteration: number | null;
 }
 
 AgentRetrievalConfiguration.init(
@@ -91,10 +90,6 @@ AgentRetrievalConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    forceUseAtIteration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
   },
   {
     modelName: "agent_retrieval_configuration",
@@ -102,6 +97,11 @@ AgentRetrievalConfiguration.init(
     indexes: [
       {
         fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        unique: true,
+        fields: ["sId"],
         concurrently: true,
       },
     ],
@@ -149,6 +149,7 @@ export class AgentRetrievalAction extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare runId: string | null;
 
   declare retrievalConfigurationId: string;
 
@@ -179,6 +180,10 @@ AgentRetrievalAction.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    runId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     retrievalConfigurationId: {
       type: DataTypes.STRING,

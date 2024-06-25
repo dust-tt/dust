@@ -3,7 +3,10 @@ import type {
   UserMessageType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { PublicPostMessagesRequestBodySchema } from "@dust-tt/types";
+import {
+  isEmptyString,
+  PublicPostMessagesRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -73,6 +76,16 @@ async function handler(
 
       const { content, context, mentions, blocking } = bodyValidation.right;
 
+      if (isEmptyString(context.username)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The context.username field is required.",
+          },
+        });
+      }
+
       // /!\ This is reserved for internal use!
       // If the header "x-api-user-email" is present and valid,
       // associate the message with the provided user email if it belongs to the same workspace.
@@ -90,7 +103,10 @@ async function handler(
           conversation,
           content,
           mentions,
-          context,
+          context: {
+            ...context,
+            origin: context.origin ?? "api",
+          },
         },
         { resolveAfterFullGeneration: blocking === true }
       );

@@ -11,8 +11,6 @@ import { TRACKABLE_CONNECTOR_TYPES } from "@app/lib/documents_post_process_hooks
 import { TrackedDocument } from "@app/lib/models/doc_tracker";
 import mainLogger from "@app/logger/logger";
 
-const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
-
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_update_tracked_documents",
 });
@@ -20,8 +18,9 @@ const logger = mainLogger.child({
 export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
-  const workspaceId = params.auth.workspace()?.sId;
-  if (!workspaceId) {
+  const owner = params.auth.workspace();
+
+  if (!owner) {
     logger.info(
       "Workspace not found, document_tracker_update_tracked_documents post process hook should not run."
     );
@@ -29,25 +28,16 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   }
 
   const localLogger = logger.child({
-    workspaceId,
+    workspaceId: owner.sId,
     dataSourceName: params.dataSourceName,
     documentId: params.documentId,
   });
-  localLogger.info(
-    "Checking if document_tracker_update_tracked_documents post process hook should run."
-  );
 
-  const whitelistedWorkspaceIds =
-    RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
-
-  if (!whitelistedWorkspaceIds.includes(workspaceId)) {
-    localLogger.info(
-      "Workspace not whitelisted, document_tracker_update_tracked_documents post process hook should not run."
-    );
+  if (!owner.flags.includes("document_tracker")) {
     return false;
   }
 
-  const dataSource = await getDatasource(params.dataSourceName, workspaceId);
+  const dataSource = await getDatasource(owner, params.dataSourceName);
 
   if (
     params.verb === "upsert" &&
@@ -88,20 +78,20 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
   documentId,
   documentText,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
-  const workspaceId = auth.workspace()?.sId;
-  if (!workspaceId) {
+  const owner = auth.workspace();
+  if (!owner) {
     throw new Error("Workspace not found.");
   }
   logger.info(
     {
-      workspaceId,
+      workspaceId: owner.sId,
       dataSourceName,
       documentId,
     },
     "Running document_tracker_update_tracked_documents post upsert hook."
   );
 
-  const dataSource = await getDatasource(dataSourceName, workspaceId);
+  const dataSource = await getDatasource(owner, dataSourceName);
   if (
     TRACKABLE_CONNECTOR_TYPES.includes(
       dataSource.connectorProvider as ConnectorProvider
@@ -117,21 +107,21 @@ export async function documentTrackerUpdateTrackedDocumentsOnDelete({
   dataSourceName,
   documentId,
 }: DocumentsPostProcessHookOnDeleteParams): Promise<void> {
-  const workspaceId = auth.workspace()?.sId;
-  if (!workspaceId) {
+  const owner = auth.workspace();
+  if (!owner) {
     throw new Error("Workspace not found.");
   }
 
   logger.info(
     {
-      workspaceId,
+      workspaceId: owner.sId,
       dataSourceName,
       documentId,
     },
     "Running document_tracker_update_tracked_documents onDelete."
   );
 
-  const dataSource = await getDatasource(dataSourceName, workspaceId);
+  const dataSource = await getDatasource(owner, dataSourceName);
 
   await TrackedDocument.destroy({
     where: {

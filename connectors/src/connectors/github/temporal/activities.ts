@@ -61,7 +61,11 @@ export async function githubGetReposResultPageActivity(
   }
 
   localLogger.info("Fetching GitHub repos result page.");
-  const page = await getReposPage(githubInstallationId, pageNumber);
+  const pageRes = await getReposPage(githubInstallationId, pageNumber);
+  if (pageRes.isErr()) {
+    throw pageRes.error;
+  }
+  const page = pageRes.value;
   return page.map((repo) => ({
     name: repo.name,
     id: repo.id,

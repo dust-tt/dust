@@ -1,5 +1,5 @@
 import { User } from "@app/lib/models/user";
-import { guessFirstandLastNameFromFullName } from "@app/lib/user";
+import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 
 async function main() {
   const users: User[] = await User.findAll({
@@ -25,7 +25,7 @@ async function main() {
       chunk.map((u: User) => {
         return (async () => {
           if (!u.firstName) {
-            const { firstName, lastName } = guessFirstandLastNameFromFullName(
+            const { firstName, lastName } = guessFirstAndLastNameFromFullName(
               u.name
             );
             return u.update({

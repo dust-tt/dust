@@ -1,9 +1,4 @@
-import type {
-  AgentConfigurationType,
-  AgentStatus,
-  Result,
-  WithAPIErrorReponse,
-} from "@dust-tt/types";
+import type { AgentStatus, WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -11,7 +6,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
-import { isLegacyAgent } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
@@ -131,39 +125,23 @@ async function handler(
         }
       }
 
-      const legacySingleActionMode = isLegacyAgent(assistant);
-      let result: Result<AgentConfigurationType, Error>;
-      if (legacySingleActionMode) {
-        result = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: {
-            ...assistant,
-            scope: bodyValidation.right.scope,
-            status: assistant.status as AgentStatus,
-            maxToolsUsePerRun: undefined,
-          },
-          agentConfigurationId: assistant.sId,
-          legacySingleActionMode: true,
-        });
-      } else {
-        result = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: {
-            ...assistant,
-            scope: bodyValidation.right.scope,
-            status: assistant.status as AgentStatus,
-          },
-          agentConfigurationId: assistant.sId,
-          legacySingleActionMode: false,
-        });
-      }
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+        auth,
+        assistant: {
+          ...assistant,
+          scope: bodyValidation.right.scope,
+          status: assistant.status as AgentStatus,
+          templateId: assistant.templateId,
+        },
+        agentConfigurationId: assistant.sId,
+      });
 
-      if (result.isErr()) {
+      if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
+            type: "assistant_saving_error",
+            message: `Error updating assistant: ${agentConfigurationRes.error.message}`,
           },
         });
       }

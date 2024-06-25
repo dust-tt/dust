@@ -12,9 +12,8 @@ export type TablesQueryConfigurationType = {
     tableId: string;
   }>;
 
-  name: string | null;
+  name: string;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export interface TablesQueryActionType extends BaseAction {
@@ -25,4 +24,5 @@ export interface TablesQueryActionType extends BaseAction {
   functionCallName: string | null;
   agentMessageId: ModelId;
   step: number;
+  type: "tables_query_action";
 }

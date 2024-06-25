@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  Err,
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
@@ -14,9 +15,11 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import { getApp } from "@app/lib/api/app";
+import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
   createAgentConfiguration,
@@ -116,26 +119,26 @@ async function handler(
         sort,
       });
       if (withUsage === "true") {
-        agentConfigurations = await safeRedisClient(async (redis) => {
-          return Promise.all(
-            agentConfigurations.map(
-              async (
-                agentConfiguration
-              ): Promise<LightAgentConfigurationType> => {
-                return {
-                  ...agentConfiguration,
-                  usage: await getAgentUsage(auth, {
-                    providedRedis: redis,
-                    agentConfiguration,
-                    workspaceId: owner.sId,
-                  }),
-                };
-              }
-            )
-          );
+        const mentionCounts = await safeRedisClient(async (redis) => {
+          return getAgentsUsage({
+            providedRedis: redis,
+            workspaceId: owner.sId,
+            limit:
+              typeof req.query.limit === "string"
+                ? parseInt(req.query.limit, 10)
+                : -1,
+          });
         });
+        const usageMap = _.keyBy(mentionCounts, "agentId");
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          usage: {
+            messageCount: usageMap[agentConfiguration.sId]?.messageCount || 0,
+            userCount: usageMap[agentConfiguration.sId]?.userCount || 0,
+            timePeriodSec: usageMap[agentConfiguration.sId]?.timePeriodSec || 0,
+          },
+        }));
       }
-
       if (withAuthors === "true") {
         const recentAuthors = await getAgentsRecentAuthors({
           auth,
@@ -195,62 +198,43 @@ async function handler(
         });
       }
 
-      if (
-        bodyValidation.right.useMultiActions &&
-        !owner.flags.includes("multi_actions")
-      ) {
+      const maxToolsUsePerRun =
+        bodyValidation.right.assistant.maxToolsUsePerRun;
+
+      const isLegacyConfiguration =
+        bodyValidation.right.assistant.actions.length === 1 &&
+        !bodyValidation.right.assistant.actions[0].description;
+
+      if (isLegacyConfiguration && maxToolsUsePerRun !== undefined) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "app_auth_error",
-            message: "Multi-actions is not enabled on this workspace.",
+            message:
+              "maxToolsUsePerRun is only supported in multi-actions mode.",
           },
         });
       }
-
-      let agentConfigurationRes: Result<AgentConfigurationType, Error>;
-      const maxToolsUsePerRun =
-        bodyValidation.right.assistant.maxToolsUsePerRun;
-
-      if (!bodyValidation.right.useMultiActions) {
-        if (maxToolsUsePerRun !== undefined) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "app_auth_error",
-              message:
-                "maxToolsUsePerRun is only supported in multi-actions mode.",
-            },
-          });
-        }
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
-          legacySingleActionMode: true,
-        });
-      } else {
-        if (maxToolsUsePerRun === undefined) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "app_auth_error",
-              message: "maxToolsUsePerRun is required in multi-actions mode.",
-            },
-          });
-        }
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
-          legacySingleActionMode: false,
+      if (!isLegacyConfiguration && maxToolsUsePerRun === undefined) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message: "maxToolsUsePerRun is required in multi-actions mode.",
+          },
         });
       }
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+        auth,
+        assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
+      });
 
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "internal_server_error",
-            message: agentConfigurationRes.error.message,
+            type: "assistant_saving_error",
+            message: `Error saving assistant: ${agentConfigurationRes.error.message}`,
           },
         });
       }
@@ -283,54 +267,28 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
   agentConfigurationId,
-  legacySingleActionMode,
 }: {
   auth: Authenticator;
   assistant: t.TypeOf<
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >["assistant"];
   agentConfigurationId?: string;
-  legacySingleActionMode: boolean;
-} & ( // Enforce that maxToolsUsePerRun is only (and always) defined in multi-actions mode.
-  | {
-      legacySingleActionMode: true;
-      assistant: { maxToolsUsePerRun?: undefined };
-    }
-  | { legacySingleActionMode: false; assistant: { maxToolsUsePerRun: number } }
-)): Promise<Result<AgentConfigurationType, Error>> {
+}): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
-
-  if (legacySingleActionMode && actions.length > 1) {
-    throw new Error("Only one action is supported in legacy mode.");
-  }
-
-  let legacyForceSingleActionAtIteration: number | null = null;
 
   const maxToolsUsePerRun = assistant.maxToolsUsePerRun ?? actions.length;
 
-  if (legacySingleActionMode) {
-    if (actions.length) {
-      legacyForceSingleActionAtIteration = 0;
-    }
-  } else {
-    // Multi actions mode:
-    // Enforce that every action has a name and a description and that every name is unique.
+  // Tools mode:
+  // Enforce that every action has a name and a description and that every name is unique.
+  if (actions.length > 1) {
     const actionsWithoutName = actions.filter((action) => !action.name);
     if (actionsWithoutName.length) {
-      throw new Error(
-        `Every action must have a name. Missing names for: ${actionsWithoutName
-          .map((action) => action.type)
-          .join(", ")}`
-      );
-    }
-    const actionsWithoutDescription = actions.filter(
-      (action) => !action.description
-    );
-    if (actionsWithoutDescription.length) {
-      throw new Error(
-        `Every action must have a description. Missing descriptions for: ${actionsWithoutDescription
-          .map((action) => action.type)
-          .join(", ")}`
+      return new Err(
+        Error(
+          `Every action must have a name. Missing names for: ${actionsWithoutName
+            .map((action) => action.type)
+            .join(", ")}`
+        )
       );
     }
     const actionNames = new Set<string>();
@@ -340,9 +298,19 @@ export async function createOrUpgradeAgentConfiguration({
         throw new Error(`unreachable: action.name is required.`);
       }
       if (actionNames.has(action.name)) {
-        throw new Error(`Duplicate action name: ${action.name}`);
+        return new Err(new Error(`Duplicate action name: ${action.name}`));
       }
       actionNames.add(action.name);
+    }
+    const actionsWithoutDesc = actions.filter((action) => !action.description);
+    if (actionsWithoutDesc.length) {
+      return new Err(
+        Error(
+          `Every action must have a description. Missing names for: ${actionsWithoutDesc
+            .map((action) => action.type)
+            .join(", ")}`
+        )
+      );
     }
   }
 
@@ -356,6 +324,7 @@ export async function createOrUpgradeAgentConfiguration({
     scope: assistant.scope,
     model: assistant.model,
     agentConfigurationId,
+    templateId: assistant.templateId ?? null,
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -364,103 +333,129 @@ export async function createOrUpgradeAgentConfiguration({
 
   const actionConfigs: AgentActionConfigurationType[] = [];
 
-  try {
-    for (const action of actions) {
-      if (action.type === "retrieval_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "retrieval_configuration",
-              query: action.query,
-              relativeTimeFrame: action.relativeTimeFrame,
-              topK: action.topK,
-              dataSources: action.dataSources,
-              name: action.name ?? null,
-              description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "dust_app_run_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "dust_app_run_configuration",
-              appWorkspaceId: action.appWorkspaceId,
-              appId: action.appId,
-              name: action.name ?? null,
-              description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "tables_query_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "tables_query_configuration",
-              tables: action.tables,
-              name: action.name ?? null,
-              description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "process_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "process_configuration",
-              dataSources: action.dataSources,
-              relativeTimeFrame: action.relativeTimeFrame,
-              tagsFilter: action.tagsFilter,
-              schema: action.schema,
-              name: action.name ?? null,
-              description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else if (action.type === "websearch_configuration") {
-        actionConfigs.push(
-          await createAgentActionConfiguration(
-            auth,
-            {
-              type: "websearch_configuration",
-              name: action.name ?? null,
-              description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
-            },
-            agentConfigurationRes.value
-          )
-        );
-      } else {
-        assertNever(action);
+  for (const action of actions) {
+    if (action.type === "retrieval_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "retrieval_configuration",
+          query: action.query,
+          relativeTimeFrame: action.relativeTimeFrame,
+          topK: action.topK,
+          dataSources: action.dataSources,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
       }
+      actionConfigs.push(res.value);
+    } else if (action.type === "dust_app_run_configuration") {
+      const app = await getApp(auth, action.appId);
+      if (!app) {
+        return new Err(new Error(`App ${action.appId} not found`));
+      }
+
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "dust_app_run_configuration",
+          app,
+          appWorkspaceId: action.appWorkspaceId,
+          appId: action.appId,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "tables_query_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "tables_query_configuration",
+          tables: action.tables,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "process_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "process_configuration",
+          dataSources: action.dataSources,
+          relativeTimeFrame: action.relativeTimeFrame,
+          tagsFilter: action.tagsFilter,
+          schema: action.schema,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "websearch_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "websearch_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else if (action.type === "browse_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "browse_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
+    } else {
+      assertNever(action);
     }
-  } catch (e) {
-    // If we fail to create an action, we should delete the agent configuration
-    // we just created and re-throw the error.
-    await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-    throw e;
   }
 
   const agentConfiguration: AgentConfigurationType = {

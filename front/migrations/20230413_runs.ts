@@ -1,6 +1,7 @@
 import { Sequelize } from "sequelize";
 
-import { App, Run } from "@app/lib/models/apps";
+import { App } from "@app/lib/models/apps";
+import { RunModel } from "@app/lib/resources/storage/models/runs";
 
 const { CORE_DATABASE_URI } = process.env;
 
@@ -25,7 +26,7 @@ async function main() {
   const allRunIds = core_runs_rows.map((r: any) => r.run_id);
 
   console.log("Retrieving existing front runs");
-  const existingFrontRuns = await Run.findAll();
+  const existingFrontRuns = await RunModel.findAll();
   console.log("Generating alreadyBackfilledRunIds");
   const alreadyBackfilledRunIds = new Set(
     existingFrontRuns.map((r) => r.dustRunId)
@@ -83,7 +84,7 @@ async function main() {
       })
       .filter((r) => r.appId && r.userId);
 
-    await Run.bulkCreate(runsToCreate);
+    await RunModel.bulkCreate(runsToCreate);
   }
 }
 

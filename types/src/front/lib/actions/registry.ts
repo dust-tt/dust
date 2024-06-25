@@ -1,5 +1,4 @@
 import { DustAppType } from "../../../front/lib/dust_api";
-import { GPT_3_5_TURBO_MODEL_CONFIG, GPT_4O_MODEL_CONFIG } from "../assistant";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
@@ -13,19 +12,19 @@ const createActionRegistry = <K extends string, R extends Record<K, Action>>(
 ) => registry;
 
 export const DustProdActionRegistry = createActionRegistry({
-  "assistant-v2-inputs-generator": {
+  "assistant-v2-multi-actions-agent": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "f4816b1e13",
+      appId: "0e9889c787",
       appHash:
-        "83dffd37b090ad428fd87f31140e283ac1a1595ca0c69758d184e1c96dc5d4cd",
+        "4e896f08ef6c2c69c97610c861cd444e3d34c839eab44f9b4fd7dd1d166c40a2",
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "auto",
         use_cache: false,
+        use_stream: true,
       },
     },
   },
@@ -34,12 +33,11 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "84dfc1d4f7",
       appHash:
-        "cddc215f2cc07e4a1bdd9c253524ac09667de629420af2570ab1e715fa4ee2b2",
+        "6ea231add2ae690ee959c5d8d5d06420ea2feae7dd32ac13a4e655910087e313",
     },
     config: {
       MODEL: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "update_title",
         use_cache: false,
       },
@@ -76,27 +74,9 @@ export const DustProdActionRegistry = createActionRegistry({
         use_cache: false,
       },
       MODEL: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "extract_data",
         use_cache: false,
-      },
-    },
-  },
-  "assistant-v2-generator": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "6a27050429",
-      appHash:
-        "e0b00417afae51adc7e23c1365850fab154d9b945364c47074ef907915cf8c2c",
-    },
-    config: {
-      MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
-        function_call: null,
-        use_cache: false,
-        use_stream: true,
       },
     },
   },
@@ -133,8 +113,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       SUGGEST_CHANGES: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
         function_call: "suggest_changes",
       },
@@ -149,8 +128,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
         function_call: "execute_sql_query",
       },
@@ -161,9 +139,24 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "098b515f8e",
       appHash:
-        "0ad751ed5f3e4a312dfe50ea1ec63bc8b31ebd5a77f580d71ec8c1af621891aa",
+        "74ece03e8c502d4ae1681847df945248b43b63a0eaa811daed50a3bc81615ac4",
     },
     config: { SEARCH: { provider_id: "serpapi", use_cache: false } },
+  },
+  "assistant-v2-browse": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "21092925b9",
+      appHash:
+        "766618e57ff6600cac27d170395c74f4067e8671ef5bf36db5a820fb411f044b",
+    },
+    config: {
+      WEBCONTENT: {
+        provider_id: "browserlessapi",
+        use_cache: true,
+        error_as_output: true,
+      },
+    },
   },
   "assistant-builder-instructions-suggestions": {
     app: {
@@ -174,8 +167,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "send_ranked_suggestions",
         use_cache: false,
       },
@@ -190,8 +182,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "send_suggestions",
         use_cache: false,
       },
@@ -206,8 +197,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "send_suggestions",
         use_cache: false,
       },
@@ -222,27 +212,9 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "set_extraction_schema",
         use_cache: false,
-      },
-    },
-  },
-  "assistant-v2-multi-actions-agent": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "0e9889c787",
-      appHash:
-        "4a69f3683369c0398e9716e3c25cb628021ac4949ccf9c73944c7fd0be591aaf",
-    },
-    config: {
-      MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
-        function_call: "auto",
-        use_cache: false,
-        use_stream: true,
       },
     },
   },

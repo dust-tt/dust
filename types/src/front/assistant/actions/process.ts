@@ -55,9 +55,8 @@ export type ProcessConfigurationType = {
   tagsFilter: ProcessTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 
-  name: string | null;
+  name: string;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export type ProcessActionOutputsType = {
@@ -87,4 +86,5 @@ export interface ProcessActionType extends BaseAction {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  type: "process_action";
 }

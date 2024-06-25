@@ -2,15 +2,11 @@ import * as t from "io-ts";
 import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
-import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
-import { DustAppRunConfigurationType } from "./actions/dust_app_run";
-import { ProcessConfigurationType } from "./actions/process";
-import { RetrievalConfigurationType } from "./actions/retrieval";
-import { TablesQueryConfigurationType } from "./actions/tables_query";
-import { WebsearchConfigurationType } from "./actions/websearch";
-import { AgentAction, AgentActionConfigurationType } from "./agent";
+import { TimeframeUnitCodec } from "./actions/retrieval";
 import { AssistantCreativityLevelCodec } from "./builder";
+
+// TAGS
 
 export const TEMPLATES_TAG_CODES = [
   "CONTENT",
@@ -94,19 +90,39 @@ export function isTemplateTagCodeArray(
   );
 }
 
-export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
-  reply: "Reply only",
-  dust_app_run_configuration: "Run Dust app",
-  retrieval_configuration: "Search data sources",
-  tables_query_configuration: "Query tables",
-  process_configuration: "Process data sources",
-  websearch_configuration: "Web search",
+const TemplateTagCodeTypeCodec = t.keyof({
+  ...TEMPLATES_TAGS_CONFIG,
+});
+
+// MULTI ACTION MODE
+
+type MultiActionType =
+  | "RETRIEVAL_SEARCH"
+  | "DUST_APP_RUN"
+  | "TABLES_QUERY"
+  | "PROCESS"
+  | "WEB_NAVIGATION";
+export const MULTI_ACTION_PRESETS: Record<MultiActionType, string> = {
+  DUST_APP_RUN: "Run Dust app",
+  RETRIEVAL_SEARCH: "Search data sources",
+  TABLES_QUERY: "Query tables",
+  PROCESS: "Extract data",
+  WEB_NAVIGATION: "Web navigation",
 } as const;
-export type ActionPreset = keyof typeof ACTION_PRESETS;
-export const ActionPresetCodec = ioTsEnum<ActionPreset>(
-  Object.keys(ACTION_PRESETS),
-  "ActionPreset"
+export type MultiActionPreset = keyof typeof MULTI_ACTION_PRESETS;
+export const MultiActionPresetCodec = ioTsEnum<MultiActionPreset>(
+  Object.keys(MULTI_ACTION_PRESETS),
+  "MultiActionPreset"
 );
+const TemplateActionTypePreset = t.type({
+  type: MultiActionPresetCodec,
+  name: NonEmptyString,
+  description: NonEmptyString,
+  help: NonEmptyString,
+});
+const TemplateActionsPreset = t.array(TemplateActionTypePreset);
+
+// VISIBILITY
 
 export const TEMPLATE_VISIBILITIES = [
   "draft",
@@ -119,18 +135,18 @@ export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
   "TemplateVisibility"
 );
 
-const TemplateTagCodeTypeCodec = t.keyof({
-  ...TEMPLATES_TAGS_CONFIG,
-});
+// FORM SCHEMA
 
 export const CreateTemplateFormSchema = t.type({
   backgroundColor: NonEmptyString,
   description: t.union([t.string, t.undefined]),
   emoji: NonEmptyString,
   handle: NonEmptyString,
+  timeFrameDuration: t.union([t.string, t.undefined]),
+  timeFrameUnit: t.union([TimeframeUnitCodec, t.literal(""), t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
-  presetAction: ActionPresetCodec,
+  presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,
   presetTemperature: AssistantCreativityLevelCodec,
@@ -139,76 +155,3 @@ export const CreateTemplateFormSchema = t.type({
 });
 
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
-
-export function getAgentActionConfigurationType(
-  action: ActionPreset
-): AgentActionConfigurationType | null {
-  switch (action) {
-    case "reply":
-      return null;
-
-    case "retrieval_configuration":
-      return {
-        dataSources: [],
-        id: -1,
-        query: "auto",
-        relativeTimeFrame: "auto",
-        sId: "template",
-        topK: "auto",
-        type: "retrieval_configuration",
-        name: "search_data_sources",
-        description: "Search the workspace's internal data sources.",
-        forceUseAtIteration: 0,
-      } satisfies RetrievalConfigurationType;
-
-    case "tables_query_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        tables: [],
-        type: "tables_query_configuration",
-        name: "query_tables",
-        description: "Query the workspace's internal tables.",
-        forceUseAtIteration: 0,
-      } satisfies TablesQueryConfigurationType;
-
-    case "dust_app_run_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        type: "dust_app_run_configuration",
-        appWorkspaceId: "template",
-        appId: "template",
-        name: "run_dust_app",
-        description: "Run a Dust app.",
-        forceUseAtIteration: 0,
-      } satisfies DustAppRunConfigurationType;
-
-    case "process_configuration":
-      return {
-        dataSources: [],
-        id: -1,
-        tagsFilter: null,
-        relativeTimeFrame: "auto",
-        sId: "template",
-        schema: [],
-        type: "process_configuration",
-        name: "process_data_sources",
-        description: "Process the workspace's internal data sources.",
-        forceUseAtIteration: 0,
-      } satisfies ProcessConfigurationType;
-
-    case "websearch_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        type: "websearch_configuration",
-        name: "web_search",
-        description: "Search the web.",
-        forceUseAtIteration: 0,
-      } satisfies WebsearchConfigurationType;
-
-    default:
-      assertNever(action);
-  }
-}

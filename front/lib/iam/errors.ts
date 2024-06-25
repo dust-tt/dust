@@ -4,8 +4,14 @@ export class SSOEnforcedError extends Error {
   }
 }
 
+type AuthFlowErrorCodeType =
+  | "invalid_invitation_token"
+  | "invitation_token_email_mismatch"
+  | "invalid_domain"
+  | "revoked";
+
 export class AuthFlowError extends Error {
-  constructor(message: string) {
+  constructor(readonly code: AuthFlowErrorCodeType, message: string) {
     super(message);
   }
 }

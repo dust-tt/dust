@@ -6,12 +6,10 @@ import type {
 import {
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
   Err,
-  getAgentActionConfigurationType,
   Ok,
-  removeNulls,
 } from "@dust-tt/types";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 
 export async function generateMockAgentConfigurationFromTemplate(
@@ -24,10 +22,8 @@ export async function generateMockAgentConfigurationFromTemplate(
   }
 
   return new Ok({
-    actions: removeNulls([
-      getAgentActionConfigurationType(template.presetAction),
-    ]),
-    description: template.description ?? "",
+    actions: [],
+    description: "",
     instructions: template.presetInstructions ?? "",
     model: {
       providerId: template.presetProviderId,
@@ -42,7 +38,6 @@ export async function generateMockAgentConfigurationFromTemplate(
       } as SupportedModel,
       temperature:
         ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature],
-      forceUseAtIteration: 1,
     },
     name: template.handle,
     scope: flow === "personal_assistants" ? "private" : "workspace",

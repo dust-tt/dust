@@ -1,10 +1,15 @@
 import type {
   BuilderSuggestionsType,
+  ModelConfigurationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
+  assertNever,
   BuilderSuggestionsResponseBodySchema,
+  cloneBaseConfig,
   DustProdActionRegistry,
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -50,14 +55,45 @@ async function handler(
           },
         });
       }
+
       const suggestionsType = bodyValidation.right.type;
       const suggestionsInputs = bodyValidation.right.inputs;
+
+      let model: ModelConfigurationType | null = null;
+      switch (suggestionsType) {
+        case "instructions":
+          model = getLargeWhitelistedModel(owner);
+          break;
+        case "name":
+        case "description":
+          model = getSmallWhitelistedModel(owner);
+          break;
+        default:
+          assertNever(suggestionsType);
+      }
+
+      if (!model) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `No whitelisted models were found for the workspace.`,
+          },
+        });
+      }
+
+      const config = cloneBaseConfig(
+        DustProdActionRegistry[
+          `assistant-builder-${suggestionsType}-suggestions`
+        ].config
+      );
+      config.CREATE_SUGGESTIONS.provider_id = model.providerId;
+      config.CREATE_SUGGESTIONS.model_id = model.modelId;
+
       const suggestionsResponse = await runAction(
         auth,
         `assistant-builder-${suggestionsType}-suggestions`,
-        DustProdActionRegistry[
-          `assistant-builder-${suggestionsType}-suggestions`
-        ].config,
+        config,
         [suggestionsInputs]
       );
 

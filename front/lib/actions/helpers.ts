@@ -1,4 +1,4 @@
-import type { Action, DustAPIResponse } from "@dust-tt/types";
+import type { Action, DustAPIResponse, WorkspaceType } from "@dust-tt/types";
 import type { DustAppConfigType } from "@dust-tt/types";
 import { cloneBaseConfig } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
@@ -11,11 +11,11 @@ import {
   ActionResponseBaseSchema,
   isActionResponseBase,
 } from "@app/lib/actions/types";
-import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
 interface CallActionParams<V extends t.Mixed> {
-  workspaceId: string;
+  owner: WorkspaceType;
   input: { [key: string]: unknown };
   action: Action;
   config: DustAppConfigType;
@@ -33,13 +33,13 @@ interface CallActionParams<V extends t.Mixed> {
  * note: this assumes a single input
  * note: this assumes the output is in `results`, i.e the output of the last block
  *
- * @param workspaceId string the workspace id (sId)
+ * @param owner WorksapceType the workspace
  * @param input { [key: string]: unknown } the action input (a single input)
  * @param config DustAppConfigType the action config
  * @param responseValueSchema V extends t.Mixed the io-ts schema of the action response value
  */
 export async function callAction<V extends t.Mixed>({
-  workspaceId,
+  owner,
   input,
   action,
   config,
@@ -49,14 +49,6 @@ export async function callAction<V extends t.Mixed>({
 > {
   const app = cloneBaseConfig(action.app);
 
-  const owner = (
-    await Authenticator.internalBuilderForWorkspace(workspaceId)
-  ).workspace();
-  if (!owner) {
-    throw new Error(
-      `Could not get internal builder for workspace ${workspaceId}`
-    );
-  }
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
   const prodAPI = new DustAPI(prodCredentials, logger);

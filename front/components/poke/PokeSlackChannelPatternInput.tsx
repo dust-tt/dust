@@ -85,8 +85,8 @@ export function SlackChannelPatternInput({
             <InputField
               control={formMethods.control}
               name="inputValue"
-              title="Channel Pattern"
-              placeholder="#channel-pattern"
+              title="Channel auto join/read pattern"
+              placeholder="incidents-.*"
             />
           </div>
           <PokeButton

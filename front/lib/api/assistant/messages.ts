@@ -14,6 +14,7 @@ import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
@@ -45,13 +46,6 @@ export async function batchRenderUserMessages(
       where: {
         messageId: userMessages.map((m) => m.id),
       },
-      include: [
-        {
-          model: User,
-          as: "user",
-          required: false,
-        },
-      ],
     }),
     (async () => {
       const userIds = userMessages
@@ -115,6 +109,7 @@ export async function batchRenderUserMessages(
         fullName: userMessage.userContextFullName,
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
+        origin: userMessage.userContextOrigin,
       },
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };
@@ -138,6 +133,7 @@ export async function batchRenderAgentMessages(
     agentTablesQueryActions,
     agentProcessActions,
     agentWebsearchActions,
+    agentBrowseActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -164,6 +160,7 @@ export async function batchRenderAgentMessages(
     (async () => tableQueryTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   return agentMessages.map((message) => {
@@ -180,6 +177,7 @@ export async function batchRenderAgentMessages(
       agentTablesQueryActions,
       agentProcessActions,
       agentWebsearchActions,
+      agentBrowseActions,
     ]
       .flat()
       .filter((a) => a.agentMessageId === agentMessage.id)
@@ -219,15 +217,22 @@ export async function batchRenderAgentMessages(
       status: agentMessage.status,
       actions: actions,
       content: agentMessage.content,
+      chainOfThoughts: agentMessage.chainOfThoughts,
       error,
       // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
       configuration: agentConfiguration,
     } satisfies AgentMessageType;
-    return { m, rank: message.rank, version: message.version };
+    return {
+      m,
+      rank: message.rank,
+      version: message.version,
+    };
   });
 }
 
 export async function batchRenderContentFragment(
+  auth: Authenticator,
+  conversationId: string,
   messages: Message[]
 ): Promise<{ m: ContentFragmentType; rank: number; version: number }[]> {
   const messagesWithContentFragment = messages.filter(
@@ -243,7 +248,7 @@ export async function batchRenderContentFragment(
     const contentFragment = ContentFragmentResource.fromMessage(message);
 
     return {
-      m: contentFragment.renderFromMessage(message),
+      m: contentFragment.renderFromMessage({ auth, conversationId, message }),
       rank: message.rank,
       version: message.version,
     };
@@ -329,7 +334,6 @@ async function fetchMessagesForPage(
       },
     ],
   });
-
   return {
     hasMore,
     messages,
@@ -338,14 +342,14 @@ async function fetchMessagesForPage(
 
 async function batchRenderMessages(
   auth: Authenticator,
+  conversationId: string,
   messages: Message[]
 ): Promise<MessageWithRankType[]> {
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
-    batchRenderContentFragment(messages),
+    batchRenderContentFragment(auth, conversationId, messages),
   ]);
-
   const render = [...userMessages, ...agentMessages, ...contentFragments].sort(
     (a, b) => a.rank - b.rank
   );
@@ -373,6 +377,7 @@ export async function fetchConversationMessages(
     where: {
       sId: conversationId,
       workspaceId: owner.id,
+      visibility: { [Op.ne]: "deleted" },
     },
   });
   if (!conversation) {
@@ -384,7 +389,11 @@ export async function fetchConversationMessages(
     paginationParams
   );
 
-  const renderedMessages = await batchRenderMessages(auth, messages);
+  const renderedMessages = await batchRenderMessages(
+    auth,
+    conversationId,
+    messages
+  );
 
   return new Ok({
     hasMore,

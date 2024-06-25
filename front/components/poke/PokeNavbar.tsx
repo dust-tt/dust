@@ -1,7 +1,7 @@
 import { Logo } from "@dust-tt/sparkle";
+import { isDevelopment } from "@dust-tt/types";
 import Link from "next/link";
 
-import { isDevelopment } from "@app/lib/development";
 import { classNames } from "@app/lib/utils";
 
 export const PokeNavbar: React.FC = () => (

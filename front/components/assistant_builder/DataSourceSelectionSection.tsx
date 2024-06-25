@@ -32,7 +32,6 @@ export default function DataSourceSelectionSection({
   canAddDataSource: boolean;
   onDelete?: (name: string) => void;
 }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
@@ -89,15 +88,6 @@ export default function DataSourceSelectionSection({
               return (
                 <Tree.Item
                   key={dsConfig.dataSource.id}
-                  collapsed={!expanded[dsConfig.dataSource.id]}
-                  onChevronClick={() => {
-                    setExpanded((prev) => ({
-                      ...prev,
-                      [dsConfig.dataSource.id]: prev[dsConfig.dataSource.id]
-                        ? false
-                        : true,
-                    }));
-                  }}
                   type={dsConfig.dataSource.connectorId ? "node" : "leaf"} // todo make useConnectorPermissions hook work for non managed ds (Folders)
                   label={getDisplayNameForDataSource(dsConfig.dataSource)}
                   visual={
@@ -126,15 +116,6 @@ export default function DataSourceSelectionSection({
                     return (
                       <Tree.Item
                         key={node.internalId}
-                        collapsed={!expanded[node.internalId]}
-                        onChevronClick={() => {
-                          setExpanded((prev) => ({
-                            ...prev,
-                            [node.internalId]: prev[node.internalId]
-                              ? false
-                              : true,
-                          }));
-                        }}
                         label={node.titleWithParentsContext ?? node.title}
                         type={node.expandable ? "node" : "leaf"}
                         variant={node.type}

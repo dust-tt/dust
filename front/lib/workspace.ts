@@ -20,6 +20,8 @@ export function renderLightWorkspaceType({
     sId: workspace.sId,
     name: workspace.name,
     segmentation: workspace.segmentation,
+    whiteListedProviders: workspace.whiteListedProviders,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
     role,
   };
 }

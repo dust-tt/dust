@@ -4,6 +4,7 @@ import { RetrievalConfigurationType } from "../../front/assistant/actions/retrie
 import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import { BrowseConfigurationType } from "./actions/browse";
 import { WebsearchConfigurationType } from "./actions/websearch";
 
 /**
@@ -18,7 +19,8 @@ export type AgentActionConfigurationType =
   | RetrievalConfigurationType
   | DustAppRunConfigurationType
   | ProcessConfigurationType
-  | WebsearchConfigurationType;
+  | WebsearchConfigurationType
+  | BrowseConfigurationType;
 
 export type AgentAction = AgentActionConfigurationType["type"];
 
@@ -48,7 +50,10 @@ export type AgentActionSpecification = {
   inputs: {
     name: string;
     description: string;
-    type: "string" | "number" | "boolean";
+    type: "string" | "number" | "boolean" | "array";
+    items?: {
+      type: "string" | "number" | "boolean";
+    };
   }[];
 };
 
@@ -104,8 +109,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  *   agents mentioned in the conversation with the provided Id.
  * - 'all': Combines workspace and published agents, excluding private agents.
  *   Typically used in agent galleries.
- * - 'manage-assistants-search': specific to the manage-assistants page,
- *   retrieves all global agents including inactive ones, all workspace, all
+ * - 'assistants-search': retrieves all global agents including inactive ones, all workspace, all
  *   published and the user's private agents.
  * - 'workspace': Retrieves all agents exclusively with a 'workspace' scope.
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
@@ -120,7 +124,7 @@ export type AgentsGetViewType =
   | "list"
   | { conversationId: string }
   | "all"
-  | "manage-assistants-search"
+  | "assistants-search"
   | "workspace"
   | "published"
   | "global"
@@ -130,8 +134,6 @@ export type AgentsGetViewType =
 export type AgentUsageType = {
   userCount: number;
   messageCount: number;
-  usersWithAgentInListCount: number;
-
   // userCount and messageCount are over the last `timePeriodSec` seconds
   timePeriodSec: number;
 };
@@ -171,10 +173,11 @@ export type LightAgentConfigurationType = {
 
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
   lastAuthors?: AgentRecentAuthors;
-  // Usage is expensive to compute, so we only compute it when needed.
   usage?: AgentUsageType;
 
   maxToolsUsePerRun: number;
+
+  templateId: string | null;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {

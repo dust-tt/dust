@@ -11,6 +11,7 @@ import { parse } from "csv-parse";
 import { DateTime } from "luxon";
 
 import { guessDelimiter } from "@app/lib/api/csv";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 
@@ -108,7 +109,7 @@ export async function deleteTable({
 }
 
 export async function upsertTableFromCsv({
-  owner,
+  auth,
   projectId,
   dataSourceName,
   tableName,
@@ -117,7 +118,7 @@ export async function upsertTableFromCsv({
   csv,
   truncate,
 }: {
-  owner: WorkspaceType;
+  auth: Authenticator;
   projectId: string;
   dataSourceName: string;
   tableName: string;
@@ -128,26 +129,68 @@ export async function upsertTableFromCsv({
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
 
+  const owner = auth.workspace();
+
+  if (!owner) {
+    logger.error(
+      {
+        type: "internal_server_error",
+        message: "Failed to get workspace.",
+      },
+      "Failed to get workspace."
+    );
+    return new Err({
+      type: "internal_server_error",
+      coreAPIError: {
+        code: "workspace_not_found",
+        message: "Failed to get workspace.",
+      },
+      message: "Failed to get workspace.",
+    });
+  }
+
   let csvRows: CoreAPIRow[] | undefined = undefined;
   if (csvRowsRes) {
     if (csvRowsRes.isErr()) {
-      return new Err({
-        type: "invalid_request_error",
+      const errorDetails = {
+        type: "invalid_request_error" as const,
         csvParsingError: csvRowsRes.error,
-      });
+      };
+      logger.error(
+        {
+          ...errorDetails,
+          dataSourceName,
+          tableName,
+          tableId,
+          projectId,
+        },
+        "CSV parsing error."
+      );
+      return new Err(errorDetails);
     }
 
     csvRows = csvRowsRes.value;
   }
 
   if ((csvRows?.length ?? 0) > 500_000) {
-    return new Err({
-      type: "invalid_request_error",
+    const errorDetails = {
+      type: "invalid_request_error" as const,
       inputValidationError: {
-        type: "too_many_rows",
+        type: "too_many_rows" as const,
         message: `CSV has too many rows: ${csvRows?.length} (max 500_000).`,
       },
-    });
+    };
+    logger.error(
+      {
+        ...errorDetails,
+        dataSourceName,
+        tableName,
+        tableId,
+        projectId,
+      },
+      "CSV input validation error: too many rows."
+    );
+    return new Err(errorDetails);
   }
 
   const coreAPI = new CoreAPI(logger);
@@ -160,22 +203,23 @@ export async function upsertTableFromCsv({
   });
 
   if (tableRes.isErr()) {
+    const errorDetails = {
+      type: "internal_server_error" as const,
+      coreAPIError: tableRes.error,
+      message: "Failed to upsert table.",
+    };
     logger.error(
       {
-        dataSourceName: dataSourceName,
+        ...errorDetails,
+        dataSourceName,
         workspaceId: owner.id,
         tableId,
         tableName,
-        error: tableRes.error,
+        projectId,
       },
-      "Failed to upsert table."
+      "Error upserting table in CoreAPI."
     );
-
-    return new Err({
-      type: "internal_server_error",
-      coreAPIError: tableRes.error,
-      message: "Failed to upsert table.",
-    });
+    return new Err(errorDetails);
   }
 
   if (csvRows) {
@@ -186,16 +230,23 @@ export async function upsertTableFromCsv({
       rows: csvRows,
       truncate,
     });
+
     if (rowsRes.isErr()) {
+      const errorDetails = {
+        type: "internal_server_error" as const,
+        coreAPIError: rowsRes.error,
+        message: "Failed to upsert rows.",
+      };
       logger.error(
         {
+          ...errorDetails,
           dataSourceName,
           workspaceId: owner.id,
           tableId,
           tableName,
-          error: rowsRes.error,
+          projectId,
         },
-        "Failed to upsert rows."
+        "Error upserting rows in CoreAPI."
       );
 
       const delRes = await coreAPI.deleteTable({
@@ -207,21 +258,18 @@ export async function upsertTableFromCsv({
       if (delRes.isErr()) {
         logger.error(
           {
+            type: "internal_server_error",
+            coreAPIError: delRes.error,
             dataSourceName,
             workspaceId: owner.id,
             tableId,
             tableName,
-            error: delRes.error,
+            projectId,
           },
-          "Failed to delete table after failed upsert."
+          "Failed to delete table after failed row upsert."
         );
       }
-
-      return new Err({
-        type: "internal_server_error",
-        coreAPIError: rowsRes.error,
-        message: "Failed to upsert rows.",
-      });
+      return new Err(errorDetails);
     }
   }
 

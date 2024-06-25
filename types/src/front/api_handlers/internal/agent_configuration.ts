@@ -21,7 +21,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("global"),
     t.literal("admin_internal"),
     t.literal("all"),
-    t.literal("manage-assistants-search"),
+    t.literal("assistants-search"),
     t.undefined,
   ]),
   conversationId: t.union([t.string, t.undefined]),
@@ -97,6 +97,10 @@ const WebsearchActionConfigurationSchema = t.type({
   type: t.literal("websearch_configuration"),
 });
 
+const BrowseActionConfigurationSchema = t.type({
+  type: t.literal("browse_configuration"),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -144,7 +148,6 @@ const ProcessActionConfigurationSchema = t.type({
 const multiActionsCommonFields = {
   name: t.union([t.string, t.null]),
   description: t.union([t.string, t.null]),
-  forceUseAtIteration: t.union([t.number, t.null]),
 };
 
 const ActionConfigurationSchema = t.intersection([
@@ -154,6 +157,7 @@ const ActionConfigurationSchema = t.intersection([
     TablesQueryActionConfigurationSchema,
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
+    BrowseActionConfigurationSchema,
   ]),
   t.partial(multiActionsCommonFields),
 ]);
@@ -173,39 +177,28 @@ const IsSupportedModelSchema = new t.Type<SupportedModel>(
   t.identity
 );
 
-export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
-  t.type({
-    assistant: t.intersection([
-      t.type({
-        name: t.string,
-        description: t.string,
-        instructions: t.union([t.string, t.null]),
-        pictureUrl: t.string,
-        status: t.union([
-          t.literal("active"),
-          t.literal("archived"),
-          t.literal("draft"),
-        ]),
-        scope: t.union([
-          t.literal("workspace"),
-          t.literal("published"),
-          t.literal("private"),
-        ]),
-        model: t.intersection([
-          ModelConfigurationSchema,
-          IsSupportedModelSchema,
-        ]),
-        actions: t.array(ActionConfigurationSchema),
-      }),
-      t.partial({
-        maxToolsUsePerRun: t.number,
-      }),
+export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
+  assistant: t.type({
+    name: t.string,
+    description: t.string,
+    instructions: t.union([t.string, t.null]),
+    pictureUrl: t.string,
+    status: t.union([
+      t.literal("active"),
+      t.literal("archived"),
+      t.literal("draft"),
     ]),
+    scope: t.union([
+      t.literal("workspace"),
+      t.literal("published"),
+      t.literal("private"),
+    ]),
+    model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
+    actions: t.array(ActionConfigurationSchema),
+    templateId: t.union([t.string, t.null, t.undefined]),
+    maxToolsUsePerRun: t.union([t.number, t.undefined]),
   }),
-  t.partial({
-    useMultiActions: t.boolean,
-  }),
-]);
+});
 
 export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
   typeof PostOrPatchAgentConfigurationRequestBodySchema

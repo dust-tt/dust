@@ -26,6 +26,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -36,13 +37,14 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { KeyedMutator } from "swr";
 
+import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
-import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -90,6 +92,9 @@ export function AssistantDetails({
   if (!agentConfiguration) {
     return <></>;
   }
+
+  const isLegacyAgent = isLegacyAgentConfiguration(agentConfiguration);
+
   const updateScope = async (
     scope: Exclude<AgentConfigurationScope, "global">
   ) => {
@@ -174,7 +179,6 @@ export function AssistantDetails({
               agentConfigurationId={agentConfiguration.sId}
               owner={owner}
               variant="button"
-              tryButton
               onAgentDeletion={() => {
                 void mutateCurrentAgentConfiguration();
                 void mutateAgentConfigurations?.();
@@ -270,13 +274,18 @@ export function AssistantDetails({
           ) : isWebsearchConfiguration(action) ? (
             <div className="flex flex-col gap-2" key={`action-${index}`}>
               <div className="text-lg font-bold text-element-800">
-                Web search
+                Web navigation
               </div>
               <div className="flex items-center gap-2">
                 <Icon visual={PlanetIcon} size="xs" />
-                <div>assitant will use top results of web search to answer</div>
+                <div>
+                  Assistant can navigate the web (browse any provided links,
+                  make a google search, etc.) to answer
+                </div>
               </div>
             </div>
+          ) : isBrowseConfiguration(action) ? (
+            false
           ) : (
             assertNever(action)
           )
@@ -294,6 +303,14 @@ export function AssistantDetails({
     >
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
         <DescriptionSection />
+        {isLegacyAgent && (
+          <ContentMessage
+            variant="amber"
+            title="This assistant is using a legacy action configuration."
+          >
+            Consider updating it to benefit from the latest Tools features.
+          </ContentMessage>
+        )}
         <InstructionsSection />
         <ActionsSection actions={agentConfiguration?.actions ?? []} />
       </div>
@@ -310,7 +327,6 @@ function DataSourcesSection({
   dataSources: DataSourceType[];
   dataSourceConfigurations: DataSourceConfiguration[];
 }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
@@ -351,15 +367,6 @@ function DataSourcesSection({
           return (
             <Tree.Item
               key={dsConfig.dataSourceId}
-              collapsed={!expanded[dsConfig.dataSourceId]}
-              onChevronClick={() => {
-                setExpanded((prev) => ({
-                  ...prev,
-                  [dsConfig.dataSourceId]: prev[dsConfig.dataSourceId]
-                    ? false
-                    : true,
-                }));
-              }}
               type={ds && ds.connectorId ? "node" : "leaf"}
               label={dataSourceName}
               visual={DsLogo ? <DsLogo className="s-h-5 s-w-5" /> : null}
@@ -410,8 +417,6 @@ function DataSourceSelectedNodes({
   setDataSourceToDisplay: (ds: DataSourceType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
   const dataSourceSelectedNodes = useDataSourceContentNodes({
     owner,
     dataSource,
@@ -423,13 +428,6 @@ function DataSourceSelectedNodes({
       {dataSourceSelectedNodes.nodes.map((node: ContentNode) => (
         <Tree.Item
           key={node.internalId}
-          collapsed={!expanded[node.internalId]}
-          onChevronClick={() => {
-            setExpanded((prev) => ({
-              ...prev,
-              [node.internalId]: prev[node.internalId] ? false : true,
-            }));
-          }}
           label={node.titleWithParentsContext ?? node.title}
           type={node.expandable ? "node" : "leaf"}
           variant={node.type}
@@ -494,7 +492,7 @@ function DustAppSection({
   const { app } = useApp({ workspaceId: owner.sId, appId: dustApp.appId });
   return (
     <div className="flex flex-col gap-2">
-      <div>The following action is run before answering:</div>
+      <div>The following tool is run before answering:</div>
       <div className="flex items-center gap-2 capitalize">
         <div>
           <CommandLineIcon />

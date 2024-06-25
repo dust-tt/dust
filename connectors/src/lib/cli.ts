@@ -24,7 +24,11 @@ import type {
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@dust-tt/types";
-import { assertNever, isConnectorError } from "@dust-tt/types";
+import {
+  assertNever,
+  googleDriveIncrementalSyncWorkflowId,
+  isConnectorError,
+} from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import PQueue from "p-queue";
 import readline from "readline";
@@ -42,11 +46,7 @@ import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
-import { registerWebhooksForAllDrives } from "@connectors/connectors/google_drive/lib";
-import {
-  launchGoogleDriveIncrementalSyncWorkflow,
-  launchGoogleDriveRenewWebhooksWorkflow,
-} from "@connectors/connectors/google_drive/temporal/client";
+import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   getAuthObject,
@@ -60,6 +60,7 @@ import {
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   checkNotionUrl,
+  findNotionUrl,
   searchNotionPagesForQuery,
 } from "@connectors/connectors/notion/lib/cli";
 import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
@@ -84,6 +85,7 @@ import { nango_client } from "@connectors/lib/nango_client";
 import {
   getTemporalClient,
   terminateAllWorkflowsForConnectorId,
+  terminateWorkflow,
 } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -621,6 +623,26 @@ export const notion = async ({
       return r;
     }
 
+    case "find-url": {
+      const { url, wId } = args;
+
+      if (!url) {
+        throw new Error("Missing --url argument");
+      }
+
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: wId,
+      });
+
+      const r = await findNotionUrl({
+        connectorId: connector.id,
+        url,
+      });
+
+      return r;
+    }
+
     case "me": {
       const { wId } = args;
 
@@ -727,10 +749,7 @@ export const google_drive = async ({
       });
       return { status: res.status, content: res.data, type: typeof res.data };
     }
-    case "restart-google-webhooks": {
-      await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
-      return { success: true };
-    }
+
     case "start-incremental-sync": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -756,6 +775,24 @@ export const google_drive = async ({
       );
       return { success: true };
     }
+    case "restart-all-incremental-sync-workflows": {
+      const connectors = await ConnectorModel.findAll({
+        where: {
+          type: "google_drive",
+          errorType: null,
+          pausedAt: null,
+        },
+      });
+      for (const connector of connectors) {
+        const workflowId = googleDriveIncrementalSyncWorkflowId(connector.id);
+        await terminateWorkflow(workflowId);
+        await throwOnError(
+          launchGoogleDriveIncrementalSyncWorkflow(connector.id)
+        );
+      }
+      return { success: true };
+    }
+
     case "skip-file": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -802,60 +839,7 @@ export const google_drive = async ({
 
       return { success: true };
     }
-    case "register-webhook": {
-      // Re-register a webhook for a given connectors. Used for selected connectors who eneded up
-      // without GoogleDriveWebhook.
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
-      }
 
-      const connector = await ConnectorResource.findByDataSourceAndConnection({
-        workspaceId: args.wId,
-        dataSourceName: args.dataSourceName,
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
-        );
-      }
-
-      const res = await registerWebhooksForAllDrives({
-        connector,
-        marginMs: 0,
-      });
-      if (res.isErr()) {
-        throw res.error;
-      }
-      return { success: true };
-    }
-    case "register-all-webhooks": {
-      const connectors = await ConnectorResource.listByType("google_drive", {});
-      for (const connector of connectors) {
-        if (connector.errorType !== null) {
-          logger.info(
-            { connectorId: connector.id, errorType: connector.errorType },
-            "Skipping connector with error"
-          );
-          continue;
-        }
-        const res = await registerWebhooksForAllDrives({
-          connector,
-          marginMs: 0,
-        });
-        if (res.isErr()) {
-          // error registering for this webhook, but we need to keep going
-          // for the other ones.
-          logger.error(
-            { connectorId: connector.id, error: res.error },
-            `Failed to register webhooks for connector`
-          );
-        }
-      }
-      return { success: true };
-    }
     default:
       throw new Error("Unknown google command: " + command);
   }

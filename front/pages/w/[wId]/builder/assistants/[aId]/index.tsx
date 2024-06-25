@@ -12,17 +12,16 @@ import {
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
-import AssistantBuilder, {
-  BUILDER_FLOWS,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
-import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderInitialState,
+  BuilderFlow,
+} from "@app/components/assistant_builder/types";
+import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { isLegacyAgent } from "@app/lib/assistant";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
@@ -38,8 +37,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
   baseUrl: string;
-  isMultiActionsAgent: boolean;
-  multiActionsAllowed: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -79,10 +76,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const multiActionsAllowed = owner.flags.includes("multi_actions");
-  const isMultiActionsAgent =
-    multiActionsAllowed && !isLegacyAgent(configuration);
-
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
   )
@@ -107,8 +100,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       flow,
       baseUrl: URL,
-      multiActionsAllowed,
-      isMultiActionsAgent,
     },
   };
 });
@@ -124,36 +115,34 @@ export default function EditAssistant({
   agentConfiguration,
   flow,
   baseUrl,
-  multiActionsAllowed,
-  isMultiActionsAgent,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
+  agentConfiguration.actions.map((action) => {
+    if (isRetrievalConfiguration(action)) {
+      if (action.query === "none") {
+        if (
+          action.relativeTimeFrame === "auto" ||
+          action.relativeTimeFrame === "none"
+        ) {
+          /** Should never happen. Throw loudly if it does */
+          throw new Error(
+            "Invalid configuration: exhaustive retrieval must have a definite time frame"
+          );
+        }
+      }
+    }
 
-  if (isRetrievalConfiguration(action)) {
-    if (action.query === "none") {
+    if (isProcessConfiguration(action)) {
       if (
         action.relativeTimeFrame === "auto" ||
         action.relativeTimeFrame === "none"
       ) {
-        /** Should never happen. Throw loudly if it does */
+        /** Should never happen as not permitted for now. */
         throw new Error(
-          "Invalid configuration: exhaustive retrieval must have a definite time frame"
+          "Invalid configuration: process must have a definite time frame"
         );
       }
     }
-  }
-
-  if (isProcessConfiguration(action)) {
-    if (
-      action.relativeTimeFrame === "auto" ||
-      action.relativeTimeFrame === "none"
-    ) {
-      /** Should never happen as not permitted for now. */
-      throw new Error(
-        "Invalid configuration: process must have a definite time frame"
-      );
-    }
-  }
+  });
 
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global assistant");
@@ -186,15 +175,12 @@ export default function EditAssistant({
           temperature: agentConfiguration.model.temperature,
         },
         actions,
-        maxToolsUsePerRun: isMultiActionsAgent
-          ? agentConfiguration.maxToolsUsePerRun
-          : null,
+        maxToolsUsePerRun: agentConfiguration.maxToolsUsePerRun,
+        templateId: agentConfiguration.templateId,
       }}
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}
       defaultTemplate={null}
-      multiActionsAllowed={multiActionsAllowed}
-      multiActionsEnabled={isMultiActionsAgent}
     />
   );
 }

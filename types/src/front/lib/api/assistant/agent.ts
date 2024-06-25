@@ -19,6 +19,7 @@ import {
   AgentActionConfigurationType,
   AgentActionSpecification,
 } from "../../../assistant/agent";
+import { BrowseParamsEvent } from "./actions/browse";
 import { ProcessParamsEvent } from "./actions/process";
 import { WebsearchParamsEvent } from "./actions/websearch";
 
@@ -45,6 +46,16 @@ export type AgentErrorEvent = {
   };
 };
 
+export type AgentDisabledErrorEvent = {
+  type: "agent_disabled_error";
+  created: number;
+  configurationId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
   | RetrievalParamsEvent
@@ -53,7 +64,8 @@ export type AgentActionSpecificEvent =
   | TablesQueryParamsEvent
   | TablesQueryOutputEvent
   | ProcessParamsEvent
-  | WebsearchParamsEvent;
+  | WebsearchParamsEvent
+  | BrowseParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
@@ -71,6 +83,7 @@ export type AgentGenerationSuccessEvent = {
   configurationId: string;
   messageId: string;
   text: string;
+  runId: string;
 };
 
 // Event sent to stop the generation.
@@ -93,10 +106,20 @@ export type AgentMessageSuccessEvent = {
 export type AgentActionsEvent = {
   type: "agent_actions";
   created: number;
+  runId: string;
   actions: Array<{
     action: AgentActionConfigurationType;
     inputs: Record<string, string | boolean | number>;
     specification: AgentActionSpecification | null;
     functionCallId: string | null;
   }>;
+};
+
+export type AgentChainOfThoughtEvent = {
+  type: "agent_chain_of_thought";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageType;
+  chainOfThought: string;
 };

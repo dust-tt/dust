@@ -3,7 +3,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
   Result,
   WebsearchActionOutputType,
   WebsearchActionType,
@@ -17,9 +16,12 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
+  WebsearchActionOutputSchema,
 } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -43,6 +45,7 @@ export class WebsearchAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "websearch_action";
 
   constructor(blob: WebsearchActionBlob) {
     super(blob.id, "websearch_action");
@@ -55,25 +58,10 @@ export class WebsearchAction extends BaseAction {
     this.step = blob.step;
   }
 
-  renderForModel(): ModelMessageType {
-    let content = "WEBSEARCH OUTPUT:\n";
-    if (this.output === null) {
-      content += "The web search failed.\n";
-    } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
-    }
-
-    return {
-      role: "action" as const,
-      name: this.functionCallName ?? "web_search",
-      content,
-    };
-  }
-
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "web_search",
+      name: this.functionCallName ?? DEFAULT_WEBSEARCH_ACTION_NAME,
       arguments: JSON.stringify({ query: this.query }),
     };
   }
@@ -88,6 +76,7 @@ export class WebsearchAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? DEFAULT_WEBSEARCH_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -101,10 +90,7 @@ export class WebsearchAction extends BaseAction {
 export class WebsearchConfigurationServerRunner extends BaseActionConfigurationServerRunner<WebsearchConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
-    {
-      name,
-      description,
-    }: { name?: string | undefined; description?: string | undefined }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -114,9 +100,9 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     }
 
     return new Ok({
-      name: name ?? "web_search",
+      name,
       description:
-        description ?? "Perform a web search and return the top results.",
+        description || "Perform a web search and return the top results.",
       inputs: [
         {
           name: "query",
@@ -125,12 +111,6 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         },
       ],
     });
-  }
-
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {});
   }
 
   // This method is in charge of running the websearch and creating an AgentWebsearchAction object in
@@ -209,6 +189,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       }),
     };
 
+    // "assitsant-v2-websearch" has no model interaction.
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-websearch"].config
     );
@@ -239,7 +220,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       return;
     }
 
-    const { eventStream } = websearchRes.value;
+    const { eventStream, dustRunId } = websearchRes.value;
     let output: WebsearchActionOutputType | null = null;
 
     for await (const event of eventStream) {
@@ -290,7 +271,29 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         }
 
         if (event.content.block_name === "SEARCH_EXTRACT_FINAL" && e.value) {
-          output = { results: e.value } as WebsearchActionOutputType;
+          const outputValidation = WebsearchActionOutputSchema.decode(e.value);
+          if (isLeft(outputValidation)) {
+            logger.error(
+              {
+                workspaceId: owner.id,
+                conversationId: conversation.id,
+                error: outputValidation.left,
+              },
+              "Error running websearch action"
+            );
+            yield {
+              type: "websearch_error",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: "websearch_execution_error",
+                message: `Invalid output from websearch action: ${outputValidation.left}`,
+              },
+            };
+            return;
+          }
+          output = outputValidation.right;
         }
       }
     }
@@ -298,6 +301,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     // Update ProcessAction with the output of the last block.
     await action.update({
       output,
+      runId: await dustRunId,
     });
 
     logger.info(

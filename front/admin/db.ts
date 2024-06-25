@@ -1,6 +1,10 @@
 import { sendInitDbMessage } from "@dust-tt/types";
 
-import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
+import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
+import {
+  AgentBrowseAction,
+  AgentBrowseConfiguration,
+} from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -62,6 +66,10 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import {
+  RunModel,
+  RunUsageModel,
+} from "@app/lib/resources/storage/models/runs";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import logger from "@app/logger/logger";
 
@@ -83,12 +91,14 @@ async function main() {
   await KeyModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
   await DataSource.sync({ alter: true });
-  await Run.sync({ alter: true });
+  await RunModel.sync({ alter: true });
+  await RunUsageModel.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
+  await TemplateModel.sync({ alter: true });
 
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
@@ -100,6 +110,7 @@ async function main() {
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
+  await AgentBrowseConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -117,6 +128,7 @@ async function main() {
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
+  await AgentBrowseAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
@@ -124,8 +136,6 @@ async function main() {
   await FeatureFlag.sync({ alter: true });
 
   await ConversationClassification.sync({ alter: true });
-
-  await TemplateModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });

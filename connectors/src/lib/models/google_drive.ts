@@ -255,6 +255,10 @@ export class GoogleDriveSyncToken extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  // The driveId is the Google Drive Id of the user's drive.
+  // For files not living in a specific drive, the driveId is "userspace".
+  // We use a virtual drive ID instead of "null" because there might be other concepts of "spaces"
+  // and this would allow us to support them.
   declare driveId: string;
   declare syncToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -296,72 +300,3 @@ GoogleDriveSyncToken.init(
   }
 );
 ConnectorModel.hasOne(GoogleDriveSyncToken);
-
-export class GoogleDriveWebhook extends Model<
-  InferAttributes<GoogleDriveWebhook>,
-  InferCreationAttributes<GoogleDriveWebhook>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-  declare webhookId: string;
-  declare driveId: string;
-  declare renewedByWebhookId: string | null;
-  declare expiresAt: Date;
-  declare renewAt: Date | null;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
-}
-GoogleDriveWebhook.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    webhookId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    driveId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    renewedByWebhookId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    expiresAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    renewAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
-    },
-  },
-  {
-    sequelize: sequelizeConnection,
-    modelName: "google_drive_webhooks",
-    indexes: [
-      { fields: ["webhookId"], unique: true },
-      { fields: ["renewAt"] },
-      { fields: ["connectorId"] },
-    ],
-  }
-);
-ConnectorModel.hasOne(GoogleDriveWebhook);

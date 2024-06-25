@@ -1,34 +1,9 @@
-import React, { useCallback, useState } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
 
 import { Button, ClipboardCheckIcon, ClipboardIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
-
-function useCopyToClipboard(
-  resetInterval = 2000
-): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
-  const [isCopied, setCopied] = useState(false);
-
-  const copy = useCallback(
-    async (d: ClipboardItem) => {
-      if (!navigator?.clipboard) {
-        return false;
-      }
-      try {
-        await navigator.clipboard.write([d]);
-        setCopied(true);
-        setTimeout(() => setCopied(false), resetInterval);
-        return true;
-      } catch (error) {
-        setCopied(false);
-        return false;
-      }
-    },
-    [resetInterval]
-  );
-
-  return [isCopied, copy];
-}
+import { useCopyToClipboard } from "@sparkle/lib/utils";
 
 const textColor = "s-text-element-900";
 const paragraphSize = "s-text-base";

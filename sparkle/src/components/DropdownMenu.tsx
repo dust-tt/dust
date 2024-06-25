@@ -326,6 +326,7 @@ interface DropdownItemsProps {
   children: React.ReactNode;
   topBar?: React.ReactNode;
   bottomBar?: React.ReactNode;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   overflow?: "visible" | "auto";
   variant?: ItemsVariantType;
 }
@@ -337,6 +338,7 @@ DropdownMenu.Items = function ({
   children,
   topBar,
   bottomBar,
+  onKeyDown,
   overflow = "auto",
   variant = "default",
 }: DropdownItemsProps) {
@@ -427,6 +429,7 @@ DropdownMenu.Items = function ({
       leaveTo={getOriginTransClass(origin)}
     >
       <Menu.Items
+        onKeyDown={onKeyDown}
         className={classNames(
           "s-absolute s-z-10",
           getOriginClass(origin),

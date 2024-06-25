@@ -10,11 +10,11 @@ import type {
   TemplateTagCodeType,
 } from "@dust-tt/types";
 import {
-  ACTION_PRESETS,
   ASSISTANT_CREATIVITY_LEVELS,
   CreateTemplateFormSchema,
   generateTailwindBackgroundColors,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+  MULTI_ACTION_PRESETS,
   removeNulls,
   TEMPLATE_VISIBILITIES,
   TEMPLATES_TAGS_CONFIG,
@@ -25,11 +25,10 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Control } from "react-hook-form";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
-import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
@@ -56,6 +55,7 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -83,11 +83,13 @@ function InputField({
   name,
   title,
   placeholder,
+  type = "text",
 }: {
   control: Control<CreateTemplateFormType>;
   name: keyof CreateTemplateFormType;
   title?: string;
   placeholder?: string;
+  type?: string;
 }) {
   return (
     <PokeFormField
@@ -96,9 +98,22 @@ function InputField({
       render={({ field }) => (
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeInput placeholder={placeholder ?? name} {...field} />
-          </PokeFormControl>
+          {typeof field.value === "string" ? (
+            <PokeFormControl>
+              <PokeInput
+                placeholder={placeholder ?? name}
+                type={type}
+                {...field}
+                value={field.value} // Ensuring value is a string
+              />
+            </PokeFormControl>
+          ) : (
+            <div>
+              <p className="text-red-500">
+                Invalid input type: {typeof field.value}. Expected a string.
+              </p>
+            </div>
+          )}
           <PokeFormMessage />
         </PokeFormItem>
       )}
@@ -132,32 +147,41 @@ function PickerInputField({
       render={({ field }) => (
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <div className="flex flex-row gap-2">
-              <PokeInput
-                readOnly
-                placeholder={placeholder ?? name}
-                {...field}
-              />
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <div ref={pickerRef}>
-                    <PokeButton variant="outline">{buttonLabel}</PokeButton>
-                  </div>
-                </DropdownMenu.Button>
-                <DropdownMenu.Items
-                  width={350}
-                  origin="topLeft"
-                  variant="no-padding"
-                >
-                  {picker((value: string) => {
-                    field.onChange(value);
-                    pickerRef.current?.click();
-                  })}
-                </DropdownMenu.Items>
-              </DropdownMenu>
+          {typeof field.value === "string" ? (
+            <PokeFormControl>
+              <div className="flex flex-row gap-2">
+                <PokeInput
+                  readOnly
+                  placeholder={placeholder ?? name}
+                  {...field}
+                  value={field.value} // Ensuring value is a string
+                />
+                <DropdownMenu>
+                  <DropdownMenu.Button>
+                    <div ref={pickerRef}>
+                      <PokeButton variant="outline">{buttonLabel}</PokeButton>
+                    </div>
+                  </DropdownMenu.Button>
+                  <DropdownMenu.Items
+                    width={350}
+                    origin="topLeft"
+                    variant="no-padding"
+                  >
+                    {picker((value: string) => {
+                      field.onChange(value);
+                      pickerRef.current?.click();
+                    })}
+                  </DropdownMenu.Items>
+                </DropdownMenu>
+              </div>
+            </PokeFormControl>
+          ) : (
+            <div>
+              <p className="text-red-500">
+                Invalid input type: {typeof field.value}. Expected a string.
+              </p>
             </div>
-          </PokeFormControl>
+          )}
           <PokeFormMessage />
         </PokeFormItem>
       )}
@@ -171,12 +195,14 @@ function TextareaField({
   title,
   placeholder,
   previewMardown = false,
+  rows = 30,
 }: {
   control: Control<CreateTemplateFormType>;
   name: keyof CreateTemplateFormType;
   title?: string;
   placeholder?: string;
   previewMardown?: boolean;
+  rows?: number;
 }) {
   return (
     <PokeFormField
@@ -185,36 +211,145 @@ function TextareaField({
       render={({ field }) => (
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          {previewMardown &&
-          typeof field.value === "string" &&
-          field.value.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <PokeFormControl>
-                  <PokeTextarea
-                    placeholder={placeholder ?? name}
-                    rows={30}
-                    {...field}
-                  />
-                </PokeFormControl>
+          {typeof field.value === "string" ? (
+            previewMardown && field.value.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <PokeFormControl>
+                    <PokeTextarea
+                      placeholder={placeholder ?? name}
+                      rows={rows}
+                      {...field} // Ensure `value` is a string
+                      value={field.value} // Explicitly setting value as a string
+                    />
+                  </PokeFormControl>
+                </div>
+                <div className="rounded-xl border p-2">
+                  <Markdown content={field.value} />
+                </div>
               </div>
-
-              <div className="rounded-xl border p-2">
-                <Markdown content={field.value} />
-              </div>
-            </div>
+            ) : (
+              <PokeFormControl>
+                <PokeTextarea
+                  placeholder={placeholder ?? name}
+                  rows={rows}
+                  {...field} // Ensure `value` is a string
+                  value={field.value} // Explicitly setting value as a string
+                />
+              </PokeFormControl>
+            )
           ) : (
-            <PokeFormControl>
-              <PokeTextarea
-                placeholder={placeholder ?? name}
-                rows={30}
-                {...field}
-              />
-            </PokeFormControl>
+            <div>
+              <p className="text-red-500">
+                Invalid input type: {typeof field.value}. Expected a string.
+              </p>
+            </div>
           )}
           <PokeFormMessage />
         </PokeFormItem>
       )}
+    />
+  );
+}
+
+function PresetActionsField({
+  control,
+  name,
+  title,
+}: {
+  control: Control<CreateTemplateFormType>;
+  name: keyof CreateTemplateFormType;
+  title?: string;
+}) {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "presetActions",
+  });
+
+  return (
+    <PokeFormField
+      control={control}
+      name={name}
+      render={() => {
+        return (
+          <PokeFormItem>
+            <PokeFormLabel className="capitalize">
+              {title ?? name}
+            </PokeFormLabel>
+            {fields.map((field, index) => (
+              <div key={field.id} className="grid grid-cols-5 gap-4">
+                <InputField
+                  control={control}
+                  // @ts-expect-error - TS doesn't like the dynamic key
+                  name={`presetActions.${index}.name`}
+                  title="Tool Name"
+                  placeholder="Tool Name"
+                />
+                <SelectField
+                  control={control}
+                  // @ts-expect-error - TS doesn't like the dynamic key
+                  name={`presetActions.${index}.type`}
+                  title="Tool Type"
+                  options={Object.entries(MULTI_ACTION_PRESETS).map(
+                    ([value, display]) => ({
+                      value,
+                      display,
+                    })
+                  )}
+                />
+                <TextareaField
+                  control={control}
+                  // @ts-expect-error - TS doesn't like the dynamic key
+                  name={`presetActions.${index}.description`}
+                  title="Tool Description"
+                  placeholder="Description of the action"
+                  rows={5}
+                />
+                <TextareaField
+                  control={control}
+                  // @ts-expect-error - TS doesn't like the dynamic key
+                  name={`presetActions.${index}.help`}
+                  title="Tool Help content"
+                  placeholder="This is the text displayed on the template's sidebar just on top of the button to add the tool."
+                  rows={5}
+                />
+                <PokeFormItem>
+                  <PokeFormLabel className="capitalize">Remove</PokeFormLabel>
+                  <div>
+                    <PokeButton
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        remove(index);
+                      }}
+                    >
+                      Remove Tool
+                    </PokeButton>
+                  </div>
+                </PokeFormItem>
+              </div>
+            ))}
+            <br />
+            <PokeButton
+              variant="secondary"
+              onClick={(e) => {
+                e.preventDefault();
+                const pendingAction = {
+                  name: "",
+                  type: "",
+                  description: "",
+                  help: "",
+                };
+                // @ts-expect-error - TS killed me today
+                append(pendingAction);
+              }}
+            >
+              Add Tool
+            </PokeButton>
+            <PokeFormMessage />
+          </PokeFormItem>
+        );
+      }}
     />
   );
 }
@@ -430,9 +565,8 @@ function TemplatesPage({
       description: "",
       handle: "",
       presetInstructions: "",
-      presetModelId: GPT_4O_MODEL_CONFIG.modelId,
+      presetModelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       presetTemperature: "balanced",
-      presetAction: "reply",
       helpInstructions: "",
       helpActions: "",
       emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
@@ -530,15 +664,6 @@ function TemplatesPage({
                   value: acl,
                 }))}
               />
-              <SelectField
-                control={form.control}
-                name="presetAction"
-                title="Preset Action"
-                options={Object.entries(ACTION_PRESETS).map(([k, v]) => ({
-                  value: k,
-                  display: v,
-                }))}
-              />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <PickerInputField
@@ -595,11 +720,15 @@ function TemplatesPage({
             <TextareaField
               control={form.control}
               name="helpActions"
-              title="Help Actions"
-              placeholder="Actions help bubble..."
+              title="Help Tools"
+              placeholder="Tools help bubble..."
               previewMardown={true}
             />
-
+            <PresetActionsField
+              control={form.control}
+              name="presetActions"
+              title="Preset Tools"
+            />
             <div className="space flex gap-2">
               <PokeButton
                 onClick={form.handleSubmit(onSubmit)}

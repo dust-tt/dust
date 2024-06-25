@@ -6,7 +6,10 @@ const config = {
       "CONNECTORS_DATABASE_READ_REPLICA_URI"
     );
   },
-  getCoreDatabaseReadReplicaUri: (): string => {
+  getPrimaryCoreDatabaseUri: (): string => {
+    return EnvironmentConfig.getEnvVariable("CORE_DATABASE_URI");
+  },
+  getReadReplicaCoreDatabaseUri: (): string => {
     return EnvironmentConfig.getEnvVariable("CORE_DATABASE_READ_REPLICA_URI");
   },
   getFrontDatabaseReadReplicaUri: (): string => {

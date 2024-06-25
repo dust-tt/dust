@@ -14,18 +14,18 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
-import AssistantBuilder, {
-  BUILDER_FLOWS,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
-import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderInitialState,
+  BuilderFlow,
+} from "@app/components/assistant_builder/types";
+import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr";
 
@@ -54,7 +54,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
-  multiActionsAllowed: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -99,6 +98,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       templateId,
       flow
     );
+
     if (agentConfigRes.isErr()) {
       return {
         notFound: true,
@@ -107,8 +107,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
     configuration = agentConfigRes.value;
   }
-
-  const multiActionsAllowed = owner.flags.includes("multi_actions");
 
   const actions = configuration
     ? await buildInitialActions({
@@ -131,7 +129,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       flow,
       baseUrl: config.getAppUrl(),
       templateId,
-      multiActionsAllowed,
     },
   };
 });
@@ -148,7 +145,6 @@ export default function CreateAssistant({
   flow,
   baseUrl,
   templateId,
-  multiActionsAllowed,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({
     templateId,
@@ -156,34 +152,34 @@ export default function CreateAssistant({
   });
 
   if (agentConfiguration) {
-    const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
+    const actions = agentConfiguration.actions;
+    actions.map((action) => {
+      if (isRetrievalConfiguration(action)) {
+        if (action.query === "none") {
+          if (
+            action.relativeTimeFrame === "auto" ||
+            action.relativeTimeFrame === "none"
+          ) {
+            /** Should never happen. Throw loudly if it does */
+            throw new Error(
+              "Invalid configuration: exhaustive retrieval must have a definite time frame"
+            );
+          }
+        }
+      }
 
-    if (isRetrievalConfiguration(action)) {
-      if (action.query === "none") {
+      if (isProcessConfiguration(action)) {
         if (
           action.relativeTimeFrame === "auto" ||
           action.relativeTimeFrame === "none"
         ) {
-          /** Should never happen. Throw loudly if it does */
+          /** Should never happen as not permitted for now. */
           throw new Error(
-            "Invalid configuration: exhaustive retrieval must have a definite time frame"
+            "Invalid configuration: process must have a definite time frame"
           );
         }
       }
-    }
-
-    if (isProcessConfiguration(action)) {
-      if (
-        action.relativeTimeFrame === "auto" ||
-        action.relativeTimeFrame === "none"
-      ) {
-        /** Should never happen as not permitted for now. */
-        throw new Error(
-          "Invalid configuration: process must have a definite time frame"
-        );
-      }
-    }
-
+    });
     if (agentConfiguration.scope === "global") {
       throw new Error("Cannot edit global assistant");
     }
@@ -227,6 +223,7 @@ export default function CreateAssistant({
                 temperature: agentConfiguration.model.temperature,
               },
               maxToolsUsePerRun: null,
+              templateId: templateId,
             }
           : null
       }
@@ -234,8 +231,6 @@ export default function CreateAssistant({
       defaultIsEdited={true}
       baseUrl={baseUrl}
       defaultTemplate={assistantTemplate}
-      multiActionsAllowed={multiActionsAllowed}
-      multiActionsEnabled={false}
     />
   );
 }

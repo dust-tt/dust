@@ -1,3 +1,4 @@
+import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { createAppAuth } from "@octokit/auth-app";
 import { hash as blake3 } from "blake3";
@@ -111,27 +112,36 @@ export async function validateInstallationId(
 export async function getReposPage(
   installationId: string,
   page: number
-): Promise<GithubRepo[]> {
-  const octokit = await getOctokit(installationId);
+): Promise<Result<GithubRepo[], ExternalOauthTokenError>> {
+  try {
+    const octokit = await getOctokit(installationId);
 
-  return (
-    await octokit.request("GET /installation/repositories", {
-      per_page: API_PAGE_SIZE,
-      page: page,
-    })
-  ).data.repositories.map((r) => ({
-    id: r.id,
-    name: r.name,
-    private: r.private,
-    url: r.html_url,
-    createdAt: r.created_at ? new Date(r.created_at) : null,
-    updatedAt: r.updated_at ? new Date(r.updated_at) : null,
-    description: r.description,
-    owner: {
-      id: r.owner.id,
-      login: r.owner.login,
-    },
-  }));
+    return new Ok(
+      (
+        await octokit.request("GET /installation/repositories", {
+          per_page: API_PAGE_SIZE,
+          page: page,
+        })
+      ).data.repositories.map((r) => ({
+        id: r.id,
+        name: r.name,
+        private: r.private,
+        url: r.html_url,
+        createdAt: r.created_at ? new Date(r.created_at) : null,
+        updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+        description: r.description,
+        owner: {
+          id: r.owner.id,
+          login: r.owner.login,
+        },
+      }))
+    );
+  } catch (e) {
+    if (isGithubRequestErrorNotFound(e)) {
+      return new Err(new ExternalOauthTokenError(e));
+    }
+    throw e;
+  }
 }
 
 export async function getRepo(

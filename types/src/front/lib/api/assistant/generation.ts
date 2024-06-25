@@ -43,6 +43,7 @@ export type AssistantContentMessageTypeModel = {
 
 export type FunctionMessageTypeModel = {
   role: "function";
+  name: string;
   function_call_id: string;
   content: string;
 };
@@ -69,6 +70,11 @@ export type GenerationTokensEvent = {
   configurationId: string;
   messageId: string;
   text: string;
+  classification:
+    | "tokens"
+    | "chain_of_thought"
+    | "opening_delimiter"
+    | "closing_delimiter";
 };
 
 export type GenerationErrorEvent = {
@@ -88,6 +94,8 @@ export type GenerationSuccessEvent = {
   configurationId: string;
   messageId: string;
   text: string;
+  chainOfThought: string;
+  runId: string;
 };
 
 export type GenerationCancelEvent = {

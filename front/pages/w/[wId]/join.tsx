@@ -8,6 +8,7 @@ import {
   getWorkspaceInfos,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
+import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
@@ -39,11 +40,12 @@ type OnboardingType =
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
-  onboardingType: OnboardingType;
-  workspace: LightWorkspaceType;
-  signUpCallbackUrl: string;
-  gaTrackingId: string;
   baseUrl: string;
+  gaTrackingId: string;
+  invitationEmail: string | null;
+  onboardingType: OnboardingType;
+  signUpCallbackUrl: string;
+  workspace: LightWorkspaceType;
 }>(async (context) => {
   const wId = context.query.wId as string;
   if (!wId) {
@@ -51,12 +53,14 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       notFound: true,
     };
   }
+
   const workspace = await getWorkspaceInfos(wId);
   if (!workspace) {
     return {
       notFound: true,
     };
   }
+
   const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
@@ -82,13 +86,33 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   let signUpCallbackUrl: string | undefined = undefined;
+  let invitationEmail: string | null = null;
   switch (onboardingType) {
     case "domain_conversation_link":
       signUpCallbackUrl = `/api/login?wId=${wId}&cId=${cId}&join=true`;
       break;
-    case "email_invite":
+    case "email_invite": {
       signUpCallbackUrl = `/api/login?inviteToken=${token}`;
+      const res = await getPendingMembershipInvitationForToken(
+        token ?? undefined
+      );
+      // Redirect to login error page with specific reason
+      // if token validation fails.
+      if (res.isErr()) {
+        return {
+          redirect: {
+            destination: `/api/auth/logout?returnTo=/login-error?reason=${res.error.code}`,
+            permanent: false,
+          },
+        };
+      }
+
+      if (res.value) {
+        invitationEmail = res.value.inviteEmail;
+      }
       break;
+    }
+
     case "domain_invite_link":
       signUpCallbackUrl = `/api/login?wId=${wId}`;
       break;
@@ -100,21 +124,29 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
-      onboardingType: onboardingType,
-      workspace,
-      signUpCallbackUrl: signUpCallbackUrl,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
+      invitationEmail,
+      onboardingType,
+      signUpCallbackUrl,
+      workspace,
     },
   };
 });
 
 export default function Join({
-  onboardingType,
-  workspace,
-  signUpCallbackUrl,
   gaTrackingId,
+  invitationEmail,
+  onboardingType,
+  signUpCallbackUrl,
+  workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  let signUpUrl = `/api/auth/login?returnTo=${signUpCallbackUrl}&screen_hint=signup`;
+
+  if (invitationEmail) {
+    signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
+  }
+
   return (
     <OnboardingLayout
       owner={workspace}
@@ -126,9 +158,7 @@ export default function Join({
           size="sm"
           label="Sign up"
           icon={LoginIcon}
-          onClick={() =>
-            (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}`)
-          }
+          onClick={() => (window.location.href = signUpUrl)}
         />
       }
     >
@@ -174,9 +204,7 @@ export default function Join({
             size="sm"
             label="Sign up"
             icon={LoginIcon}
-            onClick={() =>
-              (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}`)
-            }
+            onClick={() => (window.location.href = signUpUrl)}
           />
         </div>
         <div className="flex flex-col gap-3 pb-20">

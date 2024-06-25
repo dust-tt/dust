@@ -1,5 +1,10 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { assertNever, DustAPI, minTranscriptsSize } from "@dust-tt/types";
+import {
+  assertNever,
+  DustAPI,
+  isEmptyString,
+  minTranscriptsSize,
+} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
@@ -237,6 +242,9 @@ export async function processTranscriptActivity(
     return;
   }
 
+  if (isEmptyString(user.username)) {
+    return new Err(new Error("username must be a non-empty string"));
+  }
   const convRes = await dustAPI.createConversation({
     title: transcriptTitle,
     visibility: "unlisted",
@@ -249,6 +257,7 @@ export async function processTranscriptActivity(
         fullName: user.name,
         email: user.email,
         profilePictureUrl: user.imageUrl,
+        origin: null,
       },
     },
     contentFragment: {
@@ -313,7 +322,7 @@ export async function processTranscriptActivity(
   const msg = {
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "team@dust.help",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
     html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,

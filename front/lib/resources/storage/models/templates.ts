@@ -1,10 +1,10 @@
 import type {
-  ActionPreset,
   AssistantCreativityLevel,
   ModelIdType,
   ModelProviderIdType,
   TemplateTagCodeType,
   TemplateVisibility,
+  TimeframeUnit,
 } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -13,6 +13,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { TemplateActionType } from "@app/components/assistant_builder/types";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class TemplateModel extends Model<
@@ -37,7 +38,10 @@ export class TemplateModel extends Model<
   declare presetTemperature: AssistantCreativityLevel;
   declare presetProviderId: ModelProviderIdType;
   declare presetModelId: ModelIdType;
-  declare presetAction: ActionPreset;
+  declare presetActions: TemplateActionType[];
+
+  declare timeFrameDuration: number | null;
+  declare timeFrameUnit: TimeframeUnit | null;
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
@@ -103,9 +107,18 @@ TemplateModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    presetAction: {
-      type: DataTypes.STRING,
+    presetActions: {
+      type: DataTypes.JSONB,
       allowNull: false,
+      defaultValue: [],
+    },
+    timeFrameDuration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    timeFrameUnit: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     helpInstructions: {
       type: DataTypes.TEXT,

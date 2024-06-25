@@ -33,6 +33,7 @@ export function isConnectorError(val: string): val is ConnectorErrorType {
 export const CONNECTOR_PROVIDERS_USING_NANGO = [
   "confluence",
   "google_drive",
+  "microsoft",
   "intercom",
   "notion",
   "slack",
@@ -133,7 +134,7 @@ export class ConnectorsAPI {
     connectionId: string,
     configuration: ConnectorConfiguration
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/create/${encodeURIComponent(provider)}`,
       {
         method: "POST",
@@ -158,7 +159,7 @@ export class ConnectorsAPI {
     connectorId: string;
     configuration: UpdateConnectorConfigurationType;
   }): Promise<ConnectorsAPIResponse<ConnectorType>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
       )}/configuration`,
@@ -181,7 +182,7 @@ export class ConnectorsAPI {
     connectorId: string;
     connectionId: string;
   }): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/update/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
@@ -198,7 +199,7 @@ export class ConnectorsAPI {
   async stopConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/stop/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
@@ -212,7 +213,7 @@ export class ConnectorsAPI {
   async pauseConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/pause/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
@@ -226,7 +227,7 @@ export class ConnectorsAPI {
   async unpauseConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/unpause/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
@@ -240,7 +241,7 @@ export class ConnectorsAPI {
   async resumeConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/resume/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
@@ -254,7 +255,7 @@ export class ConnectorsAPI {
   async syncConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<{ workflowId: string }>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/sync/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
@@ -269,7 +270,7 @@ export class ConnectorsAPI {
     connectorId: string,
     force = false
   ): Promise<ConnectorsAPIResponse<{ success: true }>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/delete/${encodeURIComponent(
         connectorId
       )}?force=${force ? "true" : "false"}`,
@@ -303,7 +304,7 @@ export class ConnectorsAPI {
       url += `&filterPermission=${encodeURIComponent(filterPermission)}`;
     }
 
-    const res = await fetch(url, {
+    const res = await this._fetchWithError(url, {
       method: "GET",
       headers: this.getDefaultHeaders(),
     });
@@ -321,7 +322,7 @@ export class ConnectorsAPI {
       permission: ConnectorPermission;
     }[];
   }): Promise<ConnectorsAPIResponse<void>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
       )}/permissions`,
@@ -343,7 +344,7 @@ export class ConnectorsAPI {
   async getConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(connectorId)}`,
       {
         method: "GET",
@@ -359,7 +360,7 @@ export class ConnectorsAPI {
     configKey: string,
     configValue: string
   ): Promise<ConnectorsAPIResponse<void>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
       )}/config/${encodeURIComponent(configKey)}`,
@@ -385,7 +386,7 @@ export class ConnectorsAPI {
       configValue: string;
     }>
   > {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
       )}/config/${encodeURIComponent(configKey)}`,
@@ -412,7 +413,7 @@ export class ConnectorsAPI {
       }[];
     }>
   > {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
       )}/content_nodes/parents`,
@@ -441,7 +442,7 @@ export class ConnectorsAPI {
       nodes: ContentNode[];
     }>
   > {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors/${encodeURIComponent(
         connectorId
       )}/content_nodes`,
@@ -467,7 +468,7 @@ export class ConnectorsAPI {
     slackChannelIds: string[];
     agentConfigurationId: string;
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/slack/channels/linked_with_agent`,
       {
         method: "PATCH",
@@ -496,7 +497,7 @@ export class ConnectorsAPI {
       }[];
     }>
   > {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${CONNECTORS_API}/slack/channels/linked_with_agent?connector_id=${encodeURIComponent(
         connectorId
       )}`,
@@ -512,11 +513,14 @@ export class ConnectorsAPI {
   async admin(
     adminCommand: AdminCommandType
   ): Promise<ConnectorsAPIResponse<AdminResponseType>> {
-    const res = await fetch(`${CONNECTORS_API}/connectors/admin`, {
-      method: "POST",
-      headers: this.getDefaultHeaders(),
-      body: JSON.stringify(adminCommand),
-    });
+    const res = await this._fetchWithError(
+      `${CONNECTORS_API}/connectors/admin`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify(adminCommand),
+      }
+    );
 
     return this._resultFromResponse(res);
   }
@@ -528,16 +532,55 @@ export class ConnectorsAPI {
     };
   }
 
+  private async _fetchWithError(
+    url: string,
+    init?: RequestInit
+  ): Promise<
+    Result<{ response: Response; duration: number }, ConnectorsAPIError>
+  > {
+    const now = Date.now();
+    try {
+      const res = await fetch(url, init);
+      return new Ok({ response: res, duration: Date.now() - now });
+    } catch (e) {
+      const duration = Date.now() - now;
+      const err: ConnectorsAPIError = {
+        type: "unexpected_network_error",
+        message: `Unexpected network error from ConnectorsAPI: ${e}`,
+      };
+      this._logger.error(
+        {
+          url,
+          duration,
+          connectorsError: err,
+          error: e,
+        },
+        "ConnectorsAPI error"
+      );
+      return new Err(err);
+    }
+  }
+
   private async _resultFromResponse<T>(
-    response: Response
+    res: Result<
+      {
+        response: Response;
+        duration: number;
+      },
+      ConnectorsAPIError
+    >
   ): Promise<ConnectorsAPIResponse<T>> {
+    if (res.isErr()) {
+      return res;
+    }
+
     // 204 means no content.
-    if (response.status === 204) {
+    if (res.value.response.status === 204) {
       return new Ok(undefined as T);
     }
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
-    const text = await response.text();
+    const text = await res.value.response.text();
 
     let json = null;
     try {
@@ -552,22 +595,24 @@ export class ConnectorsAPI {
           connectorsError: err,
           parseError: e,
           rawText: text,
-          status: response.status,
-          url: response.url,
+          status: res.value.response.status,
+          url: res.value.response.url,
+          duration: res.value.duration,
         },
         "ConnectorsAPI error"
       );
       return new Err(err);
     }
 
-    if (!response.ok) {
+    if (!res.value.response.ok) {
       const err = json?.error;
       if (isConnectorsAPIError(err)) {
         this._logger.error(
           {
             connectorsError: err,
-            status: response.status,
-            url: response.url,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
           },
           "ConnectorsAPI error"
         );
@@ -581,8 +626,9 @@ export class ConnectorsAPI {
           {
             connectorsError: err,
             json,
-            status: response.status,
-            url: response.url,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
           },
           "ConnectorsAPI error"
         );

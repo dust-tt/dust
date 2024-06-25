@@ -94,9 +94,6 @@ export const DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE: Record<
 export async function getDocumentsPostUpsertHooksToRun(
   params: DocumentsPostProcessHookOnUpsertParams
 ): Promise<Array<{ type: DocumentsPostProcessHookType; debounceMs: number }>> {
-  if (!process.env.DOCUMENTS_POST_PROCESS_HOOKS_ENABLED) {
-    return [];
-  }
   // TODO: parallel
   const hooksToRun: {
     type: DocumentsPostProcessHookType;
@@ -124,10 +121,6 @@ export async function getDocumentsPostUpsertHooksToRun(
 export async function getDocumentsPostDeleteHooksToRun(
   params: DocumentsPostProcessHookOnDeleteParams
 ): Promise<Array<{ type: DocumentsPostProcessHookType }>> {
-  if (!process.env.DOCUMENTS_POST_PROCESS_HOOKS_ENABLED) {
-    return [];
-  }
-
   // TODO: parallel
   const hooksToRun: {
     type: DocumentsPostProcessHookType;

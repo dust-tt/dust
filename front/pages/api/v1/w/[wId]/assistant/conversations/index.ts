@@ -4,7 +4,10 @@ import type {
   UserMessageType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { PublicPostConversationsRequestBodySchema } from "@dust-tt/types";
+import {
+  isEmptyString,
+  PublicPostConversationsRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -50,7 +53,7 @@ async function handler(
     });
   }
 
-  const owner = await auth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -81,6 +84,19 @@ async function handler(
 
       const { title, visibility, message, contentFragment, blocking } =
         bodyValidation.right;
+
+      if (message) {
+        if (isEmptyString(message.context.username)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The message.context.username must be a non-empty string.",
+            },
+          });
+        }
+      }
 
       if (contentFragment) {
         if (
@@ -160,6 +176,7 @@ async function handler(
               fullName: message.context.fullName,
               email: message.context.email,
               profilePictureUrl: message.context.profilePictureUrl,
+              origin: message.context.origin ?? "api",
             },
           },
           { resolveAfterFullGeneration: blocking === true }

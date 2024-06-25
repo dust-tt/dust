@@ -1,7 +1,7 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::openai::{
     chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
     to_openai_messages, OpenAILLM, OpenAITool, OpenAIToolChoice,
@@ -264,7 +264,7 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_completion(
                     self.uri()?,
@@ -416,6 +416,11 @@ impl LLM for AzureOpenAILLM {
                 })
                 .collect::<Vec<_>>(),
             prompt: prompt_tokens,
+            usage: c.usage.map(|usage| LLMTokenUsage {
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens.unwrap_or(0),
+            }),
+            provider_request_id: request_id,
         })
     }
 
@@ -466,7 +471,7 @@ impl LLM for AzureOpenAILLM {
 
         let openai_messages = to_openai_messages(messages)?;
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
                     self.chat_uri()?,
@@ -543,6 +548,11 @@ impl LLM for AzureOpenAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
+            usage: c.usage.map(|usage| LLMTokenUsage {
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens.unwrap_or(0),
+            }),
+            provider_request_id: request_id,
         })
     }
 }
@@ -578,7 +588,6 @@ impl AzureOpenAIEmbedder {
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "text-embedding-ada-002" => cl100k_base_singleton(),
                 "text-embedding-3-small" => cl100k_base_singleton(),
                 "text-embedding-3-large-1536" => cl100k_base_singleton(),
                 _ => unimplemented!(),
@@ -635,7 +644,6 @@ impl Embedder for AzureOpenAIEmbedder {
 
         // We ensure at initialize that we only use supported models.
         match d.model.as_str() {
-            "text-embedding-ada-002" => (),
             "text-embedding-3-small" => (),
             "text-embedding-3-large-1536" => (),
             _ => Err(anyhow!("Unsupported model: {}", d.model))?,
@@ -649,7 +657,6 @@ impl Embedder for AzureOpenAIEmbedder {
     fn context_size(&self) -> usize {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "text-embedding-ada-002" => 8191,
                 "text-embedding-3-small" => 8191,
                 "text-embedding-3-large-1536" => 8191,
                 _ => unimplemented!(),
@@ -661,7 +668,6 @@ impl Embedder for AzureOpenAIEmbedder {
     fn embedding_size(&self) -> usize {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "text-embedding-ada-002" => 1536,
                 "text-embedding-3-small" => 1536,
                 "text-embedding-3-large-1536" => 1536,
                 _ => unimplemented!(),

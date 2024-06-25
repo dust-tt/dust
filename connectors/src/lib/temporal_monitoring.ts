@@ -11,7 +11,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
-import { ExternalOauthTokenError } from "./error";
+import { DustConnectorWorkflowError, ExternalOauthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
 import { cancelWorkflow, getConnectorId } from "./temporal";
 
@@ -46,7 +46,7 @@ export class ActivityInboundLogInterceptor
     next: Next<ActivityInboundCallsInterceptor, "execute">
   ): Promise<unknown> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let error: any = undefined;
+    let error: Error | any = undefined;
     const startTime = new Date();
     const tags = [
       `activity_name:${this.context.info.activityType}`,
@@ -61,12 +61,11 @@ export class ActivityInboundLogInterceptor
     // ensures that the error is logged and the activity is marked as
     // failed.
     const startToCloseTimer = setTimeout(() => {
-      const error = {
-        __is_dust_error: true,
-        message:
-          "Activity execution exceeded startToClose timeout (note: the activity might still be running)",
-        type: "starttoclose_timeout_failure",
-      };
+      const error = new DustConnectorWorkflowError(
+        "Activity execution exceeded startToClose timeout (note: the activity might still be running)",
+        "workflow_timeout_failure"
+      );
+
       this.logger.error(
         {
           error,
@@ -78,6 +77,18 @@ export class ActivityInboundLogInterceptor
       );
     }, this.context.info.startToCloseTimeoutMs);
 
+    // We already trigger a monitor after 20 failures, but when the pod crashes (eg: OOM or segfault), the attempt never gets logged.
+    // By looking at the attempt count before the activity starts, we can detect activities that are repeatedly crashing the pod.
+    if (this.context.info.attempt > 25) {
+      this.logger.error(
+        {
+          activity_name: this.context.info.activityType,
+          workflow_name: this.context.info.workflowType,
+          attempt: this.context.info.attempt,
+        },
+        "Activity has been attempted more than 25 times. Make sure it's not crashing the pod."
+      );
+    }
     try {
       return await tracer.trace(
         `${this.context.info.workflowType}-${this.context.info.activityType}`,
@@ -114,11 +125,12 @@ export class ActivityInboundLogInterceptor
           },
           "Got 5xx Bad Response from external API"
         );
-        error = {
-          __is_dust_error: true,
-          message: `Got ${err.status} Bad Response from Nango`,
-          type: "nango_5xx_bad_response",
-        };
+
+        error = new DustConnectorWorkflowError(
+          `Got ${err.status} Bad Response from Nango`,
+          "transient_nango_activity_error",
+          err
+        );
       }
 
       if (err instanceof ExternalOauthTokenError) {
@@ -141,8 +153,8 @@ export class ActivityInboundLogInterceptor
       const durationMs = new Date().getTime() - startTime.getTime();
       if (error) {
         let errorType = "unhandled_internal_activity_error";
-        if (error.__is_dust_error !== undefined) {
-          // this is a dust error
+        if (error instanceof DustConnectorWorkflowError) {
+          // This is a Dust error.
           errorType = error.type;
           this.logger.error(
             {
@@ -154,7 +166,7 @@ export class ActivityInboundLogInterceptor
             "Activity failed"
           );
         } else {
-          // unknown error type
+          // Unknown error type.
           this.logger.error(
             {
               error,

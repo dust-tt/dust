@@ -141,6 +141,13 @@ pub trait Store {
         document_id: &str,
         parents: &Vec<String>,
     ) -> Result<()>;
+    async fn update_data_source_document_chunk_count(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        chunk_count: u64,
+    ) -> Result<()>;
     async fn list_data_source_document_versions(
         &self,
         project: &Project,
@@ -441,7 +448,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 23] = [
+pub const SQL_INDEXES: [&'static str; 24] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -453,6 +460,8 @@ pub const SQL_INDEXES: [&'static str; 23] = [
        idx_runs_project_run_type_created ON runs (project, run_type, created);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
        idx_runs_id ON runs (run_id);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_runs_created ON runs (created);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
        idx_block_executions_hash ON block_executions (hash);",
     "CREATE UNIQUE INDEX IF NOT EXISTS

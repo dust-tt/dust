@@ -32,7 +32,10 @@ export interface BaseActionRunParams {
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
-  rawInputs: Record<string, string | boolean | number>;
+  rawInputs: Record<
+    string,
+    string | boolean | number | string[] | boolean[] | number[]
+  >;
   functionCallId: string | null;
   step: number;
 }
@@ -55,11 +58,7 @@ export abstract class BaseActionConfigurationServerRunner<
   // Action rendering.
   abstract buildSpecification(
     auth: Authenticator,
-    { name, description }: { name?: string; description?: string }
-  ): Promise<Result<AgentActionSpecification, Error>>;
-
-  abstract deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
+    { name, description }: { name: string | null; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>>;
 
   // Action execution.

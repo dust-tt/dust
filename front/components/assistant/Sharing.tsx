@@ -185,11 +185,7 @@ export function SharingButton({
               <div className="text-sm text-element-700">
                 <div>
                   {SCOPE_INFO[newScope].text}{" "}
-                  {agentUsage &&
-                  agentUsage.usersWithAgentInListCount > 0 &&
-                  newScope !== "private"
-                    ? usageText
-                    : null}
+                  {agentUsage && newScope !== "private" ? usageText : null}
                 </div>
               </div>
             </div>

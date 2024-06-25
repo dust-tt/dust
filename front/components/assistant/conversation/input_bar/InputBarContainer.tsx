@@ -22,6 +22,10 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
 
+export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
+
+export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
+
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
@@ -30,7 +34,7 @@ export interface InputBarContainerProps {
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
-  hideQuickActions: boolean;
+  actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
 }
@@ -43,7 +47,7 @@ const InputBarContainer = ({
   owner,
   selectedAssistant,
   stickyMentions,
-  hideQuickActions,
+  actions,
   disableAutoFocus,
   disableSendButton,
 }: InputBarContainerProps) => {
@@ -112,30 +116,40 @@ const InputBarContainer = ({
       />
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch py-2 pr-2 sm:flex-col sm:border-0">
-        <div className="flex gap-5 rounded-full border border-structure-200/60 px-4 py-2 sm:gap-3 sm:px-2">
-          <input
-            accept=".txt,.pdf,.md,.csv"
-            onChange={async (e) => {
-              await onInputFileChange(e);
-              editorService.focusEnd();
-            }}
-            ref={fileInputRef}
-            style={{ display: "none" }}
-            type="file"
-            multiple={true}
-          />
-          <IconButton
-            variant={"tertiary"}
-            icon={AttachmentIcon}
-            size="sm"
-            tooltip="Add a document to the conversation (only .txt, .pdf, .md, .csv)."
-            tooltipPosition="above"
-            className="flex"
-            onClick={() => {
-              fileInputRef.current?.click();
-            }}
-          />
-          {!hideQuickActions && (
+        <div
+          className={classNames(
+            "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
+            // Hide border when there are no actions.
+            actions.length === 0 ? "" : "border border-structure-200/60"
+          )}
+        >
+          {actions.includes("attachment") && (
+            <>
+              <input
+                accept=".txt,.pdf,.md,.csv"
+                onChange={async (e) => {
+                  await onInputFileChange(e);
+                  editorService.focusEnd();
+                }}
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                type="file"
+                multiple={true}
+              />
+              <IconButton
+                variant={"tertiary"}
+                icon={AttachmentIcon}
+                size="sm"
+                tooltip="Add a document to the conversation (only .txt, .pdf, .md, .csv)."
+                tooltipPosition="above"
+                className="flex"
+                onClick={() => {
+                  fileInputRef.current?.click();
+                }}
+              />
+            </>
+          )}
+          {actions.includes("quick-actions") && (
             <>
               <AssistantPicker
                 owner={owner}

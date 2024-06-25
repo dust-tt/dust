@@ -6,6 +6,7 @@ import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getSession } from "@app/lib/auth";
 import type {
   CustomGetServerSideProps,
   UserPrivilege,
@@ -32,13 +33,8 @@ export function withLogging<T>(
     }
     const now = new Date();
 
-    logger.info(
-      {
-        method: req.method,
-        url: req.url,
-      },
-      "Begin Request Processing."
-    );
+    const session = await getSession(req, res);
+    const sessionId = session?.user.sid || "unknown";
 
     let route = req.url;
     if (route) {
@@ -63,6 +59,7 @@ export function withLogging<T>(
           durationMs: elapsed,
           streaming,
           error: err,
+          sessionId,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
         },
@@ -107,6 +104,7 @@ export function withLogging<T>(
         route,
         statusCode: res.statusCode,
         durationMs: elapsed,
+        sessionId,
         streaming,
       },
       "Processed request"

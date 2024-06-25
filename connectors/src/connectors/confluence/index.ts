@@ -164,6 +164,15 @@ export async function updateConfluenceConnector(
         getRequiredNangoConfluenceConnectorId()
       );
     } else {
+      logger.info(
+        {
+          connectorId,
+          newCloudId: newConfluenceCloudInformation?.id,
+          previousCloudId: currentCloudInformation?.cloudId,
+        },
+        "Cannot change the workspace of a Confluence connector"
+      );
+
       // If the new connection does not grant us access to the same cloud id
       // delete the Nango Connection.
       await nangoDeleteConnection(
@@ -173,7 +182,7 @@ export async function updateConfluenceConnector(
 
       return new Err({
         type: "connector_oauth_target_mismatch",
-        message: "Cannot change the workspace of a Notion connector",
+        message: "Cannot change the workspace of a Confluence connector",
       });
     }
   }

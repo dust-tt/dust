@@ -27,8 +27,8 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -41,13 +41,14 @@ import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/da
 
 const {
   GA_TRACKING_ID = "",
+  GITHUB_APP_URL = "",
   NANGO_CONFLUENCE_CONNECTOR_ID = "",
-  NANGO_SLACK_CONNECTOR_ID = "",
-  NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_INTERCOM_CONNECTOR_ID = "",
+  NANGO_MICROSOFT_CONNECTOR_ID = "",
+  NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
-  GITHUB_APP_URL = "",
+  NANGO_SLACK_CONNECTOR_ID = "",
 } = process.env;
 
 type DataSourceIntegration = {
@@ -69,6 +70,7 @@ type DataSourceIntegration = {
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
   "google_drive",
+  "microsoft",
   "slack",
   "intercom",
 ];
@@ -88,6 +90,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     notionConnectorId: string;
     googleDriveConnectorId: string;
     intercomConnectorId: string;
+    microsoftConnectorId: string;
   };
   githubAppUrl: string;
 }>(async (context, auth) => {
@@ -238,6 +241,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
         intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
+        microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
     },
@@ -410,6 +414,7 @@ export default function DataSourcesView({
           notion: nangoConfig.notionConnectorId,
           google_drive: nangoConfig.googleDriveConnectorId,
           intercom: nangoConfig.intercomConnectorId,
+          microsoft: nangoConfig.microsoftConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const newConnectionId = buildConnectionId(owner.sId, provider);
@@ -506,7 +511,6 @@ export default function DataSourcesView({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_managed",
@@ -541,6 +545,29 @@ export default function DataSourcesView({
             .filter(
               (ds) => !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide
             )
+            .sort((a, b) => {
+              if (a.status === b.status) {
+                return a.name.localeCompare(b.name);
+              }
+
+              if (a.status === "built") {
+                return -1;
+              }
+
+              if (b.status === "built") {
+                return 1;
+              }
+
+              if (a.status === "rolling_out") {
+                return -1;
+              }
+
+              if (b.status === "rolling_out") {
+                return 1;
+              }
+
+              return 0;
+            })
             .map((ds) => {
               const isBuilt =
                 ds.status === "built" ||
@@ -598,6 +625,9 @@ export default function DataSourcesView({
                               case "intercom":
                                 isDataSourceAllowedInPlan =
                                   planConnectionsLimits.isIntercomAllowed;
+                                break;
+                              case "microsoft":
+                                isDataSourceAllowedInPlan = true;
                                 break;
                               case "webcrawler":
                                 // Web crawler connector is not displayed on this web page.

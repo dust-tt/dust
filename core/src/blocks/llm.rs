@@ -479,7 +479,9 @@ impl Block for LLM {
                                 // move tx to event_sender
                             });
                         }
-                        request.execute(env.credentials.clone(), Some(tx)).await?
+                        request
+                            .execute(env.credentials.clone(), Some(tx), env.run_id.clone())
+                            .await?
                     }
                     false => {
                         request
@@ -488,6 +490,7 @@ impl Block for LLM {
                                 env.project.clone(),
                                 env.store.clone(),
                                 use_cache,
+                                env.run_id.clone(),
                             )
                             .await?
                     }
@@ -523,7 +526,10 @@ impl Block for LLM {
                     &model_id,
                     self.prompt(env)?.as_str(),
                     Some(self.max_tokens),
-                    self.temperature,
+                    match temperature {
+                        Some(t) => t,
+                        None => self.temperature,
+                    },
                     1,
                     &self.stop,
                     self.frequency_penalty,
@@ -562,7 +568,9 @@ impl Block for LLM {
                                 // move tx to event_sender
                             });
                         }
-                        request.execute(env.credentials.clone(), Some(tx)).await?
+                        request
+                            .execute(env.credentials.clone(), Some(tx), env.run_id.clone())
+                            .await?
                     }
                     false => {
                         request
@@ -571,6 +579,7 @@ impl Block for LLM {
                                 env.project.clone(),
                                 env.store.clone(),
                                 use_cache,
+                                env.run_id.clone(),
                             )
                             .await?
                     }
@@ -583,7 +592,10 @@ impl Block for LLM {
                         prompt: g.prompt,
                         completion: g.completions[0].clone(),
                     })?,
-                    meta: None,
+                    meta: Some(json!({
+                        "token_usage": g.usage,
+                        "provider_request_id": g.provider_request_id,
+                    })),
                 })
             }
         }

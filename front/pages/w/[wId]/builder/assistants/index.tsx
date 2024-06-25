@@ -8,7 +8,7 @@ import {
   Page,
   PlusIcon,
   Popup,
-  RobotSharedIcon,
+  RobotIcon,
   Searchbar,
   SliderToggle,
   Tab,
@@ -22,14 +22,17 @@ import { assertNever, isBuilder } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as React from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
+import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
 import { SCOPE_INFO } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
@@ -73,7 +76,7 @@ export default function WorkspaceAssistants({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-
+  const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
 
@@ -106,7 +109,7 @@ export default function WorkspaceAssistants({
   const { agentConfigurations: searchableAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: assistantSearch ? "manage-assistants-search" : null,
+      agentsGetView: assistantSearch ? "assistants-search" : null,
     });
 
   const filteredAgents = (
@@ -119,7 +122,6 @@ export default function WorkspaceAssistants({
     );
   });
 
-  filteredAgents.sort(compareAgentsForSort);
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -166,12 +168,56 @@ export default function WorkspaceAssistants({
   const disabledTablineClass =
     "!border-element-500 !text-element-500 !cursor-default";
 
+  const searchBarRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === "/") {
+        event.preventDefault();
+        if (searchBarRef.current) {
+          searchBarRef.current.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, []);
+
+  switch (orderBy) {
+    case "name": {
+      filteredAgents.sort((a, b) => {
+        return a.name.localeCompare(b.name);
+      });
+      break;
+    }
+    case "usage": {
+      filteredAgents.sort((a, b) => {
+        return (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0);
+      });
+      break;
+    }
+    case "magic": {
+      filteredAgents.sort(compareAgentsForSort);
+      break;
+    }
+    default:
+      assertNever(orderBy);
+  }
+
+  useEffect(() => {
+    if (tabScope === "global") {
+      setOrderBy("magic");
+    }
+  }, [tabScope]);
+
   return (
     <AppLayout
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "workspace_assistants",
@@ -184,10 +230,11 @@ export default function WorkspaceAssistants({
         mutateAgentConfigurations={mutateAgentConfigurations}
       />
       <Page.Vertical gap="xl" align="stretch">
-        <Page.Header title="Manage Assistants" icon={RobotSharedIcon} />
+        <Page.Header title="Manage Assistants" icon={RobotIcon} />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <Searchbar
+              ref={searchBarRef}
               name="search"
               placeholder="Search (Name)"
               value={assistantSearch}
@@ -214,13 +261,22 @@ export default function WorkspaceAssistants({
               </Link>
             </Button.List>
           </div>
-          <div className="flex flex-col gap-4">
-            <Tab
-              tabs={tabs}
-              tabClassName={classNames(
-                assistantSearch ? disabledTablineClass : ""
-              )}
-            />
+          <div className="flex flex-col gap-4 pt-3">
+            <div className="flex flex-row gap-2">
+              <Tab
+                tabs={tabs}
+                tabClassName={classNames(
+                  assistantSearch ? disabledTablineClass : ""
+                )}
+              />
+              <div className="flex grow items-end justify-end">
+                <SearchOrderDropdown
+                  orderBy={orderBy}
+                  setOrderBy={setOrderBy}
+                  disabled={tabScope === "global"}
+                />
+              </div>
+            </div>
             <Page.P>
               {assistantSearch
                 ? "Searching across all assistants"

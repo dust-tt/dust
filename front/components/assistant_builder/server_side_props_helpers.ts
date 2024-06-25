@@ -11,11 +11,13 @@ import {
   assertNever,
   ConnectorsAPI,
   CoreAPI,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
+  slugify,
 } from "@dust-tt/types";
 
 import type {
@@ -135,6 +137,8 @@ export async function buildInitialActions({
       for (const app of dustApps) {
         if (app.sId === action.appId) {
           dustAppConfiguration.configuration.app = app;
+          dustAppConfiguration.name = slugify(app.name);
+          dustAppConfiguration.description = app.description ?? "";
           break;
         }
       }
@@ -201,6 +205,12 @@ export async function buildInitialActions({
       builderAction = processConfiguration;
     } else if (isWebsearchConfiguration(action)) {
       builderAction = getDefaultWebsearchActionConfiguration();
+      // Websearch: use the default name/description
+      builderActions.push(builderAction);
+      continue;
+    } else if (isBrowseConfiguration(action)) {
+      // Ignore browse actions
+      continue;
     } else {
       assertNever(action);
     }

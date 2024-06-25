@@ -4,22 +4,32 @@ import type {
 } from "@dust-tt/types";
 import {
   DustAPI,
-  EMBEDDING_CONFIG,
   isValidDate,
   safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
+import { MAX_CHUNK_SIZE } from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
+import http from "http";
+import https from "https";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
+import { DustConnectorWorkflowError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const axiosWithTimeout = axios.create({
+  timeout: 60000,
+  // Ensure client timeout is lower than the target server timeout.
+  httpAgent: new http.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
+  httpsAgent: new https.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
+});
 
 const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {
@@ -104,7 +114,7 @@ async function _upsertToDatasource({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.post(
+    dustRequestResult = await axiosWithTimeout.post(
       endpoint,
       dustRequestPayload,
       dustRequestConfig
@@ -171,7 +181,10 @@ export async function deleteFromDataSource(
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.delete(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     localLogger.error({ error: e }, "Error deleting document from Dust.");
     throw e;
@@ -216,7 +229,7 @@ async function _updateDocumentParentsField({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.post(
+    dustRequestResult = await axiosWithTimeout.post(
       endpoint,
       {
         parents: parents,
@@ -246,7 +259,7 @@ async function _updateDocumentParentsField({
 
 // allows for 4 full prefixes before hitting half of the max chunk size (approx.
 // 256 chars for 512 token chunks)
-export const MAX_PREFIX_TOKENS = EMBEDDING_CONFIG.max_chunk_size / 8;
+export const MAX_PREFIX_TOKENS = MAX_CHUNK_SIZE / 8;
 // Limit on chars to avoid tokenizing too much text uselessly on documents with
 // large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
 // limit can be large and should be large to avoid underusing prexfixes
@@ -312,11 +325,11 @@ async function tokenize(text: string, ds: DataSourceConfig) {
       { error: tokensRes.error },
       `Error tokenizing text for ${ds.dataSourceName}`
     );
-    throw {
-      __is_dust_error: true,
-      message: `Error tokenizing text for ${ds.dataSourceName}`,
-      type: "tokenize_internal_server_error",
-    };
+    throw new DustConnectorWorkflowError(
+      `Error tokenizing text for ${ds.dataSourceName}`,
+      "transient_upstream_activity_error",
+      tokensRes.error
+    );
   }
   return tokensRes.value;
 }
@@ -490,6 +503,7 @@ export async function upsertTableFromCsv({
     csv: tableCsv,
     tableId,
     truncate,
+    async: true,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -500,7 +514,7 @@ export async function upsertTableFromCsv({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.post(
+    dustRequestResult = await axiosWithTimeout.post(
       endpoint,
       dustRequestPayload,
       dustRequestConfig
@@ -523,12 +537,24 @@ export async function upsertTableFromCsv({
         config: { ...e.config, data: undefined },
       };
       localLogger.error(
-        { error: sanitizedError },
-        "Error uploading structured data to Dust."
+        {
+          error: sanitizedError,
+          payload: {
+            ...dustRequestPayload,
+            csv: dustRequestPayload.csv.substring(0, 100),
+          },
+        },
+        "Axios error uploading structured data to Dust."
       );
     } else if (e instanceof Error) {
       localLogger.error(
-        { error: e.message },
+        {
+          error: e.message,
+          payload: {
+            ...dustRequestPayload,
+            csv: dustRequestPayload.csv.substring(0, 100),
+          },
+        },
         "Error uploading structured data to Dust."
       );
     } else {
@@ -619,7 +645,10 @@ export async function deleteTableRow({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.delete(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
     statsDClient.increment(
@@ -714,7 +743,10 @@ export async function deleteTable({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.delete(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
     statsDClient.increment(

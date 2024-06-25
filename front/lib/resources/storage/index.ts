@@ -1,6 +1,6 @@
+import { isDevelopment } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
-import { isDevelopment } from "@app/lib/development";
 import { dbConfig } from "@app/lib/resources/storage/config";
 import logger from "@app/logger/logger";
 

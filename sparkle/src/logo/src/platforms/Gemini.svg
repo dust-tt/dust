@@ -1,6 +1,6 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_595_58)">
-<rect width="24" height="24" rx="4" fill="#1B1E29"/>
+<path d="M0 4C0 1.79086 1.79086 0 4 0H20C22.2091 0 24 1.79086 24 4V20C24 22.2091 22.2091 24 20 24H4C1.79086 24 0 22.2091 0 20V4Z" fill="#1B1E29"/>
 <path d="M12 2C12 7.52284 16.4772 12 22 12C16.4772 12 12 16.4772 12 22C12 16.4772 7.52284 12 2 12C7.52284 12 12 7.52284 12 2Z" fill="url(#paint0_radial_595_58)"/>
 </g>
 <defs>

@@ -4,6 +4,7 @@ import {
   GithubLogo,
   GlobeAltIcon,
   IntercomLogo,
+  MicrosoftLogo,
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
@@ -99,6 +100,20 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink:
       "https://dust-tt.notion.site/Intercom-connection-on-Dust-193f0670d39a44de85cd472c6035ea84",
     logoComponent: IntercomLogo,
+    isNested: true,
+  },
+  microsoft: {
+    name: "Microsoft",
+    connectorProvider: "microsoft",
+    status: "rolling_out",
+    rollingOutFlag: "microsoft_connector",
+    hide: false,
+    description:
+      "Authorize access to Microsoft for indexing shared documents stored in SharePoint, OneDrive, and Office365, and Teams discussions.",
+    limitations:
+      "Dust will index the documents shared with the authorized account only. Only Teams publi cchannels will be indexed.",
+    guideLink: "https://dust-tt.notion.site/",
+    logoComponent: MicrosoftLogo,
     isNested: true,
   },
   webcrawler: {

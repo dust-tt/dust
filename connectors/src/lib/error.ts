@@ -1,4 +1,7 @@
 // JS cannot give you any guarantee about the shape of an error you `catch`
+
+import type { APIError, ConnectorProvider } from "@dust-tt/types";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorFromAny(e: any): Error {
   return {
@@ -8,17 +11,42 @@ export function errorFromAny(e: any): Error {
   };
 }
 
-export type WorkflowErrorType =
-  | "unhandled_internal_activity_error"
-  | "transient_upstream_activity_error"
-  | "transient_nango_activity_error"
-  | "upstream_is_down_activity_error";
+// Generate dynamic error types.
+type ProviderErrorType =
+  | "rate_limit_error"
+  | "transient_upstream_activity_error";
 
-export type WorkflowError = {
-  type: WorkflowErrorType;
-  message: string;
-  __is_dust_error: boolean;
-};
+// Define general workflow error types.
+type GeneralWorkflowErrorType =
+  | "transient_nango_activity_error"
+  | "transient_upstream_activity_error"
+  | "unhandled_internal_activity_error"
+  | "workflow_timeout_failure";
+
+// Combine both general and provider-specific error types.
+type WorkflowErrorType = GeneralWorkflowErrorType | ProviderErrorType;
+
+export class DustConnectorWorkflowError extends Error {
+  constructor(
+    message: string,
+    readonly type: WorkflowErrorType,
+    readonly originalError?: Error | APIError
+  ) {
+    super(message);
+  }
+}
+
+// Define a specific error class for provider-related errors.
+export class ProviderWorkflowError extends DustConnectorWorkflowError {
+  constructor(
+    public readonly provider: ConnectorProvider,
+    message: string,
+    type: ProviderErrorType,
+    originalError?: Error | APIError
+  ) {
+    super(message, type, originalError);
+  }
+}
 
 export class HTTPError extends Error {
   readonly statusCode: number;

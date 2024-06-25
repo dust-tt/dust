@@ -7,22 +7,26 @@ import {
   Drive,
   Github,
   Intercom,
+  Microsoft,
   Notion,
   Slack,
 } from "@sparkle/logo/platforms";
 
 import { Avatar, CardButton, Icon, IconButton, Tooltip, XCircleIcon } from "..";
 
+export type CitationType =
+  | "confluence"
+  | "document"
+  | "github"
+  | "google_drive"
+  | "image"
+  | "intercom"
+  | "microsoft"
+  | "notion"
+  | "slack";
+
 interface CitationProps {
-  type?:
-    | "confluence"
-    | "slack"
-    | "google_drive"
-    | "github"
-    | "notion"
-    | "intercom"
-    | "document"
-    | "image";
+  type?: CitationType;
   title: string;
   description?: string;
   index?: ReactNode;
@@ -41,6 +45,7 @@ const typeIcons = {
   github: Github,
   google_drive: Drive,
   intercom: Intercom,
+  microsoft: Microsoft,
   notion: Notion,
   slack: Slack,
   image: Image,

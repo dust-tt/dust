@@ -1,22 +1,24 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{
-    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
+    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, Tokens, LLM,
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::run::Credentials;
 use crate::utils;
+use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
-use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fmt::{self, Display};
 use std::io::prelude::*;
+use std::str::FromStr;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -144,8 +146,16 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
             StreamContent::AnthropicStreamToolUse(tool_use) => {
                 // Attempt to parse the input as JSON if it's a string.
                 let input_json = if let Value::String(ref json_string) = tool_use.input {
-                    serde_json::from_str(json_string).map_err(|e| {
-                        anyhow::anyhow!("Failed to parse Anthropic tool inputs JSON: {}", e)
+                    serde_json::from_str(match json_string.as_str() {
+                        "" => "{}",
+                        _ => json_string,
+                    })
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to parse Anthropic tool inputs JSON ({}): {}",
+                            json_string,
+                            e
+                        )
                     })?
                 } else {
                     tool_use.input.clone()
@@ -192,15 +202,12 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 
         // Handling meta prompt.
         let meta_prompt = match cm.role {
-            ChatMessageRole::User => cm
+            // If function_call_id is not set Anthropic has no way to correlate the tool_use with
+            // the tool_result.
+            ChatMessageRole::Function if cm.function_call_id.is_none() => cm
                 .name
                 .as_ref()
-                .map_or(String::new(), |name| format!("[user: {}] ", name)),
-            ChatMessageRole::Function if cm.function_call_id.is_none() => {
-                cm.name.as_ref().map_or(String::new(), |name| {
-                    format!("[function_result: {}] ", name)
-                })
-            }
+                .map_or(String::new(), |name| format!("[tool: {}] ", name)),
             _ => String::new(),
         };
 
@@ -270,6 +277,45 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 }
 
 // Tools.
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum AnthropicToolChoiceType {
+    Auto,
+    Any,
+    Tool,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicToolChoice {
+    r#type: AnthropicToolChoiceType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+}
+
+impl FromStr for AnthropicToolChoice {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "auto" => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Auto,
+                name: None,
+            }),
+            "any" => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Any,
+                name: None,
+            }),
+            "none" => Err(ParseError::with_message(
+                "function_call option `none` is not supported by Antrhopic",
+            )),
+            _ => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Tool,
+                name: Some(s.to_string()),
+            }),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicTool {
@@ -396,6 +442,7 @@ pub struct CompletionResponse {
     pub completion: String,
     pub stop_reason: Option<StopReason>,
     pub stop: Option<String>,
+    pub usage: Option<Usage>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -405,10 +452,53 @@ pub struct ErrorDetail {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Error {
+pub struct AnthropicError {
     // Anthropi api errors look like this:
     // {"error":{"type":"invalid_request_error","message":"model: field required"}}
     pub error: ErrorDetail,
+}
+
+impl AnthropicError {
+    pub fn message(&self) -> String {
+        format!(
+            "AnthropicError: [{}] {}",
+            self.error.r#type, self.error.message
+        )
+    }
+
+    pub fn retryable(&self) -> bool {
+        match self.error.r#type.as_str() {
+            "overloaded_error" => true,
+            "rate_limit_error" => true,
+            _ => false,
+        }
+    }
+
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return true;
+        }
+        if status.is_server_error() {
+            return true;
+        }
+        match self.error.r#type.as_str() {
+            "overloaded_error" => true,
+            "rate_limit_error" => true,
+            _ => false,
+        }
+    }
+}
+
+impl Display for ErrorDetail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{}] {}", self.r#type, self.message)
+    }
+}
+
+impl Display for AnthropicError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.error)
+    }
 }
 
 // Streaming types
@@ -488,18 +578,6 @@ struct StreamMessageDelta {
     pub usage: UsageDelta,
 }
 
-impl Display for ErrorDetail {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{}", self.r#type, self.message)
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.error)
-    }
-}
-
 pub struct AnthropicLLM {
     id: String,
     api_key: Option<String>,
@@ -522,16 +600,30 @@ impl AnthropicLLM {
             .parse::<Uri>()?)
     }
 
+    fn placehodler_tool(&self) -> AnthropicTool {
+        AnthropicTool {
+            name: "dummy_do_not_use".to_string(),
+            description: Some("Dummy placeholder tool that does nothing. Do not use.".to_string()),
+            input_schema: Some(json!({
+                "type": "object",
+                "properties": {
+                    "dummy": {"type": "string", "description": "Do not use."}
+                },
+            })),
+        }
+    }
+
     async fn chat_completion(
         &self,
         system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
         tools: Vec<AnthropicTool>,
+        tool_choice: Option<AnthropicToolChoice>,
         temperature: f32,
         top_p: f32,
         stop_sequences: &Vec<String>,
         max_tokens: i32,
-    ) -> Result<ChatResponse> {
+    ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
         let mut body = json!({
@@ -552,6 +644,18 @@ impl AnthropicLLM {
 
         if !tools.is_empty() {
             body["tools"] = json!(tools);
+            if tool_choice.is_some() {
+                body["tool_choice"] = json!(tool_choice);
+            }
+        } else {
+            if messages.iter().any(|m| {
+                m.content
+                    .iter()
+                    .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
+            }) {
+                // Add only if we have tool_use or tool_result in the messages
+                body["tools"] = json!(vec![self.placehodler_tool()]);
+            }
         }
 
         let mut headers = reqwest::header::HeaderMap::new();
@@ -571,6 +675,13 @@ impl AnthropicLLM {
             .await?;
 
         let status = res.status();
+
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
+
         let body = res.bytes().await?;
 
         let mut b: Vec<u8> = vec![];
@@ -579,19 +690,27 @@ impl AnthropicLLM {
         let response = match status {
             reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {
-                    message: format!("Anthropic API Error: {}", error.to_string()),
-                    retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(500),
-                        factor: 1,
-                        retries: 1,
-                    }),
+                    request_id: request_id.clone(),
+                    message: error.message(),
+                    retryable: match error.retryable() {
+                        true => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                        false => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 1,
+                            retries: 1,
+                        }),
+                    },
                 })
             }
         }?;
 
-        Ok(response)
+        Ok((response, request_id))
     }
 
     async fn streamed_chat_completion(
@@ -599,12 +718,13 @@ impl AnthropicLLM {
         system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
         tools: Vec<AnthropicTool>,
+        tool_choice: Option<AnthropicToolChoice>,
         temperature: f32,
         top_p: f32,
         stop_sequences: &Vec<String>,
         max_tokens: i32,
         event_sender: UnboundedSender<Value>,
-    ) -> Result<ChatResponse> {
+    ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
         let mut body = json!({
@@ -626,9 +746,20 @@ impl AnthropicLLM {
 
         if !tools.is_empty() {
             body["tools"] = json!(tools);
+            if tool_choice.is_some() {
+                body["tool_choice"] = json!(tool_choice);
+            }
+        } else {
+            if messages.iter().any(|m| {
+                m.content
+                    .iter()
+                    .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
+            }) {
+                // Add only if we have tool_use or tool_result in the messages
+                body["tools"] = json!(vec![self.placehodler_tool()]);
+            }
         }
 
-        let https = HttpsConnector::new();
         let url = self.messages_uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -669,15 +800,23 @@ impl AnthropicLLM {
                     .delay_max(Duration::from_secs(8))
                     .build(),
             )
-            .build_with_conn(https);
+            .build();
 
         let mut stream = client.stream();
 
         let mut final_response: Option<StreamChatResponse> = None;
+        let mut request_id: Option<String> = None;
+
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => {
                     match stream_next {
+                        Some(es::SSE::Connected((_, headers))) => {
+                            request_id = match headers.get("request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
+                        }
                         Some(es::SSE::Comment(comment)) => {
                             println!("UNEXPECTED COMMENT {}", comment);
                         }
@@ -696,7 +835,6 @@ impl AnthropicLLM {
                                                 break 'stream;
                                             }
                                         };
-
                                     final_response = Some(event.message.clone());
                                 }
                                 "content_block_start" => {
@@ -781,7 +919,8 @@ impl AnthropicLLM {
                                             break 'stream;
                                         }
                                         Some(content) => match (event.delta, content) {
-                                            (StreamContentDelta::AnthropicStreamContent(delta), StreamContent::AnthropicStreamContent(content)) => {
+                                            (StreamContentDelta::AnthropicStreamContent(delta),
+                                             StreamContent::AnthropicStreamContent(content)) => {
                                                 content.text.push_str(delta.text.as_str());
                                                 if delta.text.len() > 0 {
                                                     let _ = event_sender.send(json!({
@@ -796,8 +935,10 @@ impl AnthropicLLM {
                                             (StreamContentDelta::AnthropicStreamToolInputDelta(
                                                 input_json_delta,
                                             ), StreamContent::AnthropicStreamToolUse(tool_use)) => {
-                                                // The `content_block_start` for `tool_use` initializes `input` as an empty object.
-                                                // To append input chunks, we need to convert `input` to a string.
+                                                // The `content_block_start` for `tool_use`
+                                                // initializes `input` as an empty object. To
+                                                // append input chunks, we need to convert `input`
+                                                // to a string.
                                                 if tool_use.input.is_object() {
                                                     tool_use.input = Value::String("".to_string());
                                                 }
@@ -860,7 +1001,7 @@ impl AnthropicLLM {
                                     break 'stream;
                                 }
                                 "error" => {
-                                    let event: Error =
+                                    let event: AnthropicError =
                                         match serde_json::from_str(event.data.as_str()) {
                                             Ok(event) => event,
                                             Err(_) => {
@@ -873,9 +1014,10 @@ impl AnthropicLLM {
                                         };
 
                                     Err(ModelError {
+                                        request_id: request_id.clone(),
                                         message: format!(
-                                            "Anthropic API Error: {}",
-                                            event.error.to_string()
+                                            "AnthropicError: [{}] {}",
+                                            event.error.r#type, event.error.message,
                                         ),
                                         retryable: None,
                                     })?;
@@ -890,11 +1032,48 @@ impl AnthropicLLM {
                         }
                     }
                 }
-                Err(error) => {
-                    Err(anyhow!(
-                        "Error streaming tokens from Anthropic: {:?}",
-                        error
-                    ))?;
+                Err(e) => {
+                    match e {
+                        es::Error::UnexpectedResponse(r) => {
+                            let status = StatusCode::from_u16(r.status())?;
+                            let headers = r.headers()?;
+                            let request_id = match headers.get("request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
+                            let b = r.body_bytes().await?;
+
+                            let error: Result<AnthropicError, _> = serde_json::from_slice(&b);
+                            match error {
+                                Ok(error) => {
+                                    match error.retryable_streamed(status) {
+                                        true => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: Some(ModelErrorRetryOptions {
+                                                sleep: Duration::from_millis(500),
+                                                factor: 1,
+                                                retries: 1,
+                                            }),
+                                        }),
+                                        false => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: None,
+                                        }),
+                                    }
+                                }?,
+                                Err(_) => Err(anyhow!(
+                                    "Error streaming tokens from Anthropic: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?,
+                            }
+                        }
+                        _ => {
+                            Err(anyhow!("Error streaming tokens from Anthropic: {:?}", e))?;
+                        }
+                    }
                     break 'stream;
                 }
             }
@@ -903,8 +1082,7 @@ impl AnthropicLLM {
         match final_response {
             Some(response) => {
                 let chat_response: ChatResponse = ChatResponse::try_from(response)?;
-
-                Ok(chat_response)
+                Ok((chat_response, request_id))
             }
             None => Err(anyhow!("No response from Anthropic")),
         }
@@ -919,10 +1097,9 @@ impl AnthropicLLM {
         top_k: Option<i32>,
         stop: &Vec<String>,
         event_sender: UnboundedSender<Value>,
-    ) -> Result<CompletionResponse> {
+    ) -> Result<(CompletionResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
-        let https = HttpsConnector::new();
         let url = self.completions_uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -973,15 +1150,23 @@ impl AnthropicLLM {
                     .delay_max(Duration::from_secs(8))
                     .build(),
             )
-            .build_with_conn(https);
+            .build();
 
         let mut stream = client.stream();
 
         let mut final_response: Option<CompletionResponse> = None;
         let mut completion = String::new();
+        let mut request_id: Option<String> = None;
+
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => match stream_next {
+                    Some(es::SSE::Connected((_, headers))) => {
+                        request_id = match headers.get("request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                    }
                     Some(es::SSE::Comment(comment)) => {
                         println!("UNEXPECTED COMMENT {}", comment);
                     }
@@ -1007,6 +1192,7 @@ impl AnthropicLLM {
                                         completion,
                                         stop_reason: Some(stop_reason),
                                         stop: response.stop.clone(),
+                                        usage: None,
                                     });
                                     break 'stream;
                                 }
@@ -1038,15 +1224,55 @@ impl AnthropicLLM {
                         break 'stream;
                     }
                 },
-                Err(error) => {
-                    Err(anyhow!("Error streaming from Anthropic: {:?}", error))?;
+                Err(e) => {
+                    match e {
+                        es::Error::UnexpectedResponse(r) => {
+                            let status = StatusCode::from_u16(r.status())?;
+                            let headers = r.headers()?;
+                            let request_id = match headers.get("request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
+                            let b = r.body_bytes().await?;
+
+                            let error: Result<AnthropicError, _> = serde_json::from_slice(&b);
+                            match error {
+                                Ok(error) => {
+                                    match error.retryable_streamed(status) {
+                                        true => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: Some(ModelErrorRetryOptions {
+                                                sleep: Duration::from_millis(500),
+                                                factor: 1,
+                                                retries: 1,
+                                            }),
+                                        }),
+                                        false => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: None,
+                                        }),
+                                    }
+                                }?,
+                                Err(_) => Err(anyhow!(
+                                    "Error streaming tokens from Anthropic: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?,
+                            }
+                        }
+                        _ => {
+                            Err(anyhow!("Error streaming tokens from Anthropic: {:?}", e))?;
+                        }
+                    }
                     break 'stream;
                 }
             }
         }
 
         return match final_response {
-            Some(response) => Ok(response),
+            Some(response) => Ok((response, request_id)),
             None => Err(anyhow!("No response from Anthropic")),
         };
     }
@@ -1059,7 +1285,7 @@ impl AnthropicLLM {
         top_p: f32,
         top_k: Option<i32>,
         stop: &Vec<String>,
-    ) -> Result<CompletionResponse> {
+    ) -> Result<(CompletionResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
         let res = reqwest::Client::new()
@@ -1085,30 +1311,42 @@ impl AnthropicLLM {
             .await?;
 
         let status = res.status();
+
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
+
         let body = res.bytes().await?;
 
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
         let response = match status {
-            reqwest::StatusCode::OK => {
-                let response: CompletionResponse = serde_json::from_slice(c)?;
-                Ok(response)
-            }
+            reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {
-                    message: format!("Anthropic API Error: {}", error.to_string()),
-                    retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(500),
-                        factor: 1,
-                        retries: 1,
-                    }),
+                    request_id: request_id.clone(),
+                    message: error.message(),
+                    retryable: match error.retryable() {
+                        true => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                        false => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 1,
+                            retries: 1,
+                        }),
+                    },
                 })
             }
         }?;
 
-        Ok(response)
+        Ok((response, request_id))
     }
 }
 
@@ -1176,10 +1414,10 @@ impl LLM for AnthropicLLM {
             }
         }
 
-        let c: Vec<Tokens> = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(es) => {
                 let mut completions: Vec<Tokens> = vec![];
-                let response = match self
+                let (response, request_id) = match self
                     .streamed_completion(
                         prompt,
                         match max_tokens {
@@ -1210,13 +1448,13 @@ impl LLM for AnthropicLLM {
                     top_logprobs: Some(vec![]),
                 });
 
-                completions
+                (completions, request_id)
             }
             None => {
                 let mut completions: Vec<Tokens> = vec![];
                 // anthropic only supports generating one sample at a time
                 // so we loop here and make n API calls
-                let response = self
+                let (response, request_id) = self
                     .completion(
                         prompt,
                         match max_tokens {
@@ -1240,7 +1478,8 @@ impl LLM for AnthropicLLM {
                     logprobs: Some(vec![]),
                     top_logprobs: Some(vec![]),
                 });
-                completions
+
+                (completions, request_id)
             }
         };
 
@@ -1255,6 +1494,8 @@ impl LLM for AnthropicLLM {
                 logprobs: None,
                 top_logprobs: None,
             },
+            usage: None,
+            provider_request_id: request_id,
         };
 
         Ok(llm_generation)
@@ -1276,7 +1517,7 @@ impl LLM for AnthropicLLM {
         &self,
         messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
-        _function_call: Option<String>,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -1321,8 +1562,8 @@ impl LLM for AnthropicLLM {
             .map(|cm| AnthropicChatMessage::try_from(cm))
             .collect::<Result<Vec<AnthropicChatMessage>>>()?;
 
-        // Group consecutive messages with the same role by appending their content.
-        // This is needed to group all the `tool_results` within one content vector.
+        // Group consecutive messages with the same role by appending their content. This is
+        // needed to group all the `tool_results` within one content vector.
         messages = messages.iter().fold(
             vec![],
             |mut acc: Vec<AnthropicChatMessage>, cm: &AnthropicChatMessage| {
@@ -1343,12 +1584,18 @@ impl LLM for AnthropicLLM {
             .map(AnthropicTool::try_from)
             .collect::<Result<Vec<AnthropicTool>, _>>()?;
 
-        let c = match event_sender {
+        let tool_choice = match function_call.as_ref() {
+            Some(fc) => Some(AnthropicToolChoice::from_str(fc)?),
+            None => None,
+        };
+
+        let (c, request_id) = match event_sender {
             Some(es) => {
                 self.streamed_chat_completion(
                     system,
                     &messages,
                     tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(p) => p,
@@ -1368,6 +1615,7 @@ impl LLM for AnthropicLLM {
                     system,
                     &messages,
                     tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(p) => p,
@@ -1387,7 +1635,12 @@ impl LLM for AnthropicLLM {
             created: utils::now(),
             provider: ProviderID::Anthropic.to_string(),
             model: self.id.clone(),
+            usage: Some(LLMTokenUsage {
+                prompt_tokens: c.usage.input_tokens,
+                completion_tokens: c.usage.output_tokens,
+            }),
             completions: ChatMessage::try_from(c).into_iter().collect(),
+            provider_request_id: request_id,
         })
     }
 }

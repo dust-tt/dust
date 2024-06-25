@@ -342,6 +342,7 @@ export function EditInvitationModal({
               variant="primaryWarning"
               label="Revoke invitation"
               icon={XMarkIcon}
+              disabled={owner.ssoEnforced}
               onClick={async () => {
                 await updateInvitation({
                   invitation,
@@ -378,8 +379,8 @@ function ProPlanBillingNotice({
       </p>
       <br />
       <p>
-        Next month's bill will be adjusted proportionally based on the members'
-        sign-up date.
+        Next bill will be adjusted proportionally based on the members' sign-up
+        date.
       </p>
     </ContentMessage>
   );

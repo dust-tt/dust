@@ -28,8 +28,8 @@ export class CustomerioServerSideTracking {
       LightWorkspaceType & {
         planCode?: string;
         seats?: number;
-        subscriptionStartAt?: number | null;
-        requestCancelAt?: number | null;
+        subscriptionStartAt?: Date | null;
+        requestCancelAt?: Date | null;
       }
     >;
   }) {
@@ -175,8 +175,8 @@ export class CustomerioServerSideTracking {
     workspace: LightWorkspaceType & {
       planCode?: string;
       seats?: number;
-      subscriptionStartAt?: number | null;
-      requestCancelAt?: number | null;
+      subscriptionStartAt?: Date | null;
+      requestCancelAt?: Date | null;
     };
   }) {
     if (!config.getCustomerIoEnabled()) {
@@ -209,10 +209,14 @@ export class CustomerioServerSideTracking {
     };
 
     if (workspace.subscriptionStartAt !== undefined) {
-      attributes.subscriptionStartAt = workspace.subscriptionStartAt;
+      attributes.subscriptionStartAt = workspace.subscriptionStartAt
+        ? Math.floor(workspace.subscriptionStartAt.getTime() / 1000)
+        : null;
     }
     if (workspace.requestCancelAt !== undefined) {
-      attributes.requestCancelAt = workspace.requestCancelAt;
+      attributes.requestCancelAt = workspace.requestCancelAt
+        ? Math.floor(workspace.requestCancelAt.getTime() / 1000)
+        : null;
     }
 
     const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {

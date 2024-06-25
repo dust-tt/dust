@@ -20,10 +20,10 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { createRef, useEffect, useRef, useState } from "react";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
-import { BUILDER_FLOWS } from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
+import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
@@ -202,10 +202,8 @@ export default function CreateAssistant({
     <AppLayout
       subscription={subscription}
       hideSidebar
-      isWideMode
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={"Create an Assistant"}

@@ -3,196 +3,70 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CircleIcon,
-  Dialog,
   IconButton,
   MagicIcon,
-  Page,
-  SquareIcon,
   Tab,
-  TriangleIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
-  AgentConfigurationType,
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
-  DataSourceType,
-  LightAgentConfigurationType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import {
   assertNever,
-  getAgentActionConfigurationType,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import type * as t from "io-ts";
-import _ from "lodash";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
-import ActionScreen from "@app/components/assistant_builder/ActionScreen";
 import ActionsScreen, {
   isActionValid,
 } from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
+import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
+  INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
-  MAX_INSTRUCTIONS_LENGTH,
 } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
-  removeLeadingAt,
   validateHandle,
 } from "@app/components/assistant_builder/NamingScreen";
+import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
-  AssistantBuilderActionType,
-  AssistantBuilderInitialState,
+  AssistantBuilderPendingAction,
+  AssistantBuilderProps,
+  AssistantBuilderSetActionType,
   AssistantBuilderState,
+  BuilderScreen,
 } from "@app/components/assistant_builder/types";
-import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
-import { ConfirmContext } from "@app/components/Confirm";
+import {
+  BUILDER_SCREENS,
+  getDefaultAssistantState,
+} from "@app/components/assistant_builder/types";
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
+import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
+import { useTemplate } from "@app/components/assistant_builder/useTemplate";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
-
-type SlackChannel = { slackChannelId: string; slackChannelName: string };
-type SlackChannelLinkedWithAgent = SlackChannel & {
-  agentConfigurationId: string;
-};
-
-export const BUILDER_FLOWS = [
-  "workspace_assistants",
-  "personal_assistants",
-] as const;
-export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
-type AssistantBuilderProps = {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  plan: PlanType;
-  gaTrackingId: string;
-  dataSources: DataSourceType[];
-  dustApps: AppType[];
-  initialBuilderState: AssistantBuilderInitialState | null;
-  agentConfigurationId: string | null;
-  flow: BuilderFlow;
-  defaultIsEdited?: boolean;
-  baseUrl: string;
-  defaultTemplate: FetchAssistantTemplateResponse | null;
-  multiActionsAllowed: boolean;
-  multiActionsEnabled: boolean;
-};
-
-const useNavigationLock = (
-  isEnabled = true,
-  warningData = {
-    title: "Double checking",
-    message:
-      "You have unsaved changes - are you sure you wish to leave this page?",
-    validation: "primaryWarning",
-  }
-) => {
-  const router = useRouter();
-  const confirm = useContext(ConfirmContext);
-  const isNavigatingAway = React.useRef<boolean>(false);
-
-  useEffect(() => {
-    const handleWindowClose = (e: BeforeUnloadEvent) => {
-      if (!isEnabled) {
-        return;
-      }
-      e.preventDefault();
-      return (e.returnValue = warningData);
-    };
-
-    const handleBrowseAway = (url: string) => {
-      if (!isEnabled) {
-        return;
-      }
-      if (isNavigatingAway.current) {
-        return;
-      }
-
-      // Changing the query param is not leaving the page
-      const currentRoute = router.asPath.split("?")[0];
-      const newRoute = url.split("?")[0];
-      if (currentRoute === newRoute) {
-        return;
-      }
-
-      router.events.emit(
-        "routeChangeError",
-        new Error("Navigation paused to await confirmation by user"),
-        url
-      );
-      // This is required, otherwise the URL will change.
-      history.pushState(null, "", document.location.href);
-
-      void confirm(warningData).then((result) => {
-        if (result) {
-          isNavigatingAway.current = true;
-          void router.push(url);
-        }
-      });
-
-      // And this is required to actually cancel the navigation.
-      throw "Navigation paused to await confirmation by user";
-    };
-
-    // We need both for different browsers.
-    window.addEventListener("beforeunload", handleWindowClose);
-    router.events.on("routeChangeStart", handleBrowseAway);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleWindowClose);
-      router.events.off("routeChangeStart", handleBrowseAway);
-    };
-  }, [isEnabled, warningData, router.events, router.asPath, confirm, router]);
-};
-
-const screens = {
-  instructions: {
-    label: "Instructions",
-    icon: CircleIcon,
-    helpContainer: "instructions-help-container",
-  },
-  actions: {
-    label: "Actions & Data sources",
-    icon: SquareIcon,
-    helpContainer: "actions-help-container",
-  },
-  naming: { label: "Naming", icon: TriangleIcon, helpContainer: null },
-};
-type BuilderScreen = keyof typeof screens;
 
 export default function AssistantBuilder({
   owner,
@@ -207,8 +81,6 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  multiActionsAllowed,
-  multiActionsEnabled,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -219,6 +91,17 @@ export default function AssistantBuilder({
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
 
+  const [edited, setEdited] = useState(defaultIsEdited ?? false);
+  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
+  const [submitEnabled, setSubmitEnabled] = useState(false);
+  const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
+    useState(false);
+  const [assistantHandleError, setAssistantHandleError] = useState<
+    string | null
+  >(null);
+  const [instructionsError, setInstructionsError] = useState<string | null>(
+    null
+  );
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
       ? {
@@ -234,6 +117,7 @@ export default function AssistantBuilder({
           maxToolsUsePerRun:
             initialBuilderState.maxToolsUsePerRun ??
             getDefaultAssistantState().maxToolsUsePerRun,
+          templateId: initialBuilderState.templateId,
         }
       : {
           ...getDefaultAssistantState(),
@@ -242,93 +126,39 @@ export default function AssistantBuilder({
             ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
               ? GPT_3_5_TURBO_MODEL_CONFIG
-              : GPT_4O_MODEL_CONFIG,
+              : GPT_4_TURBO_MODEL_CONFIG,
           },
         }
   );
 
-  const [template, setTemplate] =
-    useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
+  const [pendingAction, setPendingAction] =
+    useState<AssistantBuilderPendingAction>({
+      action: null,
+    });
 
-  const [
-    showEnableMultiActionsConfirmation,
-    setShowEnableMultiActionsConfirmation,
-  ] = useState(false);
-  const [multiActionsMode, setMultiActionsMode] = useState(multiActionsEnabled);
+  const {
+    template,
+    instructionsResetAt,
+    removeTemplate,
+    resetToTemplateInstructions,
+    resetToTemplateActions,
+  } = useTemplate(defaultTemplate);
 
-  const resetTemplate = async () => {
-    setTemplate(null);
-    await router.replace(
-      {
-        pathname: router.pathname,
-        query: _.omit(router.query, "templateId"),
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
-
-  const [instructionsResetAt, setInstructionsResetAt] = useState<number | null>(
-    null
-  );
-
-  const resetToTemplateInstructions = useCallback(async () => {
-    if (template === null) {
-      return;
-    }
-    setEdited(true);
-    setInstructionsResetAt(Date.now());
-    setBuilderState((builderState) => ({
-      ...builderState,
-      instructions: template.presetInstructions,
-    }));
-  }, [template]);
-
-  const resetToTemplateActions = useCallback(async () => {
-    if (template === null) {
-      return;
-    }
-    const action = getAgentActionConfigurationType(template.presetAction);
-    let actionType: AssistantBuilderActionType | null = null;
-
-    if (isRetrievalConfiguration(action)) {
-      actionType = "RETRIEVAL_SEARCH";
-    } else if (isDustAppRunConfiguration(action)) {
-      actionType = "DUST_APP_RUN";
-    } else if (isTablesQueryConfiguration(action)) {
-      actionType = "TABLES_QUERY";
-    } else if (isProcessConfiguration(action)) {
-      actionType = "PROCESS";
-    }
-
-    if (actionType !== null) {
-      const defaultAssistantState = getDefaultAssistantState();
-
-      setEdited(true);
-      setBuilderState((builderState) => {
-        const newState = {
-          ...builderState,
-          actions: defaultAssistantState.actions,
-        };
-        return newState;
-      });
-    }
-  }, [template]);
-
-  const showSlackIntegration =
-    builderState.scope === "workspace" || builderState.scope === "published";
-
-  const [edited, setEdited] = useState(defaultIsEdited ?? false);
-  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
-  const [submitEnabled, setSubmitEnabled] = useState(false);
-
-  const [assistantHandleError, setAssistantHandleError] = useState<
-    string | null
-  >(null);
-
-  const [instructionsError, setInstructionsError] = useState<string | null>(
-    null
-  );
+  const {
+    showSlackIntegration,
+    selectedSlackChannels,
+    slackChannelsLinkedWithAgent,
+    setSelectedSlackChannels,
+  } = useSlackChannel({
+    dataSources,
+    initialChannels: [],
+    workspaceId: owner.sId,
+    isPrivateAssistant: builderState.scope === "private",
+    isBuilder: isBuilder(owner),
+    isEdited: edited,
+    agentConfigurationId,
+  });
+  useNavigationLock(edited && !disableUnsavedChangesPrompt);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -350,7 +180,6 @@ export default function AssistantBuilder({
       openedAt: null,
     });
   };
-
   const toggleRightPanel = () => {
     rightPanelStatus.tab !== null
       ? closeRightPanel()
@@ -369,53 +198,6 @@ export default function AssistantBuilder({
     }
   }, [builderState.avatarUrl]);
 
-  // This state stores the slack channels that should have the current agent as default.
-  const [selectedSlackChannels, setSelectedSlackChannels] = useState<
-    SlackChannel[] | null
-  >(null);
-
-  // Retrieve all the slack channels that are linked with an agent.
-  const { slackChannels: slackChannelsLinkedWithAgent } =
-    useSlackChannelsLinkedWithAgent({
-      workspaceId: owner.sId,
-      dataSourceName: slackDataSource?.name ?? undefined,
-      disabled: !isBuilder(owner),
-    });
-  const [slackChannelsInitialized, setSlackChannelsInitialized] =
-    useState(false);
-
-  const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
-    useState(false);
-
-  useNavigationLock(edited && !disableUnsavedChangesPrompt);
-
-  // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
-  useEffect(() => {
-    if (
-      slackChannelsLinkedWithAgent.length &&
-      agentConfigurationId &&
-      !edited &&
-      !slackChannelsInitialized
-    ) {
-      setSelectedSlackChannels(
-        slackChannelsLinkedWithAgent
-          .filter(
-            (channel) => channel.agentConfigurationId === agentConfigurationId
-          )
-          .map((channel) => ({
-            slackChannelId: channel.slackChannelId,
-            slackChannelName: channel.slackChannelName,
-          }))
-      );
-      setSlackChannelsInitialized(true);
-    }
-  }, [
-    slackChannelsLinkedWithAgent,
-    agentConfigurationId,
-    edited,
-    slackChannelsInitialized,
-  ]);
-
   const formValidation = useCallback(async () => {
     let valid = true;
 
@@ -428,22 +210,19 @@ export default function AssistantBuilder({
     valid = handleValid;
     setAssistantHandleError(handleErrorMessage);
 
-    // description
-    if (!builderState.description?.trim()) {
-      valid = false;
-    }
-
-    // instructions
-    if (!builderState.instructions?.trim()) {
+    if (
+      !builderState.description?.trim() ||
+      !builderState.instructions?.trim()
+    ) {
       valid = false;
     }
 
     if (
       builderState.instructions &&
-      builderState.instructions.length > MAX_INSTRUCTIONS_LENGTH
+      builderState.instructions.length > INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
     ) {
       setInstructionsError(
-        `Instructions must be less than ${MAX_INSTRUCTIONS_LENGTH} characters.`
+        `Instructions must be less than ${INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT} characters.`
       );
       valid = false;
     } else {
@@ -486,57 +265,75 @@ export default function AssistantBuilder({
     void formValidation();
   }, [formValidation]);
 
+  const setAction = useCallback(
+    (p: AssistantBuilderSetActionType) => {
+      if (p.type === "pending") {
+        setPendingAction({ action: p.action, previousActionName: null });
+      } else if (p.type === "edit") {
+        setPendingAction({
+          action: p.action,
+          previousActionName: p.action.name,
+        });
+      } else if (p.type === "clear_pending") {
+        setPendingAction({ action: null });
+      } else if (p.type === "insert") {
+        if (builderState.actions.some((a) => a.name === p.action.name)) {
+          return;
+        }
+
+        setEdited(true);
+        setBuilderState((state) => {
+          return {
+            ...state,
+            actions: [...state.actions, p.action],
+          };
+        });
+      }
+    },
+    [builderState, setBuilderState, setEdited]
+  );
+
   const onAssistantSave = async () => {
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
-    try {
-      await submitAssistantBuilderForm({
-        owner,
-        builderState,
-        agentConfigurationId,
-        slackData: {
-          selectedSlackChannels: selectedSlackChannels || [],
-          slackChannelsLinkedWithAgent,
-        },
-        useMultiActions: multiActionsMode,
+    const res = await submitAssistantBuilderForm({
+      owner,
+      builderState,
+      agentConfigurationId,
+      slackData: {
+        selectedSlackChannels: selectedSlackChannels || [],
+        slackChannelsLinkedWithAgent,
+      },
+    });
+
+    if (res.isErr()) {
+      setIsSavingOrDeleting(false);
+      sendNotification({
+        title: "Error saving Assistant",
+        description: res.error.message,
+        type: "error",
       });
+    } else {
       await mutate(
         `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
       );
 
-      setIsSavingOrDeleting(false);
       // Redirect to the assistant list once saved.
       if (flow === "personal_assistants") {
-        await router.push(`/w/${owner.sId}/assistant/assistants`);
+        await router.push(`/w/${owner.sId}/assistant/new`);
       } else {
         await router.push(`/w/${owner.sId}/builder/assistants`);
       }
-    } catch (e) {
-      setIsSavingOrDeleting(false);
-      sendNotification({
-        title: "Error saving Assistant",
-        description: `Please try again. If the error persists, reach out to team@dust.tt (error ${
-          (e as Error).message
-        })`,
-        type: "error",
-      });
     }
   };
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(screens).map(([key, { label, icon, helpContainer }]) => ({
+      Object.entries(BUILDER_SCREENS).map(([key, { label, icon }]) => ({
         label,
         current: screen === key,
         onClick: () => {
           setScreen(key as BuilderScreen);
-
-          if (helpContainer) {
-            const element = document.getElementById(helpContainer);
-            if (element) {
-              element.scrollIntoView({ behavior: "smooth" });
-            }
-          }
         },
         icon,
       })),
@@ -548,20 +345,12 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <MultActionsConfirmationModal
-        show={showEnableMultiActionsConfirmation}
-        onClose={() => setShowEnableMultiActionsConfirmation(false)}
-        onConfirm={() => {
-          setMultiActionsMode(true);
-          setEdited(true);
-        }}
-      />
       <AppLayout
         subscription={subscription}
         hideSidebar
+        isWideMode
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="assistants"
         subNavigation={subNavigationBuild({
           owner,
           current: "workspace_assistants",
@@ -592,21 +381,6 @@ export default function AssistantBuilder({
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tab tabs={tabs} variant="stepper" />
                 <div className="flex flex-row gap-2 self-end pt-0.5">
-                  {multiActionsAllowed && (
-                    <Button
-                      icon={!multiActionsMode ? XMarkIcon : CheckIcon}
-                      label={`Multi Actions ${multiActionsMode ? "On" : "Off"}`}
-                      onClick={() => {
-                        if (!multiActionsMode) {
-                          setShowEnableMultiActionsConfirmation(true);
-                          return;
-                        }
-                        setMultiActionsMode(false);
-                        setEdited(true);
-                      }}
-                      variant={!multiActionsMode ? "tertiary" : "primary"}
-                    />
-                  )}
                   <SharingButton
                     showSlackIntegration={showSlackIntegration}
                     slackDataSource={slackDataSource || null}
@@ -645,30 +419,19 @@ export default function AssistantBuilder({
                       />
                     );
                   case "actions":
-                    // TODO(@fontanierh): Remove single actions.
-                    if (!multiActionsMode) {
-                      return (
-                        <ActionScreen
-                          owner={owner}
-                          builderState={builderState}
-                          dataSources={dataSources}
-                          dustApps={dustApps}
-                          setBuilderState={setBuilderState}
-                          setEdited={setEdited}
-                        />
-                      );
-                    } else {
-                      return (
-                        <ActionsScreen
-                          owner={owner}
-                          builderState={builderState}
-                          dataSources={dataSources}
-                          dustApps={dustApps}
-                          setBuilderState={setBuilderState}
-                          setEdited={setEdited}
-                        />
-                      );
-                    }
+                    return (
+                      <ActionsScreen
+                        owner={owner}
+                        builderState={builderState}
+                        dataSources={dataSources}
+                        dustApps={dustApps}
+                        setBuilderState={setBuilderState}
+                        setEdited={setEdited}
+                        setAction={setAction}
+                        pendingAction={pendingAction}
+                      />
+                    );
+
                   case "naming":
                     return (
                       <NamingScreen
@@ -729,363 +492,27 @@ export default function AssistantBuilder({
           }
           rightPanel={
             <AssistantBuilderRightPanel
+              screen={screen}
               template={template}
-              resetTemplate={resetTemplate}
-              resetToTemplateInstructions={resetToTemplateInstructions}
-              resetToTemplateActions={resetToTemplateActions}
+              removeTemplate={removeTemplate}
+              resetToTemplateInstructions={async () => {
+                resetToTemplateInstructions(setBuilderState);
+                setEdited(true);
+              }}
+              resetToTemplateActions={async () => {
+                resetToTemplateActions(setBuilderState);
+                setEdited(true);
+              }}
               owner={owner}
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
+              setAction={setAction}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
         />
       </AppLayout>
     </>
-  );
-}
-
-function PrevNextButtons({
-  screen,
-  setScreen,
-}: {
-  screen: BuilderScreen;
-  setScreen: (screen: BuilderScreen) => void;
-}) {
-  return (
-    <div className="flex pt-6">
-      {screen !== "instructions" && (
-        <Button
-          label="Previous"
-          size="md"
-          variant="secondary"
-          onClick={() => {
-            if (screen === "actions") {
-              setScreen("instructions");
-            } else if (screen === "naming") {
-              setScreen("actions");
-            }
-          }}
-        />
-      )}
-      <div className="flex-grow" />
-      {screen !== "naming" && (
-        <Button
-          label="Next"
-          size="md"
-          variant="primary"
-          onClick={() => {
-            if (screen === "instructions") {
-              setScreen("actions");
-            } else if (screen === "actions") {
-              setScreen("naming");
-            }
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-export async function submitAssistantBuilderForm({
-  owner,
-  builderState,
-  agentConfigurationId,
-  slackData,
-  isDraft,
-  useMultiActions,
-}: {
-  owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  agentConfigurationId: string | null;
-  slackData: {
-    selectedSlackChannels: SlackChannel[];
-    slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
-  };
-  isDraft?: boolean;
-  useMultiActions: boolean;
-}): Promise<LightAgentConfigurationType | AgentConfigurationType> {
-  const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
-  let { handle, description, instructions, avatarUrl } = builderState;
-  if (!handle || !description || !instructions || !avatarUrl) {
-    if (!isDraft) {
-      // should be unreachable
-      // we keep this for TS
-      throw new Error("Form not valid");
-    } else {
-      handle = handle?.trim() || "Preview";
-      description = description?.trim() || "Preview";
-      instructions = instructions?.trim() || "Preview";
-      avatarUrl = avatarUrl ?? "";
-    }
-  }
-
-  type BodyType = t.TypeOf<
-    typeof PostOrPatchAgentConfigurationRequestBodySchema
-  >;
-
-  const actionParams: NonNullable<BodyType["assistant"]["actions"]> =
-    removeNulls(
-      builderState.actions.map((a) => {
-        switch (a.type) {
-          case "RETRIEVAL_SEARCH":
-          case "RETRIEVAL_EXHAUSTIVE":
-            return {
-              type: "retrieval_configuration",
-              name: a.name,
-              description: a.description,
-              query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-              relativeTimeFrame:
-                a.type === "RETRIEVAL_EXHAUSTIVE"
-                  ? {
-                      duration: a.configuration.timeFrame.value,
-                      unit: a.configuration.timeFrame.unit,
-                    }
-                  : "auto",
-              topK: "auto",
-              dataSources: Object.values(
-                a.configuration.dataSourceConfigurations
-              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-                dataSourceId: dataSource.name,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: null,
-                },
-              })),
-            };
-
-          case "DUST_APP_RUN":
-            if (!a.configuration.app) {
-              return null;
-            }
-            return {
-              type: "dust_app_run_configuration",
-              name: a.name,
-              description: a.description,
-              appWorkspaceId: owner.sId,
-              appId: a.configuration.app.sId,
-            };
-
-          case "TABLES_QUERY":
-            return {
-              type: "tables_query_configuration",
-              name: a.name,
-              description: a.description,
-              tables: Object.values(a.configuration),
-            };
-
-          case "WEBSEARCH":
-            return {
-              type: "websearch_configuration",
-              name: a.name,
-              description: a.description,
-            };
-
-          case "PROCESS":
-            return {
-              type: "process_configuration",
-              name: a.name,
-              description: a.description,
-              dataSources: Object.values(
-                a.configuration.dataSourceConfigurations
-              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-                dataSourceId: dataSource.name,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: null,
-                },
-              })),
-              tagsFilter: a.configuration.tagsFilter,
-              relativeTimeFrame: {
-                duration: a.configuration.timeFrame.value,
-                unit: a.configuration.timeFrame.unit,
-              },
-              schema: a.configuration.schema,
-            };
-
-          default:
-            assertNever(a);
-        }
-      })
-    );
-
-  const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
-    {
-      assistant: {
-        name: removeLeadingAt(handle),
-        pictureUrl: avatarUrl,
-        description: description,
-        instructions: instructions.trim(),
-        status: isDraft ? "draft" : "active",
-        scope: builderState.scope,
-        actions: useMultiActions
-          ? actionParams
-          : removeNulls([actionParams[0]]),
-        model: {
-          modelId: builderState.generationSettings.modelSettings.modelId,
-          providerId: builderState.generationSettings.modelSettings.providerId,
-          temperature: builderState.generationSettings.temperature,
-        },
-        maxToolsUsePerRun: useMultiActions
-          ? builderState.maxToolsUsePerRun ??
-            getDefaultAssistantState().maxToolsUsePerRun
-          : undefined,
-      },
-      useMultiActions,
-    };
-
-  const res = await fetch(
-    !agentConfigurationId
-      ? `/api/w/${owner.sId}/assistant/agent_configurations`
-      : `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
-    {
-      method: !agentConfigurationId ? "POST" : "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error("An error occurred while saving the configuration.");
-  }
-
-  const newAgentConfiguration: {
-    agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
-  } = await res.json();
-  const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
-
-  // PATCH the linked slack channels if either:
-  // - there were already linked channels
-  // - there are newly selected channels
-  // If the user selected channels that were already routed to a different assistant, the current behavior is to
-  // unlink them from the previous assistant and link them to the this one.
-  if (
-    selectedSlackChannels.length ||
-    slackChannelsLinkedWithAgent.filter(
-      (channel) => channel.agentConfigurationId === agentConfigurationId
-    ).length
-  ) {
-    const slackLinkRes = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationSid}/linked_slack_channels`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slack_channel_ids: selectedSlackChannels.map(
-            ({ slackChannelId }) => slackChannelId
-          ),
-        }),
-      }
-    );
-
-    if (!slackLinkRes.ok) {
-      throw new Error("An error occurred while linking Slack channels.");
-    }
-  }
-
-  return newAgentConfiguration.agentConfiguration;
-}
-
-export function BuilderLayout({
-  leftPanel,
-  rightPanel,
-  buttonsRightPanel,
-  isRightPanelOpen,
-}: {
-  leftPanel: React.ReactNode;
-  rightPanel: React.ReactNode;
-  buttonsRightPanel: React.ReactNode;
-  isRightPanelOpen: boolean;
-}) {
-  return (
-    <>
-      <div className="flex px-4 lg:hidden">
-        <div className="h-full w-full max-w-[900px]">{leftPanel}</div>
-      </div>
-      <div className="hidden h-full lg:flex">
-        <div className="h-full w-full">
-          <div className="flex h-full w-full items-center gap-4 px-5">
-            <div className="flex h-full grow justify-center">
-              <div className="h-full w-full max-w-[900px]">{leftPanel}</div>
-            </div>
-            {buttonsRightPanel}
-            <div
-              className={classNames(
-                "duration-400 s-h-full transition-opacity ease-out",
-                isRightPanelOpen ? "opacity-100" : "opacity-0"
-              )}
-            >
-              <div
-                className={classNames(
-                  "duration-800 h-full transition-all ease-out",
-                  isRightPanelOpen ? "w-[440px]" : "w-0"
-                )}
-              >
-                {rightPanel}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-export function MultActionsConfirmationModal({
-  show,
-  onClose,
-  onConfirm,
-}: {
-  show: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog
-      isOpen={show}
-      onCancel={() => onClose()}
-      onValidate={() => {
-        onConfirm();
-        onClose();
-      }}
-      title="Enable Multi Actions"
-    >
-      <Page.Vertical>
-        <div className="flex flex-col gap-y-2">
-          <div className="text-md grow font-medium text-warning-600">
-            Important
-          </div>
-          <div className="text-md font-normal text-element-700">
-            Multi Actions is an experimental feature that allows an assistant to
-            run multiple actions in a single run.
-          </div>
-          <div className="text-md font-normal text-element-700">
-            This feature is still in development and may not work as expected.
-            We may break or delete any assistant that uses this feature.
-          </div>
-        </div>
-      </Page.Vertical>
-    </Dialog>
   );
 }

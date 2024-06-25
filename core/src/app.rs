@@ -354,6 +354,7 @@ impl App {
             qdrant_clients: qdrant_clients,
             credentials: credentials.clone(),
             secrets: secrets.clone(),
+            run_id: run_id.clone(),
         }]];
 
         let mut current_map: Option<String> = None;

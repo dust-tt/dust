@@ -30,9 +30,9 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostManagedDataSourceRequestBodySchema } from "@app/pages/api/w/[wId]/data_sources/managed";
 
@@ -52,7 +52,6 @@ export default function WebsiteConfiguration({
   gaTrackingId: string;
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  const [isValid, setIsValid] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const [dataSourceUrl, setDataSourceUrl] = useState(
@@ -138,7 +137,7 @@ export default function WebsiteConfiguration({
 
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
-    setIsValid(!urlError && !nameError);
+    return !urlError && !nameError;
   }, [dataSourceName, dataSources, dataSourceUrl, dataSource?.id]);
 
   useEffect(() => {
@@ -151,8 +150,8 @@ export default function WebsiteConfiguration({
 
   const handleCreate = async () => {
     setIsSubmitted(true);
-    validateForm();
-    if (!isValid) {
+
+    if (!validateForm()) {
       return;
     }
 
@@ -256,7 +255,6 @@ export default function WebsiteConfiguration({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_static",
@@ -266,8 +264,7 @@ export default function WebsiteConfiguration({
           title="Add a Website"
           onSave={() => {
             setIsSubmitted(true);
-            validateForm();
-            if (isValid && !isSaving) {
+            if (!isSaving) {
               void handleCreate();
             }
           }}

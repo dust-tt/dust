@@ -4,6 +4,7 @@ export type ConnectorsAPIErrorType =
   | "internal_server_error"
   | "unexpected_error_format"
   | "unexpected_response_format"
+  | "unexpected_network_error"
   | "unknown_connector_provider"
   | "invalid_request_error"
   | "connector_not_found"
@@ -13,7 +14,8 @@ export type ConnectorsAPIErrorType =
   | "connector_oauth_target_mismatch"
   | "slack_channel_not_found"
   | "connector_rate_limit_error"
-  | "slack_configuration_not_found";
+  | "slack_configuration_not_found"
+  | "google_drive_webhook_not_found";
 
 export type ConnectorsAPIError = {
   type: ConnectorsAPIErrorType;

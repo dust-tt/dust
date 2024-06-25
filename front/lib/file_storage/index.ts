@@ -101,8 +101,17 @@ class FileStorage {
   }
 }
 
+const bucketInstances = new Map();
+
+const getBucketInstance = (bucketConfig: string) => {
+  if (!bucketInstances.has(bucketConfig)) {
+    bucketInstances.set(bucketConfig, new FileStorage(bucketConfig));
+  }
+  return bucketInstances.get(bucketConfig);
+};
+
 export const getPrivateUploadBucket = () =>
-  new FileStorage(config.getGcsPrivateUploadsBucket());
+  getBucketInstance(config.getGcsPrivateUploadsBucket());
 
 export const getPublicUploadBucket = () =>
-  new FileStorage(config.getGcsPublicUploadBucket());
+  getBucketInstance(config.getGcsPublicUploadBucket());

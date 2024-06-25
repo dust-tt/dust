@@ -1,4 +1,6 @@
 import type {
+  AgentChainOfThoughtEvent,
+  AgentDisabledErrorEvent,
   AgentMessageType,
   ConversationType,
   GenerationTokensEvent,
@@ -22,7 +24,7 @@ import type {
   UserMessageErrorEvent,
   UserMessageNewEvent,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -110,13 +112,15 @@ async function handleUserMessageEvents(
     | UserMessageNewEvent
     | AgentMessageNewEvent
     | AgentErrorEvent
+    | AgentDisabledErrorEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent
-    | ConversationTitleEvent,
+    | ConversationTitleEvent
+    | AgentChainOfThoughtEvent,
     void
   >,
   resolveAfterFullGeneration = false
@@ -175,11 +179,13 @@ async function handleUserMessageEvents(
             case "tables_query_output":
             case "process_params":
             case "websearch_params":
+            case "browse_params":
             case "agent_error":
             case "agent_action_success":
             case "generation_tokens":
             case "agent_generation_success":
             case "agent_generation_cancelled":
+            case "agent_chain_of_thought":
             case "agent_message_success": {
               const pubsubChannel = getMessageChannelId(event.messageId);
               await redis.xAdd(pubsubChannel, "*", {
@@ -195,6 +201,7 @@ async function handleUserMessageEvents(
               }
               break;
             }
+            case "agent_disabled_error":
             case "user_message_error": {
               //  We resolve the promise with an error as we were not able to
               //  create the user message. This is possible for a variety of
@@ -225,12 +232,8 @@ async function handleUserMessageEvents(
               );
               break;
             }
-
             default:
-              ((event: never) => {
-                logger.error("Unknown event type", event);
-              })(event);
-              return null;
+              assertNever(event);
           }
         }
         if (resolveAfterFullGeneration && userMessage && !didResolve) {
@@ -317,11 +320,13 @@ export async function retryAgentMessageWithPubSub(
               case "tables_query_output":
               case "process_params":
               case "websearch_params":
+              case "browse_params":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":
               case "agent_generation_success":
               case "agent_generation_cancelled":
+              case "agent_chain_of_thought":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await redis.xAdd(pubsubChannel, "*", {
@@ -330,12 +335,8 @@ export async function retryAgentMessageWithPubSub(
                 await redis.expire(pubsubChannel, 60 * 10);
                 break;
               }
-
               default:
-                ((event: never) => {
-                  logger.error("Unknown event type", event);
-                })(event);
-                return null;
+                assertNever(event);
             }
           }
         } catch (e) {

@@ -44,6 +44,7 @@ export type APIErrorType =
   | "connector_provider_not_supported"
   | "conversation_not_found"
   | "agent_configuration_not_found"
+  | "agent_message_error"
   | "message_not_found"
   | "plan_message_limit_exceeded"
   | "global_agent_error"
@@ -52,9 +53,12 @@ export type APIErrorType =
   | "subscription_payment_failed"
   | "subscription_not_found"
   | "subscription_state_invalid"
+  // Use by assistant creation / update
+  | "assistant_saving_error"
   // Used in the DustAPI client:
   | "unexpected_error_format"
   | "unexpected_response_format"
+  | "unexpected_network_error"
   // Used by callAction client:
   | "action_failed"
   | "unexpected_action_response"

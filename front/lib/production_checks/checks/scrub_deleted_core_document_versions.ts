@@ -1,10 +1,12 @@
+import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import { createHash } from "blake3";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { Sequelize } from "sequelize";
 
-import type { CheckFunction } from "../types";
+import type { CheckFunction } from "@app/lib/production_checks/types";
+import { withRetries } from "@app/lib/utils/retries";
 
 const { CORE_DATABASE_URI, SERVICE_ACCOUNT, DUST_DATA_SOURCES_BUCKET } =
   process.env;
@@ -92,6 +94,40 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   });
 };
 
+async function getFiles({ bucket, path }: { bucket: Bucket; path: string }) {
+  return bucket.getFiles({ prefix: path });
+}
+
+async function deleteFile({ file }: { file: File }) {
+  return file.delete();
+}
+
+async function deleteAllFilesFromFolder(
+  logger: pino.Logger<LoggerOptions>,
+  bucket: Bucket,
+  seen: Set<string>,
+  path: string
+) {
+  const [files] = await withRetries(getFiles)({ bucket, path });
+
+  await Promise.all(
+    files.map((f) => {
+      if (!seen.has(f.name)) {
+        seen.add(f.name);
+        logger.info(
+          {
+            path: f.name,
+            filesCount: files.length,
+          },
+          "Scrubbing"
+        );
+
+        return withRetries(deleteFile)({ file: f });
+      }
+    })
+  );
+}
+
 async function scrubDocument({
   logger,
   core_sequelize,
@@ -161,32 +197,26 @@ async function scrubDocument({
   hasher.update(Buffer.from(document_id));
   const documentIdHash = hasher.digest("hex");
 
-  const path = `${dataSource.project}/${dataSource.internal_id}/${documentIdHash}/${hash}`;
+  // Legacy logic.
+  const legacyPath = `${dataSource.project}/${dataSource.internal_id}/${documentIdHash}/${hash}`;
 
-  const [files] = await storage
-    .bucket(DUST_DATA_SOURCES_BUCKET)
-    .getFiles({ prefix: path });
+  // New logic.
+  const path = `${dataSource.project}/${dataSource.internal_id}/${documentIdHash}`;
 
-  await Promise.all(
-    files.map((f) => {
-      if (!seen.has(f.name)) {
-        seen.add(f.name);
-        logger.info(
-          {
-            path: f.name,
-            documentId: document_id,
-            documentHash: hash,
-            dataSourceProject: dataSource.project,
-            dataSourceInternalId: dataSource.internal_id,
-            dataSourceId: dataSource.id,
-          },
-          "Scrubbing"
-        );
+  const bucket = storage.bucket(DUST_DATA_SOURCES_BUCKET);
 
-        return f.delete();
-      }
-    })
-  );
+  const localLogger = logger.child({
+    documentId: document_id,
+    documentHash: hash,
+    dataSourceProject: dataSource.project,
+    dataSourceInternalId: dataSource.internal_id,
+    dataSourceId: dataSource.id,
+  });
+
+  // Always delete legacy files first!
+  await deleteAllFilesFromFolder(localLogger, bucket, seen, legacyPath);
+
+  await deleteAllFilesFromFolder(localLogger, bucket, seen, path);
 
   await core_sequelize.query(
     `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
@@ -206,7 +236,6 @@ async function scrubDocument({
       dataSourceProject: dataSource.project,
       dataSourceInternalId: dataSource.internal_id,
       dataSourceId: dataSource.id,
-      filesCount: files.length,
     },
     "Scrubbed deleted versions"
   );

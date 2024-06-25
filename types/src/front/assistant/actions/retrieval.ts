@@ -5,6 +5,7 @@
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
+import { ConnectorProvider } from "../../data_source";
 
 export const TIME_FRAME_UNITS = [
   "hour",
@@ -62,9 +63,8 @@ export type RetrievalConfigurationType = {
   relativeTimeFrame: RetrievalTimeframe;
   topK: number | "auto";
 
-  name: string | null;
+  name: string;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 /**
@@ -88,6 +88,59 @@ export type RetrievalDocumentType = {
   }[];
 };
 
+type ConnectorProviderDocumentType =
+  | Exclude<ConnectorProvider, "webcrawler">
+  | "document";
+
+const providerMap: Record<string, ConnectorProviderDocumentType> = {
+  "managed-slack": "slack",
+  "managed-notion": "notion",
+  "managed-google_drive": "google_drive",
+  "managed-github": "github",
+  "managed-confluence": "confluence",
+  "managed-microsoft": "microsoft",
+  "managed-intercom": "intercom",
+};
+
+const providerRegex = new RegExp(`^(${Object.keys(providerMap).join("|")})`);
+
+export function getProviderFromRetrievedDocument(
+  document: RetrievalDocumentType
+): ConnectorProviderDocumentType {
+  const match = document.dataSourceId.match(providerRegex);
+  if (match && match[1]) {
+    return providerMap[match[1]];
+  }
+
+  return "document";
+}
+
+export function getTitleFromRetrievedDocument(
+  document: RetrievalDocumentType
+): string {
+  const provider = getProviderFromRetrievedDocument(document);
+
+  if (provider === "slack") {
+    for (const t of document.tags) {
+      if (t.startsWith("channelName:")) {
+        return `#${t.substring(12)}`;
+      }
+    }
+  }
+
+  for (const t of document.tags) {
+    if (t.startsWith("title:")) {
+      return t.substring(6);
+    }
+  }
+
+  if (provider === "document") {
+    return `[${document.dataSourceId}] ${document.documentId}`;
+  }
+
+  return document.documentId;
+}
+
 export interface RetrievalActionType extends BaseAction {
   id: ModelId; // AgentRetrievalAction
   agentMessageId: ModelId; // AgentMessage
@@ -101,4 +154,5 @@ export interface RetrievalActionType extends BaseAction {
   functionCallName: string | null;
   documents: RetrievalDocumentType[] | null;
   step: number;
+  type: "retrieval_action";
 }

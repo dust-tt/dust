@@ -7,6 +7,7 @@ import type {
   AgentsGetViewType,
   AgentStatus,
   AgentUserListStatus,
+  AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
   ModelId,
@@ -29,6 +30,13 @@ import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import {
+  DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_TABLES_QUERY_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/names";
+import {
   getGlobalAgents,
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
@@ -37,6 +45,8 @@ import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
+import { App } from "@app/lib/models/apps";
+import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
@@ -58,6 +68,7 @@ import {
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { TemplateResource } from "@app/lib/resources/template_resource";
 import { generateModelSId } from "@app/lib/utils";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
@@ -140,7 +151,7 @@ function determineGlobalAgentIdsToFetch(
     case "list":
     case "all":
     case "admin_internal":
-    case "manage-assistants-search":
+    case "assistants-search":
       return undefined; // undefined means all global agents will be fetched
     default:
       if (
@@ -278,7 +289,7 @@ async function fetchAgentConfigurationsForView(
         where: baseConditionsAndScopesIn(["published"]),
       });
 
-    case "manage-assistants-search":
+    case "assistants-search":
     case "list":
       const user = auth.user();
 
@@ -370,6 +381,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tablesQueryConfigs,
     processConfigs,
     websearchConfigs,
+    browseConfigs,
     agentUserRelations,
   ] = await Promise.all([
     variant === "full"
@@ -403,6 +415,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentWebsearchConfiguration[]>),
+    variant === "full"
+      ? AgentBrowseConfiguration.findAll({
+          where: {
+            agentConfigurationId: { [Op.in]: configurationIds },
+          },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve({} as Record<number, AgentBrowseConfiguration[]>),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -486,14 +505,28 @@ async function fetchWorkspaceAgentConfigurationsForView(
     _.groupBy(tablesConfigs, "tablesQueryConfigurationId")
   );
 
+  const dustAppsPromise = Object.values(dustAppRunConfigs).length
+    ? App.findAll({
+        where: {
+          sId: {
+            [Op.in]: Object.values(dustAppRunConfigs).flatMap((r) =>
+              r.map((c) => c.appId)
+            ),
+          },
+        },
+      })
+    : Promise.resolve([]);
+
   const [
     retrievalDatasourceConfigurations,
     processDatasourceConfigurations,
     agentTablesConfigurationTables,
+    dustApps,
   ] = await Promise.all([
     retrievalDatasourceConfigurationsPromise,
     processDatasourceConfigurationsPromise,
     agentTablesQueryConfigurationTablesPromise,
+    dustAppsPromise,
   ]);
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -535,23 +568,30 @@ async function fetchWorkspaceAgentConfigurationsForView(
               },
             };
           }),
-          name: retrievalConfig.name,
+          name: retrievalConfig.name || DEFAULT_RETRIEVAL_ACTION_NAME,
           description: retrievalConfig.description,
-          forceUseAtIteration: retrievalConfig.forceUseAtIteration,
         });
       }
 
       const dustAppRunConfigurations = dustAppRunConfigs[agent.id] ?? [];
       for (const dustAppRunConfig of dustAppRunConfigurations) {
+        const dustApp = dustApps.find(
+          (app) => app.sId === dustAppRunConfig.appId
+        );
+        if (!dustApp) {
+          // unreachable
+          throw new Error(
+            `Couldn't find dust app for dust app run configuration ${dustAppRunConfig.id}`
+          );
+        }
         actions.push({
           id: dustAppRunConfig.id,
           sId: dustAppRunConfig.sId,
           type: "dust_app_run_configuration",
           appWorkspaceId: dustAppRunConfig.appWorkspaceId,
           appId: dustAppRunConfig.appId,
-          name: dustAppRunConfig.name,
-          description: dustAppRunConfig.description,
-          forceUseAtIteration: dustAppRunConfig.forceUseAtIteration,
+          name: dustApp.name,
+          description: dustApp.description,
         });
       }
 
@@ -561,9 +601,19 @@ async function fetchWorkspaceAgentConfigurationsForView(
           id: websearchConfig.id,
           sId: websearchConfig.sId,
           type: "websearch_configuration",
-          name: websearchConfig.name,
+          name: websearchConfig.name || DEFAULT_WEBSEARCH_ACTION_NAME,
           description: websearchConfig.description,
-          forceUseAtIteration: websearchConfig.forceUseAtIteration,
+        });
+      }
+
+      const browseConfigurations = browseConfigs[agent.id] ?? [];
+      for (const browseConfig of browseConfigurations) {
+        actions.push({
+          id: browseConfig.id,
+          sId: browseConfig.sId,
+          type: "browse_configuration",
+          name: browseConfig.name || DEFAULT_BROWSE_ACTION_NAME,
+          description: browseConfig.description,
         });
       }
 
@@ -580,9 +630,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
             workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
             tableId: tablesQueryConfigTable.tableId,
           })),
-          name: tablesQueryConfig.name,
+          name: tablesQueryConfig.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
           description: tablesQueryConfig.description,
-          forceUseAtIteration: tablesQueryConfig.forceUseAtIteration,
         });
       }
 
@@ -614,11 +663,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
                 }
               : null,
           schema: processConfig.schema,
-          name: processConfig.name,
+          name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
           description: processConfig.description,
-          forceUseAtIteration: processConfig.forceUseAtIteration,
         });
       }
+    }
+
+    let template: TemplateResource | null = null;
+    if (agent.templateId) {
+      template = await TemplateResource.fetchById(agent.templateId);
     }
 
     const agentConfigurationType: AgentConfigurationType = {
@@ -641,6 +694,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       actions,
       versionAuthorId: agent.authorId,
       maxToolsUsePerRun: agent.maxToolsUsePerRun,
+      templateId: template?.sId ?? null,
     };
 
     agentConfigurationType.userListStatus = agentUserListStatus({
@@ -836,6 +890,7 @@ export async function createAgentConfiguration(
     scope,
     model,
     agentConfigurationId,
+    templateId,
   }: {
     name: string;
     description: string;
@@ -846,6 +901,7 @@ export async function createAgentConfiguration(
     scope: Exclude<AgentConfigurationScope, "global">;
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
+    templateId: string | null;
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -876,6 +932,10 @@ export async function createAgentConfiguration(
   let listStatusOverride: AgentUserListStatus | null = null;
 
   try {
+    let template: TemplateResource | null = null;
+    if (templateId) {
+      template = await TemplateResource.fetchByExternalId(templateId);
+    }
     const agent = await frontSequelize.transaction(
       async (t): Promise<AgentConfiguration> => {
         if (agentConfigurationId) {
@@ -938,7 +998,6 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
         }
-
         // Create Agent config.
         return AgentConfiguration.create(
           {
@@ -956,6 +1015,7 @@ export async function createAgentConfiguration(
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,
+            templateId: template?.id,
           },
           {
             transaction: t,
@@ -986,6 +1046,7 @@ export async function createAgentConfiguration(
       pictureUrl: agent.pictureUrl,
       status: agent.status,
       maxToolsUsePerRun: agent.maxToolsUsePerRun,
+      templateId: template?.sId ?? null,
     };
 
     agentConfiguration.userListStatus = agentUserListStatus({
@@ -1082,6 +1143,7 @@ export async function createAgentActionConfiguration(
         type: "dust_app_run_configuration";
         appWorkspaceId: string;
         appId: string;
+        app: AppType;
       }
     | {
         type: "tables_query_configuration";
@@ -1101,13 +1163,15 @@ export async function createAgentActionConfiguration(
     | {
         type: "websearch_configuration";
       }
+    | {
+        type: "browse_configuration";
+      }
   ) & {
     name: string | null;
     description: string | null;
-    forceUseAtIteration: number | null;
   },
   agentConfiguration: LightAgentConfigurationType
-): Promise<AgentActionConfigurationType> {
+): Promise<Result<AgentActionConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -1134,7 +1198,6 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
-            forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
         );
@@ -1144,7 +1207,7 @@ export async function createAgentActionConfiguration(
           processConfigurationId: null,
         });
 
-        return {
+        return new Ok({
           id: retrievalConfig.id,
           sId: retrievalConfig.sId,
           type: "retrieval_configuration",
@@ -1152,10 +1215,9 @@ export async function createAgentActionConfiguration(
           relativeTimeFrame: action.relativeTimeFrame,
           topK: action.topK,
           dataSources: action.dataSources,
-          name: action.name,
+          name: action.name || DEFAULT_RETRIEVAL_ACTION_NAME,
           description: action.description,
-          forceUseAtIteration: action.forceUseAtIteration,
-        };
+        });
       });
     }
     case "dust_app_run_configuration": {
@@ -1164,21 +1226,17 @@ export async function createAgentActionConfiguration(
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
         agentConfigurationId: agentConfiguration.id,
-        name: action.name,
-        description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
       });
 
-      return {
+      return new Ok({
         id: dustAppRunConfig.id,
         sId: dustAppRunConfig.sId,
         type: "dust_app_run_configuration",
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
-        name: action.name,
-        description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
-      };
+        name: action.app.name,
+        description: action.app.description,
+      });
     }
     case "tables_query_configuration": {
       return frontSequelize.transaction(async (t) => {
@@ -1188,7 +1246,6 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
-            forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
         );
@@ -1206,15 +1263,14 @@ export async function createAgentActionConfiguration(
           )
         );
 
-        return {
+        return new Ok({
           id: tablesQueryConfig.id,
           sId: tablesQueryConfig.sId,
           type: "tables_query_configuration",
           tables: action.tables,
-          name: action.name,
+          name: action.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
           description: action.description,
-          forceUseAtIteration: action.forceUseAtIteration,
-        };
+        });
       });
     }
     case "process_configuration": {
@@ -1236,7 +1292,6 @@ export async function createAgentActionConfiguration(
             schema: action.schema,
             name: action.name,
             description: action.description,
-            forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
         );
@@ -1246,7 +1301,7 @@ export async function createAgentActionConfiguration(
           processConfigurationId: processConfig.id,
         });
 
-        return {
+        return new Ok({
           id: processConfig.id,
           sId: processConfig.sId,
           type: "process_configuration",
@@ -1254,10 +1309,9 @@ export async function createAgentActionConfiguration(
           tagsFilter: action.tagsFilter,
           schema: action.schema,
           dataSources: action.dataSources,
-          name: action.name,
+          name: action.name || DEFAULT_PROCESS_ACTION_NAME,
           description: action.description,
-          forceUseAtIteration: action.forceUseAtIteration,
-        };
+        });
       });
     }
     case "websearch_configuration": {
@@ -1266,17 +1320,31 @@ export async function createAgentActionConfiguration(
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
       });
 
-      return {
+      return new Ok({
         id: websearchConfig.id,
         sId: websearchConfig.sId,
         type: "websearch_configuration",
+        name: action.name || DEFAULT_WEBSEARCH_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "browse_configuration": {
+      const browseConfig = await AgentBrowseConfiguration.create({
+        sId: generateModelSId(),
+        agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
-      };
+      });
+
+      return new Ok({
+        id: browseConfig.id,
+        sId: browseConfig.sId,
+        type: "browse_configuration",
+        name: action.name || DEFAULT_BROWSE_ACTION_NAME,
+        description: action.description,
+      });
     }
     default:
       assertNever(action);
@@ -1334,6 +1402,7 @@ async function _createAgentDataSourcesConfigData(
       sId: dataSourceConfigurations.map((dsConfig) => dsConfig.workspaceId),
     },
     attributes: ["id", "sId"],
+    transaction: t,
   });
 
   // Now will want to group the datasource names by workspaceId to do only one query per workspace.
@@ -1386,6 +1455,7 @@ async function _createAgentDataSourcesConfigData(
             [Op.in]: dataSourceNames,
           },
         },
+        transaction: t,
       });
     }
   );

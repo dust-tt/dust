@@ -5,16 +5,18 @@ use super::sentencepiece::sentencepiece::{
     mistral_tokenizer_model_v1_base_singleton, tokenize_async,
 };
 use crate::providers::embedder::{Embedder, EmbedderVector};
-use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{
+    ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
+};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
-use crate::utils::{self, now};
-use crate::utils::{new_id, ParseError};
+use crate::utils::{self, now, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use parking_lot::{Mutex, RwLock};
 use sentencepiece::SentencePieceProcessor;
@@ -109,12 +111,29 @@ struct MistralChatMessage {
     pub tool_call_id: Option<String>,
 }
 
+fn sanitize_tool_call_id(id: &str) -> String {
+    // Replace anything not a-zA-Z-0-9 with 0 as mistral enforces that but function_call_id can
+    // come from other providers. Also enforces length 9.
+    let mut s = id
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '0' })
+        .collect::<String>();
+
+    if s.len() > 9 {
+        s = id[0..9].to_string();
+    }
+    if s.len() < 9 {
+        s = format!("{:0>9}", s);
+    }
+    s
+}
+
 impl TryFrom<&ChatFunctionCall> for MistralToolCall {
     type Error = anyhow::Error;
 
     fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
         Ok(MistralToolCall {
-            id: cf.id.clone(),
+            id: sanitize_tool_call_id(&cf.id),
             function: MistralToolCallFunction {
                 name: cf.name.clone(),
                 arguments: cf.arguments.clone(),
@@ -139,41 +158,14 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let mut mistral_role = MistralChatMessageRole::try_from(&cm.role)
+        let mistral_role = MistralChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
-        // `name` is taken into account by Mistral only for tool roles. We therefore inject it for
-        // `user` messages to indicate to the model who is the user since name is not taken into
-        // account there. For `assistant` message we don't inject it to avoid having the model
-        // injecting similar prefixes.
-        let meta_prompt = match cm.role {
-            ChatMessageRole::Function => match cm.name.as_ref() {
-                // We have a very special cases for our content attachments. We inject them as
-                // function messages in the conversation but Mistral does not support having a tool
-                // message followed by a `user` message. So we cast them to a `user` message with a
-                // meta prompt.
-                Some(name)
-                    if name == "inject_slack_thread_content"
-                        || name == "inject_file_attachment" =>
-                {
-                    mistral_role = MistralChatMessageRole::User;
-                    format!("[tool: {}] ", name)
-                }
-                _ => String::from(""),
-            },
-            ChatMessageRole::User => match cm.name.as_ref() {
-                Some(name) => format!("[user: {}] ", name), // Include space here.
-                None => String::from(""),
-            },
-            _ => String::from(""),
-        };
-
         Ok(MistralChatMessage {
-            content: Some(format!(
-                "{}{}",
-                meta_prompt,
-                cm.content.clone().unwrap_or(String::from(""))
-            )),
+            content: match cm.content.as_ref() {
+                Some(c) => Some(c.clone()),
+                None => None,
+            },
             // Name is only supported for the Function/Tool role.
             name: match mistral_role {
                 MistralChatMessageRole::Tool => cm.name.clone(),
@@ -188,7 +180,10 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 ),
                 None => None,
             },
-            tool_call_id: cm.function_call_id.clone(),
+            tool_call_id: cm
+                .function_call_id
+                .as_ref()
+                .map(|id| sanitize_tool_call_id(id)),
         })
     }
 }
@@ -273,6 +268,7 @@ struct MistralChatChunk {
     pub id: String,
     pub model: String,
     pub object: Option<String>,
+    pub usage: Option<MistralUsage>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -368,8 +364,12 @@ impl MistralAPIError {
         }
     }
 
-    pub fn retryable_streamed(&self) -> bool {
-        false
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return true;
+        }
+        // We retry on 5xx errors (which means the streaming didn't start).
+        return status.is_server_error();
     }
 }
 
@@ -395,57 +395,6 @@ impl MistralAILLM {
             .iter()
             .map(|m| MistralChatMessage::try_from(m))
             .collect::<Result<Vec<_>>>()?;
-
-        // Mistral AI requires a tool call assistant message to be followed by a tool message. We
-        // therefore inject a tool call assistant message before the tool message if it is missing.
-        // Note that we can have multiple tool messages in a row which is valid. They just need to
-        // be preceded by a tool call assistant message.
-        //
-        // We do a best effort here for the case where we have only one function call in the
-        // assistant message. If we had no assistant message and multiple function messages mistral
-        // will compain that there is a mismatch. In practice, Dust (legacy_agent) relies on
-        // cases with one function call only.
-        let mistral_messages = mistral_messages.iter().fold(
-            vec![],
-            |mut acc: Vec<MistralChatMessage>, cm: &MistralChatMessage| {
-                match acc.last_mut() {
-                    Some(last)
-                        if cm.role == MistralChatMessageRole::Tool
-                            && (last.role != MistralChatMessageRole::Assistant
-                                && last.role != MistralChatMessageRole::Tool) =>
-                    {
-                        acc.push(MistralChatMessage {
-                            role: MistralChatMessageRole::Assistant,
-                            name: None,
-                            content: None,
-                            tool_calls: Some(vec![MistralToolCall {
-                                // If we have a tool_call in the agent message we use it, otherwise
-                                // we generate a new fake one following Mistral format (9 chars, we
-                                // use an hex representation where Mistral uses any char, but
-                                // that's fine).
-                                id: cm
-                                    .tool_call_id
-                                    .clone()
-                                    .unwrap_or_else(|| new_id()[0..9].to_string()),
-                                function: MistralToolCallFunction {
-                                    name: cm
-                                        .name
-                                        .clone()
-                                        .unwrap_or_else(|| String::from("unknown_tool")),
-                                    arguments: String::from("{}"),
-                                },
-                            }]),
-                            tool_call_id: None,
-                        });
-                        acc.push(cm.clone());
-                    }
-                    _ => {
-                        acc.push(cm.clone());
-                    }
-                };
-                acc
-            },
-        );
 
         Ok(mistral_messages)
     }
@@ -478,7 +427,7 @@ impl MistralAILLM {
         tools: Vec<MistralTool>,
         tool_choice: Option<MistralToolChoice>,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<MistralChatCompletion> {
+    ) -> Result<(MistralChatCompletion, Option<String>)> {
         let url = uri.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -529,10 +478,18 @@ impl MistralAILLM {
         let mut stream = client.stream();
 
         let chunks: Arc<Mutex<Vec<MistralChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+        let mut usage = None;
+        let mut request_id: Option<String> = None;
 
         'stream: loop {
             match stream.try_next().await {
                 Ok(e) => match e {
+                    Some(es::SSE::Connected((_, headers))) => {
+                        request_id = match headers.get("x-kong-request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                    }
                     Some(es::SSE::Comment(_)) => {
                         println!("UNEXPECTED COMMENT");
                     }
@@ -554,8 +511,11 @@ impl MistralAILLM {
                                             serde_json::from_str(e.data.as_str());
                                         match error {
                                             Ok(error) => {
-                                                match error.retryable_streamed() && index == 0 {
+                                                match error.retryable_streamed(StatusCode::OK)
+                                                    && index == 0
+                                                {
                                                     true => Err(ModelError {
+                                                        request_id: request_id.clone(),
                                                         message: error.message(),
                                                         retryable: Some(ModelErrorRetryOptions {
                                                             sleep: Duration::from_millis(500),
@@ -564,6 +524,7 @@ impl MistralAILLM {
                                                         }),
                                                     })?,
                                                     false => Err(ModelError {
+                                                        request_id: request_id.clone(),
                                                         message: error.message(),
                                                         retryable: None,
                                                     })?,
@@ -582,6 +543,14 @@ impl MistralAILLM {
                                         }
                                     }
                                 };
+
+                            // Store usage
+                            match &chunk.usage {
+                                Some(received_usage) => {
+                                    usage = Some(received_usage.clone());
+                                }
+                                None => (),
+                            };
 
                             // Only stream if choices is length 1 but should always be the case.
                             match event_sender.as_ref() {
@@ -642,7 +611,45 @@ impl MistralAILLM {
                     }
                 },
                 Err(e) => {
-                    Err(anyhow!("Error streaming tokens from Mistral AI: {:?}", e))?;
+                    match e {
+                        es::Error::UnexpectedResponse(r) => {
+                            let status = StatusCode::from_u16(r.status())?;
+                            let headers = r.headers()?;
+                            let request_id = match headers.get("x-kong-request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
+                            let b = r.body_bytes().await?;
+
+                            let error: Result<MistralAPIError, _> = serde_json::from_slice(&b);
+                            match error {
+                                Ok(error) => match error.retryable_streamed(status) {
+                                    true => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: Some(ModelErrorRetryOptions {
+                                            sleep: Duration::from_millis(500),
+                                            factor: 2,
+                                            retries: 3,
+                                        }),
+                                    }),
+                                    false => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: None,
+                                    }),
+                                }?,
+                                Err(_) => Err(anyhow!(
+                                    "Error streaming tokens from Mistral AI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?,
+                            }
+                        }
+                        _ => {
+                            Err(anyhow!("Error streaming tokens from Mistral AI: {:?}", e))?;
+                        }
+                    }
                     break 'stream;
                 }
             }
@@ -678,7 +685,7 @@ impl MistralAILLM {
                 // The `object` field defaults to "start" when not present in the initial stream
                 // chunk.
                 object: f.object.unwrap_or(String::from("start")),
-                usage: None,
+                usage,
             };
 
             for i in 0..guard.len() {
@@ -740,7 +747,7 @@ impl MistralAILLM {
             };
         }
 
-        Ok(completion)
+        Ok((completion, request_id))
     }
 
     async fn chat_completion(
@@ -754,7 +761,7 @@ impl MistralAILLM {
         max_tokens: Option<i32>,
         tools: Vec<MistralTool>,
         tool_choice: Option<MistralToolChoice>,
-    ) -> Result<MistralChatCompletion> {
+    ) -> Result<(MistralChatCompletion, Option<String>)> {
         let mut body = json!({
             "messages": messages,
             "temperature": temperature,
@@ -783,6 +790,13 @@ impl MistralAILLM {
             Ok(Err(e)) => Err(e)?,
             Err(_) => Err(anyhow!("Timeout sending request to Mistral AI after 180s"))?,
         };
+
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-kong-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
+
         let body = match timeout(Duration::new(180, 0), res.bytes()).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
@@ -793,15 +807,15 @@ impl MistralAILLM {
 
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
 
-        let mut completion: MistralChatCompletion = match serde_json::from_slice(c) {
+        let mut completion: MistralChatCompletion = match serde_json::from_slice(&b) {
             Ok(c) => c,
             Err(err) => {
-                let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                let error: Result<MistralAPIError, _> = serde_json::from_slice(&b);
                 match error {
                     Ok(error) => match error.retryable() {
                         true => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),
@@ -810,6 +824,7 @@ impl MistralAILLM {
                             }),
                         }),
                         false => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),
@@ -821,7 +836,7 @@ impl MistralAILLM {
                     Err(_) => Err(anyhow!(
                         "MistralAIError: failed parsing completion from Mistral AI err={} data={}",
                         err,
-                        String::from_utf8_lossy(c),
+                        String::from_utf8_lossy(&b),
                     ))?,
                 };
                 unreachable!()
@@ -836,7 +851,7 @@ impl MistralAILLM {
             };
         }
 
-        Ok(completion)
+        Ok((completion, request_id))
     }
 }
 
@@ -920,6 +935,7 @@ impl LLM for MistralAILLM {
                 let choice = match fc.as_str() {
                     "auto" => MistralToolChoice::Auto,
                     "none" => MistralToolChoice::None,
+                    "any" => MistralToolChoice::Any,
                     // This string is validated in the block to match at least one function.
                     // Mistral semantic of `any` is to force the model to make a function call (but
                     // can be any of the functions passed). The two semantics only match if there
@@ -949,7 +965,7 @@ impl LLM for MistralAILLM {
             None => (None, vec![]),
         };
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 self.streamed_chat_completion(
                     self.chat_uri()?,
@@ -998,6 +1014,11 @@ impl LLM for MistralAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
+            usage: c.usage.map(|u| LLMTokenUsage {
+                completion_tokens: u.completion_tokens.unwrap_or(0),
+                prompt_tokens: u.prompt_tokens,
+            }),
+            provider_request_id: request_id,
         })
     }
 
@@ -1133,6 +1154,12 @@ impl Embedder for MistralEmbedder {
             Err(_) => Err(anyhow!("Timeout sending request to Mistral after 60s"))?,
         };
 
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-kong-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
+
         let body = match timeout(Duration::new(60, 0), res.bytes()).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
@@ -1150,6 +1177,7 @@ impl Embedder for MistralEmbedder {
                 match error {
                     Ok(error) => match error.retryable() {
                         true => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),
@@ -1158,6 +1186,7 @@ impl Embedder for MistralEmbedder {
                             }),
                         }),
                         false => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),

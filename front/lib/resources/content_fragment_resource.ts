@@ -8,13 +8,12 @@ import type {
 } from "sequelize";
 
 import appConfig from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-
-const privateUploadGcs = getPrivateUploadBucket();
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -123,6 +122,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         contentFormat: "raw",
       });
 
+      const privateUploadGcs = getPrivateUploadBucket();
+
       // First, we delete the doc from the file storage.
       await privateUploadGcs.delete(textFilePath, { ignoreNotFound: true });
       await privateUploadGcs.delete(rawFilePath, { ignoreNotFound: true });
@@ -141,7 +142,29 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     }
   }
 
-  renderFromMessage(message: Message): ContentFragmentType {
+  renderFromMessage({
+    auth,
+    conversationId,
+    message,
+  }: {
+    auth: Authenticator;
+    conversationId: string;
+    message: Message;
+  }): ContentFragmentType {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error(
+        "Authenticator must have a workspace to render a content fragment"
+      );
+    }
+
+    const location = fileAttachmentLocation({
+      workspaceId: owner.sId,
+      conversationId,
+      messageId: message.sId,
+      contentFormat: "text",
+    });
+
     return {
       id: message.id,
       sId: message.sId,
@@ -150,6 +173,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       visibility: message.visibility,
       version: message.version,
       sourceUrl: this.sourceUrl,
+      textUrl: location.downloadUrl,
       textBytes: this.textBytes,
       title: this.title,
       contentType: this.contentType,
@@ -196,8 +220,10 @@ export function fileAttachmentLocation({
   const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
   return {
     filePath,
-    internalUrl: `https://storage.googleapis.com/${privateUploadGcs.name}/${filePath}`,
-    downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment`,
+    internalUrl: `https://storage.googleapis.com/${
+      getPrivateUploadBucket().name
+    }/${filePath}`,
+    downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
 }
 
@@ -223,7 +249,7 @@ export async function storeContentFragmentText({
     contentFormat: "text",
   });
 
-  await privateUploadGcs.uploadRawContentToBucket({
+  await getPrivateUploadBucket().uploadRawContentToBucket({
     content,
     contentType: "text/plain",
     filePath,
@@ -248,5 +274,5 @@ export async function getContentFragmentText({
     contentFormat: "text",
   });
 
-  return privateUploadGcs.fetchFileContent(filePath);
+  return getPrivateUploadBucket().fetchFileContent(filePath);
 }

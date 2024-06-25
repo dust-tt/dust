@@ -4,12 +4,13 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
+import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import {
   ActivityReport,
   QuickInsights,
 } from "@app/components/workspace/Analytics";
+import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -49,6 +50,7 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showProviderModal, setShowProviderModal] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -211,55 +213,81 @@ export default function WorkspaceAdmin({
 
   return (
     <>
+      <ProviderManagementModal
+        owner={owner}
+        showProviderModal={showProviderModal}
+        onClose={() => setShowProviderModal(false)}
+      />
       <AppLayout
         subscription={subscription}
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="admin"
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
-        <Page.Vertical align="stretch" gap="md">
+        <Page.Vertical align="stretch" gap="xl">
           <Page.Header
             title="Workspace"
             icon={PlanetIcon}
             description="Manage your workspace"
           />
-          <Page.SectionHeader title="Analytics" />
-          <div className="grid grid-cols-2 gap-3 pb-2">
-            <QuickInsights owner={owner} />
-            <ActivityReport
-              monthOptions={monthOptions}
-              selectedMonth={selectedMonth}
-              handleSelectedMonth={handleSelectMonth}
-              isLoading={isLoading}
-              handleDownload={handleDownload}
-            />
-          </div>
-          <Page.SectionHeader title="Settings" />
-          <Page.SectionHeader
-            title="Workspace name"
-            description="Think GitHub repository names, short and memorable."
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-row gap-1">
-              <Input
-                name="name"
-                placeholder="Workspace name"
-                value={workspaceName}
-                onChange={(x) => setWorkspaceName(x)}
-                error={workspaceNameError}
-                showErrorLabel={true}
-                className="flex-1"
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Analytics</Page.H>
+            <Page.Horizontal gap="lg">
+              <QuickInsights owner={owner} />
+              <ActivityReport
+                monthOptions={monthOptions}
+                selectedMonth={selectedMonth}
+                handleSelectedMonth={handleSelectMonth}
+                isLoading={isLoading}
+                handleDownload={handleDownload}
               />
-              <Button
-                variant="primary"
-                disabled={disable || updating}
-                onClick={handleUpdateWorkspace}
-                label={updating ? "Updating..." : "Update"}
-                className="grow-0"
-              />
+            </Page.Horizontal>
+          </Page.Vertical>
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Settings</Page.H>
+            <div className="grid grid-cols-2 gap-2">
+              <Page.H variant="h6">Workspace name</Page.H>
+              <Page.H variant="h6">Model Selection</Page.H>
             </div>
-          </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Page.P variant="secondary">
+                Think GitHub repository names, short and memorable.
+              </Page.P>
+              <Page.P variant="secondary">
+                Select the models you want available to your workspace for the
+                creation of AI Assistants.
+              </Page.P>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-row gap-2">
+                <Input
+                  name="name"
+                  placeholder="Workspace name"
+                  value={workspaceName}
+                  onChange={(x) => setWorkspaceName(x)}
+                  error={workspaceNameError}
+                  showErrorLabel={true}
+                />
+                {!disable && (
+                  <Button
+                    variant="primary"
+                    disabled={disable || updating}
+                    onClick={handleUpdateWorkspace}
+                    label={updating ? "Saving..." : "Save"}
+                    className="grow-0"
+                  />
+                )}
+              </div>
+              <div>
+                <Button
+                  variant="primary"
+                  onClick={() => setShowProviderModal(true)}
+                  label="Manage providers"
+                  className="grow-0"
+                />
+              </div>
+            </div>
+          </Page.Vertical>
         </Page.Vertical>
       </AppLayout>
     </>

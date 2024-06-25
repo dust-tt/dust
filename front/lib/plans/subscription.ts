@@ -1,4 +1,5 @@
 import type {
+  BillingPeriod,
   EnterpriseUpgradeFormType,
   PlanType,
   SubscriptionType,
@@ -20,6 +21,7 @@ import {
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
@@ -359,7 +361,8 @@ export const pokeUpgradeWorkspaceToPlan = async (
 
 // Returns the Stripe checkout URL for the pro plan.
 export const getCheckoutUrlForUpgrade = async (
-  auth: Authenticator
+  auth: Authenticator,
+  billingPeriod: BillingPeriod
 ): Promise<{ checkoutUrl: string; plan: PlanType }> => {
   const owner = auth.workspace();
 
@@ -395,6 +398,7 @@ export const getCheckoutUrlForUpgrade = async (
   // We enter Stripe Checkout flow.
   const checkoutUrl = await createProPlanCheckoutSession({
     auth,
+    billingPeriod,
   });
 
   if (!checkoutUrl) {
@@ -441,7 +445,7 @@ export async function getPerSeatSubscriptionPricing(
 ): Promise<{
   seatPrice: number;
   seatCurrency: string;
-  billingPeriod: "monthly" | "yearly";
+  billingPeriod: BillingPeriod;
   quantity: number;
 } | null> {
   if (!subscription.stripeSubscriptionId) {
@@ -465,14 +469,18 @@ export async function getPerSeatSubscriptionPricing(
     return null;
   }
 
-  const { unit_amount: unitAmount, currency, recurring } = item.price;
+  const { unit_amount: unitAmount, currency, recurring, metadata } = item.price;
 
   const isPricedPerSeat = unitAmount !== null;
   if (!isPricedPerSeat) {
     return null;
   }
 
-  if (!item.quantity || !recurring) {
+  if (
+    !item.quantity ||
+    !recurring ||
+    (metadata && metadata[REPORT_USAGE_METADATA_KEY] !== "PER_SEAT")
+  ) {
     return null;
   }
 

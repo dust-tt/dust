@@ -14,7 +14,9 @@ import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer, {
+  INPUT_BAR_ACTIONS,
+} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -23,6 +25,8 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
+
+const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 // AGENT MENTION
 
@@ -55,9 +59,10 @@ export function AssistantInputBar({
   conversationId,
   stickyMentions,
   additionalAgentConfiguration,
-  hideQuickActions,
+  actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
+  isFloatingWithoutMargin = false,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -68,9 +73,10 @@ export function AssistantInputBar({
   conversationId: string | null;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  hideQuickActions: boolean;
+  actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
+  isFloatingWithoutMargin?: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -81,7 +87,7 @@ export function AssistantInputBar({
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: conversationId ? { conversationId } : "list",
+      agentsGetView: "assistants-search",
     });
 
   const agentConfigurations = useMemo(() => {
@@ -283,7 +289,7 @@ export function AssistantInputBar({
   }, [isProcessing, generationContext.generatingMessages, conversationId]);
 
   return (
-    <>
+    <div className="flex w-full flex-col">
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (
@@ -300,18 +306,21 @@ export function AssistantInputBar({
       )}
 
       <div
-        className={classNames("flex flex-1 px-0", isFloating ? "sm:px-4" : "")}
+        className={classNames(
+          "flex flex-1 px-0",
+          isFloating ? (isFloatingWithoutMargin ? "" : "sm:px-4") : ""
+        )}
       >
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
               "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
-              "transition-all duration-300",
+              "transition-all",
               isFloating
                 ? "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
                 : "",
-              isAnimating ? "animate-shake" : ""
+              isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >
             <div className="relative flex w-full flex-1 flex-col ">
@@ -334,7 +343,7 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                hideQuickActions={hideQuickActions}
+                actions={actions}
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
@@ -349,7 +358,7 @@ export function AssistantInputBar({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -359,7 +368,7 @@ export function FixedAssistantInputBar({
   stickyMentions,
   conversationId,
   additionalAgentConfiguration,
-  hideQuickActions = false,
+  actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
@@ -371,22 +380,20 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  hideQuickActions?: boolean;
+  actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="4xl:px-0 fixed bottom-0 z-20 w-full flex-initial">
-      <div className="max-h-screen max-w-4xl pb-0 sm:pb-8">
-        <AssistantInputBar
-          owner={owner}
-          onSubmit={onSubmit}
-          conversationId={conversationId}
-          stickyMentions={stickyMentions}
-          additionalAgentConfiguration={additionalAgentConfiguration}
-          hideQuickActions={hideQuickActions}
-          disableAutoFocus={disableAutoFocus}
-        />
-      </div>
+    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
+      <AssistantInputBar
+        owner={owner}
+        onSubmit={onSubmit}
+        conversationId={conversationId}
+        stickyMentions={stickyMentions}
+        additionalAgentConfiguration={additionalAgentConfiguration}
+        actions={actions}
+        disableAutoFocus={disableAutoFocus}
+      />
     </div>
   );
 }

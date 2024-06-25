@@ -7,7 +7,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -128,7 +128,11 @@ async function handler(
         handle: body.handle,
         helpActions: body.helpActions ?? null,
         helpInstructions: body.helpInstructions ?? null,
-        presetAction: body.presetAction,
+        presetActions: body.presetActions,
+        timeFrameDuration: body.timeFrameDuration
+          ? parseInt(body.timeFrameDuration)
+          : null,
+        timeFrameUnit: body.timeFrameUnit || null,
         presetDescription: null,
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,

@@ -4,7 +4,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
   Result,
   TablesQueryActionType,
   TablesQueryConfigurationType,
@@ -21,10 +20,12 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
+import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 interface TablesQueryActionBlob {
@@ -44,6 +45,7 @@ export class TablesQueryAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "tables_query_action";
 
   constructor(blob: TablesQueryActionBlob) {
     super(blob.id, "tables_query_action");
@@ -56,27 +58,10 @@ export class TablesQueryAction extends BaseAction {
     this.step = blob.step;
   }
 
-  renderForModel(): ModelMessageType {
-    let content = "";
-    content += `OUTPUT:\n`;
-
-    if (this.output === null) {
-      content += "(query failed)\n";
-    } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
-    }
-
-    return {
-      role: "action" as const,
-      name: "query_tables",
-      content,
-    };
-  }
-
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "query_tables",
+      name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,
       arguments: JSON.stringify(this.params),
     };
   }
@@ -93,6 +78,7 @@ export class TablesQueryAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -158,43 +144,25 @@ async function tablesQueryActionSpecification({
 /**
  * Action execution.
  */
-
 export class TablesQueryConfigurationServerRunner extends BaseActionConfigurationServerRunner<TablesQueryConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
-    { name, description }: { name: string; description: string }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `runQueryTables`");
     }
 
-    const actionDescription =
+    let actionDescription =
       "Query data tables specificied by the user by executing a generated SQL query from a" +
-      " natural language question.\n" +
-      `Description of the data tables:\n${description}`;
+      " natural language question.";
+    if (description) {
+      actionDescription += `\nDescription of the data tables:\n${description}`;
+    }
 
     const spec = await tablesQueryActionSpecification({
       name,
-      description: actionDescription,
-    });
-    return new Ok(spec);
-  }
-
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `runQueryTables`");
-    }
-
-    const actionDescription =
-      "Query data tables specified by the user by executing a generated SQL query from a" +
-      " natural language question.";
-
-    const spec = await tablesQueryActionSpecification({
-      name: "query_tables",
       description: actionDescription,
     });
     return new Ok(spec);
@@ -288,6 +256,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       type: "database",
       tables,
     };
+    const { model } = agentConfiguration;
+    config.MODEL.provider_id = model.providerId;
+    config.MODEL.model_id = model.modelId;
 
     // Running the app
     const res = await runActionStreamed(
@@ -321,7 +292,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       return;
     }
 
-    const { eventStream } = res.value;
+    const { eventStream, dustRunId } = res.value;
     for await (const event of eventStream) {
       if (event.type === "error") {
         logger.error(
@@ -414,9 +385,12 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       }
     }
 
+    const sanitizedOutput = sanitizeJSONOutput(output);
+
     // Updating action
     await action.update({
-      output,
+      output: sanitizedOutput,
+      runId: await dustRunId,
     });
 
     yield {
@@ -427,7 +401,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       action: new TablesQueryAction({
         id: action.id,
         params: action.params as DustAppParameters,
-        output: action.output as Record<string, string | number | boolean>,
+        output: sanitizedOutput as Record<string, string | number | boolean>,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,

@@ -33,6 +33,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
     selected: "read",
     unselected: "none",
   },
+  microsoft: undefined,
   notion: undefined,
   github: undefined,
   intercom: {
@@ -82,8 +83,6 @@ export function PermissionTreeChildren({
     Record<string, boolean>
   >({});
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
   const selectedPermission: ConnectorPermission =
     (dataSource.connectorProvider &&
       CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
@@ -108,13 +107,6 @@ export function PermissionTreeChildren({
         return (
           <Tree.Item
             key={r.internalId}
-            collapsed={!expanded[r.internalId]}
-            onChevronClick={() => {
-              setExpanded((prev) => ({
-                ...prev,
-                [r.internalId]: prev[r.internalId] ? false : true,
-              }));
-            }}
             type={r.expandable ? "node" : "leaf"}
             label={r.title}
             variant={r.type}
@@ -186,8 +178,7 @@ export function PermissionTreeChildren({
                 />
               </div>
             }
-          >
-            {expanded[r.internalId] && (
+            renderTreeItems={() => (
               <PermissionTreeChildren
                 owner={owner}
                 dataSource={dataSource}
@@ -204,7 +195,7 @@ export function PermissionTreeChildren({
                 useConnectorPermissionsHook={useConnectorPermissionsHook}
               />
             )}
-          </Tree.Item>
+          />
         );
       })}
     </Tree>
