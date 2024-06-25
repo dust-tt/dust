@@ -35,7 +35,7 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,
     transaction: Transaction
   ): Promise<MicrosoftConfigurationResource> {
-    const config = await MicrosoftConfigurationModel.create(
+    const config = await this.model.create(
       {
         ...blob,
       },
@@ -80,7 +80,7 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
       transaction,
     });
 
-    await MicrosoftConfigurationModel.destroy({
+    await this.model.destroy({
       where: {
         connectorId: this.connectorId,
       },
