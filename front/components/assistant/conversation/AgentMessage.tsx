@@ -199,10 +199,11 @@ export function AgentMessage({
             return {
               ...m,
               content: "",
+              // We add an empty COT so that subsequent COT tokens (if any) get appended to the new COT (which is consistent with the eventual DB state).
               chainOfThoughts: [event.chainOfThought, ""],
             };
           }
-          // Otherwise, we insert an empty COT so that any future COT (if any) gets appended to that one.
+          // Otherwise, we insert an empty COT so that subsequent COT tokens (if any) get appended to the new COT (which is consistent with the eventual DB state).
           // Here, we do not need to clear the content because the COT was already being streamed as COT tokens.
           return {
             ...m,
