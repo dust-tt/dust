@@ -12,7 +12,8 @@ export function generateModelSId(): string {
   const u = uuidv4();
   const b = blake3(u);
   const sId = Buffer.from(b)
-    .map((x) => uniformAlphanumFromByte(x))
+    .map(uniformAlphanumFromByte)
+    .filter((x) => x !== 0)
     .toString()
     .slice(0, 10);
 
