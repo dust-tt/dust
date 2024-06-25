@@ -17,7 +17,7 @@ async FileTransferAPI.getFile(name: string): Promise<File>
 
 The \`File\` object is a browser File object. Here is how to use it:
 \`\`\`
-const file = await FileTransferAPI.getFile(fileNmae);
+const file = await FileTransferAPI.getFile(fileName);
 
 // for text file:
 const text = await file.text();
@@ -28,8 +28,8 @@ const arrayBuffer = await file.arrayBuffer();
 The function you have to implement is the following:
 
 \`\`\`
-// Perform a computation to return a result or generate files or inject content in the iFrame mainView div and returns the result of the computation if applicable, the files generated if applicable and whether to show the iFrame to the user.
-function async fn(mainView: Element) : { result: string|null, files: File[], showIframe: boolean }
+// Perform a computation to generates files or inject content in the iFrame mainView div and return the files generated if applicable.
+function async fn(mainView: Element) : { files: File[] }
 \`\`\`
 
 Only implement this function and do not attempt to call it. 
@@ -42,23 +42,28 @@ It will be executed in the following environment:
 
 \`\`\`
 <html>
-  ...
-  // show imports and security measures. Your code snippet basically
+  <head>
+    <meta
+    httpEquiv="Content-Security-Policy"
+    content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://dustcdn.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/pixi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.js"></script>
+  </head>
   <script>
     let mainView = $('#mainView');
-    const { result, files, showIframe } = await fn(mainView)
-    submitToConversation(result, files);
+    const { files } = await fn(mainView)
+    submitToConversation(files);
   <body>
     <div id="mainView"/>
   </body>
 </html>
 \`\`\`
 
-Based on the instructions provided you can do one or multiple of the following:
+Based on the instructions provided you can do the following:
 
-- Using \`results\`: generate a result object that will be returned to the conversation (eg, the result of a computation). These objects must be small. If there is more than a few hundred bytes of information to return, use a file. Return \`null\` otherwise.
 - Using \`files\`: attach files to the conversation that will be available for the user to download and other assistants to use for their own computations. Return \`[]\` otherwise.
-- Decide whether to show the iframe to the user or not. Return \`true\` or \`false\`.`;
+`;
 
 type SerializedFile = {
   name: string;
@@ -155,9 +160,7 @@ function Iframe({ code }: { code: string }) {
   // This function will execute the code provided by the model and handle its output to communicate with the host page.
   async function executeFn(
     fn: (mainView: HTMLElement) => {
-      result: string | null;
       files: File[];
-      showIframe: boolean;
     }
   ) {
     const view = document.getElementById("mainview");
@@ -177,12 +180,6 @@ function Iframe({ code }: { code: string }) {
 
       // Programmatically click the anchor element to trigger the download
       // document.getElementById('result').appendChild(a);
-    }
-    if (result.result) {
-      const resultDiv = document.getElementById("result");
-      if (resultDiv) {
-        resultDiv.innerText = result.result;
-      }
     }
   }
 
@@ -228,8 +225,6 @@ function Iframe({ code }: { code: string }) {
       <body>
         <h3>Code execution block</h3>
         <div id="mainview"></div>
-
-        <div id="result"></div>
         <div id="error"></div>
         <script
           dangerouslySetInnerHTML={{
