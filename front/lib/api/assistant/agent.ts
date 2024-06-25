@@ -645,9 +645,8 @@ export async function* runMultiActionsAgent(
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "multi_actions_error",
-        message:
-          "Assistant failed to generate response after running `maxToolsUsePerRun`.",
+        code: "tool_use_limit_reached",
+        message: "The assistant attempted to use too many tools. Please retry.",
       },
     } satisfies AgentErrorEvent;
     return;
