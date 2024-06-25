@@ -32,7 +32,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
-use super::chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock};
+use super::chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock, MixedContent};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -247,9 +247,50 @@ impl From<OpenAIChatMessageRole> for ChatMessageRole {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAITextContentType {
+    Text,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAITextContent {
+    #[serde(rename = "type")]
+    pub r#type: OpenAITextContentType,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIImageUrlContent {
+    pub url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAIImageContentType {
+    ImageUrl,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIImageContent {
+    pub r#type: OpenAIImageContentType,
+    pub image_url: OpenAIImageUrlContent,
+}
+
+// Define an enum for mixed content
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum OpenAIContentBlock {
+    TextContent(OpenAITextContent),
+    ImageContent(OpenAIImageContent),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIContentBlockVec(Vec<OpenAIContentBlock>);
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: OpenAIChatMessageRole,
-    pub content: Option<ContentBlock>,
+    pub content: Option<OpenAIContentBlockVec>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -336,6 +377,57 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
     }
 }
 
+impl TryFrom<&ContentBlock> for OpenAIContentBlockVec {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &ContentBlock) -> Result<Self, Self::Error> {
+        match cm {
+            ContentBlock::Text(t) => Ok(OpenAIContentBlockVec(vec![
+                OpenAIContentBlock::TextContent(OpenAITextContent {
+                    r#type: OpenAITextContentType::Text,
+                    text: t.clone(),
+                }),
+            ])),
+            ContentBlock::Mixed(m) => {
+                let content: Vec<OpenAIContentBlock> = m
+                    .into_iter()
+                    .map(|mb| match mb {
+                        MixedContent::TextContent(tc) => {
+                            Ok(OpenAIContentBlock::TextContent(OpenAITextContent {
+                                r#type: OpenAITextContentType::Text,
+                                text: tc.text.clone(),
+                            }))
+                        }
+                        MixedContent::ImageContent(ic) => {
+                            Ok(OpenAIContentBlock::ImageContent(OpenAIImageContent {
+                                r#type: OpenAIImageContentType::ImageUrl,
+                                image_url: OpenAIImageUrlContent {
+                                    url: ic.image_url.url.clone(),
+                                },
+                            }))
+                        }
+                    })
+                    .collect::<Result<Vec<OpenAIContentBlock>>>()?;
+
+                Ok(OpenAIContentBlockVec(content))
+            }
+        }
+    }
+}
+
+impl TryFrom<&String> for OpenAIContentBlockVec {
+    type Error = anyhow::Error;
+
+    fn try_from(t: &String) -> Result<Self, Self::Error> {
+        Ok(OpenAIContentBlockVec(vec![
+            OpenAIContentBlock::TextContent(OpenAITextContent {
+                r#type: OpenAITextContentType::Text,
+                text: t.clone(), // `t` is dereferenced here to clone the actual String
+            }),
+        ]))
+    }
+}
+
 impl TryFrom<&ChatMessage> for OpenAIChatMessage {
     type Error = anyhow::Error;
 
@@ -343,7 +435,7 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
         match cm {
             ChatMessage::Assistant(assistant_msg) => Ok(OpenAIChatMessage {
                 content: match &assistant_msg.content {
-                    Some(c) => Some(ContentBlock::Text(c.clone())),
+                    Some(c) => Some(OpenAIContentBlockVec::try_from(c)?),
                     None => None,
                 },
                 name: assistant_msg.name.clone(),
@@ -359,7 +451,7 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                 tool_call_id: None,
             }),
             ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
-                content: Some(ContentBlock::Text(function_msg.content.clone())),
+                content: Some(OpenAIContentBlockVec::try_from(&function_msg.content)?),
                 name: None,
                 // If `function_call_id` is present, `role` must be `function` and should be mapped to `Tool`.
                 // This is to maintain backward compatibility with the original `function` role used for content fragments.
@@ -368,14 +460,14 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                 tool_call_id: Some(function_msg.function_call_id.clone()),
             }),
             ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
-                content: Some(ContentBlock::Text(system_msg.content.clone())),
+                content: Some(OpenAIContentBlockVec::try_from(&system_msg.content)?),
                 name: None,
                 role: OpenAIChatMessageRole::from(&system_msg.role),
                 tool_calls: None,
                 tool_call_id: None,
             }),
             ChatMessage::User(user_msg) => Ok(OpenAIChatMessage {
-                content: Some(user_msg.content.clone()),
+                content: Some(OpenAIContentBlockVec::try_from(&user_msg.content)?),
                 name: user_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&user_msg.role),
                 tool_calls: None,
