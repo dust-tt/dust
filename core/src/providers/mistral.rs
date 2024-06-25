@@ -168,18 +168,24 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 role: MistralChatMessageRole::User,
                 content: match &user_msg.content {
                     ContentBlock::Mixed(m) => {
-                        let result = m.iter().try_fold(String::new(), |mut acc, content| {
-                            match content {
-                                MixedContent::ImageContent(_) => {
-                                    Err(anyhow!("Vision is not supported for Mistral."))
+                        let result = m.iter().enumerate().try_fold(
+                            String::new(),
+                            |mut acc, (i, content)| {
+                                match content {
+                                    MixedContent::ImageContent(_) => {
+                                        Err(anyhow!("Vision is not supported for Mistral."))
+                                    }
+                                    MixedContent::TextContent(tc) => {
+                                        acc.push_str(&tc.text);
+                                        if i != m.len() - 1 {
+                                            // Add newline if it's not the last item.
+                                            acc.push('\n');
+                                        }
+                                        Ok(acc)
+                                    }
                                 }
-                                MixedContent::TextContent(tc) => {
-                                    acc.push_str(&tc.text);
-                                    acc.push('\n'); // Add newline between texts.
-                                    Ok(acc)
-                                }
-                            }
-                        });
+                            },
+                        );
 
                         match result {
                             Ok(text) if !text.is_empty() => Some(text),
