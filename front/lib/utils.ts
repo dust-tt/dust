@@ -15,9 +15,8 @@ export function generateModelSId(): string {
   const u = uuidv4();
   const b = blake3(u, { length: 10 });
   const sId = Buffer.from(b)
-    .map(uniformAlphanumFromByte)
-    // if the byte is 0, we need to replace it with a random character from our charset
-    .map((x) => (x === 0 ? Math.floor(Math.random() * 62) : x))
+    .map(uniformByteToCode62)
+    .map(alphanumFromCode62)
     .toString()
     .slice(0, 10);
   return sId;
@@ -277,28 +276,38 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
 }
 
 /**
- * Given a uniformly random byte, returns a character uniformly distributed from
- * [A-Za-z0-9], or the null character. The set is 62 characters long, but to ensure uniform
- * distribution, we need a round modulo from the 256 possible values of a byte.
- *
- * Therefore, we use a 64 modulo, and if the result is greater than 61, we
- * return a null char.
+ * Given a code in between 0 and 61 included, returns the corresponding
+ * character from [A-Za-z0-9]
  */
-function uniformAlphanumFromByte(byte: number) {
-  const index = byte % 64;
+function alphanumFromCode62(code: number) {
   const CHAR_A = 65;
   const CHAR_a = 97;
   const CHAR_0 = 48;
 
-  if (index < 26) {
-    return CHAR_A + index;
+  if (code < 26) {
+    return CHAR_A + code;
   }
 
-  if (index < 52) {
-    return CHAR_a + index - 26;
+  if (code < 52) {
+    return CHAR_a + code - 26;
   }
-  if (index < 62) {
-    return CHAR_0 + index - 52;
+
+  if (code < 62) {
+    return CHAR_0 + code - 52;
   }
-  return 0;
+
+  throw new Error("Invalid code");
+}
+
+/**
+ * Given a byte, returns a code in between 0 and 61 included with a uniform
+ * distribution guarantee, i.e. if the byte is uniformly drawn over 0-255, the
+ * code will be uniformly drawn over 0-61.
+ *
+ * This is achieved by taking a modulo of 64 instead of 62, so the modulo is unbiased.
+ * Then, if the result is 62 or 63, we draw a random number in [0, 61].
+ */
+function uniformByteToCode62(byte: number): number {
+  const res = byte % 64;
+  return res < 62 ? res : Math.floor(Math.random() * 62);
 }
