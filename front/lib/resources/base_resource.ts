@@ -19,7 +19,10 @@ interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
 export abstract class BaseResource<M extends Model> {
   readonly id: number;
 
-  constructor(readonly model: ModelStatic<M>, blob: Attributes<M>) {
+  constructor(
+    readonly model: ModelStatic<M>,
+    blob: Attributes<M>
+  ) {
     Object.assign(this, blob);
 
     this.id = blob.id;

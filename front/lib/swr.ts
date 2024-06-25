@@ -1123,7 +1123,7 @@ export function useDataSourceNodes(
 
     const [nodesData, parentsData]: [
       GetContentNodesResponseBody,
-      GetContentNodeParentsResponseBody
+      GetContentNodeParentsResponseBody,
     ] = await Promise.all([
       postFetcher([nodesUrl, { internalIds }]),
       postFetcher([parentsUrl, { internalIds }]),
@@ -1136,10 +1136,13 @@ export function useDataSourceNodes(
       );
     }
 
-    const parentsById = parentsData.nodes.reduce((acc, r) => {
-      acc[r.internalId] = new Set(r.parents);
-      return acc;
-    }, {} as Record<string, Set<string>>);
+    const parentsById = parentsData.nodes.reduce(
+      (acc, r) => {
+        acc[r.internalId] = new Set(r.parents);
+        return acc;
+      },
+      {} as Record<string, Set<string>>
+    );
 
     return { contentNodes, parentsById };
   };

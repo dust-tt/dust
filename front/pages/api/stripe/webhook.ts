@@ -215,9 +215,8 @@ async function handler(
                   { transaction: t }
                 );
               }
-              const stripeSubscription = await stripe.subscriptions.retrieve(
-                stripeSubscriptionId
-              );
+              const stripeSubscription =
+                await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
               await Subscription.create(
                 {

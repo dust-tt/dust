@@ -346,7 +346,7 @@ const PickTable = ({
         <Page.Header title="Select a Table" icon={ServerIcon} />
         {isAllSelected && (
           <div className="flex h-full w-full flex-col">
-            <div className=" text-gray-500">
+            <div className="text-gray-500">
               All tables from this DataSource are already selected.
             </div>
           </div>
@@ -354,7 +354,7 @@ const PickTable = ({
 
         {tables.length === 0 && (
           <div className="flex h-full w-full flex-col">
-            <div className=" text-gray-500">
+            <div className="text-gray-500">
               No tables found in this Data Source.
             </div>
           </div>

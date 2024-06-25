@@ -100,8 +100,8 @@ async function handler(
       const viewParam = view
         ? view
         : conversationId
-        ? { conversationId }
-        : "all";
+          ? { conversationId }
+          : "all";
       if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
         return apiError(req, res, {
           status_code: 404,
