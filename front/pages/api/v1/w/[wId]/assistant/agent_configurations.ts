@@ -6,7 +6,6 @@ import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
-
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations:

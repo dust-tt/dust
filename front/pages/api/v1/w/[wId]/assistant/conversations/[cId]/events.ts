@@ -40,7 +40,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: Conversation not found.
  *       405:
  *         description: Method not supported. Only GET is expected.
-*/
+ */
 
 async function handler(
   req: NextApiRequest,

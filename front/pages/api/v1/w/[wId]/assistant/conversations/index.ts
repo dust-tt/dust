@@ -77,7 +77,7 @@ export type PostConversationsResponseBody = {
  *                   - public
  *                   - private
  *                   - unlisted
- *                 default: public 
+ *                 default: public
  *                 example: private
  *     responses:
  *       200:

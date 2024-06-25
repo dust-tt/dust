@@ -4,14 +4,18 @@
     "title": "Dust.tt API Documentation",
     "version": "1.0"
   },
+  "servers": [
+    {
+      "url": "https://dust.tt",
+      "description": "Dust.tt API"
+    }
+  ],
   "paths": {
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
         "summary": "Get the list of assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -49,9 +53,7 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -158,9 +160,7 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -207,9 +207,7 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -256,9 +254,7 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -331,12 +327,7 @@
                       "origin": {
                         "type": "string",
                         "description": "The origin of the message",
-                        "enum": [
-                          "api",
-                          "web",
-                          "slack",
-                          null
-                        ],
+                        "enum": ["api", "web", "slack", null],
                         "default": "api",
                         "example": "api"
                       },
@@ -384,9 +375,7 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -436,11 +425,7 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation",
-                    "enum": [
-                      "public",
-                      "private",
-                      "unlisted"
-                    ],
+                    "enum": ["public", "private", "unlisted"],
                     "default": "public",
                     "example": "private"
                   }
@@ -482,9 +467,7 @@
       "get": {
         "summary": "Get the feature flags for the workspace",
         "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",

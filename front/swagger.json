@@ -6,6 +6,12 @@
     "info": {
       "title": "Dust.tt API Documentation",
       "version": "1.0"
-    }
+    },
+    "servers": [
+      {
+        "url": "https://dust.tt",
+        "description": "Dust.tt API"
+      }
+    ]
   }
 }
