@@ -154,16 +154,7 @@ export const supportedTextFormat = [
 
 export type SupportedTextFormatType = typeof supportedTextFormat[number];
 
-export const supportedImageFormat = [
-  "image/png",
-  "image/jpeg",
-  "image/jpg"
-] as const;
-
-export type SupportedImageFormatType = typeof supportedImageFormat[number];
-
 export const supportedContentFragment = [
-  ...supportedImageFormat,
   ...supportedTextFormat,
   "dust-application/slack"
 ] as const;
@@ -194,11 +185,6 @@ export function isContentFragmentType(
 export function isSupportedContentFormat(format: unknown): format is ContentFragmentContentType {
   return typeof format === 'string' &&
     supportedContentFragment.includes(format as ContentFragmentContentType);
-}
-
-export function isSupportedImageContentFormat(format: unknown): format is SupportedImageFormatType {
-  return typeof format === 'string' &&
-    supportedImageFormat.includes(format as SupportedImageFormatType)
 }
 
 export function isSupportedTextContentFormat(format: unknown): format is SupportedTextFormatType {

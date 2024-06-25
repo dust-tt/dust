@@ -15,9 +15,6 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
     case "text/comma-separated-values":
     case "text/tab-separated-values":
     case "application/pdf":
-    case "image/png":
-    case "image/jpeg":
-    case "image/jpg":
       logoType = "document";
       break;
 

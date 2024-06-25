@@ -232,11 +232,13 @@ export async function storeContentFragmentText({
   conversationId,
   messageId,
   content,
+  contentType,
 }: {
   workspaceId: string;
   conversationId: string;
   messageId: string;
   content: string;
+  contentType: string;
 }): Promise<number | null> {
   if (content === "") {
     return null;
@@ -251,7 +253,7 @@ export async function storeContentFragmentText({
 
   await getPrivateUploadBucket().uploadRawContentToBucket({
     content,
-    contentType: "text/plain",
+    contentType: contentType,
     filePath,
   });
 
@@ -275,4 +277,23 @@ export async function getContentFragmentText({
   });
 
   return getPrivateUploadBucket().fetchFileContent(filePath);
+}
+
+export async function getSignedUrlForContentFragment({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  const fileLocation = fileAttachmentLocation({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "raw",
+  });
+
+  return getPrivateUploadBucket().getSignedUrl(fileLocation.filePath);
 }

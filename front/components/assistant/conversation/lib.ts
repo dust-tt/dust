@@ -1,4 +1,5 @@
 import type {
+  ContentFragmentContentType,
   ContentFragmentType,
   ConversationType,
   ConversationVisibility,
@@ -7,7 +8,9 @@ import type {
   Result,
   UserMessageWithRankType,
   UserType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  isSupportedContentFormat
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -109,7 +112,7 @@ export async function submitMessage({
               title: contentFragment.title,
               content: contentFragment.content,
               url: null,
-              contentType: "file_attachment",
+              contentType: contentFragment.file.type,
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -229,6 +232,34 @@ export async function createConversationWithMessage({
 }): Promise<Result<ConversationType, ConversationErrorType>> {
   const { input, mentions, contentFragments } = messageData;
 
+  const validatedContentFragments: {
+    content: string;
+    title: string;
+    url: null;
+    contentType: ContentFragmentContentType;
+    context: { profilePictureUrl: string | null };
+  }[] = [];
+
+  for (const cf of contentFragments) {
+    if (isSupportedContentFormat(cf.file.type)) {
+      validatedContentFragments.push({
+        content: cf.content,
+        title: cf.title,
+        url: null, // sourceUrl will be set on raw content upload success
+        contentType: cf.file.type,
+        context: {
+          profilePictureUrl: user.image,
+        },
+      });
+    } else {
+      return new Err({
+        type: "message_send_error",
+        title: "Your message could not be sent.",
+        message: "Please try again or contact us.",
+      });
+    }
+  }
+
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
     visibility,
@@ -240,15 +271,7 @@ export async function createConversationWithMessage({
       },
       mentions,
     },
-    contentFragments: contentFragments.map((cf) => ({
-      content: cf.content,
-      title: cf.title,
-      url: null, // sourceUrl will be set on raw content upload success
-      contentType: "file_attachment",
-      context: {
-        profilePictureUrl: user.image,
-      },
-    })),
+    contentFragments: validatedContentFragments,
   };
 
   // Create new conversation and post the initial message at the same time.

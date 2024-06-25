@@ -28,7 +28,9 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  isSupportedTextContentFormat
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -1631,7 +1633,7 @@ export async function postNewContentFragment(
   const messageId = generateModelSId();
 
   const sourceUrl =
-    contentType === "file_attachment"
+    isSupportedTextContentFormat(contentType)
       ? fileAttachmentLocation({
           workspaceId: owner.sId,
           conversationId: conversation.sId,
@@ -1645,6 +1647,7 @@ export async function postNewContentFragment(
     conversationId: conversation.sId,
     messageId,
     content,
+    contentType,
   });
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(

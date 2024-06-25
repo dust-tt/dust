@@ -1,10 +1,13 @@
-import type { Result } from "@dust-tt/types";
+import type {
+  Result} from "@dust-tt/types";
+import {
+  isSupportedTextContentFormat,
+  supportedTextFormat,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.mjs`;
-
-const supportedFileExtensions = [".txt", ".pdf", ".md", ".csv", ".tsv"];
 
 export async function handleFileUploadToText(
   file: File
@@ -13,7 +16,13 @@ export async function handleFileUploadToText(
     const handleFileLoadedText = (e: ProgressEvent<FileReader>) => {
       const content = e.target?.result;
       if (content && typeof content === "string") {
-        return resolve(new Ok({ title: file.name, content }));
+        return resolve(
+          new Ok({
+            title: file.name,
+            content,
+            contentType: file.type,
+          })
+        );
       } else {
         return resolve(
           new Err(
@@ -52,7 +61,13 @@ export async function handleFileUploadToText(
           });
           text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
         }
-        return resolve(new Ok({ title: file.name, content: text }));
+        return resolve(
+          new Ok({
+            title: file.name,
+            content: text,
+            contentType: file.type,
+          })
+        );
       } catch (e) {
         console.error("Failed extracting text from PDF", e);
         const errorMessage =
@@ -68,12 +83,7 @@ export async function handleFileUploadToText(
         const fileReader = new FileReader();
         fileReader.onloadend = handleFileLoadedPDF;
         fileReader.readAsArrayBuffer(file);
-      } else if (
-        isTextualFile(file) ||
-        supportedFileExtensions
-          .map((ext) => file.name.endsWith(ext))
-          .includes(true)
-      ) {
+      } else if (isSupportedTextContentFormat(file.type)) {
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
         fileData.readAsText(file);
@@ -82,7 +92,7 @@ export async function handleFileUploadToText(
           new Err(
             new Error(
               "File type not supported. Supported file types: " +
-                supportedFileExtensions.join(", ")
+                supportedTextFormat.join(", ")
             )
           )
         );
@@ -95,15 +105,4 @@ export async function handleFileUploadToText(
       );
     }
   });
-}
-
-export function isTextualFile(file: File): boolean {
-  return [
-    "text/plain",
-    "text/csv",
-    "text/markdown",
-    "text/tsv",
-    "text/comma-separated-values",
-    "text/tab-separated-values",
-  ].includes(file.type);
 }

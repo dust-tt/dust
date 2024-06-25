@@ -6,7 +6,6 @@ import type {
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import {
   isSupportedContentFormat,
-  isSupportedImageContentFormat,
   supportedContentFragment,
 } from "@dust-tt/types";
 import {
@@ -28,10 +27,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import {
-  handleFileUploadToText,
-  handleImageUpload,
-} from "@app/lib/client/handle_file_upload";
+import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -214,10 +210,7 @@ export function AssistantInputBar({
               });
               return;
             }
-
-            const res = isSupportedImageContentFormat(file)
-              ? await handleImageUpload(file)
-              : await handleFileUploadToText(file);
+            const res = await handleFileUploadToText(file);
 
             if (res.isErr()) {
               sendNotification({

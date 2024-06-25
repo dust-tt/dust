@@ -44,9 +44,6 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
     t.literal("text/comma-separated-values"),
     t.literal("text/tab-separated-values"),
     t.literal("application/pdf"),
-    t.literal("image/png"),
-    t.literal("image/jpeg"),
-    t.literal("image/jpg"),
     t.literal("dust-application/slack")
   ]),
   context: t.union([
