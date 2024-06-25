@@ -187,7 +187,7 @@ MicrosoftNodeModel.init(
     modelName: "microsoft_nodes",
     indexes: [
       { fields: ["connectorId", "nodeId"], unique: true },
-      { fields: ["connectorId", "nodeType"], unique: true },
+      { fields: ["connectorId", "nodeType"], unique: false },
       { fields: ["connectorId", "parentId"], concurrently: true },
     ],
   }
