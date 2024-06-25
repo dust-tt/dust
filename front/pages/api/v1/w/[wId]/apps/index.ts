@@ -9,6 +9,42 @@ export type GetAppsResponseBody = {
   apps: AppType[];
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/apps:
+ *   get:
+ *     summary: List apps
+ *     description: Get all apps of a workspace.
+ *     tags:
+ *       - Apps
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Apps of the workspace
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       500:
+ *         description: Internal Server Error.
+ *       404:
+ *         description: Workspace not found.
+ *       405:
+ *         description: Method not supported.
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<GetAppsResponseBody>>

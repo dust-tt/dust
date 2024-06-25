@@ -9,6 +9,67 @@ import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events:
+ *   get:
+ *     summary: Get events for a message
+ *     description: Get events for a message in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: lastEventId
+ *         description: ID of the last event received
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The events
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: ID of the event
+ *                       type:
+ *                         type: string
+ *                         description: Type of the event
+ *                       data:
+ *                         type: object
+ *                         description: Data of the event
+ */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<void>>

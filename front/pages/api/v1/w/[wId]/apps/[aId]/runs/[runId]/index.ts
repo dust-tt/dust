@@ -17,6 +17,94 @@ export type GetRunResponseBody = {
   run: RunType;
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/apps/{aId}/runs/{runId}:
+ *   get:
+ *     summary: Retrieve an app run
+ *     description: Retrieve a run for an app in the workspace identified by {wId}.
+ *     tags:
+ *       - Apps
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: aId
+ *         required: true
+ *         description: ID of the app
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: runId
+ *         required: true
+ *         description: ID of the run
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The run
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 run:
+ *                   type: object
+ *                   properties:
+ *                     run_id:
+ *                       type: string
+ *                       description: The ID of the run
+ *                       example: 1234
+ *                     app_id:
+ *                       type: string
+ *                       description: The ID of the app
+ *                       example: 1234
+ *                     status:
+ *                       type: object
+ *                       properties:
+ *                         run:
+ *                           type: string
+ *                           description: The status of the run
+ *                           example: succeeded
+ *                         build:
+ *                           type: string
+ *                           description: The status of the build
+ *                           example: succeeded
+ *                     results:
+ *                       type: object
+ *                       description: The results of the run
+ *                       example: {}
+ *                     specification_hash:
+ *                       type: string
+ *                       description: The hash of the app specification
+ *                       example: 1234
+ *                     traces:
+ *                       type: array
+ *                       items:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             timestamp:
+ *                               type: number
+ *                               description: The timestamp of the trace
+ *                               example: 1234567890
+ *                             trace:
+ *                               type: object
+ *                               description: The trace
+ *                               example: {}
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<GetRunResponseBody>>
