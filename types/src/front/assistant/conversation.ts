@@ -150,7 +150,9 @@ export const supportedTextFormat = [
   "text/comma-separated-values",
   "text/tab-separated-values",
   "application/pdf",
-]
+] as const
+
+export type SupportedTextFormatType = typeof supportedTextFormat[number];
 
 export const supportedImageFormat = [
   "image/png",
@@ -158,13 +160,15 @@ export const supportedImageFormat = [
   "image/jpg"
 ] as const;
 
+export type SupportedImageFormatType = typeof supportedImageFormat[number];
+
 export const supportedContentFragment = [
   ...supportedImageFormat,
   ...supportedTextFormat,
   "dust-application/slack"
-];
+] as const;
 
-export type ContentFragmentContentType = typeof supportedContentFragment;
+export type ContentFragmentContentType = typeof supportedContentFragment[number];
 
 export type ContentFragmentType = {
   id: ModelId;
@@ -187,6 +191,20 @@ export function isContentFragmentType(
   return arg.type === "content_fragment";
 }
 
+export function isSupportedContentFormat(format: unknown): format is ContentFragmentContentType {
+  return typeof format === 'string' &&
+    supportedContentFragment.includes(format as ContentFragmentContentType);
+}
+
+export function isSupportedImageContentFormat(format: unknown): format is SupportedImageFormatType {
+  return typeof format === 'string' &&
+    supportedImageFormat.includes(format as SupportedImageFormatType)
+}
+
+export function isSupportedTextContentFormat(format: unknown): format is SupportedTextFormatType {
+  return typeof format === 'string' &&
+    supportedTextFormat.includes(format as SupportedTextFormatType)
+}
 /**
  * Conversations
  */
