@@ -9,7 +9,6 @@ export const InternalPostMessagesRequestBodySchema = t.type({
   }),
 });
 
-
 export const InternalPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
@@ -22,7 +21,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.type({
     t.literal("text/comma-separated-values"),
     t.literal("text/tab-separated-values"),
     t.literal("application/pdf"),
-    t.literal("dust-application/slack")
+    t.literal("dust-application/slack"),
   ]),
   context: t.type({
     profilePictureUrl: t.union([t.string, t.null]),

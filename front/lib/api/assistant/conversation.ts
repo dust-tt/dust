@@ -28,10 +28,9 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  isSupportedTextContentFormat
+  WorkspaceType,
 } from "@dust-tt/types";
+import { isSupportedTextContentFormat } from "@dust-tt/types";
 import {
   assertNever,
   getSmallWhitelistedModel,
@@ -1632,15 +1631,14 @@ export async function postNewContentFragment(
 
   const messageId = generateModelSId();
 
-  const sourceUrl =
-    isSupportedTextContentFormat(contentType)
-      ? fileAttachmentLocation({
-          workspaceId: owner.sId,
-          conversationId: conversation.sId,
-          messageId,
-          contentFormat: "raw",
-        }).downloadUrl
-      : url;
+  const sourceUrl = isSupportedTextContentFormat(contentType)
+    ? fileAttachmentLocation({
+        workspaceId: owner.sId,
+        conversationId: conversation.sId,
+        messageId,
+        contentFormat: "raw",
+      }).downloadUrl
+    : url;
 
   const textBytes = await storeContentFragmentText({
     workspaceId: owner.sId,

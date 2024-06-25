@@ -8,7 +8,8 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
-  UserMessageType} from "@dust-tt/types";
+  UserMessageType,
+} from "@dust-tt/types";
 import {
   assertNever,
   Err,

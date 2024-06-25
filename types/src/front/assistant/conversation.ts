@@ -150,16 +150,17 @@ export const supportedTextFormat = [
   "text/comma-separated-values",
   "text/tab-separated-values",
   "application/pdf",
-] as const
+] as const;
 
-export type SupportedTextFormatType = typeof supportedTextFormat[number];
+export type SupportedTextFormatType = (typeof supportedTextFormat)[number];
 
 export const supportedContentFragment = [
   ...supportedTextFormat,
-  "dust-application/slack"
+  "dust-application/slack",
 ] as const;
 
-export type ContentFragmentContentType = typeof supportedContentFragment[number];
+export type ContentFragmentContentType =
+  (typeof supportedContentFragment)[number];
 
 export type ContentFragmentType = {
   id: ModelId;
@@ -182,14 +183,22 @@ export function isContentFragmentType(
   return arg.type === "content_fragment";
 }
 
-export function isSupportedContentFormat(format: unknown): format is ContentFragmentContentType {
-  return typeof format === 'string' &&
-    supportedContentFragment.includes(format as ContentFragmentContentType);
+export function isSupportedContentFormat(
+  format: unknown
+): format is ContentFragmentContentType {
+  return (
+    typeof format === "string" &&
+    supportedContentFragment.includes(format as ContentFragmentContentType)
+  );
 }
 
-export function isSupportedTextContentFormat(format: unknown): format is SupportedTextFormatType {
-  return typeof format === 'string' &&
+export function isSupportedTextContentFormat(
+  format: unknown
+): format is SupportedTextFormatType {
+  return (
+    typeof format === "string" &&
     supportedTextFormat.includes(format as SupportedTextFormatType)
+  );
 }
 /**
  * Conversations
