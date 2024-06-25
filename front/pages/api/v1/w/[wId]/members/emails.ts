@@ -46,7 +46,7 @@ export type ListMemberEmailsResponseBody = {
  *               properties:
  *                 emails:
  *                   type: array
- *                   items: 
+ *                   items:
  *                     type: string
  */
 

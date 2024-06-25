@@ -15,9 +15,7 @@
       "get": {
         "summary": "Retrieve an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
-        "tags": [
-          "Apps"
-        ],
+        "tags": ["Apps"],
         "parameters": [
           {
             "in": "path",
@@ -137,9 +135,7 @@
       "post": {
         "summary": "Run an app",
         "description": "Run an app of a workspace.",
-        "tags": [
-          "Apps"
-        ],
+        "tags": ["Apps"],
         "parameters": [
           {
             "in": "path",
@@ -195,9 +191,7 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps of a workspace.",
-        "tags": [
-          "Apps"
-        ],
+        "tags": ["Apps"],
         "parameters": [
           {
             "in": "path",
@@ -291,9 +285,7 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -400,9 +392,7 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -449,9 +439,7 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -498,9 +486,7 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -587,9 +573,7 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -662,12 +646,7 @@
                       "origin": {
                         "type": "string",
                         "description": "The origin of the message",
-                        "enum": [
-                          "api",
-                          "web",
-                          "slack",
-                          null
-                        ],
+                        "enum": ["api", "web", "slack", null],
                         "default": "api",
                         "example": "api"
                       },
@@ -715,9 +694,7 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -804,11 +781,7 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation",
-                    "enum": [
-                      "public",
-                      "private",
-                      "unlisted"
-                    ],
+                    "enum": ["public", "private", "unlisted"],
                     "default": "public",
                     "example": "private"
                   }
@@ -848,13 +821,203 @@
         }
       }
     },
+    "/api/v1/w/{wId}/data_sources/{name}/search": {
+      "get": {
+        "summary": "Search the data source",
+        "description": "Search the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "description": "The search query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top_k",
+            "required": true,
+            "description": "The number of results to return",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "full_text",
+            "required": true,
+            "description": "Whether to perform a full text search",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_document_tokens",
+            "required": false,
+            "description": "The number of tokens in the target document",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestamp_gt",
+            "required": false,
+            "description": "The timestamp to filter by",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestamp_lt",
+            "required": false,
+            "description": "The timestamp to filter by",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tags_in",
+            "required": false,
+            "description": "The tags to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tags_not",
+            "required": false,
+            "description": "The tags to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parents_in",
+            "required": false,
+            "description": "The parents to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parents_not",
+            "required": false,
+            "description": "The parents to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "ID of the document"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Title of the document"
+                          },
+                          "content": {
+                            "type": "string",
+                            "description": "Content of the document"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Tags of the document"
+                          },
+                          "parents": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Parents of the document"
+                          },
+                          "timestamp": {
+                            "type": "number",
+                            "description": "Timestamp of the document"
+                          },
+                          "data": {
+                            "type": "object",
+                            "description": "Data of the document"
+                          },
+                          "score": {
+                            "type": "number",
+                            "description": "Score of the document"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request error"
+          },
+          "405": {
+            "description": "Method not supported error"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/feature_flags": {
       "get": {
-        "summary": "Get the feature flags for the workspace",
+        "summary": "List feature flags",
         "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -892,9 +1055,7 @@
       "get": {
         "summary": "List member emails",
         "description": "List the emails of all members in the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",

@@ -16,7 +16,7 @@ export type GetDataSourcesResponseBody = {
  *     summary: Get data sources
  *     description: Get data sources in the workspace identified by {wId}.
  *     tags:
- *       - Data sources
+ *       - Datasources
  *     parameters:
  *       - in: path
  *         name: wId

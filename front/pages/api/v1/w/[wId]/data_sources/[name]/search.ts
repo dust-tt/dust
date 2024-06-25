@@ -56,7 +56,7 @@ type DatasourceSearchResponseBody = {
  *     summary: Search the data source
  *     description: Search the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
- *       - Data Sources
+ *       - Datasources
  *     parameters:
  *       - in: path
  *         name: wId
@@ -125,11 +125,11 @@ type DatasourceSearchResponseBody = {
  *         schema:
  *           type: string
  *       - in: query
- *        name: parents_not
- *        required: false
- *        description: The parents to filter by
- *        schema:
- *          type: string
+ *         name: parents_not
+ *         required: false
+ *         description: The parents to filter by
+ *         schema:
+ *           type: string
  *       - in: header
  *         name: Authorization
  *         required: true
