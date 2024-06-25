@@ -6,6 +6,7 @@ import type {
   MentionType,
   UserType,
 } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import React, {
   useCallback,
@@ -15,7 +16,6 @@ import React, {
   useState,
 } from "react";
 
-import type { UploadedContentFragment } from "@app/components/assistant/conversation/lib";
 import {
   createConversationWithMessage,
   submitMessage,

@@ -5,11 +5,11 @@ import type {
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
-  SupportedContentFragmentType,
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
@@ -39,10 +39,6 @@ export type ContentFragmentInput = {
   title: string;
   content: string;
   file: File;
-};
-
-export type UploadedContentFragment = ContentFragmentInput & {
-  contentType: SupportedContentFragmentType;
 };
 
 export function createPlaceholderUserMessage({

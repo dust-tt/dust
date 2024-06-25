@@ -4,6 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import { isSupportedContentFragmentType } from "@dust-tt/types";
 import {
   useCallback,
@@ -21,7 +22,6 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import type { UploadedContentFragment } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";

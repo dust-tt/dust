@@ -9,6 +9,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { cloneDeep } from "lodash";
 import { useRouter } from "next/router";
@@ -27,10 +28,7 @@ import ConversationViewer from "@app/components/assistant/conversation/Conversat
 import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import type {
-  ContentFragmentInput,
-  UploadedContentFragment,
-} from "@app/components/assistant/conversation/lib";
+import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
   createConversationWithMessage,
   createPlaceholderUserMessage,

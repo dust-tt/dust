@@ -178,6 +178,13 @@ export type ContentFragmentType = {
   context: ContentFragmentContextType;
 };
 
+export type UploadedContentFragment = {
+  title: string;
+  content: string;
+  file: File;
+  contentType: SupportedContentFragmentType;
+};
+
 export function isContentFragmentType(
   arg: MessageType
 ): arg is ContentFragmentType {
