@@ -222,11 +222,17 @@ export async function batchRenderAgentMessages(
       // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
       configuration: agentConfiguration,
     } satisfies AgentMessageType;
-    return { m, rank: message.rank, version: message.version };
+    return {
+      m,
+      rank: message.rank,
+      version: message.version,
+    };
   });
 }
 
 export async function batchRenderContentFragment(
+  auth: Authenticator,
+  conversationId: string,
   messages: Message[]
 ): Promise<{ m: ContentFragmentType; rank: number; version: number }[]> {
   const messagesWithContentFragment = messages.filter(
@@ -242,7 +248,7 @@ export async function batchRenderContentFragment(
     const contentFragment = ContentFragmentResource.fromMessage(message);
 
     return {
-      m: contentFragment.renderFromMessage(message),
+      m: contentFragment.renderFromMessage({ auth, conversationId, message }),
       rank: message.rank,
       version: message.version,
     };
@@ -336,12 +342,13 @@ async function fetchMessagesForPage(
 
 async function batchRenderMessages(
   auth: Authenticator,
+  conversationId: string,
   messages: Message[]
 ): Promise<MessageWithRankType[]> {
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
-    batchRenderContentFragment(messages),
+    batchRenderContentFragment(auth, conversationId, messages),
   ]);
   const render = [...userMessages, ...agentMessages, ...contentFragments].sort(
     (a, b) => a.rank - b.rank
@@ -382,11 +389,68 @@ export async function fetchConversationMessages(
     paginationParams
   );
 
-  const renderedMessages = await batchRenderMessages(auth, messages);
+  const renderedMessages = await batchRenderMessages(
+    auth,
+    conversationId,
+    messages
+  );
 
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,
     messages: renderedMessages,
   });
+}
+
+export async function getAgentMessageRunIds(
+  auth: Authenticator,
+  {
+    conversationId,
+    agentMessageId,
+  }: {
+    conversationId: string;
+    agentMessageId: string;
+  }
+) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const conversation = await Conversation.findOne({
+    where: {
+      sId: conversationId,
+      workspaceId: owner.id,
+    },
+  });
+
+  if (!conversation) {
+    return null;
+  }
+
+  const message = await Message.findOne({
+    where: {
+      conversationId: conversation.id,
+      sId: agentMessageId,
+    },
+    order: [
+      ["rank", "ASC"],
+      ["version", "ASC"],
+    ],
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: false,
+      },
+    ],
+  });
+
+  if (!message || !message.agentMessage) {
+    return null;
+  }
+
+  const messages = await batchRenderAgentMessages(auth, [message]);
+
+  const agentMessageRunIds = messages[0].runIds;
 }
