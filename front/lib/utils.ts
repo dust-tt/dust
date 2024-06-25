@@ -271,12 +271,12 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
 }
 
 /**
- * Given a byte, returns a character from the set [A-Za-z0-9_-].
+ * Given a byte, returns a character from the set [A-Za-z0-9].
  */
 function alphanumFromByte(byte: number) {
   // 64 possibilities enable a round modulo on the bytes, guaranteeing uniformity
   // (otherwise, the modulo would be biased towards the first possibilities)
-  const index = byte % 64;
+  const index = byte % 62;
   const CHAR_A = 65;
   const CHAR_a = 97;
   const CHAR_0 = 48;
@@ -288,8 +288,5 @@ function alphanumFromByte(byte: number) {
   if (index < 52) {
     return CHAR_a + index - 26;
   }
-  if (index < 62) {
-    return CHAR_0 + index - 52;
-  }
-  return index === 62 ? 45 : 95;
+  return CHAR_0 + index - 52;
 }
