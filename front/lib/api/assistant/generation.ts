@@ -17,12 +17,13 @@ import {
   isContentFragmentType,
   isRetrievalConfiguration,
   isUserMessageType,
+  isWebsearchConfiguration,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
-import { retrievalMetaPromptMutiActions } from "@app/lib/api/assistant/actions/retrieval";
+import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
@@ -370,11 +371,12 @@ export async function constructPromptMultiActions(
   // ADDITIONAL INSTRUCTIONS section
   let additionalInstructions = "";
 
-  const hasRetrievalAction = agentConfiguration.actions.some((action) =>
-    isRetrievalConfiguration(action)
+  const canCiteDocuments = agentConfiguration.actions.some(
+    (action) =>
+      isRetrievalConfiguration(action) || isWebsearchConfiguration(action)
   );
-  if (hasRetrievalAction) {
-    additionalInstructions += `${retrievalMetaPromptMutiActions()}\n`;
+  if (canCiteDocuments) {
+    additionalInstructions += `${citationMetaPrompt()}\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;

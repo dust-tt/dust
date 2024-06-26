@@ -23,6 +23,8 @@ import type {
   LightAgentConfigurationType,
   RetrievalActionType,
   UserType,
+  WebsearchActionType,
+  WebsearchResultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
@@ -30,6 +32,7 @@ import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import {
   assertNever,
   isRetrievalActionType,
+  isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
 import Link from "next/link";
@@ -86,11 +89,11 @@ export function AgentMessage({
     useState<boolean>(false);
 
   const [references, setReferences] = useState<{
-    [key: string]: RetrievalDocumentType;
+    [key: string]: RetrievalDocumentType | WebsearchResultType;
   }>({});
 
   const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: RetrievalDocumentType }[]
+    { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
   >([]);
 
   const shouldStream = (() => {
@@ -386,7 +389,7 @@ export function AgentMessage({
         ];
 
   function updateActiveReferences(
-    document: RetrievalDocumentType,
+    document: RetrievalDocumentType | WebsearchResultType,
     index: number
   ) {
     const existingIndex = activeReferences.find((r) => r.index === index);
@@ -398,24 +401,40 @@ export function AgentMessage({
   const [lastHoveredReference, setLastHoveredReference] = useState<
     number | null
   >(null);
+
   useEffect(() => {
+    // Retrieval actions
     const retrievalActionsWithDocs = agentMessageToRender.actions
       .filter((a) => isRetrievalActionType(a) && a.documents)
       .sort((a, b) => a.id - b.id) as RetrievalActionType[];
-
     const allDocs = removeNulls(
       retrievalActionsWithDocs.map((a) => a.documents).flat()
     );
-
-    setReferences(
-      allDocs.reduce(
-        (acc, d) => {
-          acc[d.reference] = d;
-          return acc;
-        },
-        {} as { [key: string]: RetrievalDocumentType }
-      )
+    const allDocsReferences = allDocs.reduce(
+      (acc, d) => {
+        acc[d.reference] = d;
+        return acc;
+      },
+      {} as { [key: string]: RetrievalDocumentType }
     );
+
+    // Websearch actions
+    const websearchActionsWithResults = agentMessageToRender.actions
+      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
+      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
+    const allWebResults = removeNulls(
+      websearchActionsWithResults.map((a) => a.output?.results).flat()
+    );
+    const allWebReferences = allWebResults.reduce(
+      (acc, l) => {
+        acc[l.reference] = l;
+        return acc;
+      },
+      {} as { [key: string]: WebsearchResultType }
+    );
+
+    // Merge all references
+    setReferences({ ...allDocsReferences, ...allWebReferences });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,
@@ -473,7 +492,7 @@ export function AgentMessage({
     lastTokenClassification,
   }: {
     agentMessage: AgentMessageType;
-    references: { [key: string]: RetrievalDocumentType };
+    references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
@@ -594,7 +613,10 @@ function Citations({
   activeReferences,
   lastHoveredReference,
 }: {
-  activeReferences: { index: number; document: RetrievalDocumentType }[];
+  activeReferences: {
+    index: number;
+    document: RetrievalDocumentType | WebsearchResultType;
+  }[];
   lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
@@ -604,7 +626,16 @@ function Citations({
       // ref={citationContainer}
     >
       {activeReferences.map(({ document, index }) => {
-        const [documentCitation] = makeDocumentCitations([document]);
+        const [documentCitation] =
+          "link" in document
+            ? [
+                {
+                  href: document.link,
+                  title: document.title,
+                  type: "document" as const,
+                },
+              ]
+            : makeDocumentCitations([document]);
 
         return (
           <Citation
