@@ -21,7 +21,7 @@ export type GetRunResponseBody = {
  * @swagger
  * /api/v1/w/{wId}/apps/{aId}/runs/{runId}:
  *   get:
- *     summary: Retrieve an app run
+ *     summary: Get an app run
  *     description: Retrieve a run for an app in the workspace identified by {wId}.
  *     tags:
  *       - Apps

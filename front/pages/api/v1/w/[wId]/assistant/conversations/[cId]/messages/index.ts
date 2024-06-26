@@ -99,8 +99,11 @@ export type PostMessagesResponseBody = {
  *                   mentions:
  *                     type: array
  *                     items:
- *                       type: array
+ *                       type: object
  *                       description: The mentions of the message, where configurationId is the ID of the assistant mentioned.
+ *                       properties:
+ *                        configurationId:
+ *                         type: string
  *                       example: [{ "configurationId":"dust" }]
  *     responses:
  *       200:
