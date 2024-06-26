@@ -38,6 +38,10 @@ interface BrowseActionBlob {
   step: number;
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((t) => typeof t === "string");
+}
+
 export class BrowseAction extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly urls: string[];
@@ -145,9 +149,9 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
 
     const { actionConfiguration } = this;
 
-    const urls = rawInputs.urls as string[];
+    const urls = rawInputs.urls;
 
-    if (urls.length === 0) {
+    if (!isStringArray(urls) || urls.length === 0) {
       yield {
         type: "browse_error",
         created: Date.now(),
