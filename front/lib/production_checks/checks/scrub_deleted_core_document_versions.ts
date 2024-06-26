@@ -129,19 +129,21 @@ async function deleteFilesFromFolder(
       return withRetries(deleteFile)({ file: f });
     });
 
-  // Remove document_id.txt if all other files are deleted
-  const documentIdFile = files.find(
-    (f) => f.name === `${path}/document_id.txt`
-  );
+  if (filename) {
+    // Remove document_id.txt if all other files are deleted
+    const documentIdFile = files.find(
+      (f) => f.name === `${path}/document_id.txt`
+    );
 
-  if (
-    documentIdFile &&
-    files
-      .filter((f) => f !== documentIdFile)
-      .map((file) => file.name)
-      .every((f) => seen.has(f))
-  ) {
-    deletePromises.push(withRetries(deleteFile)({ file: documentIdFile }));
+    if (
+      documentIdFile &&
+      files
+        .filter((f) => f !== documentIdFile)
+        .map((file) => file.name)
+        .every((f) => seen.has(f))
+    ) {
+      deletePromises.push(withRetries(deleteFile)({ file: documentIdFile }));
+    }
   }
 
   await Promise.all(deletePromises);
