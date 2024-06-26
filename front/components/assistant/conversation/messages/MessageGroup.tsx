@@ -45,6 +45,7 @@ export default function MessageGroup({
 
   return (
     <div
+      className={isLastMessage ? "last-message-group" : ""}
       ref={isLastMessage ? lastMessageRef : undefined}
       style={{ minHeight: dynamicMinHeight }}
     >

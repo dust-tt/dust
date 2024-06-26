@@ -19,7 +19,7 @@ import React from "react";
 import { useInView } from "react-intersection-observer";
 
 import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import MessageGroup from "@app/components/assistant/conversation/messages/MessageGroup";
 import MessageItem from "@app/components/assistant/conversation/messages/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -86,15 +86,11 @@ const ConversationViewer = React.forwardRef<
   },
   ref
 ) {
-  const {
-    conversation,
-    isConversationError,
-    isConversationLoading,
-    mutateConversation,
-  } = useConversation({
-    conversationId,
-    workspaceId: owner.sId,
-  });
+  const { isConversationError, isConversationLoading, mutateConversation } =
+    useConversation({
+      conversationId,
+      workspaceId: owner.sId,
+    });
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -139,14 +135,6 @@ const ConversationViewer = React.forwardRef<
 
     // If latest message Id has changed, scroll to bottom of conversation.
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
-      const mainTag = document.getElementById(
-        CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-      );
-
-      if (mainTag) {
-        mainTag.scrollTo(0, mainTag.scrollHeight);
-      }
-
       latestMessageIdRef.current = lastestMessageId;
     }
   }, [isInModal, latestPage]);
@@ -360,6 +348,38 @@ const ConversationViewer = React.forwardRef<
   const eventIds = useRef<string[]>([]);
 
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
+  const typedGroupedMessages: MessageWithContentFragmentsType[][][] =
+    groupMessagesByType(groupedMessages);
+
+  useEffect(() => {
+    const setupObserver = () => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.target instanceof HTMLElement) {
+              const target = entry.target;
+              // If the entry is not intersecting, set minHeight to 0px.
+              // Otherwise, leave minHeight unchanged.
+              if (!entry.isIntersecting) {
+                target.style.minHeight = "0px";
+              }
+            }
+          });
+        },
+        { threshold: 0 } // as soon as 1 pixel is visible it will intersect
+      );
+
+      const element = document.querySelector(".last-message-group");
+      if (element) {
+        observer.observe(element);
+        return () => {
+          observer.unobserve(element);
+        };
+      }
+      return () => observer.disconnect();
+    };
+    setupObserver();
+  }, [typedGroupedMessages]);
 
   return (
     <div
@@ -384,31 +404,43 @@ const ConversationViewer = React.forwardRef<
           <Spinner variant="color" size="xs" />
         </div>
       )}
-
-      {conversation &&
-        groupedMessages.map((group) => {
-          return group.map((message) => {
-            return (
-              <MessageItem
-                key={`message-${message.sId}`}
-                conversationId={conversation.sId}
-                hideReactions={hideReactions}
-                isInModal={isInModal}
-                message={message}
-                owner={owner}
-                reactions={reactions}
-                ref={
-                  message.sId === prevFirstMessageId
-                    ? prevFirstMessageRef
-                    : undefined
-                }
-                user={user}
-                isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-                latestMentions={latestMentions}
-              />
-            );
-          });
-        })}
+      {typedGroupedMessages.map((typedGroup, index) => {
+        const isLastGroup = index === typedGroupedMessages.length - 1;
+        return (
+          <MessageGroup
+            key={`typed-group-${index}`}
+            messages={typedGroup}
+            isLastMessage={isLastGroup}
+          >
+            {typedGroup &&
+              typedGroup.map((group) => {
+                return group.map((message) => {
+                  return (
+                    <MessageItem
+                      key={`message-${message.sId}`}
+                      conversationId={conversationId}
+                      hideReactions={hideReactions}
+                      isInModal={isInModal}
+                      message={message}
+                      owner={owner}
+                      reactions={reactions}
+                      ref={
+                        message.sId === prevFirstMessageId
+                          ? prevFirstMessageRef
+                          : undefined
+                      }
+                      user={user}
+                      isLastMessage={
+                        latestPage?.messages.at(-1)?.sId === message.sId
+                      }
+                      latestMentions={latestMentions}
+                    />
+                  );
+                });
+              })}
+          </MessageGroup>
+        );
+      })}
     </div>
   );
 });
@@ -449,3 +481,29 @@ const groupMessages = (
 
   return groups;
 };
+
+function groupMessagesByType(
+  groupedMessages: MessageWithContentFragmentsType[][]
+): MessageWithContentFragmentsType[][][] {
+  return groupedMessages.reduce<MessageWithContentFragmentsType[][][]>(
+    (typedGroupsAcc, message, index) => {
+      const lastTypedGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
+      if (
+        !typedGroupsAcc.length ||
+        (lastTypedGroup.length && message[0].type !== lastTypedGroup[0][0].type)
+      ) {
+        typedGroupsAcc.push([message]);
+      } else {
+        lastTypedGroup.push(message);
+      }
+      if (
+        index === groupedMessages.length - 1 &&
+        message[0].type === "user_message"
+      ) {
+        typedGroupsAcc.push([]);
+      }
+      return typedGroupsAcc;
+    },
+    []
+  );
+}
