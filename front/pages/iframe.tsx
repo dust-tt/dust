@@ -188,7 +188,7 @@ function Iframe({ code }: { code: string }) {
       a.innerHTML = "Click here to download" + browserFile.name;
 
       // Programmatically click the anchor element to trigger the download
-      // document.getElementById('result').appendChild(a);
+      document.getElementById("result").appendChild(a);
     }
   }
 
@@ -236,6 +236,7 @@ function Iframe({ code }: { code: string }) {
       </head>
       <body>
         <h3>Code execution block</h3>
+        <div id="result"></div>
         <div id="mainview"></div>
         <div id="error"></div>
         <script
@@ -412,7 +413,7 @@ export default function Home() {
                 <div style={{ border: "1px solid red" }}>
                   <iframe
                     ref={iframeRef}
-                    sandbox="allow-scripts"
+                    sandbox="allow-scripts allow-downloads"
                     width={700}
                     height={700}
                     style={{

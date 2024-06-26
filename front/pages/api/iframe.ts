@@ -33,7 +33,7 @@ async function generateCode({
       workspaceId: "0ec9852c2f",
       appId: "L-3r-eQ0d9",
       appHash:
-        "7eff7dd3add34020e74423f08b3388daed2db0318cc4f6e7c4ba92c457142d64",
+        "a892dc8adf1ae6e5ea76fefaa87dbda4f10d9a7f36a94bd6a251c21ed842bc24",
     },
     {
       MODEL: {
