@@ -244,11 +244,12 @@ export function RenderMessageMarkdown({
           <MentionBlock
             agentConfiguration={agentConfiguration}
             agentName={agentName}
+            isCopying={isCopying}
           />
         );
       },
     }),
-    [agentConfigurations, isStreaming]
+    [agentConfigurations, isStreaming, isCopying]
   );
 
   const markdownPlugins = useMemo(
@@ -256,8 +257,18 @@ export function RenderMessageMarkdown({
     []
   );
 
+  // used to avoid copying mention tooltip, see MentionBlock below
+  const [isCopying, setIsCopying] = useState(false);
+
   return (
-    <div className={isStreaming ? "blinking-cursor" : ""}>
+    <div
+      className={isStreaming ? "blinking-cursor" : ""}
+      onCopyCapture={() => {
+        // onCopycapture occurs before the copy
+        setIsCopying(true);
+        setTimeout(() => setIsCopying(false), 200);
+      }}
+    >
       <CitationsContext.Provider
         value={
           citationsContext || {
@@ -284,22 +295,30 @@ export function RenderMessageMarkdown({
 function MentionBlock({
   agentName,
   agentConfiguration,
+  isCopying,
 }: {
   agentName: string;
   agentConfiguration?: LightAgentConfigurationType;
+  isCopying: boolean;
 }) {
   const statusText =
     !agentConfiguration || agentConfiguration?.status === "archived"
       ? "(This assistant was deleted)"
       : agentConfiguration?.status === "active"
-        ? ""
-        : "(This assistant is either deactivated or being tested)";
+      ? ""
+      : "(This assistant is either deactivated or being tested)";
+
   const tooltipLabel = agentConfiguration?.description || "" + " " + statusText;
   return (
+    // hide tooltip that shows the description when copying, so it doesn't get copied
     <span className="inline-block cursor-default font-medium text-brand">
-      <Tooltip label={tooltipLabel} position="below">
-        @{agentName}
-      </Tooltip>
+      {isCopying ? (
+        <>@{agentName}</>
+      ) : (
+        <Tooltip label={tooltipLabel} position="below">
+          @{agentName}
+        </Tooltip>
+      )}
     </span>
   );
 }
