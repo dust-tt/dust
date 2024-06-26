@@ -1,10 +1,6 @@
-import { SlackConfigurationType } from "../connectors/slack";
 import { WebCrawlerConfigurationType } from "../connectors/webcrawler";
 
-export type ConnectorConfiguration =
-  | WebCrawlerConfigurationType
-  | SlackConfigurationType
-  | null;
+export type ConnectorConfiguration = WebCrawlerConfigurationType | null;
 
 export type ConnectorConfigurations = {
   webcrawler: WebCrawlerConfigurationType;
