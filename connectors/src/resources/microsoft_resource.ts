@@ -89,6 +89,13 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
 
     return new Ok(undefined);
   }
+
+  toJSON() {
+    return {
+      id: this.id,
+      connectorId: this.connectorId,
+    };
+  }
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -160,5 +167,14 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      nodeType: this.nodeType,
+      nodeId: this.nodeId,
+      connectorId: this.connectorId,
+    };
   }
 }

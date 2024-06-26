@@ -53,4 +53,6 @@ export abstract class BaseResource<M extends Model> {
       },
     });
   }
+
+  abstract toJSON(): unknown;
 }

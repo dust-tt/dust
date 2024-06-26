@@ -253,7 +253,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   toJSON(): SlackConfigurationType {
     return {
       botEnabled: this.botEnabled,
-      whitelistedDomains: this.whitelistedDomains,
+      whitelistedDomains: this.whitelistedDomains?.map((d) => d),
       autoReadChannelPattern: this.autoReadChannelPattern,
     };
   }
