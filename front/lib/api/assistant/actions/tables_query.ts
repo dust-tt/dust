@@ -23,10 +23,14 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+
+const TABLES_QUERY_MIN_TOKEN = 64_000;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -240,6 +244,65 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       }),
     };
 
+    // Render conversation for the action.
+    const supportedModel = getSupportedModelConfig(agentConfiguration.model);
+    if (!supportedModel) {
+      yield {
+        type: "tables_query_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tables_query_error",
+          message: `Error running TablesQuery app: model not supported.`,
+        },
+      };
+
+      throw new Error("Unreachable: Supported model not found.");
+    }
+
+    const allowedTokenCount =
+      supportedModel.contextSize - TABLES_QUERY_MIN_TOKEN;
+    if (allowedTokenCount < 4096) {
+      yield {
+        type: "tables_query_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tables_query_error",
+          message: `Error running TablesQuery app: model context too small.`,
+        },
+      };
+
+      throw new Error(
+        `Unreachable: Model context too small. (model=${supportedModel.modelId}, provider=${supportedModel.providerId}, contextSize=${supportedModel.contextSize})`
+      );
+    }
+
+    const renderedConversationRes =
+      await renderConversationForModelMultiActions({
+        conversation,
+        model: agentConfiguration.model,
+        prompt: agentConfiguration.instructions ?? "",
+        allowedTokenCount,
+      });
+    if (renderedConversationRes.isErr()) {
+      yield {
+        type: "tables_query_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tables_query_error",
+          message: `Error running TablesQuery app: ${renderedConversationRes.error.message}`,
+        },
+      };
+      return;
+    }
+
+    const renderedConversation = renderedConversationRes.value;
+
     // Generating configuration
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-query-tables"].config
@@ -273,6 +336,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       [
         {
           question,
+          conversation: renderedConversation.modelConversation,
           instructions: agentConfiguration.instructions,
         },
       ],
