@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import {
@@ -6,24 +7,29 @@ import {
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import type {
+  ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export class ConfluenceConnectorStrategy implements ConnectorProviderStrategy {
+export class ConfluenceConnectorStrategy
+  implements ConnectorProviderStrategy<"confluence">
+{
   async makeNew(
-    connector: ConnectorResource,
+    connectorId: ModelId,
     blob: WithCreationAttributes<ConfluenceConfiguration>,
     transaction: Transaction
-  ): Promise<void> {
+  ): Promise<ConnectorProviderModelResourceMapping["confluence"] | null> {
     await ConfluenceConfiguration.create(
       {
         ...blob,
-        connectorId: connector.id,
+        connectorId,
       },
       { transaction }
     );
+
+    return null;
   }
 
   async delete(
@@ -50,5 +56,11 @@ export class ConfluenceConnectorStrategy implements ConnectorProviderStrategy {
         transaction,
       }),
     ]);
+  }
+
+  async fetchConfigurationsbyConnectorIds(): Promise<
+    Record<ModelId, ConnectorProviderModelResourceMapping["confluence"]>
+  > {
+    return {};
   }
 }

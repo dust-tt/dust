@@ -4,7 +4,7 @@ import { renderWebcrawlerConfiguration } from "@connectors/connectors/webcrawler
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
-export async function renderConnectorType(
+export async function renderConnectorTypeWithConfiguration(
   connector: ConnectorResource
 ): Promise<ConnectorType> {
   return {
@@ -18,6 +18,25 @@ export async function renderConnectorType(
     firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
     firstSyncProgress: connector.firstSyncProgress,
     configuration: await renderConfiguration(connector),
+    errorType: connector.errorType ?? undefined,
+    pausedAt: connector.pausedAt,
+    updatedAt: connector.updatedAt.getTime(),
+  };
+}
+
+export function renderConnectorType(
+  connector: ConnectorResource
+): ConnectorType {
+  return {
+    id: connector.id.toString(),
+    type: connector.type,
+    workspaceId: connector.workspaceId,
+    dataSourceName: connector.dataSourceName,
+    lastSyncStatus: connector.lastSyncStatus,
+    lastSyncStartTime: connector.lastSyncStartTime?.getTime(),
+    lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime?.getTime(),
+    firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
+    firstSyncProgress: connector.firstSyncProgress,
     errorType: connector.errorType ?? undefined,
     pausedAt: connector.pausedAt,
     updatedAt: connector.updatedAt.getTime(),

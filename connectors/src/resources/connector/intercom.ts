@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import {
@@ -9,24 +10,28 @@ import {
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import type {
+  ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export class IntercomConnectorStrategy implements ConnectorProviderStrategy {
+export class IntercomConnectorStrategy
+  implements ConnectorProviderStrategy<"intercom">
+{
   async makeNew(
-    connector: ConnectorResource,
+    connectorId: ModelId,
     blob: WithCreationAttributes<IntercomWorkspace>,
     transaction: Transaction
-  ): Promise<void> {
+  ): Promise<ConnectorProviderModelResourceMapping["intercom"] | null> {
     await IntercomWorkspace.create(
       {
         ...blob,
-        connectorId: connector.id,
+        connectorId,
       },
       { transaction }
     );
+    return null;
   }
 
   async delete(
@@ -71,5 +76,11 @@ export class IntercomConnectorStrategy implements ConnectorProviderStrategy {
         transaction,
       }),
     ]);
+  }
+
+  async fetchConfigurationsbyConnectorIds(): Promise<
+    Record<ModelId, ConnectorProviderModelResourceMapping["intercom"]>
+  > {
+    return {};
   }
 }

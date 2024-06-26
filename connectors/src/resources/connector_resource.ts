@@ -1,4 +1,9 @@
-import type { ConnectorProvider, ModelId, Result } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -9,7 +14,9 @@ import type {
 
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {
+  ConnectorProviderConfigurationResource,
   ConnectorProviderModelMapping,
+  ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
 } from "@connectors/resources/connector/strategy";
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
@@ -27,7 +34,7 @@ export interface ConnectorResource
 export class ConnectorResource extends BaseResource<ConnectorModel> {
   static model: ModelStatic<ConnectorModel> = ConnectorModel;
 
-  readonly providerStrategy: ConnectorProviderStrategy;
+  private configuration: ConnectorProviderConfigurationResource | null = null;
 
   // TODO(2024-02-20 flav): Delete Model from the constructor, once `update` has been migrated.
   constructor(
@@ -35,10 +42,10 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     blob: Attributes<ConnectorModel>
   ) {
     super(ConnectorModel, blob);
+  }
 
-    const { type } = blob;
-
-    this.providerStrategy = getConnectorProviderStrategy(type);
+  get strategy(): ConnectorProviderStrategy<ConnectorProvider> {
+    return getConnectorProviderStrategy(this.type);
   }
 
   static async makeNew<T extends keyof ConnectorProviderModelMapping>(
@@ -55,13 +62,16 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         { transaction }
       );
 
-      const connectorRes = new this(ConnectorModel, connector.get());
+      const strategy = getConnectorProviderStrategy(type);
 
-      await connectorRes.providerStrategy.makeNew(
-        connectorRes,
+      const configuration = await strategy.makeNew(
+        connector.id,
         specificBlob,
         transaction
       );
+
+      const connectorRes = new this(ConnectorModel, connector.get());
+      connectorRes.configuration = configuration;
 
       return connectorRes;
     });
@@ -83,10 +93,23 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       where,
     });
 
-    return blobs.map(
+    const configurations: Record<
+      ModelId,
+      ConnectorProviderModelResourceMapping[typeof type]
+    > = await getConnectorProviderStrategy(
+      type
+    ).fetchConfigurationsbyConnectorIds(blobs.map((c) => c.id));
+
+    const connectors = blobs.map(
       // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-      (b: ConnectorModel) => new ConnectorResource(ConnectorModel, b.get())
+      (b: ConnectorModel) => {
+        const c = new ConnectorResource(ConnectorModel, b.get());
+        c.configuration = configurations[b.id] ?? null;
+        return c;
+      }
     );
+
+    return connectors;
   }
 
   static async findByDataSourceAndConnection(
@@ -112,26 +135,45 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       return null;
     }
 
+    const configurations: Record<
+      ModelId,
+      ConnectorProviderModelResourceMapping[typeof blob.type]
+    > = await getConnectorProviderStrategy(
+      blob.type
+    ).fetchConfigurationsbyConnectorIds([blob.id]);
+
     // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    return new this(this.model, blob.get());
+    const connectorRes = new this(this.model, blob.get());
+    connectorRes.configuration = configurations[blob.id] ?? null;
+    return connectorRes;
   }
 
-  static async fetchByIds(ids: ModelId[]) {
+  static async fetchByIds(type: ConnectorProvider, ids: ModelId[]) {
     const blobs = await ConnectorResource.model.findAll({
       where: {
+        type,
         id: ids,
       },
     });
 
-    return blobs.map(
-      (b: ConnectorModel) => new ConnectorResource(ConnectorModel, b.get())
-    );
+    const configurations: Record<
+      ModelId,
+      ConnectorProviderModelResourceMapping[typeof type]
+    > = await getConnectorProviderStrategy(
+      type
+    ).fetchConfigurationsbyConnectorIds(blobs.map((c) => c.id));
+
+    return blobs.map((b: ConnectorModel) => {
+      const c = new this(this.model, b.get());
+      c.configuration = configurations[b.id] ?? null;
+      return c;
+    });
   }
 
   async delete(): Promise<Result<undefined, Error>> {
     return sequelizeConnection.transaction(async (transaction) => {
       try {
-        await this.providerStrategy.delete(this, transaction);
+        await this.strategy.delete(this, transaction);
 
         await this.model.destroy({
           where: {
@@ -165,5 +207,23 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
   get isThirdPartyInternalError() {
     return this.errorType === "third_party_internal_error";
+  }
+
+  toJSON(): ConnectorType {
+    return {
+      id: this.id.toString(),
+      type: this.type,
+      workspaceId: this.workspaceId,
+      dataSourceName: this.dataSourceName,
+      lastSyncStatus: this.lastSyncStatus,
+      lastSyncStartTime: this.lastSyncStartTime?.getTime(),
+      lastSyncSuccessfulTime: this.lastSyncSuccessfulTime?.getTime(),
+      firstSuccessfulSyncTime: this.firstSuccessfulSyncTime?.getTime(),
+      firstSyncProgress: this.firstSyncProgress,
+      errorType: this.errorType ?? undefined,
+      configuration: this.configuration?.toJSON() ?? null,
+      pausedAt: this.pausedAt,
+      updatedAt: this.updatedAt.getTime(),
+    };
   }
 }

@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import {
@@ -10,24 +11,28 @@ import {
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
 import type {
+  ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy {
+export class GoogleDriveConnectorStrategy
+  implements ConnectorProviderStrategy<"google_drive">
+{
   async makeNew(
-    connector: ConnectorResource,
+    connectorId: ModelId,
     blob: WithCreationAttributes<GoogleDriveConfig>,
     transaction: Transaction
-  ): Promise<void> {
+  ): Promise<ConnectorProviderModelResourceMapping["google_drive"] | null> {
     await GoogleDriveConfig.create(
       {
         ...blob,
-        connectorId: connector.id,
+        connectorId,
       },
       { transaction }
     );
+    return null;
   }
 
   async delete(
@@ -65,5 +70,11 @@ export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy {
       },
       transaction,
     });
+  }
+
+  async fetchConfigurationsbyConnectorIds(): Promise<
+    Record<ModelId, ConnectorProviderModelResourceMapping["google_drive"]>
+  > {
+    return {};
   }
 }

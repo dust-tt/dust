@@ -49,17 +49,4 @@ export type WebCrawlerConfiguration = t.TypeOf<
   typeof WebCrawlerConfigurationTypeSchema
 >;
 
-export type ConnectorConfiguration = WebCrawlerConfigurationType | null;
-
-export type ConnectorConfigurations = {
-  webcrawler: WebCrawlerConfigurationType;
-  notion: null;
-  slack: null;
-  google_drive: null;
-  github: null;
-  confluence: null;
-  microsoft: null;
-  intercom: null;
-};
-
 export const WebCrawlerHeaderRedactedValue = "<REDACTED>";

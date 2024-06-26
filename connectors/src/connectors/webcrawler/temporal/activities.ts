@@ -80,7 +80,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
 
-  const customHeaders = await webCrawlerConfig.getCustomHeaders();
+  const customHeaders = webCrawlerConfig.getCustomHeaders();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
