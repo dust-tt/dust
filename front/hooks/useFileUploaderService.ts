@@ -1,7 +1,10 @@
+import type { SupportedContentFragmentType } from "@dust-tt/types";
+import { isSupportedTextContentFragmentType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { extractTextFromPDF } from "@app/lib/client/handle_file_upload";
+import { getMimeTypeFromFile } from "@app/lib/file";
 
 interface FileContent {
   content: string;
@@ -10,6 +13,8 @@ interface FileContent {
   id: string;
   preview?: string;
   size: number;
+  // TODO(2024-06-26 flav) Make this configurable.
+  contentType: SupportedContentFragmentType;
 }
 
 type FileBlobUploadErrorCode =
@@ -62,17 +67,11 @@ export function useFileUploaderService() {
     try {
       const previewPromises: Promise<FileContent>[] = selectedFiles.map(
         async (file) => {
-          if (file.type.startsWith("image/")) {
-            const preview = await getPreview(file);
-
-            return {
-              id: file.name,
-              content: preview,
-              preview,
-              filename: file.name,
-              file,
-              size: file.size,
-            };
+          const contentType = getMimeTypeFromFile(file);
+          if (!isSupportedTextContentFragmentType(contentType)) {
+            return Promise.reject(
+              new FileBlobUploadError("file_type_not_supported", file)
+            );
           }
 
           if (file.size > MAX_FILE_SIZE) {
@@ -81,30 +80,20 @@ export function useFileUploaderService() {
             );
           }
 
-          if (file.type === "application/pdf") {
+          if (contentType.startsWith("image/")) {
+            const base64Text = await getPreview(file);
+
+            return createFileBlob(file, base64Text, contentType, base64Text);
+          }
+
+          if (contentType === "application/pdf") {
             const text = await getTextFromPDF(file);
 
-            return {
-              id: file.name,
-              content: text,
-              filename: file.name,
-              file,
-              size: file.size,
-            };
-          } else if (file.type === "text/plain") {
+            return createFileBlob(file, text, contentType);
+          } else {
             const text = await file.text();
 
-            return {
-              id: file.name,
-              content: text,
-              filename: file.name,
-              file,
-              size: file.size,
-            };
-          } else {
-            return Promise.reject(
-              new FileBlobUploadError("file_type_not_supported", file)
-            );
+            return createFileBlob(file, text, contentType);
           }
         }
       );
@@ -114,7 +103,7 @@ export function useFileUploaderService() {
       setFileBlobs([...fileBlobs, ...results]);
     } catch (err) {
       if (err instanceof FileBlobUploadError) {
-        const { name: filename } = err;
+        const { name: filename } = err.file;
 
         if (err.code === "file_type_not_supported") {
           // Even though we don't display the file size limit in the UI, we still check it here to prevent
@@ -197,3 +186,18 @@ export function useFileUploaderService() {
 }
 
 export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
+
+const createFileBlob = (
+  file: File,
+  content: string,
+  contentType: SupportedContentFragmentType,
+  preview?: string
+): FileContent => ({
+  id: file.name,
+  content,
+  preview,
+  filename: file.name,
+  file,
+  size: file.size,
+  contentType,
+});

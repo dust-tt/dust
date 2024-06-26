@@ -7,20 +7,16 @@ import * as PDFJS from "pdfjs-dist/build/pdf";
 import { getMimeTypeFromFile } from "@app/lib/file";
 PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.mjs`;
 
-// TODO: Type.
+interface FileBlob {
+  title: string;
+  content: string;
+  contentType: SupportedContentFragmentType;
+}
+
 export async function extractTextFromPDF(
   file: File,
   blob: FileReader["result"]
-): Promise<
-  Result<
-    {
-      title: string;
-      content: string;
-      contentType: SupportedContentFragmentType;
-    },
-    Error
-  >
-> {
+): Promise<Result<FileBlob, Error>> {
   try {
     if (!(blob instanceof ArrayBuffer)) {
       return new Err(
@@ -63,16 +59,9 @@ export async function extractTextFromPDF(
   }
 }
 
-export async function handleFileUploadToText(file: File): Promise<
-  Result<
-    {
-      title: string;
-      content: string;
-      contentType: SupportedContentFragmentType;
-    },
-    Error
-  >
-> {
+export async function handleFileUploadToText(
+  file: File
+): Promise<Result<FileBlob, Error>> {
   const contentFragmentMimeType = getMimeTypeFromFile(file);
   if (!isSupportedTextContentFragmentType(contentFragmentMimeType)) {
     return new Err(new Error("Unsupported file type."));
