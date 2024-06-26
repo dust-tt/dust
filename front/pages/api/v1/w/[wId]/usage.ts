@@ -37,6 +37,20 @@ const GetWorkspaceUsageSchema = t.intersection([
  *         description: ID of the workspace
  *         schema:
  *           type: string
+ *       - in: query 
+ *         name: start_date
+ *         required: true
+ *         description: The start date in YYYY-MM-DD format
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: end_date
+ *         required: false
+ *         description: The end date in YYYY-MM-DD format
+ *         schema:
+ *           type: string
+ *           format: date
  *       - in: header
  *         name: Authorization
  *         required: true
