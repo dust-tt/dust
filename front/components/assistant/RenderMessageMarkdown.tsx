@@ -3,7 +3,6 @@ import {
   ClipboardIcon,
   IconButton,
   SparklesIcon,
-  Tooltip,
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -237,15 +236,7 @@ export function RenderMessageMarkdown({
       // @ts-expect-error - `mention` is a custom tag, currently refused by
       // react-markdown types although the functionality is supported
       mention: ({ agentName, agentSId }) => {
-        const agentConfiguration = agentConfigurations?.find(
-          (agentConfiguration) => agentConfiguration.sId === agentSId
-        );
-        return (
-          <MentionBlock
-            agentConfiguration={agentConfiguration}
-            agentName={agentName}
-          />
-        );
+        return <MentionBlock agentName={agentName} />;
       },
     }),
     [agentConfigurations, isStreaming]
@@ -281,25 +272,10 @@ export function RenderMessageMarkdown({
   );
 }
 
-function MentionBlock({
-  agentName,
-  agentConfiguration,
-}: {
-  agentName: string;
-  agentConfiguration?: LightAgentConfigurationType;
-}) {
-  const statusText =
-    !agentConfiguration || agentConfiguration?.status === "archived"
-      ? "(This assistant was deleted)"
-      : agentConfiguration?.status === "active"
-        ? ""
-        : "(This assistant is either deactivated or being tested)";
-  const tooltipLabel = agentConfiguration?.description || "" + " " + statusText;
+function MentionBlock({ agentName }: { agentName: string }) {
   return (
     <span className="inline-block cursor-default font-medium text-brand">
-      <Tooltip label={tooltipLabel} position="below">
-        @{agentName}
-      </Tooltip>
+      @{agentName}
     </span>
   );
 }
