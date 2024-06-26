@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 
@@ -8,7 +8,7 @@ interface MessageGroupProps {
   children?: React.ReactNode;
 }
 
-const OFFSET_FROM_WINDOW = 450;
+const VIEWPORT_OFFSET = 450; // More generic term
 
 export default function MessageGroup({
   messages,
@@ -17,24 +17,24 @@ export default function MessageGroup({
 }: MessageGroupProps) {
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
-  const shouldMaximize = React.useMemo(() => {
+  const shouldExpandHeight = useMemo(() => {
     if (!messages || !messages[0] || !messages[0][0]) {
       return true;
     }
-    const firstMessage = messages[0][0];
+    const initialMessage = messages[0][0];
 
-    if (firstMessage.type === "user_message") {
+    if (initialMessage.type === "user_message") {
       return false;
     }
 
-    const isGenerating = firstMessage.status === "created";
-    const isLastMessageAgentMessage = firstMessage.type === "agent_message";
+    const isMessageGenerating = initialMessage.status === "created";
+    const isLastAgentMessage = initialMessage.type === "agent_message";
 
-    return isLastMessage && isLastMessageAgentMessage && isGenerating;
+    return isLastMessage && isLastAgentMessage && isMessageGenerating;
   }, [messages, isLastMessage]);
 
-  const dynamicMinHeight = shouldMaximize
-    ? `${window.innerHeight - OFFSET_FROM_WINDOW}px`
+  const minHeight = shouldExpandHeight
+    ? `${window.innerHeight - VIEWPORT_OFFSET}px`
     : "0px";
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function MessageGroup({
     <div
       className={isLastMessage ? "last-message-group" : ""}
       ref={isLastMessage ? lastMessageRef : undefined}
-      style={{ minHeight: dynamicMinHeight }}
+      style={{ minHeight }}
     >
       {children}
     </div>
