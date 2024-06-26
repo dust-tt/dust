@@ -1,17 +1,15 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type {
+  AgentGenerationCancelledEvent,
+  AgentMention,
+  AgentMessageNewEvent,
   AgentMessageType,
   ContentFragmentType,
+  ConversationTitleEvent,
+  UserMessageNewEvent,
   UserMessageType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import type { AgentMention } from "@dust-tt/types";
-import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
-import type {
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
-  UserMessageNewEvent,
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,9 +17,11 @@ import React from "react";
 import { useInView } from "react-intersection-observer";
 
 import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/messages/MessageGroup";
 import MessageItem from "@app/components/assistant/conversation/messages/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
+import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {
   useConversation,
@@ -135,6 +135,14 @@ const ConversationViewer = React.forwardRef<
 
     // If latest message Id has changed, scroll to bottom of conversation.
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
+      const mainTag = document.getElementById(
+        CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
+      );
+
+      if (mainTag) {
+        mainTag.scrollTo(0, mainTag.scrollHeight);
+      }
+
       latestMessageIdRef.current = lastestMessageId;
     }
   }, [isInModal, latestPage]);
@@ -351,35 +359,7 @@ const ConversationViewer = React.forwardRef<
   const typedGroupedMessages: MessageWithContentFragmentsType[][][] =
     groupMessagesByType(groupedMessages);
 
-  useEffect(() => {
-    const setupObserver = () => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.target instanceof HTMLElement) {
-              const target = entry.target;
-              // If the entry is not intersecting, set minHeight to 0px.
-              // Otherwise, leave minHeight unchanged.
-              if (!entry.isIntersecting) {
-                target.style.minHeight = "0px";
-              }
-            }
-          });
-        },
-        { threshold: 0 } // as soon as 1 pixel is visible it will intersect
-      );
-
-      const element = document.querySelector(".last-message-group");
-      if (element) {
-        observer.observe(element);
-        return () => {
-          observer.unobserve(element);
-        };
-      }
-      return () => observer.disconnect();
-    };
-    setupObserver();
-  }, [typedGroupedMessages]);
+  useLastMessageGroupObserver(typedGroupedMessages);
 
   return (
     <div
@@ -482,6 +462,14 @@ const groupMessages = (
   return groups;
 };
 
+/**
+ * Organizes and categorizes groups of messages by their type.
+ *
+ * This function takes an array of message groups, each containing one or more messages,
+ * and groups these message groups into larger collections based on the type of the first
+ * message in each group. The function ensures that all message groups in each collection
+ * share the same type, facilitating type-specific processing or display.
+ */
 function groupMessagesByType(
   groupedMessages: MessageWithContentFragmentsType[][]
 ): MessageWithContentFragmentsType[][][] {
