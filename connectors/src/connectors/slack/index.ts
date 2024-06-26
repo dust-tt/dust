@@ -250,7 +250,8 @@ export async function uninstallSlack(nangoConnectionId: string) {
 }
 
 export async function cleanupSlackConnector(
-  connectorId: ModelId
+  connectorId: ModelId,
+  force = false
 ): Promise<Result<undefined, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -282,9 +283,16 @@ export async function cleanupSlackConnector(
       `Attempting Slack app deactivation [cleanupSlackConnector]`
     );
 
-    const uninstallRes = await uninstallSlack(connector.connectionId);
-    if (uninstallRes.isErr()) {
-      return uninstallRes;
+    try {
+      const uninstallRes = await uninstallSlack(connector.connectionId);
+
+      if (uninstallRes.isErr() && !force) {
+        return uninstallRes;
+      }
+    } catch (e) {
+      if (!force) {
+        throw e;
+      }
     }
 
     logger.info(
