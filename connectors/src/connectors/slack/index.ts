@@ -251,7 +251,7 @@ export async function uninstallSlack(nangoConnectionId: string) {
 
 export async function cleanupSlackConnector(
   connectorId: ModelId,
-  force: boolean
+  force = false
 ): Promise<Result<undefined, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
