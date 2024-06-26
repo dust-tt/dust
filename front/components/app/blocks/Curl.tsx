@@ -134,7 +134,7 @@ export default function Curl({
               {readOnly ? null : (
                 <Menu.Items
                   className={classNames(
-                    "absolute left-1 left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none"
                   )}
                 >
                   <div className="py-1">

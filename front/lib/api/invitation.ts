@@ -341,9 +341,8 @@ export async function handleMembershipInvitations(
   }
 
   const existingMembers = await getMembers(auth, { activeOnly: true });
-  const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
-    auth
-  );
+  const unconsumedInvitations =
+    await getRecentPendingAndRevokedInvitations(auth);
   if (
     unconsumedInvitations.pending.length >=
     MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY

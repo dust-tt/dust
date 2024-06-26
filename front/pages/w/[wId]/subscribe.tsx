@@ -208,8 +208,8 @@ export default function Subscribe({
                         ? "Resume with monthly billing"
                         : "Resume with yearly billing"
                       : billingPeriod === "monthly"
-                      ? "Start your trial with monthly billing"
-                      : "Start your trial with yearly billing"
+                        ? "Start your trial with monthly billing"
+                        : "Start your trial with yearly billing"
                   }
                   icon={CreditCardIcon}
                   size="sm"

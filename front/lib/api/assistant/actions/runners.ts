@@ -47,12 +47,13 @@ type ValidatedActionToConfigTypeMap =
 
 // Ensure all class types extend the base class with the appropriate config type
 type EnsureClassTypeCompatibility<
-  T extends keyof ValidatedActionToConfigTypeMap
-> = ActionTypeToClassMap[T] extends BaseActionConfigurationServerRunner<
-  ValidatedActionToConfigTypeMap[T]
->
-  ? ActionTypeToClassMap[T]
-  : never;
+  T extends keyof ValidatedActionToConfigTypeMap,
+> =
+  ActionTypeToClassMap[T] extends BaseActionConfigurationServerRunner<
+    ValidatedActionToConfigTypeMap[T]
+  >
+    ? ActionTypeToClassMap[T]
+    : never;
 
 type CombinedMap = {
   [K in keyof ValidatedActionToConfigTypeMap]: {

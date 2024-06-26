@@ -8,6 +8,7 @@ import type {
 } from "sequelize";
 
 import appConfig from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -141,7 +142,29 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     }
   }
 
-  renderFromMessage(message: Message): ContentFragmentType {
+  renderFromMessage({
+    auth,
+    conversationId,
+    message,
+  }: {
+    auth: Authenticator;
+    conversationId: string;
+    message: Message;
+  }): ContentFragmentType {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error(
+        "Authenticator must have a workspace to render a content fragment"
+      );
+    }
+
+    const location = fileAttachmentLocation({
+      workspaceId: owner.sId,
+      conversationId,
+      messageId: message.sId,
+      contentFormat: "text",
+    });
+
     return {
       id: message.id,
       sId: message.sId,
@@ -150,6 +173,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       visibility: message.visibility,
       version: message.version,
       sourceUrl: this.sourceUrl,
+      textUrl: location.downloadUrl,
       textBytes: this.textBytes,
       title: this.title,
       contentType: this.contentType,
@@ -199,7 +223,7 @@ export function fileAttachmentLocation({
     internalUrl: `https://storage.googleapis.com/${
       getPrivateUploadBucket().name
     }/${filePath}`,
-    downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment`,
+    downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
 }
 

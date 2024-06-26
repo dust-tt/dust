@@ -43,9 +43,8 @@ export async function searchNotionPagesForQuery({
     page_size: 20,
   });
 
-  const skippedDatabaseIds = await listSkippedDatabaseIdsForConnectorId(
-    connectorId
-  );
+  const skippedDatabaseIds =
+    await listSkippedDatabaseIdsForConnectorId(connectorId);
 
   return pages.results.map((p) => ({
     id: p.id,

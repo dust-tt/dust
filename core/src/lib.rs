@@ -31,6 +31,7 @@ pub mod providers {
     pub mod mistral;
     pub mod openai;
 
+    pub mod chat_messages;
     pub mod provider;
     pub mod tiktoken {
         pub mod tiktoken;

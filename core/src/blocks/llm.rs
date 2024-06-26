@@ -1,7 +1,8 @@
 use crate::blocks::block::{
     find_variables, parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest, LLMRequest, Tokens};
+use crate::providers::chat_messages::{ChatMessage, ContentBlock, UserChatMessage};
+use crate::providers::llm::{ChatMessageRole, LLMChatRequest, LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -422,14 +423,11 @@ impl Block for LLM {
         {
             true => {
                 let prompt = self.prompt(env)?;
-                let messages = vec![ChatMessage {
+                let messages = vec![ChatMessage::User(UserChatMessage {
                     role: ChatMessageRole::User,
                     name: None,
-                    content: Some(prompt.clone()),
-                    function_call: None,
-                    function_calls: None,
-                    function_call_id: None,
-                }];
+                    content: ContentBlock::Text(prompt.clone()),
+                })];
 
                 let request = LLMChatRequest::new(
                     provider_id,

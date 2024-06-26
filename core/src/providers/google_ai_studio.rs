@@ -13,6 +13,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     providers::{
+        chat_messages::AssistantChatMessage,
         llm::Tokens,
         provider::{ModelError, ModelErrorRetryOptions},
     },
@@ -21,10 +22,11 @@ use crate::{
 };
 
 use super::{
+    chat_messages::{ChatMessage, ContentBlock, FunctionChatMessage, MixedContent},
     embedder::Embedder,
     llm::{
-        ChatFunction, ChatFunctionCall, ChatMessage, ChatMessageRole, LLMChatGeneration,
-        LLMGeneration, LLMTokenUsage, LLM,
+        ChatFunction, ChatFunctionCall, ChatMessageRole, LLMChatGeneration, LLMGeneration,
+        LLMTokenUsage, LLM,
     },
     provider::{Provider, ProviderID},
     tiktoken::tiktoken::{
@@ -55,16 +57,16 @@ pub struct GoogleAIStudioFunctionResponse {
     response: GoogleAiStudioFunctionResponseContent,
 }
 
-impl TryFrom<&ChatMessage> for GoogleAIStudioFunctionResponse {
+impl TryFrom<&FunctionChatMessage> for GoogleAIStudioFunctionResponse {
     type Error = anyhow::Error;
 
-    fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
+    fn try_from(m: &FunctionChatMessage) -> Result<Self, Self::Error> {
         let name = m.name.clone().unwrap_or_default();
         Ok(GoogleAIStudioFunctionResponse {
             name: name.clone(),
             response: GoogleAiStudioFunctionResponseContent {
                 name,
-                content: m.content.clone().unwrap_or_default(),
+                content: m.content.clone(),
             },
         })
     }
@@ -144,50 +146,101 @@ pub struct Content {
 impl TryFrom<&ChatMessage> for Content {
     type Error = anyhow::Error;
 
-    fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
-        let role = match m.role {
-            ChatMessageRole::Assistant => String::from("model"),
-            ChatMessageRole::Function => String::from("function"),
-            _ => String::from("user"),
-        };
-
-        let parts = match m.function_calls {
-            Some(ref fcs) => fcs
-                .iter()
-                .map(|fc| {
-                    Ok(Part {
-                        text: m.content.clone(),
-                        function_call: Some(GoogleAIStudioFunctionCall::try_from(fc)?),
-                        function_response: None,
-                    })
-                })
-                .collect::<Result<Vec<Part>>>()?,
-            None => {
-                vec![Part {
-                    text: match m.role {
-                        // System is passed as a Content. We transform it here but it will be removed
-                        // from the list of messages and passed as separate argument to the API.
-                        ChatMessageRole::System => m.content.clone(),
-                        ChatMessageRole::User => m.content.clone(),
-                        ChatMessageRole::Assistant => m.content.clone(),
-                        _ => None,
-                    },
-
-                    function_call: None,
-                    function_response: match m.role {
-                        ChatMessageRole::Function => {
-                            GoogleAIStudioFunctionResponse::try_from(m).ok()
+    fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        match cm {
+            ChatMessage::Assistant(assistant_msg) => {
+                let parts = match assistant_msg.function_calls {
+                    Some(ref fcs) => fcs
+                        .iter()
+                        .map(|fc| {
+                            Ok(Part {
+                                text: assistant_msg.content.clone(),
+                                function_call: Some(GoogleAIStudioFunctionCall::try_from(fc)?),
+                                function_response: None,
+                            })
+                        })
+                        .collect::<Result<Vec<Part>, anyhow::Error>>()?,
+                    None => {
+                        if let Some(ref fc) = assistant_msg.function_call {
+                            vec![Part {
+                                text: assistant_msg.content.clone(),
+                                function_call: Some(GoogleAIStudioFunctionCall::try_from(fc)?),
+                                function_response: None,
+                            }]
+                        } else {
+                            vec![Part {
+                                text: assistant_msg.content.clone(),
+                                function_call: None,
+                                function_response: None,
+                            }]
                         }
-                        _ => None,
-                    },
-                }]
-            }
-        };
+                    }
+                };
 
-        Ok(Content {
-            role,
-            parts: Some(parts),
-        })
+                Ok(Content {
+                    role: String::from("model"),
+                    parts: Some(parts),
+                })
+            }
+            ChatMessage::Function(function_msg) => Ok(Content {
+                role: String::from("function"),
+                parts: Some(vec![Part {
+                    text: None,
+                    function_call: None,
+                    function_response: GoogleAIStudioFunctionResponse::try_from(function_msg).ok(),
+                }]),
+            }),
+            ChatMessage::User(user_msg) => {
+                let text = match &user_msg.content {
+                    ContentBlock::Mixed(m) => {
+                        let result = m.iter().enumerate().try_fold(
+                            String::new(),
+                            |mut acc, (i, content)| {
+                                match content {
+                                    MixedContent::ImageContent(_) => Err(anyhow!(
+                                        "Vision is not supported for Google AI Studio."
+                                    )),
+                                    MixedContent::TextContent(tc) => {
+                                        acc.push_str(&tc.text.trim());
+                                        if i != m.len() - 1 {
+                                            // Add newline if it's not the last item.
+                                            acc.push('\n');
+                                        }
+                                        Ok(acc)
+                                    }
+                                }
+                            },
+                        );
+
+                        match result {
+                            Ok(text) if !text.is_empty() => Ok(text),
+                            Ok(_) => Err(anyhow!("Text is required.")), // Empty string.
+                            Err(e) => Err(e),
+                        }
+                    }
+                    ContentBlock::Text(t) => Ok(t.clone()),
+                }?;
+
+                Ok(Content {
+                    role: String::from("user"),
+                    parts: Some(vec![Part {
+                        text: Some(text),
+                        function_call: None,
+                        function_response: None,
+                    }]),
+                })
+            }
+            ChatMessage::System(system_msg) => Ok(Content {
+                role: String::from("user"),
+                parts: Some(vec![Part {
+                    // System is passed as a Content. We transform it here but it will be removed
+                    // from the list of messages and passed as separate argument to the API.
+                    text: Some(system_msg.content.clone()),
+                    function_call: None,
+                    function_response: None,
+                }]),
+            }),
+        }
     }
 }
 
@@ -475,8 +528,8 @@ impl LLM for GoogleAiStudioLLM {
 
         // Remove system message if first.
         let system = match messages.get(0) {
-            Some(cm) => match cm.role {
-                ChatMessageRole::System => Some(Content::try_from(cm)?),
+            Some(cm) => match cm {
+                ChatMessage::System(_) => Some(Content::try_from(cm)?),
                 _ => None,
             },
             None => None,
@@ -576,7 +629,7 @@ impl LLM for GoogleAiStudioLLM {
             created: utils::now(),
             provider: ProviderID::GoogleAiStudio.to_string(),
             model: self.id().clone(),
-            completions: vec![ChatMessage {
+            completions: vec![AssistantChatMessage {
                 name: None,
                 function_call: match function_calls.first() {
                     Some(fc) => Some(fc.clone()),
@@ -586,7 +639,6 @@ impl LLM for GoogleAiStudioLLM {
                     0 => None,
                     _ => Some(function_calls),
                 },
-                function_call_id: None,
                 role: ChatMessageRole::Assistant,
                 content,
             }],

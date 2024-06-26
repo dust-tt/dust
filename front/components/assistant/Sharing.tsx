@@ -500,7 +500,7 @@ function SlackIntegrationDrawer({
       >
         <div className="pt-8">
           <Page.Vertical gap="lg" align="stretch">
-            <div className=" flex flex-col gap-y-2">
+            <div className="flex flex-col gap-y-2">
               <div className="grow text-sm font-medium text-element-800">
                 <SlackLogo className="h-8 w-8" />
               </div>

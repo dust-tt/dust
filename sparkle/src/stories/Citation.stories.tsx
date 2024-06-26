@@ -1,6 +1,8 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
+import { ZoomableImageCitationWrapper } from "@sparkle/components/ZoomableImageCitationWrapper";
+
 import { Citation } from "../index_with_tw_base";
 
 const meta = {
@@ -24,13 +26,29 @@ export const CitationsExample = () => (
         isBlinking={true}
       />
       <Citation
-        title="With avatarUrl"
+        title="With imgSrc"
         size="xs"
         type="document"
         onClose={() => alert("Close action clicked")}
         isBlinking={true}
-        avatarUrl="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+        avatarSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
       />
+      <Citation
+        title="With imgSrc"
+        size="xs"
+        type="image"
+        onClose={() => alert("Close action clicked")}
+        isBlinking={true}
+        imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
+      />
+      <div>
+        <Citation
+          title=""
+          size="xs"
+          type="image"
+          imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
+        />
+      </div>
     </div>
     <h3>In Grid</h3>
     <div className="s-w-full">
@@ -131,12 +149,12 @@ export const CitationsExample = () => (
       />
 
       <Citation
-        title="With avatarUrl"
+        title="With imgSrc"
         type="document"
         onClose={() => alert("Close action clicked")}
         description="Write a 120 character description of the citation here to be displayed in the citation list."
         isBlinking={true}
-        avatarUrl="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
+        imgSrc="https://cdn.discordapp.com/attachments/995248824375316560/1143857310142316685/duncid_friendly_Scandinavian_droid_designed_by_Wes_Anderson_and_29eec588-b898-4e4a-9776-10c27790cbf9.png"
       />
     </div>
     <div className="s-flex s-gap-2">
@@ -171,6 +189,15 @@ export const CitationsExample = () => (
         href="https://www.google.com"
         description="Write a 120 character description of the citation here to be displayed in the citation list."
         isBlinking={false}
+      />
+    </div>
+    <h2>With zoom effect</h2>
+    <div className="s-flex s-gap-2">
+      <ZoomableImageCitationWrapper
+        title="With imgSrc"
+        // size="xs"
+        imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
+        alt="A nice image."
       />
     </div>
   </div>

@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 
-import { DocumentText } from "@sparkle/icons/stroke";
+import { DocumentText, Image } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import {
   Confluence,
@@ -19,6 +19,7 @@ export type CitationType =
   | "document"
   | "github"
   | "google_drive"
+  | "image"
   | "intercom"
   | "microsoft"
   | "notion"
@@ -34,7 +35,8 @@ interface CitationProps {
   size?: "xs" | "sm";
   sizing?: "fixed" | "fluid";
   onClose?: () => void;
-  avatarUrl?: string;
+  avatarSrc?: string;
+  imgSrc?: string;
 }
 
 const typeIcons = {
@@ -46,6 +48,7 @@ const typeIcons = {
   microsoft: Microsoft,
   notion: Notion,
   slack: Slack,
+  image: Image,
 };
 
 const typeSizing = {
@@ -63,13 +66,25 @@ export function Citation({
   href,
   onClose,
   isBlinking = false,
-  avatarUrl,
+  avatarSrc,
+  imgSrc,
 }: CitationProps) {
-  // Content of the card as a reusable variable to avoid duplication
   const cardContent = (
     <>
+      {type === "image" && imgSrc && (
+        <div
+          className="s-absolute s-left-0 s-top-0 s-brightness-90 s-filter s-transition s-duration-200 s-ease-out hover:s-brightness-110 active:s-brightness-100 group-hover:s-brightness-110 group-hover:s-filter group-active:s-brightness-100"
+          style={{
+            backgroundImage: `url(${imgSrc})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            height: "100%",
+            width: "100%",
+          }}
+        />
+      )}
       <div className="s-flex s-items-center s-gap-2">
-        {avatarUrl && <Avatar visual={avatarUrl} size="xs" />}
+        {avatarSrc && <Avatar visual={avatarSrc} size="xs" />}
         {index && (
           <div
             className={classNames(
@@ -83,7 +98,19 @@ export function Citation({
         <Icon visual={typeIcons[type]} className="s-text-element-700" />
         <div className="s-flex-grow s-text-xs" />
         {onClose && (
-          <IconButton icon={XCircleIcon} variant="tertiary" onClick={onClose} />
+          <div
+            className={classNames(
+              type === "image"
+                ? "s-z-50 s-h-5 s-w-5 s-rounded-full s-bg-slate-950/30"
+                : ""
+            )}
+          >
+            <IconButton
+              icon={XCircleIcon}
+              variant={type === "image" ? "white" : "tertiary"}
+              onClick={onClose}
+            />
+          </div>
         )}
       </div>
       <Tooltip label={title} position="above">
@@ -112,10 +139,11 @@ export function Citation({
         target="_blank"
         rel="noopener noreferrer"
         className={classNames(
-          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
           sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
           size === "sm" ? "sm:s-w-64" : "",
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
+          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
+          type === "image" ? "s-min-h-20" : ""
         )}
       >
         {cardContent}
@@ -127,10 +155,11 @@ export function Citation({
         variant="secondary"
         size="sm"
         className={classNames(
-          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
           sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
           size === "sm" ? "sm:s-w-64" : "",
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
+          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
+          type === "image" ? "s-min-h-20" : ""
         )}
       >
         {cardContent}

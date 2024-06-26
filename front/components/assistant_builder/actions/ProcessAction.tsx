@@ -133,7 +133,7 @@ function PropertiesFields({
           }}
         />
       ) : (
-        <div className="mt-4 grid grid-cols-12 grid-cols-12 gap-x-2 gap-y-2">
+        <div className="mt-4 grid grid-cols-12 gap-x-2 gap-y-2">
           <React.Fragment>
             <div className="col-span-2">
               <label className="block text-sm uppercase text-element-700">
@@ -173,10 +173,10 @@ function PropertiesFields({
                       prop["name"].length === 0
                         ? "Name is required"
                         : properties.find(
-                            (p, i) => p.name === prop.name && i !== index
-                          )
-                        ? "Name must be unique"
-                        : undefined
+                              (p, i) => p.name === prop.name && i !== index
+                            )
+                          ? "Name must be unique"
+                          : undefined
                     }
                   />
                 </div>
@@ -487,10 +487,10 @@ export function ActionProcess({
                       t.length === 0
                         ? "Tag is required"
                         : (actionConfiguration.tagsFilter?.in || []).filter(
-                            (tag) => tag === t
-                          ).length > 1
-                        ? "Tag must be unique"
-                        : undefined
+                              (tag) => tag === t
+                            ).length > 1
+                          ? "Tag must be unique"
+                          : undefined
                     }
                   />
                 </div>

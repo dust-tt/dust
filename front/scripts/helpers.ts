@@ -21,12 +21,12 @@ type InferArgs<T> = {
   [P in keyof T]: T[P] extends { type: "number" }
     ? number
     : T[P] extends { type: "boolean" }
-    ? boolean
-    : T[P] extends { type: "string" }
-    ? string
-    : T[P] extends { type: "array" }
-    ? string[]
-    : never;
+      ? boolean
+      : T[P] extends { type: "string" }
+        ? string
+        : T[P] extends { type: "array" }
+          ? string[]
+          : never;
 } & { execute?: boolean };
 
 const defaultArgumentSpecs: ArgumentSpecs = {

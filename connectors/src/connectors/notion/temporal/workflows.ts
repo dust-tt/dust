@@ -154,8 +154,8 @@ export async function notionSyncWorkflow({
             runType: isGarbageCollectionRun
               ? "garbageCollection"
               : isInitialSync
-              ? "initialSync"
-              : "incrementalSync",
+                ? "initialSync"
+                : "incrementalSync",
           },
         });
 

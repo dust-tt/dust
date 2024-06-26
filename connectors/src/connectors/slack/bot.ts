@@ -57,9 +57,8 @@ export async function botAnswerMessageWithErrorHandling(
   slackMessageTs: string,
   slackThreadTs: string | null
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
-  const slackConfig = await SlackConfigurationResource.fetchByActiveBot(
-    slackTeamId
-  );
+  const slackConfig =
+    await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
   if (!slackConfig) {
     return new Err(
       new Error(
@@ -475,9 +474,8 @@ async function botAnswerMessage(
 export async function getBotEnabled(
   connectorId: ModelId
 ): Promise<Result<boolean, Error>> {
-  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-    connectorId
-  );
+  const slackConfig =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
   if (!slackConfig) {
     return new Err(
       new Error(

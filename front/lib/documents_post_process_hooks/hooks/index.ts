@@ -86,10 +86,13 @@ export const DOCUMENTS_POST_PROCESS_HOOKS = [
 export const DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE: Record<
   DocumentsPostProcessHookType,
   DocumentsPostProcessHook
-> = DOCUMENTS_POST_PROCESS_HOOKS.reduce((acc, hook) => {
-  acc[hook.type] = hook;
-  return acc;
-}, {} as Record<DocumentsPostProcessHookType, DocumentsPostProcessHook>);
+> = DOCUMENTS_POST_PROCESS_HOOKS.reduce(
+  (acc, hook) => {
+    acc[hook.type] = hook;
+    return acc;
+  },
+  {} as Record<DocumentsPostProcessHookType, DocumentsPostProcessHook>
+);
 
 export async function getDocumentsPostUpsertHooksToRun(
   params: DocumentsPostProcessHookOnUpsertParams

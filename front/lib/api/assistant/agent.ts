@@ -120,6 +120,9 @@ export async function* runMultiActionsAgentLoop(
   const isLegacyAgent = isLegacyAgentConfiguration(configuration);
   const maxToolsUsePerRun = isLegacyAgent ? 1 : configuration.maxToolsUsePerRun;
 
+  // Citations references offset kept up to date across steps.
+  let citationsRefsOffset = 0;
+
   for (let i = 0; i < maxToolsUsePerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -179,7 +182,7 @@ export async function* runMultiActionsAgentLoop(
           const eventStreamGenerators = event.actions.map(
             ({ action, inputs, functionCallId, specification }, index) => {
               return runAction(auth, {
-                configuration: configuration,
+                configuration,
                 actionConfiguration: action,
                 conversation,
                 userMessage,
@@ -190,6 +193,7 @@ export async function* runMultiActionsAgentLoop(
                 step: i,
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
+                citationsRefsOffset,
               });
             }
           );
@@ -213,6 +217,17 @@ export async function* runMultiActionsAgentLoop(
               yield winner.v.value;
             }
           }
+
+          // After we are done running actions we update the inter step refsOffset.
+          event.actions.forEach(({ action }) => {
+            citationsRefsOffset += getRunnerforActionConfiguration(
+              action
+            ).getCitationsCount({
+              agentConfiguration: configuration,
+              stepActions: event.actions.map((a) => a.action),
+            });
+          });
+
           break;
 
         // Generation events
@@ -645,9 +660,9 @@ export async function* runMultiActionsAgent(
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "multi_actions_error",
+        code: "tool_use_limit_reached",
         message:
-          "Assistant failed to generate response after running `maxToolsUsePerRun`.",
+          "The assistant attempted to use too many tools. This model error can be safely retried.",
       },
     } satisfies AgentErrorEvent;
     return;
@@ -660,6 +675,16 @@ export async function* runMultiActionsAgent(
     const action = agentActions.find((ac) => ac.name === a.name);
 
     if (!action) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          actionName: a.name,
+        },
+        "Model attempted to run an action that is not part of the agent configuration."
+      );
       yield {
         type: "agent_error",
         created: Date.now(),
@@ -667,7 +692,7 @@ export async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "action_not_found",
-          message: `Action ${a.name} not found`,
+          message: `The assistant attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
         },
       } satisfies AgentErrorEvent;
       return;
@@ -729,6 +754,7 @@ async function* runAction(
     step,
     stepActionIndex,
     stepActions,
+    citationsRefsOffset,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: AgentActionConfigurationType;
@@ -741,6 +767,7 @@ async function* runAction(
     step: number;
     stepActionIndex: number;
     stepActions: AgentActionConfigurationType[];
+    citationsRefsOffset: number;
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
@@ -764,6 +791,7 @@ async function* runAction(
       {
         stepActionIndex,
         stepActions,
+        citationsRefsOffset,
       }
     );
 
@@ -978,14 +1006,22 @@ async function* runAction(
   } else if (isWebsearchConfiguration(actionConfiguration)) {
     const eventStream = getRunnerforActionConfiguration(
       actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId: null,
-      step,
-    });
+    ).run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs: inputs,
+        functionCallId: null,
+        step,
+      },
+      {
+        stepActionIndex,
+        stepActions,
+        citationsRefsOffset,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
@@ -1227,6 +1263,20 @@ export class TokenEmitter {
           this.chainOfToughtDelimitersOpened += 1;
         } else {
           this.chainOfToughtDelimitersOpened -= 1;
+          if (this.chainOfToughtDelimitersOpened === 0) {
+            // The chain of thought tag is closed.
+            // Yield a newline in the chain of thought to separate the different blocks.
+            const separator = "\n";
+            yield {
+              type: "generation_tokens",
+              created: Date.now(),
+              configurationId: this.agentConfiguration.sId,
+              messageId: this.agentMessage.sId,
+              text: separator,
+              classification: "chain_of_thought",
+            };
+            this.chainOfThought += separator;
+          }
         }
       }
 
@@ -1241,7 +1291,7 @@ export class TokenEmitter {
       } satisfies GenerationTokensEvent;
 
       // Update the buffer
-      this.buffer = this.buffer.substring(index + del.length);
+      this.buffer = this.buffer.substring(del.length);
     }
 
     // Emit the remaining text/chain_of_thought.

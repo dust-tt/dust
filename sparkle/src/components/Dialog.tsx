@@ -61,7 +61,7 @@ export function Dialog({
             >
               <HeadlessDialog.Panel
                 className={classNames(
-                  "s-relative  s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4  s-shadow-xl s-transition-all",
+                  "s-relative s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl s-transition-all",
                   "s-w-full sm:s-w-[448px]",
                   "s-flex s-flex-col s-gap-6"
                 )}

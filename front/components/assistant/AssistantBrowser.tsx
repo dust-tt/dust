@@ -99,10 +99,10 @@ export function AssistantBrowser({
     assistantSearch.trim() !== "" // If search is active, show all agents
       ? "all"
       : visibleTabs.find((tab) => tab.id === selectedTab)
-      ? selectedTab
-      : visibleTabs.length > 0
-      ? visibleTabs[0].id
-      : null;
+        ? selectedTab
+        : visibleTabs.length > 0
+          ? visibleTabs[0].id
+          : null;
 
   return (
     <>

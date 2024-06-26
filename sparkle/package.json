@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.169",
+  "version": "0.2.171",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -49,9 +49,9 @@
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-storybook": "^0.8.0",
     "eslint-plugin-unused-imports": "^3.2.0",
-    "prettier": "^2.8.7",
-    "prettier-plugin-tailwindcss": "^0.2.7",
-    "react": "^18.2.0",
+    "prettier": "^3.0",
+    "prettier-plugin-tailwindcss": "^0.6.5",
+    "react": "^18.3.1",
     "react-dom": "^18.2.0",
     "rollup": "^3.26.2",
     "rollup-plugin-peer-deps-external": "^2.2.4",
@@ -79,7 +79,7 @@
   "dependencies": {
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
-    "@headlessui/react": "^1.7.17",
+    "@headlessui/react": "^2.1.0",
     "emoji-mart": "^5.5.2",
     "esbuild": "^0.20.0",
     "eslint-plugin-import": "^2.29.1",

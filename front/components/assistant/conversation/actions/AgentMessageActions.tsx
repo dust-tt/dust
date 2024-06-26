@@ -100,13 +100,16 @@ function ActionDetails({
 }
 
 function renderActionName(actions: AgentActionType[]): string {
-  const uniqueActionTypes = actions.reduce((acc, action) => {
-    if (!acc.includes(action.type)) {
-      acc.push(action.type);
-    }
+  const uniqueActionTypes = actions.reduce(
+    (acc, action) => {
+      if (!acc.includes(action.type)) {
+        acc.push(action.type);
+      }
 
-    return acc;
-  }, [] as AgentActionType["type"][]);
+      return acc;
+    },
+    [] as AgentActionType["type"][]
+  );
 
   return uniqueActionTypes
     .map((actionType) => getActionSpecification(actionType).runningLabel)

@@ -236,6 +236,9 @@ export async function getPagesAndDatabasesEditedSince(
   for (const pageOrDb of resultsPage.results) {
     if (pageOrDb.object === "page") {
       if (isFullPage(pageOrDb)) {
+        if (pageOrDb.archived) {
+          continue;
+        }
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
 
         // skip pages that have a `lastEditedTime` in the future
@@ -274,6 +277,9 @@ export async function getPagesAndDatabasesEditedSince(
         continue;
       }
       if (isFullDatabase(pageOrDb)) {
+        if (pageOrDb.archived) {
+          continue;
+        }
         const lastEditedTime = new Date(pageOrDb.last_edited_time).getTime();
 
         // skip databases that have a `lastEditedTime` in the future
@@ -986,13 +992,16 @@ export async function renderDatabaseFromPages({
   );
 
   const content = rows.map((r) =>
-    header.reduce((acc, k, i) => {
-      let v = r[i];
-      if (Array.isArray(v)) {
-        v = v.join(", ");
-      }
-      return { ...acc, [k]: v?.trim?.() ?? "" };
-    }, {} as Record<string, string>)
+    header.reduce(
+      (acc, k, i) => {
+        let v = r[i];
+        if (Array.isArray(v)) {
+          v = v.join(", ");
+        }
+        return { ...acc, [k]: v?.trim?.() ?? "" };
+      },
+      {} as Record<string, string>
+    )
   );
 
   const sanitizedHeaders = getSanitizedHeaders(header);
@@ -1339,7 +1348,7 @@ export async function* iteratePaginatedAPIWithRetries<
   Args extends {
     start_cursor?: string;
   },
-  Item
+  Item,
 >(
   listFn: (args: Args) => Promise<IPaginatedList<Item>>,
   firstPageArgs: Args,

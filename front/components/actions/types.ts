@@ -8,7 +8,7 @@ import { TablesQueryActionDetails } from "@app/components/actions/tables_query/T
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
-  T extends AgentActionType = AgentActionType
+  T extends AgentActionType = AgentActionType,
 > {
   action: T;
   defaultOpen: boolean;

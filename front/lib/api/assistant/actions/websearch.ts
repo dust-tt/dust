@@ -1,5 +1,7 @@
 import type {
+  AgentActionConfigurationType,
   AgentActionSpecification,
+  AgentConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -27,6 +29,10 @@ import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/acti
 import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import logger from "@app/logger/logger";
+
+import { getRunnerforActionConfiguration } from "./runners";
+
+const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
 interface WebsearchActionBlob {
   id: ModelId; // AgentWebsearchAction
@@ -113,6 +119,59 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     });
   }
 
+  // WebSearch shares results count across web search actions of a same step and uses citations for
+  // these.
+  getCitationsCount({
+    stepActions,
+  }: {
+    stepActions: AgentActionConfigurationType[];
+  }): number {
+    const actionCount = stepActions.filter(
+      (a) => a.sId === this.actionConfiguration.sId
+    ).length;
+
+    if (actionCount === 0) {
+      throw new Error("Unexpected: found 0 websearch actions");
+    }
+
+    return Math.ceil(WEBSEARCH_ACTION_NUM_RESULTS / actionCount);
+  }
+
+  // stepTopKAndRefsOffsetForAction returns the references offset and the number of search results
+  // an action will use as part of the current step. We share number of results among multiple
+  // instances of a same websearch action from the same step so that we don't overflow the context
+  // when the model asks for many web searches at the same time.
+  stepNumResultsAndRefsOffsetForAction({
+    agentConfiguration,
+    stepActionIndex,
+    stepActions,
+    refsOffset,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    stepActionIndex: number;
+    stepActions: AgentActionConfigurationType[];
+    refsOffset: number;
+  }): { numResults: number; refsOffset: number } {
+    const actionCounts: Record<string, number> = {};
+    stepActions.forEach((a) => {
+      actionCounts[a.sId] = actionCounts[a.sId] ?? 0;
+      actionCounts[a.sId]++;
+    });
+
+    for (let i = 0; i < stepActionIndex; i++) {
+      const r = stepActions[i];
+      refsOffset += getRunnerforActionConfiguration(r).getCitationsCount({
+        agentConfiguration,
+        stepActions,
+      });
+    }
+
+    return {
+      numResults: this.getCitationsCount({ stepActions }),
+      refsOffset,
+    };
+  }
+
   // This method is in charge of running the websearch and creating an AgentWebsearchAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentWebsearchAction to be stored (once the query params are infered) but for its execution
@@ -127,7 +186,16 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       rawInputs,
       functionCallId,
       step,
-    }: BaseActionRunParams
+    }: BaseActionRunParams,
+    {
+      stepActionIndex,
+      stepActions,
+      citationsRefsOffset,
+    }: {
+      stepActionIndex: number;
+      stepActions: AgentActionConfigurationType[];
+      citationsRefsOffset: number;
+    }
   ): AsyncGenerator<
     WebsearchParamsEvent | WebsearchSuccessEvent | WebsearchErrorEvent,
     void
@@ -157,6 +225,14 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       };
       return;
     }
+
+    const { numResults /*, refsOffset*/ } =
+      this.stepNumResultsAndRefsOffsetForAction({
+        agentConfiguration,
+        stepActionIndex,
+        stepActions,
+        refsOffset: citationsRefsOffset,
+      });
 
     // Create the AgentWebsearchAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs
@@ -193,6 +269,8 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-websearch"].config
     );
+
+    config.SEARCH.num = numResults;
 
     // Execute the websearch action.
     const websearchRes = await runActionStreamed(

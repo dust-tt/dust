@@ -199,10 +199,11 @@ export function AgentMessage({
             return {
               ...m,
               content: "",
-              chainOfThoughts: [event.chainOfThought],
+              // We add an empty COT so that subsequent COT tokens (if any) get appended to the new COT (which is consistent with the eventual DB state).
+              chainOfThoughts: [event.chainOfThought, ""],
             };
           }
-          // Otherwise, we insert an empty COT so that any future COT (if any) gets appended to that one.
+          // Otherwise, we insert an empty COT so that subsequent COT tokens (if any) get appended to the new COT (which is consistent with the eventual DB state).
           // Here, we do not need to clear the content because the COT was already being streamed as COT tokens.
           return {
             ...m,
@@ -407,10 +408,13 @@ export function AgentMessage({
     );
 
     setReferences(
-      allDocs.reduce((acc, d) => {
-        acc[d.reference] = d;
-        return acc;
-      }, {} as { [key: string]: RetrievalDocumentType })
+      allDocs.reduce(
+        (acc, d) => {
+          acc[d.reference] = d;
+          return acc;
+        },
+        {} as { [key: string]: RetrievalDocumentType }
+      )
     );
   }, [
     agentMessageToRender.actions,
@@ -491,7 +495,7 @@ export function AgentMessage({
 
     const chainOfThought = agentMessage.chainOfThoughts
       .filter((cot) => !!cot) // Remove empty chain of thoughts.
-      .join("");
+      .join("\n");
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />

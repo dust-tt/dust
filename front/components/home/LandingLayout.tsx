@@ -100,7 +100,7 @@ export default function LandingLayout({
                 <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
               </Div3D>
               <Div3D depth={25} className="absolute top-0">
-                <LogoHorizontalColorLogoLayer2 className=" h-[24px] w-[96px]" />
+                <LogoHorizontalColorLogoLayer2 className="h-[24px] w-[96px]" />
               </Div3D>
             </Hover3D>
           </div>

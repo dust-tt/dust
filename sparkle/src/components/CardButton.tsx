@@ -57,7 +57,7 @@ export function CardButton({
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
   const commonClasses = classNames(
-    "s-flex s-group s-cursor-pointer s-transition s-duration-200",
+    "s-flex s-group s-cursor-pointer s-transition s-duration-200 s-overflow-hidden",
     variantClasses[variant],
     sizeClasses[size],
     className

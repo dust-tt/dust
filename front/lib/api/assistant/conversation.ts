@@ -322,7 +322,7 @@ export async function getConversation(
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
-    batchRenderContentFragment(messages),
+    batchRenderContentFragment(auth, conversationId, messages),
   ]);
 
   const render = [...userMessages, ...agentMessages, ...contentFragments];
@@ -1687,7 +1687,11 @@ export async function postNewContentFragment(
     }
   );
 
-  return contentFragment.renderFromMessage(messageRow);
+  return contentFragment.renderFromMessage({
+    auth,
+    conversationId: conversation.sId,
+    message: messageRow,
+  });
 }
 
 async function* streamRunAgentEvents(

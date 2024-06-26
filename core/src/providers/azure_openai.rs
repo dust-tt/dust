@@ -1,7 +1,8 @@
+use crate::providers::chat_messages::AssistantChatMessage;
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
+use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::openai::{
     chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
     to_openai_messages, OpenAILLM, OpenAITool, OpenAIToolChoice,
@@ -25,6 +26,8 @@ use std::io::prelude::*;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
+
+use super::chat_messages::ChatMessage;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AzureOpenAIScaleSettings {
@@ -546,7 +549,7 @@ impl LLM for AzureOpenAILLM {
             completions: c
                 .choices
                 .iter()
-                .map(|c| ChatMessage::try_from(&c.message))
+                .map(|c| AssistantChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
             usage: c.usage.map(|usage| LLMTokenUsage {
                 prompt_tokens: usage.prompt_tokens,

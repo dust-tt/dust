@@ -1,4 +1,5 @@
-use super::llm::{ChatFunction, ChatFunctionCall, ChatMessage};
+use super::chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock, MixedContent};
+use super::llm::{ChatFunction, ChatFunctionCall};
 use super::sentencepiece::sentencepiece::{
     decode_async, encode_async, mistral_instruct_tokenizer_240216_model_v2_base_singleton,
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
@@ -63,19 +64,6 @@ impl From<MistralChatMessageRole> for ChatMessageRole {
     }
 }
 
-impl TryFrom<&ChatMessageRole> for MistralChatMessageRole {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &ChatMessageRole) -> Result<Self, Self::Error> {
-        match value {
-            ChatMessageRole::Assistant => Ok(MistralChatMessageRole::Assistant),
-            ChatMessageRole::System => Ok(MistralChatMessageRole::System),
-            ChatMessageRole::User => Ok(MistralChatMessageRole::User),
-            ChatMessageRole::Function => Ok(MistralChatMessageRole::Tool),
-        }
-    }
-}
-
 impl ToString for MistralChatMessageRole {
     fn to_string(&self) -> String {
         match self {
@@ -103,8 +91,6 @@ struct MistralToolCall {
 struct MistralChatMessage {
     pub role: MistralChatMessageRole,
     pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<MistralToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -158,37 +144,71 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let mistral_role = MistralChatMessageRole::try_from(&cm.role)
-            .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
+        match cm {
+            ChatMessage::Assistant(assistant_msg) => Ok(MistralChatMessage {
+                role: MistralChatMessageRole::Assistant,
+                content: assistant_msg.content.clone(),
+                tool_calls: match assistant_msg.function_calls.as_ref() {
+                    Some(fc) => Some(
+                        fc.iter()
+                            .map(|f| MistralToolCall::try_from(f))
+                            .collect::<Result<Vec<_>>>()?,
+                    ),
+                    None => None,
+                },
+                tool_call_id: None,
+            }),
+            ChatMessage::Function(function_msg) => Ok(MistralChatMessage {
+                role: MistralChatMessageRole::Tool,
+                content: Some(function_msg.content.clone()),
+                tool_calls: None,
+                tool_call_id: Some(sanitize_tool_call_id(&function_msg.function_call_id)),
+            }),
+            ChatMessage::User(user_msg) => Ok(MistralChatMessage {
+                role: MistralChatMessageRole::User,
+                content: match &user_msg.content {
+                    ContentBlock::Mixed(m) => {
+                        let result = m.iter().enumerate().try_fold(
+                            String::new(),
+                            |mut acc, (i, content)| {
+                                match content {
+                                    MixedContent::ImageContent(_) => {
+                                        Err(anyhow!("Vision is not supported for Mistral."))
+                                    }
+                                    MixedContent::TextContent(tc) => {
+                                        acc.push_str(&tc.text);
+                                        if i != m.len() - 1 {
+                                            // Add newline if it's not the last item.
+                                            acc.push('\n');
+                                        }
+                                        Ok(acc)
+                                    }
+                                }
+                            },
+                        );
 
-        Ok(MistralChatMessage {
-            content: match cm.content.as_ref() {
-                Some(c) => Some(c.clone()),
-                None => None,
-            },
-            // Name is only supported for the Function/Tool role.
-            name: match mistral_role {
-                MistralChatMessageRole::Tool => cm.name.clone(),
-                _ => None,
-            },
-            role: mistral_role,
-            tool_calls: match cm.function_calls.as_ref() {
-                Some(fc) => Some(
-                    fc.iter()
-                        .map(|f| MistralToolCall::try_from(f))
-                        .collect::<Result<Vec<_>>>()?,
-                ),
-                None => None,
-            },
-            tool_call_id: cm
-                .function_call_id
-                .as_ref()
-                .map(|id| sanitize_tool_call_id(id)),
-        })
+                        match result {
+                            Ok(text) if !text.is_empty() => Some(text),
+                            Ok(_) => None, // Empty string.
+                            Err(e) => return Err(e),
+                        }
+                    }
+                    ContentBlock::Text(t) => Some(t.clone()),
+                },
+                tool_calls: None,
+                tool_call_id: None,
+            }),
+            ChatMessage::System(system_msg) => Ok(MistralChatMessage {
+                role: MistralChatMessageRole::System,
+                content: Some(system_msg.content.clone()),
+                tool_calls: None,
+                tool_call_id: None,
+            }),
+        }
     }
 }
 
-impl TryFrom<&MistralChatMessage> for ChatMessage {
+impl TryFrom<&MistralChatMessage> for AssistantChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &MistralChatMessage) -> Result<Self, Self::Error> {
@@ -219,13 +239,12 @@ impl TryFrom<&MistralChatMessage> for ChatMessage {
             None
         };
 
-        Ok(ChatMessage {
+        Ok(AssistantChatMessage {
             content,
             role,
             name: None,
             function_call,
             function_calls,
-            function_call_id: None,
         })
     }
 }
@@ -668,7 +687,6 @@ impl MistralAILLM {
                     .map(|c| MistralChatChoice {
                         message: MistralChatMessage {
                             content: Some("".to_string()),
-                            name: None,
                             role: MistralChatMessageRole::Assistant,
                             tool_calls: None,
                             tool_call_id: None,
@@ -1012,7 +1030,7 @@ impl LLM for MistralAILLM {
             completions: c
                 .choices
                 .iter()
-                .map(|c| ChatMessage::try_from(&c.message))
+                .map(|c| AssistantChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
             usage: c.usage.map(|u| LLMTokenUsage {
                 completion_tokens: u.completion_tokens.unwrap_or(0),

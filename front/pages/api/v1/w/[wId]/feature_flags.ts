@@ -8,6 +8,35 @@ export type WorkspaceFeatureFlagsResponseBody = {
   feature_flags: WhitelistableFeature[];
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/feature_flags:
+ *   get:
+ *     summary: Get the feature flags for the workspace
+ *     description: Get the feature flags for the workspace identified by {wId}.
+ *     tags:
+ *       - Workspace
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Feature flags for the workspace
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feature_flags:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<WorkspaceFeatureFlagsResponseBody>>

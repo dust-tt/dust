@@ -13,6 +13,8 @@ use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, info};
 
+use super::chat_messages::{AssistantChatMessage, ChatMessage};
+
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
     pub text: String,
@@ -73,20 +75,6 @@ pub struct ChatFunctionCall {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct ChatMessage {
-    pub role: ChatMessageRole,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<ChatFunctionCall>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_calls: Option<Vec<ChatFunctionCall>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ChatFunction {
     pub name: String,
     pub description: Option<String>,
@@ -104,7 +92,7 @@ pub struct LLMChatGeneration {
     pub created: u64,
     pub provider: String,
     pub model: String,
-    pub completions: Vec<ChatMessage>,
+    pub completions: Vec<AssistantChatMessage>,
     pub usage: Option<LLMTokenUsage>,
     pub provider_request_id: Option<String>,
 }

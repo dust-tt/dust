@@ -5,6 +5,41 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/assistant/conversations/{cId}:
+ *   get:
+ *     summary: Get a conversation
+ *     description: Get a conversation in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Conversation retrieved successfully.
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       500:
+ *         description: Internal Server Error.
+ *       404:
+ *         description: Conversation not found.
+ *       405:
+ *         description: Method not supported. Only GET is expected.
+ */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<{ conversation: ConversationType }>>
