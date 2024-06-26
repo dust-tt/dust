@@ -172,7 +172,9 @@ async function handler(
         title,
         content,
         url,
-        contentType,
+        // hack: for users creating content_fragments through our public API
+        contentType:
+          contentType === "file_attachment" ? "text/plain" : contentType,
         context: {
           username: context?.username || null,
           fullName: context?.fullName || null,
