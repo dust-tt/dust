@@ -1,7 +1,8 @@
-import type { AgentActionType, RetrievalDocumentType } from "@dust-tt/types";
+import type { AgentActionType } from "@dust-tt/types";
 import {
   getTitleFromRetrievedDocument,
   isRetrievalActionType,
+  isWebsearchActionType,
 } from "@dust-tt/types";
 
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
@@ -18,11 +19,36 @@ export function annotateCitations(
   content: string,
   action: AgentActionType | null
 ): { formattedContent: string; footnotes: SlackMessageFootnotes } {
-  const references: { [key: string]: RetrievalDocumentType } = {};
+  const references: {
+    [key: string]: {
+      reference: string;
+      link: string;
+      title: string;
+    };
+  } = {};
 
   if (action && isRetrievalActionType(action) && action.documents) {
     action.documents.forEach((d) => {
-      references[d.reference] = d;
+      references[d.reference] = {
+        reference: d.reference,
+        link: d.sourceUrl
+          ? d.sourceUrl
+          : makeDustAppUrl(
+              `/w/${d.dataSourceWorkspaceId}/builder/data-sources/${
+                d.dataSourceId
+              }/upsert?documentId=${encodeURIComponent(d.documentId)}`
+            ),
+        title: getTitleFromRetrievedDocument(d),
+      };
+    });
+  }
+  if (action && isWebsearchActionType(action) && action.output) {
+    action.output.results.forEach((r) => {
+      references[r.reference] = {
+        reference: r.reference,
+        link: r.link,
+        title: r.title,
+      };
     });
   }
 
@@ -46,18 +72,10 @@ export function annotateCitations(
                 counter++;
                 refCounter[k] = counter;
 
-                const link = ref.sourceUrl
-                  ? ref.sourceUrl
-                  : makeDustAppUrl(
-                      `/w/${ref.dataSourceWorkspaceId}/builder/data-sources/${
-                        ref.dataSourceId
-                      }/upsert?documentId=${encodeURIComponent(ref.documentId)}`
-                    );
-
                 footnotes.push({
                   index: counter,
-                  link,
-                  text: getTitleFromRetrievedDocument(ref),
+                  link: ref.link,
+                  text: ref.title,
                 });
 
                 return `[${refCounter[k]}]`;

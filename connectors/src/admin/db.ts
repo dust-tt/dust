@@ -30,10 +30,10 @@ import {
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import {
-  MicrosoftConfiguration,
-  MicrosoftConfigurationRoot,
-  MicrosoftDelta,
-  MicrosoftResource,
+  MicrosoftConfigurationModel,
+  MicrosoftDeltaModel,
+  MicrosoftNodeModel,
+  MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
 import {
   NotionConnectorBlockCacheEntry,
@@ -87,10 +87,10 @@ async function main(): Promise<void> {
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSheet.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
-  await MicrosoftConfiguration.sync({ alter: true });
-  await MicrosoftConfigurationRoot.sync({ alter: true });
-  await MicrosoftResource.sync({ alter: true });
-  await MicrosoftDelta.sync({ alter: true });
+  await MicrosoftConfigurationModel.sync({ alter: true });
+  await MicrosoftRootModel.sync({ alter: true });
+  await MicrosoftNodeModel.sync({ alter: true });
+  await MicrosoftDeltaModel.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });

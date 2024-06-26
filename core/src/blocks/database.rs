@@ -103,22 +103,28 @@ impl Block for Database {
         let query = replace_variables_in_string(&self.query, "query", env)?;
         let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
-        let (results, schema) = query_database(&tables, env.store.clone(), &query)
-            .await
-            .map_err(|e| match &e {
+        match query_database(&tables, env.store.clone(), &query).await {
+            Ok((results, schema)) => Ok(BlockResult {
+                value: json!({
+                    "results": results,
+                    "schema": schema,
+                }),
+                meta: None,
+            }),
+            Err(e) => match &e {
+                // If the actual query failed, we don't fail the block, instead we return a block result with an error inside.
+                QueryDatabaseError::ExecutionError(s) => Ok(BlockResult {
+                    value: json!({
+                        "error": s,
+                    }),
+                    meta: None,
+                }),
                 // We don't have a proper way to return a typed error from a block, so we just return a generic error with a string.
                 // We expect the frontend to match the error code.
-                QueryDatabaseError::TooManyResultRows => anyhow!("too_many_result_rows"),
-                _ => e.into(),
-            })?;
-
-        Ok(BlockResult {
-            value: json!({
-                "results": results,
-                "schema": schema,
-            }),
-            meta: None,
-        })
+                QueryDatabaseError::TooManyResultRows => Err(anyhow!("too_many_result_rows")),
+                _ => Err(e.into()),
+            },
+        }
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {

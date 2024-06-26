@@ -575,7 +575,7 @@ async function makeContentFragment(
     title: `Thread content from #${channel.channel.name}`,
     content: sectionFullText(content),
     url: url,
-    contentType: "slack_thread_content",
+    contentType: "dust-application/slack",
     context: null,
   });
 }

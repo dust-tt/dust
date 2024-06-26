@@ -6,7 +6,7 @@ import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence"
 import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspace } from "@connectors/lib/models/intercom";
-import type { MicrosoftConfiguration } from "@connectors/lib/models/microsoft";
+import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
@@ -27,7 +27,7 @@ export interface ConnectorProviderModelM {
   github: GithubConnectorState;
   google_drive: GoogleDriveConfig;
   intercom: IntercomWorkspace;
-  microsoft: MicrosoftConfiguration;
+  microsoft: MicrosoftConfigurationModel;
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;

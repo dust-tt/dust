@@ -150,7 +150,7 @@ export function RemoveAssistantFromListDialog({
     >
       <div>
         This will remove the assistant from your list. You can add it back to
-        your list at any time from the assistant gallery.
+        your list at any time from the Chat homepage.
       </div>
     </Dialog>
   );
@@ -232,9 +232,8 @@ export function RemoveAssistantFromWorkspaceDialog({
     >
       <div className="flex flex-col gap-2">
         <div>
-          Removing the assistant from the Company assistants will move it back
-          to the gallery. The assistant won't be automatically active for
-          members anymore.
+          Removing the assistant from the Company assistants means it won't be
+          automatically active for members anymore.
         </div>
         <div>Any workspace member will be able to modify the assistant.</div>
       </div>

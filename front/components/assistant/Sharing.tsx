@@ -144,7 +144,7 @@ export function SharingButton({
       })
     : "";
 
-  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/gallery?assistantDetails=${agentConfigurationId}`;
+  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/new?assistantDetails=${agentConfigurationId}`;
   const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
 
   return (

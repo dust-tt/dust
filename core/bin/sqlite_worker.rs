@@ -9,7 +9,7 @@ use datadog_formatting_layer::DatadogFormattingLayer;
 use dust::{
     databases::database::Table,
     databases_store::{self, store::DatabasesStore},
-    sqlite_workers::sqlite_database::{QueryError, SqliteDatabase},
+    sqlite_workers::sqlite_database::{SqliteDatabase, SqliteDatabaseError},
     utils::{error_response, APIResponse},
 };
 use hyper::StatusCode;
@@ -220,7 +220,13 @@ async fn databases_query(
             }),
         ),
         Err(e) => match e {
-            QueryError::ExceededMaxRows(max) => error_response(
+            SqliteDatabaseError::QueryExecutionError(e) => error_response(
+                StatusCode::BAD_REQUEST,
+                "query_execution_error",
+                e.to_string().as_str(),
+                Some(e.into()),
+            ),
+            SqliteDatabaseError::ExceededMaxRows(max) => error_response(
                 StatusCode::BAD_REQUEST,
                 "too_many_result_rows",
                 &format!("Result contains too many rows (max: {})", max),

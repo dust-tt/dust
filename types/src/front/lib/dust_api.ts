@@ -9,7 +9,6 @@ import {
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import {
   AgentMessageType,
-  ContentFragmentType,
   ConversationType,
   UserMessageType,
 } from "../../front/assistant/conversation";
@@ -19,6 +18,7 @@ import { RunType } from "../../front/run";
 import { WorkspaceDomain } from "../../front/workspace";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
+import { ContentFragmentType } from "../content_fragment";
 import { WhitelistableFeature } from "../feature_flags";
 import {
   AgentActionSuccessEvent,

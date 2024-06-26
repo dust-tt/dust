@@ -21,22 +21,24 @@ pub struct SqliteDatabase {
 }
 
 #[derive(Debug, Error)]
-pub enum QueryError {
+pub enum SqliteDatabaseError {
     #[error("Query returned more than {0} rows")]
     ExceededMaxRows(usize),
+    #[error("SQLite Worker Internal error: {0}")]
+    InternalError(anyhow::Error),
     #[error("Query execution error: {0}")]
     QueryExecutionError(anyhow::Error),
 }
 
-impl From<rusqlite::Error> for QueryError {
+impl From<rusqlite::Error> for SqliteDatabaseError {
     fn from(e: rusqlite::Error) -> Self {
-        QueryError::QueryExecutionError(anyhow!(e))
+        SqliteDatabaseError::QueryExecutionError(anyhow!(e))
     }
 }
 
-impl From<anyhow::Error> for QueryError {
+impl From<anyhow::Error> for SqliteDatabaseError {
     fn from(e: anyhow::Error) -> Self {
-        QueryError::QueryExecutionError(e)
+        SqliteDatabaseError::InternalError(e)
     }
 }
 
@@ -72,12 +74,12 @@ impl SqliteDatabase {
         &self,
         query: &str,
         timeout_ms: u64,
-    ) -> Result<Vec<QueryResult>, QueryError> {
+    ) -> Result<Vec<QueryResult>, SqliteDatabaseError> {
         let query = query.to_string();
         let conn = self.conn.clone();
 
         let query_future = task::spawn_blocking(move || {
-            let conn = conn.ok_or(QueryError::QueryExecutionError(anyhow!(
+            let conn = conn.ok_or(SqliteDatabaseError::InternalError(anyhow!(
                 "Database not initialized"
             )))?;
 
@@ -86,7 +88,7 @@ impl SqliteDatabase {
 
             let mut stmt = conn
                 .prepare(&query)
-                .map_err(|e| QueryError::QueryExecutionError(anyhow::Error::new(e)))?;
+                .map_err(|e| SqliteDatabaseError::QueryExecutionError(anyhow::Error::new(e)))?;
 
             let column_names = stmt
                 .column_names()
@@ -146,7 +148,7 @@ impl SqliteDatabase {
                 .collect::<Vec<_>>();
 
             if result_rows.len() > MAX_ROWS {
-                return Err(QueryError::ExceededMaxRows(MAX_ROWS));
+                return Err(SqliteDatabaseError::ExceededMaxRows(MAX_ROWS));
             }
 
             info!(
@@ -159,21 +161,21 @@ impl SqliteDatabase {
 
         match timeout(std::time::Duration::from_millis(timeout_ms), query_future)
             .await
-            .map_err(|_| QueryError::QueryExecutionError(anyhow!("Join error")))?
+            .map_err(|_| SqliteDatabaseError::InternalError(anyhow!("Query timed-out")))?
         {
             Ok(r) => r,
             Err(_) => {
                 let interrupt_handle =
                     self.interrupt_handle
                         .as_ref()
-                        .ok_or(QueryError::QueryExecutionError(anyhow!(
+                        .ok_or(SqliteDatabaseError::InternalError(anyhow!(
                             "Database is not initialized"
                         )))?;
 
                 let interrupt_handle = interrupt_handle.lock().await;
                 interrupt_handle.interrupt();
 
-                Err(QueryError::QueryExecutionError(anyhow!(format!(
+                Err(SqliteDatabaseError::InternalError(anyhow!(format!(
                     "Query execution timed out after {} ms",
                     timeout_ms
                 ))))

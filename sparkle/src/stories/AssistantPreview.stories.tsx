@@ -5,8 +5,6 @@ import {
   AssistantPreview,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  Chip,
-  ListAddIcon,
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof AssistantPreview> = {
@@ -153,53 +151,6 @@ export const AssistantPreviewExample = () => (
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
         variant={"list"}
         onClick={() => console.log("clicked")}
-      />
-    </div>
-    <h2>Gallery</h2>
-    <div className="s-grid s-grid-cols-2">
-      <AssistantPreview
-        title={"gpt4"}
-        description={
-          "OpenAI's most powerful and recent model (128k context). With a very long description that starts to repeat itself here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here"
-        }
-        onClick={() => console.log("clicked")}
-        pictureUrl="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
-        subtitle="Stanislas Polu, Pauline Pham"
-        variant="gallery"
-        renderActions={() => {
-          return (
-            <div className="s-flex s-gap-2">
-              <Chip label="Shared Assistant" color="pink" />
-            </div>
-          );
-        }}
-      />
-      <AssistantPreview
-        title="salesFr"
-        description="OpenAI's most powerful and recent model (128k context)."
-        pictureUrl="https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"
-        subtitle={
-          "Stanislas Polu, Pauline Pham, Henry Fontanier, Edouard Wautier"
-        }
-        variant="gallery"
-        onClick={() => console.log("clicked")}
-        onPlayClick={() => console.log("play")}
-        renderActions={(isHovered) => {
-          return (
-            <div className="s-flex s-gap-2">
-              <Chip label="Company Assistant" color="amber" />
-              {isHovered && (
-                <Button
-                  label="Add to my list"
-                  size="xs"
-                  hasMagnifying={false}
-                  variant="tertiary"
-                  icon={ListAddIcon}
-                />
-              )}
-            </div>
-          );
-        }}
       />
     </div>
     <h2>Minimal</h2>

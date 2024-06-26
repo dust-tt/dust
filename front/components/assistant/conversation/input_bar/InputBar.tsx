@@ -1,7 +1,10 @@
 import { Button, StopIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
+import type {
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import {
   useCallback,
   useContext,
@@ -19,11 +22,8 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -70,7 +70,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
+    contentFragments: UploadedContentFragment[]
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -162,6 +162,7 @@ export function AssistantInputBar({
           title: cf.filename,
           content: cf.content,
           file: cf.file,
+          contentType: cf.contentType,
         };
       })
     );
@@ -288,7 +289,7 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
+    contentFragments: UploadedContentFragment[]
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;

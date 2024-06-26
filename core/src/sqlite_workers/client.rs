@@ -21,8 +21,12 @@ pub struct SqliteWorker {
 
 #[derive(Debug, Error)]
 pub enum SqliteWorkerError {
-    #[error("SqliteWorkerError Server error (uri={0}, code={1}, status={2})")]
-    ServerError(String, String, u16),
+    #[error("SqliteWorkerError Too many result rows")]
+    TooManyResultRows,
+    #[error("SqliteWorkerError Query execution error: {0}")]
+    QueryExecutionError(String),
+    #[error("SqliteWorkerError Server error (uri={0}, code={1}, status={2}, message={3:?})")]
+    ServerError(String, String, u16, Option<String>),
     #[error("SqliteWorkerError Unexpected server error (uri={0}, status={1}): {2}")]
     UnexpectedServerError(String, u16, String),
     #[error("SqliteWorkerError Body parsing error (uri={1}, status={2}): {0}")]
@@ -155,12 +159,28 @@ async fn get_response_body(req: RequestBuilder, uri: &str) -> Result<Bytes, Sqli
                     .map(|s| s.to_string()),
                 None => None,
             };
+            let error_message = match error {
+                Some(e) => e
+                    .get("message")
+                    .map(|m| m.as_str())
+                    .flatten()
+                    .map(|s| s.to_string()),
+                None => None,
+            };
+
             match error_code {
-                Some(code) => Err(SqliteWorkerError::ServerError(
-                    uri.to_string(),
-                    code.to_string(),
-                    s.into(),
-                ))?,
+                Some(code) => match code.as_str() {
+                    "too_many_result_rows" => Err(SqliteWorkerError::TooManyResultRows)?,
+                    "query_execution_error" => Err(SqliteWorkerError::QueryExecutionError(
+                        error_message.unwrap_or("Unknown error".to_string()),
+                    ))?,
+                    _ => Err(SqliteWorkerError::ServerError(
+                        uri.to_string(),
+                        code,
+                        s.into(),
+                        error_message,
+                    ))?,
+                },
                 None => Err(SqliteWorkerError::UnexpectedServerError(
                     uri.to_string(),
                     s.into(),

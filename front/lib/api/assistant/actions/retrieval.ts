@@ -28,6 +28,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { getRefs } from "@app/lib/api/assistant/citations";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/development";
@@ -37,7 +38,6 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { rand } from "@app/lib/utils/seeded_random";
 import logger from "@app/logger/logger";
 
 import { getRunnerforActionConfiguration } from "./runners";
@@ -932,42 +932,3 @@ export async function retrievalActionTypesFromAgentMessageIds(
 
   return actions;
 }
-
-/**
- * Retrieval meta-prompt
- */
-
-export function retrievalMetaPromptMutiActions() {
-  return (
-    "To cite documents retrieved with a 2-character REFERENCE, " +
-    "use the markdown directive :cite[REFERENCE] " +
-    "(eg :cite[xx] or :cite[xx,xx] but not :cite[xx][xx]). " +
-    "Ensure citations are placed as close as possible to the related information."
-  );
-}
-
-/**
- * Action execution.
- */
-
-let REFS: string[] | null = null;
-const getRand = rand("chawarma");
-
-const getRefs = () => {
-  if (REFS === null) {
-    REFS = "abcdefghijklmnopqrstuvwxyz0123456789"
-      .split("")
-      .map((c) => {
-        return "abcdefghijklmnopqrstuvwxyz0123456789".split("").map((n) => {
-          return `${c}${n}`;
-        });
-      })
-      .flat();
-    // randomize
-    REFS.sort(() => {
-      const r = getRand();
-      return r > 0.5 ? 1 : -1;
-    });
-  }
-  return REFS;
-};

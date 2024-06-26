@@ -29,10 +29,6 @@ You can create 4 types of assistants:
 
 Multiple assistants can be chained to complete complex tasks. To make the most of Dust, we recommend creating custom assistants with a specific objective detailed in the Instruction part and selected knowledge.
 
-### Assistants Gallery
-
-From there, you can find all your personal, company and shared assistants
-
 ### Conversation
 
 Interactions with assistants happen in "conversations" where users ask questions or requests, and the assistants respond using accessible data.
@@ -238,7 +234,7 @@ Different assistants have varying levels of memory or "context windows." For ins
 
 ### How to search for assistants?
 
-Users can search for assistants inside the `Assistant Gallery`. Admin and builders can filter custom assistants via the search bar on top of the Assistants List in `Assistants` .
+Users can search for assistants inside the `Chat` homepage or from the `Build > Manage Assistants` page. Admin and builders can filter custom assistants via the search bar on top of the Assistants List in `Assistants` .
 
 ## Custom assistants
 
@@ -275,7 +271,7 @@ Setup involves:
 
 ### I don’t know how to start creating an assistant; what should I do?
 
-Consider using a **template** from the template library (accessible by clicking on `Create an assistant`). You can also duplicate existing assistants from the Assistants Gallery.
+Consider using a **template** from the template library (accessible by clicking on `Create an assistant`). You can also duplicate existing assistants.
 
 ### How to edit a custom assistant?
 

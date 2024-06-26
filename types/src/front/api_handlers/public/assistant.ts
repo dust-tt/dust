@@ -1,6 +1,8 @@
 import * as t from "io-ts";
 import moment from "moment-timezone";
 
+import { getSupportedContentFragmentTypeCodec } from "../../content_fragment";
+
 // Custom codec to validate the timezone
 const Timezone = t.refinement(
   t.string,
@@ -36,10 +38,7 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
-  contentType: t.union([
-    t.literal("slack_thread_content"),
-    t.literal("file_attachment"),
-  ]),
+  contentType: getSupportedContentFragmentTypeCodec(),
   context: t.union([
     t.type({
       profilePictureUrl: t.union([t.string, t.null]),

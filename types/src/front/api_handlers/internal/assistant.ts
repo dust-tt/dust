@@ -1,5 +1,7 @@
 import * as t from "io-ts";
 
+import { getSupportedContentFragmentTypeCodec } from "../../content_fragment";
+
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
   mentions: t.array(t.type({ configurationId: t.string })),
@@ -13,10 +15,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
-  contentType: t.union([
-    t.literal("slack_thread_content"),
-    t.literal("file_attachment"),
-  ]),
+  contentType: getSupportedContentFragmentTypeCodec(),
   context: t.type({
     profilePictureUrl: t.union([t.string, t.null]),
   }),

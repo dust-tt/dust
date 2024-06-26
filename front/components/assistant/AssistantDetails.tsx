@@ -34,11 +34,11 @@ import {
   isWebsearchConfiguration,
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import type { KeyedMutator } from "swr";
 
 import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
+import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
@@ -225,7 +225,7 @@ export function AssistantDetails({
     agentConfiguration.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReactMarkdown>{agentConfiguration.instructions}</ReactMarkdown>
+        <ReadOnlyTextArea content={agentConfiguration.instructions} />
       </div>
     ) : (
       "This assistant has no instructions."

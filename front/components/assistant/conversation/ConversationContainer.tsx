@@ -9,6 +9,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { cloneDeep } from "lodash";
 import { useRouter } from "next/router";
@@ -159,7 +160,7 @@ export function ConversationContainer({
       async (
         input: string,
         mentions: MentionType[],
-        contentFragments: ContentFragmentInput[]
+        contentFragments: UploadedContentFragment[]
       ) => {
         const conversationRes = await createConversationWithMessage({
           owner,
