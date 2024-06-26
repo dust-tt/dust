@@ -16,7 +16,7 @@ export type ListMemberEmailsResponseBody = {
  *     summary: Get verified domains
  *     description: Get the verified domain for the workspace identified by {wId}.
  *     tags:
- *       - Workspaces
+ *       - Workspace
  *     parameters:
  *       - in: path
  *         name: wId
