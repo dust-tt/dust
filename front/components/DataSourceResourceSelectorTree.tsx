@@ -123,6 +123,14 @@ function DataSourceResourceSelectorChildren({
       viewType,
     });
 
+  if (isResourcesError) {
+    return (
+      <div className="text-warning text-sm">
+        Failed to retrieve resources likely due to a revoked authorization.
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (parentIsSelected) {
       // Unselected previously selected children
@@ -139,14 +147,6 @@ function DataSourceResourceSelectorChildren({
     onSelectChange,
     parents,
   ]);
-
-  if (isResourcesError) {
-    return (
-      <div className="text-warning text-sm">
-        Failed to retrieve resources likely due to a revoked authorization.
-      </div>
-    );
-  }
 
   const isTablesView = viewType === "tables";
   return (
