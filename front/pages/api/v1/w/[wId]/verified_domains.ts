@@ -37,7 +37,6 @@ export type ListMemberEmailsResponseBody = {
  *         description: The workspace was not found
  *       405:
  *         description: Method not supported
-
  */
 
 async function handler(
