@@ -79,10 +79,13 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       },
     });
 
-    return blobs.reduce((acc, blob) => {
-      acc[blob.connectorId] = new this(this.model, blob.get());
-      return acc;
-    }, {} as Record<ModelId, SlackConfigurationResource>);
+    return blobs.reduce(
+      (acc, blob) => {
+        acc[blob.connectorId] = new this(this.model, blob.get());
+        return acc;
+      },
+      {} as Record<ModelId, SlackConfigurationResource>
+    );
   }
 
   static async fetchByActiveBot(slackTeamId: string) {

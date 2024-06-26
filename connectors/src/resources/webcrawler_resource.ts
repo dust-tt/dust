@@ -80,10 +80,13 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       },
     });
 
-    const resources = blobs.reduce((acc, blob) => {
-      acc[blob.connectorId] = new this(this.model, blob.get());
-      return acc;
-    }, {} as Record<ModelId, WebCrawlerConfigurationResource>);
+    const resources = blobs.reduce(
+      (acc, blob) => {
+        acc[blob.connectorId] = new this(this.model, blob.get());
+        return acc;
+      },
+      {} as Record<ModelId, WebCrawlerConfigurationResource>
+    );
 
     (
       await WebCrawlerConfigurationHeader.findAll({

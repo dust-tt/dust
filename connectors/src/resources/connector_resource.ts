@@ -78,6 +78,30 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     });
   }
 
+  // Override of fetchById to properly pull the configuration.
+  static async fetchById(id: number | string) {
+    console.log(
+      "OVERRIDEN FETCH_BY_ID >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    );
+    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
+    const blob = await this.model.findByPk(parsedId);
+    if (!blob) {
+      return null;
+    }
+
+    const configurations: Record<
+      ModelId,
+      ConnectorProviderModelResourceMapping[typeof blob.type]
+    > = await getConnectorProviderStrategy(
+      blob.type
+    ).fetchConfigurationsbyConnectorIds([blob.id]);
+
+    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
+    const c = new this(this.model, blob.get());
+    c.configuration = configurations[blob.id] ?? null;
+    return c;
+  }
+
   static async listByType(
     type: ConnectorProvider,
     { connectionId }: { connectionId?: string }
