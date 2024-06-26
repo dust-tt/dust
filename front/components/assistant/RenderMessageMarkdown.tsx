@@ -183,6 +183,9 @@ export function RenderMessageMarkdown({
   agentConfigurations?: LightAgentConfigurationType[];
   citationsContext?: CitationsContextType;
 }) {
+  // used to avoid copying mention tooltip, see MentionBlock below
+  const [isCopying, setIsCopying] = useState(false);
+
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
     () => ({
@@ -251,9 +254,6 @@ export function RenderMessageMarkdown({
     }),
     [agentConfigurations, isStreaming, isCopying]
   );
-
-  // used to avoid copying mention tooltip, see MentionBlock below
-  const [isCopying, setIsCopying] = useState(false);
 
   const markdownPlugins = useMemo(
     () => [remarkDirective, mentionDirective, citeDirective(), remarkGfm],
