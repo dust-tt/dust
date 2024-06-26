@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Dust.tt API Documentation",
+    "title": "API Documentation",
     "version": "1.0"
   },
   "servers": [
@@ -15,7 +15,9 @@
       "get": {
         "summary": "Retrieve an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -135,7 +137,9 @@
       "post": {
         "summary": "Run an app",
         "description": "Run an app of a workspace.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -191,7 +195,9 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps of a workspace.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -238,7 +244,9 @@
       "get": {
         "summary": "Get the list of assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -285,7 +293,9 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -392,7 +402,9 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -439,7 +451,9 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -486,7 +500,9 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -573,7 +589,9 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -646,7 +664,12 @@
                       "origin": {
                         "type": "string",
                         "description": "The origin of the message",
-                        "enum": ["api", "web", "slack", null],
+                        "enum": [
+                          "api",
+                          "web",
+                          "slack",
+                          null
+                        ],
                         "default": "api",
                         "example": "api"
                       },
@@ -694,7 +717,9 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -781,7 +806,11 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation",
-                    "enum": ["public", "private", "unlisted"],
+                    "enum": [
+                      "public",
+                      "private",
+                      "unlisted"
+                    ],
                     "default": "public",
                     "example": "private"
                   }
@@ -825,7 +854,9 @@
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1013,11 +1044,53 @@
         }
       }
     },
+    "/api/v1/w/{wId}/data_sources": {
+      "get": {
+        "summary": "Get data sources",
+        "description": "Get data sources in the workspace identified by {wId}.",
+        "tags": [
+          "Datasources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The data sources"
+          },
+          "404": {
+            "description": "The workspace was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/feature_flags": {
       "get": {
         "summary": "List feature flags",
         "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1055,7 +1128,9 @@
       "get": {
         "summary": "List member emails",
         "description": "List the emails of all members in the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",

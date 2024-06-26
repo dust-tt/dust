@@ -33,10 +33,10 @@ export type GetDataSourcesResponseBody = {
  *     responses:
  *       200:
  *         description: The data sources
- *      404:
- *       description: The workspace was not found
- *      405:
- *      description: Method not supported
+ *       404:
+ *         description: The workspace was not found
+ *       405:
+ *         description: Method not supported
  */
 
 async function handler(
