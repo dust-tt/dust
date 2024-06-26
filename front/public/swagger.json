@@ -481,6 +481,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1834,6 +1843,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1998,6 +2016,15 @@
             "name": "name",
             "required": true,
             "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -2243,7 +2270,7 @@
         "summary": "Get verified domains",
         "description": "Get the verified domain for the workspace identified by {wId}.",
         "tags": [
-          "Workspaces"
+          "Workspace"
         ],
         "parameters": [
           {
