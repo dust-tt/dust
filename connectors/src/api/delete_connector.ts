@@ -40,22 +40,12 @@ const _deleteConnectorAPIHandler = async (
 
   const stopRes = await connectorStopper(connector.id);
 
-  if (stopRes.isErr()) {
+  if (stopRes.isErr() && !force) {
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
         message: stopRes.error.message,
-      },
-    });
-  }
-
-  if (!connector) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Could not find the connector",
       },
     });
   }
