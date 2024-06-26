@@ -6,7 +6,6 @@ import type { Request, Response } from "express";
 
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
-import { renderConnectorTypeWithConfiguration } from "@connectors/lib/renderers/connector";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -69,49 +68,7 @@ const _getConnector = async (
     }
   }
 
-  return res.status(200).json(await renderConnectorTypeWithConfiguration(connector));
-};
-
-type GetConnectorsRes = WithConnectorsAPIErrorReponse<{
-  connectors: ConnectorType[];
-}>;
-
-const _getConnectors = async (
-  req: Request<
-    Record<string, string>,
-    GetConnectorRes,
-    undefined,
-    { connector_ids: string[] }
-  >,
-  res: Response<GetConnectorsRes>
-) => {
-  if (!req.query.connector_ids || !Array.isArray(req.query.connector_ids)) {
-    return apiError(req, res, {
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Missing required GET parameters. Required: connector_ids (array)",
-      },
-      status_code: 400,
-    });
-  }
-
-  let modelIds = [];
-  try {
-    modelIds = req.query.connector_ids.map((id) => parseInt(id, 10));
-  } catch (e) {
-    return apiError(req, res, {
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid connector_ids (non parseable to integer)",
-      },
-      status_code: 400,
-    });
-  }
-
-  const connectors = await ConnectorResource.fetchByIds(modelIds);
-
-  return res.status(200).json(await renderConnectorTypeWithConfiguration(connector));
+  return res.status(200).json(connector.toJSON());
 };
 
 export const getConnectorAPIHandler = withLogging(_getConnector);

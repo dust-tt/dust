@@ -16,7 +16,6 @@ import * as reporter from "io-ts-reporters";
 
 import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
-import { renderConnectorTypeWithConfiguration } from "@connectors/lib/renderers/connector";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -136,9 +135,7 @@ const _createConnectorAPIHandler = async (
       });
     }
 
-    return res
-      .status(200)
-      .json(await renderConnectorTypeWithConfiguration(connector));
+    return res.status(200).json(connector.toJSON());
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
     return apiError(req, res, {

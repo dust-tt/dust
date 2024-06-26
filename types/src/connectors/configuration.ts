@@ -9,7 +9,7 @@ export type ConnectorConfiguration =
 export type ConnectorConfigurations = {
   webcrawler: WebCrawlerConfigurationType;
   notion: null;
-  slack: SlackConfigurationType;
+  slack: null;
   google_drive: null;
   github: null;
   confluence: null;
