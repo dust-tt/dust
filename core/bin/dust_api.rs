@@ -2274,6 +2274,12 @@ async fn databases_query_run(
                             "The query returned too many rows",
                             None,
                         ),
+                        Err(QueryDatabaseError::ExecutionError(s)) => error_response(
+                            StatusCode::BAD_REQUEST,
+                            "query_execution_error",
+                            &s,
+                            None,
+                        ),
                         Err(e) => error_response(
                             StatusCode::INTERNAL_SERVER_ERROR,
                             "internal_server_error",
