@@ -12,7 +12,7 @@ export const config = {
   },
 };
 
-/** 
+/**
  * @swagger
  * /api/v1/w/{wId}/data_sources/{name}/tables/csv:
  *   post:

@@ -11,7 +11,7 @@ export type PostParentsResponseBody = {
   updated: true;
 };
 
-/** 
+/**
  * @swagger
  * /api/v1/w/{wId}/data_sources/{name}/documents/{documentId}/parents:
  *   post:

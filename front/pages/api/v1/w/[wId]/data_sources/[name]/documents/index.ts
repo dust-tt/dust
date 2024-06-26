@@ -12,7 +12,7 @@ export type GetDocumentsResponseBody = {
   total: number;
 };
 
-/** 
+/**
  * @swagger
  * /api/v1/w/{wId}/data_sources/{name}/documents:
  *   get:
