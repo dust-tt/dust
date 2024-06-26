@@ -20,6 +20,7 @@ const whitelistedCommands = [
     majorCommand: "notion",
     command: "find-url",
   },
+  { majorCommand: "slack", command: "whitelist-bot" },
 ];
 
 const _adminAPIHandler = async (

@@ -389,6 +389,9 @@ const DataSourcePage = ({
           {dataSource.connectorProvider === "notion" && (
             <NotionUrlCheckOrFind owner={owner} />
           )}
+          {dataSource.connectorProvider === "slack" && (
+            <SlackWhitelistBot owner={owner}  />
+          )}
           {dataSource.connectorProvider === "google_drive" && (
             <>
               <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
@@ -564,6 +567,37 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
+async function handleWhitelistBot(
+  botName: string,
+  wId: string,
+): Promise<void> {
+  const res = await fetch(`/api/poke/admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      majorCommand: "slack",
+      command: "whitelist-bot",
+      args: {
+        botName,
+        wId,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    alert(
+      `Failed to whitelist bot: ${
+        err.error?.connectors_error?.message
+      }\n\n${JSON.stringify(err)}`
+    );
+    return;
+  }
+  alert("Bot whitelisted successfully");
+}
+
 function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
   const [notionUrl, setNotionUrl] = useState("");
   const [urlDetails, setUrlDetails] = useState<
@@ -709,5 +743,36 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
     </div>
   );
 }
+
+function SlackWhitelistBot({ owner }: { owner: WorkspaceType }) {
+  const [botName, setBotName] = useState("");
+
+  return (
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
+      <div className="flex items-center gap-2">
+        <div>Whitelist slack bot or workflow</div>
+        <div className="grow">
+          <Input
+            placeholder="Bot or workflow name"
+            onChange={setBotName}
+            value={botName}
+            name={""}
+          />
+        </div>
+        <Button
+          variant="secondary"
+          label="Whitelist"
+          onClick={async () => 
+              await handleWhitelistBot(
+                botName,
+                owner.sId,
+              )}
+        />
+      </div>
+    </div>
+  );
+}
+
+
 
 export default DataSourcePage;
