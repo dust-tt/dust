@@ -38,6 +38,12 @@ export const config = {
  *         description: ID of the table
  *         schema:
  *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
