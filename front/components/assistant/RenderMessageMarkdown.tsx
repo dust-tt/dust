@@ -235,11 +235,11 @@ export function RenderMessageMarkdown({
       ),
       // @ts-expect-error - `mention` is a custom tag, currently refused by
       // react-markdown types although the functionality is supported
-      mention: ({ agentName, agentSId }) => {
+      mention: ({ agentName }) => {
         return <MentionBlock agentName={agentName} />;
       },
     }),
-    [agentConfigurations, isStreaming]
+    [isStreaming]
   );
 
   const markdownPlugins = useMemo(
