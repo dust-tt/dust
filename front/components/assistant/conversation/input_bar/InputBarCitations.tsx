@@ -1,33 +1,30 @@
 import { Citation } from "@dust-tt/sparkle";
 
-interface ContentFragmentData {
-  title: string;
-  content: string;
-  file: File;
-}
+import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 
 interface InputBarCitationsProps {
-  data: ContentFragmentData[];
-  onRemoveClick: (idx: number) => void;
+  fileUploaderService: FileUploaderService;
 }
 
 export function InputBarCitations({
-  data,
-  onRemoveClick,
+  fileUploaderService,
 }: InputBarCitationsProps) {
   const processContentFragments = () => {
     const nodes: React.ReactNode[] = [];
 
-    for (const [idx, cf] of data.entries()) {
-      // TODO(2024-06-25 flav) Render image using base64.
+    for (const blob of fileUploaderService.fileBlobs) {
+      const isImage = Boolean(blob.preview);
+
       nodes.push(
         <Citation
-          key={`cf-${idx}`}
-          title={cf.title}
+          key={`cf-${blob.id}`}
+          title={blob.id}
           size="xs"
-          description={cf.content?.substring(0, 100)}
+          type={isImage ? "image" : "document"}
+          imgSrc={blob.preview}
+          description={isImage ? undefined : blob.content}
           onClose={() => {
-            onRemoveClick(idx);
+            fileUploaderService.removeFile(blob.id);
           }}
         />
       );
@@ -36,7 +33,7 @@ export function InputBarCitations({
     return nodes;
   };
 
-  if (data.length === 0) {
+  if (fileUploaderService.fileBlobs.length === 0) {
     return;
   }
 

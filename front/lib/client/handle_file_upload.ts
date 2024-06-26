@@ -6,6 +6,48 @@ PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 
 const supportedFileExtensions = [".txt", ".pdf", ".md", ".csv", ".tsv"];
 
+export async function extractTextFromPDF(
+  file: File,
+  blob: FileReader["result"]
+) {
+  try {
+    if (!(blob instanceof ArrayBuffer)) {
+      return new Err(
+        new Error("Failed extracting text from PDF. Unexpected error")
+      );
+    }
+
+    const loadingTask = PDFJS.getDocument({ data: blob });
+    const pdf = await loadingTask.promise;
+
+    let text = "";
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      const strings = content.items.map((item: unknown) => {
+        if (
+          item &&
+          typeof item === "object" &&
+          "str" in item &&
+          typeof item.str === "string"
+        ) {
+          return item.str;
+        }
+      });
+      text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
+    }
+
+    return new Ok({ title: file.name, content: text });
+  } catch (e) {
+    console.error("Failed extracting text from PDF", e);
+    const errorMessage = e instanceof Error ? e.message : "Unexpected error";
+
+    return new Err(
+      new Error(`Failed extracting text from PDF. ${errorMessage}`)
+    );
+  }
+}
+
 export async function handleFileUploadToText(
   file: File
 ): Promise<Result<{ title: string; content: string }, Error>> {
@@ -24,43 +66,13 @@ export async function handleFileUploadToText(
         );
       }
     };
+
     const handleFileLoadedPDF = async (e: ProgressEvent<FileReader>) => {
-      try {
-        const arrayBuffer = e.target?.result;
-        if (!(arrayBuffer instanceof ArrayBuffer)) {
-          return resolve(
-            new Err(
-              new Error("Failed extracting text from PDF. Unexpected error")
-            )
-          );
-        }
-        const loadingTask = PDFJS.getDocument({ data: arrayBuffer });
-        const pdf = await loadingTask.promise;
-        let text = "";
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const content = await page.getTextContent();
-          const strings = content.items.map((item: unknown) => {
-            if (
-              item &&
-              typeof item === "object" &&
-              "str" in item &&
-              typeof item.str === "string"
-            ) {
-              return item.str;
-            }
-          });
-          text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
-        }
-        return resolve(new Ok({ title: file.name, content: text }));
-      } catch (e) {
-        console.error("Failed extracting text from PDF", e);
-        const errorMessage =
-          e instanceof Error ? e.message : "Unexpected error";
-        return resolve(
-          new Err(new Error(`Failed extracting text from PDF. ${errorMessage}`))
-        );
-      }
+      const { result = null } = e.target ?? {};
+
+      const res = await extractTextFromPDF(file, result);
+
+      return resolve(res);
     };
 
     try {
