@@ -1,10 +1,10 @@
-import React, { SyntheticEvent, useState } from "react";
+import React, { useState } from "react";
 
-import { Button, CardButton, MoreIcon, PlayIcon } from "@sparkle/_index";
+import { Button, CardButton, MoreIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
 import { classNames } from "@sparkle/lib/utils";
 
-type AssistantPreviewVariant = "item" | "list" | "gallery" | "minimal";
+type AssistantPreviewVariant = "item" | "list" | "minimal";
 
 interface BaseAssistantPreviewProps {
   variant: AssistantPreviewVariant;
@@ -24,12 +24,6 @@ type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "list";
 };
 
-type GalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
-  variant: "gallery";
-  renderActions?: (isHovered: boolean) => React.ReactNode;
-  onPlayClick?: (e: SyntheticEvent) => void;
-};
-
 type MinimalVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "minimal";
   hasAction?: boolean;
@@ -41,7 +35,6 @@ type MinimalVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
 type AssistantPreviewProps =
   | ItemVariantAssistantPreviewProps
   | ListVariantAssistantPreviewProps
-  | GalleryVariantAssistantPreviewProps
   | MinimalVariantAssistantPreviewProps;
 
 const isBrowser = typeof window !== "undefined";
@@ -60,13 +53,12 @@ const titleClassNames = {
   base: "s-truncate s-font-medium s-text-element-900 s-w-full",
   item: "s-text-sm",
   list: "s-text-base",
-  gallery: "s-text-lg",
   minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
       ? "s-text-sm"
       : getWindowWidth() <= breakpoints.md
-        ? "s-text-base"
-        : ""
+      ? "s-text-base"
+      : ""
   }`,
 };
 
@@ -74,13 +66,12 @@ const subtitleClassNames = {
   base: "s-font-normal s-text-element-700 s-truncate s-w-full",
   item: "s-text-xs",
   list: "s-text-sm",
-  gallery: "s-text-sm",
   minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
       ? "s-text-xs"
       : getWindowWidth() <= breakpoints.md
-        ? "s-text-sm"
-        : ""
+      ? "s-text-sm"
+      : ""
   }`,
 };
 
@@ -88,7 +79,6 @@ const descriptionClassNames = {
   base: "s-font-normal s-mb-1",
   item: "s-text-xs s-text-element-700 s-pl-1 s-line-clamp-3",
   list: "s-text-base s-text-element-800 s-line-clamp-3",
-  gallery: "s-text-base s-text-element-800 s-line-clamp-3",
 };
 
 function renderVariantContent(
@@ -99,8 +89,6 @@ function renderVariantContent(
       return <ItemVariantContent {...props} />;
     case "list":
       return <ListVariantContent {...props} />;
-    case "gallery":
-      return <GalleryVariantContent {...props} />;
     case "minimal":
       return <MinimalVariantContent {...props} />;
     default:
@@ -192,63 +180,6 @@ const ListVariantContent = ({
           className={classNames(
             descriptionClassNames["base"],
             descriptionClassNames.list
-          )}
-        >
-          {description}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const GalleryVariantContent = ({
-  renderActions,
-  description,
-  onPlayClick,
-  title,
-  pictureUrl,
-  subtitle,
-  isHovered,
-}: GalleryVariantAssistantPreviewProps & { isHovered: boolean }) => {
-  return (
-    <div className="s-flex s-gap-2">
-      <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="lg" />
-      <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
-        <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
-          <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
-            <div
-              className={classNames(
-                titleClassNames["base"],
-                titleClassNames.gallery
-              )}
-            >
-              @{title}
-            </div>
-            <div
-              className={classNames(
-                subtitleClassNames["base"],
-                subtitleClassNames.gallery
-              )}
-            >
-              By: {subtitle}
-            </div>
-          </div>
-          {isHovered && onPlayClick && (
-            <Button
-              variant="primary"
-              size="sm"
-              label="Try"
-              labelVisible={false}
-              icon={PlayIcon}
-              onClick={onPlayClick}
-            />
-          )}
-        </div>
-        {renderActions && renderActions(isHovered)}
-        <div
-          className={classNames(
-            descriptionClassNames["base"],
-            descriptionClassNames.gallery
           )}
         >
           {description}
