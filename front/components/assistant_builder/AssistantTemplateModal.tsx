@@ -9,6 +9,7 @@ import {
 import type { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 
+import { InstructionsReadOnlyTextArea } from "@app/components/assistant/AssistantInstructionReadOnlyTextArea";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -84,14 +85,7 @@ function InstructionsSection({
   return (
     <>
       <Page.SectionHeader title="Instructions" />
-      <textarea
-        disabled
-        className={classNames(
-          "block h-full min-h-60 w-full min-w-0 rounded-xl text-sm",
-          "resize-none border-structure-200 bg-structure-50"
-        )}
-        defaultValue={instructions ?? ""}
-      />
+      <InstructionsReadOnlyTextArea instructions={instructions} />
     </>
   );
 }

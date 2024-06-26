@@ -38,6 +38,7 @@ import ReactMarkdown from "react-markdown";
 import type { KeyedMutator } from "swr";
 
 import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
+import { InstructionsReadOnlyTextArea } from "@app/components/assistant/AssistantInstructionReadOnlyTextArea";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
@@ -225,7 +226,9 @@ export function AssistantDetails({
     agentConfiguration.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReactMarkdown>{agentConfiguration.instructions}</ReactMarkdown>
+        <InstructionsReadOnlyTextArea
+          instructions={agentConfiguration.instructions}
+        />
       </div>
     ) : (
       "This assistant has no instructions."
