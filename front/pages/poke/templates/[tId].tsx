@@ -436,9 +436,7 @@ function PreviewDialog({ form }: { form: any }) {
       </PokeDialogTrigger>
       <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
         <PokeDialogHeader>
-          <PokeDialogTitle>
-            Preview as displayed in Template Gallery
-          </PokeDialogTitle>
+          <PokeDialogTitle>Preview</PokeDialogTitle>
         </PokeDialogHeader>
         <TemplateItem
           name={form.getValues("handle")}
