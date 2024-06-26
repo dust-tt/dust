@@ -72,7 +72,6 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
             storage,
             data_source: d.data_source,
             document_id: d.document_id,
-            timestamp: d.timestamp,
             deletedAt: d.created,
             hash: d.hash,
           });
@@ -157,7 +156,6 @@ async function scrubDocument({
   data_source,
   document_id,
   deletedAt,
-  timestamp,
   hash,
 }: {
   logger: pino.Logger<LoggerOptions>;
@@ -167,7 +165,6 @@ async function scrubDocument({
   data_source: number;
   document_id: string;
   deletedAt: number;
-  timestamp: number;
   hash: string;
 }) {
   if (!DUST_DATA_SOURCES_BUCKET) {
@@ -225,7 +222,7 @@ async function scrubDocument({
 
   // New logic.
   const path = `${dataSource.project}/${dataSource.internal_id}/${documentIdHash}`;
-  const filename = `${timestamp}_${hash}.json`;
+  const filename = `${deletedAt}_${hash}.json`;
 
   const bucket = storage.bucket(DUST_DATA_SOURCES_BUCKET);
 
