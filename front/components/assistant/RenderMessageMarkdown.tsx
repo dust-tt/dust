@@ -252,13 +252,13 @@ export function RenderMessageMarkdown({
     [agentConfigurations, isStreaming, isCopying]
   );
 
+  // used to avoid copying mention tooltip, see MentionBlock below
+  const [isCopying, setIsCopying] = useState(false);
+
   const markdownPlugins = useMemo(
     () => [remarkDirective, mentionDirective, citeDirective(), remarkGfm],
     []
   );
-
-  // used to avoid copying mention tooltip, see MentionBlock below
-  const [isCopying, setIsCopying] = useState(false);
 
   return (
     <div
