@@ -2,7 +2,6 @@ import type {
   ContentFragmentType,
   ModelId,
   Result,
-  SupportedContentFragmentType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -237,13 +236,11 @@ export async function storeContentFragmentText({
   conversationId,
   messageId,
   content,
-  contentType,
 }: {
   workspaceId: string;
   conversationId: string;
   messageId: string;
   content: string;
-  contentType: SupportedContentFragmentType;
 }): Promise<number | null> {
   if (content === "") {
     return null;
@@ -258,7 +255,7 @@ export async function storeContentFragmentText({
 
   await getPrivateUploadBucket().uploadRawContentToBucket({
     content,
-    contentType,
+    contentType: "text/plain",
     filePath,
   });
 

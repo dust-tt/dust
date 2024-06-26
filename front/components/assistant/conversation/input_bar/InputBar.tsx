@@ -5,7 +5,6 @@ import type {
 } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
-import { isSupportedContentFragmentType } from "@dust-tt/types";
 import {
   useCallback,
   useContext,
@@ -25,7 +24,6 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { getMimeTypeFromFile } from "@app/lib/file";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -199,17 +197,7 @@ export function AssistantInputBar({
                   "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
               });
               return;
-            } else if (
-              !isSupportedContentFragmentType(getMimeTypeFromFile(file))
-            ) {
-              sendNotification({
-                type: "error",
-                title: "Error uploading file.",
-                description: `Unsupported file format.`,
-              });
-              return;
             }
-
             const res = await handleFileUploadToText(file);
 
             if (res.isErr()) {

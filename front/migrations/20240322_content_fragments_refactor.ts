@@ -26,7 +26,6 @@ async function migrateContentFragment(
       messageId: cfMessage.sId,
       // @ts-expect-error content was removed from ContentFragmentResource
       content: cf.content,
-      contentType: "text/plain",
     });
     await cf.update({
       // @ts-expect-error textUrl was removed from ContentFragmentResource

@@ -1645,7 +1645,6 @@ export async function postNewContentFragment(
     conversationId: conversation.sId,
     messageId,
     content,
-    contentType,
   });
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(

@@ -1,7 +1,6 @@
 import type { Result, SupportedContentFragmentType } from "@dust-tt/types";
 import {
   isSupportedTextContentFragmentType,
-  supportedTextContentFragment,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
@@ -20,19 +19,19 @@ export async function handleFileUploadToText(file: File): Promise<
     Error
   >
 > {
+  const contentFragmentMimeType = getMimeTypeFromFile(file);
+  if (!isSupportedTextContentFragmentType(contentFragmentMimeType)) {
+    return new Err(new Error("Unsupported file type."));
+  }
   return new Promise((resolve) => {
     const handleFileLoadedText = (e: ProgressEvent<FileReader>) => {
       const content = e.target?.result;
       if (content && typeof content === "string") {
-        const contentType = getMimeTypeFromFile(file);
-        if (!isSupportedTextContentFragmentType(contentType)) {
-          return resolve(new Err(new Error("Unsupported file type.")));
-        }
         return resolve(
           new Ok({
             title: file.name,
             content,
-            contentType,
+            contentType: contentFragmentMimeType,
           })
         );
       } else {
@@ -73,15 +72,11 @@ export async function handleFileUploadToText(file: File): Promise<
           });
           text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
         }
-        const contentType = getMimeTypeFromFile(file);
-        if (!isSupportedTextContentFragmentType(contentType)) {
-          return resolve(new Err(new Error("Unsupported file type.")));
-        }
         return resolve(
           new Ok({
             title: file.name,
             content: text,
-            contentType: contentType,
+            contentType: contentFragmentMimeType,
           })
         );
       } catch (e) {
@@ -95,24 +90,14 @@ export async function handleFileUploadToText(file: File): Promise<
     };
 
     try {
-      const mimeType = getMimeTypeFromFile(file);
-      if (mimeType === "application/pdf") {
+      if (contentFragmentMimeType === "application/pdf") {
         const fileReader = new FileReader();
         fileReader.onloadend = handleFileLoadedPDF;
         fileReader.readAsArrayBuffer(file);
-      } else if (isSupportedTextContentFragmentType(mimeType)) {
+      } else {
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
         fileData.readAsText(file);
-      } else {
-        return resolve(
-          new Err(
-            new Error(
-              "File type not supported. Supported file types: " +
-                supportedTextContentFragment.join(", ")
-            )
-          )
-        );
       }
     } catch (e) {
       console.error("Error handling file", e);

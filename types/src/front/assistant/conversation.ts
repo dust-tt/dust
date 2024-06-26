@@ -149,6 +149,9 @@ export type ContentFragmentContextType = {
 export const supportedTextContentFragment = [
   "text/plain",
   "text/csv",
+  "text/tsv",
+  "text/comma-separated-values",
+  "text/tab-separated-values",
   "text/markdown",
   "application/pdf",
   "file_attachment",
@@ -166,7 +169,7 @@ export const supportedContentFragment = [
 export type SupportedContentFragmentType =
   (typeof supportedContentFragment)[number];
 
-export function getSupportedContentFragmentCodec(): t.Mixed {
+export function getSupportedContentFragmentTypeCodec(): t.Mixed {
   const [first, second, ...rest] = supportedContentFragment;
   return t.union([
     t.literal(first),
