@@ -5,14 +5,7 @@ import type {
 } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
