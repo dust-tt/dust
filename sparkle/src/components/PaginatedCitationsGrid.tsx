@@ -24,7 +24,7 @@ export function PaginatedCitationsGrid({
 }: PaginatedCitationsGridProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const cols = 3;
-  const rows = Math.ceil(maxItemsPerPage / cols);
+  const rows = Math.ceil(Math.min(maxItemsPerPage, items.length) / cols);
 
   if (items.length === 0) {
     return null;

@@ -12,8 +12,8 @@ const meta = {
 
 export default meta;
 
-function makeCitationItems() {
-  return Array.from({ length: 10 }, (_, idx) => ({
+function makeCitationItems(items: number) {
+  return Array.from({ length: items }, (_, idx) => ({
     title: `test ${idx + 1}`,
     href: "empty",
     type: "document" as CitationType,
@@ -24,7 +24,17 @@ export const PaginatedCitationsGridExample = () => {
   return (
     <>
       <div className="s-flex s-gap-6">
-        <PaginatedCitationsGrid items={makeCitationItems()} />
+        <PaginatedCitationsGrid items={makeCitationItems(10)} />
+      </div>
+    </>
+  );
+};
+
+export const WithFewItems = () => {
+  return (
+    <>
+      <div className="s-flex s-gap-6">
+        <PaginatedCitationsGrid items={makeCitationItems(2)} />
       </div>
     </>
   );
