@@ -51,9 +51,7 @@ export default function DataSourceResourceSelectorTree({
         parentIsSelected={parentIsSelected}
         selectedResourceIds={selectedResourceIds}
         selectedParents={selectedParents}
-        onSelectChange={(resource, parents, selected) => {
-          onSelectChange(resource, parents, selected);
-        }}
+        onSelectChange={onSelectChange}
         filterPermission={filterPermission}
         viewType={viewType}
       />
