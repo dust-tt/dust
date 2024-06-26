@@ -86,11 +86,15 @@ const ConversationViewer = React.forwardRef<
   },
   ref
 ) {
-  const { isConversationError, isConversationLoading, mutateConversation } =
-    useConversation({
-      conversationId,
-      workspaceId: owner.sId,
-    });
+  const {
+    conversation,
+    isConversationError,
+    isConversationLoading,
+    mutateConversation,
+  } = useConversation({
+    conversationId,
+    workspaceId: owner.sId,
+  });
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -384,43 +388,44 @@ const ConversationViewer = React.forwardRef<
           <Spinner variant="color" size="xs" />
         </div>
       )}
-      {typedGroupedMessages.map((typedGroup, index) => {
-        const isLastGroup = index === typedGroupedMessages.length - 1;
-        return (
-          <MessageGroup
-            key={`typed-group-${index}`}
-            messages={typedGroup}
-            isLastMessage={isLastGroup}
-          >
-            {typedGroup &&
-              typedGroup.map((group) => {
-                return group.map((message) => {
-                  return (
-                    <MessageItem
-                      key={`message-${message.sId}`}
-                      conversationId={conversationId}
-                      hideReactions={hideReactions}
-                      isInModal={isInModal}
-                      message={message}
-                      owner={owner}
-                      reactions={reactions}
-                      ref={
-                        message.sId === prevFirstMessageId
-                          ? prevFirstMessageRef
-                          : undefined
-                      }
-                      user={user}
-                      isLastMessage={
-                        latestPage?.messages.at(-1)?.sId === message.sId
-                      }
-                      latestMentions={latestMentions}
-                    />
-                  );
-                });
-              })}
-          </MessageGroup>
-        );
-      })}
+      {conversation &&
+        typedGroupedMessages.map((typedGroup, index) => {
+          const isLastGroup = index === typedGroupedMessages.length - 1;
+          return (
+            <MessageGroup
+              key={`typed-group-${index}`}
+              messages={typedGroup}
+              isLastMessage={isLastGroup}
+            >
+              {typedGroup &&
+                typedGroup.map((group) => {
+                  return group.map((message) => {
+                    return (
+                      <MessageItem
+                        key={`message-${message.sId}`}
+                        conversationId={conversationId}
+                        hideReactions={hideReactions}
+                        isInModal={isInModal}
+                        message={message}
+                        owner={owner}
+                        reactions={reactions}
+                        ref={
+                          message.sId === prevFirstMessageId
+                            ? prevFirstMessageRef
+                            : undefined
+                        }
+                        user={user}
+                        isLastMessage={
+                          latestPage?.messages.at(-1)?.sId === message.sId
+                        }
+                        latestMentions={latestMentions}
+                      />
+                    );
+                  });
+                })}
+            </MessageGroup>
+          );
+        })}
     </div>
   );
 });
