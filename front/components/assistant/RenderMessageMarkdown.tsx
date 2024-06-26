@@ -5,10 +5,7 @@ import {
   SparklesIcon,
   WrenchIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WebsearchResultType,
-} from "@dust-tt/types";
+import type { WebsearchResultType } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
@@ -174,12 +171,10 @@ export const CitationsContext = React.createContext<CitationsContextType>({
 export function RenderMessageMarkdown({
   content,
   isStreaming,
-  agentConfigurations,
   citationsContext,
 }: {
   content: string;
   isStreaming: boolean;
-  agentConfigurations?: LightAgentConfigurationType[];
   citationsContext?: CitationsContextType;
 }) {
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection

@@ -9,7 +9,6 @@ import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSug
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
-import { useAgentConfigurations } from "@app/lib/swr";
 
 interface UserMessageProps {
   conversationId: string;
@@ -36,11 +35,6 @@ export function UserMessage({
   contentFragments,
   size,
 }: UserMessageProps) {
-  const { agentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: { conversationId },
-  });
-
   return (
     <ConversationMessage
       owner={owner}
@@ -61,7 +55,6 @@ export function UserMessage({
           <RenderMessageMarkdown
             content={message.content}
             isStreaming={false}
-            agentConfigurations={agentConfigurations}
           />
         </div>
         {message.mentions.length === 0 && isLastMessage && (
