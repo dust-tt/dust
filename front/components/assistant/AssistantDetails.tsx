@@ -34,7 +34,6 @@ import {
   isWebsearchConfiguration,
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import type { KeyedMutator } from "swr";
 
 import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
