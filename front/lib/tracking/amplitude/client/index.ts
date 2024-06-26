@@ -1,8 +1,13 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 
-import type { Ampli } from "@app/lib/tracking/amplitude/client/generated";
+import type {
+  Ampli,
+  AssistantBuilderStepViewedProperties,
+} from "@app/lib/tracking/amplitude/client/generated";
 import {
   ampli,
+  AssistantBuilderOpened,
+  AssistantBuilderStepViewed,
   MultiFilesUploadUsed,
   PageViewed,
 } from "@app/lib/tracking/amplitude/client/generated";
@@ -144,5 +149,66 @@ export class AmplitudeClientSideTracking {
   static async flush() {
     const client = getBrowserClient();
     return client.flush().promise;
+  }
+
+  static trackAssistantBuilderOpened({
+    isNew,
+    assistantName,
+    templateName,
+    workspaceId,
+  }: {
+    isNew: boolean;
+    templateName?: string;
+    assistantName?: string;
+    workspaceId: string;
+  }) {
+    const client = getBrowserClient();
+    const event = new AssistantBuilderOpened({
+      isNew,
+      templateName,
+      assistantName: assistantName || "",
+    });
+    client.track({
+      ...event,
+      groups: workspaceId
+        ? {
+            [GROUP_TYPE]: workspaceId,
+          }
+        : undefined,
+    });
+
+    return AmplitudeClientSideTracking.flush();
+  }
+
+  static trackAssistantBuilderStepViewed({
+    step,
+    isNew,
+    assistantName,
+    templateName,
+    workspaceId,
+  }: {
+    step: AssistantBuilderStepViewedProperties["assistantBuilderStep"];
+    isNew: boolean;
+    templateName?: string;
+    assistantName?: string;
+    workspaceId: string;
+  }) {
+    const client = getBrowserClient();
+    const event = new AssistantBuilderStepViewed({
+      assistantBuilderStep: step,
+      isNew,
+      templateName,
+      assistantName: assistantName || "",
+    });
+    client.track({
+      ...event,
+      groups: workspaceId
+        ? {
+            [GROUP_TYPE]: workspaceId,
+          }
+        : undefined,
+    });
+
+    return AmplitudeClientSideTracking.flush();
   }
 }

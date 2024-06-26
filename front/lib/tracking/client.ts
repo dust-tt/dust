@@ -1,5 +1,6 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 
+import type { BuilderScreen } from "@app/components/assistant_builder/types";
 import { AmplitudeClientSideTracking } from "@app/lib/tracking/amplitude/client";
 
 export class ClientSideTracking {
@@ -73,6 +74,47 @@ export class ClientSideTracking {
       trialing,
       workspaceId,
       workspaceName,
+    });
+  }
+
+  static trackAssistantBuilderOpened({
+    isNew,
+    assistantName,
+    templateName,
+    workspaceId,
+  }: {
+    isNew: boolean;
+    assistantName?: string;
+    templateName?: string;
+    workspaceId: string;
+  }) {
+    return AmplitudeClientSideTracking.trackAssistantBuilderOpened({
+      isNew,
+      templateName,
+      assistantName,
+      workspaceId,
+    });
+  }
+
+  static trackAssistantBuilderStepViewed({
+    step,
+    isNew,
+    assistantName,
+    templateName,
+    workspaceId,
+  }: {
+    step: BuilderScreen;
+    isNew: boolean;
+    templateName?: string;
+    assistantName?: string;
+    workspaceId: string;
+  }) {
+    return AmplitudeClientSideTracking.trackAssistantBuilderStepViewed({
+      step,
+      isNew,
+      assistantName,
+      templateName,
+      workspaceId,
     });
   }
 }
