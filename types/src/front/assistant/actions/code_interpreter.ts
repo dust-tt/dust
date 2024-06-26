@@ -1,7 +1,10 @@
 import { ModelId } from "../../../shared/model_id";
 import { BaseAction } from "../../lib/api/assistant/actions";
 
-export type CodeInterpreterRuntypeEnvironmentType = "js_with_react" | "python";
+export type CodeInterpreterRuntypeEnvironmentType =
+  | "javascript"
+  | "javascript_with_react"
+  | "python";
 
 // Configuration
 export type CodeInterpreterConfigurationType = {

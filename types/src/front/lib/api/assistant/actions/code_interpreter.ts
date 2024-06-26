@@ -6,7 +6,7 @@ import { CodeInterpreterActionType } from "../../../../../front/assistant/action
 
 // Event sent before the execution with the finalized params to be used.
 export type CodeInterpreterParamsEvent = {
-  type: "code_interprete_params";
+  type: "code_interpreter_params";
   created: number;
   configurationId: string;
   messageId: string;
@@ -14,7 +14,7 @@ export type CodeInterpreterParamsEvent = {
 };
 
 export type CodeInterpreterErrorEvent = {
-  type: "code_interprete_error";
+  type: "code_interpreter_error";
   created: number;
   configurationId: string;
   messageId: string;
