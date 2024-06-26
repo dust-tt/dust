@@ -30,7 +30,9 @@ import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-const TABLES_QUERY_MIN_TOKEN = 64_000;
+// Need a model with at least 32k to run tables query.
+const TABLES_QUERY_MIN_TOKEN = 28_000;
+const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -235,7 +237,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
 
     const allowedTokenCount =
       supportedModel.contextSize - TABLES_QUERY_MIN_TOKEN;
-    if (allowedTokenCount < 4096) {
+    if (allowedTokenCount < RENDERED_CONVERSATION_MIN_TOKEN) {
       yield {
         type: "tables_query_error",
         created: Date.now(),
