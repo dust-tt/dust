@@ -93,6 +93,10 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       navigationTimeoutSecs: 10,
       preNavigationHooks: [
         async (crawlingContext) => {
+          Context.current().heartbeat({
+            type: "pre_navigation",
+          });
+
           const { address, family } = await getIpAddressForUrl(
             crawlingContext.request.url
           );
@@ -318,6 +322,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
       },
       failedRequestHandler: async (context, error) => {
+        Context.current().heartbeat({
+          type: "failed_request",
+        });
         childLogger.error(
           {
             url: context.request.url,
