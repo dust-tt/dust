@@ -79,10 +79,9 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   }
 
   // Override of fetchById to properly pull the configuration.
-  static async fetchById(id: number | string) {
-    console.log(
-      "OVERRIDEN FETCH_BY_ID >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-    );
+  static async fetchById(
+    id: number | string
+  ): Promise<BaseResource<ConnectorModel> | null> {
     const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
     const blob = await this.model.findByPk(parsedId);
     if (!blob) {
