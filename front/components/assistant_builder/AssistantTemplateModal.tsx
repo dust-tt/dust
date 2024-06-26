@@ -9,10 +9,9 @@ import {
 import type { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 
-import { InstructionsReadOnlyTextArea } from "@app/components/assistant/AssistantInstructionReadOnlyTextArea";
+import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
 
 interface AssistantTemplateModalProps {
   flow: BuilderFlow;
@@ -85,7 +84,7 @@ function InstructionsSection({
   return (
     <>
       <Page.SectionHeader title="Instructions" />
-      <InstructionsReadOnlyTextArea instructions={instructions} />
+      <ReadOnlyTextArea content={instructions} />
     </>
   );
 }

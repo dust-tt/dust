@@ -37,8 +37,8 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
-import { InstructionsReadOnlyTextArea } from "@app/components/assistant/AssistantInstructionReadOnlyTextArea";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
+import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
@@ -225,9 +225,7 @@ export function AssistantDetails({
     agentConfiguration.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <InstructionsReadOnlyTextArea
-          instructions={agentConfiguration.instructions}
-        />
+        <ReadOnlyTextArea content={agentConfiguration.instructions} />
       </div>
     ) : (
       "This assistant has no instructions."
