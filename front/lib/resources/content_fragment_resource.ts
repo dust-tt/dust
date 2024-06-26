@@ -1,8 +1,4 @@
-import type {
-  ContentFragmentType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
+import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,

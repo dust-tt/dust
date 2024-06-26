@@ -1,7 +1,5 @@
 import type { Result, SupportedContentFragmentType } from "@dust-tt/types";
-import {
-  isSupportedTextContentFragmentType,
-} from "@dust-tt/types";
+import { isSupportedTextContentFragmentType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";

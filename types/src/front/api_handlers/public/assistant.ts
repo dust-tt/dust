@@ -1,7 +1,7 @@
 import * as t from "io-ts";
 import moment from "moment-timezone";
 
-import { getSupportedContentFragmentTypeCodec } from "../../assistant/conversation";
+import { getSupportedContentFragmentTypeCodec } from "../../content_fragment";
 
 // Custom codec to validate the timezone
 const Timezone = t.refinement(

@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-import { getSupportedContentFragmentTypeCodec } from "../../assistant/conversation";
+import { getSupportedContentFragmentTypeCodec } from "../../content_fragment";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
