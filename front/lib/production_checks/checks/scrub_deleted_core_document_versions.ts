@@ -72,7 +72,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
             storage,
             data_source: d.data_source,
             document_id: d.document_id,
-            deletedAt: d.created,
+            created: d.created,
             hash: d.hash,
           });
           if (done) {
@@ -113,8 +113,10 @@ async function deleteFilesFromFolder(
   const [files] = await withRetries(getFiles)({ bucket, path });
 
   const deletePromises = files
-    .filter((f) => !seen.has(f.name))
-    .filter((f) => !filename || f.name === `${path}/${filename}`)
+    .filter(
+      (f) =>
+        !seen.has(f.name) && (!filename || f.name === `${path}/${filename}`)
+    )
     .map((f) => {
       seen.add(f.name);
       logger.info(
@@ -155,7 +157,7 @@ async function scrubDocument({
   seen,
   data_source,
   document_id,
-  deletedAt,
+  created,
   hash,
 }: {
   logger: pino.Logger<LoggerOptions>;
@@ -164,7 +166,7 @@ async function scrubDocument({
   seen: Set<string>;
   data_source: number;
   document_id: string;
-  deletedAt: number;
+  created: number;
   hash: string;
 }) {
   if (!DUST_DATA_SOURCES_BUCKET) {
@@ -178,13 +180,13 @@ async function scrubDocument({
   }
 
   const moreRecentSameHash = await core_sequelize.query(
-    `SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created >= :deletedAt LIMIT 1`,
+    `SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created >= :created LIMIT 1`,
     {
       replacements: {
         data_source: data_source,
         document_id: document_id,
         hash: hash,
-        deletedAt: deletedAt,
+        created: created,
       },
     }
   );
@@ -222,7 +224,7 @@ async function scrubDocument({
 
   // New logic.
   const path = `${dataSource.project}/${dataSource.internal_id}/${documentIdHash}`;
-  const filename = `${deletedAt}_${hash}.json`;
+  const filename = `${created}_${hash}.json`;
 
   const bucket = storage.bucket(DUST_DATA_SOURCES_BUCKET);
 
