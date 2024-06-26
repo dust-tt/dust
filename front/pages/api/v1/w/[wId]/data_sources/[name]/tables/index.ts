@@ -110,7 +110,6 @@ type UpsertTableResponseBody = {
  *       405:
  *         description: Method not supported
  */
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
