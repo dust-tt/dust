@@ -26,6 +26,8 @@ export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
+const supportedFileExtensions = [".txt", ".csv", ".md", ".pdf"];
+
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
@@ -126,7 +128,7 @@ const InputBarContainer = ({
           {actions.includes("attachment") && (
             <>
               <input
-                accept=".txt,.pdf,.md,.csv"
+                accept={supportedFileExtensions.join(",")}
                 onChange={async (e) => {
                   await onInputFileChange(e);
                   editorService.focusEnd();

@@ -264,7 +264,7 @@ export async function processTranscriptActivity(
       title: transcriptTitle,
       content: transcriptContent.toString(),
       url: null,
-      contentType: "file_attachment",
+      contentType: "text/plain",
       context: {
         username: user.username,
         fullName: user.name,

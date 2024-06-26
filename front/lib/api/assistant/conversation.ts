@@ -12,7 +12,6 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   AgentMessageWithRankType,
-  ContentFragmentContentType,
   ContentFragmentContextType,
   ContentFragmentType,
   ConversationTitleEvent,
@@ -23,6 +22,7 @@ import type {
   MentionType,
   PlanType,
   Result,
+  SupportedContentFragmentType,
   UserMessageContext,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -30,6 +30,7 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isSupportedTextContentFragmentType } from "@dust-tt/types";
 import {
   assertNever,
   getSmallWhitelistedModel,
@@ -1618,7 +1619,7 @@ export async function postNewContentFragment(
     title: string;
     content: string;
     url: string | null;
-    contentType: ContentFragmentContentType;
+    contentType: SupportedContentFragmentType;
     context: ContentFragmentContextType;
   }
 ): Promise<ContentFragmentType> {
@@ -1630,15 +1631,14 @@ export async function postNewContentFragment(
 
   const messageId = generateModelSId();
 
-  const sourceUrl =
-    contentType === "file_attachment"
-      ? fileAttachmentLocation({
-          workspaceId: owner.sId,
-          conversationId: conversation.sId,
-          messageId,
-          contentFormat: "raw",
-        }).downloadUrl
-      : url;
+  const sourceUrl = isSupportedTextContentFragmentType(contentType)
+    ? fileAttachmentLocation({
+        workspaceId: owner.sId,
+        conversationId: conversation.sId,
+        messageId,
+        contentFormat: "raw",
+      }).downloadUrl
+    : url;
 
   const textBytes = await storeContentFragmentText({
     workspaceId: owner.sId,

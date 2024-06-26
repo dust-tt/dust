@@ -9,10 +9,12 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";
+import { getMimeTypeFromFile } from "@app/lib/file";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 /**
@@ -109,7 +111,7 @@ export async function submitMessage({
               title: contentFragment.title,
               content: contentFragment.content,
               url: null,
-              contentType: "file_attachment",
+              contentType: getMimeTypeFromFile(contentFragment.file),
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -222,7 +224,7 @@ export async function createConversationWithMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: ContentFragmentInput[];
+    contentFragments: UploadedContentFragment[];
   };
   visibility?: ConversationVisibility;
   title?: string;
@@ -244,7 +246,7 @@ export async function createConversationWithMessage({
       content: cf.content,
       title: cf.title,
       url: null, // sourceUrl will be set on raw content upload success
-      contentType: "file_attachment",
+      contentType: cf.contentType,
       context: {
         profilePictureUrl: user.image,
       },

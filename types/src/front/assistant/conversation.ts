@@ -5,6 +5,7 @@ import { TablesQueryActionType } from "../../front/assistant/actions/tables_quer
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
+import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
 import { WebsearchActionType } from "./actions/websearch";
 
@@ -130,41 +131,6 @@ export type AgentMessageWithRankType = WithRank<AgentMessageType>;
 
 export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
-}
-
-/**
- * Content Fragments
- */
-export type ContentFragmentContextType = {
-  username: string | null;
-  fullName: string | null;
-  email: string | null;
-  profilePictureUrl: string | null;
-};
-
-export type ContentFragmentContentType =
-  | "slack_thread_content"
-  | "file_attachment";
-
-export type ContentFragmentType = {
-  id: ModelId;
-  sId: string;
-  created: number;
-  type: "content_fragment";
-  visibility: MessageVisibility;
-  version: number;
-  sourceUrl: string | null;
-  textUrl: string;
-  textBytes: number | null;
-  title: string;
-  contentType: ContentFragmentContentType;
-  context: ContentFragmentContextType;
-};
-
-export function isContentFragmentType(
-  arg: MessageType
-): arg is ContentFragmentType {
-  return arg.type === "content_fragment";
 }
 
 /**
