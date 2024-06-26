@@ -23,6 +23,12 @@ export type WorkspaceFeatureFlagsResponseBody = {
  *         description: ID of the workspace
  *         schema:
  *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Feature flags for the workspace
