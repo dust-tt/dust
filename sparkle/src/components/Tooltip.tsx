@@ -15,6 +15,9 @@ export function Tooltip({
   position = "above",
   contentChildren,
 }: TooltipProps) {
+  // used to disable the tooltip when copying
+  const [isCopying, setIsCopying] = useState(false);
+
   const [isHovered, setIsHovered] = useState(false);
   const [timerId, setTimerId] = useState<number | null>(null);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -61,11 +64,21 @@ export function Tooltip({
   const labelLength = label?.length || 0;
   const labelClasses = labelLength > 80 ? "s-w-[38em]" : "s-whitespace-nowrap";
 
+  // do not show the tooltip while we're copying the content
+  // otherwise the tooltip text is copied also
+  if (isCopying) {
+    return <>{children}</>;
+  }
+
   return (
     <div
       onMouseEnter={handleMouseOver}
       onMouseLeave={handleMouseLeave}
       className="s-relative s-inline-block"
+      onCopyCapture={() => {
+        setIsCopying(true);
+        setTimeout(() => setIsCopying(false), 200);
+      }}
     >
       {children}
       <div
