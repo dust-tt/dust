@@ -6,29 +6,20 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/node_types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-export type MicrosoftResourceType =
-  | "site"
-  | "team"
-  | "drive"
-  | "folder"
-  | "file"
-  | "page"
-  | "channel"
-  | "message";
-
-export class MicrosoftConfiguration extends Model<
-  InferAttributes<MicrosoftConfiguration>,
-  InferCreationAttributes<MicrosoftConfiguration>
+export class MicrosoftConfigurationModel extends Model<
+  InferAttributes<MicrosoftConfigurationModel>,
+  InferCreationAttributes<MicrosoftConfigurationModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
-MicrosoftConfiguration.init(
+MicrosoftConfigurationModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -57,21 +48,21 @@ MicrosoftConfiguration.init(
   }
 );
 
-ConnectorModel.hasMany(MicrosoftConfiguration);
+ConnectorModel.hasMany(MicrosoftConfigurationModel);
 
-// MicrosoftConfigurationRoot stores the drive/folders/channels selected by the user to sync.
-export class MicrosoftConfigurationRoot extends Model<
-  InferAttributes<MicrosoftConfigurationRoot>,
-  InferCreationAttributes<MicrosoftConfigurationRoot>
+// MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
+export class MicrosoftRootModel extends Model<
+  InferAttributes<MicrosoftRootModel>,
+  InferCreationAttributes<MicrosoftRootModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare resourceType: MicrosoftResourceType;
-  declare resourceId: string;
+  declare nodeType: MicrosoftNodeType;
+  declare nodeId: string;
 }
-MicrosoftConfigurationRoot.init(
+MicrosoftRootModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -92,30 +83,30 @@ MicrosoftConfigurationRoot.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    resourceType: {
+    nodeType: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    resourceId: {
+    nodeId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
   },
   {
     sequelize: sequelizeConnection,
-    modelName: "microsoft_configuration_roots",
+    modelName: "microsoft_roots",
     indexes: [
-      { fields: ["connectorId", "resourceId"], unique: true },
-      { fields: ["connectorId", "resourceType"], unique: false },
+      { fields: ["connectorId", "nodeId"], unique: true },
+      { fields: ["connectorId", "nodeType"], unique: false },
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftConfigurationRoot);
+ConnectorModel.hasMany(MicrosoftRootModel);
 
-// MicrosftResource stores files/folders/channels and other resources synced from Microsoft.
-export class MicrosoftResource extends Model<
-  InferAttributes<MicrosoftResource>,
-  InferCreationAttributes<MicrosoftResource>
+// MicrosftNode stores files/folders/channels and other nodes synced from Microsoft.
+export class MicrosoftNodeModel extends Model<
+  InferAttributes<MicrosoftNodeModel>,
+  InferCreationAttributes<MicrosoftNodeModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -125,13 +116,13 @@ export class MicrosoftResource extends Model<
   declare skipReason: string | null;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare dustFileId: string;
-  declare resourceType: MicrosoftResourceType;
-  declare resourceId: string;
+  declare nodeType: MicrosoftNodeType;
+  declare nodeId: string;
   declare name: string;
   declare mimeType: string;
   declare parentId: string | null;
 }
-MicrosoftResource.init(
+MicrosoftNodeModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -168,11 +159,11 @@ MicrosoftResource.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    resourceType: {
+    nodeType: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    resourceId: {
+    nodeId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -193,31 +184,31 @@ MicrosoftResource.init(
   },
   {
     sequelize: sequelizeConnection,
-    modelName: "microsoft_resources",
+    modelName: "microsoft_nodes",
     indexes: [
-      { fields: ["connectorId", "resourceId"], unique: true },
-      { fields: ["connectorId", "resourceType"], unique: true },
+      { fields: ["connectorId", "nodeId"], unique: true },
+      { fields: ["connectorId", "nodeType"], unique: false },
       { fields: ["connectorId", "parentId"], concurrently: true },
     ],
   }
 );
-ConnectorModel.hasMany(MicrosoftResource);
+ConnectorModel.hasMany(MicrosoftNodeModel);
 
 // Delta token are used for creating a diff from the last calls.
 // On every delta call, we store the new delta token to be used in the next call
-// For each configured root resource, we store a delta token.
-export class MicrosoftDelta extends Model<
-  InferAttributes<MicrosoftDelta>,
-  InferCreationAttributes<MicrosoftDelta>
+// For each configured root node, we store a delta token.
+export class MicrosoftDeltaModel extends Model<
+  InferAttributes<MicrosoftDeltaModel>,
+  InferCreationAttributes<MicrosoftDeltaModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare resourceId: ForeignKey<MicrosoftConfigurationRoot["resourceId"]>;
+  declare rootId: ForeignKey<MicrosoftRootModel["nodeId"]>;
   declare deltaToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
-MicrosoftDelta.init(
+MicrosoftDeltaModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -238,7 +229,7 @@ MicrosoftDelta.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    resourceId: {
+    rootId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -250,8 +241,8 @@ MicrosoftDelta.init(
   {
     sequelize: sequelizeConnection,
     modelName: "microsoft_deltas",
-    indexes: [{ fields: ["connectorId", "resourceId"], unique: true }],
+    indexes: [{ fields: ["connectorId", "rootId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(MicrosoftDelta);
-MicrosoftConfigurationRoot.hasOne(MicrosoftDelta);
+ConnectorModel.hasMany(MicrosoftDeltaModel);
+MicrosoftRootModel.hasOne(MicrosoftDeltaModel);
