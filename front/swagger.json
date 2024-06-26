@@ -4,7 +4,7 @@
   "definition": {
     "openapi": "3.0.0",
     "info": {
-      "title": "Dust.tt API Documentation",
+      "title": "API Documentation",
       "version": "1.0"
     },
     "servers": [
