@@ -41,6 +41,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
     data_source: number;
     document_id: string;
     hash: string;
+    timestamp: number;
   }[];
 
   logger.info(
@@ -71,6 +72,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
             storage,
             data_source: d.data_source,
             document_id: d.document_id,
+            timestamp: d.timestamp,
             deletedAt: d.created,
             hash: d.hash,
           });
@@ -102,30 +104,47 @@ async function deleteFile({ file }: { file: File }) {
   return file.delete();
 }
 
-async function deleteAllFilesFromFolder(
+async function deleteFilesFromFolder(
   logger: pino.Logger<LoggerOptions>,
   bucket: Bucket,
   seen: Set<string>,
-  path: string
+  path: string,
+  filename?: string
 ) {
   const [files] = await withRetries(getFiles)({ bucket, path });
 
-  await Promise.all(
-    files.map((f) => {
-      if (!seen.has(f.name)) {
-        seen.add(f.name);
-        logger.info(
-          {
-            path: f.name,
-            filesCount: files.length,
-          },
-          "Scrubbing"
-        );
+  const deletePromises = files
+    .filter((f) => !seen.has(f.name))
+    .filter((f) => !filename || f.name === `${path}/${filename}`)
+    .map((f) => {
+      seen.add(f.name);
+      logger.info(
+        {
+          path: f.name,
+          filesCount: files.length,
+        },
+        "Scrubbing"
+      );
 
-        return withRetries(deleteFile)({ file: f });
-      }
-    })
+      return withRetries(deleteFile)({ file: f });
+    });
+
+  // Remove document_id.txt if all other files are deleted
+  const documentIdFile = files.find(
+    (f) => f.name === `${path}/document_id.txt`
   );
+
+  if (
+    documentIdFile &&
+    files
+      .filter((f) => f !== documentIdFile)
+      .map((file) => file.name)
+      .every((f) => seen.has(f))
+  ) {
+    deletePromises.push(withRetries(deleteFile)({ file: documentIdFile }));
+  }
+
+  await Promise.all(deletePromises);
 }
 
 async function scrubDocument({
@@ -136,6 +155,7 @@ async function scrubDocument({
   data_source,
   document_id,
   deletedAt,
+  timestamp,
   hash,
 }: {
   logger: pino.Logger<LoggerOptions>;
@@ -145,6 +165,7 @@ async function scrubDocument({
   data_source: number;
   document_id: string;
   deletedAt: number;
+  timestamp: number;
   hash: string;
 }) {
   if (!DUST_DATA_SOURCES_BUCKET) {
@@ -202,6 +223,7 @@ async function scrubDocument({
 
   // New logic.
   const path = `${dataSource.project}/${dataSource.internal_id}/${documentIdHash}`;
+  const filename = `${timestamp}_${hash}.json`;
 
   const bucket = storage.bucket(DUST_DATA_SOURCES_BUCKET);
 
@@ -212,11 +234,10 @@ async function scrubDocument({
     dataSourceInternalId: dataSource.internal_id,
     dataSourceId: dataSource.id,
   });
-
   // Always delete legacy files first!
-  await deleteAllFilesFromFolder(localLogger, bucket, seen, legacyPath);
+  await deleteFilesFromFolder(localLogger, bucket, seen, legacyPath);
 
-  await deleteAllFilesFromFolder(localLogger, bucket, seen, path);
+  await deleteFilesFromFolder(localLogger, bucket, seen, path, filename);
 
   await core_sequelize.query(
     `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
