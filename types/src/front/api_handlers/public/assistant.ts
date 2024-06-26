@@ -1,7 +1,7 @@
 import * as t from "io-ts";
 import moment from "moment-timezone";
 
-import { getSupportedTextContentFragmentCodec } from "../../assistant/conversation";
+import { getSupportedContentFragmentCodec } from "../../assistant/conversation";
 
 // Custom codec to validate the timezone
 const Timezone = t.refinement(
@@ -38,7 +38,7 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
-  contentType: getSupportedTextContentFragmentCodec(),
+  contentType: getSupportedContentFragmentCodec(),
   context: t.union([
     t.type({
       profilePictureUrl: t.union([t.string, t.null]),

@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-import { getSupportedTextContentFragmentCodec } from "../../assistant/conversation";
+import { getSupportedContentFragmentCodec } from "../../assistant/conversation";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
@@ -15,7 +15,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
-  contentType: getSupportedTextContentFragmentCodec(),
+  contentType: getSupportedContentFragmentCodec(),
   context: t.type({
     profilePictureUrl: t.union([t.string, t.null]),
   }),

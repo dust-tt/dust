@@ -166,8 +166,8 @@ export const supportedContentFragment = [
 export type SupportedContentFragmentType =
   (typeof supportedContentFragment)[number];
 
-export function getSupportedTextContentFragmentCodec(): t.Mixed {
-  const [first, second, ...rest] = supportedTextContentFragment;
+export function getSupportedContentFragmentCodec(): t.Mixed {
+  const [first, second, ...rest] = supportedContentFragment;
   return t.union([
     t.literal(first),
     t.literal(second),
