@@ -89,7 +89,7 @@ export default function RunsView({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [runType, setRunType] = useState(
-    wIdTarget ? "deploy" : ("local" as RunRunType)
+    (wIdTarget ? "deploy" : "local") as RunRunType
   );
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
