@@ -35,10 +35,9 @@ export default function DataSourcePicker({
   );
 
   const { dataSources, isDataSourcesLoading, isDataSourcesError } =
-    useDataSources(owner, { readOnly });
+    useDataSources(owner, { disabled: readOnly });
 
   useEffect(() => {
-    console.log("useEffect", dataSources, name);
     if (!isDataSourcesLoading && !isDataSourcesError && !readOnly) {
       if (!dataSources.find((ds) => ds.name === name)) {
         onDataSourcesUpdate([]);
