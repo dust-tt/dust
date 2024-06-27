@@ -102,10 +102,10 @@ export async function stopMicrosoftConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   console.log("stopMicrosoftConnector", connectorId);
-  throw Error("Not implemented");
+  return new Ok(undefined);
 }
 
-export async function deleteMicrosoftConnector(
+export async function cleanupMicrosoftConnector(
   connectorId: ModelId,
   force = false
 ) {
@@ -172,13 +172,6 @@ export async function fullResyncMicrosoftConnector(
 ) {
   console.log("fullResyncMicrosoftConnector", connectorId, fromTs);
   return launchMicrosoftFullSyncWorkflow(connectorId);
-}
-
-export async function cleanupMicrosoftConnector(
-  connectorId: ModelId
-): Promise<Result<undefined, Error>> {
-  console.log("cleanupMicrosoftConnector", connectorId);
-  throw Error("Not implemented");
 }
 
 export async function retrieveMicrosoftConnectorPermissions({
