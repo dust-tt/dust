@@ -23,10 +23,16 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+
+// Need a model with at least 32k to run tables query.
+const TABLES_QUERY_MIN_TOKEN = 28_000;
+const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -125,19 +131,7 @@ async function tablesQueryActionSpecification({
   return {
     name,
     description,
-    inputs: [
-      {
-        name: "question",
-        description:
-          "The natural language question to answer based on the user" +
-          " request and conversation context. The question should include" +
-          " all the context required to be understood without reference to the conversation." +
-          " If the user has multiple unanswered questions, make sure to include all of them." +
-          " If the user asked to correct a previous attempt in a specific way," +
-          " take it into account when generating the question.",
-        type: "string" as const,
-      },
-    ],
+    inputs: [],
   };
 }
 
@@ -155,8 +149,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     }
 
     let actionDescription =
-      "Query data tables specificied by the user by executing a generated SQL query from a" +
-      " natural language question.";
+      "Query data tables specificied by the user by executing a generated SQL query. " +
+      "The function does not require any inputs, the SQL query will be inferred from the conversation history.";
     if (description) {
       actionDescription += `\nDescription of the data tables:\n${description}`;
     }
@@ -196,22 +190,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
 
     const { actionConfiguration } = this;
 
-    if (!rawInputs.question || typeof rawInputs.question !== "string") {
-      yield {
-        type: "tables_query_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "tables_query_parameters_generation_error",
-          message: `Error generating parameters for tables query: failed to generate a valid question.`,
-        },
-      };
-      return;
-    }
-
-    const question = rawInputs.question as string;
-
     let output: Record<string, string | boolean | number> = {};
 
     // Creating action
@@ -239,6 +217,51 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
       }),
     };
+
+    // Render conversation for the action.
+    const supportedModel = getSupportedModelConfig(agentConfiguration.model);
+    if (!supportedModel) {
+      throw new Error("Unreachable: Supported model not found.");
+    }
+
+    const allowedTokenCount =
+      supportedModel.contextSize - TABLES_QUERY_MIN_TOKEN;
+    if (allowedTokenCount < RENDERED_CONVERSATION_MIN_TOKEN) {
+      yield {
+        type: "tables_query_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tables_query_error",
+          message: `Error running TablesQuery app: model context too small.`,
+        },
+      };
+      return;
+    }
+
+    const renderedConversationRes =
+      await renderConversationForModelMultiActions({
+        conversation,
+        model: agentConfiguration.model,
+        prompt: agentConfiguration.instructions ?? "",
+        allowedTokenCount,
+      });
+    if (renderedConversationRes.isErr()) {
+      yield {
+        type: "tables_query_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tables_query_error",
+          message: `Error running TablesQuery app: ${renderedConversationRes.error.message}`,
+        },
+      };
+      return;
+    }
+
+    const renderedConversation = renderedConversationRes.value;
 
     // Generating configuration
     const config = cloneBaseConfig(
@@ -272,7 +295,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       config,
       [
         {
-          question,
+          conversation: renderedConversation.modelConversation.messages,
           instructions: agentConfiguration.instructions,
         },
       ],
