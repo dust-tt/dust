@@ -44,12 +44,12 @@ spec:
             requests:
               cpu: 3000m
               memory: 8Gi
-              ephemeral-storage: 32Gi
+              ephemeral-storage: 10Gi
 
             limits:
               cpu: 3000m
               memory: 8Gi
-              ephemeral-storage: 32Gi
+              ephemeral-storage: 10Gi
 
       volumes:
         - name: cert-volume
