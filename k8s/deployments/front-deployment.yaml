@@ -25,7 +25,7 @@ spec:
             - containerPort: 3000
           readinessProbe:
             httpGet:
-              path: /
+              path: /api/healthz
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
