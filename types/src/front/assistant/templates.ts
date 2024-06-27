@@ -15,6 +15,7 @@ export const TEMPLATES_TAG_CODES = [
   "ENGINEERING",
   "FINANCE",
   "HIRING",
+  "KNOWLEDGE",
   "MARKETING",
   "OPERATIONS",
   "PRODUCT",
@@ -52,6 +53,9 @@ export const TEMPLATES_TAGS_CONFIG: TemplateTagsType = {
   },
   HIRING: {
     label: "Hiring",
+  },
+  KNOWLEDGE: {
+    label: "Knowledge",
   },
   MARKETING: {
     label: "Marketing",
