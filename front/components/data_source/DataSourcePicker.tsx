@@ -34,13 +34,7 @@ export default function DataSourcePicker({
     hasDataSource ? currentDataSources[0].data_source_id : null
   );
 
-  const { dataSources, isDataSourcesLoading, isDataSourcesError } = readOnly
-    ? {
-        dataSources: [],
-        isDataSourcesLoading: false,
-        isDataSourcesError: false,
-      }
-    : useDataSources(owner, {readOnly: true});
+  const { dataSources, isDataSourcesLoading, isDataSourcesError } = useDataSources(owner, {readOnly});
 
   useEffect(() => {
     console.log("useEffect", dataSources, name);

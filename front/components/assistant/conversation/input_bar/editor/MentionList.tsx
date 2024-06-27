@@ -15,7 +15,7 @@ interface MentionListProps {
   query: string;
 }
 
-export const MentionList = forwardRef(function mentionList(
+export const MentionList = forwardRef(function MentionList(
   props: MentionListProps,
   ref
 ) {
