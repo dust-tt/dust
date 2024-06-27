@@ -247,7 +247,7 @@ export function ConversationContainer({
 
   return (
     <>
-      <Transition show={!!activeConversationId} as="div">
+      <Transition show={!!activeConversationId} as="div" appear={true}>
         {activeConversationId ? (
           <div
             className={classNames(
@@ -273,19 +273,19 @@ export function ConversationContainer({
         )}
       </Transition>
 
-      <Transition
-        as={Fragment}
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0 min-h-[20vh]"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0 min-h-[20vh]"
-      >
+      <Transition show={!activeConversationId}>
         <div
+          className={classNames(
+            "mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2",
+            "transition-opacity ease-out",
+            "data-[enter]:duration-100",
+            "data-[enter]:data-[closed]:min-h-[20vh] data-[enter]:data-[closed]:opacity-0",
+            "data-[enter]:data-[open]:opacity-100",
+            "data-[leave]:duration-100",
+            "data-[leave]:data-[open]:opacity-100",
+            "data-[leave]:data-[closed]:min-h-[20vh] data-[leave]:data-[closed]:opacity-0"
+          )}
           id="assistant-input-header"
-          className="mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2"
         >
           <Page.SectionHeader title={greeting} />
           <Page.SectionHeader title="Start a conversation" />
@@ -299,24 +299,27 @@ export function ConversationContainer({
         conversationId={activeConversationId}
       />
 
-      <Transition
-        as="div"
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        className={"flex w-full justify-center"}
-      >
-        <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputbarMention}
-          setAssistantToMention={(assistant) => {
-            assistantToMention.current = assistant;
-          }}
-          owner={owner}
-        />
+      <Transition as={Fragment} show={!activeConversationId}>
+        <div
+          className={classNames(
+            "flex w-full justify-center",
+            "transition-opacity ease-out",
+            "data-[enter]:duration-100",
+            "data-[enter]:data-[closed]:opacity-0",
+            "data-[enter]:data-[open]:opacity-100",
+            "data-[leave]:duration-100",
+            "data-[leave]:data-[open]:opacity-100",
+            "data-[leave]:data-[closed]:opacity-0"
+          )}
+        >
+          <AssistantBrowserContainer
+            onAgentConfigurationClick={setInputbarMention}
+            setAssistantToMention={(assistant) => {
+              assistantToMention.current = assistant;
+            }}
+            owner={owner}
+          />
+        </div>
       </Transition>
 
       {activeConversationId !== "new" && (
