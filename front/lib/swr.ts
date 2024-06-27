@@ -252,11 +252,14 @@ export function useDocuments(
   };
 }
 
-export function useDataSources(owner: WorkspaceType, options = { readOnly: false}) {
+export function useDataSources(
+  owner: WorkspaceType,
+  options = { readOnly: false }
+) {
   const { readOnly } = options;
   const dataSourcesFetcher: Fetcher<GetDataSourcesResponseBody> = fetcher;
-  const { data, error, mutate } = useSWR(readOnly ? null :
-    `/api/w/${owner.sId}/data_sources`,
+  const { data, error, mutate } = useSWR(
+    readOnly ? null : `/api/w/${owner.sId}/data_sources`,
     dataSourcesFetcher
   );
 
