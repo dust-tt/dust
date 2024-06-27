@@ -700,7 +700,7 @@ function ActionEditor({
                       value={action.name}
                       onChange={(v) => {
                         updateAction({
-                          actionName: v,
+                          actionName: v.toLowerCase(),
                           actionDescription: action.description,
                           getNewActionConfig: (old) => old,
                         });
