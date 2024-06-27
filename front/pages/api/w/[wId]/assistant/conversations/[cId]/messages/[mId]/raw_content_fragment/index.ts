@@ -17,6 +17,11 @@ export const config = {
 
 const privateUploadGcs = getPrivateUploadBucket();
 
+const validFormats = ["raw", "text"] as const;
+const validActions = ["view", "download"] as const;
+type ContentFormat = (typeof validFormats)[number];
+type Action = (typeof validActions)[number];
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<{ sourceUrl: string }>>
@@ -105,20 +110,37 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      let contentFormat: "raw" | "text" = "raw";
-      if (
-        typeof req.query.format === "string" &&
-        ["raw", "text"].includes(req.query.format)
-      ) {
-        contentFormat = req.query.format as "raw" | "text";
-      }
+      const contentFormat: ContentFormat = validFormats.includes(
+        req.query.format as ContentFormat
+      )
+        ? (req.query.format as ContentFormat)
+        : "raw";
+
+      const action: Action = validActions.includes(req.query.action as Action)
+        ? (req.query.action as Action)
+        : "download";
 
       const { filePath } = fileAttachmentLocation({
         workspaceId: owner.sId,
         conversationId,
         messageId,
-        contentFormat,
+        contentFormat: action === "view" ? "raw" : contentFormat, // Always use raw format for view.
       });
+
+      if (action === "view") {
+        const stream = privateUploadGcs.file(filePath).createReadStream();
+        stream.on("error", () => {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "message_not_found",
+              message: "File not found.",
+            },
+          });
+        });
+        stream.pipe(res);
+        return;
+      }
 
       // redirect to a signed URL
       const [url] = await privateUploadGcs.file(filePath).getSignedUrl({
