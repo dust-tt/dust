@@ -11,6 +11,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { checkProvider } from "@app/lib/providers";
+import { classNames } from "@app/lib/utils";
 
 export default function AnthropicSetup({
   owner,
@@ -89,124 +90,118 @@ export default function AnthropicSetup({
   return (
     <Transition show={open} as={Fragment}>
       <Dialog as="div" className="relative z-30" onClose={() => setOpen(false)}>
-        <TransitionChild
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
+        <TransitionChild as={Fragment} appear={true}>
+          <div
+            className={classNames(
+              "fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity",
+              "duration-700 ease-out",
+              "data-[enter]:data-[closed]:opacity-0",
+              "data-[leave]:data-[closed]:opacity-0"
+            )}
+          />
         </TransitionChild>
 
         <div className="fixed inset-0 z-30 overflow-y-auto">
-          <div className="flex min-h-full items-end items-center justify-center p-4">
-            <TransitionChild
-              as={Fragment}
-              enter="ease-out duration-300"
-              leave="ease-in duration-200"
-              leaveTo="opacity-0"
+          <div className="flex min-h-full items-center justify-center p-4">
+            <DialogPanel
+              className={classNames(
+                "relative overflow-hidden rounded-lg bg-white p-4 sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg",
+                "duration-300",
+                "data-[enter]:data-[closed]:opacity-0",
+                "data-[leave]:data-[closed]:opacity-0"
+              )}
+              transition
             >
-              <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6 lg:max-w-lg">
-                <div>
-                  <div className="mt-3">
-                    <DialogTitle
-                      as="h3"
-                      className="text-lg font-medium leading-6 text-gray-900"
+              <div className="mt-3">
+                <DialogTitle
+                  as="h3"
+                  className="text-lg font-medium leading-6 text-gray-900"
+                >
+                  Setup Anthropic
+                </DialogTitle>
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500">
+                    To use Anthropic models you must provide your API key. It
+                    can be found{" "}
+                    <a
+                      className="font-bold text-action-600 hover:text-action-500"
+                      href="https://console.anthropic.com/account/keys"
+                      target="_blank"
                     >
-                      Setup Anthropic
-                    </DialogTitle>
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-500">
-                        To use Anthropic models you must provide your API key.
-                        It can be found{" "}
-                        <a
-                          className="font-bold text-action-600 hover:text-action-500"
-                          href="https://console.anthropic.com/account/keys"
-                          target="_blank"
-                        >
-                          here
-                        </a>
-                        &nbsp;(you can create a new key specifically for Dust).
-                      </p>
-                      <p className="mt-2 text-sm text-gray-500">
-                        We'll never use your API key for anything other than to
-                        run your apps.
-                      </p>
-                    </div>
-                    <div className="mt-6">
-                      <input
-                        type="text"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
-                        placeholder="Anthropic API Key"
-                        value={apiKey}
-                        onChange={(e) => {
-                          setApiKey(e.target.value);
-                          setTestSuccessful(false);
-                        }}
-                      />
-                    </div>
+                      here
+                    </a>
+                    &nbsp;(you can create a new key specifically for Dust).
+                  </p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    We'll never use your API key for anything other than to run
+                    your apps.
+                  </p>
+                </div>
+                <div className="mt-6">
+                  <input
+                    type="text"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
+                    placeholder="Anthropic API Key"
+                    value={apiKey}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      setTestSuccessful(false);
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="mt-2 px-2 text-sm">
+                {testError.length > 0 ? (
+                  <span className="text-red-500">Error: {testError}</span>
+                ) : testSuccessful ? (
+                  <span className="text-green-600">
+                    Test succeeded! You can enable Anthropic.
+                  </span>
+                ) : (
+                  <span>&nbsp;</span>
+                )}
+              </div>
+              <div className="mt-5 flex flex-row items-center justify-between space-x-2 sm:mt-6">
+                {enabled ? (
+                  <div
+                    className="cursor-pointer text-sm font-bold text-red-500"
+                    onClick={() => handleDisable()}
+                  >
+                    Disable
                   </div>
-                </div>
-                <div className="mt-1 px-2 text-sm">
-                  {testError.length > 0 ? (
-                    <span className="text-red-500">Error: {testError}</span>
-                  ) : testSuccessful ? (
-                    <span className="text-green-600">
-                      Test succeeded! You can enable Anthropic.
-                    </span>
-                  ) : (
-                    <span>&nbsp;</span>
-                  )}
-                </div>
-                <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
-                  {enabled ? (
-                    <div
-                      className="flex-initial cursor-pointer text-sm font-bold text-red-500"
-                      onClick={() => handleDisable()}
-                    >
-                      Disable
-                    </div>
-                  ) : (
-                    <></>
-                  )}
-                  <div className="flex-1"></div>
-                  <div className="flex flex-initial">
-                    {/* TODO: typescript */}
+                ) : (
+                  <div></div>
+                )}
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => setOpen(false)}
+                    label="Cancel"
+                    variant="secondary"
+                  />
+                  {testSuccessful ? (
                     <Button
-                      onClick={() => setOpen(false)}
-                      label="Cancel"
-                      variant="secondary"
+                      onClick={() => handleEnable()}
+                      disabled={enableRunning}
+                      label={
+                        enabled
+                          ? enableRunning
+                            ? "Updating..."
+                            : "Update"
+                          : enableRunning
+                            ? "Enabling..."
+                            : "Enable"
+                      }
                     />
-                  </div>
-                  <div className="flex flex-initial">
-                    {testSuccessful ? (
-                      <Button
-                        onClick={() => handleEnable()}
-                        disabled={enableRunning}
-                        label={
-                          enabled
-                            ? enableRunning
-                              ? "Updating..."
-                              : "Update"
-                            : enableRunning
-                              ? "Enabling..."
-                              : "Enable"
-                        }
-                      />
-                    ) : (
-                      <Button
-                        disabled={apiKey.length == 0 || testRunning}
-                        onClick={() => runTest()}
-                        label={testRunning ? "Testing..." : "Test"}
-                      />
-                    )}
-                  </div>
+                  ) : (
+                    <Button
+                      disabled={apiKey.length == 0 || testRunning}
+                      onClick={() => runTest()}
+                      label={testRunning ? "Testing..." : "Test"}
+                    />
+                  )}
                 </div>
-              </DialogPanel>
-            </TransitionChild>
+              </div>
+            </DialogPanel>
           </div>
         </div>
       </Dialog>
