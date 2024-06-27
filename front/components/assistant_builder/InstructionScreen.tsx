@@ -30,7 +30,7 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
@@ -470,17 +470,19 @@ function Suggestions({
   };
 
   return (
-    <Transition
-      as="div"
-      show={suggestionsStatus !== "no_suggestions"}
-      enter="transition-[max-height] duration-1000"
-      enterFrom="max-h-0"
-      enterTo="max-h-full"
-      leave="transition-[max-height] duration-1000"
-      leaveFrom="max-h-full"
-      leaveTo="max-h-0"
-    >
-      <div className="relative flex flex-col">
+    <Transition as="div" show={suggestionsStatus !== "no_suggestions"}>
+      <div
+        className={classNames(
+          "relative flex flex-col",
+          "transition-[max-height]",
+          "data-[enter]:duration-1000",
+          "data-[enter]:data-[closed]:max-h-0",
+          "data-[enter]:data-[open]:max-h-full",
+          "data-[leave]:duration-1000",
+          "data-[leave]:data-[open]:max-h-full",
+          "data-[leave]:data-[closed]:max-h-0"
+        )}
+      >
         <div className="flex items-center gap-2 text-base font-bold text-element-800">
           <div>Tips</div>
           {suggestionsStatus === "loading" && <Spinner size="xs" />}
@@ -547,25 +549,27 @@ function AnimatedSuggestion({
   afterEnter?: () => void;
 }) {
   return (
-    <Transition
-      as="div"
-      appear={true}
-      enter="transition-all ease-out duration-300"
-      enterFrom="opacity-0 w-0"
-      enterTo="opacity-100 w-[320px]"
-      leave="ease-in duration-300"
-      leaveFrom="opacity-100 w-[320px]"
-      leaveTo="opacity-0 w-0"
-      afterEnter={afterEnter}
-    >
-      <ContentMessage
-        size="sm"
-        title=""
-        variant={variant}
-        className="h-fit w-[308px]"
+    <Transition as={Fragment} appear={true} afterEnter={afterEnter}>
+      <div
+        className={classNames(
+          "w-[320px] opacity-100 transition-all ease-out",
+          "data-[enter]:duration-300",
+          "data-[enter]:data-[closed]:w-0 data-[enter]:data-[closed]:opacity-0",
+          "data-[enter]:data-[open]:w-[320px] data-[enter]:data-[open]:opacity-100",
+          "data-[leave]:duration-300",
+          "data-[leave]:data-[open]:w-[320px] data-[leave]:data-[open]:opacity-100",
+          "data-[leave]:data-[closed]:w-0 data-[leave]:data-[closed]:opacity-0"
+        )}
       >
-        {suggestion}
-      </ContentMessage>
+        <ContentMessage
+          size="sm"
+          title=""
+          variant={variant}
+          className="h-fit w-[308px]"
+        >
+          {suggestion}
+        </ContentMessage>
+      </div>
     </Transition>
   );
 }
