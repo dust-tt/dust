@@ -14,8 +14,10 @@ import {
   assertNever,
   Err,
   isAgentMessageType,
+  isContentFragmentMessageTypeModel,
   isContentFragmentType,
   isRetrievalConfiguration,
+  isTextContent,
   isUserMessageType,
   isWebsearchConfiguration,
   Ok,
@@ -123,7 +125,12 @@ export async function renderConversationForModelMultiActions({
       messages.push({
         role: "user" as const,
         name: m.context.fullName || m.context.username,
-        content,
+        content: [
+          {
+            type: "text",
+            text: content,
+          },
+        ],
       });
     } else if (isContentFragmentType(m)) {
       try {
@@ -137,7 +144,12 @@ export async function renderConversationForModelMultiActions({
           name: `inject_${m.contentType}`,
           // The closing </attachment> tag will be added in the merging loop because we might
           // need to add a "truncated..." mention in the selection loop.
-          content: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
+          content: [
+            {
+              type: "text",
+              text: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
+            },
+          ],
         });
       } catch (error) {
         logger.error(
@@ -161,7 +173,7 @@ export async function renderConversationForModelMultiActions({
     Promise.all(
       messages.map((m) => {
         let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
-        if (m.role === "content_fragment") {
+        if (isContentFragmentMessageTypeModel(m)) {
           // We want to account for the upcoming </attachment> tag, which will be added in the merging loop.
           text += closingAttachmentTag;
         }
@@ -197,26 +209,45 @@ export async function renderConversationForModelMultiActions({
       return new Err(r.error);
     }
     const c = r.value;
+
+    const currentMessage = messages[i];
+
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
-      selected.unshift(messages[i]);
+      selected.unshift(currentMessage);
     } else if (
       // When a content fragment has more than the remaining number of tokens, we split it.
-      messages[i].role === "content_fragment" &&
+      isContentFragmentMessageTypeModel(currentMessage) &&
       // Allow at least tokensMargin tokens in addition to the truncation message.
       tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
     ) {
       const msg = messages[i] as ContentFragmentMessageTypeModel;
       const remainingTokens =
         allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
-      const contentRes = await tokenSplit(msg.content, model, remainingTokens);
-      if (contentRes.isErr()) {
-        return new Err(contentRes.error);
+
+      const updatedContent = [];
+      for (const c of msg.content) {
+        if (!isTextContent(c)) {
+          // If there is not enough room and it's an image, we simply ignore it.
+          continue;
+        }
+
+        const contentRes = await tokenSplit(c.text, model, remainingTokens);
+        if (contentRes.isErr()) {
+          return new Err(contentRes.error);
+        }
+
+        updatedContent.push({
+          ...c,
+          text: contentRes.value + truncationMessage,
+        });
       }
+
       selected.unshift({
         ...msg,
-        content: contentRes.value + truncationMessage,
+        content: updatedContent,
       });
+
       tokensUsed += remainingTokens;
       break;
     } else {
@@ -228,8 +259,8 @@ export async function renderConversationForModelMultiActions({
   // Merging content fragments into the upcoming user message.
   // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
   for (let i = selected.length - 1; i >= 0; i--) {
-    if (selected[i].role === "content_fragment") {
-      const cfMessage = selected[i];
+    const cfMessage = selected[i];
+    if (isContentFragmentMessageTypeModel(cfMessage)) {
       const userMessage = selected[i + 1];
       if (!userMessage || userMessage.role !== "user") {
         logger.error(
@@ -247,13 +278,16 @@ export async function renderConversationForModelMultiActions({
           "Unexpected state, cannot find user message after a Content Fragment"
         );
       }
-      userMessage.content = [
-        cfMessage.content,
-        // We can now close the </attachment> tag, because the message was already properly
-        // truncated.  We also accounted for the closing that above when computing the tokens count.
-        closingAttachmentTag,
-        userMessage.content,
-      ].join("");
+
+      for (const c of cfMessage.content) {
+        if (isTextContent(c)) {
+          // We can now close the </attachment> tag, because the message was already properly
+          // truncated.  We also accounted for the closing that above when computing the tokens count.
+          c.text += closingAttachmentTag;
+        }
+      }
+
+      userMessage.content = [...cfMessage.content, ...userMessage.content];
       // Now we remove the content fragment from the array since it was merged into the upcoming
       // user message.
       selected.splice(i, 1);
