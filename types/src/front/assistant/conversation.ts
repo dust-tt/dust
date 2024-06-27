@@ -1,3 +1,4 @@
+import { CodeInterpreterActionType } from "../../front/assistant/actions/code_interpreter";
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import { ProcessActionType } from "../../front/assistant/actions/process";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
@@ -92,7 +93,8 @@ export type AgentActionType =
   | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
-  | BrowseActionType;
+  | BrowseActionType
+  | CodeInterpreterActionType;
 
 export type AgentMessageStatus =
   | "created"

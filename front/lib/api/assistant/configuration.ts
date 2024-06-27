@@ -8,6 +8,7 @@ import type {
   AgentStatus,
   AgentUserListStatus,
   AppType,
+  CodeInterpreterRuntimeEnvironmentType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
   ModelId,
@@ -31,6 +32,7 @@ import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import {
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_CODE_INTERPRETER_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
@@ -47,6 +49,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { App } from "@app/lib/models/apps";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
+import { AgentCodeInterpreterConfiguration } from "@app/lib/models/assistant/actions/code_interpreter";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
@@ -382,6 +385,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     processConfigs,
     websearchConfigs,
     browseConfigs,
+    codeInterpreterConfigs,
     agentUserRelations,
   ] = await Promise.all([
     variant === "full"
@@ -422,6 +426,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentBrowseConfiguration[]>),
+    variant === "full"
+      ? AgentCodeInterpreterConfiguration.findAll({
+          where: {
+            agentConfigurationId: { [Op.in]: configurationIds },
+          },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve(
+          {} as Record<number, AgentCodeInterpreterConfiguration[]>
+        ),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -617,6 +630,20 @@ async function fetchWorkspaceAgentConfigurationsForView(
           type: "browse_configuration",
           name: browseConfig.name || DEFAULT_BROWSE_ACTION_NAME,
           description: browseConfig.description,
+        });
+      }
+
+      const codeInterpreterConfigurations =
+        codeInterpreterConfigs[agent.id] ?? [];
+      for (const codeInterpreterConfig of codeInterpreterConfigurations) {
+        actions.push({
+          id: codeInterpreterConfig.id,
+          sId: codeInterpreterConfig.sId,
+          type: "code_interpreter_configuration",
+          name:
+            codeInterpreterConfig.name || DEFAULT_CODE_INTERPRETER_ACTION_NAME,
+          description: codeInterpreterConfig.description,
+          runtimeEnvironment: codeInterpreterConfig.runtypeEnvironment, // todo daph rename column
         });
       }
 
@@ -1167,6 +1194,10 @@ export async function createAgentActionConfiguration(
     | {
         type: "browse_configuration";
       }
+    | {
+        type: "code_interpreter_configuration";
+        runtimeEnvironment: string;
+      }
   ) & {
     name: string | null;
     description: string | null;
@@ -1344,6 +1375,26 @@ export async function createAgentActionConfiguration(
         sId: browseConfig.sId,
         type: "browse_configuration",
         name: action.name || DEFAULT_BROWSE_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "code_interpreter_configuration": {
+      const codeInterpreterConfig =
+        await AgentCodeInterpreterConfiguration.create({
+          sId: generateModelSId(),
+          agentConfigurationId: agentConfiguration.id,
+          runtypeEnvironment:
+            action.runtimeEnvironment as CodeInterpreterRuntimeEnvironmentType,
+          name: action.name,
+          description: action.description,
+        });
+
+      return new Ok({
+        id: codeInterpreterConfig.id,
+        sId: codeInterpreterConfig.sId,
+        type: "code_interpreter_configuration",
+        runtimeEnvironment: codeInterpreterConfig.runtypeEnvironment,
+        name: action.name || DEFAULT_CODE_INTERPRETER_ACTION_NAME,
         description: action.description,
       });
     }

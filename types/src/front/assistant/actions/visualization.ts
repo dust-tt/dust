@@ -1,3 +1,5 @@
+import * as t from "io-ts";
+
 import { ModelId } from "../../../shared/model_id";
 import { BaseAction } from "../../lib/api/assistant/actions";
 
@@ -25,3 +27,7 @@ export interface VisualizationActionType extends BaseAction {
   step: number;
   type: "visualization_action";
 }
+
+export const VisualizationActionOutputSchema = t.type({
+  code: t.string,
+});

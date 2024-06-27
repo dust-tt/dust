@@ -15,6 +15,7 @@ import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
+import { codeInterpreterActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/code_interpreter";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
@@ -134,6 +135,7 @@ export async function batchRenderAgentMessages(
     agentProcessActions,
     agentWebsearchActions,
     agentBrowseActions,
+    agentCodeInterpreterActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -161,6 +163,8 @@ export async function batchRenderAgentMessages(
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      codeInterpreterActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   return agentMessages.map((message) => {
@@ -178,6 +182,7 @@ export async function batchRenderAgentMessages(
       agentProcessActions,
       agentWebsearchActions,
       agentBrowseActions,
+      agentCodeInterpreterActions,
     ]
       .flat()
       .filter((a) => a.agentMessageId === agentMessage.id)

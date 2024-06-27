@@ -2,6 +2,7 @@ import {
   Avatar,
   BracesIcon,
   CommandLineIcon,
+  CommandLineStrokeIcon,
   ContentMessage,
   ElementModal,
   ExternalLinkIcon,
@@ -27,6 +28,7 @@ import type {
 import {
   assertNever,
   isBrowseConfiguration,
+  isCodeInterpreterConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -286,6 +288,18 @@ export function AssistantDetails({
             </div>
           ) : isBrowseConfiguration(action) ? (
             false
+          ) : isCodeInterpreterConfiguration(action) ? (
+            <div className="flex flex-col gap-2" key={`action-${index}`}>
+              <div className="text-lg font-bold text-element-800">
+                Code Interpreter
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon visual={CommandLineStrokeIcon} size="xs" />
+                <div>
+                  Assistant can generate and execute some code to answer
+                </div>
+              </div>
+            </div>
           ) : (
             assertNever(action)
           )

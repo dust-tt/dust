@@ -6,6 +6,7 @@ import {
   AgentActionType,
   AgentMessageType,
 } from "../../../../front/assistant/conversation";
+import { CodeInterpreterParamsEvent } from "../../../../front/lib/api/assistant/actions/code_interpreter";
 import {
   DustAppRunBlockEvent,
   DustAppRunParamsEvent,
@@ -65,7 +66,8 @@ export type AgentActionSpecificEvent =
   | TablesQueryOutputEvent
   | ProcessParamsEvent
   | WebsearchParamsEvent
-  | BrowseParamsEvent;
+  | BrowseParamsEvent
+  | CodeInterpreterParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

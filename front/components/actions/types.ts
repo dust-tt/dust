@@ -1,6 +1,7 @@
 import type { AgentActionType } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
+import { CodeInterpreterActionDetails } from "@app/components/actions/code_interpreter/CodeInterpreterActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
@@ -49,6 +50,10 @@ const actionsSpecification: ActionSpecifications = {
   browse_action: {
     detailsComponent: BrowseActionDetails,
     runningLabel: "Browsing page",
+  },
+  code_interpreter_action: {
+    detailsComponent: CodeInterpreterActionDetails,
+    runningLabel: "Analyzing request",
   },
 };
 

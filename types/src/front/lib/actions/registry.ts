@@ -218,6 +218,21 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-v2-code-interpreter": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "tWcuYDj1OE",
+      appHash:
+        "9a9adcfb020630171034d95679a484d8d5a7656968af7a26c9434968da083acc",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "generate_code",
+        use_cache: false,
+      },
+    },
+  },
 });
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;

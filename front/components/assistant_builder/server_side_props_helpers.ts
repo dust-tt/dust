@@ -12,6 +12,7 @@ import {
   ConnectorsAPI,
   CoreAPI,
   isBrowseConfiguration,
+  isCodeInterpreterConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -210,6 +211,9 @@ export async function buildInitialActions({
       continue;
     } else if (isBrowseConfiguration(action)) {
       // Ignore browse actions
+      continue;
+    } else if (isCodeInterpreterConfiguration(action)) {
+      // @todo[daph] this is the builder work, in the next PR.
       continue;
     } else {
       assertNever(action);

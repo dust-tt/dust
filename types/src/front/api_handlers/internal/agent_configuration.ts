@@ -101,6 +101,15 @@ const BrowseActionConfigurationSchema = t.type({
   type: t.literal("browse_configuration"),
 });
 
+const CodeInterpreterConfigurationSchema = t.type({
+  type: t.literal("code_interpreter_configuration"),
+  runtimeEnvironment: t.union([
+    t.literal("javascript"),
+    t.literal("javascript_with_react"),
+    t.literal("python"),
+  ]),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -158,6 +167,7 @@ const ActionConfigurationSchema = t.intersection([
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
+    CodeInterpreterConfigurationSchema,
   ]),
   t.partial(multiActionsCommonFields),
 ]);
