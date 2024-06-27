@@ -156,10 +156,10 @@ export default function ModelPicker({
                 {modelProviders.map((p) => {
                   return (
                     <MenuItem key={p.providerId}>
-                      {({ active }) => (
+                      {({ focus }) => (
                         <span
                           className={classNames(
-                            active
+                            focus
                               ? "bg-gray-50 text-gray-900"
                               : "text-gray-700",
                             "block cursor-pointer px-4 py-2 text-sm"
@@ -230,10 +230,10 @@ export default function ModelPicker({
                   {(models || []).map((m) => {
                     return (
                       <MenuItem key={m.id}>
-                        {({ active }) => (
+                        {({ focus }) => (
                           <span
                             className={classNames(
-                              active
+                              focus
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"

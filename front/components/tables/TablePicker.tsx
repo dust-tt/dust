@@ -84,10 +84,10 @@ export default function TablePicker({
                   {(tables || []).map((t) => {
                     return (
                       <MenuItem key={t.table_id}>
-                        {({ active }) => (
+                        {({ focus }) => (
                           <span
                             className={classNames(
-                              active
+                              focus
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"

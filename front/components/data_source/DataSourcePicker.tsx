@@ -127,10 +127,10 @@ export default function DataSourcePicker({
                   {(dataSources || []).map((ds) => {
                     return (
                       <MenuItem key={ds.name}>
-                        {({ active }) => (
+                        {({ focus }) => (
                           <span
                             className={classNames(
-                              active
+                              focus
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"

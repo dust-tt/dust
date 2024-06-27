@@ -94,7 +94,7 @@ export default function DatasetPicker({
               {datasets.map((d) => {
                 return (
                   <MenuItem key={d.name}>
-                    {({ active }) => (
+                    {({ focus }) => (
                       <span
                         className={classNames(
                           active ? "bg-gray-50 text-gray-900" : "text-gray-700",
@@ -109,11 +109,11 @@ export default function DatasetPicker({
                 );
               })}
               <MenuItem key="__create_dataset">
-                {({ active }) => (
+                {({ focus }) => (
                   <Link href={`/w/${owner.sId}/a/${app.sId}/datasets/new`}>
                     <div
                       className={classNames(
-                        active ? "bg-gray-50 text-gray-500" : "text-gray-400",
+                        focus ? "bg-gray-50 text-gray-500" : "text-gray-400",
                         "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm font-normal"
                       )}
                     >

@@ -161,11 +161,11 @@ export default function Search({
                 <div className="py-1">
                   {(searchProviders || []).map((p) => {
                     return (
-                      <Menu.Item key={p.providerId}>
-                        {({ active }) => (
+                      <MenuItem key={p.providerId}>
+                        {({ focus }) => (
                           <span
                             className={classNames(
-                              active
+                              focus
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"
@@ -175,7 +175,7 @@ export default function Search({
                             {p.providerId}
                           </span>
                         )}
-                      </Menu.Item>
+                      </MenuItem>
                     );
                   })}
                 </div>

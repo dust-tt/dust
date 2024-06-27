@@ -141,10 +141,10 @@ export default function Curl({
                     {availableMethods.map((method) => {
                       return (
                         <MenuItem key={method}>
-                          {({ active }) => (
+                          {({ focus }) => (
                             <span
                               className={classNames(
-                                active
+                                focus
                                   ? "bg-gray-50 text-gray-900"
                                   : "text-gray-700",
                                 "block cursor-pointer whitespace-nowrap px-4 py-1 text-sm"
