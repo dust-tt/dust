@@ -35,7 +35,7 @@ export interface InputBarContainerProps {
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
-  stickyMentions: AgentMention[] | undefined;
+  stickyMentions?: AgentMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;

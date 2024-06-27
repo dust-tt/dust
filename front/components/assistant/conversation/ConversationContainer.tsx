@@ -195,22 +195,14 @@ export function ConversationContainer({
     )
   );
 
+  const { setSelectedAssistant } = useContext(InputBarContext);
+
   const setInputbarMention = useCallback(
     (agent: LightAgentConfigurationType) => {
-      setStickyMentions((prev) => {
-        const alreadyInStickyMention = prev.find(
-          (m) => m.configurationId === agent.sId
-        );
-
-        if (alreadyInStickyMention) {
-          return prev;
-        }
-
-        return [...prev, { configurationId: agent.sId }];
-      });
+      setSelectedAssistant({ configurationId: agent.sId });
       setAnimate(true);
     },
-    [setStickyMentions, setAnimate]
+    [setAnimate, setSelectedAssistant]
   );
 
   useEffect(() => {
