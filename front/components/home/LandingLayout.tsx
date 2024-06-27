@@ -3,6 +3,7 @@ import {
   Div3D,
   Hover3D,
   LoginIcon,
+  LogoHorizontalColorLogo,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
 } from "@dust-tt/sparkle";
@@ -93,7 +94,7 @@ export default function LandingLayout({
     <RootLayout>
       <Header />
       <ScrollingHeader>
-        <div className="flex h-full w-full items-center gap-10 px-6">
+        <div className="flex h-full w-full items-center gap-4 px-6 lg:gap-10">
           <div className="hidden h-[24px] w-[96px] lg:block">
             <Hover3D className="relative h-[24px] w-[96px]">
               <Div3D depth={0} className="h-[24px] w-[96px]">
@@ -105,6 +106,9 @@ export default function LandingLayout({
             </Hover3D>
           </div>
           <MobileNavigation />
+          <div className="block lg:hidden">
+            <LogoHorizontalColorLogo className="h-[24px] w-[96px]" />
+          </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end">
             <Button
