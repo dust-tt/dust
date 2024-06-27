@@ -258,17 +258,21 @@ export function useDocuments(
   };
 }
 
-export function useDataSources(owner: WorkspaceType) {
+export function useDataSources(
+  owner: WorkspaceType,
+  options = { disabled: false }
+) {
+  const { disabled } = options;
   const dataSourcesFetcher: Fetcher<GetDataSourcesResponseBody> = fetcher;
   const { data, error, mutate } = useSWR(
-    `/api/w/${owner.sId}/data_sources`,
+    disabled ? null : `/api/w/${owner.sId}/data_sources`,
     dataSourcesFetcher
   );
 
   return {
     dataSources: useMemo(() => (data ? data.dataSources : []), [data]),
-    isDataSourcesLoading: !error && !data,
-    isDataSourcesError: error,
+    isDataSourcesLoading: disabled ? false : !error && !data,
+    isDataSourcesError: disabled ? false : error,
     mutateDataSources: mutate,
   };
 }
