@@ -12,7 +12,7 @@ export type ContentFragmentContextType = {
 
 // TODO (26/06/2024 jules): remove "slack_thread_content" and "file_attachment"
 // after backfilling data
-export const supportedTextContentFragment = [
+const supportedTextContentFragmentType = [
   "text/plain",
   "text/csv",
   "text/tsv",
@@ -24,19 +24,33 @@ export const supportedTextContentFragment = [
 ] as const;
 
 export type SupportedTextContentFragmentType =
-  (typeof supportedTextContentFragment)[number];
+  (typeof supportedTextContentFragmentType)[number];
 
-export const supportedContentFragment = [
-  ...supportedTextContentFragment,
+const supportedImagesContentFragmentType = ["image/jpeg", "image/png"] as const;
+
+export type SupportedImagesContentFragmentType =
+  (typeof supportedImagesContentFragmentType)[number];
+
+// Content fragment types that users are allowed to upload.
+const supportedUploadableContentFragmentType = [
+  ...supportedTextContentFragmentType,
+  ...supportedImagesContentFragmentType,
+] as const;
+
+export type SupportedUploadableContentFragmentType =
+  (typeof supportedUploadableContentFragmentType)[number];
+
+export const supportedContentFragmentType = [
+  ...supportedUploadableContentFragmentType,
   "slack_thread_content",
   "dust-application/slack",
 ] as const;
 
 export type SupportedContentFragmentType =
-  (typeof supportedContentFragment)[number];
+  (typeof supportedContentFragmentType)[number];
 
 export function getSupportedContentFragmentTypeCodec(): t.Mixed {
-  const [first, second, ...rest] = supportedContentFragment;
+  const [first, second, ...rest] = supportedContentFragmentType;
   return t.union([
     t.literal(first),
     t.literal(second),
@@ -77,7 +91,9 @@ export function isSupportedContentFragmentType(
 ): format is SupportedContentFragmentType {
   return (
     typeof format === "string" &&
-    supportedContentFragment.includes(format as SupportedContentFragmentType)
+    supportedContentFragmentType.includes(
+      format as SupportedContentFragmentType
+    )
   );
 }
 
@@ -86,8 +102,22 @@ export function isSupportedTextContentFragmentType(
 ): format is SupportedTextContentFragmentType {
   return (
     typeof format === "string" &&
-    supportedTextContentFragment.includes(
+    supportedTextContentFragmentType.includes(
       format as SupportedTextContentFragmentType
     )
+  );
+}
+
+export function isSupportedUploadableContentFragmentType(
+  format: string
+): format is SupportedUploadableContentFragmentType {
+  return supportedUploadableContentFragmentType.includes(
+    format as SupportedUploadableContentFragmentType
+  );
+}
+
+export function isSupportedImageContentFragmentType(format: string) {
+  return supportedImagesContentFragmentType.includes(
+    format as SupportedImagesContentFragmentType
   );
 }

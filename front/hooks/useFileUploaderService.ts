@@ -1,5 +1,8 @@
-import type { SupportedContentFragmentType } from "@dust-tt/types";
-import { isSupportedTextContentFragmentType } from "@dust-tt/types";
+import type { SupportedUploadableContentFragmentType } from "@dust-tt/types";
+import {
+  isSupportedImageContentFragmentType,
+  isSupportedUploadableContentFragmentType,
+} from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -14,7 +17,7 @@ interface FileContent {
   preview?: string;
   size: number;
   // TODO(2024-06-26 flav) Make this configurable.
-  contentType: SupportedContentFragmentType;
+  contentType: SupportedUploadableContentFragmentType;
 }
 
 type FileBlobUploadErrorCode =
@@ -33,8 +36,11 @@ class FileBlobUploadError extends Error {
   }
 }
 
-const COMBINED_MAX_FILES_SIZE = 500_000;
-const MAX_FILE_SIZE = 100_000_000;
+const COMBINED_MAX_TEXT_FILES_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
+const MAX_TEXT_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
+
+const MAX_IMAGE_FILE_SIZE = 3 * 1024 * 1024; // 3MB in bytes.
+const COMBINED_MAX_IMAGE_FILES_SIZE = 20 * 1024 * 1024; // 15MB in bytes.
 
 export function useFileUploaderService() {
   const [fileBlobs, setFileBlobs] = useState<FileContent[]>([]);
@@ -49,17 +55,44 @@ export function useFileUploaderService() {
 
     setIsProcessingFiles(true);
 
-    // TODO(2024-06-26 flav): Handle image's sizes differently.
-    const totalSize = [...fileBlobs, ...selectedFiles].reduce(
-      (sum, content) => sum + content.size,
-      0
+    const { totalTextualSize, totalImageSize } = [
+      ...fileBlobs,
+      ...selectedFiles,
+    ].reduce(
+      (acc, content) => {
+        if (
+          isSupportedImageContentFragmentType(
+            content instanceof File ? content.type : content.contentType
+          )
+        ) {
+          acc.totalImageSize += content.size;
+        } else {
+          acc.totalTextualSize += content.size;
+        }
+        return acc;
+      },
+      {
+        totalTextualSize: 0,
+        totalImageSize: 0,
+      }
     );
-    if (totalSize > COMBINED_MAX_FILES_SIZE) {
+
+    if (totalTextualSize > COMBINED_MAX_TEXT_FILES_SIZE) {
       sendNotification({
         type: "error",
         title: "Files too large.",
         description:
-          "The combined extracted text from the files you selected results in more than 500,000 characters. This will overflow the assistant context. Please consider uploading smaller files.",
+          "Combined text exceeds 500,000 characters, overflowing assistant context. Please upload smaller files.",
+      });
+      return;
+    }
+
+    if (totalImageSize > COMBINED_MAX_IMAGE_FILES_SIZE) {
+      sendNotification({
+        type: "error",
+        title: "Files too large.",
+        description:
+          "The total size of the image files you selected exceeds 20MB. Please upload smaller images or reduce the number of images.",
       });
       return;
     }
@@ -68,23 +101,32 @@ export function useFileUploaderService() {
       const previewPromises: Promise<FileContent>[] = selectedFiles.map(
         async (file) => {
           const contentType = getMimeTypeFromFile(file);
-          if (!isSupportedTextContentFragmentType(contentType)) {
+          if (!isSupportedUploadableContentFragmentType(contentType)) {
             return Promise.reject(
               new FileBlobUploadError("file_type_not_supported", file)
             );
           }
 
-          if (file.size > MAX_FILE_SIZE) {
+          if (isSupportedImageContentFragmentType(contentType)) {
+            if (file.size > MAX_IMAGE_FILE_SIZE) {
+              return Promise.reject(
+                new FileBlobUploadError("file_too_large", file)
+              );
+            }
+
+            const base64Text = await getPreview(file);
+
+            // No content for image-like files.
+            return createFileBlob(file, "", contentType, base64Text);
+          }
+
+          if (file.size > MAX_TEXT_FILE_SIZE) {
             return Promise.reject(
               new FileBlobUploadError("file_too_large", file)
             );
           }
 
-          if (contentType.startsWith("image/")) {
-            const base64Text = await getPreview(file);
-
-            return createFileBlob(file, base64Text, contentType, base64Text);
-          } else if (contentType === "application/pdf") {
+          if (contentType === "application/pdf") {
             const text = await getTextFromPDF(file);
 
             return createFileBlob(file, text, contentType);
@@ -188,7 +230,7 @@ export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 const createFileBlob = (
   file: File,
   content: string,
-  contentType: SupportedContentFragmentType,
+  contentType: SupportedUploadableContentFragmentType,
   preview?: string
 ): FileContent => ({
   id: file.name,

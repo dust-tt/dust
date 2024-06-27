@@ -30,7 +30,7 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isSupportedTextContentFragmentType } from "@dust-tt/types";
+import { isSupportedUploadableContentFragmentType } from "@dust-tt/types";
 import {
   assertNever,
   getSmallWhitelistedModel,
@@ -1631,7 +1631,7 @@ export async function postNewContentFragment(
 
   const messageId = generateModelSId();
 
-  const sourceUrl = isSupportedTextContentFragmentType(contentType)
+  const sourceUrl = isSupportedUploadableContentFragmentType(contentType)
     ? fileAttachmentLocation({
         workspaceId: owner.sId,
         conversationId: conversation.sId,
@@ -1639,6 +1639,8 @@ export async function postNewContentFragment(
         contentFormat: "raw",
       }).downloadUrl
     : url;
+
+  // TODO(2024-06-27 flav) Consider resizing images.
 
   const textBytes = await storeContentFragmentText({
     workspaceId: owner.sId,
