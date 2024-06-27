@@ -317,8 +317,8 @@ export async function renderContentFragmentForModel(
   const { contentType, sId, title } = message;
 
   try {
-    if (isSupportedImageContentFragmentType(contentType) && !excludeImages) {
-      if (!model.supportsVision) {
+    if (isSupportedImageContentFragmentType(contentType)) {
+      if (excludeImages || !model.supportsVision) {
         return new Ok({
           role: "content_fragment",
           name: `inject_${contentType}`,
