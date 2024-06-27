@@ -335,11 +335,7 @@ function PickDataSource({
   );
 
   return (
-    <Transition
-      as="div"
-      show={show}
-      className="mx-auto max-w-6xl"
-    >
+    <Transition as="div" show={show} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header
           title="Select Data Sources in"
@@ -404,11 +400,7 @@ function DataSourceResourceSelector({
   ];
 
   return (
-    <Transition
-      as="div"
-      show={!!dataSource}
-      className="mx-auto max-w-6xl pb-8"
-    >
+    <Transition as="div" show={!!dataSource} className="mx-auto max-w-6xl pb-8">
       <Page>
         <Page.Header
           title={`Select Data Sources in ${

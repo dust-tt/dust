@@ -10,7 +10,13 @@ import {
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { RunConfig, RunType } from "@dust-tt/types";
-import { Dialog, Transition } from "@headlessui/react";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Fragment, useState } from "react";
@@ -73,13 +79,13 @@ export default function Deploy({
         />
       </Tooltip>
 
-      <Transition.Root show={open} as={Fragment}>
+      <Transition show={open} as={Fragment}>
         <Dialog
           as="div"
           className="relative z-30"
           onClose={() => setOpen(false)}
         >
-          <Transition.Child
+          <TransitionChild
             as={Fragment}
             enter="ease-out duration-300"
             enterFrom="opacity-0"
@@ -89,25 +95,25 @@ export default function Deploy({
             leaveTo="opacity-0"
           >
             <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
-          </Transition.Child>
+          </TransitionChild>
 
           <div className="fixed inset-0 z-10 overflow-y-auto">
             <div className="flex min-h-full items-end items-center justify-center p-4">
-              <Transition.Child
+              <TransitionChild
                 as={Fragment}
                 enter="ease-out duration-300"
                 leave="ease-in duration-200"
                 leaveTo="opacity-0"
               >
-                <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 lg:max-w-4xl">
+                <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 lg:max-w-4xl">
                   <div data-color-mode="light">
                     <div className="mt-3">
-                      <Dialog.Title
+                      <DialogTitle
                         as="h3"
                         className="text-lg font-medium leading-6 text-gray-900"
                       >
                         Run as API Endpoint
-                      </Dialog.Title>
+                      </DialogTitle>
                       <DisplayCurlRequest
                         app={app}
                         owner={owner}
@@ -126,12 +132,12 @@ export default function Deploy({
                       />
                     </div>
                   </div>
-                </Dialog.Panel>
-              </Transition.Child>
+                </DialogPanel>
+              </TransitionChild>
             </div>
           </div>
         </Dialog>
-      </Transition.Root>
+      </Transition>
     </div>
   );
 }

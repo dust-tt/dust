@@ -1,6 +1,11 @@
 import { XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { Dialog, Transition } from "@headlessui/react";
+import {
+  Dialog,
+  DialogPanel,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import React, { Fragment, useContext, useState } from "react";
 
@@ -47,13 +52,13 @@ export function Navigation({
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
-      <Transition.Root show={sidebarOpen} as={Fragment}>
+      <Transition show={sidebarOpen} as={Fragment}>
         <Dialog
           as="div"
           className="relative z-50 lg:hidden"
           onClose={setSidebarOpen}
         >
-          <Transition.Child
+          <TransitionChild
             as={Fragment}
             enter="transition-opacity ease-linear duration-300"
             enterFrom="opacity-0"
@@ -63,10 +68,10 @@ export function Navigation({
             leaveTo="opacity-0"
           >
             <div className="fixed inset-0 bg-gray-900/80" />
-          </Transition.Child>
+          </TransitionChild>
 
           <div className="fixed inset-0 flex">
-            <Transition.Child
+            <TransitionChild
               as={Fragment}
               enter="transition ease-in-out duration-300 transform"
               enterFrom="-translate-x-full"
@@ -75,8 +80,8 @@ export function Navigation({
               leaveFrom="translate-x-0"
               leaveTo="-translate-x-full"
             >
-              <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                <Transition.Child
+              <DialogPanel className="relative mr-16 flex w-full max-w-xs flex-1">
+                <TransitionChild
                   as={Fragment}
                   enter="ease-in-out duration-300"
                   enterFrom="opacity-0"
@@ -98,7 +103,7 @@ export function Navigation({
                       />
                     </button>
                   </div>
-                </Transition.Child>
+                </TransitionChild>
                 <NavigationSidebar
                   subscription={subscription}
                   owner={owner}
@@ -106,11 +111,11 @@ export function Navigation({
                 >
                   {navChildren && navChildren}
                 </NavigationSidebar>
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </Dialog>
-      </Transition.Root>
+      </Transition>
 
       {/*Desktop sidebar*/}
       <Transition

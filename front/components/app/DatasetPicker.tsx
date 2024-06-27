@@ -97,7 +97,7 @@ export default function DatasetPicker({
                     {({ focus }) => (
                       <span
                         className={classNames(
-                          active ? "bg-gray-50 text-gray-900" : "text-gray-700",
+                          focus ? "bg-gray-50 text-gray-900" : "text-gray-700",
                           "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm"
                         )}
                         onClick={() => onDatasetUpdate(d.name)}
