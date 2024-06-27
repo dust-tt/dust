@@ -263,8 +263,20 @@ export async function setMicrosoftConnectorPermissions(
     );
   }
 
+  await MicrosoftRootResource.batchDelete({
+    resourceIds: Object.entries(permissions).map(([nodeId]) => {
+      const [, ...rest] = nodeId.split("/");
+      return rest.join("/");
+    }),
+    connectorId: connector.id,
+  });
+
   await MicrosoftRootResource.batchMakeNew(
     Object.entries(permissions)
+      .map(([nodeId, permission]) => {
+        console.log(nodeId, permission);
+        return [nodeId, permission] as [string, ConnectorPermission];
+      })
       .filter(([, permission]) => permission === "read")
       .map(([id]) => {
         const [nodeType, nodeId] = splitId(id);
@@ -273,15 +285,6 @@ export async function setMicrosoftConnectorPermissions(
           nodeId,
           nodeType,
         };
-      })
-  );
-
-  await MicrosoftRootResource.batchDelete(
-    Object.entries(permissions)
-      .filter(([, permission]) => permission === "none")
-      .map(([nodeId]) => {
-        const [, ...rest] = nodeId.split("/");
-        return rest.join("/");
       })
   );
 

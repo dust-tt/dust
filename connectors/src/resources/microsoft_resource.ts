@@ -121,10 +121,19 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return resources.map((resource) => new this(this.model, resource.get()));
   }
 
-  static async batchDelete(resourceIds: string[], transaction?: Transaction) {
+  static async batchDelete({
+    resourceIds,
+    connectorId,
+    transaction,
+  }: {
+    resourceIds: string[];
+    connectorId: ModelId;
+    transaction?: Transaction;
+  }) {
     return MicrosoftRootModel.destroy({
       where: {
         nodeId: resourceIds,
+        connectorId,
       },
       transaction,
     });
