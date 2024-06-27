@@ -277,7 +277,7 @@ function PickDataSource({
   });
 
   return (
-    <Transition show={true} className="mx-auto max-w-6xl">
+    <Transition as="div" show={true} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select a Table in" icon={ServerIcon} />
         <Searchbar
@@ -341,7 +341,7 @@ const PickTable = ({
   const isAllSelected = !!tables.length && !tablesToDisplay.length;
 
   return (
-    <Transition show={true} className="mx-auto max-w-6xl">
+    <Transition as="div" show={true} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select a Table" icon={ServerIcon} />
         {isAllSelected && (
@@ -417,7 +417,7 @@ const PickTablesManaged = ({
   parentsById: Record<string, Set<string>>;
 }) => {
   return (
-    <Transition show={true} className="mx-auto max-w-6xl">
+    <Transition as="div" show={true} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select a Table" icon={ServerIcon} />
         <DataSourceResourceSelectorTree

@@ -184,6 +184,7 @@ const CookieBanner = ({
 }) => {
   return (
     <Transition
+      as="div"
       show={show}
       enter="transition-opacity s-duration-300"
       appear={true}

@@ -82,6 +82,7 @@ export function Notification({ title, description, type }: NotificationType) {
   }, []);
   return (
     <Transition
+      as="div"
       show={showNotification}
       appear={true}
       enter="transition ease-in-out duration-300 transform"

@@ -1,7 +1,7 @@
 import { Button } from "@dust-tt/sparkle";
 import type { SpecificationType } from "@dust-tt/types";
 import type { BlockType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { PlusIcon } from "@heroicons/react/20/solid";
 
 import { classNames } from "@app/lib/utils";
@@ -123,7 +123,7 @@ export default function NewBlock({
     <Menu as="div" className="relative inline-block">
       <div>
         {small ? (
-          <Menu.Button
+          <MenuButton
             className={classNames(
               "border-1 inline-flex items-center border-red-200 bg-transparent px-0 py-0 text-sm font-medium leading-6 text-gray-400",
               disabled ? "text-gray-300" : "hover:text-gray-700",
@@ -132,19 +132,19 @@ export default function NewBlock({
             disabled={disabled}
           >
             <PlusIcon className="h-4 w-4" />
-          </Menu.Button>
+          </MenuButton>
         ) : (
-          <Menu.Button as="div" disabled={disabled}>
+          <MenuButton as="div" disabled={disabled}>
             <Button
               variant="secondary"
               label="Add Block"
               icon={PlusIcon}
               disabled={disabled}
             />
-          </Menu.Button>
+          </MenuButton>
         )}
       </div>
-      <Menu.Items
+      <MenuItems
         className={classNames(
           "absolute z-10 my-2 block w-max rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
           small ? "-right-16" : "",
@@ -152,7 +152,7 @@ export default function NewBlock({
         )}
       >
         {blocks.map((block) => (
-          <Menu.Item
+          <MenuItem
             as="div"
             key={block.type}
             onClick={() => {
@@ -182,9 +182,9 @@ export default function NewBlock({
                 </div>
               </div>
             )}
-          </Menu.Item>
+          </MenuItem>
         ))}
-      </Menu.Items>
+      </MenuItems>
     </Menu>
   );
 }

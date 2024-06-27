@@ -8,7 +8,7 @@ import type {
   SpecificationType,
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
@@ -119,7 +119,7 @@ export default function Curl({
           <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <Menu as="div" className="relative inline-block text-left">
               <div>
-                <Menu.Button
+                <MenuButton
                   className={classNames(
                     "inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-1 py-1 text-sm font-normal",
                     "focus:outline-none focus:ring-0",
@@ -128,11 +128,11 @@ export default function Curl({
                 >
                   {block.spec.method}
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                </Menu.Button>
+                </MenuButton>
               </div>
 
               {readOnly ? null : (
-                <Menu.Items
+                <MenuItems
                   className={classNames(
                     "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none"
                   )}
@@ -140,7 +140,7 @@ export default function Curl({
                   <div className="py-1">
                     {availableMethods.map((method) => {
                       return (
-                        <Menu.Item key={method}>
+                        <MenuItem key={method}>
                           {({ active }) => (
                             <span
                               className={classNames(
@@ -154,11 +154,11 @@ export default function Curl({
                               {method}
                             </span>
                           )}
-                        </Menu.Item>
+                        </MenuItem>
                       );
                     })}
                   </div>
-                </Menu.Items>
+                </MenuItems>
               )}
             </Menu>
           </div>

@@ -58,7 +58,7 @@ function PickDustApp({
     (app) => !app.description || app.description.length === 0
   );
   return (
-    <Transition show={show} className="mx-auto max-w-6xl">
+    <Transition as="div" show={show} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select Dust App" icon={CloudArrowDownIcon} />
         {hasSomeUnselectableApps && (

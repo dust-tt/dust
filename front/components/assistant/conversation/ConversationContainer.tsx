@@ -296,6 +296,7 @@ export function ConversationContainer({
       />
 
       <Transition
+        as="div"
         show={!activeConversationId}
         enter="transition-opacity duration-100 ease-out"
         enterFrom="opacity-0"

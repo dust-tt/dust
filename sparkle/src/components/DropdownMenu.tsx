@@ -1,4 +1,4 @@
-import { Menu, Transition } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/react";
 import React, {
   ComponentType,
   Fragment,
@@ -143,7 +143,7 @@ DropdownMenu.Button = function ({
 
   if (children) {
     return (
-      <Menu.Button
+      <MenuButton
         as="div"
         disabled={disabled}
         ref={buttonRef}
@@ -162,7 +162,7 @@ DropdownMenu.Button = function ({
         ) : (
           children
         )}
-      </Menu.Button>
+      </MenuButton>
     );
   }
 
@@ -177,7 +177,7 @@ DropdownMenu.Button = function ({
     <>
       {tooltip ? (
         <Tooltip label={tooltip} position={tooltipPosition}>
-          <Menu.Button
+          <MenuButton
             disabled={disabled}
             ref={buttonRef}
             className={classNames(
@@ -193,10 +193,10 @@ DropdownMenu.Button = function ({
               size={size === "sm" ? "xs" : "sm"}
               className={finalChevronClasses}
             />
-          </Menu.Button>
+          </MenuButton>
         </Tooltip>
       ) : (
-        <Menu.Button
+        <MenuButton
           disabled={disabled}
           ref={buttonRef}
           className={classNames(
@@ -221,7 +221,7 @@ DropdownMenu.Button = function ({
             size={size === "sm" ? "xs" : "sm"}
             className={finalChevronClasses}
           />
-        </Menu.Button>
+        </MenuButton>
       )}
     </>
   );
@@ -256,7 +256,7 @@ DropdownMenu.Item = function ({
 }: DropdownItemProps) {
   return (
     // need to use as="div" -- otherwise we get a "forwardRef" error in the console
-    <Menu.Item disabled={disabled} as="div">
+    <MenuItem disabled={disabled} as="div">
       {hasChildren ? (
         <DropdownMenu className="s-w-full s-gap-x-2 s-py-2">
           <DropdownMenu.Button
@@ -279,7 +279,7 @@ DropdownMenu.Item = function ({
           selected={selected}
         />
       )}
-    </Menu.Item>
+    </MenuItem>
   );
 };
 
@@ -290,7 +290,7 @@ interface DropdownSectionHeaderProps {
 DropdownMenu.SectionHeader = function ({ label }: DropdownSectionHeaderProps) {
   return (
     // need to use as="div" -- otherwise we get a "forwardRef" error in the console
-    <Menu.Item as="div">
+    <MenuItem as="div">
       <div
         className={classNames(
           "s-w-full",
@@ -300,7 +300,7 @@ DropdownMenu.SectionHeader = function ({ label }: DropdownSectionHeaderProps) {
       >
         {label}
       </div>
-    </Menu.Item>
+    </MenuItem>
   );
 };
 
@@ -428,7 +428,7 @@ DropdownMenu.Items = function ({
       leaveFrom="s-transform s-opacity-100 s-scale-100 s-translate-y-0"
       leaveTo={getOriginTransClass(origin)}
     >
-      <Menu.Items
+      <MenuItems
         onKeyDown={onKeyDown}
         className={classNames(
           "s-absolute s-z-10",
@@ -447,7 +447,7 @@ DropdownMenu.Items = function ({
           <StandardItem.List>{children}</StandardItem.List>
         </div>
         {bottomBar}
-      </Menu.Items>
+      </MenuItems>
     </Transition>
   );
 };

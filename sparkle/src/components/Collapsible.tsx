@@ -151,6 +151,7 @@ export interface CollapsiblePanelProps {
 
 Collapsible.Panel = ({ children }: CollapsiblePanelProps) => (
   <Transition
+    as="div"
     enter="s-transition s-duration-300 s-ease-out"
     enterFrom="s-transform s-scale-95 s-opacity-0"
     enterTo="s-transform s-scale-100 s-opacity-100"

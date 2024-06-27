@@ -24,6 +24,7 @@ export default function DustAppSelectionSection({
 }) {
   return (
     <Transition
+      as="div"
       show={show}
       enterFrom="opacity-0"
       enterTo="opacity-100"

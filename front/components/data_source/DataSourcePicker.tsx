@@ -1,5 +1,5 @@
 import type { WorkspaceType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -80,7 +80,7 @@ export default function DataSourcePicker({
         ) : (
           <Menu as="div" className="relative inline-block text-left">
             <div>
-              <Menu.Button
+              <MenuButton
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
                   name && name.length > 0 ? "px-0" : "border px-3",
@@ -113,11 +113,11 @@ export default function DataSourcePicker({
                     Create DataSource
                   </Link>
                 )}
-              </Menu.Button>
+              </MenuButton>
             </div>
 
             {(dataSources || []).length > 0 ? (
-              <Menu.Items
+              <MenuItems
                 className={classNames(
                   "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
                   name && name.length > 0 ? "-left-4" : "left-1"
@@ -126,7 +126,7 @@ export default function DataSourcePicker({
                 <div className="py-1">
                   {(dataSources || []).map((ds) => {
                     return (
-                      <Menu.Item key={ds.name}>
+                      <MenuItem key={ds.name}>
                         {({ active }) => (
                           <span
                             className={classNames(
@@ -147,11 +147,11 @@ export default function DataSourcePicker({
                             {ds.name}
                           </span>
                         )}
-                      </Menu.Item>
+                      </MenuItem>
                     );
                   })}
                 </div>
-              </Menu.Items>
+              </MenuItems>
             ) : null}
           </Menu>
         )}

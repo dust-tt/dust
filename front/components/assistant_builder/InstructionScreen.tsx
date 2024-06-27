@@ -471,6 +471,7 @@ function Suggestions({
 
   return (
     <Transition
+      as="div"
       show={suggestionsStatus !== "no_suggestions"}
       enter="transition-[max-height] duration-1000"
       enterFrom="max-h-0"
@@ -547,6 +548,7 @@ function AnimatedSuggestion({
 }) {
   return (
     <Transition
+      as="div"
       appear={true}
       enter="transition-all ease-out duration-300"
       enterFrom="opacity-0 w-0"
