@@ -195,22 +195,14 @@ export function ConversationContainer({
     )
   );
 
+  const addMentionRef = useRef<(mention: AgentMention) => void>(() => {});
+
   const setInputbarMention = useCallback(
     (agent: LightAgentConfigurationType) => {
-      setStickyMentions((prev) => {
-        const alreadyInStickyMention = prev.find(
-          (m) => m.configurationId === agent.sId
-        );
-
-        if (alreadyInStickyMention) {
-          return prev;
-        }
-
-        return [...prev, { configurationId: agent.sId }];
-      });
+      addMentionRef.current({ configurationId: agent.sId });
       setAnimate(true);
     },
-    [setStickyMentions, setAnimate]
+    [setAnimate]
   );
 
   useEffect(() => {
@@ -291,6 +283,7 @@ export function ConversationContainer({
       <FixedAssistantInputBar
         owner={owner}
         onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
+        addMentionRef={addMentionRef}
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
       />
