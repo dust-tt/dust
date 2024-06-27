@@ -613,15 +613,10 @@ pub async fn streamed_completion(
 
     let mut body = json!({
         "prompt": prompt,
-        "max_tokens": max_tokens,
         "temperature": temperature,
         "n": n,
         "logprobs": logprobs,
         "echo": echo,
-        "stop": match stop.len() {
-            0 => None,
-            _ => Some(stop),
-        },
         "frequency_penalty": frequency_penalty,
         "presence_penalty": presence_penalty,
         "top_p": top_p,
@@ -632,6 +627,12 @@ pub async fn streamed_completion(
     }
     if model_id.is_some() {
         body["model"] = json!(model_id);
+    }
+    if let Some(mt) = max_tokens {
+        body["max_tokens"] = mt.into();
+    }
+    if !stop.is_empty() {
+        body["stop"] = json!(stop);
     }
 
     // println!("BODY: {}", body.to_string());
@@ -894,14 +895,9 @@ pub async fn completion(
 
     let mut body = json!({
         "prompt": prompt,
-        "max_tokens": max_tokens,
         "temperature": temperature,
         "n": n,
         "logprobs": logprobs,
-        "stop": match stop.len() {
-            0 => None,
-            _ => Some(stop),
-        },
         "frequency_penalty": frequency_penalty,
         "presence_penalty": presence_penalty,
         "top_p": top_p,
@@ -912,6 +908,13 @@ pub async fn completion(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
+    if let Some(mt) = max_tokens {
+        body["max_tokens"] = mt.into();
+    }
+    if !stop.is_empty() {
+        body["stop"] = json!(stop);
+    }
+
     match model_id {
         None => (),
         Some(model_id) => {
@@ -1039,11 +1042,6 @@ pub async fn streamed_chat_completion(
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
-        "stop": match stop.len() {
-            0 => None,
-            _ => Some(stop),
-        },
-        "max_tokens": max_tokens,
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
         "stream": true,
@@ -1055,6 +1053,13 @@ pub async fn streamed_chat_completion(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
+    if let Some(mt) = max_tokens {
+        body["max_tokens"] = mt.into();
+    }
+    if !stop.is_empty() {
+        body["stop"] = json!(stop);
+    }
+
     if tools.len() > 0 {
         body["tools"] = json!(tools);
     }
@@ -1430,11 +1435,6 @@ pub async fn chat_completion(
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
-        "stop": match stop.len() {
-            0 => None,
-            _ => Some(stop),
-        },
-        "max_tokens": max_tokens,
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
     });
@@ -1444,6 +1444,13 @@ pub async fn chat_completion(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
+    if let Some(mt) = max_tokens {
+        body["max_tokens"] = mt.into();
+    }
+    if !stop.is_empty() {
+        body["stop"] = json!(stop);
+    }
+
     if response_format.is_some() {
         body["response_format"] = json!({
             "type": response_format.unwrap(),
