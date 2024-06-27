@@ -36,9 +36,8 @@ class FileBlobUploadError extends Error {
   }
 }
 
-// TODO: This feels weird.
-const COMBINED_MAX_TEXT_FILES_SIZE = 500_000;
-const MAX_TEXT_FILE_SIZE = 100_000_000;
+const COMBINED_MAX_TEXT_FILES_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
+const MAX_TEXT_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
 
 const MAX_IMAGE_FILE_SIZE = 3 * 1024 * 1024; // 3MB in bytes.
 const COMBINED_MAX_IMAGE_FILES_SIZE = 20 * 1024 * 1024; // 15MB in bytes.

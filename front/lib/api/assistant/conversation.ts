@@ -30,10 +30,7 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isSupportedTextContentFragmentType,
-  isSupportedUploadableContentFragmentType,
-} from "@dust-tt/types";
+import { isSupportedUploadableContentFragmentType } from "@dust-tt/types";
 import {
   assertNever,
   getSmallWhitelistedModel,
