@@ -2,51 +2,70 @@
  * Model rendering of conversations.
  */
 
-export type ModelMessageType = {
+export interface ModelMessageType {
   role: "action" | "agent" | "user" | "content_fragment";
   name: string;
   content: string;
-};
+}
 
-export type ModelConversationType = {
+export interface ModelConversationType {
   messages: ModelMessageType[];
-};
+}
 
-export type ContentFragmentMessageTypeModel = {
+export interface ImageContent {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+}
+
+interface TextContent {
+  type: "text";
+  text: string;
+}
+
+type Content = TextContent | ImageContent;
+
+export function isTextContent(content: Content): content is TextContent {
+  return content.type === "text";
+}
+
+export interface ContentFragmentMessageTypeModel {
   role: "content_fragment";
   name: string;
-  content: string;
-};
+  content: Content[];
+}
 
-export type UserMessageTypeModel = {
+export interface UserMessageTypeModel {
   role: "user";
   name: string;
-  content: string;
-};
+  content: Content[];
+}
 
-export type FunctionCallType = {
+export interface FunctionCallType {
   id: string;
   name: string;
   arguments: string;
-};
+}
 
-export type AssistantFunctionCallMessageTypeModel = {
+export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
   content?: string;
   function_calls: FunctionCallType[];
-};
-export type AssistantContentMessageTypeModel = {
+}
+
+export interface AssistantContentMessageTypeModel {
   role: "assistant";
   name: string;
   content: string;
-};
+}
 
-export type FunctionMessageTypeModel = {
+export interface FunctionMessageTypeModel {
   role: "function";
   name: string;
   function_call_id: string;
   content: string;
-};
+}
 
 export type ModelMessageTypeMultiActions =
   | ContentFragmentMessageTypeModel
@@ -54,6 +73,12 @@ export type ModelMessageTypeMultiActions =
   | AssistantFunctionCallMessageTypeModel
   | AssistantContentMessageTypeModel
   | FunctionMessageTypeModel;
+
+export function isContentFragmentMessageTypeModel(
+  contentFragment: ModelMessageTypeMultiActions
+): contentFragment is ContentFragmentMessageTypeModel {
+  return contentFragment.role === "content_fragment";
+}
 
 export type ModelConversationTypeMultiActions = {
   messages: ModelMessageTypeMultiActions[];
