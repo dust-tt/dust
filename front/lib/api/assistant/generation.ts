@@ -45,12 +45,14 @@ export async function renderConversationForModelMultiActions({
   prompt,
   allowedTokenCount,
   excludeActions,
+  excludeImages,
 }: {
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
   prompt: string;
   allowedTokenCount: number;
   excludeActions?: boolean;
+  excludeImages?: boolean;
 }): Promise<
   Result<
     {
@@ -141,7 +143,7 @@ export async function renderConversationForModelMultiActions({
       });
     } else if (isContentFragmentType(m)) {
       try {
-        if (m.contentType.startsWith("image/")) {
+        if (m.contentType.startsWith("image/") && !excludeImages) {
           const signedUrl = await getSignedUrlForRawContentFragment({
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
@@ -236,8 +238,6 @@ export async function renderConversationForModelMultiActions({
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
-  console.log(">> messages:", messages);
-
   // Selection loop.
   for (let i = messages.length - 1; i >= 0; i--) {
     const r = messagesCountRes[i];
@@ -294,7 +294,6 @@ export async function renderConversationForModelMultiActions({
   // Merging loop.
   // Merging content fragments into the upcoming user message.
   // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
-  console.log(">> selected:", selected);
   for (let i = selected.length - 1; i >= 0; i--) {
     const cfMessage = selected[i];
     console.log(">> cfMessage:", cfMessage);
