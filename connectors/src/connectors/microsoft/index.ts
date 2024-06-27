@@ -171,7 +171,7 @@ export async function fullResyncMicrosoftConnector(
   fromTs: number | null
 ) {
   console.log("fullResyncMicrosoftConnector", connectorId, fromTs);
-  return launchMicrosoftFullSyncWorkflow(connectorId);
+  return launchMicrosoftFullSyncWorkflow(connectorId, null);
 }
 
 function getIdFromResource(r: MicrosoftRootResource) {
