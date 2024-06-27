@@ -57,9 +57,7 @@ function DustAppRunParamsDetails({ action }: { action: DustAppRunActionType }) {
 }
 
 function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
-  if (!action.output) {
-    return null;
-  }
+  
 
   const stringifiedOutput = useMemo(
     () => JSON.stringify(action.output, null, 2),
@@ -73,6 +71,10 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
       type: "application/json",
     };
   };
+
+  if (!action.output) {
+    return null;
+  }
 
   return (
     <CodeBlockBanner
