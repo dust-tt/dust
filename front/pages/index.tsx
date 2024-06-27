@@ -53,7 +53,7 @@ export default function Home() {
   const [counter, setCounter] = useState(0);
   
   useEffect(() => {
-    setCounter((c) => c+1)
+    setCounter(counter + 1)
   }, [counter])
   return (
     <>
