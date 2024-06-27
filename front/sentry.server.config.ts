@@ -2,10 +2,9 @@
 // The config you add here will be used whenever the server handles a request.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
-import { isDevelopment } from "@dust-tt/types";
 import * as Sentry from "@sentry/nextjs";
 
-if (!isDevelopment()) {
+if (process.env.NODE_ENV !== "development") {
   Sentry.init({
     dsn: "https://9d71076535e796b7601c88ed49f23374@o4507503820079105.ingest.de.sentry.io/4507503822635088",
 
