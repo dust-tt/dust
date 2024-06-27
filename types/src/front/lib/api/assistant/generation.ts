@@ -12,7 +12,7 @@ export interface ModelConversationType {
   messages: ModelMessageType[];
 }
 
-export interface ImageContentFragmentContent {
+export interface ImageContent {
   type: "image_url";
   image_url: {
     url: string;
@@ -24,22 +24,22 @@ interface TextContent {
   text: string;
 }
 
-export function isTextContent(
-  content: TextContent | ImageContentFragmentContent
-): content is TextContent {
+type Content = TextContent | ImageContent;
+
+export function isTextContent(content: Content): content is TextContent {
   return content.type === "text";
 }
 
 export interface ContentFragmentMessageTypeModel {
   role: "content_fragment";
   name: string;
-  content: (TextContent | ImageContentFragmentContent)[];
+  content: Content[];
 }
 
 export interface UserMessageTypeModel {
   role: "user";
   name: string;
-  content: (ImageContentFragmentContent | TextContent)[];
+  content: Content[];
 }
 
 export interface FunctionCallType {
