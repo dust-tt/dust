@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { FutureSection } from "@app/components/home/content/Product/FutureSection";
@@ -55,13 +55,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 });
 
 export default function Home() {
+  const [counter, setCounter] = useState(0);
+  
+  useEffect(() => {
+    setCounter((c) => c+1)
+  }, [counter])
   return (
     <>
-      <IntroSection />
-      <TeamSection />
-      <FutureSection />
-      <BlogSection />
-      <VerticalSection />
+    <button onClick={() => {setCounter((c) => c+ 1)}}>counter{counter}</button>
+      
     </>
   );
 }
