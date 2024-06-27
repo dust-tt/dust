@@ -174,6 +174,14 @@ export async function fullResyncMicrosoftConnector(
   return launchMicrosoftFullSyncWorkflow(connectorId);
 }
 
+function getIdFromResource(r: MicrosoftRootResource) {
+  if (!r.nodeId) {
+    return r.nodeType;
+  }
+
+  return `${r.nodeType}/${r.nodeId}`;
+}
+
 export async function retrieveMicrosoftConnectorPermissions({
   connectorId,
   parentInternalId,
@@ -193,7 +201,7 @@ export async function retrieveMicrosoftConnectorPermissions({
 
   const selectedResources = (
     await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-  ).map((r) => r.nodeType + "/" + r.nodeId);
+  ).map((r) => getIdFromResource(r));
 
   if (!parentInternalId) {
     nodes.push(...getRootNodes());
