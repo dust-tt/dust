@@ -8,6 +8,7 @@ import { Transition } from "@headlessui/react";
 
 import type { AssistantBuilderDustAppConfiguration } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { classNames } from "@app/lib/utils";
 
 export default function DustAppSelectionSection({
   show,
@@ -26,13 +27,6 @@ export default function DustAppSelectionSection({
     <Transition
       as="div"
       show={show}
-      enterFrom="opacity-0"
-      enterTo="opacity-100"
-      leave="transition-all duration-300"
-      enter="transition-all duration-300"
-      leaveFrom="opacity-100"
-      leaveTo="opacity-0"
-      className="overflow-hidden pt-6"
       afterEnter={() => {
         window.scrollBy({
           left: 0,
@@ -41,7 +35,18 @@ export default function DustAppSelectionSection({
         });
       }}
     >
-      <div>
+      <div
+        className={classNames(
+          "overflow-hidden pt-6",
+          "transition-all",
+          "data-[enter]:duration-300",
+          "data-[leave]:duration-300",
+          "data-[enter]:data-[closed]:opacity-0",
+          "data-[enter]:data-[open]:opacity-100",
+          "data-[leave]:data-[open]:opacity-100",
+          "data-[leave]:data-[closed]:opacity-0"
+        )}
+      >
         {!dustAppConfiguration.app ? (
           <EmptyCallToAction
             label="Select Dust App"
