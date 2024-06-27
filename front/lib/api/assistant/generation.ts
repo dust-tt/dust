@@ -173,8 +173,12 @@ export async function renderConversationForModelMultiActions({
     Promise.all(
       messages.map((m) => {
         let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
-        if (isContentFragmentMessageTypeModel(m)) {
-          // We want to account for the upcoming </attachment> tag, which will be added in the merging loop.
+        if (
+          isContentFragmentMessageTypeModel(m) &&
+          m.content.every((c) => isTextContent(c))
+        ) {
+          // Account for the upcoming </attachment> tag for textual attachments,
+          // as it will be appended during the merging process.
           text += closingAttachmentTag;
         }
 
