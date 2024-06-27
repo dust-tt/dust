@@ -247,11 +247,16 @@ export function ConversationContainer({
 
   return (
     <>
-      <Transition show={!!activeConversationId} as="div" appear={true}>
+      <Transition
+        show={!!activeConversationId}
+        as="div"
+        appear={false}
+        className="flex w-full max-w-4xl flex-1 flex-col justify-start gap-2 pb-4 sm:px-4"
+      >
         {activeConversationId ? (
           <div
             className={classNames(
-              "h-full w-full max-w-4xl transition-all ease-out",
+              "transition-all ease-out",
               "data-[enter]:duration-300",
               "data-[enter]:data-[closed]:h-0 data-[enter]:data-[closed]:w-full data-[enter]:data-[closed]:flex-none",
               "data-[enter]:data-[open]:flex data-[enter]:data-[open]:w-full data-[enter]:data-[open]:flex-1",
