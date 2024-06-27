@@ -195,14 +195,14 @@ export function ConversationContainer({
     )
   );
 
-  const addMentionRef = useRef<(mention: AgentMention) => void>(() => {});
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
   const setInputbarMention = useCallback(
     (agent: LightAgentConfigurationType) => {
-      addMentionRef.current({ configurationId: agent.sId });
+      setSelectedAssistant({ configurationId: agent.sId });
       setAnimate(true);
     },
-    [setAnimate]
+    [setAnimate, setSelectedAssistant]
   );
 
   useEffect(() => {
@@ -283,7 +283,6 @@ export function ConversationContainer({
       <FixedAssistantInputBar
         owner={owner}
         onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
-        addMentionRef={addMentionRef}
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
       />

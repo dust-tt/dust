@@ -36,7 +36,6 @@ export interface InputBarContainerProps {
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions?: AgentMention[];
-  addMentionRef?: React.MutableRefObject<(mention: AgentMention) => void>;
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
@@ -50,7 +49,6 @@ const InputBarContainer = ({
   owner,
   selectedAssistant,
   stickyMentions,
-  addMentionRef,
   actions,
   disableAutoFocus,
   disableSendButton,
@@ -93,27 +91,6 @@ const InputBarContainer = ({
     selectedAssistant,
     disableAutoFocus
   );
-
-  useEffect(() => {
-    if (addMentionRef) {
-      addMentionRef.current = (agentMention: AgentMention) => {
-        const { configurationId } = agentMention;
-        const agentConfiguration = agentConfigurations.find(
-          (agent) => agent.sId === configurationId
-        );
-        if (agentConfiguration) {
-          const { mentions } = editorService.getTextAndMentions();
-          const mentionIds = mentions.map((mention) => mention.id);
-          if (!mentionIds.includes(agentConfiguration.sId)) {
-            editorService.insertMention({
-              id: agentConfiguration.sId,
-              label: agentConfiguration.name,
-            });
-          }
-        }
-      };
-    }
-  }, [addMentionRef, agentConfigurations, editorService]);
 
   // TODO: Reset after loading.
   const fileInputRef = useRef<HTMLInputElement>(null);

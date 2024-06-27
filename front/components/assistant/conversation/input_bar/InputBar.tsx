@@ -53,7 +53,6 @@ export function AssistantInputBar({
   onSubmit,
   conversationId,
   stickyMentions,
-  addMentionRef,
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
@@ -68,7 +67,6 @@ export function AssistantInputBar({
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
-  addMentionRef?: React.MutableRefObject<(mention: AgentMention) => void>;
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
@@ -260,7 +258,6 @@ export function AssistantInputBar({
                 selectedAssistant={selectedAssistant}
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
-                addMentionRef={addMentionRef}
                 fileUploaderService={fileUploaderService}
                 disableSendButton={fileUploaderService.isProcessingFiles}
               />
@@ -276,7 +273,6 @@ export function FixedAssistantInputBar({
   owner,
   onSubmit,
   stickyMentions,
-  addMentionRef,
   conversationId,
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
@@ -289,7 +285,6 @@ export function FixedAssistantInputBar({
     contentFragments: UploadedContentFragment[]
   ) => void;
   stickyMentions?: AgentMention[];
-  addMentionRef?: React.MutableRefObject<(mention: AgentMention) => void>;
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
@@ -302,7 +297,6 @@ export function FixedAssistantInputBar({
         onSubmit={onSubmit}
         conversationId={conversationId}
         stickyMentions={stickyMentions}
-        addMentionRef={addMentionRef}
         additionalAgentConfiguration={additionalAgentConfiguration}
         actions={actions}
         disableAutoFocus={disableAutoFocus}
