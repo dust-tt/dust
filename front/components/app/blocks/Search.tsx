@@ -42,13 +42,10 @@ export default function Search({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-  const { providers, isProvidersLoading, isProvidersError } = readOnly
-    ? {
-        providers: [],
-        isProvidersLoading: false,
-        isProvidersError: false,
-      }
-    : useProviders(owner);
+  const { providers, isProvidersLoading, isProvidersError } = useProviders({
+    owner,
+    disabled: readOnly,
+  });
   const serviceProviders = filterServiceProviders(providers);
   const searchProviders = serviceProviders?.filter?.(
     (p) => p.providerId === "serpapi" || p.providerId === "serper"
