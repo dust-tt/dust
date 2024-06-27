@@ -118,17 +118,19 @@ export function Navigation({
       </Transition>
 
       {/*Desktop sidebar*/}
-      <Transition
-        show={isNavigationBarOpen}
-        as={Fragment}
-        enter="transition-all duration-150 ease-out"
-        enterFrom="flex-none lg:w-0 h-full"
-        enterTo="flex flex-1 lg:w-80"
-        leave="transition-all duration-150 ease-out"
-        leaveFrom="flex flex-1 lg:w-80"
-        leaveTo="flex-none h-full lg:w-0"
-      >
-        <div className="hidden flex-1 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+      <Transition show={isNavigationBarOpen}>
+        <div
+          className={classNames(
+            "hidden flex-1 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col",
+            "transition-all ease-out",
+            "data-[enter]:duration-150",
+            "data-[enter]:data-[closed]:h-full data-[enter]:data-[closed]:flex-none data-[enter]:data-[closed]:lg:w-0",
+            "data-[enter]:data-[open]:flex data-[enter]:data-[open]:flex-1 data-[enter]:data-[open]:lg:w-80",
+            "data-[leave]:h-full data-[leave]:duration-150",
+            "data-[leave]:data-[open]:flex data-[leave]:data-[open]:flex-1 data-[leave]:data-[open]:lg:w-80",
+            "data-[leave]:data-[closed]:h-full data-[leave]:data-[closed]:flex-none data-[leave]:data-[closed]:lg:w-0"
+          )}
+        >
           <NavigationSidebar
             owner={owner}
             subscription={subscription}
