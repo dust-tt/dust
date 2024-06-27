@@ -84,9 +84,7 @@ export function useFileUploaderService() {
             const base64Text = await getPreview(file);
 
             return createFileBlob(file, base64Text, contentType, base64Text);
-          }
-
-          if (contentType === "application/pdf") {
+          } else if (contentType === "application/pdf") {
             const text = await getTextFromPDF(file);
 
             return createFileBlob(file, text, contentType);
