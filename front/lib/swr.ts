@@ -118,11 +118,17 @@ export function useDataset(
   };
 }
 
-export function useProviders(owner: WorkspaceType) {
+export function useProviders({
+  owner,
+  disabled = false,
+}: {
+  owner: WorkspaceType;
+  disabled?: boolean;
+}) {
   const providersFetcher: Fetcher<GetProvidersResponseBody> = fetcher;
 
   const { data, error } = useSWR(
-    `/api/w/${owner.sId}/providers`,
+    disabled ? null : `/api/w/${owner.sId}/providers`,
     providersFetcher
   );
 

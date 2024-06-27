@@ -26,13 +26,11 @@ export default function ModelPicker({
   chatOnly?: boolean;
   embedOnly?: boolean;
 }) {
-  const { providers, isProvidersLoading, isProvidersError } = readOnly
-    ? {
-        providers: [],
-        isProvidersLoading: false,
-        isProvidersError: false,
-      }
-    : useProviders(owner);
+  const { providers, isProvidersLoading, isProvidersError } = useProviders({
+    owner,
+    disabled: readOnly,
+  });
+
   const modelProviders = filterModelProviders(
     providers,
     !!chatOnly,

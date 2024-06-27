@@ -44,13 +44,10 @@ export default function Browser({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-  const { providers, isProvidersLoading, isProvidersError } = readOnly
-    ? {
-        providers: [],
-        isProvidersLoading: false,
-        isProvidersError: false,
-      }
-    : useProviders(owner);
+  const { providers, isProvidersLoading, isProvidersError } = useProviders({
+    owner,
+    disabled: readOnly,
+  });
 
   const serviceProviders = filterServiceProviders(providers);
   const browserlessAPIProvider = serviceProviders.find(

@@ -402,8 +402,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
 
-  const { providers, isProvidersLoading, isProvidersError } =
-    useProviders(owner);
+  const { providers, isProvidersLoading, isProvidersError } = useProviders({
+    owner,
+  });
 
   const appWhiteListedProviders = owner.whiteListedProviders
     ? [...owner.whiteListedProviders, "azure_openai"]
