@@ -85,55 +85,55 @@ export default function Deploy({
           className="relative z-30"
           onClose={() => setOpen(false)}
         >
-          <TransitionChild
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
+          <TransitionChild as={Fragment}>
+            <div
+              className={classNames(
+                "fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity",
+                "duration-300 ease-out",
+                "data-[enter]:data-[closed]:opacity-0",
+                "data-[leave]:data-[closed]:opacity-0"
+              )}
+            />
           </TransitionChild>
 
           <div className="fixed inset-0 z-10 overflow-y-auto">
-            <div className="flex min-h-full items-end items-center justify-center p-4">
-              <TransitionChild
-                as={Fragment}
-                enter="ease-out duration-300"
-                leave="ease-in duration-200"
-                leaveTo="opacity-0"
+            <div className="flex min-h-full items-center justify-center p-4">
+              <DialogPanel
+                className={classNames(
+                  "relative overflow-hidden rounded-lg bg-white p-4 sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 lg:max-w-4xl",
+                  "duration-300",
+                  "data-[enter]:data-[closed]:opacity-0",
+                  "data-[leave]:data-[closed]:opacity-0"
+                )}
+                transition
               >
-                <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:p-6 lg:max-w-4xl">
-                  <div data-color-mode="light">
-                    <div className="mt-3">
-                      <DialogTitle
-                        as="h3"
-                        className="text-lg font-medium leading-6 text-gray-900"
-                      >
-                        Run as API Endpoint
-                      </DialogTitle>
-                      <DisplayCurlRequest
-                        app={app}
-                        owner={owner}
-                        run={run}
-                        url={url}
-                      />
-                    </div>
+                <div data-color-mode="light">
+                  <div className="mt-3">
+                    <DialogTitle
+                      as="h3"
+                      className="text-lg font-medium leading-6 text-gray-900"
+                    >
+                      Run as API Endpoint
+                    </DialogTitle>
+                    <DisplayCurlRequest
+                      app={app}
+                      owner={owner}
+                      run={run}
+                      url={url}
+                    />
                   </div>
-                  <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
-                    <div className="flex-1"></div>
-                    <div className="flex flex-initial">
-                      <Button
-                        variant="secondary"
-                        onClick={() => setOpen(false)}
-                        label="Close"
-                      />
-                    </div>
+                </div>
+                <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
+                  <div className="flex-1"></div>
+                  <div className="flex flex-initial">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setOpen(false)}
+                      label="Close"
+                    />
                   </div>
-                </DialogPanel>
-              </TransitionChild>
+                </div>
+              </DialogPanel>
             </div>
           </div>
         </Dialog>

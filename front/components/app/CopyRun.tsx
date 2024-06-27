@@ -11,6 +11,7 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
+import classNames from "classnames";
 import { Fragment, useMemo, useState } from "react";
 
 import { DisplayCurlRequest } from "@app/components/app/Deploy";
@@ -78,16 +79,15 @@ export default function CopyRun({
           className="relative z-30"
           onClose={() => setOpen(false)}
         >
-          <TransitionChild
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity" />
+          <TransitionChild as={Fragment} appear={true}>
+            <div
+              className={classNames(
+                "fixed inset-0 bg-gray-800 bg-opacity-75 transition-opacity",
+                "duration-300 ease-out",
+                "data-[enter]:data-[closed]:opacity-0",
+                "data-[leave]:data-[closed]:opacity-0"
+              )}
+            />
           </TransitionChild>
 
           <div className="fixed inset-0 z-10 overflow-y-auto">
