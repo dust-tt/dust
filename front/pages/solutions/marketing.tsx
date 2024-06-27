@@ -65,8 +65,8 @@ const pageSettings: pageSettingsProps = {
   uptitle: "Marketing",
   title: (
     <>
-      Go&nbsp;from&nbsp;insight&nbsp;to&nbsp;content
-      in&nbsp;the&nbsp;blink&nbsp;of&nbsp;an&nbsp;eye
+      Go&nbsp;from&nbsp;insight to&nbsp;content in&nbsp;the&nbsp;blink
+      of&nbsp;an&nbsp;eye
     </>
   ),
   from: "from-pink-200",
