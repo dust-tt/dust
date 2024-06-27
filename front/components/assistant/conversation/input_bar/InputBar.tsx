@@ -1,29 +1,22 @@
-import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
+import { Button, StopIcon } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -82,10 +75,6 @@ export function AssistantInputBar({
 }) {
   const { mutate } = useSWRConfig();
 
-  const [contentFragmentData, setContentFragmentData] = useState<
-    UploadedContentFragment[]
-  >([]);
-
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -104,13 +93,9 @@ export function AssistantInputBar({
     return [...baseAgentConfigurations, additionalAgentConfiguration];
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
-  const sendNotification = useContext(SendNotificationsContext);
-
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, selectedAssistant } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [isProcessingContentFragment, setIsProcessingContentFragment] =
-    useState(false);
 
   useEffect(() => {
     if (animate && !isAnimating) {
@@ -155,18 +140,19 @@ export function AssistantInputBar({
     const mentions: MentionType[] = rawMentions.map((m) => ({
       configurationId: m.id,
     }));
-    if (contentFragmentData.length > 0) {
+
+    if (fileUploaderService.fileBlobs.length > 0) {
       void ClientSideTracking.trackInputBarFileUploadUsed({
-        fileCount: contentFragmentData.length,
+        fileCount: fileUploaderService.fileBlobs.length,
       });
     }
 
     onSubmit(
       text,
       mentions,
-      contentFragmentData.map((cf) => {
+      fileUploaderService.fileBlobs.map((cf) => {
         return {
-          title: cf.title,
+          title: cf.filename,
           content: cf.content,
           file: cf.file,
           contentType: cf.contentType,
@@ -174,77 +160,10 @@ export function AssistantInputBar({
       })
     );
     resetEditorText();
-    setContentFragmentData([]);
+    fileUploaderService.resetUpload();
   };
 
-  const onInputFileChange: InputBarContainerProps["onInputFileChange"] =
-    useCallback(
-      async (event) => {
-        setIsProcessingContentFragment(true);
-        try {
-          let totalSize = 0;
-          for (const file of (event?.target as HTMLInputElement)?.files || []) {
-            if (!file) {
-              return;
-            }
-            if (file.size > 100_000_000) {
-              // Even though we don't display the file size limit in the UI, we still check it here to prevent
-              // processing files that are too large.
-              sendNotification({
-                type: "error",
-                title: "File too large.",
-                description:
-                  "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
-              });
-              return;
-            }
-            const res = await handleFileUploadToText(file);
-
-            if (res.isErr()) {
-              sendNotification({
-                type: "error",
-                title: "Error uploading file.",
-                description: res.error.message,
-              });
-              return;
-            }
-            if (res.value.content.length > 500_000) {
-              // This error should pretty much never be triggered but it is a possible case, so here it is.
-              sendNotification({
-                type: "error",
-                title: "File too large.",
-                description:
-                  "The extracted text from your file has more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
-              });
-              return;
-            }
-            totalSize += res.value.content.length;
-            setContentFragmentData((prev) => {
-              return prev.concat([
-                {
-                  title: res.value.title,
-                  content: res.value.content,
-                  file,
-                  contentType: res.value.contentType,
-                },
-              ]);
-            });
-          }
-          // now we check for the total size of the content fragments
-          if (totalSize > 500_000) {
-            sendNotification({
-              type: "error",
-              title: "Files too large.",
-              description:
-                "The combined extracted text from the files you selected results in more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
-            });
-          }
-        } finally {
-          setIsProcessingContentFragment(false);
-        }
-      },
-      [sendNotification]
-    );
+  const fileUploaderService = useFileUploaderService();
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -328,23 +247,7 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
-              {contentFragmentData.length > 0 && (
-                <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
-                  {contentFragmentData.map((cf, i) => (
-                    <Citation
-                      key={`cf-${i}`}
-                      title={cf.title}
-                      size="xs"
-                      description={cf.content?.substring(0, 100)}
-                      onClose={() => {
-                        setContentFragmentData((prev) => {
-                          return prev.filter((_, index) => index !== i);
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+              <InputBarCitations fileUploaderService={fileUploaderService} />
 
               <InputBarContainer
                 actions={actions}
@@ -355,8 +258,8 @@ export function AssistantInputBar({
                 selectedAssistant={selectedAssistant}
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
-                onInputFileChange={onInputFileChange}
-                disableSendButton={isProcessingContentFragment}
+                fileUploaderService={fileUploaderService}
+                disableSendButton={fileUploaderService.isProcessingFiles}
               />
             </div>
           </div>

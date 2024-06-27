@@ -11,5 +11,6 @@ export function getMimeTypeFromFile(file: File): string {
   if (isMarkdownFile(file)) {
     return "text/markdown";
   }
+
   return file.type;
 }

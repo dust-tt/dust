@@ -20,6 +20,7 @@ import type { CustomEditorProps } from "@app/components/assistant/conversation/i
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
 
 export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
@@ -32,26 +33,26 @@ export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  onInputFileChange: (e: React.ChangeEvent) => Promise<void>;
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
   actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
+  fileUploaderService: FileUploaderService;
 }
 
 const InputBarContainer = ({
   allAssistants,
   agentConfigurations,
   onEnterKeyDown,
-  onInputFileChange,
   owner,
   selectedAssistant,
   stickyMentions,
   actions,
   disableAutoFocus,
   disableSendButton,
+  fileUploaderService,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
@@ -130,7 +131,7 @@ const InputBarContainer = ({
               <input
                 accept={supportedFileExtensions.join(",")}
                 onChange={async (e) => {
-                  await onInputFileChange(e);
+                  await fileUploaderService.handleFileChange(e);
                   editorService.focusEnd();
                 }}
                 ref={fileInputRef}
