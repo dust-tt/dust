@@ -20,13 +20,11 @@ export default function DatasetPicker({
   readOnly: boolean;
   onDatasetUpdate: (dataset: string) => void;
 }) {
-  const { datasets, isDatasetsLoading, isDatasetsError } = readOnly
-    ? {
-        datasets: [],
-        isDatasetsLoading: false,
-        isDatasetsError: false,
-      }
-    : useDatasets(owner, app);
+  const { datasets, isDatasetsLoading, isDatasetsError } = useDatasets({
+    owner,
+    app,
+    disabled: readOnly,
+  });
 
   // Remove the dataset if it was suppressed.
   if (

@@ -80,11 +80,19 @@ const postFetcher = async ([url, body]: [string, object]) =>
     })
   );
 
-export function useDatasets(owner: WorkspaceType, app: AppType) {
+export function useDatasets({
+  owner,
+  app,
+  disabled,
+}: {
+  owner: WorkspaceType;
+  app: AppType;
+  disabled: boolean;
+}) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
   const { data, error } = useSWR(
-    `/api/w/${owner.sId}/apps/${app.sId}/datasets`,
+    disabled ? null : `/api/w/${owner.sId}/apps/${app.sId}/datasets`,
     datasetsFetcher
   );
 
