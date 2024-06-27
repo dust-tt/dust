@@ -11,7 +11,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
@@ -183,46 +183,46 @@ const CookieBanner = ({
   className?: string;
 }) => {
   return (
-    <Transition
-      as="div"
-      show={show}
-      enter="transition-opacity s-duration-300"
-      appear={true}
-      enterFrom="opacity-0"
-      enterTo="opacity-100"
-      leave="transition-opacity duration-300"
-      leaveFrom="opacity-100"
-      leaveTo="opacity-0"
-      className={classNames(
-        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
-        className || ""
-      )}
-    >
-      <div className="text-sm font-normal text-element-900">
-        We use{" "}
-        <A variant="primary">
-          <Link
-            href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec"
-            target="_blank"
-          >
-            cookies
-          </Link>
-        </A>{" "}
-        to improve your experience on our site.
-      </div>
-      <div className="flex gap-2">
-        <Button
-          variant="tertiary"
-          size="sm"
-          label="Reject"
-          onClick={onClickRefuse}
-        />
-        <Button
-          variant="primary"
-          size="sm"
-          label="Accept All"
-          onClick={onClickAccept}
-        />
+    <Transition show={show} appear={true}>
+      <div
+        className={classNames(
+          "transition ease-out",
+          "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
+          className || "",
+          "data-[enter]:duration-300",
+          "data-[enter]:data-[closed]:opacity-0",
+          "data-[enter]:data-[open]:opacity-100",
+          "data-[leave]:duration-300",
+          "data-[leave]:data-[open]:opacity-100",
+          "data-[leave]:data-[closed]:opacity-0"
+        )}
+      >
+        <div className="text-sm font-normal text-element-900">
+          We use{" "}
+          <A variant="primary">
+            <Link
+              href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec"
+              target="_blank"
+            >
+              cookies
+            </Link>
+          </A>{" "}
+          to improve your experience on our site.
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="tertiary"
+            size="sm"
+            label="Reject"
+            onClick={onClickRefuse}
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            label="Accept All"
+            onClick={onClickAccept}
+          />
+        </div>
       </div>
     </Transition>
   );
