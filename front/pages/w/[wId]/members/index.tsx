@@ -22,7 +22,6 @@ import type {
 } from "@dust-tt/types";
 import { isActiveRoleType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
-import assert from "assert";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
