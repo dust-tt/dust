@@ -281,10 +281,6 @@ export async function setMicrosoftConnectorPermissions(
 
   await MicrosoftRootResource.batchMakeNew(
     Object.entries(permissions)
-      .map(([nodeId, permission]) => {
-        console.log(nodeId, permission);
-        return [nodeId, permission] as [string, ConnectorPermission];
-      })
       .filter(([, permission]) => permission === "read")
       .map(([id]) => {
         const [nodeType, nodeId] = splitId(id);
