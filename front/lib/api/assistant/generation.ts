@@ -172,11 +172,12 @@ export async function renderConversationForModelMultiActions({
   const [messagesCountRes, promptCountRes] = await Promise.all([
     Promise.all(
       messages.map((m) => {
-        let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
+        let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
         if (isContentFragmentMessageTypeModel(m)) {
           // We want to account for the upcoming </attachment> tag, which will be added in the merging loop.
           text += closingAttachmentTag;
         }
+
         if ("function_calls" in m) {
           text += m.function_calls
             .map((f) => `${f.name} ${f.arguments}`)
@@ -269,7 +270,8 @@ export async function renderConversationForModelMultiActions({
             conversationId: conversation.sId,
             selected: selected.map((m) => ({
               ...m,
-              content: m.content?.slice(0, 100) + " (truncated...)",
+              content:
+                getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
             })),
           },
           "Unexpected state, cannot find user message after a Content Fragment"
@@ -430,4 +432,28 @@ export async function constructPromptMultiActions(
     prompt += `\nADDITIONAL INSTRUCTIONS:\n${additionalInstructions}`;
   }
   return prompt;
+}
+
+function getTextContentFromMessage(
+  message: ModelMessageTypeMultiActions
+): string {
+  const { content } = message;
+
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!content) {
+    return "";
+  }
+
+  return content
+    ?.map((c) => {
+      if (isTextContent(c)) {
+        return c.text;
+      }
+
+      return c.image_url.url;
+    })
+    .join("\n");
 }
