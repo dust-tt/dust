@@ -39,6 +39,7 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useConversationMessages } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 
 interface ConversationContainerProps {
   conversationId: string | null;
@@ -246,24 +247,27 @@ export function ConversationContainer({
 
   return (
     <>
-      <Transition
-        show={!!activeConversationId}
-        as={Fragment}
-        enter="transition-all duration-300 ease-out"
-        enterFrom="flex-none w-full h-0"
-        enterTo="flex flex-1 w-full"
-        leave="transition-all duration-0 ease-out"
-        leaveFrom="flex flex-1 w-full"
-        leaveTo="flex-none w-full h-0"
-      >
+      <Transition show={!!activeConversationId} as="div">
         {activeConversationId ? (
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={activeConversationId}
-            // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
-            onStickyMentionsChange={onStickyMentionsChange}
-          />
+          <div
+            className={classNames(
+              "h-full w-full max-w-4xl transition-all ease-out",
+              "data-[enter]:duration-300",
+              "data-[enter]:data-[closed]:h-0 data-[enter]:data-[closed]:w-full data-[enter]:data-[closed]:flex-none",
+              "data-[enter]:data-[open]:flex data-[enter]:data-[open]:w-full data-[enter]:data-[open]:flex-1",
+              "data-[leave]:duration-300",
+              "data-[leave]:data-[open]:flex data-[leave]:data-[open]:w-full data-[leave]:data-[open]:flex-1",
+              "data-[leave]:data-[closed]:h-0 data-[leave]:data-[closed]:w-full data-[leave]:data-[closed]:flex-none"
+            )}
+          >
+            <ConversationViewer
+              owner={owner}
+              user={user}
+              conversationId={activeConversationId}
+              // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
+              onStickyMentionsChange={onStickyMentionsChange}
+            />
+          </div>
         ) : (
           <div></div>
         )}

@@ -1,7 +1,9 @@
 import { Notification as SparkleNotification } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+
+import { classNames } from "@app/lib/utils";
 
 export type NotificationType = {
   title?: string;
@@ -74,30 +76,36 @@ export function NotificationsList({
 }
 
 export function Notification({ title, description, type }: NotificationType) {
-  const [showNotification, setShowNotification] = React.useState(true);
+  const [showNotification, setShowNotification] = useState(true);
+
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setShowNotification(false);
     }, NOTIFICATION_DELAY);
+
+    return () => clearTimeout(timer);
   }, []);
+
   return (
-    <Transition
-      as="div"
-      show={showNotification}
-      appear={true}
-      enter="transition ease-in-out duration-300 transform"
-      enterFrom="translate-y-16 opacity-0"
-      enterTo="translate-y-0 opacity-100"
-      leave="transition ease-in-out duration-300 transform"
-      leaveFrom="translate-y-0 opacity-100"
-      leaveTo="translate-y-16 opacity-0"
-    >
-      <SparkleNotification
-        variant={type}
-        description={description}
-        title={title}
-        onClick={() => setShowNotification(false)}
-      />
+    <Transition show={showNotification} appear={true}>
+      <div
+        className={classNames(
+          "transform transition ease-in-out",
+          "data-[enter]:duration-300",
+          "data-[enter]:data-[closed]:translate-y-16 data-[enter]:data-[closed]:opacity-0",
+          "data-[enter]:data-[open]:translate-y-0 data-[enter]:data-[open]:opacity-100",
+          "data-[leave]:duration-300",
+          "data-[leave]:data-[open]:translate-y-0 data-[leave]:data-[open]:opacity-100",
+          "data-[leave]:data-[closed]:translate-y-16 data-[leave]:data-[closed]:opacity-0"
+        )}
+      >
+        <SparkleNotification
+          variant={type}
+          description={description}
+          title={title}
+          onClick={() => setShowNotification(false)}
+        />
+      </div>
     </Transition>
   );
 }
