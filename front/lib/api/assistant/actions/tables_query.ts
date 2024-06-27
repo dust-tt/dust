@@ -243,9 +243,10 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const renderedConversationRes =
       await renderConversationForModelMultiActions({
         conversation,
-        model: agentConfiguration.model,
+        model: supportedModel,
         prompt: agentConfiguration.instructions ?? "",
         allowedTokenCount,
+        excludeImages: true,
       });
     if (renderedConversationRes.isErr()) {
       yield {

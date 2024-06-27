@@ -1,5 +1,6 @@
 import type {
   AgentConfigurationType,
+  AgentModelConfigurationType,
   ContentFragmentMessageTypeModel,
   ConversationType,
   FunctionCallType,
@@ -28,7 +29,7 @@ import moment from "moment-timezone";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
+import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
@@ -42,12 +43,14 @@ export async function renderConversationForModelMultiActions({
   prompt,
   allowedTokenCount,
   excludeActions,
+  excludeImages,
 }: {
   conversation: ConversationType;
-  model: { providerId: string; modelId: string };
+  model: ModelConfigurationType;
   prompt: string;
   allowedTokenCount: number;
   excludeActions?: boolean;
+  excludeImages?: boolean;
 }): Promise<
   Result<
     {
@@ -133,36 +136,15 @@ export async function renderConversationForModelMultiActions({
         ],
       });
     } else if (isContentFragmentType(m)) {
-      try {
-        const content = await getContentFragmentText({
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          messageId: m.sId,
-        });
-        messages.push({
-          role: "content_fragment",
-          name: `inject_${m.contentType}`,
-          // The closing </attachment> tag will be added in the merging loop because we might
-          // need to add a "truncated..." mention in the selection loop.
-          content: [
-            {
-              type: "text",
-              text: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
-            },
-          ],
-        });
-      } catch (error) {
-        logger.error(
-          {
-            error,
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            messageId: m.sId,
-          },
-          "Failed to retrieve content fragment text"
-        );
-        return new Err(new Error("Failed to retrieve content fragment text"));
+      const res = await renderContentFragmentForModel(m, conversation, model, {
+        excludeImages: Boolean(excludeImages),
+      });
+
+      if (res.isErr()) {
+        return new Err(res.error);
       }
+
+      messages.push(res.value);
     } else {
       assertNever(m);
     }
