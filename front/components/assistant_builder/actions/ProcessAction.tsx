@@ -294,17 +294,19 @@ export function ActionProcess({
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
+  useEffect(() => {
+    if (actionConfiguration) {
+      if (!actionConfiguration.timeFrame.value) {
+        setTimeFrameError("Timeframe must be a number");
+      } else {
+        setTimeFrameError(null);
+      }
+    }
+  }, [actionConfiguration]);
+
   if (!actionConfiguration) {
     return null;
   }
-
-  useEffect(() => {
-    if (!actionConfiguration.timeFrame.value) {
-      setTimeFrameError("Timeframe must be a number");
-    } else {
-      setTimeFrameError(null);
-    }
-  }, [actionConfiguration.timeFrame.value]);
 
   const deleteDataSource = (name: string) => {
     updateAction((previousAction) => {

@@ -144,17 +144,19 @@ export function ActionRetrievalExhaustive({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (actionConfiguration) {
+      if (!actionConfiguration.timeFrame.value) {
+        setTimeFrameError("Timeframe must be a number");
+      } else {
+        setTimeFrameError(null);
+      }
+    }
+  }, [actionConfiguration]);
+
   if (!actionConfiguration) {
     return null;
   }
-
-  useEffect(() => {
-    if (!actionConfiguration.timeFrame.value) {
-      setTimeFrameError("Timeframe must be a number");
-    } else {
-      setTimeFrameError(null);
-    }
-  }, [actionConfiguration.timeFrame.value, actionConfiguration.timeFrame.unit]);
 
   return (
     <>
