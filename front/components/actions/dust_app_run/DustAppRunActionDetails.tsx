@@ -57,8 +57,6 @@ function DustAppRunParamsDetails({ action }: { action: DustAppRunActionType }) {
 }
 
 function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
-  
-
   const stringifiedOutput = useMemo(
     () => JSON.stringify(action.output, null, 2),
     [action.output]

@@ -30,7 +30,6 @@ export function ProcessActionDetails({
               <span className="text-sm font-bold text-slate-900">Results</span>
             </Collapsible.Button>
             <Collapsible.Panel>
-            
               <ProcessActionOutputDetails action={action} />
             </Collapsible.Panel>
           </Collapsible>
@@ -90,7 +89,7 @@ function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {
   const { outputs } = action;
 
   const stringifiedOutput = useMemo(
-    () => outputs ? JSON.stringify(outputs.data, null, 2) : "", 
+    () => (outputs ? JSON.stringify(outputs.data, null, 2) : ""),
     [outputs]
   );
 
