@@ -1,4 +1,4 @@
-import type { SupportedContentFragmentType } from "@dust-tt/types";
+import type { AllSupportedContentFragmentType } from "@dust-tt/types";
 import { isSupportedTextContentFragmentType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -14,7 +14,7 @@ interface FileContent {
   preview?: string;
   size: number;
   // TODO(2024-06-26 flav) Make this configurable.
-  contentType: SupportedContentFragmentType;
+  contentType: AllSupportedContentFragmentType;
 }
 
 type FileBlobUploadErrorCode =
@@ -33,7 +33,7 @@ class FileBlobUploadError extends Error {
   }
 }
 
-const COMBINED_MAX_FILES_SIZE = 500_000;
+const COMBINED_MAX_FILES_SIZE = 5_000_000;
 const MAX_FILE_SIZE = 100_000_000;
 
 export function useFileUploaderService() {
@@ -188,7 +188,7 @@ export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 const createFileBlob = (
   file: File,
   content: string,
-  contentType: SupportedContentFragmentType,
+  contentType: AllSupportedContentFragmentType,
   preview?: string
 ): FileContent => ({
   id: file.name,

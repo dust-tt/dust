@@ -224,7 +224,27 @@ export function fileAttachmentLocation({
       getPrivateUploadBucket().name
     }/${filePath}`,
     downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
+    // TODO: Add viewUrl.
   };
+}
+
+export async function getSignedUrlForRawContentFragment({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}): Promise<string> {
+  const fileLocation = fileAttachmentLocation({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "raw",
+  });
+
+  return getPrivateUploadBucket().getSignedUrl(fileLocation.filePath);
 }
 
 export async function storeContentFragmentText({

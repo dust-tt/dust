@@ -12,11 +12,17 @@ export interface ModelConversationType {
   messages: ModelMessageType[];
 }
 
-export interface ImageContentFragmentContent {
+export interface ImageContent {
   type: "image_url";
   image_url: {
     url: string;
   };
+}
+
+export function isImageContent(
+  content: TextContent | ImageContent
+): content is ImageContent {
+  return content.type === "image_url";
 }
 
 interface TextContent {
@@ -25,7 +31,7 @@ interface TextContent {
 }
 
 export function isTextContent(
-  content: TextContent | ImageContentFragmentContent
+  content: TextContent | ImageContent
 ): content is TextContent {
   return content.type === "text";
 }
@@ -33,13 +39,13 @@ export function isTextContent(
 export interface ContentFragmentMessageTypeModel {
   role: "content_fragment";
   name: string;
-  content: (TextContent | ImageContentFragmentContent)[];
+  content: (TextContent | ImageContent)[];
 }
 
 export interface UserMessageTypeModel {
   role: "user";
   name: string;
-  content: (ImageContentFragmentContent | TextContent)[];
+  content: (ImageContent | TextContent)[];
 }
 
 export interface FunctionCallType {

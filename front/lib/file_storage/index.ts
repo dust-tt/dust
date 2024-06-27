@@ -7,6 +7,8 @@ import { pipeline } from "stream/promises";
 import config from "@app/lib/file_storage/config";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 
+const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
+
 class FileStorage {
   private readonly bucket: Bucket;
   private readonly storage: Storage;
@@ -73,6 +75,20 @@ class FileStorage {
     return metadata.contentType;
   }
 
+  async getSignedUrl(
+    filename: string,
+    expirationDelay = DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS
+  ): Promise<string> {
+    const gcsFile = this.file(filename);
+
+    const signedUrl = await gcsFile.getSignedUrl({
+      action: "read",
+      expires: new Date().getTime() + expirationDelay,
+    });
+
+    return signedUrl.toString();
+  }
+
   file(filename: string) {
     return this.bucket.file(filename);
   }
@@ -103,12 +119,14 @@ class FileStorage {
 
 const bucketInstances = new Map();
 
-const getBucketInstance = (bucketConfig: string) => {
+const getBucketInstance: BucketGetter = (bucketConfig: string) => {
   if (!bucketInstances.has(bucketConfig)) {
     bucketInstances.set(bucketConfig, new FileStorage(bucketConfig));
   }
   return bucketInstances.get(bucketConfig);
 };
+
+type BucketGetter = (bucketConfig: string) => FileStorage;
 
 export const getPrivateUploadBucket = () =>
   getBucketInstance(config.getGcsPrivateUploadsBucket());

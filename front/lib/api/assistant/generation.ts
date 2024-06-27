@@ -28,7 +28,10 @@ import moment from "moment-timezone";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
+import {
+  getContentFragmentText,
+  getSignedUrlForRawContentFragment,
+} from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
@@ -61,10 +64,14 @@ export async function renderConversationForModelMultiActions({
   const messages: ModelMessageTypeMultiActions[] = [];
   const closingAttachmentTag = "</attachment>\n";
 
+  console.log(">> conversation.content:", conversation.content);
+
   // Render loop.
   // Render all messages and all actions.
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
+
+    console.log(">> m:", m);
 
     if (isAgentMessageType(m)) {
       const actions = removeNulls(m.actions);
@@ -134,23 +141,45 @@ export async function renderConversationForModelMultiActions({
       });
     } else if (isContentFragmentType(m)) {
       try {
-        const content = await getContentFragmentText({
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          messageId: m.sId,
-        });
-        messages.push({
-          role: "content_fragment",
-          name: `inject_${m.contentType}`,
-          // The closing </attachment> tag will be added in the merging loop because we might
-          // need to add a "truncated..." mention in the selection loop.
-          content: [
-            {
-              type: "text",
-              text: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
-            },
-          ],
-        });
+        if (m.contentType.startsWith("image/")) {
+          const signedUrl = await getSignedUrlForRawContentFragment({
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          });
+
+          messages.push({
+            role: "content_fragment",
+            name: `inject_${m.contentType}`,
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: signedUrl,
+                },
+              },
+            ],
+          });
+        } else {
+          const content = await getContentFragmentText({
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          });
+
+          messages.push({
+            role: "content_fragment",
+            name: `inject_${m.contentType}`,
+            // The closing </attachment> tag will be added in the merging loop because we might
+            // need to add a "truncated..." mention in the selection loop.
+            content: [
+              {
+                type: "text",
+                text: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
+              },
+            ],
+          });
+        }
       } catch (error) {
         logger.error(
           {
@@ -206,6 +235,8 @@ export async function renderConversationForModelMultiActions({
   const selected: ModelMessageTypeMultiActions[] = [];
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
+
+  console.log(">> messages:", messages);
 
   // Selection loop.
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -263,10 +294,13 @@ export async function renderConversationForModelMultiActions({
   // Merging loop.
   // Merging content fragments into the upcoming user message.
   // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
+  console.log(">> selected:", selected);
   for (let i = selected.length - 1; i >= 0; i--) {
     const cfMessage = selected[i];
+    console.log(">> cfMessage:", cfMessage);
     if (isContentFragmentMessageTypeModel(cfMessage)) {
       const userMessage = selected[i + 1];
+      console.log(">> userMessage:", userMessage);
       if (!userMessage || userMessage.role !== "user") {
         logger.error(
           {

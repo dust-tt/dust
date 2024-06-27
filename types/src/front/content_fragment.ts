@@ -35,8 +35,36 @@ export const supportedContentFragment = [
 export type SupportedContentFragmentType =
   (typeof supportedContentFragment)[number];
 
-export function getSupportedContentFragmentTypeCodec(): t.Mixed {
-  const [first, second, ...rest] = supportedContentFragment;
+export const supportedImagesContentFragmentType = [
+  "image/jpeg",
+  "image/png",
+] as const;
+
+export type SupportedImageContentFragmentType =
+  (typeof supportedImagesContentFragmentType)[number];
+
+const allSupportedContentFragmentTypes = [
+  ...supportedContentFragment,
+  ...supportedImagesContentFragmentType,
+];
+
+export type AllSupportedContentFragmentType =
+  (typeof allSupportedContentFragmentTypes)[number];
+
+export function getSupportedContentFragmentTypeCodec({
+  includeImages,
+}: {
+  includeImages: boolean;
+}): t.Mixed {
+  const allSupportedContentFragmentType: AllSupportedContentFragmentType[] = [
+    ...supportedContentFragment,
+  ];
+  if (includeImages) {
+    allSupportedContentFragmentType.push(...supportedImagesContentFragmentType);
+  }
+
+  const [first, second, ...rest] = allSupportedContentFragmentTypes;
+
   return t.union([
     t.literal(first),
     t.literal(second),
@@ -83,11 +111,22 @@ export function isSupportedContentFragmentType(
 
 export function isSupportedTextContentFragmentType(
   format: unknown
-): format is SupportedTextContentFragmentType {
+): format is AllSupportedContentFragmentType {
   return (
     typeof format === "string" &&
-    supportedTextContentFragment.includes(
-      format as SupportedTextContentFragmentType
+    allSupportedContentFragmentTypes.includes(
+      format as AllSupportedContentFragmentType
+    )
+  );
+}
+
+export function isSupportedImageContentFragmentType(
+  format: unknown
+): format is SupportedImageContentFragmentType {
+  return (
+    typeof format === "string" &&
+    supportedImagesContentFragmentType.includes(
+      format as SupportedImageContentFragmentType
     )
   );
 }

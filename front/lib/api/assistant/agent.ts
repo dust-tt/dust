@@ -385,6 +385,11 @@ export async function* runMultiActionsAgent(
     return;
   }
 
+  console.log(
+    ">> generation:",
+    JSON.stringify(modelConversationRes.value, null, 2)
+  );
+
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
     const specRes = await getRunnerforActionConfiguration(a).buildSpecification(

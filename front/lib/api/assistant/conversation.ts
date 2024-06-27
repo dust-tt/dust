@@ -1640,6 +1640,7 @@ export async function postNewContentFragment(
       }).downloadUrl
     : url;
 
+  // TODO: We don't want to do this for images.
   const textBytes = await storeContentFragmentText({
     workspaceId: owner.sId,
     conversationId: conversation.sId,

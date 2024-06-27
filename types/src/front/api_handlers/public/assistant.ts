@@ -38,7 +38,7 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
   url: t.union([t.string, t.null]),
-  contentType: getSupportedContentFragmentTypeCodec(),
+  contentType: getSupportedContentFragmentTypeCodec({ includeImages: false }),
   context: t.union([
     t.type({
       profilePictureUrl: t.union([t.string, t.null]),
