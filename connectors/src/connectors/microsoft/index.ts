@@ -102,10 +102,10 @@ export async function stopMicrosoftConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
   console.log("stopMicrosoftConnector", connectorId);
-  throw Error("Not implemented");
+  return new Ok(undefined);
 }
 
-export async function deleteMicrosoftConnector(
+export async function cleanupMicrosoftConnector(
   connectorId: ModelId,
   force = false
 ) {
@@ -174,11 +174,12 @@ export async function fullResyncMicrosoftConnector(
   return launchMicrosoftFullSyncWorkflow(connectorId);
 }
 
-export async function cleanupMicrosoftConnector(
-  connectorId: ModelId
-): Promise<Result<undefined, Error>> {
-  console.log("cleanupMicrosoftConnector", connectorId);
-  throw Error("Not implemented");
+function getIdFromResource(r: MicrosoftRootResource) {
+  if (!r.nodeId) {
+    return r.nodeType;
+  }
+
+  return `${r.nodeType}/${r.nodeId}`;
 }
 
 export async function retrieveMicrosoftConnectorPermissions({
@@ -200,7 +201,7 @@ export async function retrieveMicrosoftConnectorPermissions({
 
   const selectedResources = (
     await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-  ).map((r) => r.nodeType + "/" + r.nodeId);
+  ).map((r) => getIdFromResource(r));
 
   if (!parentInternalId) {
     nodes.push(...getRootNodes());
@@ -270,6 +271,14 @@ export async function setMicrosoftConnectorPermissions(
     );
   }
 
+  await MicrosoftRootResource.batchDelete({
+    resourceIds: Object.entries(permissions).map(([nodeId]) => {
+      const [, ...rest] = nodeId.split("/");
+      return rest.join("/");
+    }),
+    connectorId: connector.id,
+  });
+
   await MicrosoftRootResource.batchMakeNew(
     Object.entries(permissions)
       .filter(([, permission]) => permission === "read")
@@ -280,15 +289,6 @@ export async function setMicrosoftConnectorPermissions(
           nodeId,
           nodeType,
         };
-      })
-  );
-
-  await MicrosoftRootResource.batchDelete(
-    Object.entries(permissions)
-      .filter(([, permission]) => permission === "none")
-      .map(([nodeId]) => {
-        const [, ...rest] = nodeId.split("/");
-        return rest.join("/");
       })
   );
 
