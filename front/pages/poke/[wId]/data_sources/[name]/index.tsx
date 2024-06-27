@@ -390,7 +390,7 @@ const DataSourcePage = ({
             <NotionUrlCheckOrFind owner={owner} />
           )}
           {dataSource.connectorProvider === "slack" && (
-            <SlackWhitelistBot owner={owner}  />
+            <SlackWhitelistBot owner={owner} />
           )}
           {dataSource.connectorProvider === "google_drive" && (
             <>
@@ -567,10 +567,7 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
-async function handleWhitelistBot(
-  botName: string,
-  wId: string,
-): Promise<void> {
+async function handleWhitelistBot(botName: string, wId: string): Promise<void> {
   const res = await fetch(`/api/poke/admin`, {
     method: "POST",
     headers: {
@@ -762,17 +759,14 @@ function SlackWhitelistBot({ owner }: { owner: WorkspaceType }) {
         <Button
           variant="secondary"
           label="Whitelist"
-          onClick={async () => 
-              await handleWhitelistBot(
-                botName,
-                owner.sId,
-              )}
+          onClick={async () => {
+            await handleWhitelistBot(botName, owner.sId);
+            setBotName("");
+          }}
         />
       </div>
     </div>
   );
 }
-
-
 
 export default DataSourcePage;
