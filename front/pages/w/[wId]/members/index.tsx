@@ -9,19 +9,19 @@ import {
   Searchbar,
 } from "@dust-tt/sparkle";
 import type {
-  PlanType,
-  SubscriptionPerSeatPricing,
-  SubscriptionType,
-} from "@dust-tt/types";
-import type {
   ActiveRoleType,
   UserType,
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
+import type {
+  PlanType,
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+} from "@dust-tt/types";
+import { isActiveRoleType } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
-import assert from "assert";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
@@ -389,20 +389,19 @@ function ChangeMemberModal({
   member: UserTypeWithWorkspaces | null;
   owner: WorkspaceType;
 }) {
-  assert(
-    member?.workspaces[0].role !== "none",
-    "Unreachable (typescript pleasing): member role cannot be none"
-  );
-  if (!member) {
-    return null;
-  }
+  const { role = null } = member?.workspaces[0] ?? {};
+
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
-    member.workspaces[0].role
+    role !== "none" ? role : null
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  if (!member || !role || !isActiveRoleType(role)) {
+    return null;
+  }
 
   return (
     <ElementModal
@@ -446,13 +445,13 @@ function ChangeMemberModal({
             <div className="flex items-center gap-2">
               <div className="font-bold text-element-900">Role:</div>
               <RoleDropDown
-                selectedRole={selectedRole || member.workspaces[0].role}
+                selectedRole={selectedRole || role}
                 onChange={setSelectedRole}
               />
             </div>
             <Page.P>
               The role defines the rights of a member of the workspace.{" "}
-              {ROLES_DATA[member.workspaces[0].role]["description"]}
+              {ROLES_DATA[role]["description"]}
             </Page.P>
           </div>
           <div className="flex flex-none flex-col gap-2">
