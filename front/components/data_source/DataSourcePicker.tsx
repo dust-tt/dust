@@ -40,7 +40,7 @@ export default function DataSourcePicker({
         isDataSourcesLoading: false,
         isDataSourcesError: false,
       }
-    : useDataSources(owner);
+    : useDataSources(owner, {readOnly: true});
 
   useEffect(() => {
     console.log("useEffect", dataSources, name);
