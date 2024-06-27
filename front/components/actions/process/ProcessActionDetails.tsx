@@ -88,12 +88,8 @@ function makeQueryDescription(action: ProcessActionType) {
 function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {
   const { outputs } = action;
 
-  if (!outputs) {
-    return null;
-  }
-
   const stringifiedOutput = useMemo(
-    () => JSON.stringify(outputs.data, null, 2),
+    () => (outputs ? JSON.stringify(outputs.data, null, 2) : ""),
     [outputs]
   );
 
@@ -104,6 +100,10 @@ function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {
       type: "application/json",
     };
   };
+
+  if (!outputs) {
+    return null;
+  }
 
   return (
     <CodeBlockBanner

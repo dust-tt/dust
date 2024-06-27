@@ -85,39 +85,48 @@ function hasQueryResults(
 function QueryTablesResults({ action }: { action: TablesQueryActionType }) {
   const sendNotification = useContext(SendNotificationsContext);
 
-  if (!hasQueryResults(action)) {
-    return null;
-  }
-
-  const { output } = action;
-  const title = output.query_title ?? "query_results";
-
-  const handleDownload = useCallback(() => {
-    if (output.results.length === 0) {
-      return;
-    }
-
-    stringify(output.results, { header: true }, (err, csvOutput) => {
-      if (err) {
-        sendNotification({
-          title: "Error Downloading CSV",
-          type: "error",
-          description: `An error occurred while downloading the CSV: ${err}`,
-        });
+  const handleDownload = useCallback(
+    (title: string) => {
+      if (!hasQueryResults(action)) {
+        return null;
+      }
+      if (
+        !action.output ||
+        !action.output.results ||
+        action.output.results.length === 0
+      ) {
         return;
       }
 
-      const blob = new Blob([csvOutput], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${title}.csv`;
-      a.click();
-    });
-  }, [output.results, title, sendNotification]);
+      stringify(action.output.results, { header: true }, (err, csvOutput) => {
+        if (err) {
+          sendNotification({
+            title: "Error Downloading CSV",
+            type: "error",
+            description: `An error occurred while downloading the CSV: ${err}`,
+          });
+          return;
+        }
+
+        const blob = new Blob([csvOutput], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${title}.csv`;
+        a.click();
+      });
+    },
+    [action, sendNotification]
+  );
+
+  if (!hasQueryResults(action)) {
+    return null;
+  }
+  const { output } = action;
+  const title = output?.query_title ?? "query_results";
 
   return (
-    <div onClick={handleDownload}>
+    <div onClick={() => handleDownload(title)}>
       <Citation size="xs" title={title} />
     </div>
   );
