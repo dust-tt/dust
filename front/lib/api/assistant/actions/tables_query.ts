@@ -221,17 +221,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     // Render conversation for the action.
     const supportedModel = getSupportedModelConfig(agentConfiguration.model);
     if (!supportedModel) {
-      yield {
-        type: "tables_query_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "tables_query_error",
-          message: `Error running TablesQuery app: model not supported.`,
-        },
-      };
-
       throw new Error("Unreachable: Supported model not found.");
     }
 
@@ -248,10 +237,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
           message: `Error running TablesQuery app: model context too small.`,
         },
       };
-
-      throw new Error(
-        `Unreachable: Model context too small. (model=${supportedModel.modelId}, provider=${supportedModel.providerId}, contextSize=${supportedModel.contextSize})`
-      );
+      return;
     }
 
     const renderedConversationRes =
