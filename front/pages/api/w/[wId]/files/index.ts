@@ -9,7 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { encodeFilePayload, makeFileId } from "@app/lib/files";
+import { encodeFilePayload, makeDustFileId } from "@app/lib/files";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
@@ -71,7 +71,7 @@ async function handler(
 
       const { fileName, fileSize } = bodyValidation.right;
 
-      const fileId = makeFileId();
+      const fileId = makeDustFileId();
       const fileToken = encodeFilePayload(owner, {
         fileId,
         fileName,

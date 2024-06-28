@@ -5,8 +5,6 @@ import * as t from "io-ts";
 export const FileUploadUrlRequestSchema = t.type({
   fileName: t.string,
   fileSize: t.number,
-  // TODO(2024-06-28 flav) Refine based on accepted content types.
-  contentType: t.string,
 });
 
 export type FileUploadUrlRequestType = t.TypeOf<

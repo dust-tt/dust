@@ -1638,7 +1638,7 @@ export async function postNewContentFragment(
     // Use the provided URL if it is an internal file path.
     sourceUrl = url;
   } else if (isSupportedUploadableContentFragmentType(contentType)) {
-    // For supported content types, create a file path and use its download URL.
+    // Deprecated, for supported content types, create a file path and use its download URL.
     sourceUrl = fileAttachmentLocation({
       workspaceId: owner.sId,
       conversationId: conversation.sId,

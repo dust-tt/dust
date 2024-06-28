@@ -18,7 +18,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
   api: {
-    bodyParser: false, // Disabling Next.js's body parser as formidable has its own
+    bodyParser: false, // Disabling Next.js's body parser as formidable has its own.
   },
 };
 
@@ -160,7 +160,7 @@ async function handler(
         if (isSupportedImageMimeType(file)) {
           await resizeAndUploadToFileStorage(owner, fileTokenPayload, file);
         } else if (isSupportedTextMimeType(file)) {
-          // TODO: Move logic to extract text from PDF here.
+          // TODO:(2026-06-28 flav) Move logic to extract text from PDF here.
           await uploadToFileStorage(owner, fileTokenPayload, file);
         } else {
           return apiError(req, res, {

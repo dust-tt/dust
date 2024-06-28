@@ -11,9 +11,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 const privateUploadGcs = getPrivateUploadBucket();
 
 const validFormats = ["raw", "text"] as const;
-const validActions = ["view", "download"] as const;
 type ContentFormat = (typeof validFormats)[number];
-type Action = (typeof validActions)[number];
 
 async function handler(
   req: NextApiRequest,

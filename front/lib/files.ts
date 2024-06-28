@@ -17,7 +17,7 @@ const FILE_ID_PREFIX = "file_";
 
 type FileId = `${typeof FILE_ID_PREFIX}${string}`;
 
-export function makeFileId(): FileId {
+export function makeDustFileId(): FileId {
   const fileId = generateModelSId();
   return `${FILE_ID_PREFIX}${fileId}`;
 }
@@ -82,8 +82,6 @@ interface FileTokenPayload {
   workspaceId: string;
 }
 
-type DecodedFileTokenPayload = FileTokenPayload & { iat: number };
-
 export function encodeFilePayload(
   owner: LightWorkspaceType,
   payload: Omit<FileTokenPayload, "workspaceId">
@@ -98,12 +96,12 @@ export function encodeFilePayload(
   );
 }
 
-export function decodeFileToken(token: string): DecodedFileTokenPayload | null {
+export function decodeFileToken(token: string): FileTokenPayload | null {
   try {
     const decoded = jwt.verify(
       token,
       config.getFileIdSecret()
-    ) as DecodedFileTokenPayload;
+    ) as FileTokenPayload;
 
     return decoded;
   } catch (err) {
@@ -127,7 +125,7 @@ export function isSupportedTextMimeType(file: formidable.File): boolean {
 
 export async function uploadToFileStorage(
   owner: LightWorkspaceType,
-  fileTokenPayload: DecodedFileTokenPayload,
+  fileTokenPayload: FileTokenPayload,
   file: formidable.File
 ) {
   const filePath = makeStorageFilePathForWorkspaceId(
@@ -156,7 +154,7 @@ export function isSupportedImageMimeType(file: formidable.File): boolean {
 
 export async function resizeAndUploadToFileStorage(
   owner: LightWorkspaceType,
-  fileTokenPayload: DecodedFileTokenPayload,
+  fileTokenPayload: FileTokenPayload,
   file: formidable.File
 ) {
   const filePath = makeStorageFilePathForWorkspaceId(

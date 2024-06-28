@@ -28,7 +28,6 @@ import ConversationViewer from "@app/components/assistant/conversation/Conversat
 import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
   createConversationWithMessage,
   createPlaceholderUserMessage,
