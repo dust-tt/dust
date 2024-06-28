@@ -15,7 +15,7 @@ import { useCallback, useContext, useMemo, useState } from "react";
 import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
-interface ModelManagementModalProps {
+interface ProviderManagementModalProps {
   owner: WorkspaceType;
   showProviderModal: boolean;
   onClose: () => void;
@@ -30,7 +30,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   google_ai_studio: "Google",
 };
 
-const providerModels: Record<ModelProviderIdType, string[]> =
+const modelProviders: Record<ModelProviderIdType, string[]> =
   SUPPORTED_MODEL_CONFIGS.reduce(
     (acc, model) => {
       if (!model.isLegacy) {
@@ -42,12 +42,11 @@ const providerModels: Record<ModelProviderIdType, string[]> =
     {} as Record<ModelProviderIdType, string[]>
   );
 
-// TODO: Jules 06/06/2024: use selection modal in workspace/index.tsx once Model Deactivation ready
 export function ProviderManagementModal({
   owner,
   showProviderModal,
   onClose,
-}: ModelManagementModalProps) {
+}: ProviderManagementModalProps) {
   const sendNotifications = useContext(SendNotificationsContext);
 
   const initialProviderStates: ProviderStates = useMemo(() => {
@@ -180,7 +179,7 @@ export function ProviderManagementModal({
               >
                 <ContextItem.Description>
                   <span className="text-sm text-element-700">
-                    {providerModels[provider].join(", ")}
+                    {modelProviders[provider].join(", ")}
                   </span>
                 </ContextItem.Description>
               </ContextItem>
