@@ -1,4 +1,4 @@
-const nextConfig = {
+module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
@@ -66,33 +66,3 @@ const nextConfig = {
     return config;
   },
 };
-
-// Injected content via Sentry wizard below
-
-const { withSentryConfig } = require("@sentry/nextjs");
-
-module.exports = withSentryConfig(nextConfig, {
-  // For all available options, see:
-  // https://github.com/getsentry/sentry-webpack-plugin#options
-
-  org: "dust-r5",
-  project: "javascript-nextjs",
-
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
-
-  // Hides source maps from generated client bundles
-  hideSourceMaps: true,
-
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
-
-  // Disable API Route, Middleware and Data Fetching Auto-instrumentation Entirely.
-  autoInstrumentServerFunctions: false,
-});

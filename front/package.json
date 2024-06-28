@@ -39,7 +39,6 @@
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
     "@sendgrid/mail": "^8.0.0",
-    "@sentry/nextjs": "^8.12.0",
     "@slack/web-api": "^6.8.1",
     "@tailwindcss/forms": "^0.5.3",
     "@tanstack/react-table": "^8.13.0",
