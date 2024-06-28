@@ -1,12 +1,28 @@
+import type {
+  ConversationMessageReactions,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { isAgentMessageType, isUserMessageType } from "@dust-tt/types";
 import React, { useEffect, useMemo, useRef } from "react";
 
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
+import MessageItem from "@app/components/assistant/conversation/messages/MessageItem";
+import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[][];
-  isLastMessage: boolean;
-  children?: React.ReactNode;
+  isLastMessageGroup: boolean;
+  conversationId: string;
+  hideReactions: boolean;
+  isInModal: boolean;
+  owner: WorkspaceType;
+  reactions: ConversationMessageReactions;
+  prevFirstMessageId: string | null;
+  prevFirstMessageRef: React.RefObject<HTMLDivElement>;
+  user: UserType;
+  latestPage?: FetchConversationMessagesResponse;
+  latestMentions: string[];
 }
 
 // arbitrary offset to scroll the last MessageGroup to
@@ -16,8 +32,17 @@ export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 
 export default function MessageGroup({
   messages,
-  isLastMessage,
-  children,
+  isLastMessageGroup,
+  conversationId,
+  hideReactions,
+  isInModal,
+  owner,
+  reactions,
+  prevFirstMessageId,
+  prevFirstMessageRef,
+  user,
+  latestPage,
+  latestMentions,
 }: MessageGroupProps) {
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
@@ -38,26 +63,48 @@ export default function MessageGroup({
     const isMessageGenerating = initialMessage.status === "created";
     const isAgentMessage = isAgentMessageType(initialMessage);
 
-    return isLastMessage && isAgentMessage && isMessageGenerating;
-  }, [messages, isLastMessage]);
+    return isLastMessageGroup && isAgentMessage && isMessageGenerating;
+  }, [messages, isLastMessageGroup]);
 
   const minHeight = shouldExpandHeight
     ? `${window.innerHeight - VIEWPORT_OFFSET}px`
     : "0px";
 
   useEffect(() => {
-    if (isLastMessage && lastMessageRef.current) {
+    if (isLastMessageGroup && lastMessageRef.current) {
       lastMessageRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [isLastMessage]);
+  }, [isLastMessageGroup]);
 
   return (
     <div
-      id={isLastMessage ? LAST_MESSAGE_GROUP_ID : ""}
-      ref={isLastMessage ? lastMessageRef : undefined}
+      id={isLastMessageGroup ? LAST_MESSAGE_GROUP_ID : ""}
+      ref={isLastMessageGroup ? lastMessageRef : undefined}
       style={{ minHeight }}
     >
-      {children}
+      {messages.map((group) => {
+        return group.map((message) => {
+          return (
+            <MessageItem
+              key={`message-${message.sId}`}
+              conversationId={conversationId}
+              hideReactions={hideReactions}
+              isInModal={isInModal}
+              message={message}
+              owner={owner}
+              reactions={reactions}
+              ref={
+                message.sId === prevFirstMessageId
+                  ? prevFirstMessageRef
+                  : undefined
+              }
+              user={user}
+              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+              latestMentions={latestMentions}
+            />
+          );
+        });
+      })}
     </div>
   );
 }
