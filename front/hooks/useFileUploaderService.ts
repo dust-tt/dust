@@ -195,7 +195,9 @@ export function useFileUploaderService({
               b.internalId = fileId;
               b.isUploading = false;
               b.url = downloadUrl;
-              b.preview = `${downloadUrl}?action=view`;
+              b.preview = b.contentType.startsWith("image/")
+                ? `${downloadUrl}?action=view`
+                : undefined;
             }
 
             return b;
