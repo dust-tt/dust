@@ -36,7 +36,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-async function getClient(connectionId: NangoConnectionId) {
+export async function getClient(connectionId: NangoConnectionId) {
   const nangoConnectionId = connectionId;
 
   const msAccessToken = await getAccessTokenFromNango({
