@@ -17,6 +17,7 @@ import type {
 import appConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getSignedUrlForFile } from "@app/lib/files";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -285,25 +286,6 @@ export async function getContentFragmentText({
   return getPrivateUploadBucket().fetchFileContent(filePath);
 }
 
-async function getSignedUrlForRawContentFragment({
-  workspaceId,
-  conversationId,
-  messageId,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-}): Promise<string> {
-  const fileLocation = fileAttachmentLocation({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "raw",
-  });
-
-  return getPrivateUploadBucket().getSignedUrl(fileLocation.filePath);
-}
-
 export async function renderContentFragmentForModel(
   message: ContentFragmentType,
   conversation: ConversationType,
@@ -314,7 +296,7 @@ export async function renderContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const { contentType, sId, title } = message;
+  const { contentType, sId, sourceUrl, title } = message;
 
   try {
     if (isSupportedImageContentFragmentType(contentType)) {
@@ -331,11 +313,11 @@ export async function renderContentFragmentForModel(
         });
       }
 
-      const signedUrl = await getSignedUrlForRawContentFragment({
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        messageId: sId,
-      });
+      // TODO(2024-06-28 flav) Remove optional on url.
+      const signedUrl = await getSignedUrlForFile(
+        conversation.owner,
+        sourceUrl
+      );
 
       return new Ok({
         role: "content_fragment",
@@ -344,7 +326,7 @@ export async function renderContentFragmentForModel(
           {
             type: "image_url",
             image_url: {
-              url: signedUrl,
+              url: signedUrl ?? "",
             },
           },
         ],

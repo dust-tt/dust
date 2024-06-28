@@ -1,6 +1,5 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { isContentFragmentType } from "@dust-tt/types";
-import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -8,12 +7,6 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-export const config = {
-  api: {
-    bodyParser: false, // Disabling Next.js's body parser as formidable has its own
-  },
-};
 
 const privateUploadGcs = getPrivateUploadBucket();
 
@@ -109,6 +102,7 @@ async function handler(
   }
 
   switch (req.method) {
+    // This serves the legacy logic for content fragment files.
     case "GET": {
       const contentFormat: ContentFormat = validFormats.includes(
         req.query.format as ContentFormat
@@ -116,31 +110,12 @@ async function handler(
         ? (req.query.format as ContentFormat)
         : "raw";
 
-      const action: Action = validActions.includes(req.query.action as Action)
-        ? (req.query.action as Action)
-        : "download";
-
       const { filePath } = fileAttachmentLocation({
         workspaceId: owner.sId,
         conversationId,
         messageId,
-        contentFormat: action === "view" ? "raw" : contentFormat, // Always use raw format for view.
+        contentFormat: contentFormat,
       });
-
-      if (action === "view") {
-        const stream = privateUploadGcs.file(filePath).createReadStream();
-        stream.on("error", () => {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "message_not_found",
-              message: "File not found.",
-            },
-          });
-        });
-        stream.pipe(res);
-        return;
-      }
 
       // Redirect to a signed URL.
       const [url] = await privateUploadGcs.getSignedUrl(filePath, {
@@ -155,51 +130,7 @@ async function handler(
       res.redirect(url);
       return;
     }
-    case "POST": {
-      const { filePath, downloadUrl } = fileAttachmentLocation({
-        workspaceId: owner.sId,
-        conversationId,
-        messageId,
-        contentFormat: "raw",
-      });
 
-      try {
-        const form = new IncomingForm();
-        const [, files] = await form.parse(req);
-
-        const maybeFiles = files.file;
-
-        if (!maybeFiles) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "No file uploaded",
-            },
-          });
-        }
-
-        const [file] = maybeFiles;
-
-        await privateUploadGcs.uploadFileToBucket(file, filePath);
-
-        res.status(200).json({ sourceUrl: downloadUrl });
-        return;
-      } catch (error) {
-        return apiError(
-          req,
-          res,
-          {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Error uploading file.",
-            },
-          },
-          error instanceof Error ? error : new Error(JSON.stringify(error))
-        );
-      }
-    }
     default:
       return apiError(req, res, {
         status_code: 405,

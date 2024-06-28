@@ -81,7 +81,7 @@ export function ConversationContainer({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
+    contentFragments: UploadedContentFragment[]
   ) => {
     if (!activeConversationId) {
       return null;

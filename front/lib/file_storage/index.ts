@@ -1,7 +1,10 @@
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
+import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
@@ -44,7 +47,7 @@ class FileStorage {
     contentType,
     filePath,
   }: {
-    content: string;
+    content: string | Buffer;
     contentType: string;
     filePath: string;
   }) {
@@ -55,9 +58,28 @@ class FileStorage {
     });
   }
 
+  async uploadStream(
+    filePath: string,
+    contentType: string | null,
+    fileStream: Readable
+  ) {
+    const gcsFile = this.file(filePath);
+    const writeStream = gcsFile.createWriteStream({
+      metadata: {
+        contentType: contentType,
+      },
+    });
+
+    await pipeline(fileStream, writeStream);
+  }
+
   /**
    * Download functions.
    */
+
+  async fetchWithStream(filePath: string): Promise<Readable> {
+    return this.file(filePath).createReadStream();
+  }
 
   async fetchFileContent(filePath: string) {
     const gcsFile = this.file(filePath);

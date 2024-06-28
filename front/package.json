@@ -117,6 +117,7 @@
     "remark-gfm": "^3.0.1",
     "sanitize-html": "^2.13.0",
     "sequelize": "^6.31.0",
+    "sharp": "^0.33.4",
     "showdown": "^2.1.0",
     "slick-carousel": "^1.8.1",
     "sqlite3": "^5.1.4",
