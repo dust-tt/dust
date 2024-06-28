@@ -1,5 +1,6 @@
 import { cacheWithRedis } from "@dust-tt/types";
 
+import logger from "@connectors/logger/logger";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 import { nango_client } from "./nango_client";
@@ -98,17 +99,26 @@ export async function getConnectionFromNango({
   refreshToken?: boolean;
   useCache?: boolean;
 }): Promise<NangoConnectionResponse> {
-  if (useCache) {
-    return _getCachedConnectionFromNango({
-      connectionId,
-      integrationId,
-      refreshToken,
-    });
-  } else {
-    return _getConnectionFromNango({
-      connectionId,
-      integrationId,
-      refreshToken,
-    });
+  try {
+    if (useCache) {
+      return await _getCachedConnectionFromNango({
+        connectionId,
+        integrationId,
+        refreshToken,
+      });
+    } else {
+      return await _getConnectionFromNango({
+        connectionId,
+        integrationId,
+        refreshToken,
+      });
+    }
+  } catch (error) {
+    logger.error(
+      { connectionId, integrationId, error },
+      "Error while getting connection from Nango"
+    );
+
+    throw new Error("Error while getting connection from Nango");
   }
 }
