@@ -18,14 +18,13 @@ export class MicrosoftConnectorStrategy
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["microsoft"] | null> {
-    await MicrosoftConfigurationResource.makeNew(
+    return MicrosoftConfigurationResource.makeNew(
       {
         ...blob,
         connectorId,
       },
       transaction
     );
-    return null;
   }
 
   async delete(
@@ -43,9 +42,11 @@ export class MicrosoftConnectorStrategy
     await resource.delete(transaction);
   }
 
-  async fetchConfigurationsbyConnectorIds(): Promise<
+  async fetchConfigurationsbyConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<
     Record<ModelId, ConnectorProviderModelResourceMapping["microsoft"]>
   > {
-    return {};
+    return MicrosoftConfigurationResource.fetchByConnectorIds(connectorIds);
   }
 }

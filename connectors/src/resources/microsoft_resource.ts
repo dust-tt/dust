@@ -62,6 +62,24 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     return new this(this.model, blob.get());
   }
 
+  static async fetchByConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<Record<ModelId, MicrosoftConfigurationResource>> {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId: connectorIds,
+      },
+    });
+
+    return blobs.reduce(
+      (acc, blob) => {
+        acc[blob.connectorId] = new this(this.model, blob.get());
+        return acc;
+      },
+      {} as Record<ModelId, MicrosoftConfigurationResource>
+    );
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await MicrosoftNodeModel.destroy({
       where: {
