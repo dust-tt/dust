@@ -378,13 +378,22 @@ const DataSourcePage = ({
           />
 
           {dataSource.connectorProvider === "slack" && (
-            <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
-              <div>Slackbot enabled?</div>
-              <SliderToggle
-                selected={features.slackBotEnabled}
-                onClick={onSlackbotToggle}
-              />
-            </div>
+            <>
+              <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+                <div>Slackbot enabled?</div>
+                <SliderToggle
+                  selected={features.slackBotEnabled}
+                  onClick={onSlackbotToggle}
+                />
+              </div>
+              <SlackWhitelistBot owner={owner} connectorId={connector?.id} />
+              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+                <SlackChannelPatternInput
+                  initialValue={features.autoReadChannelPattern || ""}
+                  owner={owner}
+                />
+              </div>
+            </>
           )}
           {dataSource.connectorProvider === "notion" && (
             <NotionUrlCheckOrFind owner={owner} />
@@ -460,16 +469,6 @@ const DataSourcePage = ({
               </div>
             </div>
           )}
-
-          {dataSource.connectorProvider === "slack" && (
-            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-              <SlackChannelPatternInput
-                initialValue={features.autoReadChannelPattern || ""}
-                owner={owner}
-              />
-            </div>
-          )}
-
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
             {!dataSource.connectorId ? (
               <>
@@ -562,6 +561,34 @@ async function handleCheckOrFindNotionUrl(
     return null;
   }
   return res.json();
+}
+
+async function handleWhitelistBot(botName: string, wId: string): Promise<void> {
+  const res = await fetch(`/api/poke/admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      majorCommand: "slack",
+      command: "whitelist-bot",
+      args: {
+        botName,
+        wId,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    alert(
+      `Failed to whitelist bot: ${
+        err.error?.connectors_error?.message
+      }\n\n${JSON.stringify(err)}`
+    );
+    return;
+  }
+  alert("Bot whitelisted successfully");
 }
 
 function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
@@ -705,6 +732,50 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SlackWhitelistBot({
+  owner,
+  connectorId,
+}: {
+  owner: WorkspaceType;
+  connectorId?: string;
+}) {
+  const [botName, setBotName] = useState("");
+
+  return (
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
+      <div className="flex items-center gap-2">
+        <div>Whitelist slack bot or workflow</div>
+        <div className="grow">
+          <Input
+            placeholder="Bot or workflow name"
+            onChange={setBotName}
+            value={botName}
+            name={""}
+          />
+        </div>
+        <Button
+          variant="secondary"
+          label="Whitelist"
+          onClick={async () => {
+            await handleWhitelistBot(botName, owner.sId);
+            setBotName("");
+          }}
+        />
+      </div>
+      <div>
+        See{" "}
+        <Link
+          href={`https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`}
+          target="_blank"
+          className="text-sm text-action-400"
+        >
+          list of whitelisted bots for this workspace
+        </Link>
       </div>
     </div>
   );
