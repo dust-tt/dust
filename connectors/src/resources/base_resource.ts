@@ -65,5 +65,5 @@ export abstract class BaseResource<M extends Model> {
     });
   }
 
-  abstract toJSON(): unknown;
+  abstract toJSON(): Record<string, unknown>;
 }

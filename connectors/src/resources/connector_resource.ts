@@ -69,15 +69,14 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         { transaction }
       );
 
-      const strategy = getConnectorProviderStrategy(type);
+      const connectorRes = new this(ConnectorModel, connector.get());
 
-      const configuration = await strategy.makeNew(
+      const configuration = await connectorRes.strategy.makeNew(
         connector.id,
         specificBlob,
         transaction
       );
 
-      const connectorRes = new this(ConnectorModel, connector.get());
       connectorRes.configuration = configuration;
 
       return connectorRes;
