@@ -193,7 +193,7 @@ export default function ActionsScreen({
 
           // Making sure the name is not used already.
           if (isNewActionOrNameChanged) {
-            let index = 1;
+            let index = 2;
             let isNameUsed = builderState.actions.some(
               (a) => a.name === newActionName
             );
