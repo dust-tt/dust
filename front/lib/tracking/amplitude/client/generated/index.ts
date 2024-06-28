@@ -70,6 +70,24 @@ export interface IdentifyProperties {
   SignupDate?: string;
 }
 
+export interface AssistantBuilderOpenedProperties {
+  assistantName: string;
+  isNew: boolean;
+  templateName?: string;
+}
+
+export interface AssistantBuilderStepViewedProperties {
+  /**
+   * | Rule | Value |
+   * |---|---|
+   * | Enum Values | instructions, actions, naming |
+   */
+  assistantBuilderStep: "instructions" | "actions" | "naming";
+  assistantName: string;
+  isNew: boolean;
+  templateName?: string;
+}
+
 export interface ClickedEnterpriseContactUsProperties {
   email: string;
 }
@@ -117,6 +135,22 @@ export class Identify implements BaseEvent {
   event_type = amplitude.Types.SpecialEventType.IDENTIFY;
 
   constructor(public event_properties?: IdentifyProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class AssistantBuilderOpened implements BaseEvent {
+  event_type = "AssistantBuilderOpened";
+
+  constructor(public event_properties: AssistantBuilderOpenedProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class AssistantBuilderStepViewed implements BaseEvent {
+  event_type = "AssistantBuilderStepViewed";
+
+  constructor(public event_properties: AssistantBuilderStepViewedProperties) {
     this.event_properties = event_properties;
   }
 }
@@ -284,6 +318,40 @@ export class Ampli {
     }
 
     return this.amplitude!.track(event, undefined, options);
+  }
+
+  /**
+   * AssistantBuilderOpened
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/AssistantBuilderOpened)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param properties The event's properties (e.g. assistantName)
+   * @param options Amplitude event options.
+   */
+  assistantBuilderOpened(
+    properties: AssistantBuilderOpenedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(new AssistantBuilderOpened(properties), options);
+  }
+
+  /**
+   * AssistantBuilderStepViewed
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/AssistantBuilderStepViewed)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param properties The event's properties (e.g. assistantBuilderStep)
+   * @param options Amplitude event options.
+   */
+  assistantBuilderStepViewed(
+    properties: AssistantBuilderStepViewedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(new AssistantBuilderStepViewed(properties), options);
   }
 
   /**
