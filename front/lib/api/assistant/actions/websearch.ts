@@ -376,19 +376,24 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
             return;
           }
           const formattedResults: WebsearchResultType[] = [];
-          const rawResults = outputValidation.right.results;
 
-          if (rawResults) {
-            const refs = getRefs().slice(refsOffset, refsOffset + numResults);
+          if ("error" in outputValidation.right) {
+            output = { results: [], error: outputValidation.right.error };
+          } else {
+            const rawResults = outputValidation.right.results;
 
-            rawResults.forEach((result) => {
-              formattedResults.push({
-                ...result,
-                reference: refs.shift() as string,
+            if (rawResults) {
+              const refs = getRefs().slice(refsOffset, refsOffset + numResults);
+
+              rawResults.forEach((result) => {
+                formattedResults.push({
+                  ...result,
+                  reference: refs.shift() as string,
+                });
               });
-            });
 
-            output = { results: formattedResults };
+              output = { results: formattedResults };
+            }
           }
         }
       }
