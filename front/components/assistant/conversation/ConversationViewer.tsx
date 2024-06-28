@@ -479,20 +479,24 @@ function groupMessagesByType(
   groupedMessages: MessageWithContentFragmentsType[][]
 ): MessageWithContentFragmentsType[][][] {
   return groupedMessages.reduce<MessageWithContentFragmentsType[][][]>(
-    (typedGroupsAcc, currentMessage, index) => {
-      const isLastMessage = index === groupedMessages.length - 1;
-      const currentMessageType = currentMessage[0].type;
-      const lastGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
-      const lastGroupType = lastGroup?.[0]?.[0]?.type;
+    (typedGroupsAcc, currentMessage) => {
+      const [firstMessage] = currentMessage;
+      const currentMessageType = firstMessage.type;
 
-      if (!lastGroup || currentMessageType !== lastGroupType) {
+      const lastGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
+      if (!lastGroup) {
+        typedGroupsAcc.push([currentMessage]);
+        return typedGroupsAcc;
+      }
+
+      const [lastMessageGroup] = lastGroup;
+      const [lastMessage] = lastMessageGroup;
+      const lastGroupType = lastMessage.type;
+
+      if (currentMessageType !== lastGroupType) {
         typedGroupsAcc.push([currentMessage]);
       } else {
         lastGroup.push(currentMessage);
-      }
-
-      if (isLastMessage && isUserMessageType(currentMessage[0])) {
-        typedGroupsAcc.push([]);
       }
       return typedGroupsAcc;
     },
