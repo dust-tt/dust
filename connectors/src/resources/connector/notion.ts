@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import {
@@ -8,24 +9,28 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import type {
+  ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export class NotionConnectorStrategy implements ConnectorProviderStrategy {
+export class NotionConnectorStrategy
+  implements ConnectorProviderStrategy<"notion">
+{
   async makeNew(
-    connector: ConnectorResource,
+    connectorId: ModelId,
     blob: WithCreationAttributes<NotionConnectorState>,
     transaction: Transaction
-  ): Promise<void> {
+  ): Promise<ConnectorProviderModelResourceMapping["notion"] | null> {
     await NotionConnectorState.create(
       {
         ...blob,
-        connectorId: connector.id,
+        connectorId,
       },
       { transaction }
     );
+    return null;
   }
 
   async delete(
@@ -62,5 +67,11 @@ export class NotionConnectorStrategy implements ConnectorProviderStrategy {
       },
       transaction,
     });
+  }
+
+  async fetchConfigurationsbyConnectorIds(): Promise<
+    Record<ModelId, ConnectorProviderModelResourceMapping["notion"]>
+  > {
+    return {};
   }
 }

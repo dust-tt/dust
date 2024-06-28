@@ -1,4 +1,4 @@
-import type { ModelId, Result } from "@dust-tt/types";
+import type { ModelId, Result, SlackConfigurationType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
@@ -27,6 +27,10 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     blob: Attributes<SlackConfigurationModel>
   ) {
     super(SlackConfigurationModel, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
   }
 
   static async makeNew({
@@ -68,6 +72,24 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     }
 
     return new this(this.model, blob.get());
+  }
+
+  static async fetchByConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<Record<ModelId, SlackConfigurationResource>> {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId: connectorIds,
+      },
+    });
+
+    return blobs.reduce(
+      (acc, blob) => {
+        acc[blob.connectorId] = new this(this.model, blob.get());
+        return acc;
+      },
+      {} as Record<ModelId, SlackConfigurationResource>
+    );
   }
 
   static async fetchByActiveBot(slackTeamId: string) {
@@ -233,5 +255,13 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  toJSON(): SlackConfigurationType {
+    return {
+      botEnabled: this.botEnabled,
+      whitelistedDomains: this.whitelistedDomains?.map((d) => d),
+      autoReadChannelPattern: this.autoReadChannelPattern,
+    };
   }
 }

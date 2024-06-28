@@ -31,6 +31,10 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     super(MicrosoftConfigurationModel, blob);
   }
 
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
   static async makeNew(
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,
     transaction: Transaction
@@ -56,6 +60,24 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     }
 
     return new this(this.model, blob.get());
+  }
+
+  static async fetchByConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<Record<ModelId, MicrosoftConfigurationResource>> {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId: connectorIds,
+      },
+    });
+
+    return blobs.reduce(
+      (acc, blob) => {
+        acc[blob.connectorId] = new this(this.model, blob.get());
+        return acc;
+      },
+      {} as Record<ModelId, MicrosoftConfigurationResource>
+    );
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
@@ -89,6 +111,13 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
 
     return new Ok(undefined);
   }
+
+  toJSON() {
+    return {
+      id: this.id,
+      connectorId: this.connectorId,
+    };
+  }
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -107,6 +136,10 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     blob: Attributes<MicrosoftRootModel>
   ) {
     super(MicrosoftRootModel, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
   }
 
   static async makeNew(blob: WithCreationAttributes<MicrosoftRootModel>) {
@@ -160,5 +193,14 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      nodeType: this.nodeType,
+      nodeId: this.nodeId,
+      connectorId: this.connectorId,
+    };
   }
 }

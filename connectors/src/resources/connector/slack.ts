@@ -1,24 +1,29 @@
+import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type {
+  ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
-export class SlackConnectorStrategy implements ConnectorProviderStrategy {
+export class SlackConnectorStrategy
+  implements ConnectorProviderStrategy<"slack">
+{
   async makeNew(
-    connector: ConnectorResource,
+    connectorId: ModelId,
     blob: WithCreationAttributes<SlackConfigurationModel>,
     transaction: Transaction
-  ): Promise<void> {
+  ): Promise<ConnectorProviderModelResourceMapping["slack"] | null> {
     await SlackConfigurationResource.makeNew({
       slackTeamId: blob.slackTeamId,
-      connectorId: connector.id,
+      connectorId,
       transaction,
     });
+    return null;
   }
 
   async delete(
@@ -36,5 +41,11 @@ export class SlackConnectorStrategy implements ConnectorProviderStrategy {
     await config.delete(transaction);
 
     return;
+  }
+
+  async fetchConfigurationsbyConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<Record<ModelId, ConnectorProviderModelResourceMapping["slack"]>> {
+    return SlackConfigurationResource.fetchByConnectorIds(connectorIds);
   }
 }

@@ -1,23 +1,27 @@
+import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type {
+  ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 
-export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
+export class MicrosoftConnectorStrategy
+  implements ConnectorProviderStrategy<"microsoft">
+{
   async makeNew(
-    connector: ConnectorResource,
+    connectorId: ModelId,
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,
     transaction: Transaction
-  ): Promise<void> {
-    await MicrosoftConfigurationResource.makeNew(
+  ): Promise<ConnectorProviderModelResourceMapping["microsoft"] | null> {
+    return MicrosoftConfigurationResource.makeNew(
       {
         ...blob,
-        connectorId: connector.id,
+        connectorId,
       },
       transaction
     );
@@ -36,5 +40,13 @@ export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
       );
     }
     await resource.delete(transaction);
+  }
+
+  async fetchConfigurationsbyConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<
+    Record<ModelId, ConnectorProviderModelResourceMapping["microsoft"]>
+  > {
+    return MicrosoftConfigurationResource.fetchByConnectorIds(connectorIds);
   }
 }

@@ -421,7 +421,7 @@ export async function setWebcrawlerConfiguration(
     depth: depth,
     crawlFrequency: configuration.crawlFrequency,
   });
-  const existingHeaders = await webcrawlerConfig.getCustomHeaders();
+  const existingHeaders = webcrawlerConfig.getCustomHeaders();
   const headersForUpdate: Record<string, string> = {};
   for (const [key, value] of Object.entries(configuration.headers)) {
     if (value !== WebCrawlerHeaderRedactedValue) {

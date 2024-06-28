@@ -6,8 +6,8 @@ import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
+import { ConnectorConfiguration } from "../../connectors/configuration";
 import { ContentNodesViewType } from "../../connectors/content_nodes";
-import { ConnectorConfiguration } from "../../connectors/webcrawler";
 import { ConnectorProvider } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
@@ -61,7 +61,7 @@ export type ConnectorType = {
   firstSuccessfulSyncTime?: number;
   firstSyncProgress?: string;
   errorType?: ConnectorErrorType;
-  configuration?: ConnectorConfiguration;
+  configuration: ConnectorConfiguration;
   pausedAt?: Date | null;
   updatedAt: number;
 };

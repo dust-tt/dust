@@ -12,7 +12,6 @@ import {
 import type { Request, Response } from "express";
 
 import { SET_CONNECTOR_CONFIGURATION_BY_TYPE } from "@connectors/connectors";
-import { renderConnectorType } from "@connectors/lib/renderers/connector";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -104,7 +103,7 @@ const _patchConnectorConfiguration = async (
       status_code: 404,
     });
   }
-  return res.status(200).json(await renderConnectorType(updatedConnector));
+  return res.status(200).json(updatedConnector.toJSON());
 };
 
 export const patchConnectorConfigurationAPIHandler = withLogging(

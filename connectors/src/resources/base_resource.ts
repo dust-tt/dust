@@ -11,6 +11,7 @@ interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
  * across different resources. Each instance represents a specific database row, identified by `id`.
  * - `fetchById`: Static method to retrieve an instance based on its ID, ensuring type safety and
  *   the correct model instantiation.
+ * - `postFetchHook`: Instance method to perform additional data fetching after the initial fetch.
  * - `delete`: Instance method to delete the current resource from the database.
  * - `update`: Instance method to update the current resource with new values.
  *
@@ -41,8 +42,15 @@ export abstract class BaseResource<M extends Model> {
     }
 
     // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    return new this(this.model, blob.get());
+    const r = new this(this.model, blob.get());
+    await r.postFetchHook();
+    return r;
   }
+
+  // postFetchHook is in charge of augmenting the object with additional data fetching when needed
+  // to fully materialize the resource (see ConnectorResource and associated configuration
+  // resources). This required due to the fact that constructors can't be async.
+  abstract postFetchHook(): Promise<void>;
 
   abstract delete(transaction?: Transaction): Promise<Result<undefined, Error>>;
 
@@ -56,4 +64,6 @@ export abstract class BaseResource<M extends Model> {
       },
     });
   }
+
+  abstract toJSON(): Record<string, unknown>;
 }

@@ -1,6 +1,11 @@
 import type { CrawlingFrequency, ModelId, Result } from "@dust-tt/types";
 import type { WebCrawlerConfigurationType } from "@dust-tt/types";
-import { CrawlingFrequencies, Err, Ok } from "@dust-tt/types";
+import {
+  CrawlingFrequencies,
+  Err,
+  Ok,
+  WebCrawlerHeaderRedactedValue,
+} from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -32,11 +37,25 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   static model: ModelStatic<WebCrawlerConfigurationModel> =
     WebCrawlerConfigurationModel;
 
+  private headers: WebCrawlerConfigurationType["headers"] = {};
+
   constructor(
     model: ModelStatic<WebCrawlerConfigurationModel>,
     blob: Attributes<WebCrawlerConfigurationModel>
   ) {
     super(WebCrawlerConfigurationModel, blob);
+  }
+
+  async postFetchHook() {
+    (
+      await WebCrawlerConfigurationHeader.findAll({
+        where: {
+          webcrawlerConfigurationId: this.id,
+        },
+      })
+    ).forEach((header) => {
+      this.headers[header.key] = header.value;
+    });
   }
 
   static async fetchByConnectorId(connectorId: ModelId) {
@@ -49,7 +68,42 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       return null;
     }
 
-    return new this(this.model, blob.get());
+    const c = new this(this.model, blob.get());
+    await c.postFetchHook();
+    return c;
+  }
+
+  static async fetchByConnectorIds(
+    connectorIds: ModelId[]
+  ): Promise<Record<ModelId, WebCrawlerConfigurationResource>> {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId: connectorIds,
+      },
+    });
+
+    const resources = blobs.reduce(
+      (acc, blob) => {
+        acc[blob.connectorId] = new this(this.model, blob.get());
+        return acc;
+      },
+      {} as Record<ModelId, WebCrawlerConfigurationResource>
+    );
+
+    (
+      await WebCrawlerConfigurationHeader.findAll({
+        where: {
+          webcrawlerConfigurationId: blobs.map((b) => b.id),
+        },
+      })
+    ).forEach((header) => {
+      const r = resources[header.webcrawlerConfigurationId];
+      if (r) {
+        r.headers[header.key] = header.value;
+      }
+    });
+
+    return resources;
   }
 
   static async makeNew(
@@ -78,7 +132,9 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       }
     );
 
-    return new this(this.model, config.get());
+    const c = new this(this.model, config.get());
+    c.headers = blob.headers;
+    return c;
   }
 
   static async getConnectorIdsForWebsitesToCrawl() {
@@ -107,7 +163,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       allConnectorIds.push(...websites.map((w) => w.connectorId));
     }
 
-    const connectors = await ConnectorResource.fetchByIds(allConnectorIds);
+    const connectors = await ConnectorResource.fetchByIds(
+      "webcrawler",
+      allConnectorIds
+    );
     const unPausedConnectorIds = connectors
       .filter((c) => !c.isPaused())
       .map((c) => c.id);
@@ -162,22 +221,13 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       );
     });
 
+    this.headers = headers;
+
     return new Ok(undefined);
   }
 
-  async getCustomHeaders(): Promise<Record<string, string>> {
-    const result: Record<string, string> = {};
-    const headers = await WebCrawlerConfigurationHeader.findAll({
-      where: {
-        webcrawlerConfigurationId: this.id,
-      },
-    });
-
-    headers.forEach((header) => {
-      result[header.key] = header.value;
-    });
-
-    return result;
+  getCustomHeaders(): Record<string, string> {
+    return this.headers;
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
@@ -207,5 +257,21 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     });
 
     return new Ok(undefined);
+  }
+
+  toJSON(): WebCrawlerConfigurationType {
+    const redactedHeaders: Record<string, string> = {};
+    for (const key in this.headers) {
+      // redacting headers values when rendering them because we don't want to expose sensitive information.
+      redactedHeaders[key] = WebCrawlerHeaderRedactedValue;
+    }
+    return {
+      url: this.url,
+      maxPageToCrawl: this.maxPageToCrawl,
+      crawlMode: this.crawlMode,
+      depth: this.depth,
+      crawlFrequency: this.crawlFrequency,
+      headers: redactedHeaders,
+    };
   }
 }

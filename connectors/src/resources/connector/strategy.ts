@@ -1,4 +1,4 @@
-import type { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider, ModelId } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { CreationAttributes, Model, Transaction } from "sequelize";
 
@@ -19,6 +19,8 @@ import { NotionConnectorStrategy } from "@connectors/resources/connector/notion"
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+import type { BaseResource } from "../base_resource";
 
 export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
 
@@ -42,17 +44,32 @@ export type ConnectorProviderModelMapping = {
 export type ConnectorProviderBlob =
   ConnectorProviderModelMapping[keyof ConnectorProviderModelMapping];
 
-export interface ConnectorProviderStrategy {
+export type ConnectorProviderModelResourceMapping = {
+  [K in keyof ConnectorProviderModelM]: BaseResource<
+    ConnectorProviderModelM[K]
+  >;
+};
+
+export type ConnectorProviderConfigurationResource =
+  ConnectorProviderModelResourceMapping[keyof ConnectorProviderModelResourceMapping];
+
+export interface ConnectorProviderStrategy<T extends ConnectorProvider> {
   delete(connector: ConnectorResource, transaction: Transaction): Promise<void>;
 
   makeNew(
-    connector: ConnectorResource,
-    blob: ConnectorProviderBlob,
+    connectorId: ModelId,
+    blob: ConnectorProviderModelMapping[T],
     transaction: Transaction
-  ): Promise<void>;
+  ): Promise<ConnectorProviderConfigurationResource | null>;
+
+  fetchConfigurationsbyConnectorIds(connectorIds: ModelId[]): Promise<{
+    [connectorId: ModelId]: ConnectorProviderConfigurationResource;
+  }>;
 }
 
-export function getConnectorProviderStrategy(type: ConnectorProvider) {
+export function getConnectorProviderStrategy(
+  type: ConnectorProvider
+): ConnectorProviderStrategy<ConnectorProvider> {
   switch (type) {
     case "confluence":
       return new ConfluenceConnectorStrategy();
