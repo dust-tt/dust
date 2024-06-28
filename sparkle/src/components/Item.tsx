@@ -57,6 +57,7 @@ type ItemProps = {
   hasAction?: boolean | "hover";
   className?: string;
   href?: string;
+  target?: string;
 };
 
 export function Item({
@@ -73,6 +74,7 @@ export function Item({
   disabled = false,
   className = "",
   href,
+  target
 }: ItemProps) {
   const { components } = React.useContext(SparkleContext);
 
@@ -105,6 +107,8 @@ export function Item({
     );
   }
 
+  const targetProps = target ? { target } : {};
+
   return (
     <Link
       className={classNames(
@@ -116,6 +120,7 @@ export function Item({
       onClick={selected || disabled ? undefined : onClick}
       aria-label={label}
       href={href || "#"}
+      {...targetProps}
     >
       {visualElement}
       <div
