@@ -12,7 +12,7 @@ steps:
       - -f
       - ${_DOCKERFILE_PATH}
       - .
-    secretEnv: ["DEPOT_TOKEN"]
+    secretEnv: ["DEPOT_TOKEN", "SENTRY_AUTH_TOKEN"]
 
 timeout: 600s
 
@@ -20,6 +20,8 @@ availableSecrets:
   secretManager:
     - versionName: "projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest"
       env: DEPOT_TOKEN
+    - versionName: "projects/$PROJECT_ID/secrets/SENTRY_AUTH_TOKEN/versions/latest"
+      env: SENTRY_AUTH_TOKEN
 
 options:
   logging: CLOUD_LOGGING_ONLY
