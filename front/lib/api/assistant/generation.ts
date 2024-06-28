@@ -61,7 +61,6 @@ export async function renderConversationForModelMultiActions({
 > {
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
-  const closingAttachmentTag = "</attachment>\n";
 
   // Render loop.
   // Render all messages and all actions.
@@ -154,15 +153,6 @@ export async function renderConversationForModelMultiActions({
     Promise.all(
       messages.map((m) => {
         let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
-        if (
-          isContentFragmentMessageTypeModel(m) &&
-          m.content.every((c) => isTextContent(c))
-        ) {
-          // Account for the upcoming </attachment> tag for textual attachments,
-          // as it will be appended during the merging process.
-          text += closingAttachmentTag;
-        }
-
         if ("function_calls" in m) {
           text += m.function_calls
             .map((f) => `${f.name} ${f.arguments}`)
@@ -207,30 +197,39 @@ export async function renderConversationForModelMultiActions({
       // Allow at least tokensMargin tokens in addition to the truncation message.
       tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
     ) {
-      const msg = messages[i] as ContentFragmentMessageTypeModel;
       const remainingTokens =
         allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
 
       const updatedContent = [];
-      for (const c of msg.content) {
+      for (const c of currentMessage.content) {
         if (!isTextContent(c)) {
           // If there is not enough room and it's an image, we simply ignore it.
           continue;
         }
 
-        const contentRes = await tokenSplit(c.text, model, remainingTokens);
+        // Remove only if it ends with "</attachment>".
+        const textWithoutClosingAttachmentTag = c.text.replace(
+          /<\/attachment>$/,
+          ""
+        );
+
+        const contentRes = await tokenSplit(
+          textWithoutClosingAttachmentTag,
+          model,
+          remainingTokens
+        );
         if (contentRes.isErr()) {
           return new Err(contentRes.error);
         }
 
         updatedContent.push({
           ...c,
-          text: contentRes.value + truncationMessage,
+          text: `${contentRes.value}${truncationMessage}</attachment>`,
         });
       }
 
       selected.unshift({
-        ...msg,
+        ...currentMessage,
         content: updatedContent,
       });
 
@@ -264,14 +263,6 @@ export async function renderConversationForModelMultiActions({
         throw new Error(
           "Unexpected state, cannot find user message after a Content Fragment"
         );
-      }
-
-      for (const c of cfMessage.content) {
-        if (isTextContent(c)) {
-          // We can now close the </attachment> tag, because the message was already properly
-          // truncated.  We also accounted for the closing that above when computing the tokens count.
-          c.text += closingAttachmentTag;
-        }
       }
 
       userMessage.content = [...cfMessage.content, ...userMessage.content];

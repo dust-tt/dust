@@ -325,7 +325,7 @@ export async function renderContentFragmentForModel(
           content: [
             {
               type: "text",
-              text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]`,
+              text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
             },
           ],
         });
@@ -359,12 +359,10 @@ export async function renderContentFragmentForModel(
       return new Ok({
         role: "content_fragment",
         name: `inject_${contentType}`,
-        // The closing </attachment> tag will be added in the merging loop because we might
-        // need to add a "truncated..." mention in the selection loop.
         content: [
           {
             type: "text",
-            text: `<attachment type="${contentType}" title="${title}">\n${content}\n`,
+            text: `<attachment type="${contentType}" title="${title}">\n${content}\n</attachment>`,
           },
         ],
       });
