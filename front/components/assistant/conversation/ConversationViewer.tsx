@@ -20,7 +20,6 @@ import { useInView } from "react-intersection-observer";
 import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/messages/MessageGroup";
-import MessageItem from "@app/components/assistant/conversation/messages/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -397,35 +396,18 @@ const ConversationViewer = React.forwardRef<
             <MessageGroup
               key={`typed-group-${index}`}
               messages={typedGroup}
-              isLastMessage={isLastGroup}
-            >
-              {typedGroup &&
-                typedGroup.map((group) => {
-                  return group.map((message) => {
-                    return (
-                      <MessageItem
-                        key={`message-${message.sId}`}
-                        conversationId={conversationId}
-                        hideReactions={hideReactions}
-                        isInModal={isInModal}
-                        message={message}
-                        owner={owner}
-                        reactions={reactions}
-                        ref={
-                          message.sId === prevFirstMessageId
-                            ? prevFirstMessageRef
-                            : undefined
-                        }
-                        user={user}
-                        isLastGroup={
-                          latestPage?.messages.at(-1)?.sId === message.sId
-                        }
-                        latestMentions={latestMentions}
-                      />
-                    );
-                  });
-                })}
-            </MessageGroup>
+              isLastMessageGroup={isLastGroup}
+              conversationId={conversationId}
+              hideReactions={hideReactions}
+              isInModal={isInModal}
+              owner={owner}
+              reactions={reactions}
+              prevFirstMessageId={prevFirstMessageId}
+              prevFirstMessageRef={prevFirstMessageRef}
+              user={user}
+              latestPage={latestPage}
+              latestMentions={latestMentions}
+            />
           );
         })}
     </div>
