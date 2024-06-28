@@ -150,6 +150,8 @@ export type ModelConfigurationType = {
 
   // This meta-prompt is injected into the assistant's system instructions if the assistant is in a tool-use context.
   toolUseMetaPrompt?: string;
+
+  supportsVision: boolean;
 };
 
 const OPEN_AI_TOOL_USE_META_PROMPT =
@@ -167,6 +169,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's most capable model.",
   isLegacy: false,
   toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  supportsVision: true,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -180,6 +183,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
   toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  supportsVision: true,
 };
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -194,6 +198,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  supportsVision: false,
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -259,6 +264,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  supportsVision: false,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -273,6 +279,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  supportsVision: false,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -287,6 +294,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  supportsVision: false,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -299,6 +307,7 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's legacy model.",
   isLegacy: true,
+  supportsVision: false,
 };
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -312,6 +321,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's low-latency and high throughput model (100k context)",
   shortDescription: "Anthropic's legacy model.",
   isLegacy: true,
+  supportsVision: false,
 };
 
 export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
@@ -325,6 +335,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `large` model (32k context).",
   shortDescription: "Mistral's large model.",
   isLegacy: false,
+  supportsVision: false,
 };
 export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -337,6 +348,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `medium` model (32k context).",
   shortDescription: "Mistral's legacy model.",
   isLegacy: true,
+  supportsVision: false,
 };
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -349,6 +361,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `small` model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's cost-effective model.",
   isLegacy: false,
+  supportsVision: false,
 };
 
 export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -363,6 +376,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Google's best model for scaling across a wide range of tasks (1m context).",
   shortDescription: "Google's large model.",
   isLegacy: false,
+  supportsVision: false,
 };
 
 export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -377,6 +391,7 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Google's lightweight, fast and cost-efficient model (1m context).",
   shortDescription: "Google's cost-effective model.",
   isLegacy: false,
+  supportsVision: false,
 };
 
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [

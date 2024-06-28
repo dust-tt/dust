@@ -142,13 +142,11 @@ async function handler(
         return;
       }
 
-      // redirect to a signed URL
-      const [url] = await privateUploadGcs.file(filePath).getSignedUrl({
-        version: "v4",
-        action: "read",
-        // since we redirect, the use is immediate so expiry can be short
-        expires: Date.now() + 10 * 1000,
-        // remove special chars
+      // Redirect to a signed URL.
+      const [url] = await privateUploadGcs.getSignedUrl(filePath, {
+        // Since we redirect, the use is immediate so expiry can be short.
+        expirationDelay: Date.now() + 10 * 1000,
+        // Remove special chars.
         promptSaveAs:
           message.title.replace(/[^\w\s.-]/gi, "") +
           (contentFormat === "text" ? ".txt" : ""),

@@ -1,5 +1,12 @@
-import type { ContentFragmentType, ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type {
+  ContentFragmentMessageTypeModel,
+  ContentFragmentType,
+  ConversationType,
+  ModelConfigurationType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
+import { Err, isSupportedImageContentFragmentType, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -14,6 +21,7 @@ import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import logger from "@app/logger/logger";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -275,4 +283,101 @@ export async function getContentFragmentText({
   });
 
   return getPrivateUploadBucket().fetchFileContent(filePath);
+}
+
+async function getSignedUrlForRawContentFragment({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}): Promise<string> {
+  const fileLocation = fileAttachmentLocation({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "raw",
+  });
+
+  return getPrivateUploadBucket().getSignedUrl(fileLocation.filePath);
+}
+
+export async function renderContentFragmentForModel(
+  message: ContentFragmentType,
+  conversation: ConversationType,
+  model: ModelConfigurationType,
+  {
+    excludeImages,
+  }: {
+    excludeImages: boolean;
+  }
+): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
+  const { contentType, sId, title } = message;
+
+  try {
+    if (isSupportedImageContentFragmentType(contentType)) {
+      if (excludeImages || !model.supportsVision) {
+        return new Ok({
+          role: "content_fragment",
+          name: `inject_${contentType}`,
+          content: [
+            {
+              type: "text",
+              text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
+            },
+          ],
+        });
+      }
+
+      const signedUrl = await getSignedUrlForRawContentFragment({
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        messageId: sId,
+      });
+
+      return new Ok({
+        role: "content_fragment",
+        name: `inject_${contentType}`,
+        content: [
+          {
+            type: "image_url",
+            image_url: {
+              url: signedUrl,
+            },
+          },
+        ],
+      });
+    } else {
+      const content = await getContentFragmentText({
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        messageId: sId,
+      });
+
+      return new Ok({
+        role: "content_fragment",
+        name: `inject_${contentType}`,
+        content: [
+          {
+            type: "text",
+            text: `<attachment type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+          },
+        ],
+      });
+    }
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        messageId: sId,
+      },
+      "Failed to retrieve content fragment text"
+    );
+
+    return new Err(new Error("Failed to retrieve content fragment text"));
+  }
 }
