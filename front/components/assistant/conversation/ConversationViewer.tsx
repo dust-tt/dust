@@ -9,7 +9,9 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
   UserType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  isContentFragmentType
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -359,9 +361,13 @@ const ConversationViewer = React.forwardRef<
   });
   const eventIds = useRef<string[]>([]);
 
-  const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
-  const typedGroupedMessages: MessageWithContentFragmentsType[][][] =
-    groupMessagesByType(groupedMessages);
+  // const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
+  // const typedGroupedMessages: MessageWithContentFragmentsType[][][] =
+  //   groupMessagesByType(groupedMessages);
+  const typedGroupedMessages = useMemo(
+    () => groupMessagesByType(messages),
+    [messages]
+  );
 
   useLastMessageGroupObserver(typedGroupedMessages);
 
@@ -432,74 +438,58 @@ const ConversationViewer = React.forwardRef<
 
 export default ConversationViewer;
 
-// Grouping messages into arrays based on their type, associating content_fragments with the upcoming following user_message.
-// Example:
-// Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
-// Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
-// This structure enables layout customization for consecutive messages of the same type
-// and displays content_fragments within user_messages.
-const groupMessages = (
+/**
+ * Groups and organizes messages by their type, associating content_fragments
+ * with the following user_message.
+ *
+ * This function processes an array of messages, collecting content_fragments
+ * and attaching them to subsequent user_messages, then groups these messages
+ * by type, ensuring consecutive messages of the same type are grouped together.
+ *
+ */
+const groupMessagesByType = (
   messages: FetchConversationMessagesResponse[]
-): MessageWithContentFragmentsType[][] => {
-  const groups: MessageWithContentFragmentsType[][] = [];
+): MessageWithContentFragmentsType[][][] => {
+  const typedGroupsAcc: MessageWithContentFragmentsType[][][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages
     .flatMap((page) => page.messages)
     .forEach((message) => {
-      if (message.type === "content_fragment") {
+      if (isContentFragmentType(message)) {
         tempContentFragments.push(message); // Collect content fragments.
       } else {
-        if (message.type === "user_message") {
+        let messageWithContentFragments: MessageWithContentFragmentsType;
+        if (isUserMessageType(message)) {
           // Attach collected content fragments to the user message.
-          const messageWithContentFragments: MessageWithContentFragmentsType = {
+          messageWithContentFragments = {
             ...message,
             contenFragments: tempContentFragments,
           };
-          groups.push([messageWithContentFragments]);
           tempContentFragments = []; // Reset the collected content fragments.
         } else {
-          groups.push([message]); // Directly push agent_message or other types.
+          messageWithContentFragments = message;
+        }
+
+        const currentMessageType = messageWithContentFragments.type;
+        const lastGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
+
+        if (!lastGroup) {
+          typedGroupsAcc.push([[messageWithContentFragments]]);
+          return;
+        }
+
+        const [lastMessageGroup] = lastGroup;
+        const [lastMessage] = lastMessageGroup;
+        const lastGroupType = lastMessage.type;
+
+        if (currentMessageType !== lastGroupType) {
+          typedGroupsAcc.push([[messageWithContentFragments]]);
+        } else {
+          lastGroup.push([messageWithContentFragments]);
         }
       }
     });
 
-  return groups;
+  return typedGroupsAcc;
 };
-
-/**
- * Organizes and categorizes groups of messages by their type.
- *
- * This function takes an array of message groups, each containing one or more messages,
- * and groups these message groups into larger collections based on the type of the first
- * message in each group. The function ensures that all message groups in each collection
- * share the same type, facilitating type-specific processing or display.
- */
-function groupMessagesByType(
-  groupedMessages: MessageWithContentFragmentsType[][]
-): MessageWithContentFragmentsType[][][] {
-  return groupedMessages.reduce<MessageWithContentFragmentsType[][][]>(
-    (typedGroupsAcc, currentMessage) => {
-      const [firstMessage] = currentMessage;
-      const currentMessageType = firstMessage.type;
-
-      const lastGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
-      if (!lastGroup) {
-        typedGroupsAcc.push([currentMessage]);
-        return typedGroupsAcc;
-      }
-
-      const [lastMessageGroup] = lastGroup;
-      const [lastMessage] = lastMessageGroup;
-      const lastGroupType = lastMessage.type;
-
-      if (currentMessageType !== lastGroupType) {
-        typedGroupsAcc.push([currentMessage]);
-      } else {
-        lastGroup.push(currentMessage);
-      }
-      return typedGroupsAcc;
-    },
-    []
-  );
-}
