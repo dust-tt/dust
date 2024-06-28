@@ -1,3 +1,4 @@
+import { isAgentMessageType, isUserMessageType } from "@dust-tt/types";
 import React, { useEffect, useMemo, useRef } from "react";
 
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
@@ -8,7 +9,8 @@ interface MessageGroupProps {
   children?: React.ReactNode;
 }
 
-const VIEWPORT_OFFSET = 450; // More generic term
+const VIEWPORT_OFFSET = 450;
+export const LAST_MESSAGE_GROUP_CLASS = "last-message-group";
 
 export default function MessageGroup({
   messages,
@@ -18,19 +20,23 @@ export default function MessageGroup({
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
   const shouldExpandHeight = useMemo(() => {
-    if (!messages || !messages[0] || !messages[0][0]) {
-      return true;
+    if (messages.length === 0) {
+      return false;
     }
-    const initialMessage = messages[0][0];
+    const initialMessageGroup = messages[0];
+    if (initialMessageGroup.length === 0) {
+      return false;
+    }
 
-    if (initialMessage.type === "user_message") {
+    const initialMessage = messages[0][0];
+    if (isUserMessageType(initialMessage)) {
       return false;
     }
 
     const isMessageGenerating = initialMessage.status === "created";
-    const isLastAgentMessage = initialMessage.type === "agent_message";
+    const isAgentMessage = isAgentMessageType(initialMessage);
 
-    return isLastMessage && isLastAgentMessage && isMessageGenerating;
+    return isLastMessage && isAgentMessage && isMessageGenerating;
   }, [messages, isLastMessage]);
 
   const minHeight = shouldExpandHeight
@@ -45,7 +51,7 @@ export default function MessageGroup({
 
   return (
     <div
-      className={isLastMessage ? "last-message-group" : ""}
+      className={isLastMessage ? LAST_MESSAGE_GROUP_CLASS : ""}
       ref={isLastMessage ? lastMessageRef : undefined}
       style={{ minHeight }}
     >

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
+import { LAST_MESSAGE_GROUP_CLASS } from "@app/components/assistant/conversation/messages/MessageGroup";
 
 /**
  * A custom hook to observe when the last message group element becomes visible or not.
@@ -22,7 +23,7 @@ export function useLastMessageGroupObserver(
       { threshold: 0 }
     );
 
-    const element = document.querySelector(".last-message-group");
+    const element = document.querySelector(`.${LAST_MESSAGE_GROUP_CLASS}`);
     if (element) {
       observer.observe(element);
       return () => {
