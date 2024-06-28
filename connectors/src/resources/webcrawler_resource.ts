@@ -46,6 +46,18 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     super(WebCrawlerConfigurationModel, blob);
   }
 
+  async postFetchHook() {
+    (
+      await WebCrawlerConfigurationHeader.findAll({
+        where: {
+          webcrawlerConfigurationId: this.id,
+        },
+      })
+    ).forEach((header) => {
+      this.headers[header.key] = header.value;
+    });
+  }
+
   static async fetchByConnectorId(connectorId: ModelId) {
     const blob = await this.model.findOne({
       where: {
@@ -57,17 +69,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     }
 
     const c = new this(this.model, blob.get());
-
-    (
-      await WebCrawlerConfigurationHeader.findAll({
-        where: {
-          webcrawlerConfigurationId: c.id,
-        },
-      })
-    ).forEach((header) => {
-      c.headers[header.key] = header.value;
-    });
-
+    await c.postFetchHook();
     return c;
   }
 

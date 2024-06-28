@@ -29,6 +29,10 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     super(SlackConfigurationModel, blob);
   }
 
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
   static async makeNew({
     slackTeamId,
     connectorId,

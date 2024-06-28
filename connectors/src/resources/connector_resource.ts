@@ -45,6 +45,12 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     super(ConnectorModel, blob);
   }
 
+  async postFetchHook() {
+    const configurations =
+      await this.strategy.fetchConfigurationsbyConnectorIds([this.id]);
+    this.configuration = configurations[this.id] ?? null;
+  }
+
   get strategy(): ConnectorProviderStrategy<ConnectorProvider> {
     return getConnectorProviderStrategy(this.type);
   }
@@ -78,29 +84,6 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     });
   }
 
-  // Override of fetchById to properly pull the configuration.
-  static async fetchById(
-    id: number | string
-  ): Promise<BaseResource<ConnectorModel> | null> {
-    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
-    const blob = await this.model.findByPk(parsedId);
-    if (!blob) {
-      return null;
-    }
-
-    const configurations: Record<
-      ModelId,
-      ConnectorProviderModelResourceMapping[typeof blob.type]
-    > = await getConnectorProviderStrategy(
-      blob.type
-    ).fetchConfigurationsbyConnectorIds([blob.id]);
-
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    const c = new this(this.model, blob.get());
-    c.configuration = configurations[blob.id] ?? null;
-    return c;
-  }
-
   static async listByType(
     type: ConnectorProvider,
     { connectionId }: { connectionId?: string }
@@ -124,14 +107,11 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       type
     ).fetchConfigurationsbyConnectorIds(blobs.map((c) => c.id));
 
-    const connectors = blobs.map(
-      // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-      (b: ConnectorModel) => {
-        const c = new ConnectorResource(ConnectorModel, b.get());
-        c.configuration = configurations[b.id] ?? null;
-        return c;
-      }
-    );
+    const connectors = blobs.map((b: ConnectorModel) => {
+      const c = new this(this.model, b.get());
+      c.configuration = configurations[b.id] ?? null;
+      return c;
+    });
 
     return connectors;
   }
@@ -159,17 +139,9 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       return null;
     }
 
-    const configurations: Record<
-      ModelId,
-      ConnectorProviderModelResourceMapping[typeof blob.type]
-    > = await getConnectorProviderStrategy(
-      blob.type
-    ).fetchConfigurationsbyConnectorIds([blob.id]);
-
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    const connectorRes = new this(this.model, blob.get());
-    connectorRes.configuration = configurations[blob.id] ?? null;
-    return connectorRes;
+    const c = new this(this.model, blob.get());
+    await c.postFetchHook();
+    return c;
   }
 
   static async fetchByIds(type: ConnectorProvider, ids: ModelId[]) {

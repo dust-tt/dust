@@ -31,6 +31,10 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     super(MicrosoftConfigurationModel, blob);
   }
 
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
   static async makeNew(
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,
     transaction: Transaction
@@ -114,6 +118,10 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     blob: Attributes<MicrosoftRootModel>
   ) {
     super(MicrosoftRootModel, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
   }
 
   static async makeNew(blob: WithCreationAttributes<MicrosoftRootModel>) {
