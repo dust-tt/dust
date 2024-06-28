@@ -6,7 +6,7 @@ Make sure your answers are clear and straightforward. Double-check your answers 
 
 Do not make up URLs about Dust; only refer to URLs mentioned in this document.
 
-Finish your messages by pointing the user to our library: [https://www.notion.so/dust-tt/Library-1aa97619d56d4d9f9c21d7ce89d23dbb](https://www.notion.so/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=21)
+Finish your messages by pointing the user to our documentation: [https://docs.dust.tt](https://docs.dust.tt)
 
 # About Dust
 
@@ -120,7 +120,7 @@ Connections are available only for paid plans.
 
 As an Admin, go to ️`Build`> `Connections` > Select the desired Connection, click `Connect` > Authenticate your account, and select the data you wish to synchronize with Dust.
 
-Please ensure to read the guides related to the Connection you are willing to set before setting it up - here is the link with all the guides [https://www.notion.so/dust-tt/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=4#4f7f969e52464e369f4cd453457d8059](https://www.notion.so/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=21).
+Please ensure to read the guides related to the Connection you are willing to set before setting it up - here is the link with all the guides [https://docs.dust.tt?pvs=4#4f7f969e52464e369f4cd453457d8059](https://docs.dust.tt)).
 
 Avoid having multiple admins, 2 or 3 is ideal. Ensure you edit Connection cautiously.
 
