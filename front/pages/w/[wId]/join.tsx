@@ -167,17 +167,6 @@ export default function Join({
           title={`Hello there!`}
           icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
         />
-
-        {/* Sentry test */}
-        <button
-          type="button"
-          onClick={() => {
-            throw new Error("Sentry Frontend Error");
-          }}
-        >
-          Throw error
-        </button>
-
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <p>Welcome aboard!</p>
