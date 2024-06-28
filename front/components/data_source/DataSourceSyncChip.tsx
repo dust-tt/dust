@@ -43,33 +43,36 @@ export default function ConnectorSyncingChip({
   }
 
   if (connector.errorType) {
-    return (
-      <Chip color="warning">
-        {(() => {
-          switch (connector.errorType) {
-            case "oauth_token_revoked":
-              return (
-                <>
-                  Our access to your account has been revoked. Re-authorize to
-                  keep the connection up-to-date.
-                </>
-              );
-            case "third_party_internal_error":
-              return (
-                <>
-                  We have encountered an error with{" "}
-                  {CONNECTOR_CONFIGURATIONS[connector.type].name}. We sent you
-                  an email to resolve the issue.
-                </>
-              );
-            case "webcrawling_error":
-              return <>Synchronization failed</>;
-            default:
-              assertNever(connector.errorType);
-          }
-        })()}
-      </Chip>
-    );
+    switch (connector.errorType) {
+      case "oauth_token_revoked":
+        return (
+          <Chip color="warning">
+            Our access to your account has been revoked. Re-authorize to keep
+            the connection up-to-date.
+          </Chip>
+        );
+      case "third_party_internal_error":
+        return (
+          <Chip color="warning">
+            We have encountered an error with{" "}
+            {CONNECTOR_CONFIGURATIONS[connector.type].name}. We sent you an
+            email to resolve the issue.
+          </Chip>
+        );
+      case "webcrawling_error":
+        return (
+          <>
+            <Chip color="warning">Synchronization failed.</Chip>
+            <div className="text-sm">
+              The webcrawler was unable to parse any pages. This may be because
+              the site is built with JavaScript, which our current crawler
+              cannot interpret.
+            </div>
+          </>
+        );
+      default:
+        assertNever(connector.errorType);
+    }
   } else if (!connector.lastSyncSuccessfulTime) {
     return (
       <Chip color="amber" isBusy>
