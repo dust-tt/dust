@@ -1,6 +1,5 @@
 import type {
   AgentConfigurationType,
-  ContentFragmentMessageTypeModel,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
