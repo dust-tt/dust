@@ -9,7 +9,9 @@ interface MessageGroupProps {
   children?: React.ReactNode;
 }
 
+// arbitrary offset to scroll the last MessageGroup to
 const VIEWPORT_OFFSET = 450;
+
 export const LAST_MESSAGE_GROUP_CLASS = "last-message-group";
 
 export default function MessageGroup({

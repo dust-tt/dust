@@ -9,10 +9,9 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
   UserType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  isContentFragmentType
+  WorkspaceType,
 } from "@dust-tt/types";
+import { isContentFragmentType } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
