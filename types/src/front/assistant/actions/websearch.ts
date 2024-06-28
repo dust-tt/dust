@@ -24,7 +24,6 @@ export const WebsearchAppActionOutputSchema = t.union([
     results: t.array(WebsearchAppResultSchema),
   }),
   t.type({
-    results: t.array(WebsearchAppResultSchema),
     error: t.string,
   }),
 ]);
