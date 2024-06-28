@@ -1,4 +1,4 @@
-import { Dialog, Transition } from "@headlessui/react";
+import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react";
 import React, { Fragment } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
@@ -131,7 +131,7 @@ export function Modal({
         onClose={onClose}
       >
         {/* Smoke screen and transition */}
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="s-ease-out s-duration-150"
           enterFrom="s-opacity-0"
@@ -141,11 +141,11 @@ export function Modal({
           leaveTo="s-opacity-0"
         >
           <div className="s-fixed s-inset-0 s-bg-structure-50/80 s-backdrop-blur-sm s-transition-opacity" />
-        </Transition.Child>
+        </TransitionChild>
 
         {/* Panel and transition */}
         <div className={classNames(containerClasses, variantSize[variant])}>
-          <Transition.Child
+          <TransitionChild
             as={Fragment}
             enter="s-ease-out s-duration-300"
             enterFrom={transitionEnterFrom}
@@ -154,7 +154,7 @@ export function Modal({
             leaveFrom={transitionLeaveFrom}
             leaveTo={transitionLeaveTo}
           >
-            <Dialog.Panel
+            <DialogPanel
               className={classNames(
                 "s-absolute s-transform s-bg-structure-0 s-px-3 s-transition-all sm:s-px-4",
                 panelClasses,
@@ -175,8 +175,8 @@ export function Modal({
               >
                 {children}
               </div>
-            </Dialog.Panel>
-          </Transition.Child>
+            </DialogPanel>
+          </TransitionChild>
         </div>
       </Dialog>
     </Transition>

@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import Link from "next/link";
 
 import { useDatasets } from "@app/lib/swr";
@@ -58,7 +58,7 @@ export default function DatasetPicker({
               {isDatasetsLoading ? "Loading..." : "Create dataset"}
             </Link>
           ) : readOnly ? null : (
-            <Menu.Button
+            <MenuButton
               className={classNames(
                 "inline-flex items-center rounded-md px-3 py-1 text-sm font-normal",
                 dataset ? "border px-1" : "border border-orange-400",
@@ -77,12 +77,12 @@ export default function DatasetPicker({
               ) : (
                 "Select dataset"
               )}
-            </Menu.Button>
+            </MenuButton>
           )}
         </div>
 
         {readOnly ? null : (
-          <Menu.Items
+          <MenuItems
             className={classNames(
               "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
               dataset ? "-left-8" : "left-1"
@@ -91,11 +91,11 @@ export default function DatasetPicker({
             <div className="py-1">
               {datasets.map((d) => {
                 return (
-                  <Menu.Item key={d.name}>
-                    {({ active }) => (
+                  <MenuItem key={d.name}>
+                    {({ focus }) => (
                       <span
                         className={classNames(
-                          active ? "bg-gray-50 text-gray-900" : "text-gray-700",
+                          focus ? "bg-gray-50 text-gray-900" : "text-gray-700",
                           "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm"
                         )}
                         onClick={() => onDatasetUpdate(d.name)}
@@ -103,15 +103,15 @@ export default function DatasetPicker({
                         {d.name}
                       </span>
                     )}
-                  </Menu.Item>
+                  </MenuItem>
                 );
               })}
-              <Menu.Item key="__create_dataset">
-                {({ active }) => (
+              <MenuItem key="__create_dataset">
+                {({ focus }) => (
                   <Link href={`/w/${owner.sId}/a/${app.sId}/datasets/new`}>
                     <div
                       className={classNames(
-                        active ? "bg-gray-50 text-gray-500" : "text-gray-400",
+                        focus ? "bg-gray-50 text-gray-500" : "text-gray-400",
                         "block cursor-pointer whitespace-nowrap px-4 py-2 text-sm font-normal"
                       )}
                     >
@@ -119,9 +119,9 @@ export default function DatasetPicker({
                     </div>
                   </Link>
                 )}
-              </Menu.Item>
+              </MenuItem>
             </div>
-          </Menu.Items>
+          </MenuItems>
         )}
       </Menu>
     </div>

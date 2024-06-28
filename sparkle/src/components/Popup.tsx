@@ -29,6 +29,7 @@ export function Popup({
 }: PopupProps) {
   return (
     <Transition
+      as="div"
       show={show}
       enter="s-transition-opacity s-duration-300"
       appear={true}

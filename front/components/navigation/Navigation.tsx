@@ -1,6 +1,11 @@
 import { XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { Dialog, Transition } from "@headlessui/react";
+import {
+  Dialog,
+  DialogPanel,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import React, { Fragment, useContext, useState } from "react";
 
@@ -47,83 +52,72 @@ export function Navigation({
           <Bars3Icon className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
-      <Transition.Root show={sidebarOpen} as={Fragment}>
+      <Transition show={sidebarOpen} as={Fragment}>
         <Dialog
           as="div"
           className="relative z-50 lg:hidden"
           onClose={setSidebarOpen}
         >
-          <Transition.Child
-            as={Fragment}
-            enter="transition-opacity ease-linear duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="transition-opacity ease-linear duration-300"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-900/80" />
-          </Transition.Child>
+          <TransitionChild as={Fragment} appear={false}>
+            <div
+              className={classNames(
+                "fixed inset-0 bg-gray-900/80",
+                "transition-opacity duration-300 ease-linear",
+                "data-[enter]:data-[closed]:opacity-0",
+                "data-[leave]:data-[closed]:opacity-0"
+              )}
+            />
+          </TransitionChild>
 
           <div className="fixed inset-0 flex">
-            <Transition.Child
-              as={Fragment}
-              enter="transition ease-in-out duration-300 transform"
-              enterFrom="-translate-x-full"
-              enterTo="translate-x-0"
-              leave="transition ease-in-out duration-300 transform"
-              leaveFrom="translate-x-0"
-              leaveTo="-translate-x-full"
+            <DialogPanel
+              className={classNames(
+                "relative mr-16 flex w-full max-w-xs flex-1",
+                "transform transition duration-300 ease-in-out",
+                "data-[enter]:data-[closed]:-translate-x-full",
+                "data-[leave]:data-[closed]:-translate-x-full"
+              )}
+              transition
             >
-              <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                <Transition.Child
-                  as={Fragment}
-                  enter="ease-in-out duration-300"
-                  enterFrom="opacity-0"
-                  enterTo="opacity-100"
-                  leave="ease-in-out duration-300"
-                  leaveFrom="opacity-100"
-                  leaveTo="opacity-0"
+              <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
+                <button
+                  type="button"
+                  className="-m-2.5 p-2.5"
+                  onClick={() => setSidebarOpen(false)}
                 >
-                  <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                    <button
-                      type="button"
-                      className="-m-2.5 p-2.5"
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <span className="sr-only">Close sidebar</span>
-                      <XMarkIcon
-                        className="h-6 w-6 text-white"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </div>
-                </Transition.Child>
-                <NavigationSidebar
-                  subscription={subscription}
-                  owner={owner}
-                  subNavigation={subNavigation}
-                >
-                  {navChildren && navChildren}
-                </NavigationSidebar>
-              </Dialog.Panel>
-            </Transition.Child>
+                  <span className="sr-only">Close sidebar</span>
+                  <XMarkIcon
+                    className="h-6 w-6 text-white"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+              <NavigationSidebar
+                subscription={subscription}
+                owner={owner}
+                subNavigation={subNavigation}
+              >
+                {navChildren && navChildren}
+              </NavigationSidebar>
+            </DialogPanel>
           </div>
         </Dialog>
-      </Transition.Root>
+      </Transition>
 
       {/*Desktop sidebar*/}
-      <Transition
-        show={isNavigationBarOpen}
-        as={Fragment}
-        enter="transition-all duration-150 ease-out"
-        enterFrom="flex-none lg:w-0 h-full"
-        enterTo="flex flex-1 lg:w-80"
-        leave="transition-all duration-150 ease-out"
-        leaveFrom="flex flex-1 lg:w-80"
-        leaveTo="flex-none h-full lg:w-0"
-      >
-        <div className="hidden flex-1 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+      <Transition show={isNavigationBarOpen}>
+        <div
+          className={classNames(
+            "hidden flex-1 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col",
+            "transition-all ease-out",
+            "data-[enter]:duration-150",
+            "data-[enter]:data-[closed]:h-full data-[enter]:data-[closed]:flex-none data-[enter]:data-[closed]:lg:w-0",
+            "data-[enter]:data-[open]:flex data-[enter]:data-[open]:flex-1 data-[enter]:data-[open]:lg:w-80",
+            "data-[leave]:h-full data-[leave]:duration-150",
+            "data-[leave]:data-[open]:flex data-[leave]:data-[open]:flex-1 data-[leave]:data-[open]:lg:w-80",
+            "data-[leave]:data-[closed]:h-full data-[leave]:data-[closed]:flex-none data-[leave]:data-[closed]:lg:w-0"
+          )}
+        >
           <NavigationSidebar
             owner={owner}
             subscription={subscription}

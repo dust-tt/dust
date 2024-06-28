@@ -39,6 +39,7 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useConversationMessages } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 
 interface ConversationContainerProps {
   conversationId: string | null;
@@ -240,40 +241,48 @@ export function ConversationContainer({
     <>
       <Transition
         show={!!activeConversationId}
-        as={Fragment}
-        enter="transition-all duration-300 ease-out"
-        enterFrom="flex-none w-full h-0"
-        enterTo="flex flex-1 w-full"
-        leave="transition-all duration-0 ease-out"
-        leaveFrom="flex flex-1 w-full"
-        leaveTo="flex-none w-full h-0"
+        as="div"
+        appear={false}
+        className="flex w-full max-w-4xl flex-1 flex-col justify-start gap-2 pb-4 sm:px-4"
       >
         {activeConversationId ? (
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={activeConversationId}
-            // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
-            onStickyMentionsChange={onStickyMentionsChange}
-          />
+          <div
+            className={classNames(
+              "transition-all ease-out",
+              "data-[enter]:duration-300",
+              "data-[enter]:data-[closed]:h-0 data-[enter]:data-[closed]:w-full data-[enter]:data-[closed]:flex-none",
+              "data-[enter]:data-[open]:flex data-[enter]:data-[open]:w-full data-[enter]:data-[open]:flex-1",
+              "data-[leave]:duration-300",
+              "data-[leave]:data-[open]:flex data-[leave]:data-[open]:w-full data-[leave]:data-[open]:flex-1",
+              "data-[leave]:data-[closed]:h-0 data-[leave]:data-[closed]:w-full data-[leave]:data-[closed]:flex-none"
+            )}
+          >
+            <ConversationViewer
+              owner={owner}
+              user={user}
+              conversationId={activeConversationId}
+              // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
+              onStickyMentionsChange={onStickyMentionsChange}
+            />
+          </div>
         ) : (
           <div></div>
         )}
       </Transition>
 
-      <Transition
-        as={Fragment}
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0 min-h-[20vh]"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0 min-h-[20vh]"
-      >
+      <Transition show={!activeConversationId}>
         <div
+          className={classNames(
+            "mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2",
+            "transition-opacity ease-out",
+            "data-[enter]:duration-100",
+            "data-[enter]:data-[closed]:min-h-[20vh] data-[enter]:data-[closed]:opacity-0",
+            "data-[enter]:data-[open]:opacity-100",
+            "data-[leave]:duration-100",
+            "data-[leave]:data-[open]:opacity-100",
+            "data-[leave]:data-[closed]:min-h-[20vh] data-[leave]:data-[closed]:opacity-0"
+          )}
           id="assistant-input-header"
-          className="mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2"
         >
           <Page.SectionHeader title={greeting} />
           <Page.SectionHeader title="Start a conversation" />
@@ -287,23 +296,27 @@ export function ConversationContainer({
         conversationId={activeConversationId}
       />
 
-      <Transition
-        show={!activeConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        className={"flex w-full justify-center"}
-      >
-        <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputbarMention}
-          setAssistantToMention={(assistant) => {
-            assistantToMention.current = assistant;
-          }}
-          owner={owner}
-        />
+      <Transition as={Fragment} show={!activeConversationId}>
+        <div
+          className={classNames(
+            "flex w-full justify-center",
+            "transition-opacity ease-out",
+            "data-[enter]:duration-100",
+            "data-[enter]:data-[closed]:opacity-0",
+            "data-[enter]:data-[open]:opacity-100",
+            "data-[leave]:duration-100",
+            "data-[leave]:data-[open]:opacity-100",
+            "data-[leave]:data-[closed]:opacity-0"
+          )}
+        >
+          <AssistantBrowserContainer
+            onAgentConfigurationClick={setInputbarMention}
+            setAssistantToMention={(assistant) => {
+              assistantToMention.current = assistant;
+            }}
+            owner={owner}
+          />
+        </div>
       </Transition>
 
       {activeConversationId !== "new" && (

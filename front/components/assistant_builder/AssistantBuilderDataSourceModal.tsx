@@ -335,7 +335,7 @@ function PickDataSource({
   );
 
   return (
-    <Transition show={show} className="mx-auto max-w-6xl">
+    <Transition as="div" show={show} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header
           title="Select Data Sources in"
@@ -400,7 +400,7 @@ function DataSourceResourceSelector({
   ];
 
   return (
-    <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
+    <Transition as="div" show={!!dataSource} className="mx-auto max-w-6xl pb-8">
       <Page>
         <Page.Header
           title={`Select Data Sources in ${
@@ -492,7 +492,7 @@ function FolderOrWebsiteResourceSelector({
   });
 
   return (
-    <Transition show={!!owner} className="mx-auto max-w-6xl pb-8">
+    <Transition as="div" show={!!owner} className="mx-auto max-w-6xl pb-8">
       <Page>
         <Page.Header
           title={type === "folder" ? "Select Folders" : "Select Websites"}

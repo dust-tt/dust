@@ -1,4 +1,4 @@
-import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
+import { Dialog as HeadlessDialog, DialogPanel, DialogTitle,Transition, TransitionChild } from "@headlessui/react";
 import React, { Fragment, useRef } from "react";
 
 import { ConfettiBackground, Spinner } from "@sparkle/index";
@@ -36,7 +36,7 @@ export function Dialog({
   return (
     <Transition show={isOpen} as={Fragment} appear={true}>
       <HeadlessDialog as="div" className="s-relative s-z-50" onClose={onCancel}>
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="s-ease-out s-duration-150"
           enterFrom="s-opacity-0"
@@ -46,11 +46,11 @@ export function Dialog({
           leaveTo="s-opacity-0"
         >
           <div className="s-fixed s-inset-0 s-bg-structure-50/80 s-backdrop-blur-sm s-transition-opacity" />
-        </Transition.Child>
+        </TransitionChild>
 
         <div className="s-fixed s-inset-0 s-z-50">
           <div className="s-flex s-min-h-full s-items-center s-justify-center">
-            <Transition.Child
+            <TransitionChild
               as={Fragment}
               enter="s-ease-out s-duration-300"
               enterFrom="s-opacity-0 s-translate-y-4 s-scale-95"
@@ -59,7 +59,7 @@ export function Dialog({
               leaveFrom="s-opacity-100 s-translate-y-0 s-scale-100"
               leaveTo="s-opacity-0 s-translate-y-4 s-scale-95"
             >
-              <HeadlessDialog.Panel
+              <DialogPanel
                 className={classNames(
                   "s-relative s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-p-4 s-shadow-xl s-transition-all",
                   "s-w-full sm:s-w-[448px]",
@@ -67,9 +67,9 @@ export function Dialog({
                 )}
                 ref={referentRef}
               >
-                <HeadlessDialog.Title className="s-text-element-950 s-truncate s-text-lg s-font-medium">
+                <DialogTitle className="s-text-element-950 s-truncate s-text-lg s-font-medium">
                   {title}
-                </HeadlessDialog.Title>
+                </DialogTitle>
                 <div className="s-z-10 s-text-base s-text-element-700">
                   {children}
                 </div>
@@ -100,8 +100,8 @@ export function Dialog({
                     />
                   </div>
                 )}
-              </HeadlessDialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </HeadlessDialog>

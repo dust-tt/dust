@@ -1,6 +1,6 @@
 import { ChevronDownIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -117,7 +117,7 @@ export default function ModelPicker({
                   : ""}
               </div>
             ) : (
-              <Menu.Button
+              <MenuButton
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                   model.provider_id && model.provider_id.length > 0
@@ -137,12 +137,12 @@ export default function ModelPicker({
                 ) : (
                   "Select provider"
                 )}
-              </Menu.Button>
+              </MenuButton>
             )}
           </div>
 
           {readOnly ? null : (
-            <Menu.Items
+            <MenuItems
               className={classNames(
                 "absolute left-1 z-10 mt-1 origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
                 model.provider_id && model.provider_id.length > 0
@@ -153,11 +153,11 @@ export default function ModelPicker({
               <div className="py-1">
                 {modelProviders.map((p) => {
                   return (
-                    <Menu.Item key={p.providerId}>
-                      {({ active }) => (
+                    <MenuItem key={p.providerId}>
+                      {({ focus }) => (
                         <span
                           className={classNames(
-                            active
+                            focus
                               ? "bg-gray-50 text-gray-900"
                               : "text-gray-700",
                             "block cursor-pointer px-4 py-2 text-sm"
@@ -173,11 +173,11 @@ export default function ModelPicker({
                           {p.providerId}
                         </span>
                       )}
-                    </Menu.Item>
+                    </MenuItem>
                   );
                 })}
               </div>
-            </Menu.Items>
+            </MenuItems>
           )}
         </Menu>
       </div>
@@ -193,7 +193,7 @@ export default function ModelPicker({
           ) : (
             <Menu as="div" className="relative inline-block text-left">
               <div>
-                <Menu.Button
+                <MenuButton
                   className={classNames(
                     "inline-flex items-center rounded-md py-1 text-sm font-bold text-gray-700",
                     model.model_id && model.model_id.length > 0
@@ -213,10 +213,10 @@ export default function ModelPicker({
                   ) : (
                     "Select model"
                   )}
-                </Menu.Button>
+                </MenuButton>
               </div>
 
-              <Menu.Items
+              <MenuItems
                 className={classNames(
                   "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
                   model.model_id && model.model_id.length > 0
@@ -227,11 +227,11 @@ export default function ModelPicker({
                 <div className="py-1">
                   {(models || []).map((m) => {
                     return (
-                      <Menu.Item key={m.id}>
-                        {({ active }) => (
+                      <MenuItem key={m.id}>
+                        {({ focus }) => (
                           <span
                             className={classNames(
-                              active
+                              focus
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"
@@ -246,11 +246,11 @@ export default function ModelPicker({
                             {m.id}
                           </span>
                         )}
-                      </Menu.Item>
+                      </MenuItem>
                     );
                   })}
                 </div>
-              </Menu.Items>
+              </MenuItems>
             </Menu>
           )}
         </div>

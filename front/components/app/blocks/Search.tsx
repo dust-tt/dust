@@ -3,7 +3,7 @@ import type { SpecificationBlockType, SpecificationType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { BlockType } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 
@@ -129,7 +129,7 @@ export default function Search({
 
           {!isProvidersLoading && !readOnly && searchProviders?.length > 0 && (
             <Menu as="div" className="relative inline-block text-left">
-              <Menu.Button
+              <MenuButton
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                   currentProvider?.providerId ? "px-0" : "border px-3",
@@ -147,9 +147,9 @@ export default function Search({
                 ) : (
                   "Select provider"
                 )}
-              </Menu.Button>
+              </MenuButton>
 
-              <Menu.Items
+              <MenuItems
                 className={classNames(
                   "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow ring-1 ring-black ring-opacity-5 focus:outline-none",
                   currentProvider?.providerId ? "-left-4" : "left-1"
@@ -158,11 +158,11 @@ export default function Search({
                 <div className="py-1">
                   {(searchProviders || []).map((p) => {
                     return (
-                      <Menu.Item key={p.providerId}>
-                        {({ active }) => (
+                      <MenuItem key={p.providerId}>
+                        {({ focus }) => (
                           <span
                             className={classNames(
-                              active
+                              focus
                                 ? "bg-gray-50 text-gray-900"
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"
@@ -172,11 +172,11 @@ export default function Search({
                             {p.providerId}
                           </span>
                         )}
-                      </Menu.Item>
+                      </MenuItem>
                     );
                   })}
                 </div>
-              </Menu.Items>
+              </MenuItems>
             </Menu>
           )}
         </div>
