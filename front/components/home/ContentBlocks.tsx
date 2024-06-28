@@ -194,13 +194,13 @@ export const CarousselContentBlock = ({
 }: CarousselContentBlockProps) => (
   <div
     className={classNames(
-      "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8",
+      "flex h-full flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8",
       from,
       to,
       border
     )}
   >
-    <div className="flex flex-col gap-6 px-8">
+    <div className="flex flex-1 flex-col gap-6 px-8">
       <H3 className="text-slate-800">{"Dust for " + title}</H3>
       <div className="flex flex-col gap-2">
         <H2 className="max-w-[600px] text-white">{subtitle}</H2>
@@ -223,10 +223,7 @@ export const CarousselContentBlock = ({
     <Carousel className="w-full" isLooping={true}>
       <CarouselContent>
         {assistants.map((block, index) => (
-          <CarouselItem
-            key={index}
-            className="basis-1/2 px-8 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
-          >
+          <CarouselItem key={index} className="basis-1/2 px-8 md:basis-1/3">
             <SolutionSectionAssistantBlock {...block} />
           </CarouselItem>
         ))}

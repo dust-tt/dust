@@ -63,7 +63,7 @@ interface pageSettingsProps {
 
 const pageSettings: pageSettingsProps = {
   uptitle: "Success and Support",
-  title: <>Help your&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers.</>,
+  title: <>Help your Support&nbsp;Teams, help your customers.</>,
   from: "from-sky-200",
   to: "to-sky-500",
   description: (
