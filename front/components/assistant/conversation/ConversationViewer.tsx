@@ -360,9 +360,6 @@ const ConversationViewer = React.forwardRef<
   });
   const eventIds = useRef<string[]>([]);
 
-  // const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
-  // const typedGroupedMessages: MessageWithContentFragmentsType[][][] =
-  //   groupMessagesByType(groupedMessages);
   const typedGroupedMessages = useMemo(
     () => groupMessagesByType(messages),
     [messages]
