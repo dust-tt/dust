@@ -7,9 +7,9 @@ import {
   FolderOpenIcon,
   PlanetIcon,
   PuzzleIcon,
+  QuestionMarkCircleIcon,
   RobotIcon,
-  ShapesIcon,
-} from "@dust-tt/sparkle";
+  ShapesIcon} from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -33,7 +33,8 @@ export type SubNavigationAssistantsId =
   | "workspace_assistants"
   | "personal_assistants"
   | "data_sources_url"
-  | "developers";
+  | "developers"
+  | "documentation";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
 
@@ -54,6 +55,7 @@ export type AppLayoutNavigation = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
+  target?: string;
   hideLabel?: boolean;
   sizing?: "hug" | "expand";
   hasSeparator?: boolean;
@@ -82,7 +84,7 @@ export type TabAppLayoutNavigation = {
 };
 
 export type SidebarNavigation = {
-  id: "assistants" | "data_sources" | "workspace" | "developers" | "beta";
+  id: "assistants" | "data_sources" | "workspace" | "developers" | "help";
   label: string | null;
   variant: "primary" | "secondary";
   menus: AppLayoutNavigation[];
@@ -205,6 +207,7 @@ export const subNavigationBuild = ({
     variant: "secondary",
     menus: dataSourceItems,
   });
+
   nav.push({
     id: "developers",
     label: "Developers",
@@ -218,6 +221,22 @@ export const subNavigationBuild = ({
         current: current === "developers",
         subMenuLabel: current === "developers" ? subMenuLabel : undefined,
         subMenu: current === "developers" ? subMenu : undefined,
+      },
+    ],
+  });
+
+  nav.push({
+    id: "help",
+    label: "Resources",
+    variant: "secondary",
+    menus: [
+      {
+        id: "documentation",
+        label: "Documentation",
+        icon: QuestionMarkCircleIcon,
+        href: `https://docs.dust.tt`,
+        current: current === "documentation",
+        target: "_blank",
       },
     ],
   });
