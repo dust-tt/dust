@@ -115,6 +115,24 @@ async function _getHelperGlobalAgent(
       }
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
+  // return {
+  //   id: -1,
+  //   sId: GLOBAL_AGENTS_SID.HELPER,
+  //   version: 0,
+  //   versionCreatedAt: null,
+  //   versionAuthorId: null,
+  //   name: "help",
+  //   description: "Help on how to use Dust",
+  //   instructions: prompt,
+  //   pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
+  //   status: status,
+  //   userListStatus: "in-list",
+  //   scope: "global",
+  //   model: model,
+  //   actions: [],
+  //   maxToolsUsePerRun: 0,
+  //   templateId: null,
+  // };
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -125,12 +143,28 @@ async function _getHelperGlobalAgent(
     description: "Help on how to use Dust",
     instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
-    status: status,
-    userListStatus: "in-list",
+    status,
     scope: "global",
-    model: model,
-    actions: [],
-    maxToolsUsePerRun: 0,
+    userListStatus: "in-list",
+    model,
+    actions: [
+      {
+        id: -1,
+        sId: GLOBAL_AGENTS_SID.HELPER + "-datasource-action",
+        type: "retrieval_configuration",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        topK: "auto",
+        dataSources: [{
+          dataSourceId: "KdxkeTzfA7",
+          workspaceId: "1dd1f0e33b",
+          filter: { parents: null },
+        }],
+        name: DEFAULT_RETRIEVAL_ACTION_NAME,
+        description: `The Dust documentation`,
+      },
+    ],
+    maxToolsUsePerRun: 3,
     templateId: null,
   };
 }
