@@ -1,5 +1,6 @@
 const nextConfig = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
+  productionBrowserSourceMaps: true,
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
   experimental: {
