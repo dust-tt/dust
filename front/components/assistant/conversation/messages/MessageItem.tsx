@@ -13,7 +13,7 @@ interface MessageItemProps {
   conversationId: string;
   hideReactions: boolean;
   isInModal: boolean;
-  isLastMessage: boolean;
+  isLastGroup: boolean;
   latestMentions: string[];
   message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
@@ -27,7 +27,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       conversationId,
       hideReactions,
       isInModal,
-      isLastMessage,
+      isLastGroup,
       latestMentions,
       message,
       owner,
@@ -52,7 +52,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <UserMessage
               conversationId={conversationId}
               hideReactions={hideReactions}
-              isLastMessage={isLastMessage}
+              isLastMessage={isLastGroup}
               latestMentions={latestMentions}
               message={message}
               owner={owner}

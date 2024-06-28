@@ -417,7 +417,7 @@ const ConversationViewer = React.forwardRef<
                             : undefined
                         }
                         user={user}
-                        isLastMessage={
+                        isLastGroup={
                           latestPage?.messages.at(-1)?.sId === message.sId
                         }
                         latestMentions={latestMentions}
@@ -446,7 +446,7 @@ export default ConversationViewer;
 const groupMessagesByType = (
   messages: FetchConversationMessagesResponse[]
 ): MessageWithContentFragmentsType[][][] => {
-  const typedGroupsAcc: MessageWithContentFragmentsType[][][] = [];
+  const typedGroup: MessageWithContentFragmentsType[][][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages
@@ -468,10 +468,10 @@ const groupMessagesByType = (
         }
 
         const currentMessageType = messageWithContentFragments.type;
-        const lastGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
+        const lastGroup = typedGroup[typedGroup.length - 1];
 
         if (!lastGroup) {
-          typedGroupsAcc.push([[messageWithContentFragments]]);
+          typedGroup.push([[messageWithContentFragments]]);
           return;
         }
 
@@ -480,12 +480,12 @@ const groupMessagesByType = (
         const lastGroupType = lastMessage.type;
 
         if (currentMessageType !== lastGroupType) {
-          typedGroupsAcc.push([[messageWithContentFragments]]);
+          typedGroup.push([[messageWithContentFragments]]);
         } else {
           lastGroup.push([messageWithContentFragments]);
         }
       }
     });
 
-  return typedGroupsAcc;
+  return typedGroup;
 };

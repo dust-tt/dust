@@ -12,7 +12,7 @@ interface MessageGroupProps {
 // arbitrary offset to scroll the last MessageGroup to
 const VIEWPORT_OFFSET = 450;
 
-export const LAST_MESSAGE_GROUP_CLASS = "last-message-group";
+export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 
 export default function MessageGroup({
   messages,
@@ -30,7 +30,7 @@ export default function MessageGroup({
       return false;
     }
 
-    const initialMessage = messages[0][0];
+    const initialMessage = initialMessageGroup[0];
     if (isUserMessageType(initialMessage)) {
       return false;
     }
@@ -53,7 +53,7 @@ export default function MessageGroup({
 
   return (
     <div
-      className={isLastMessage ? LAST_MESSAGE_GROUP_CLASS : ""}
+      id={isLastMessage ? LAST_MESSAGE_GROUP_ID : ""}
       ref={isLastMessage ? lastMessageRef : undefined}
       style={{ minHeight }}
     >
