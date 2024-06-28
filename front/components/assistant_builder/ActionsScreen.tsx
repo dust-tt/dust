@@ -185,18 +185,25 @@ export default function ActionsScreen({
             return;
           }
 
-          // Making sure the name is not used already.
           let newActionName = newAction.name;
-          let index = 1;
-          let isNameUsed = builderState.actions.some(
-            (a) => a.name === newActionName
-          );
-          while (isNameUsed) {
-            newActionName = `${newAction.name.replace(/_\d+$/, "")}_${index}`;
-            index += 1;
-            isNameUsed = builderState.actions.some(
+
+          const isNewActionOrNameChanged =
+            !pendingAction.previousActionName ||
+            pendingAction.previousActionName !== newActionName;
+
+          // Making sure the name is not used already.
+          if (isNewActionOrNameChanged) {
+            let index = 2;
+            let isNameUsed = builderState.actions.some(
               (a) => a.name === newActionName
             );
+            while (isNameUsed) {
+              newActionName = `${newAction.name.replace(/_\d+$/, "")}_${index}`;
+              index += 1;
+              isNameUsed = builderState.actions.some(
+                (a) => a.name === newActionName
+              );
+            }
           }
 
           if (pendingAction.previousActionName) {
