@@ -491,7 +491,7 @@ function groupMessagesByType(
         lastGroup.push(currentMessage);
       }
 
-      if (isLastMessage && currentMessageType === "user_message") {
+      if (isLastMessage && isUserMessageType(currentMessage[0])) {
         typedGroupsAcc.push([]);
       }
       return typedGroupsAcc;
