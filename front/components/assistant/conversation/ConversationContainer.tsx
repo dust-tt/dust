@@ -72,11 +72,38 @@ export function ConversationContainer({
     limit: 50,
   });
 
+  const { setSelectedAssistant } = useContext(InputBarContext);
+
+  const setInputbarMention = useCallback(
+    (agentSid: string) => {
+      setSelectedAssistant({ configurationId: agentSid });
+      setAnimate(true);
+    },
+    [setAnimate, setSelectedAssistant]
+  );
+
   useEffect(() => {
     if (animate) {
       setTimeout(() => setAnimate(false), 500);
     }
   });
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const assistantSId = router.query.mention ?? null;
+      if (assistantSId && typeof assistantSId === "string") {
+        setInputbarMention(assistantSId);
+      }
+    };
+
+    // Initial check in case the component mounts with the query already set.
+    handleRouteChange();
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.query, router.events, setInputbarMention]);
 
   const handleSubmit = async (
     input: string,
@@ -195,16 +222,6 @@ export function ConversationContainer({
     )
   );
 
-  const { setSelectedAssistant } = useContext(InputBarContext);
-
-  const setInputbarMention = useCallback(
-    (agent: LightAgentConfigurationType) => {
-      setSelectedAssistant({ configurationId: agent.sId });
-      setAnimate(true);
-    },
-    [setAnimate, setSelectedAssistant]
-  );
-
   useEffect(() => {
     const scrollContainerElement = document.getElementById(
       "assistant-input-header"
@@ -214,7 +231,7 @@ export function ConversationContainer({
       const observer = new IntersectionObserver(
         () => {
           if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current);
+            setInputbarMention(assistantToMention.current.sId);
             assistantToMention.current = null;
           }
         },

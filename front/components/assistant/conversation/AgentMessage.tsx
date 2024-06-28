@@ -40,7 +40,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
-import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
+import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
@@ -461,7 +461,7 @@ export function AgentMessage({
             <div className="text-base font-medium">
               {AssitantDetailViewLink(agentConfiguration)}
             </div>
-            <AssistantEditionMenu
+            <AssistantDetailsDropdownMenu
               agentConfigurationId={agentConfiguration.sId}
               owner={owner}
               showAddRemoveToList

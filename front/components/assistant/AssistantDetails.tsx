@@ -36,7 +36,7 @@ import {
 import { useCallback, useContext, useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
-import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
+import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
@@ -175,7 +175,7 @@ export function AssistantDetails({
         </div>
         {agentConfiguration.status === "active" && (
           <div>
-            <AssistantEditionMenu
+            <AssistantDetailsDropdownMenu
               agentConfigurationId={agentConfiguration.sId}
               owner={owner}
               variant="button"
