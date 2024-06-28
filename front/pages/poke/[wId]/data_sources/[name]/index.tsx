@@ -378,19 +378,25 @@ const DataSourcePage = ({
           />
 
           {dataSource.connectorProvider === "slack" && (
-            <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
-              <div>Slackbot enabled?</div>
-              <SliderToggle
-                selected={features.slackBotEnabled}
-                onClick={onSlackbotToggle}
-              />
-            </div>
+            <>
+              <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+                <div>Slackbot enabled?</div>
+                <SliderToggle
+                  selected={features.slackBotEnabled}
+                  onClick={onSlackbotToggle}
+                />
+              </div>
+              <SlackWhitelistBot owner={owner} connectorId={connector?.id} />
+              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+                <SlackChannelPatternInput
+                  initialValue={features.autoReadChannelPattern || ""}
+                  owner={owner}
+                />
+              </div>
+            </>
           )}
           {dataSource.connectorProvider === "notion" && (
             <NotionUrlCheckOrFind owner={owner} />
-          )}
-          {dataSource.connectorProvider === "slack" && (
-            <SlackWhitelistBot owner={owner} connectorId={connector?.id} />
           )}
           {dataSource.connectorProvider === "google_drive" && (
             <>
@@ -463,16 +469,6 @@ const DataSourcePage = ({
               </div>
             </div>
           )}
-
-          {dataSource.connectorProvider === "slack" && (
-            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-              <SlackChannelPatternInput
-                initialValue={features.autoReadChannelPattern || ""}
-                owner={owner}
-              />
-            </div>
-          )}
-
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
             {!dataSource.connectorId ? (
               <>
@@ -746,7 +742,7 @@ function SlackWhitelistBot({
   connectorId,
 }: {
   owner: WorkspaceType;
-  connectorId?: number;
+  connectorId?: string;
 }) {
   const [botName, setBotName] = useState("");
 
