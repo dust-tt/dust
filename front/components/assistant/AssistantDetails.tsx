@@ -385,6 +385,7 @@ function DataSourcesSection({
                     setDocumentToDisplay(documentId);
                   }}
                   useConnectorPermissionsHook={useConnectorPermissions}
+                  isSearchEnabled={false}
                 />
               )}
               {ds && !isAllSelected && (
@@ -475,6 +476,7 @@ function DataSourceSelectedNodes({
               setDocumentToDisplay(documentId);
             }}
             useConnectorPermissionsHook={useConnectorPermissions}
+            isSearchEnabled={false}
           />
         </Tree.Item>
       ))}

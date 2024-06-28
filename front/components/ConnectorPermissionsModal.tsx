@@ -122,6 +122,9 @@ export default function ConnectorPermissionsModal({
             />
             <div className="mx-2 mb-16 w-full">
               <PermissionTree
+                isSearchEnabled={
+                  CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
+                }
                 owner={owner}
                 dataSource={dataSource}
                 canUpdatePermissions={canUpdatePermissions}

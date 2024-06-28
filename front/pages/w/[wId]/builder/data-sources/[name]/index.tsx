@@ -1377,6 +1377,7 @@ function ManagedDataSourceView({
 
           <div className="pb-8">
             <PermissionTree
+              isSearchEnabled={false}
               owner={owner}
               dataSource={dataSource}
               permissionFilter="read"

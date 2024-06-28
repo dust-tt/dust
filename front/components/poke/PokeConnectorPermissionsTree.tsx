@@ -44,6 +44,7 @@ export function PokePermissionTree({
           parentIsSelected={false}
           displayDocumentSource={displayDocumentSource}
           useConnectorPermissionsHook={usePokeConnectorPermissions}
+          isSearchEnabled={false}
         />
       </div>
     </>

@@ -110,6 +110,7 @@ export default function DataSourceSelectionSection({
                         setDocumentToDisplay(documentId);
                       }}
                       useConnectorPermissionsHook={useConnectorPermissions}
+                      isSearchEnabled={false}
                     />
                   )}
                   {dsConfig.selectedResources.map((node) => {
@@ -167,6 +168,7 @@ export default function DataSourceSelectionSection({
                             setDocumentToDisplay(documentId);
                           }}
                           useConnectorPermissionsHook={useConnectorPermissions}
+                          isSearchEnabled={false}
                         />
                       </Tree.Item>
                     );
