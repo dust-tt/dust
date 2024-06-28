@@ -325,7 +325,7 @@ export async function renderContentFragmentForModel(
           content: [
             {
               type: "text",
-              text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Detailed description not available in this context.]`,
+              text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]`,
             },
           ],
         });
