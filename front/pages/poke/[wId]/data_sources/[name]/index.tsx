@@ -390,7 +390,7 @@ const DataSourcePage = ({
             <NotionUrlCheckOrFind owner={owner} />
           )}
           {dataSource.connectorProvider === "slack" && (
-            <SlackWhitelistBot owner={owner} />
+            <SlackWhitelistBot owner={owner} connectorId={connector?.id} />
           )}
           {dataSource.connectorProvider === "google_drive" && (
             <>
@@ -741,7 +741,13 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
   );
 }
 
-function SlackWhitelistBot({ owner }: { owner: WorkspaceType }) {
+function SlackWhitelistBot({
+  owner,
+  connectorId,
+}: {
+  owner: WorkspaceType;
+  connectorId?: number;
+}) {
   const [botName, setBotName] = useState("");
 
   return (
@@ -764,6 +770,16 @@ function SlackWhitelistBot({ owner }: { owner: WorkspaceType }) {
             setBotName("");
           }}
         />
+      </div>
+      <div>
+        See{" "}
+        <Link
+          href={`https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`}
+          target="_blank"
+          className="text-sm text-action-400"
+        >
+          list of whitelisted bots for this workspace
+        </Link>
       </div>
     </div>
   );
