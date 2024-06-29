@@ -424,6 +424,11 @@ export default ConversationViewer;
  * and attaching them to subsequent user_messages, then groups these messages
  * by type, ensuring consecutive messages of the same type are grouped together.
  *
+ * Example:
+ * Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
+ * Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
+ * This structure enables layout customization for consecutive messages of the same type
+ * and displays content_fragments within user_messages.
  */
 const groupMessagesByType = (
   messages: FetchConversationMessagesResponse[]
