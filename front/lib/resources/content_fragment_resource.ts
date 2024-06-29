@@ -15,9 +15,9 @@ import type {
 } from "sequelize";
 
 import appConfig from "@app/lib/api/config";
+import { getSignedUrlForFile } from "@app/lib/api/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { getSignedUrlForFile } from "@app/lib/files";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";

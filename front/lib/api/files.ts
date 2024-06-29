@@ -11,8 +11,6 @@ import config from "@app/lib/api/config";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { generateModelSId } from "@app/lib/utils";
 
-// TODO(2024-06-28 flav) Rename this file.
-
 const FILE_ID_PREFIX = "file_";
 
 type FileId = `${typeof FILE_ID_PREFIX}${string}`;

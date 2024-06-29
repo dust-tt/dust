@@ -11,7 +11,6 @@ import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { extractTextFromPDF } from "@app/lib/client/handle_file_upload";
-// TODO(2024-06-28 flav) Rename file.
 import { getMimeTypeFromFile } from "@app/lib/file";
 
 interface FileContent {

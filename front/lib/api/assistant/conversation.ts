@@ -62,8 +62,8 @@ import {
   batchRenderContentFragment,
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
+import { isFileUrlInWorkspace } from "@app/lib/api/files";
 import type { Authenticator } from "@app/lib/auth";
-import { isFileUrlInWorkspace } from "@app/lib/files";
 import {
   AgentMessage,
   Conversation,

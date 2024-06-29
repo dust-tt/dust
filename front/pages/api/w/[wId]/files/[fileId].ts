@@ -2,8 +2,6 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getSession } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
   decodeFileToken,
   getDownloadUrlForFileId,
@@ -14,7 +12,9 @@ import {
   makeStorageFilePathForWorkspaceId,
   resizeAndUploadToFileStorage,
   uploadToFileStorage,
-} from "@app/lib/files";
+} from "@app/lib/api/files";
+import { Authenticator, getSession } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
