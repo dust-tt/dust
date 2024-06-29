@@ -43,7 +43,7 @@ interface MessageUsageQueryResult {
   source: string | null;
 }
 
-export type userUsage = {
+type userUsageQueryResult = {
   userName: string;
   userEmail: string;
   messageCount: number;
@@ -51,7 +51,7 @@ export type userUsage = {
   activeDaysCount: number;
 };
 
-type builderUsage = {
+type builderUsageQueryResult = {
   userEmail: string;
   userFirstName: string;
   userLastName: string;
@@ -150,7 +150,7 @@ export async function unsafeGetUsageData(
   return csvHeader + csvContent;
 }
 
-export async function unsafeGetMessageUsageData(
+export async function getMessageUsageData(
   startDate: Date,
   endDate: Date,
   workspaceId: string
@@ -208,11 +208,7 @@ export async function unsafeGetMessageUsageData(
   if (!results.length) {
     return "No data available for the selected period.";
   }
-  const csvHeader = Object.keys(results[0]).join(",") + "\n";
-  const csvContent = results
-    .map((row) => Object.values(row).join(","))
-    .join("\n");
-  return csvHeader + csvContent;
+  return generateCsvFromQueryResult(results);
 }
 
 export async function getUserUsage(
@@ -287,7 +283,7 @@ export async function getUserUsage(
     order: [["count", "DESC"]],
     raw: true,
   });
-  const userUsage: userUsage[] = userMessages.map((result) => {
+  const userUsage: userUsageQueryResult[] = userMessages.map((result) => {
     return {
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
@@ -303,11 +299,7 @@ export async function getUserUsage(
   if (!userUsage.length) {
     return "No data available for the selected period.";
   }
-  const csvHeader = Object.keys(userUsage[0]).join(",") + "\n";
-  const csvContent = userUsage
-    .map((row) => Object.values(row).join(","))
-    .join("\n");
-  return csvHeader + csvContent;
+  return generateCsvFromQueryResult(userUsage);
 }
 
 export async function getBuildersUsage(
@@ -357,19 +349,21 @@ export async function getBuildersUsage(
     raw: true,
     group: ["authorId", "user.email", "user.firstName", "user.lastName"],
   });
-  const buildersUsage: builderUsage[] = agentConfigurations.map((result) => {
-    return {
-      userFirstName: (result as unknown as { firstName: string }).firstName,
-      userLastName: (result as unknown as { lastName: string }).lastName,
-      userEmail: (result as unknown as { email: string }).email,
-      agentsEditionsCount: (
-        result as unknown as { agentsEditionsCount: number }
-      ).agentsEditionsCount,
-      distinctAgentsEditionsCount: (
-        result as unknown as { distinctAgentsEditionsCount: number }
-      ).distinctAgentsEditionsCount,
-    };
-  });
+  const buildersUsage: builderUsageQueryResult[] = agentConfigurations.map(
+    (result) => {
+      return {
+        userFirstName: (result as unknown as { firstName: string }).firstName,
+        userLastName: (result as unknown as { lastName: string }).lastName,
+        userEmail: (result as unknown as { email: string }).email,
+        agentsEditionsCount: (
+          result as unknown as { agentsEditionsCount: number }
+        ).agentsEditionsCount,
+        distinctAgentsEditionsCount: (
+          result as unknown as { distinctAgentsEditionsCount: number }
+        ).distinctAgentsEditionsCount,
+      };
+    }
+  );
   if (!buildersUsage.length) {
     return "No data available for the selected period.";
   }
@@ -424,7 +418,7 @@ export async function getAgentUsage(
       ac."description",
       ac."scope"
     ORDER BY
-      "Messages Last 30 Days" DESC;
+      "messages" DESC;
     `,
     {
       type: QueryTypes.SELECT,
@@ -437,11 +431,17 @@ export async function getAgentUsage(
   if (!mentions.length) {
     return "No data available for the selected period.";
   }
-  const csvHeader = Object.keys(mentions[0]).join(",") + "\n";
-  const csvContent = mentions
-    .map((row) => Object.values(row).join(","))
-    .join("\n");
+  return generateCsvFromQueryResult(mentions);
+}
 
+function generateCsvFromQueryResult(
+  rows:
+    | userUsageQueryResult[]
+    | AgentUsageQueryResult[]
+    | MessageUsageQueryResult[]
+) {
+  const csvHeader = Object.keys(rows[0]).join(",") + "\n";
+  const csvContent = rows.map((row) => Object.values(row).join(",")).join("\n");
   return csvHeader + csvContent;
 }
 
