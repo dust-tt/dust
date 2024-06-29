@@ -3,6 +3,7 @@ import type {
   SupportedUploadableContentFragmentType,
 } from "@dust-tt/types";
 import {
+  getMaximumFileSizeForContentType,
   isSupportedImageContentFragmentType,
   isSupportedUploadableContentFragmentType,
 } from "@dust-tt/types";
@@ -45,9 +46,7 @@ class FileBlobUploadError extends Error {
 }
 
 const COMBINED_MAX_TEXT_FILES_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
-const MAX_TEXT_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
 
-const MAX_IMAGE_FILE_SIZE = 3 * 1024 * 1024; // 3MB in bytes.
 const COMBINED_MAX_IMAGE_FILES_SIZE = 20 * 1024 * 1024; // 15MB in bytes.
 
 export function useFileUploaderService({
@@ -113,28 +112,23 @@ export function useFileUploaderService({
       const previewPromises: Promise<FileContent>[] = selectedFiles.map(
         async (file) => {
           const contentType = getMimeTypeFromFile(file);
-          // TODO: Rename to remove content fragment here.
+
           if (!isSupportedUploadableContentFragmentType(contentType)) {
             return Promise.reject(
               new FileBlobUploadError("file_type_not_supported", file)
             );
           }
 
-          if (isSupportedImageContentFragmentType(contentType)) {
-            if (file.size > MAX_IMAGE_FILE_SIZE) {
-              return Promise.reject(
-                new FileBlobUploadError("file_too_large", file)
-              );
-            }
-
-            // No content for image-like files.
-            return createFileBlob(file, "", contentType);
-          }
-
-          if (file.size > MAX_TEXT_FILE_SIZE) {
+          const maxFileSize = getMaximumFileSizeForContentType(contentType);
+          if (file.size > maxFileSize) {
             return Promise.reject(
               new FileBlobUploadError("file_too_large", file)
             );
+          }
+
+          if (isSupportedImageContentFragmentType(contentType)) {
+            // No content for image-like files.
+            return createFileBlob(file, "", contentType);
           }
 
           if (contentType === "application/pdf") {

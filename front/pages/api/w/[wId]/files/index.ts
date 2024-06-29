@@ -2,7 +2,10 @@ import type {
   FileUploadRequestResponseBody,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { FileUploadUrlRequestSchema } from "@dust-tt/types";
+import {
+  FileUploadUrlRequestSchema,
+  getMaximumFileSizeForContentType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -69,9 +72,31 @@ async function handler(
         });
       }
 
-      const { fileName, fileSize } = bodyValidation.right;
+      const { contentType, fileName, fileSize } = bodyValidation.right;
+
+      const maxFileSize = getMaximumFileSizeForContentType(contentType);
+      if (maxFileSize === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "file_type_not_supported",
+            message: `File "${fileName}" is not supported.`,
+          },
+        });
+      }
+
+      if (fileSize > maxFileSize) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "file_too_large",
+            message: `File "${fileName}" is too large.`,
+          },
+        });
+      }
 
       const fileId = makeDustFileId();
+
       const fileToken = encodeFilePayload(owner, {
         fileId,
         fileName,
