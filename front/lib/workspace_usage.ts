@@ -193,7 +193,7 @@ export async function getMessageUsageData(
         "user_messages" um on m2."userMessageId" = um."id"
       WHERE
         am."status" = 'succeeded'
-        AND w."id" = wId
+        AND w."id" = :wId
         AND am."createdAt" BETWEEN :startDate AND :endDate
     `,
     {
@@ -208,13 +208,14 @@ export async function getMessageUsageData(
   if (!results.length) {
     return "No data available for the selected period.";
   }
+  console.log(">>>> getMessageUsageData", results.slice(0, 10));
   return generateCsvFromQueryResult(results);
 }
 
-export async function getUserUsage(
-  workspaceId: string,
+export async function getUserUsageData(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  workspaceId: string
 ): Promise<string> {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
@@ -299,13 +300,14 @@ export async function getUserUsage(
   if (!userUsage.length) {
     return "No data available for the selected period.";
   }
+  console.log(">>>>>> getUserUsageData", userUsage.slice(0, 10));
   return generateCsvFromQueryResult(userUsage);
 }
 
-export async function getBuildersUsage(
-  workspaceId: string,
+export async function getBuildersUsageData(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  workspaceId: string
 ): Promise<string> {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
@@ -367,17 +369,14 @@ export async function getBuildersUsage(
   if (!buildersUsage.length) {
     return "No data available for the selected period.";
   }
-  const csvHeader = Object.keys(buildersUsage[0]).join(",") + "\n";
-  const csvContent = buildersUsage
-    .map((row) => Object.values(row).join(","))
-    .join("\n");
-  return csvHeader + csvContent;
+  console.log(">>>>>> getBuildersUsageData", buildersUsage.slice(0, 10));
+  return generateCsvFromQueryResult(buildersUsage);
 }
 
-export async function getAgentUsage(
-  workspaceId: string,
+export async function getAgentUsageData(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  workspaceId: string
 ): Promise<string> {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
@@ -431,6 +430,7 @@ export async function getAgentUsage(
   if (!mentions.length) {
     return "No data available for the selected period.";
   }
+  console.log(">>>> getAgentUsageData", mentions.slice(0, 10));
   return generateCsvFromQueryResult(mentions);
 }
 
@@ -439,6 +439,7 @@ function generateCsvFromQueryResult(
     | userUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
+    | builderUsageQueryResult[]
 ) {
   const csvHeader = Object.keys(rows[0]).join(",") + "\n";
   const csvContent = rows.map((row) => Object.values(row).join(",")).join("\n");
