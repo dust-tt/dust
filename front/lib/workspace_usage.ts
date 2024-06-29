@@ -208,7 +208,6 @@ export async function getMessageUsageData(
   if (!results.length) {
     return "No data available for the selected period.";
   }
-  console.log(">>>> getMessageUsageData", results.slice(0, 10));
   return generateCsvFromQueryResult(results);
 }
 
@@ -300,7 +299,6 @@ export async function getUserUsageData(
   if (!userUsage.length) {
     return "No data available for the selected period.";
   }
-  console.log(">>>>>> getUserUsageData", userUsage.slice(0, 10));
   return generateCsvFromQueryResult(userUsage);
 }
 
@@ -369,7 +367,6 @@ export async function getBuildersUsageData(
   if (!buildersUsage.length) {
     return "No data available for the selected period.";
   }
-  console.log(">>>>>> getBuildersUsageData", buildersUsage.slice(0, 10));
   return generateCsvFromQueryResult(buildersUsage);
 }
 
@@ -430,7 +427,6 @@ export async function getAgentUsageData(
   if (!mentions.length) {
     return "No data available for the selected period.";
   }
-  console.log(">>>> getAgentUsageData", mentions.slice(0, 10));
   return generateCsvFromQueryResult(mentions);
 }
 
