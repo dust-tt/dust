@@ -44,7 +44,7 @@ export default function MessageGroup({
   latestPage,
   latestMentions,
 }: MessageGroupProps) {
-  const lastMessageRef = useRef<HTMLDivElement>(null);
+  const lastMessageGroupRef = useRef<HTMLDivElement>(null);
 
   const shouldExpandHeight = useMemo(() => {
     if (messages.length === 0) {
@@ -71,15 +71,15 @@ export default function MessageGroup({
     : "0px";
 
   useEffect(() => {
-    if (isLastMessageGroup && lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({ behavior: "smooth" });
+    if (isLastMessageGroup && lastMessageGroupRef.current) {
+      lastMessageGroupRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [isLastMessageGroup]);
 
   return (
     <div
       id={isLastMessageGroup ? LAST_MESSAGE_GROUP_ID : ""}
-      ref={isLastMessageGroup ? lastMessageRef : undefined}
+      ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
     >
       {messages.map((group) => {
