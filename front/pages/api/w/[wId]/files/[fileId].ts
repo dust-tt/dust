@@ -117,6 +117,15 @@ async function handler(
       return;
     }
 
+    case "DELETE": {
+      const filePath = makeStorageFilePathForWorkspaceId(owner, fileId);
+
+      await getPrivateUploadBucket().delete(filePath);
+
+      res.status(204).end();
+      return;
+    }
+
     case "POST": {
       if (typeof token !== "string") {
         return apiError(req, res, {

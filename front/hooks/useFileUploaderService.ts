@@ -255,12 +255,25 @@ export function useFileUploaderService({
   };
 
   const removeFile = (fileId: string) => {
-    // TODO(2024-06-28 flav) Delete on the remote if the file is removed.
-    setFileBlobs((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
+    const fileBlob = fileBlobs.find((f) => f.id === fileId);
 
-    const allFilesReady = fileBlobs.every((f) => !!f.url);
-    if (allFilesReady && isProcessingFiles) {
-      setIsProcessingFiles(false);
+    if (fileBlob) {
+      setFileBlobs((prevFiles) =>
+        prevFiles.filter((f) => f.internalId !== fileBlob?.internalId)
+      );
+
+      // Intentionally not awaiting the fetch call to allow it to run asynchronously.
+      void fetch(`/api/w/${owner.sId}/files/${fileBlob.internalId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const allFilesReady = fileBlobs.every((f) => !!f.url);
+      if (allFilesReady && isProcessingFiles) {
+        setIsProcessingFiles(false);
+      }
     }
   };
 
