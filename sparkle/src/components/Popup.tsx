@@ -42,29 +42,31 @@ export function Popup({
         className || ""
       )}
     >
-      <div className="s-flex">
-        <Chip color="pink">{chipLabel}</Chip>
-        {onClose && (
-          <div className="-s-mr-1 -s-mt-1 s-flex s-grow s-items-start s-justify-end">
-            <IconButton
-              icon={XMark}
-              onClick={onClose}
-              variant="secondary"
-              size="sm"
-            />
-          </div>
-        )}
-      </div>
-      <div className="s-text-sm s-font-normal s-text-element-900">
-        {description}
-      </div>
-      <div className="s-self-center">
-        <Button
-          variant="primary"
-          size="sm"
-          label={buttonLabel}
-          onClick={buttonClick}
-        />
+      <div>
+        <div className="s-flex">
+          <Chip color="pink">{chipLabel}</Chip>
+          {onClose && (
+            <div className="-s-mr-1 -s-mt-1 s-flex s-grow s-items-start s-justify-end">
+              <IconButton
+                icon={XMark}
+                onClick={onClose}
+                variant="secondary"
+                size="sm"
+              />
+            </div>
+          )}
+        </div>
+        <div className="s-text-sm s-font-normal s-text-element-900">
+          {description}
+        </div>
+        <div className="s-self-center">
+          <Button
+            variant="primary"
+            size="sm"
+            label={buttonLabel}
+            onClick={buttonClick}
+          />
+        </div>
       </div>
     </Transition>
   );
