@@ -71,6 +71,24 @@ export async function getSignedUrlForFile(
   return null;
 }
 
+export async function getFileNameFromFileMetadata(
+  filePath: string
+): Promise<string | null> {
+  const metadata = await getPrivateUploadBucket().file(filePath).getMetadata();
+
+  const [m] = metadata;
+
+  if (
+    typeof m.metadata === "object" &&
+    m.metadata !== null &&
+    typeof m.metadata.fileName === "string"
+  ) {
+    return m.metadata.fileName;
+  }
+
+  return null;
+}
+
 /**
  * File id logic.
  */
@@ -168,11 +186,10 @@ export async function resizeAndUploadToFileStorage(
     withoutEnlargement: true, // Avoid upscaling if image is smaller than 768px.
   });
 
-  await getPrivateUploadBucket().uploadStream(
-    filePath,
-    file.mimetype,
-    resizedImageStream
-  );
+  await getPrivateUploadBucket().uploadStream(filePath, resizedImageStream, {
+    contentType: file.mimetype,
+    fileName: file.originalFilename ?? file.newFilename,
+  });
 
   return filePath;
 }

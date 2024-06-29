@@ -7,6 +7,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
   decodeFileToken,
   getDownloadUrlForFileId,
+  getFileNameFromFileMetadata,
   isDustFileId,
   isSupportedImageMimeType,
   isSupportedTextMimeType,
@@ -103,12 +104,13 @@ async function handler(
         return;
       }
 
+      const fileName = await getFileNameFromFileMetadata(filePath);
+
       // Redirect to a signed URL.
       const url = await getPrivateUploadBucket().getSignedUrl(filePath, {
         // Since we redirect, the use is immediate so expiry can be short.
         expirationDelay: 10 * 1000,
-        // TODO:(2024-06-26 flav) Improve file name + extension.
-        promptSaveAs: `dust_${fileId}`,
+        promptSaveAs: fileName ?? `dust_${fileId}`,
       });
 
       res.redirect(url);
