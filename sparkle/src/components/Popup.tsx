@@ -37,35 +37,36 @@ export function Popup({
       leave="s-transition-opacity s-duration-300"
       leaveFrom="s-opacity-100"
       leaveTo="s-opacity-0"
-      as="div"
       className={classNames(
         "s-z-30 s-flex s-w-64 s-flex-col s-gap-3 s-rounded-xl s-border s-border-pink-100 s-bg-pink-50 s-p-4 s-shadow-xl",
         className || ""
       )}
     >
-      <div className="s-flex">
-        <Chip color="pink">{chipLabel}</Chip>
-        {onClose && (
-          <div className="-s-mr-1 -s-mt-1 s-flex s-grow s-items-start s-justify-end">
-            <IconButton
-              icon={XMark}
-              onClick={onClose}
-              variant="secondary"
-              size="sm"
-            />
-          </div>
-        )}
-      </div>
-      <div className="s-text-sm s-font-normal s-text-element-900">
-        {description}
-      </div>
-      <div className="s-self-center">
-        <Button
-          variant="primary"
-          size="sm"
-          label={buttonLabel}
-          onClick={buttonClick}
-        />
+      <div>
+        <div className="s-flex">
+          <Chip color="pink">{chipLabel}</Chip>
+          {onClose && (
+            <div className="-s-mr-1 -s-mt-1 s-flex s-grow s-items-start s-justify-end">
+              <IconButton
+                icon={XMark}
+                onClick={onClose}
+                variant="secondary"
+                size="sm"
+              />
+            </div>
+          )}
+        </div>
+        <div className="s-text-sm s-font-normal s-text-element-900">
+          {description}
+        </div>
+        <div className="s-self-center">
+          <Button
+            variant="primary"
+            size="sm"
+            label={buttonLabel}
+            onClick={buttonClick}
+          />
+        </div>
       </div>
     </Transition>
   );
