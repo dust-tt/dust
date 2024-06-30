@@ -132,6 +132,9 @@ const InputBarContainer = ({
                 accept={supportedFileExtensions.join(",")}
                 onChange={async (e) => {
                   await fileUploaderService.handleFileChange(e);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
                   editorService.focusEnd();
                 }}
                 ref={fileInputRef}
