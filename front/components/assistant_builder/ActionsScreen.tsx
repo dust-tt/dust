@@ -704,6 +704,7 @@ function ActionEditor({
                     <Input
                       name="actionName"
                       placeholder="My tool name…"
+                      disabled={action.noConfigurationRequired}
                       value={action.name}
                       onChange={(v) => {
                         updateAction({
@@ -761,20 +762,29 @@ function ActionEditor({
               What is this tool about?
             </div>
           )}
-          <TextArea
-            placeholder={
-              isDataSourceAction ? "This data contains…" : "This tool is about…"
-            }
-            value={action.description}
-            onChange={(v) => {
-              updateAction({
-                actionName: action.name,
-                actionDescription: v,
-                getNewActionConfig: (old) => old,
-              });
-            }}
-            error={!descriptionValid ? "Description cannot be empty" : null}
-          />
+          {action.noConfigurationRequired ? (
+            <div className="text-sm">{action.description}</div>
+          ) : (
+            <TextArea
+              className="cursor-not-allowed text-gray-500"
+              placeholder={
+                isDataSourceAction
+                  ? "This data contains…"
+                  : "This tool is about…"
+              }
+              value={action.description}
+              onChange={(v) => {
+                if (!action.noConfigurationRequired) {
+                  updateAction({
+                    actionName: action.name,
+                    actionDescription: v,
+                    getNewActionConfig: (old) => old,
+                  });
+                }
+              }}
+              error={!descriptionValid ? "Description cannot be empty" : null}
+            />
+          )}
         </div>
       )}
     </>
