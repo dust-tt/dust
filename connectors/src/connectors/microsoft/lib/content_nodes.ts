@@ -1,17 +1,9 @@
 import type { ContentNode } from "@dust-tt/types";
 
-import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/node_types";
-import { isValidNodeType } from "@connectors/connectors/microsoft/lib/node_types";
-
-export function splitId(internalId: string): [MicrosoftNodeType, string] {
-  const [resourceType, ...rest] = internalId.split("/");
-
-  if (!resourceType || !isValidNodeType(resourceType)) {
-    throw new Error(`Invalid internalId: ${internalId}`);
-  }
-
-  return [resourceType, rest.join("/")];
-}
+import {
+  microsoftInternalIdFromNodeData,
+  microsoftNodeDataFromInternalId,
+} from "@connectors/connectors/microsoft/lib/graph_api";
 
 export function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode(), getTeamsRootAsContentNode()];
@@ -20,7 +12,7 @@ export function getRootNodes(): ContentNode[] {
 export function getSitesRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: "sites-root",
+    internalId: "microsoft/sites-root",
     parentInternalId: null,
     type: "folder",
     title: "Sites",
@@ -35,7 +27,7 @@ export function getSitesRootAsContentNode(): ContentNode {
 export function getTeamsRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: "teams-root",
+    internalId: "microsoft/teams-root",
     parentInternalId: null,
     type: "folder",
     title: "Teams",
@@ -47,9 +39,18 @@ export function getTeamsRootAsContentNode(): ContentNode {
   };
 }
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
+  if (!team.id) {
+    // Unexpected, unreachable
+    throw new Error("Team id is required");
+  }
+
   return {
     provider: "microsoft",
-    internalId: `team/${team.id}`,
+    internalId: microsoftInternalIdFromNodeData({
+      resourcePath: `/teams/${team.id}`,
+      nodeType: "team",
+      nodeId: team.id,
+    }),
     parentInternalId: null,
     type: "folder",
     title: team.displayName || "unnamed",
@@ -62,9 +63,17 @@ export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
 }
 
 export function getSiteAsContentNode(site: microsoftgraph.Site): ContentNode {
+  if (!site.id) {
+    // Unexpected, unreachable
+    throw new Error("Site id is required");
+  }
   return {
     provider: "microsoft",
-    internalId: `site/${site.id}`,
+    internalId: microsoftInternalIdFromNodeData({
+      resourcePath: `/sites/${site.id}`,
+      nodeType: "site",
+      nodeId: site.id,
+    }),
     parentInternalId: null,
     type: "folder",
     title: site.displayName || site.name || "unnamed",
@@ -80,9 +89,23 @@ export function getChannelAsContentNode(
   channel: microsoftgraph.Channel,
   parentInternalId: string
 ): ContentNode {
+  if (!channel.id) {
+    // Unexpected, unreachable
+    throw new Error("Channel id is required");
+  }
+  const { nodeType, nodeId: teamId } =
+    microsoftNodeDataFromInternalId(parentInternalId);
+  if (nodeType !== "team") {
+    throw new Error(`Invalid parent nodeType: ${nodeType}`);
+  }
+
   return {
     provider: "microsoft",
-    internalId: `channel/${channel.id}`,
+    internalId: microsoftInternalIdFromNodeData({
+      resourcePath: `/teams/${teamId}/channels/${channel.id}`,
+      nodeType: "channel",
+      nodeId: channel.id,
+    }),
     parentInternalId,
     type: "channel",
     title: channel.displayName || "unnamed",
@@ -98,9 +121,17 @@ export function getDriveAsContentNode(
   drive: microsoftgraph.Drive,
   parentInternalId: string
 ): ContentNode {
+  if (!drive.id) {
+    // Unexpected, unreachable
+    throw new Error("Drive id is required");
+  }
   return {
     provider: "microsoft",
-    internalId: `drive/${drive.id}`,
+    internalId: microsoftInternalIdFromNodeData({
+      resourcePath: `/drives/${drive.id}`,
+      nodeType: "drive",
+      nodeId: drive.id,
+    }),
     parentInternalId,
     type: "folder",
     title: drive.name || "unnamed",
@@ -115,12 +146,33 @@ export function getFolderAsContentNode(
   folder: microsoftgraph.DriveItem,
   parentInternalId: string
 ): ContentNode {
-  const [, parentId] = splitId(parentInternalId);
-  const [driveId] = parentId.split("/");
+  if (!folder.id) {
+    // Unexpected, unreachable
+    throw new Error("Folder id is required");
+  }
+  const {
+    nodeType,
+    nodeId,
+    resourcePath: parentResourcePath,
+  } = microsoftNodeDataFromInternalId(parentInternalId);
+
+  if (nodeType !== "drive" && nodeType !== "folder") {
+    throw new Error(`Invalid parent nodeType: ${nodeType}`);
+  }
+
+  const resourcePath =
+    nodeType === "drive"
+      ? `/drives/${nodeId}/items/${folder.id}`
+      : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
+        parentResourcePath.replace(/items\/[^/]+$/, `items/${folder.id}`);
 
   return {
     provider: "microsoft",
-    internalId: `folder/${driveId}/${folder.id}`,
+    internalId: microsoftInternalIdFromNodeData({
+      resourcePath,
+      nodeType: "folder",
+      nodeId: folder.id,
+    }),
     parentInternalId,
     type: "folder",
     title: folder.name || "unnamed",

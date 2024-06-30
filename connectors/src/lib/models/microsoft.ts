@@ -51,6 +51,10 @@ MicrosoftConfigurationModel.init(
 ConnectorModel.hasMany(MicrosoftConfigurationModel);
 
 // MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
+// In order to be able to uniquely identify each node, we store the GET API path
+// to the resource in the resourcePath field (e.g. /drives/{drive-id}), except for the toplevel
+// sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
+
 export class MicrosoftRootModel extends Model<
   InferAttributes<MicrosoftRootModel>,
   InferCreationAttributes<MicrosoftRootModel>
@@ -59,6 +63,7 @@ export class MicrosoftRootModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
+  declare resourcePath: string;
   declare nodeType: MicrosoftNodeType;
   declare nodeId: string;
 }
@@ -81,6 +86,10 @@ MicrosoftRootModel.init(
     },
     connectorId: {
       type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    resourcePath: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
     nodeType: {
@@ -115,12 +124,12 @@ export class MicrosoftNodeModel extends Model<
   declare lastUpsertedTs: Date | null;
   declare skipReason: string | null;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare dustFileId: string;
+  declare internalId: string;
   declare nodeType: MicrosoftNodeType;
   declare nodeId: string;
   declare name: string;
   declare mimeType: string;
-  declare parentId: string | null;
+  declare parentInternalId: string | null;
 }
 MicrosoftNodeModel.init(
   {
@@ -155,7 +164,7 @@ MicrosoftNodeModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    dustFileId: {
+    internalId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -177,7 +186,7 @@ MicrosoftNodeModel.init(
       allowNull: false,
       defaultValue: "",
     },
-    parentId: {
+    parentInternalId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -188,7 +197,7 @@ MicrosoftNodeModel.init(
     indexes: [
       { fields: ["connectorId", "nodeId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
-      { fields: ["connectorId", "parentId"], concurrently: true },
+      { fields: ["connectorId", "parentInternalId"], concurrently: true },
     ],
   }
 );

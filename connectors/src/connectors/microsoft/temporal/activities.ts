@@ -1,11 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
 
-import logger from "@connectors/logger/logger";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
-import { getMessages } from "@connectors/connectors/microsoft/lib/graph_api";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getClient } from "@connectors/connectors/microsoft";
+import { getMessages } from "@connectors/connectors/microsoft/lib/graph_api";
+import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export async function fullSyncActivity({
   connectorId,
@@ -31,12 +31,17 @@ export async function fullSyncActivity({
   );
 
   const channel = teamResources[0];
+
+  if (!channel) {
+    throw new Error(`No channel found for connector ${connectorId}`);
+  }
+
   // get a message
-  // const message = getMessages(client, channel);
+  const message = getMessages(client, channel.resourcePath);
 
   logger.info(
     `To implement: full sync for connector ${connectorId} with config ${JSON.stringify(
       dataSourceConfig
-    )}`
+    )}\nExample message: ${JSON.stringify(message)}`
   );
 }
