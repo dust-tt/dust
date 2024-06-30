@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.174",
+  "version": "0.2.175",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -79,7 +79,7 @@
   "dependencies": {
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
-    "@headlessui/react": "^2.1.0",
+    "@headlessui/react": "^1.7.19",
     "emoji-mart": "^5.5.2",
     "esbuild": "^0.20.0",
     "eslint-plugin-import": "^2.29.1",
@@ -88,5 +88,6 @@
     "react-confetti": "^6.1.0",
     "react-markdown": "^9.0.1",
     "tailwind-scrollbar-hide": "^1.1.7"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
