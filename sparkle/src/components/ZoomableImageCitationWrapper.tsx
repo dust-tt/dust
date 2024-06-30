@@ -34,7 +34,6 @@ export function ZoomableImageCitationWrapper({
         onClose={handleZoomToggle}
         className="s-relative s-z-50 s-transition s-duration-300 s-ease-out data-[closed]:s-opacity-0"
       >
-        <Dialog.Backdrop className="s-fixed s-inset-0 s-bg-black/70" />
         <div className="s-fixed s-inset-8 s-flex s-w-screen s-items-center s-justify-center s-p-4">
           <Dialog.Panel className="s-max-w-lg s-space-y-4">
             <Dialog.Title>
