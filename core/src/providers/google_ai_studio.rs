@@ -92,7 +92,20 @@ impl TryFrom<&ChatFunction> for GoogleAIStudioFunctionDeclaration {
         Ok(GoogleAIStudioFunctionDeclaration {
             name: f.name.clone(),
             description: f.description.clone().unwrap_or_else(|| String::from("")),
-            parameters: f.parameters.clone(),
+            parameters: match f.parameters.clone() {
+                // The API rejects empty 'properties'. If 'properties' is empty, return None.
+                // Otherwise, return the object wrapped in Some.
+                Some(serde_json::Value::Object(obj)) => {
+                    if obj.get("properties").map_or(false, |props| {
+                        props.as_object().map_or(false, |p| p.is_empty())
+                    }) {
+                        None
+                    } else {
+                        Some(serde_json::Value::Object(obj))
+                    }
+                }
+                p => p,
+            },
         })
     }
 }
@@ -116,7 +129,9 @@ pub struct GoogleAIStudioFunctionCallingConfig {
 #[serde(rename_all = "camelCase")]
 pub struct Part {
     text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     function_call: Option<GoogleAIStudioFunctionCall>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     function_response: Option<GoogleAIStudioFunctionResponse>,
 }
 
@@ -697,7 +712,7 @@ pub async fn streamed_chat_completion(
     };
 
     let mut body = json!({
-        "contents": vec![json!(messages)],
+        "contents": json!(messages),
         "generation_config": {
             "temperature": temperature,
             "topP": top_p,
