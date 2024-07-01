@@ -28,7 +28,7 @@ export abstract class BaseResource<M extends Model> {
     this.id = blob.id;
   }
 
-  static async fetchById<T extends BaseResource<M>, M extends Model>(
+  static async fetchByInternalId<T extends BaseResource<M>, M extends Model>(
     this: BaseResourceConstructor<T, M> & {
       model: ModelStatic<M>;
     },

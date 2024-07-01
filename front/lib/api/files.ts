@@ -4,25 +4,14 @@ import {
   isSupportedTextContentFragmentType,
 } from "@dust-tt/types";
 import type formidable from "formidable";
+import fs from "fs";
 import jwt from "jsonwebtoken";
 import sharp from "sharp";
 
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { generateModelSId } from "@app/lib/utils";
-
-const FILE_ID_PREFIX = "file_";
-
-type FileId = `${typeof FILE_ID_PREFIX}${string}`;
-
-export function makeDustFileId(): FileId {
-  const fileId = generateModelSId();
-  return `${FILE_ID_PREFIX}${fileId}`;
-}
-
-export function isDustFileId(fileId: string): fileId is FileId {
-  return fileId.startsWith(FILE_ID_PREFIX);
-}
+import type { FileResource } from "@app/lib/resources/file_resource";
 
 export function makeStorageFilePathForWorkspaceId(
   owner: LightWorkspaceType,
@@ -113,18 +102,13 @@ export function isSupportedTextMimeType(file: formidable.File): boolean {
 }
 
 export async function uploadToFileStorage(
-  owner: LightWorkspaceType,
-  fileTokenPayload: FileTokenPayload,
+  auth: Authenticator,
+  fileRes: FileResource,
   file: formidable.File
 ) {
-  const filePath = makeStorageFilePathForWorkspaceId(
-    owner,
-    fileTokenPayload.fileId
-  );
+  const fileStream = fs.createReadStream(file.filepath);
 
-  await getPrivateUploadBucket().uploadFileToBucket(file, filePath);
-
-  return filePath;
+  await fileRes.uploadStream(auth, fileStream);
 }
 
 /**
@@ -142,25 +126,15 @@ export function isSupportedImageMimeType(file: formidable.File): boolean {
 }
 
 export async function resizeAndUploadToFileStorage(
-  owner: LightWorkspaceType,
-  fileTokenPayload: FileTokenPayload,
+  auth: Authenticator,
+  fileRes: FileResource,
   file: formidable.File
 ) {
-  const filePath = makeStorageFilePathForWorkspaceId(
-    owner,
-    fileTokenPayload.fileId
-  );
-
   // Resize the image, preserving the aspect ratio. Longest side is max 768px.
   const resizedImageStream = sharp(file.filepath).resize(768, 768, {
     fit: sharp.fit.inside, // Ensure longest side is 768px.
     withoutEnlargement: true, // Avoid upscaling if image is smaller than 768px.
   });
 
-  await getPrivateUploadBucket().uploadStream(filePath, resizedImageStream, {
-    contentType: file.mimetype,
-    fileName: file.originalFilename ?? file.newFilename,
-  });
-
-  return filePath;
+  await fileRes.uploadStream(auth, resizedImageStream);
 }

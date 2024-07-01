@@ -63,6 +63,7 @@ import {
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 // Labs - Can be removed at all times if a solution is dropped
 import {
@@ -93,6 +94,7 @@ async function main() {
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });
   await KeyModel.sync({ alter: true });
+  await FileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await RunModel.sync({ alter: true });

@@ -1,20 +1,24 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  FileRequestResponseBody,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
+import {
+  isDustFileId,
+  isSupportedImageContenType,
+  isSupportedPlainTextContentType,
+} from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  decodeFileToken,
-  getDownloadUrlForFileId,
   getFileNameFromFileMetadata,
-  isDustFileId,
-  isSupportedImageMimeType,
-  isSupportedTextMimeType,
   makeStorageFilePathForWorkspaceId,
   resizeAndUploadToFileStorage,
   uploadToFileStorage,
 } from "@app/lib/api/files";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
@@ -28,7 +32,7 @@ type Action = (typeof validActions)[number];
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ downloadUrl: string }>>
+  res: NextApiResponse<WithAPIErrorReponse<FileRequestResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -69,7 +73,7 @@ async function handler(
     });
   }
 
-  const { fileId, token } = req.query;
+  const { fileId } = req.query;
   if (typeof fileId !== "string" || !isDustFileId(fileId)) {
     return apiError(req, res, {
       status_code: 400,
@@ -80,8 +84,20 @@ async function handler(
     });
   }
 
+  const fileRes = await FileResource.fetchById(auth, fileId);
+  if (!fileRes) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
+      // TODO:
       const action: Action = validActions.includes(req.query.action as Action)
         ? (req.query.action as Action)
         : "download";
@@ -92,9 +108,9 @@ async function handler(
         const stream = await getPrivateUploadBucket().fetchWithStream(filePath);
         stream.on("error", () => {
           return apiError(req, res, {
-            status_code: 400,
+            status_code: 404,
             api_error: {
-              type: "message_not_found",
+              type: "file_not_found",
               message: "File not found.",
             },
           });
@@ -127,32 +143,25 @@ async function handler(
     }
 
     case "POST": {
-      if (typeof token !== "string") {
+      if (fileRes.isReady || fileRes.isFailed) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid token.",
-          },
-        });
-      }
-
-      // Ensure that the file token is valid.
-      const fileTokenPayload = decodeFileToken(token);
-
-      if (!fileTokenPayload || fileTokenPayload.fileId !== fileId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid file id.",
+            message:
+              "The file has already been uploaded or the upload has failed.",
           },
         });
       }
 
       try {
         // Support only one file upload.
-        const form = new IncomingForm({ maxFiles: 1 });
+        const form = new IncomingForm({
+          fileWriteStreamHandler: () => {
+            return fileRes.getStream(auth);
+          },
+          maxFiles: 1,
+        });
         const [, files] = await form.parse(req);
 
         const maybeFiles = files.file;
@@ -167,13 +176,27 @@ async function handler(
           });
         }
 
-        const [file] = maybeFiles;
+        const [fileData] = maybeFiles;
 
-        if (isSupportedImageMimeType(file)) {
-          await resizeAndUploadToFileStorage(owner, fileTokenPayload, file);
-        } else if (isSupportedTextMimeType(file)) {
+        const { mimetype } = fileData;
+        if (!mimetype) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "file_type_not_supported",
+              message: "File type not supported.",
+            },
+          });
+        }
+
+        // First, save the uploaded document to the cloud storage.
+        // TODO:
+
+        if (isSupportedImageContenType(mimetype)) {
+          await resizeAndUploadToFileStorage(auth, fileRes, fileData);
+        } else if (isSupportedPlainTextContentType(mimetype)) {
           // TODO:(2026-06-28 flav) Move logic to extract text from PDF here.
-          await uploadToFileStorage(owner, fileTokenPayload, file);
+          await uploadToFileStorage(auth, fileRes, fileData);
         } else {
           return apiError(req, res, {
             status_code: 400,
@@ -184,9 +207,7 @@ async function handler(
           });
         }
 
-        res
-          .status(200)
-          .json({ downloadUrl: getDownloadUrlForFileId(owner, fileId) });
+        res.status(200).json({ file: fileRes.toJSON(auth) });
         return;
       } catch (error) {
         return apiError(

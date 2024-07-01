@@ -202,10 +202,11 @@ export async function deleteConversationsActivity({
                 }
               }
               if (msg.contentFragmentId) {
-                const contentFragment = await ContentFragmentResource.fetchById(
-                  msg.contentFragmentId,
-                  t
-                );
+                const contentFragment =
+                  await ContentFragmentResource.fetchByInternalId(
+                    msg.contentFragmentId,
+                    t
+                  );
                 if (contentFragment) {
                   await contentFragment.destroy(
                     {

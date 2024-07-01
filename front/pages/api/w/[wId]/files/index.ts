@@ -1,25 +1,25 @@
 import type {
-  FileUploadRequestResponseBody,
+  FileRequestResponseBody,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   FileUploadUrlRequestSchema,
-  getMaximumFileSizeForContentType,
+  isSupportedFileContentType,
   rateLimiter,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import config from "@app/lib/api/config";
-import { encodeFilePayload, makeDustFileId } from "@app/lib/api/files";
+import { ensureFileSize } from "@app/lib/api/files/types";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<FileUploadRequestResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<FileRequestResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -90,10 +90,9 @@ async function handler(
         });
       }
 
-      const { contentType, fileName, fileSize } = bodyValidation.right;
+      const { contentType, fileName, fileSize, useCase } = bodyValidation.right;
 
-      const maxFileSize = getMaximumFileSizeForContentType(contentType);
-      if (maxFileSize === 0) {
+      if (!isSupportedFileContentType(contentType)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -103,7 +102,8 @@ async function handler(
         });
       }
 
-      if (fileSize > maxFileSize) {
+      const isFileSizeWithinLimit = ensureFileSize(contentType, fileSize);
+      if (!isFileSizeWithinLimit) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -113,17 +113,16 @@ async function handler(
         });
       }
 
-      const fileId = makeDustFileId();
-
-      const fileToken = encodeFilePayload(owner, {
-        fileId,
+      const file = await FileResource.makeNew({
+        contentType,
         fileName,
         fileSize,
+        userId: user.id,
+        workspaceId: owner.id,
+        useCase,
       });
 
-      const uploadUrl = `${config.getAppUrl()}/api/w/${owner.sId}/files/${fileId}?token=${fileToken}`;
-
-      res.status(200).json({ fileId, uploadUrl });
+      res.status(200).json({ file: file.toJSON(auth) });
       return;
     }
 

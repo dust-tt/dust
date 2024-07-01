@@ -80,6 +80,7 @@ export type APIErrorType =
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_already_exists"
   // Files:
+  | "file_not_found"
   | "file_too_large"
   | "file_type_not_supported";
 
