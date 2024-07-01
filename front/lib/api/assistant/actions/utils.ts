@@ -67,7 +67,7 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   VISUALIZATION: {
     label: "Visualization",
-    description: "Generate graphs to visually represent the data",
+    description: "Generate graphs to visualize your data",
     cardIcon: ShapesIcon,
     dropDownIcon: ShapesIcon,
     flag: "visualization_action_flag",

@@ -298,7 +298,7 @@ export function getDefaultVisualizationActionConfiguration(): AssistantBuilderAc
     type: "VISUALIZATION",
     configuration: {},
     name: DEFAULT_VISUALIZATION_ACTION_NAME,
-    description: "Generate graphs to visually represent the data",
+    description: "Generate graphs to visualize your data.",
     noConfigurationRequired: true,
   };
 }
