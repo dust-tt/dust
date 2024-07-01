@@ -23,6 +23,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations: string | null;
     guideLink: string | null;
     isNested: boolean;
+    isSearchEnabled: boolean;
   }
 > = {
   confluence: {
@@ -37,6 +38,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink: null,
     logoComponent: ConfluenceLogo,
     isNested: true,
+    isSearchEnabled: false,
   },
   notion: {
     name: "Notion",
@@ -49,6 +51,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink: null,
     logoComponent: NotionLogo,
     isNested: true,
+    isSearchEnabled: false,
   },
   google_drive: {
     name: "Google Drive™",
@@ -62,6 +65,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink: null,
     logoComponent: DriveLogo,
     isNested: true,
+    isSearchEnabled: false,
   },
   slack: {
     name: "Slack",
@@ -74,6 +78,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink: null,
     logoComponent: SlackLogo,
     isNested: false,
+    isSearchEnabled: true,
   },
   github: {
     name: "GitHub",
@@ -87,6 +92,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink: null,
     logoComponent: GithubLogo,
     isNested: true,
+    isSearchEnabled: false,
   },
   intercom: {
     name: "Intercom",
@@ -101,6 +107,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "https://dust-tt.notion.site/Intercom-connection-on-Dust-193f0670d39a44de85cd472c6035ea84",
     logoComponent: IntercomLogo,
     isNested: true,
+    isSearchEnabled: false,
   },
   microsoft: {
     name: "Microsoft",
@@ -115,6 +122,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink: "https://dust-tt.notion.site/",
     logoComponent: MicrosoftLogo,
     isNested: true,
+    isSearchEnabled: false,
   },
   webcrawler: {
     name: "Web Crawler",
@@ -126,5 +134,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink: null,
     logoComponent: GlobeAltIcon,
     isNested: true,
+    isSearchEnabled: false,
   },
 };
