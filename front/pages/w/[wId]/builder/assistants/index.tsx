@@ -32,7 +32,6 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { compareAgentsForSort } from "@app/lib/assistant";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, subFilter } from "@app/lib/utils";
@@ -198,17 +197,13 @@ export default function WorkspaceAssistants({
       });
       break;
     }
-    case "magic": {
-      filteredAgents.sort(compareAgentsForSort);
-      break;
-    }
     default:
       assertNever(orderBy);
   }
 
   useEffect(() => {
     if (tabScope === "global") {
-      setOrderBy("magic");
+      setOrderBy("name");
     }
   }, [tabScope]);
 
