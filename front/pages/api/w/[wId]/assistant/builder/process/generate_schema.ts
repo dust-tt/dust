@@ -7,6 +7,7 @@ import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   ioTsParsePayload,
+  PROCESS_SCHEMA_ALLOWED_TYPES,
 } from "@dust-tt/types";
 import { InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema } from "@dust-tt/types";
 import { DustProdActionRegistry } from "@dust-tt/types";
@@ -123,7 +124,9 @@ async function handler(
       for (const key in rawSchema) {
         schema.push({
           name: key,
-          type: rawSchema[key].type || "string",
+          type: PROCESS_SCHEMA_ALLOWED_TYPES.includes(rawSchema[key].type)
+            ? rawSchema[key].type
+            : "string",
           description: rawSchema[key].description || "",
         });
       }

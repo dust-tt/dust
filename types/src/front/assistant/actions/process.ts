@@ -6,10 +6,16 @@ import {
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 
+export const PROCESS_SCHEMA_ALLOWED_TYPES = [
+  "string",
+  "number",
+  "boolean",
+] as const;
+
 // Properties in the process configuration table are stored as an array of objects.
 export type ProcessSchemaPropertyType = {
   name: string;
-  type: "string" | "number" | "boolean";
+  type: (typeof PROCESS_SCHEMA_ALLOWED_TYPES)[number];
   description: string;
 };
 
