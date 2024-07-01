@@ -3,10 +3,16 @@ import { endOfMonth } from "date-fns/endOfMonth";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { unsafeGetUsageData } from "@app/lib/workspace_usage";
+import {
+  getAgentUsageData,
+  getBuildersUsageData,
+  getMessageUsageData,
+  getUserUsageData,
+} from "@app/lib/workspace_usage";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const MonthSchema = t.refinement(
@@ -15,21 +21,41 @@ const MonthSchema = t.refinement(
   "YYYY-MM"
 );
 
+export const usageTables = [
+  "users",
+  "mentions",
+  "builders",
+  "agent_configurations",
+  "all",
+];
+
+export function getSupportedUsageTablesCodec(): t.Mixed {
+  const [first, second, ...rest] = usageTables;
+  return t.union([
+    t.literal(first),
+    t.literal(second),
+    ...rest.map((value) => t.literal(value)),
+  ]);
+}
+
 const GetUsageQueryParamsSchema = t.union([
   t.type({
     start: t.undefined,
     end: t.undefined,
     mode: t.literal("all"),
+    table: getSupportedUsageTablesCodec(),
   }),
   t.type({
     start: MonthSchema,
     end: t.undefined,
     mode: t.literal("month"),
+    table: getSupportedUsageTablesCodec(),
   }),
   t.type({
     start: MonthSchema,
     end: MonthSchema,
     mode: t.literal("range"),
+    table: getSupportedUsageTablesCodec(),
   }),
 ]);
 
@@ -104,10 +130,73 @@ async function handler(
         }
       })();
 
-      const csvData = await unsafeGetUsageData(startDate, endDate, owner.sId);
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="usage.csv"`);
-      res.status(200).send(csvData);
+      let csvData: { [key: string]: string } = {};
+      switch (query.table) {
+        case "users":
+          csvData["users"] = await getUserUsageData(
+            startDate,
+            endDate,
+            owner.sId
+          );
+          break;
+        case "mentions":
+          csvData["mentions"] = await getMessageUsageData(
+            startDate,
+            endDate,
+            owner.sId
+          );
+          break;
+        case "builders":
+          csvData["builders"] = await getBuildersUsageData(
+            startDate,
+            endDate,
+            owner.sId
+          );
+          break;
+        case "agent_configurations":
+          csvData["agent_configurations"] = await getAgentUsageData(
+            startDate,
+            endDate,
+            owner.sId
+          );
+          break;
+        case "all":
+          csvData = await Promise.all([
+            getUserUsageData(startDate, endDate, owner.sId),
+            getMessageUsageData(startDate, endDate, owner.sId),
+            getBuildersUsageData(startDate, endDate, owner.sId),
+            getAgentUsageData(startDate, endDate, owner.sId),
+          ]).then(([users, mentions, builders, agent_configurations]) => ({
+            users,
+            mentions,
+            builders,
+            agent_configurations,
+          }));
+          break;
+      }
+      if (query.table === "all") {
+        const zip = new JSZip();
+
+        for (const [fileName, data] of Object.entries(csvData)) {
+          zip.file(`${fileName}.csv`, data);
+        }
+
+        const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+
+        res.setHeader("Content-Type", "application/zip");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="usage.zip"`
+        );
+        res.status(200).send(zipContent);
+      } else {
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${query.table}.csv"`
+        );
+        res.status(200).send(csvData[query.table]);
+      }
       return;
 
     default:
