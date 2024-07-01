@@ -15,7 +15,9 @@
       "get": {
         "summary": "Retrieve an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -135,7 +137,9 @@
       "post": {
         "summary": "Run an app",
         "description": "Run an app of a workspace.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -191,7 +195,9 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps of a workspace.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -234,11 +240,62 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/agent_configurations": {
+      "get": {
+        "summary": "Get the list of assistants",
+        "description": "Get the agent configurations for the workspace identified by {wId}.",
+        "tags": [
+          "Workspace"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent configurations for the workspace"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/content_fragments": {
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -345,7 +402,9 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -392,7 +451,9 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -439,7 +500,9 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -526,7 +589,9 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -599,7 +664,12 @@
                       "origin": {
                         "type": "string",
                         "description": "The origin of the message",
-                        "enum": ["api", "web", "slack", null],
+                        "enum": [
+                          "api",
+                          "web",
+                          "slack",
+                          null
+                        ],
                         "default": "api",
                         "example": "api"
                       },
@@ -647,7 +717,9 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -676,7 +748,45 @@
                 "type": "object",
                 "properties": {
                   "message": {
-                    "type": "string",
+                    "type": "object",
+                    "properties": {
+                      "content": {
+                        "type": "string",
+                        "description": "The content of the message"
+                      },
+                      "mentions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "configurationId": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "context": {
+                        "type": "object",
+                        "properties": {
+                          "timezone": {
+                            "type": "string"
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "profilePictureUrl": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
                     "description": "The initial message of the conversation"
                   },
                   "contentFragment": {
@@ -697,7 +807,11 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation",
-                    "enum": ["public", "private", "unlisted"],
+                    "enum": [
+                      "public",
+                      "private",
+                      "unlisted"
+                    ],
                     "default": "public",
                     "example": "private"
                   }
@@ -739,7 +853,9 @@
       "get": {
         "summary": "Get the feature flags for the workspace",
         "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
