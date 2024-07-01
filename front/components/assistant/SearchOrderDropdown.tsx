@@ -1,6 +1,6 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
 
-export const SearchOrder = ["name", "usage", "magic"] as const;
+export const SearchOrder = ["name", "usage"] as const;
 export type SearchOrderType = (typeof SearchOrder)[number];
 
 // Headless UI does not inherently handle Portal-based rendering,
