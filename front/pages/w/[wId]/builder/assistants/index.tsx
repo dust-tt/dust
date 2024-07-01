@@ -203,7 +203,7 @@ export default function WorkspaceAssistants({
 
   useEffect(() => {
     if (tabScope === "global") {
-      setOrderBy("usage");
+      setOrderBy("name");
     }
   }, [tabScope]);
 
