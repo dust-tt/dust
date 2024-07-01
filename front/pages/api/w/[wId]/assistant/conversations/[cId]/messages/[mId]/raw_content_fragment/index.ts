@@ -145,7 +145,7 @@ async function handler(
       // Redirect to a signed URL.
       const [url] = await privateUploadGcs.getSignedUrl(filePath, {
         // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: Date.now() + 10 * 1000,
+        expirationDelay: 10 * 1000,
         // Remove special chars.
         promptSaveAs:
           message.title.replace(/[^\w\s.-]/gi, "") +
