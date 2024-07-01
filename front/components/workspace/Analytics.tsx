@@ -105,7 +105,7 @@ export function ActivityReport({
   handleDownload,
 }: ActivityReportProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 4;
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -133,7 +133,6 @@ export function ActivityReport({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentItems = monthOptions.slice(startIndex, endIndex);
-
   return (
     <>
       {!!monthOptions.length && (
@@ -144,27 +143,26 @@ export function ActivityReport({
               Download workspace activity details.
             </Page.P>
           </div>
-          <div className="align-center mt-2 flex flex-row gap-2">
-            <Button
-              label={isLoading ? "Loading..." : "All"}
-              icon={DownloadIcon}
-              variant="tertiary"
-              disabled={isLoading}
-              onClick={() => {
-                void handleDownload("all");
-              }}
-            />
-          </div>
-          <div>
+          <div className="flex h-full flex-col">
             <ContextItem.List>
               {currentItems.map((item, index) => (
                 <ContextItem
                   key={index}
                   title={toPrettyDate(item)}
                   visual={<Icon visual={GoogleSpreadsheetLogo} size="sm" />}
-                  onClick={() => {
-                    handleDownload(item);
-                  }}
+                  action={
+                    <Button
+                      icon={DownloadIcon}
+                      variant="tertiary"
+                      size="xs"
+                      label="Download"
+                      labelVisible={false}
+                      onClick={() => {
+                        handleDownload(item);
+                      }}
+                      disabled={isLoading}
+                    />
+                  }
                 ></ContextItem>
               ))}
             </ContextItem.List>

@@ -265,7 +265,6 @@ const ConversationViewer = React.forwardRef<
   ]);
 
   // Hooks related to message streaming.
-
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;

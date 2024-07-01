@@ -198,13 +198,13 @@ export default function WorkspaceAdmin({
             icon={PlanetIcon}
             description="Manage your workspace"
           />
-          <Page.Vertical align="stretch" gap="md">
+          <Page.Vertical align="stretch" gap="md" sizing="grow">
             <Page.H variant="h4">Analytics</Page.H>
             <Page.Horizontal gap="lg">
               <QuickInsights owner={owner} />
               <ActivityReport
-                monthOptions={monthOptions}
                 isLoading={isLoading}
+                monthOptions={monthOptions}
                 handleDownload={handleDownload}
               />
             </Page.Horizontal>

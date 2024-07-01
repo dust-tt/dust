@@ -28,6 +28,7 @@ export const usageTables = [
   "agent_configurations",
   "all",
 ];
+type usageTableType = (typeof usageTables)[number];
 
 export function getSupportedUsageTablesCodec(): t.Mixed {
   const [first, second, ...rest] = usageTables;
@@ -107,78 +108,20 @@ async function handler(
 
       const query = queryValidation.right;
 
-      const { endDate, startDate } = (() => {
-        switch (query.mode) {
-          case "all":
-            return {
-              startDate: new Date("2020-01-01"),
-              endDate: endOfMonth(new Date()),
-            };
-          case "month":
-            const date = new Date(`${query.start}-01`);
-            return {
-              startDate: date,
-              endDate: endOfMonth(date),
-            };
-          case "range":
-            return {
-              startDate: new Date(`${query.start}-01`),
-              endDate: endOfMonth(new Date(`${query.end}-01`)),
-            };
-          default:
-            assertNever(query);
-        }
-      })();
+      const { endDate, startDate } = resolveDates(query);
 
-      let csvData: { [key: string]: string } = {};
-      switch (query.table) {
-        case "users":
-          csvData["users"] = await getUserUsageData(
-            startDate,
-            endDate,
-            owner.sId
-          );
-          break;
-        case "mentions":
-          csvData["mentions"] = await getMessageUsageData(
-            startDate,
-            endDate,
-            owner.sId
-          );
-          break;
-        case "builders":
-          csvData["builders"] = await getBuildersUsageData(
-            startDate,
-            endDate,
-            owner.sId
-          );
-          break;
-        case "agent_configurations":
-          csvData["agent_configurations"] = await getAgentUsageData(
-            startDate,
-            endDate,
-            owner.sId
-          );
-          break;
-        case "all":
-          csvData = await Promise.all([
-            getUserUsageData(startDate, endDate, owner.sId),
-            getMessageUsageData(startDate, endDate, owner.sId),
-            getBuildersUsageData(startDate, endDate, owner.sId),
-            getAgentUsageData(startDate, endDate, owner.sId),
-          ]).then(([users, mentions, builders, agent_configurations]) => ({
-            users,
-            mentions,
-            builders,
-            agent_configurations,
-          }));
-          break;
-      }
+      const csvData = await fetchUsageData({
+        table: query.table,
+        start: startDate,
+        end: endDate,
+        workspaceId: owner.sId,
+      });
       if (query.table === "all") {
         const zip = new JSZip();
-
         for (const [fileName, data] of Object.entries(csvData)) {
-          zip.file(`${fileName}.csv`, data);
+          if (data) {
+            zip.file(`${fileName}.csv`, data);
+          }
         }
 
         const zipContent = await zip.generateAsync({ type: "nodebuffer" });
@@ -211,3 +154,59 @@ async function handler(
 }
 
 export default withLogging(handler);
+
+function resolveDates(query: t.TypeOf<typeof GetUsageQueryParamsSchema>) {
+  switch (query.mode) {
+    case "all":
+      return {
+        startDate: new Date("2020-01-01"),
+        endDate: endOfMonth(new Date()),
+      };
+    case "month":
+      const date = new Date(`${query.start}-01`);
+      return { startDate: date, endDate: endOfMonth(date) };
+    case "range":
+      return {
+        startDate: new Date(`${query.start}-01`),
+        endDate: endOfMonth(new Date(`${query.end}-01`)),
+      };
+    default:
+      assertNever(query);
+  }
+}
+
+async function fetchUsageData({
+  table,
+  start,
+  end,
+  workspaceId,
+}: {
+  table: usageTableType;
+  start: Date;
+  end: Date;
+  workspaceId: string;
+}): Promise<Partial<Record<usageTableType, string>>> {
+  switch (table) {
+    case "users":
+      return { users: await getUserUsageData(start, end, workspaceId) };
+    case "mentions":
+      return { mentions: await getMessageUsageData(start, end, workspaceId) };
+    case "builders":
+      return { builders: await getBuildersUsageData(start, end, workspaceId) };
+    case "agent_configurations":
+      return {
+        agent_configurations: await getAgentUsageData(start, end, workspaceId),
+      };
+    case "all":
+      const [users, mentions, builders, agent_configurations] =
+        await Promise.all([
+          getUserUsageData(start, end, workspaceId),
+          getMessageUsageData(start, end, workspaceId),
+          getBuildersUsageData(start, end, workspaceId),
+          getAgentUsageData(start, end, workspaceId),
+        ]);
+      return { users, mentions, builders, agent_configurations };
+    default:
+      return {};
+  }
+}
