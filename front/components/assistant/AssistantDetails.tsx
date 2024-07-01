@@ -325,8 +325,8 @@ export function AssistantDetails({
             Consider updating it to benefit from the latest Tools features.
           </ContentMessage>
         )}
-        <InstructionsSection />
         <ActionsSection actions={agentConfiguration?.actions ?? []} />
+        <InstructionsSection />
       </div>
     </ElementModal>
   );
