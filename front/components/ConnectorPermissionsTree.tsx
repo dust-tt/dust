@@ -1,8 +1,10 @@
 import {
   BracesIcon,
+  Button,
   ExternalLinkIcon,
   IconButton,
   Input,
+  ListCheckIcon,
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
@@ -79,6 +81,11 @@ export function PermissionTreeChildren({
   isSearchEnabled: boolean;
 }) {
   const [search, setSearch] = useState("");
+  // This is to control when to dislpay the "Select All" vs "unselect All" button.
+  // If the user pressed "select all", we want to display "unselect all" and vice versa.
+  // But if the user types in the search bar, we want to reset the button to "select all".
+  const [selectAllClicked, setSelectAllClicked] = useState(false);
+
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissionsHook({
       owner,
@@ -115,19 +122,44 @@ export function PermissionTreeChildren({
   return (
     <>
       {isSearchEnabled && (
-        <div className="flex w-full flex-row">
-          <div className="w-5"></div>
+        <>
+          <div className="flex w-full flex-row">
+            <div className="w-5"></div>
 
-          <div className="mr-8 flex-grow p-1">
-            <Input
-              placeholder="Search..."
-              value={search}
-              onChange={setSearch}
-              size="sm"
-              name="search"
-            />
+            <div className="mr-8 flex-grow p-1">
+              <Input
+                placeholder="Search..."
+                value={search}
+                onChange={(v) => {
+                  setSearch(v);
+                  setSelectAllClicked(false);
+                }}
+                size="sm"
+                name="search"
+              />
+            </div>
           </div>
-        </div>
+          <div className="flex w-full flex-row justify-end">
+            <div className="mr-8 p-1">
+              <Button
+                variant="tertiary"
+                size="sm"
+                label={selectAllClicked ? "Unselect All" : "Select All"}
+                icon={ListCheckIcon}
+                onClick={() => {
+                  setSelectAllClicked((prev) => !prev);
+                  setLocalStateByInternalId((prev) => {
+                    const newState = { ...prev };
+                    resourcesFiltered.forEach((r) => {
+                      newState[r.internalId] = !selectAllClicked;
+                    });
+                    return newState;
+                  });
+                }}
+              />
+            </div>
+          </div>
+        </>
       )}
       <Tree isLoading={isResourcesLoading}>
         {resourcesFiltered.map((r, i) => {
