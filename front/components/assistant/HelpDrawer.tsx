@@ -65,6 +65,7 @@ function LinksList({
           href={link.href}
           key={index}
           description={link.description}
+          target="_blank"
         />
       ))}
     </Item.List>
