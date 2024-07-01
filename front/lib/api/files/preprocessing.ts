@@ -1,10 +1,11 @@
 import type { Result, SupportedFileContentType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import sharp from "sharp";
-import { pipeline } from "stream";
+import { pipeline } from "stream/promises";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 
 const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   auth: Authenticator,
@@ -26,6 +27,15 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
     return new Ok(undefined);
   } catch (err) {
     await fileRes.markAsFailed();
+
+    logger.error(
+      {
+        fileId: fileRes.sId,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to resize image."
+    );
 
     return new Err(err as Error);
   }

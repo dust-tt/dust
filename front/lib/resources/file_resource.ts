@@ -170,7 +170,7 @@ export class FileResource extends BaseResource<FileModel> {
     const basePath = `files/w/${owner.sId}/${this.sId}`;
 
     if (version === "processed") {
-      return `${basePath}/processed`;
+      return `${basePath}_processed`;
     }
 
     return basePath;

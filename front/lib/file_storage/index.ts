@@ -2,7 +2,6 @@ import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
-import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
