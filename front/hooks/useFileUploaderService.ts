@@ -49,9 +49,10 @@ export function useFileUploaderService() {
   const sendNotification = useContext(SendNotificationsContext);
 
   const handleFileChange = async (e: React.ChangeEvent) => {
+    const filenames = fileBlobs.map((b) => b.filename);
     const selectedFiles = Array.from(
       (e?.target as HTMLInputElement).files ?? []
-    );
+    ).filter((f) => !filenames.includes(f.name));
 
     setIsProcessingFiles(true);
 
