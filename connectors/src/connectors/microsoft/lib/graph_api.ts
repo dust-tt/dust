@@ -16,7 +16,7 @@ export async function getDrives(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.Drive[]> {
-  const { nodeType, resourcePath: parentResourcePath } =
+  const { nodeType, itemApiPath: parentResourcePath } =
     microsoftNodeDataFromInternalId(parentInternalId);
 
   if (nodeType !== "site") {
@@ -36,7 +36,7 @@ export async function getFilesAndFolders(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.DriveItem[]> {
-  const { nodeType, resourcePath: parentResourcePath } =
+  const { nodeType, itemApiPath: parentResourcePath } =
     microsoftNodeDataFromInternalId(parentInternalId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
@@ -75,7 +75,7 @@ export async function getChannels(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.Channel[]> {
-  const { nodeType, resourcePath: parentResourcePath } =
+  const { nodeType, itemApiPath: parentResourcePath } =
     microsoftNodeDataFromInternalId(parentInternalId);
 
   if (nodeType !== "team") {
@@ -95,7 +95,7 @@ export async function getMessages(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.Message[]> {
-  const { nodeType, resourcePath: parentResourcePath } =
+  const { nodeType, itemApiPath: parentResourcePath } =
     microsoftNodeDataFromInternalId(parentInternalId);
 
   if (nodeType !== "channel") {
@@ -110,8 +110,7 @@ export async function getMessages(
 
 export type MicrosoftNodeData = {
   nodeType: MicrosoftNodeType;
-  nodeId: string;
-  resourcePath: string;
+  itemApiPath: string;
 };
 
 export function microsoftInternalIdFromNodeData(nodeData: MicrosoftNodeData) {
@@ -121,25 +120,25 @@ export function microsoftInternalIdFromNodeData(nodeData: MicrosoftNodeData) {
   if (nodeData.nodeType === "teams-root") {
     return `microsoft/teams-root`;
   }
-  const { nodeType, nodeId, resourcePath } = nodeData;
-  return `microsoft/${nodeType}/${nodeId}/${resourcePath}`;
+  const { nodeType, itemApiPath } = nodeData;
+  return `microsoft/${nodeType}/${itemApiPath}`;
 }
 
 export function microsoftNodeDataFromInternalId(
   internalId: string
 ): MicrosoftNodeData {
   if (internalId === "microsoft/sites-root") {
-    return { nodeType: "sites-root", nodeId: "", resourcePath: "" };
+    return { nodeType: "sites-root", itemApiPath: "" };
   }
 
   if (internalId === "microsoft/teams-root") {
-    return { nodeType: "teams-root", nodeId: "", resourcePath: "" };
+    return { nodeType: "teams-root", itemApiPath: "" };
   }
 
-  const [, nodeType, nodeId, ...resourcePathArr] = internalId.split("/");
-  if (!nodeId || !nodeType || !isValidNodeType(nodeType)) {
+  const [, nodeType, ...resourcePathArr] = internalId.split("/");
+  if (!nodeType || !isValidNodeType(nodeType)) {
     throw new Error(`Invalid internal id: ${internalId}`);
   }
 
-  return { nodeType, nodeId, resourcePath: resourcePathArr.join("/") };
+  return { nodeType, itemApiPath: resourcePathArr.join("/") };
 }

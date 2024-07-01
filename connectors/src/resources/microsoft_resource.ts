@@ -165,7 +165,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }) {
     return MicrosoftRootModel.destroy({
       where: {
-        nodeId: resourceIds,
+        itemApiPath: resourceIds,
         connectorId,
       },
       transaction,
@@ -199,7 +199,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return {
       id: this.id,
       nodeType: this.nodeType,
-      nodeId: this.nodeId,
+      itemApiPath: this.itemApiPath,
       connectorId: this.connectorId,
     };
   }

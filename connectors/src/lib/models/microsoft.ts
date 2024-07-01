@@ -51,10 +51,9 @@ MicrosoftConfigurationModel.init(
 ConnectorModel.hasMany(MicrosoftConfigurationModel);
 
 // MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
-// In order to be able to uniquely identify each node, we store the GET API path
-// to the resource in the resourcePath field (e.g. /drives/{drive-id}), except for the toplevel
+// In order to be able to uniquely identify each node, we store the GET path
+// to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the toplevel
 // sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
-
 export class MicrosoftRootModel extends Model<
   InferAttributes<MicrosoftRootModel>,
   InferCreationAttributes<MicrosoftRootModel>
@@ -63,9 +62,8 @@ export class MicrosoftRootModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare resourcePath: string;
+  declare itemApiPath: string;
   declare nodeType: MicrosoftNodeType;
-  declare nodeId: string;
 }
 MicrosoftRootModel.init(
   {
@@ -88,15 +86,11 @@ MicrosoftRootModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    resourcePath: {
+    itemApiPath: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     nodeType: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    nodeId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -105,7 +99,7 @@ MicrosoftRootModel.init(
     sequelize: sequelizeConnection,
     modelName: "microsoft_roots",
     indexes: [
-      { fields: ["connectorId", "nodeId"], unique: true },
+      { fields: ["connectorId", "itemApiPath"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
     ],
   }
@@ -126,7 +120,6 @@ export class MicrosoftNodeModel extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
-  declare nodeId: string;
   declare name: string;
   declare mimeType: string;
   declare parentInternalId: string | null;
@@ -172,10 +165,6 @@ MicrosoftNodeModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    nodeId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     name: {
       type: DataTypes.TEXT,
       allowNull: false,
@@ -195,7 +184,7 @@ MicrosoftNodeModel.init(
     sequelize: sequelizeConnection,
     modelName: "microsoft_nodes",
     indexes: [
-      { fields: ["connectorId", "nodeId"], unique: true },
+      { fields: ["connectorId", "internalId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
       { fields: ["connectorId", "parentInternalId"], concurrently: true },
     ],
@@ -213,7 +202,7 @@ export class MicrosoftDeltaModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare rootId: ForeignKey<MicrosoftRootModel["nodeId"]>;
+  declare rootId: ForeignKey<MicrosoftRootModel["itemApiPath"]>;
   declare deltaToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }

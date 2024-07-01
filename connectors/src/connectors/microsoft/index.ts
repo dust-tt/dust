@@ -197,8 +197,7 @@ export async function retrieveMicrosoftConnectorPermissions({
   ).map((r) =>
     microsoftInternalIdFromNodeData({
       nodeType: r.nodeType,
-      nodeId: r.nodeId,
-      resourcePath: r.resourcePath,
+      itemApiPath: r.itemApiPath,
     })
   );
 
@@ -272,8 +271,8 @@ export async function setMicrosoftConnectorPermissions(
 
   await MicrosoftRootResource.batchDelete({
     resourceIds: Object.entries(permissions).map((internalId) => {
-      const { nodeId } = microsoftNodeDataFromInternalId(internalId[0]);
-      return nodeId;
+      const { itemApiPath } = microsoftNodeDataFromInternalId(internalId[0]);
+      return itemApiPath;
     }),
     connectorId: connector.id,
   });

@@ -36,7 +36,7 @@ export async function fullSyncActivity({
   }
 
   // get a message
-  const message = getMessages(client, channel.resourcePath);
+  const message = getMessages(client, channel.itemApiPath);
 
   logger.info(
     `To implement: full sync for connector ${connectorId} with config ${JSON.stringify(
