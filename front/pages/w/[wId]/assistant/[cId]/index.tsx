@@ -65,6 +65,7 @@ export default function AssistantConversation({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
+  const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
   const router = useRouter();
 
   // This useEffect handles whether to change the key of the ConversationContainer
@@ -91,6 +92,13 @@ export default function AssistantConversation({
         mainTag.scrollTo(0, 0);
       }
     }
+
+    const agentId = router.query.assistant ?? null;
+    if (agentId && typeof agentId === "string") {
+      setAgentIdToMention(agentId);
+    } else {
+      setAgentIdToMention(null);
+    }
   }, [router.query, setConversationKey, initialConversationId]);
 
   useEffect(() => {
@@ -116,6 +124,7 @@ export default function AssistantConversation({
       owner={owner}
       subscription={subscription}
       user={user}
+      agentIdToMention={agentIdToMention}
     />
   );
 }

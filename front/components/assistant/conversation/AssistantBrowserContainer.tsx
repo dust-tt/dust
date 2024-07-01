@@ -10,7 +10,7 @@ import { useProgressiveAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 interface AssistantBrowserContainerProps {
-  onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
+  onAgentConfigurationClick: (agentId: string) => void;
   owner: WorkspaceType;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }
@@ -44,7 +44,7 @@ export function AssistantBrowserContainer({
       // is a clic on a visible assistant we still want this condition to
       // trigger.
       if (scrollDistance > -2) {
-        return onAgentConfigurationClick(agent);
+        return onAgentConfigurationClick(agent.sId);
       }
 
       // Otherwise, scroll to the input bar and set the ref (mention will be set via intersection observer).

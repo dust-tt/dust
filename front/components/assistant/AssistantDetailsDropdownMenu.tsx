@@ -1,5 +1,6 @@
 import {
   Button,
+  ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
   DropdownMenu,
   Icon,
@@ -22,7 +23,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration, useUser } from "@app/lib/swr";
 
-interface AssistantEditionMenuProps {
+interface AssistantDetailsDropdownMenuProps {
   agentConfigurationId: string;
   owner: WorkspaceType;
   variant?: "button" | "plain";
@@ -30,7 +31,7 @@ interface AssistantEditionMenuProps {
   showAddRemoveToList?: boolean;
 }
 
-export function AssistantEditionMenu({
+export function AssistantDetailsDropdownMenu({
   // The `agentConfiguration` cannot be used directly as it isn't dynamically
   // updated upon user list mutations. This limitation stems from its
   // propagation method from <ConversationMessage>.
@@ -39,7 +40,7 @@ export function AssistantEditionMenu({
   variant = "plain",
   onAgentDeletion,
   showAddRemoveToList = false,
-}: AssistantEditionMenuProps) {
+}: AssistantDetailsDropdownMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
   const { user } = useUser();
@@ -56,15 +57,13 @@ export function AssistantEditionMenu({
     return <></>;
   }
 
-  if (
-    agentConfiguration.scope === "global" ||
-    agentConfiguration.status === "archived"
-  ) {
+  if (agentConfiguration.status === "archived") {
     return <></>;
   }
 
   const isAgentWorkspace = agentConfiguration.scope === "workspace";
   const isAgentPublished = agentConfiguration.scope === "published";
+  const isGlobalAgent = agentConfiguration.scope === "global";
 
   const isInList = agentConfiguration.userListStatus === "in-list";
   const canDelete = onAgentDeletion && (isBuilder(owner) || !isAgentWorkspace);
@@ -140,50 +139,58 @@ export function AssistantEditionMenu({
       <DropdownMenu className="text-element-700">
         <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
         <DropdownMenu.Items width={220}>
-          {showAddRemoveToList && (
-            <DropdownMenu.SectionHeader label="Edition" />
-          )}
-          {/* Should use the router to have a better navigation experience */}
-          {(isBuilder(owner) || !isAgentWorkspace) && (
-            <DropdownMenu.Item
-              label="Edit"
-              href={`/w/${owner.sId}/builder/assistants/${
-                agentConfiguration.sId
-              }?flow=${
-                isAgentWorkspace
-                  ? "workspace_assistants"
-                  : "personal_assistants"
-              }`}
-              icon={PencilSquareIcon}
-            />
-          )}
           <DropdownMenu.Item
-            label="Duplicate (New)"
-            href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
-            icon={ClipboardIcon}
+            label="Start conversation"
+            href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
+            icon={ChatBubbleBottomCenterTextIcon}
           />
-          {canDelete && (
-            <DropdownMenu.Item
-              label="Delete"
-              icon={TrashIcon}
-              variant="warning"
-              onClick={() => setShowDeletionModal(agentConfiguration)}
-            />
-          )}
-
-          {isAgentPublished && showAddRemoveToList && (
+          {!isGlobalAgent && (
             <>
-              <DropdownMenu.SectionHeader label="MY ASSISTANTS" />
+              <DropdownMenu.SectionHeader label="Edition" />
+
+              {/* Should use the router to have a better navigation experience */}
+              {(isBuilder(owner) || !isAgentWorkspace) && (
+                <DropdownMenu.Item
+                  label="Edit"
+                  href={`/w/${owner.sId}/builder/assistants/${
+                    agentConfiguration.sId
+                  }?flow=${
+                    isAgentWorkspace
+                      ? "workspace_assistants"
+                      : "personal_assistants"
+                  }`}
+                  icon={PencilSquareIcon}
+                />
+              )}
               <DropdownMenu.Item
-                label={isInList ? "Remove from my list" : "Add to my list"}
-                disabled={isUpdatingList}
-                onClick={() => {
-                  void updateAgentUserList(
-                    isInList ? "not-in-list" : "in-list"
-                  );
-                }}
-                icon={isInList ? ListRemoveIcon : ListAddIcon}
+                label="Duplicate (New)"
+                href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
+                icon={ClipboardIcon}
               />
+              {canDelete && (
+                <DropdownMenu.Item
+                  label="Delete"
+                  icon={TrashIcon}
+                  variant="warning"
+                  onClick={() => setShowDeletionModal(agentConfiguration)}
+                />
+              )}
+
+              {isAgentPublished && showAddRemoveToList && (
+                <>
+                  <DropdownMenu.SectionHeader label="MY ASSISTANTS" />
+                  <DropdownMenu.Item
+                    label={isInList ? "Remove from my list" : "Add to my list"}
+                    disabled={isUpdatingList}
+                    onClick={() => {
+                      void updateAgentUserList(
+                        isInList ? "not-in-list" : "in-list"
+                      );
+                    }}
+                    icon={isInList ? ListRemoveIcon : ListAddIcon}
+                  />
+                </>
+              )}
             </>
           )}
         </DropdownMenu.Items>

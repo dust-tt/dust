@@ -45,6 +45,7 @@ interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
+  agentIdToMention: string | null;
 }
 
 export function ConversationContainer({
@@ -52,13 +53,15 @@ export function ConversationContainer({
   owner,
   subscription,
   user,
+  agentIdToMention,
 }: ConversationContainerProps) {
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
-  const { animate, setAnimate } = useContext(InputBarContext);
+  const { animate, setAnimate, setSelectedAssistant } =
+    useContext(InputBarContext);
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
@@ -71,6 +74,20 @@ export function ConversationContainer({
     workspaceId: owner.sId,
     limit: 50,
   });
+
+  const setInputbarMention = useCallback(
+    (agentId: string) => {
+      setSelectedAssistant({ configurationId: agentId });
+      setAnimate(true);
+    },
+    [setAnimate, setSelectedAssistant]
+  );
+
+  useEffect(() => {
+    if (agentIdToMention) {
+      setInputbarMention(agentIdToMention);
+    }
+  }, [agentIdToMention, setInputbarMention]);
 
   useEffect(() => {
     if (animate) {
@@ -195,16 +212,6 @@ export function ConversationContainer({
     )
   );
 
-  const { setSelectedAssistant } = useContext(InputBarContext);
-
-  const setInputbarMention = useCallback(
-    (agent: LightAgentConfigurationType) => {
-      setSelectedAssistant({ configurationId: agent.sId });
-      setAnimate(true);
-    },
-    [setAnimate, setSelectedAssistant]
-  );
-
   useEffect(() => {
     const scrollContainerElement = document.getElementById(
       "assistant-input-header"
@@ -214,7 +221,7 @@ export function ConversationContainer({
       const observer = new IntersectionObserver(
         () => {
           if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current);
+            setInputbarMention(assistantToMention.current.sId);
             assistantToMention.current = null;
           }
         },
