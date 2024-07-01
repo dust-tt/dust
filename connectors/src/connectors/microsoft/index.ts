@@ -18,7 +18,6 @@ import {
   getRootNodes,
   getSiteAsContentNode,
   getTeamAsContentNode,
-  splitId,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
   getChannels,
@@ -26,6 +25,8 @@ import {
   getFolders,
   getSites,
   getTeams,
+  microsoftInternalIdFromNodeData,
+  microsoftNodeDataFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
@@ -36,7 +37,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-async function getClient(connectionId: NangoConnectionId) {
+export async function getClient(connectionId: NangoConnectionId) {
   const nangoConnectionId = connectionId;
 
   const msAccessToken = await getAccessTokenFromNango({
@@ -174,14 +175,6 @@ export async function fullResyncMicrosoftConnector(
   return launchMicrosoftFullSyncWorkflow(connectorId, null);
 }
 
-function getIdFromResource(r: MicrosoftRootResource) {
-  if (!r.nodeId) {
-    return r.nodeType;
-  }
-
-  return `${r.nodeType}/${r.nodeId}`;
-}
-
 export async function retrieveMicrosoftConnectorPermissions({
   connectorId,
   parentInternalId,
@@ -201,12 +194,17 @@ export async function retrieveMicrosoftConnectorPermissions({
 
   const selectedResources = (
     await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-  ).map((r) => getIdFromResource(r));
+  ).map((r) =>
+    microsoftInternalIdFromNodeData({
+      nodeType: r.nodeType,
+      itemApiPath: r.itemApiPath,
+    })
+  );
 
   if (!parentInternalId) {
     nodes.push(...getRootNodes());
   } else {
-    const [nodeType, nodeId] = splitId(parentInternalId);
+    const { nodeType } = microsoftNodeDataFromInternalId(parentInternalId);
 
     switch (nodeType) {
       case "sites-root":
@@ -221,14 +219,14 @@ export async function retrieveMicrosoftConnectorPermissions({
         break;
       case "team":
         nodes.push(
-          ...(await getChannels(client, nodeId)).map((n) =>
+          ...(await getChannels(client, parentInternalId)).map((n) =>
             getChannelAsContentNode(n, parentInternalId)
           )
         );
         break;
       case "site":
         nodes.push(
-          ...(await getDrives(client, nodeId)).map((n) =>
+          ...(await getDrives(client, parentInternalId)).map((n) =>
             getDriveAsContentNode(n, parentInternalId)
           )
         );
@@ -236,7 +234,7 @@ export async function retrieveMicrosoftConnectorPermissions({
       case "drive":
       case "folder":
         nodes.push(
-          ...(await getFolders(client, nodeId)).map((n) =>
+          ...(await getFolders(client, parentInternalId)).map((n) =>
             getFolderAsContentNode(n, parentInternalId)
           )
         );
@@ -272,9 +270,9 @@ export async function setMicrosoftConnectorPermissions(
   }
 
   await MicrosoftRootResource.batchDelete({
-    resourceIds: Object.entries(permissions).map(([nodeId]) => {
-      const [, ...rest] = nodeId.split("/");
-      return rest.join("/");
+    resourceIds: Object.entries(permissions).map((internalId) => {
+      const { itemApiPath } = microsoftNodeDataFromInternalId(internalId[0]);
+      return itemApiPath;
     }),
     connectorId: connector.id,
   });
@@ -283,11 +281,9 @@ export async function setMicrosoftConnectorPermissions(
     Object.entries(permissions)
       .filter(([, permission]) => permission === "read")
       .map(([id]) => {
-        const [nodeType, nodeId] = splitId(id);
         return {
           connectorId: connector.id,
-          nodeId,
-          nodeType,
+          ...microsoftNodeDataFromInternalId(id),
         };
       })
   );
