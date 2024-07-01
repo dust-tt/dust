@@ -453,6 +453,23 @@ export async function createOrUpgradeAgentConfiguration({
         return res;
       }
       actionConfigs.push(res.value);
+    } else if (action.type === "visualization_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "visualization_configuration",
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
+      actionConfigs.push(res.value);
     } else {
       assertNever(action);
     }

@@ -5,6 +5,7 @@ import { TablesQueryConfigurationType } from "../../front/assistant/actions/tabl
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
 import { BrowseConfigurationType } from "./actions/browse";
+import { VisualizationConfigurationType } from "./actions/visualization";
 import { WebsearchConfigurationType } from "./actions/websearch";
 
 /**
@@ -20,7 +21,8 @@ export type AgentActionConfigurationType =
   | DustAppRunConfigurationType
   | ProcessConfigurationType
   | WebsearchConfigurationType
-  | BrowseConfigurationType;
+  | BrowseConfigurationType
+  | VisualizationConfigurationType;
 
 export type AgentAction = AgentActionConfigurationType["type"];
 

@@ -5,6 +5,7 @@ import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/Du
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
+import { VisualizationActionDetails } from "@app/components/actions/visualization/VisualizationActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
@@ -49,6 +50,10 @@ const actionsSpecification: ActionSpecifications = {
   browse_action: {
     detailsComponent: BrowseActionDetails,
     runningLabel: "Browsing page",
+  },
+  visualization_action: {
+    detailsComponent: VisualizationActionDetails,
+    runningLabel: "Analyzing request",
   },
 };
 

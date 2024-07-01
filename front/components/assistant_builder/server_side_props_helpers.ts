@@ -16,6 +16,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
   slugify,
 } from "@dust-tt/types";
@@ -210,6 +211,9 @@ export async function buildInitialActions({
       continue;
     } else if (isBrowseConfiguration(action)) {
       // Ignore browse actions
+      continue;
+    } else if (isVisualizationConfiguration(action)) {
+      // @todo[daph] this is the builder work, in the next PR.
       continue;
     } else {
       assertNever(action);

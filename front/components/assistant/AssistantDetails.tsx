@@ -10,6 +10,7 @@ import {
   Page,
   PlanetIcon,
   ServerIcon,
+  ShapesIcon,
   Spinner,
   Tree,
 } from "@dust-tt/sparkle";
@@ -31,6 +32,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -286,6 +288,18 @@ export function AssistantDetails({
             </div>
           ) : isBrowseConfiguration(action) ? (
             false
+          ) : isVisualizationConfiguration(action) ? (
+            <div className="flex flex-col gap-2" key={`action-${index}`}>
+              <div className="text-lg font-bold text-element-800">
+                Visualization
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon visual={ShapesIcon} size="xs" />
+                <div>
+                  Assistant can generate graphs to visually represent your data.
+                </div>
+              </div>
+            </div>
           ) : (
             assertNever(action)
           )

@@ -29,6 +29,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
@@ -1092,6 +1093,53 @@ async function* runAction(
           };
           return;
         case "browse_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isVisualizationConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "visualization_params":
+          yield event;
+          break;
+        case "visualization_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "visualization_success":
           yield {
             type: "agent_action_success",
             created: event.created,

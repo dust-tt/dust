@@ -34,6 +34,7 @@ import {
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
+  DEFAULT_VISUALIZATION_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
 import {
@@ -55,6 +56,7 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentVisualizationConfiguration } from "@app/lib/models/assistant/actions/visualization";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
@@ -382,6 +384,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     processConfigs,
     websearchConfigs,
     browseConfigs,
+    visualizationConfigs,
     agentUserRelations,
   ] = await Promise.all([
     variant === "full"
@@ -422,6 +425,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentBrowseConfiguration[]>),
+    variant === "full"
+      ? AgentVisualizationConfiguration.findAll({
+          where: {
+            agentConfigurationId: { [Op.in]: configurationIds },
+          },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve(
+          {} as Record<number, AgentVisualizationConfiguration[]>
+        ),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -617,6 +629,17 @@ async function fetchWorkspaceAgentConfigurationsForView(
           type: "browse_configuration",
           name: browseConfig.name || DEFAULT_BROWSE_ACTION_NAME,
           description: browseConfig.description,
+        });
+      }
+
+      const visualizationConfigurations = visualizationConfigs[agent.id] ?? [];
+      for (const visualizationConfig of visualizationConfigurations) {
+        actions.push({
+          id: visualizationConfig.id,
+          sId: visualizationConfig.sId,
+          type: "visualization_configuration",
+          name: visualizationConfig.name || DEFAULT_VISUALIZATION_ACTION_NAME,
+          description: visualizationConfig.description,
         });
       }
 
@@ -1167,6 +1190,9 @@ export async function createAgentActionConfiguration(
     | {
         type: "browse_configuration";
       }
+    | {
+        type: "visualization_configuration";
+      }
   ) & {
     name: string | null;
     description: string | null;
@@ -1344,6 +1370,22 @@ export async function createAgentActionConfiguration(
         sId: browseConfig.sId,
         type: "browse_configuration",
         name: action.name || DEFAULT_BROWSE_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "visualization_configuration": {
+      const visualizationConfig = await AgentVisualizationConfiguration.create({
+        sId: generateModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
+      });
+
+      return new Ok({
+        id: visualizationConfig.id,
+        sId: visualizationConfig.sId,
+        type: "visualization_configuration",
+        name: action.name || DEFAULT_VISUALIZATION_ACTION_NAME,
         description: action.description,
       });
     }

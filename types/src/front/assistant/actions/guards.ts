@@ -14,9 +14,12 @@ import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
+import {
+  VisualizationActionType,
+  VisualizationConfigurationType,
+} from "../../../front/assistant/actions/visualization";
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
-import { AgentActionConfigurationType } from "../agent";
 import { BrowseActionType, BrowseConfigurationType } from "./browse";
 import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
 
@@ -128,13 +131,19 @@ export function isBrowseActionType(
   return arg.type === "browse_action";
 }
 
-export function isAgentActionConfigurationType(
+export function isVisualizationConfiguration(
   arg: unknown
-): arg is AgentActionConfigurationType {
+): arg is VisualizationConfigurationType {
   return (
-    isTablesQueryConfiguration(arg) ||
-    isDustAppRunConfiguration(arg) ||
-    isRetrievalConfiguration(arg) ||
-    isProcessConfiguration(arg)
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "visualization_configuration"
   );
+}
+
+export function isVisualizationActionType(
+  arg: AgentActionType
+): arg is VisualizationActionType {
+  return arg.type === "visualization_action";
 }
