@@ -2,22 +2,12 @@ import type {
   FileRequestResponseBody,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import {
-  isDustFileId,
-  isSupportedImageContenType,
-  isSupportedPlainTextContentType,
-} from "@dust-tt/types";
+import { isDustFileId } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getFileNameFromFileMetadata,
-  makeStorageFilePathForWorkspaceId,
-  resizeAndUploadToFileStorage,
-  uploadToFileStorage,
-} from "@app/lib/api/files";
+import { maybeApplyPreProcessing } from "@app/lib/api/files/preprocessing";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -97,16 +87,14 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      // TODO:
       const action: Action = validActions.includes(req.query.action as Action)
         ? (req.query.action as Action)
         : "download";
 
-      const filePath = makeStorageFilePathForWorkspaceId(owner, fileId);
-
+      // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
-        const stream = await getPrivateUploadBucket().fetchWithStream(filePath);
-        stream.on("error", () => {
+        const readStream = await fileRes.getReadStream(auth, "original");
+        readStream.on("error", () => {
           return apiError(req, res, {
             status_code: 404,
             api_error: {
@@ -116,27 +104,28 @@ async function handler(
           });
         });
 
-        stream.pipe(res);
+        readStream.pipe(res);
         return;
       }
 
-      const fileName = await getFileNameFromFileMetadata(filePath);
-
       // Redirect to a signed URL.
-      const url = await getPrivateUploadBucket().getSignedUrl(filePath, {
-        // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 10 * 1000,
-        promptSaveAs: fileName ?? `dust_${fileId}`,
-      });
+      const url = await fileRes.getSignedUrlForDownload(auth, "original");
 
       res.redirect(url);
       return;
     }
 
     case "DELETE": {
-      const filePath = makeStorageFilePathForWorkspaceId(owner, fileId);
-
-      await getPrivateUploadBucket().delete(filePath);
+      const deleteRes = await fileRes.delete(auth);
+      if (deleteRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to delete the file.",
+          },
+        });
+      }
 
       res.status(204).end();
       return;
@@ -155,11 +144,12 @@ async function handler(
       }
 
       try {
-        // Support only one file upload.
         const form = new IncomingForm({
+          // Stream the uploaded document to the cloud storage.
           fileWriteStreamHandler: () => {
-            return fileRes.getStream(auth);
+            return fileRes.getWriteStream(auth, "original");
           },
+          // Support only one file upload.
           maxFiles: 1,
         });
         const [, files] = await form.parse(req);
@@ -189,20 +179,13 @@ async function handler(
           });
         }
 
-        // First, save the uploaded document to the cloud storage.
-        // TODO:
-
-        if (isSupportedImageContenType(mimetype)) {
-          await resizeAndUploadToFileStorage(auth, fileRes, fileData);
-        } else if (isSupportedPlainTextContentType(mimetype)) {
-          // TODO:(2026-06-28 flav) Move logic to extract text from PDF here.
-          await uploadToFileStorage(auth, fileRes, fileData);
-        } else {
+        const preProcessingRes = await maybeApplyPreProcessing(auth, fileRes);
+        if (preProcessingRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "File type not supported.",
+              message: "Failed to process the file.",
             },
           });
         }

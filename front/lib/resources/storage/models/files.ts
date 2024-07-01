@@ -1,4 +1,10 @@
 import type {
+  FileId,
+  FileStatus,
+  FileUseCase,
+  SupportedFileContentType,
+} from "@dust-tt/types";
+import type {
   CreationOptional,
   ForeignKey,
   InferAttributes,
@@ -7,14 +13,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import type { SupportedFileContentType } from "@app/lib/api/files/types";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-import type {
-  FileId,
-  FileStatus,
-  FileUseCase,
-} from "@app/lib/resources/files/types";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class FileModel extends Model<

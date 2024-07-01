@@ -142,7 +142,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+  async delete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
     try {
       await this.deleteHistory(transaction);
       await this.model.destroy({

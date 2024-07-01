@@ -137,7 +137,7 @@ async function handler(
       if (transcriptsConfiguration.isActive) {
         await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       }
-      await transcriptsConfiguration.delete();
+      await transcriptsConfiguration.delete(auth);
       return res.status(200).json({ configuration: null });
 
     default:

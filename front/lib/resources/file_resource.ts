@@ -7,7 +7,7 @@ import type {
   LightWorkspaceType,
   Result,
 } from "@dust-tt/types";
-import { FILE_ID_PREFIX } from "@dust-tt/types";
+import { Err, FILE_ID_PREFIX, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -23,6 +23,8 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateModelSId } from "@app/lib/utils";
+
+type FileVersion = "processed" | "original";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -84,6 +86,31 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
+  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    try {
+      if (this.isReady) {
+        await getPrivateUploadBucket()
+          .file(this.getCloudStoragePath(auth, "original"))
+          .delete();
+
+        // Delete the processed file if it exists.
+        await getPrivateUploadBucket()
+          .file(this.getCloudStoragePath(auth, "processed"))
+          .delete({ ignoreNotFound: true });
+      }
+
+      await this.model.destroy({
+        where: {
+          id: this.id,
+        },
+      });
+
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(error as Error);
+    }
+  }
+
   get isReady(): boolean {
     return this.status === "ready";
   }
@@ -96,71 +123,91 @@ export class FileResource extends BaseResource<FileModel> {
     return this.status === "failed";
   }
 
-  getDownloadUrl(auth: Authenticator): string {
+  // Status logic.
+
+  private async update(
+    blob: Partial<CreationAttributes<FileModel>>
+  ): Promise<void> {
+    const [, affectedRows] = await this.model.update(blob, {
+      where: {
+        id: this.id,
+      },
+      returning: true,
+    });
+
+    // Update the resource to reflect the new status.
+    Object.assign(this, affectedRows[0].get());
+  }
+
+  async markAsFailed(): Promise<void> {
+    return this.update({ status: "failed" });
+  }
+
+  async markAsReady(): Promise<void> {
+    return this.update({ status: "ready" });
+  }
+
+  // Cloud storage logic.
+
+  getPublicUrl(auth: Authenticator): string {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const owner = auth.workspace();
     if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getDownloadUrl`");
+      throw new Error("Unexpected unauthenticated call to `getPublicUrl`");
     }
 
     // TODO:
     return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
-  getUploadUrl(auth: Authenticator): string {
+  getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
-    return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.sId}`;
-  }
+    const basePath = `files/w/${owner.sId}/${this.sId}`;
 
-  getCloudStoragePath(auth: Authenticator): string {
-    // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
+    if (version === "processed") {
+      return `${basePath}/processed`;
     }
 
-    return `files/w/${owner.sId}/${this.sId}`;
+    return basePath;
   }
 
-  async uploadStream(auth: Authenticator, stream: Readable): Promise<void> {
-    const filePath = this.getCloudStoragePath(auth);
-
-    await getPrivateUploadBucket().uploadStream(filePath, stream, {
-      contentType: this.contentType,
-    });
-
-    await this.model.update(
+  async getSignedUrlForDownload(
+    auth: Authenticator,
+    version: FileVersion
+  ): Promise<string> {
+    return getPrivateUploadBucket().getSignedUrl(
+      this.getCloudStoragePath(auth, version),
       {
-        status: "ready",
-      },
-      {
-        where: {
-          id: this.id,
-        },
+        // Since we redirect, the use is immediate so expiry can be short.
+        expirationDelay: 10 * 1000,
+        promptSaveAs: this.fileName ?? `dust_${this.sId}`,
       }
     );
-
-    // Update the resource to reflect the new status.
-    this.status = "ready";
   }
 
-  getStream(auth: Authenticator): Writable {
+  // Stream logic.
+
+  getWriteStream(auth: Authenticator, version: FileVersion): Writable {
     return getPrivateUploadBucket()
-      .file(this.getCloudStoragePath(auth))
+      .file(this.getCloudStoragePath(auth, version))
       .createWriteStream({
         resumable: false,
         gzip: true,
       });
   }
 
-  delete(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+  getReadStream(auth: Authenticator, version: FileVersion): Readable {
+    return getPrivateUploadBucket()
+      .file(this.getCloudStoragePath(auth, version))
+      .createReadStream();
   }
+
+  // Serialization logic.
 
   toJSON(auth: Authenticator): FileType {
     const blob: FileType = {
@@ -173,9 +220,9 @@ export class FileResource extends BaseResource<FileModel> {
     };
 
     if (this.isCreated) {
-      blob.uploadUrl = this.getUploadUrl(auth);
+      blob.uploadUrl = this.getPublicUrl(auth);
     } else if (this.isReady) {
-      blob.downloadUrl = this.getDownloadUrl(auth);
+      blob.downloadUrl = this.getPublicUrl(auth);
     }
 
     return blob;

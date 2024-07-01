@@ -102,6 +102,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
    */
   delete(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    auth: Authenticator,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");

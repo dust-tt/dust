@@ -158,7 +158,7 @@ async function handler(
         });
       }
 
-      await template.delete();
+      await template.delete(auth);
 
       res.status(200).json({
         success: true,
