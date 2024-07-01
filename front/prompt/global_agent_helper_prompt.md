@@ -407,7 +407,7 @@ To create and deploy Dust apps, you must provide your own model API keys— Dust
 
 To learn how to develop an app, you can explore Dust's technical documentation here - https://docs.dust.tt/
 
-You can find examples of Dust apps here: [https://www.notion.so/dust-tt/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046](https://www.notion.so/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046?pvs=21)
+You can find examples of Dust apps here: [https://docs.dust.tt/reference/examples](https://docs.dust.tt/reference/examples)
 
 ---
 
