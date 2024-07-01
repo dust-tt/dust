@@ -223,7 +223,8 @@ export function PermissionTreeChildren({
                   }
                   displayDocumentSource={displayDocumentSource}
                   useConnectorPermissionsHook={useConnectorPermissionsHook}
-                  isSearchEnabled={isSearchEnabled}
+                  // Disable search for children
+                  isSearchEnabled={false}
                 />
               )}
             />
