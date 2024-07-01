@@ -246,6 +246,7 @@ interface LinkItemProps {
   icon?: ComponentType;
   className?: string;
   href?: string;
+  target?: string;
 }
 
 Item.Link = function ({ ...props }: LinkItemProps) {
