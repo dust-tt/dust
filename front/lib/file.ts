@@ -1,3 +1,5 @@
+// These are the front-end helpers.
+
 function isMarkdownFile(file: File): boolean {
   if (file.type === "") {
     const fileExtension = file.name.split(".").at(-1)?.toLowerCase();

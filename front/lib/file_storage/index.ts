@@ -2,6 +2,7 @@ import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
+import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
@@ -34,6 +35,9 @@ class FileStorage {
       gcsFile.createWriteStream({
         metadata: {
           contentType: file.mimetype,
+          metadata: {
+            fileName: file.originalFilename,
+          },
         },
       })
     );
@@ -44,7 +48,7 @@ class FileStorage {
     contentType,
     filePath,
   }: {
-    content: string;
+    content: string | Buffer;
     contentType: string;
     filePath: string;
   }) {
@@ -55,9 +59,34 @@ class FileStorage {
     });
   }
 
+  async uploadStream(
+    filePath: string,
+    fileStream: Readable,
+    metadata: {
+      contentType: string | null;
+      fileName?: string;
+    }
+  ) {
+    const gcsFile = this.file(filePath);
+    const writeStream = gcsFile.createWriteStream({
+      metadata: {
+        contentType: metadata.contentType,
+        metadata: {
+          fileName: metadata.fileName,
+        },
+      },
+    });
+
+    await pipeline(fileStream, writeStream);
+  }
+
   /**
    * Download functions.
    */
+
+  async fetchWithStream(filePath: string): Promise<Readable> {
+    return this.file(filePath).createReadStream();
+  }
 
   async fetchFileContent(filePath: string) {
     const gcsFile = this.file(filePath);
