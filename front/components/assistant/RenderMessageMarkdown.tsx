@@ -14,8 +14,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import {
   amber,
   blue,
@@ -238,7 +241,13 @@ export function RenderMessageMarkdown({
   );
 
   const markdownPlugins = useMemo(
-    () => [remarkDirective, mentionDirective, citeDirective(), remarkGfm],
+    () => [
+      remarkDirective,
+      mentionDirective,
+      citeDirective(),
+      remarkGfm,
+      remarkMath,
+    ],
     []
   );
 
@@ -258,6 +267,7 @@ export function RenderMessageMarkdown({
             linkTarget="_blank"
             components={markdownComponents}
             remarkPlugins={markdownPlugins}
+            rehypePlugins={[rehypeKatex] as PluggableList}
           >
             {addClosingBackticks(content)}
           </ReactMarkdown>
