@@ -8,7 +8,7 @@ type BaseActionType =
   | "process_action"
   | "websearch_action"
   | "browse_action"
-  | "code_interpreter_action";
+  | "visualization_action";
 
 export abstract class BaseAction {
   readonly id: ModelId;

@@ -1,7 +1,4 @@
-import type {
-  CodeInterpreterActionOutputType,
-  CodeInterpreterRuntypeEnvironmentType,
-} from "@dust-tt/types";
+import type { VisualizationActionOutputType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -14,9 +11,9 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-export class AgentCodeInterpreterConfiguration extends Model<
-  InferAttributes<AgentCodeInterpreterConfiguration>,
-  InferCreationAttributes<AgentCodeInterpreterConfiguration>
+export class AgentVisualizationConfiguration extends Model<
+  InferAttributes<AgentVisualizationConfiguration>,
+  InferCreationAttributes<AgentVisualizationConfiguration>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -28,11 +25,9 @@ export class AgentCodeInterpreterConfiguration extends Model<
 
   declare name: string | null;
   declare description: string | null;
-
-  declare runtypeEnvironment: CodeInterpreterRuntypeEnvironmentType;
 }
 
-AgentCodeInterpreterConfiguration.init(
+AgentVisualizationConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -61,13 +56,9 @@ AgentCodeInterpreterConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    runtypeEnvironment: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
   },
   {
-    modelName: "agent_code_interpreter_configuration",
+    modelName: "agent_visualization_configuration",
     indexes: [
       {
         unique: true,
@@ -82,34 +73,34 @@ AgentCodeInterpreterConfiguration.init(
   }
 );
 
-AgentConfiguration.hasMany(AgentCodeInterpreterConfiguration, {
+AgentConfiguration.hasMany(AgentVisualizationConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
-AgentCodeInterpreterConfiguration.belongsTo(AgentConfiguration, {
+AgentVisualizationConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-export class AgentCodeInterpreterAction extends Model<
-  InferAttributes<AgentCodeInterpreterAction>,
-  InferCreationAttributes<AgentCodeInterpreterAction>
+export class AgentVisualizationAction extends Model<
+  InferAttributes<AgentVisualizationAction>,
+  InferCreationAttributes<AgentVisualizationAction>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
 
-  declare codeInterpreterConfigurationId: string;
+  declare visualizationConfigurationId: string;
 
   declare query: string;
 
-  declare output: CodeInterpreterActionOutputType | null;
+  declare output: VisualizationActionOutputType | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
   declare step: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
-AgentCodeInterpreterAction.init(
+AgentVisualizationAction.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -131,7 +122,7 @@ AgentCodeInterpreterAction.init(
       allowNull: true,
     },
 
-    codeInterpreterConfigurationId: {
+    visualizationConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -161,7 +152,7 @@ AgentCodeInterpreterAction.init(
     },
   },
   {
-    modelName: "agent_code_interpreter_action",
+    modelName: "agent_visualization_action",
     sequelize: frontSequelize,
     indexes: [
       {
@@ -172,10 +163,10 @@ AgentCodeInterpreterAction.init(
   }
 );
 
-AgentCodeInterpreterAction.belongsTo(AgentMessage, {
+AgentVisualizationAction.belongsTo(AgentMessage, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
-AgentMessage.hasMany(AgentCodeInterpreterAction, {
+AgentMessage.hasMany(AgentVisualizationAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });
