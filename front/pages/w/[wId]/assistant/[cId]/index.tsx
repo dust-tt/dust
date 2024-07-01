@@ -2,13 +2,12 @@ import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
 
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
