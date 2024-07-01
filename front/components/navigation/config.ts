@@ -9,7 +9,8 @@ import {
   PuzzleIcon,
   QuestionMarkCircleIcon,
   RobotIcon,
-  ShapesIcon} from "@dust-tt/sparkle";
+  ShapesIcon,
+} from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";

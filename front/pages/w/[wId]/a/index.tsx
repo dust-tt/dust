@@ -771,10 +771,7 @@ export default function Developers({
             variant="tertiary"
             label="Examples"
             onClick={() => {
-              window.open(
-                "https://docs.dust.tt/reference/examples",
-                "_blank"
-              );
+              window.open("https://docs.dust.tt/reference/examples", "_blank");
             }}
             icon={ExternalLinkIcon}
           />
