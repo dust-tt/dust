@@ -111,7 +111,7 @@ export default function Search({
               <div className="px-2">
                 {searchProviders?.length === 0 && (
                   <Link
-                    href={`/w/${owner.sId}/a`}
+                    href={`/w/${owner.sId}/a?t=providers`}
                     className={classNames(
                       "inline-flex items-center rounded-md py-1 text-sm font-normal",
                       "border px-3",
