@@ -6,10 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  ActivityReport,
-  QuickInsights,
-} from "@app/components/workspace/Analytics";
+import { ActivityReport } from "@app/components/workspace/ActivityReport";
+import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -198,7 +196,7 @@ export default function WorkspaceAdmin({
             icon={PlanetIcon}
             description="Manage your workspace"
           />
-          <Page.Vertical align="stretch" gap="md" sizing="grow">
+          <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Analytics</Page.H>
             <Page.Horizontal gap="lg">
               <QuickInsights owner={owner} />
