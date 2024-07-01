@@ -18,6 +18,7 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
+  DEFAULT_VISUALIZATION_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
@@ -91,6 +92,8 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
 
+export type AssistantBuilderVisualizationConfiguration = Record<string, never>; // no relevant params identified yet
+
 // Builder State
 
 export type AssistantBuilderActionConfiguration = (
@@ -113,6 +116,10 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "WEB_NAVIGATION";
       configuration: AssistantBuilderWebNavigationConfiguration;
+    }
+  | {
+      type: "VISUALIZATION";
+      configuration: AssistantBuilderVisualizationConfiguration;
     }
 ) & {
   name: string;
@@ -286,6 +293,16 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
+export function getDefaultVisualizationActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "VISUALIZATION",
+    configuration: {},
+    name: DEFAULT_VISUALIZATION_ACTION_NAME,
+    description: "Generate graphs to visualize your data.",
+    noConfigurationRequired: true,
+  };
+}
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfiguration | null {
@@ -304,6 +321,8 @@ export function getDefaultActionConfiguration(
       return getDefaultProcessActionConfiguration();
     case "WEB_NAVIGATION":
       return getDefaultWebsearchActionConfiguration();
+    case "VISUALIZATION":
+      return getDefaultVisualizationActionConfiguration();
     default:
       assertNever(actionType);
   }

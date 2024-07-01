@@ -17,6 +17,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_VISUALIZATION_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
 
@@ -169,6 +170,15 @@ export async function submitAssistantBuilderForm({
               unit: a.configuration.timeFrame.unit,
             },
             schema: a.configuration.schema,
+          },
+        ];
+
+      case "VISUALIZATION":
+        return [
+          {
+            type: "visualization_configuration",
+            name: DEFAULT_VISUALIZATION_ACTION_NAME,
+            description: "Generates graphs from data.",
           },
         ];
 

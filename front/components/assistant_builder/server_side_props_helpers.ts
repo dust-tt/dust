@@ -32,6 +32,7 @@ import {
   getDefaultRetrievalExhaustiveActionConfiguration,
   getDefaultRetrievalSearchActionConfiguration,
   getDefaultTablesQueryActionConfiguration,
+  getDefaultVisualizationActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -213,7 +214,8 @@ export async function buildInitialActions({
       // Ignore browse actions
       continue;
     } else if (isVisualizationConfiguration(action)) {
-      // @todo[daph] this is the builder work, in the next PR.
+      builderAction = getDefaultVisualizationActionConfiguration();
+      builderActions.push(builderAction);
       continue;
     } else {
       assertNever(action);
