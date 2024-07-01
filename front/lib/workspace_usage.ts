@@ -434,7 +434,22 @@ function generateCsvFromQueryResult(
     | builderUsageQueryResult[]
 ) {
   const csvHeader = Object.keys(rows[0]).join(",") + "\n";
-  const csvContent = rows.map((row) => Object.values(row).join(",")).join("\n");
+  const csvContent = rows
+    .map((row) =>
+      Object.values(row)
+        .map((value) => {
+          // Escape quotes and wrap in quotes if the value contains commas or quotes
+          if (
+            typeof value === "string" &&
+            (value.includes(",") || value.includes('"'))
+          ) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        })
+        .join(",")
+    )
+    .join("\n");
   return csvHeader + csvContent;
 }
 

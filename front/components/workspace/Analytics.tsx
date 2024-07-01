@@ -127,7 +127,7 @@ export function ActivityReport({
       "December",
     ];
     const [year, monthIndex] = date.split("-");
-    return `${months.at(Number(monthIndex))} ${year} `;
+    return `${months.at(Number(monthIndex) - 1)} ${year} `;
   };
 
   const startIndex = (currentPage - 1) * itemsPerPage;

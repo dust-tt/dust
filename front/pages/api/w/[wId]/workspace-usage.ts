@@ -107,7 +107,6 @@ async function handler(
       }
 
       const query = queryValidation.right;
-
       const { endDate, startDate } = resolveDates(query);
 
       const csvData = await fetchUsageData({
