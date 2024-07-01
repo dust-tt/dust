@@ -10,6 +10,7 @@ import {
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -82,5 +83,9 @@ export class IntercomConnectorStrategy
     Record<ModelId, ConnectorProviderModelResourceMapping["intercom"]>
   > {
     return {};
+  }
+
+  configurationJSON(): ConnectorProviderConfigurationType {
+    return null;
   }
 }

@@ -94,8 +94,8 @@ async function handler(
         });
       }
 
-      const { connectionId, provider, name, configuration } =
-        bodyValidation.right;
+      let { configuration } = bodyValidation.right;
+      const { connectionId, provider, name } = bodyValidation.right;
 
       if (!isConnectorProvider(provider)) {
         return apiError(req, res, {
@@ -193,6 +193,17 @@ async function handler(
           }
           dataSourceDescription = configurationRes.value.url;
           break;
+        case "slack":
+          // We accept not receiving a configuration for slack
+          // When creating a Slack data source we don't receive a configuration but pass the default
+          // one as we create the connector.
+          configuration = {
+            botEnabled: true,
+            whitelistedDomains: undefined,
+            autoReadChannelPattern: undefined,
+          };
+          break;
+
         default:
           dataSourceDescription = suffix
             ? `Managed Data Source for ${provider} (${suffix})`

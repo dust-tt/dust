@@ -3,6 +3,7 @@ import type { Transaction } from "sequelize";
 
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -47,5 +48,11 @@ export class SlackConnectorStrategy
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, ConnectorProviderModelResourceMapping["slack"]>> {
     return SlackConfigurationResource.fetchByConnectorIds(connectorIds);
+  }
+
+  configurationJSON(
+    configuration: SlackConfigurationResource
+  ): ConnectorProviderConfigurationType {
+    return configuration.toJSON();
   }
 }

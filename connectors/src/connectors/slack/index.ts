@@ -4,6 +4,7 @@ import type {
   ContentNode,
   ModelId,
   Result,
+  SlackConfigurationType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
@@ -39,7 +40,8 @@ const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
 
 export async function createSlackConnector(
   dataSourceConfig: DataSourceConfig,
-  connectionId: NangoConnectionId
+  connectionId: NangoConnectionId,
+  configuration: SlackConfigurationType
 ): Promise<Result<string, Error>> {
   const nangoConnectionId = connectionId;
 
@@ -83,7 +85,9 @@ export async function createSlackConnector(
     },
     {
       slackTeamId: teamInfo.team.id,
-      botEnabled: true,
+      botEnabled: configuration.botEnabled,
+      autoReadChannelPattern: configuration.autoReadChannelPattern,
+      whitelistedDomains: configuration.whitelistedDomains,
     }
   );
 

@@ -1,5 +1,4 @@
 import type {
-  ConnectorConfiguration,
   ConnectorProvider,
   ConnectorType,
   ModelId,
@@ -216,9 +215,9 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       firstSuccessfulSyncTime: this.firstSuccessfulSyncTime?.getTime(),
       firstSyncProgress: this.firstSyncProgress,
       errorType: this.errorType ?? undefined,
-      // TODO remove `as` once we have a shared interface for configuration resources.
-      configuration: (this.configuration?.toJSON() ??
-        null) as ConnectorConfiguration,
+      configuration: this.configuration
+        ? this.strategy.configurationJSON(this.configuration)
+        : null,
       pausedAt: this.pausedAt,
       updatedAt: this.updatedAt.getTime(),
     };

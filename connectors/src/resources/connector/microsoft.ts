@@ -3,6 +3,7 @@ import type { Transaction } from "sequelize";
 
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -48,5 +49,9 @@ export class MicrosoftConnectorStrategy
     Record<ModelId, ConnectorProviderModelResourceMapping["microsoft"]>
   > {
     return MicrosoftConfigurationResource.fetchByConnectorIds(connectorIds);
+  }
+
+  configurationJSON(): ConnectorProviderConfigurationType {
+    return null;
   }
 }

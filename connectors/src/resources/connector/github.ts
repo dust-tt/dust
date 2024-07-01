@@ -6,6 +6,7 @@ import {
   GithubIssue,
 } from "@connectors/lib/models/github";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -49,5 +50,9 @@ export class GithubConnectorStrategy
     Record<ModelId, ConnectorProviderModelResourceMapping["github"]>
   > {
     return {};
+  }
+
+  configurationJSON(): ConnectorProviderConfigurationType {
+    return null;
   }
 }

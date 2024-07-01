@@ -7,6 +7,7 @@ import {
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -62,5 +63,9 @@ export class ConfluenceConnectorStrategy
     Record<ModelId, ConnectorProviderModelResourceMapping["confluence"]>
   > {
     return {};
+  }
+
+  configurationJSON(): ConnectorProviderConfigurationType {
+    return null;
   }
 }

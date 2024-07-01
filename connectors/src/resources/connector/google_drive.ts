@@ -11,6 +11,7 @@ import {
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -76,5 +77,9 @@ export class GoogleDriveConnectorStrategy
     Record<ModelId, ConnectorProviderModelResourceMapping["google_drive"]>
   > {
     return {};
+  }
+
+  configurationJSON(): ConnectorProviderConfigurationType {
+    return null;
   }
 }
