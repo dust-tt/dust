@@ -20,9 +20,8 @@ export async function fullSyncActivity({
     throw new Error(`Connector with id ${connectorId} not found`);
   }
 
-  const resources = await MicrosoftRootResource.listRootsByConnectorId(
-    connectorId
-  );
+  const resources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
 
   const client = await getClient(connector.connectionId);
 
