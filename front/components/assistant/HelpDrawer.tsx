@@ -28,12 +28,12 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 const topPicks = [
   {
     title: "Creating Assistants",
-    href: "https://www.notion.so/dust-tt/Prompting-101-How-to-Talk-to-Your-Assistants-c0212513056a4af885e41706ee742dda",
+    href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants#here-are-some-tips-for-crafting-effective-instructions-and-prompts",
     icon: ArrowRightIcon,
   },
   {
     title: "Managing Connections",
-    href: "https://www.notion.so/dust-tt/Dust-Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=4#4f7f969e52464e369f4cd453457d8059",
+    href: "https://docs.dust.tt/docs/google-drive-connection",
     icon: ArrowRightIcon,
   },
   {
@@ -136,12 +136,12 @@ export function HelpDrawer({
                 ? [
                     {
                       title: "Quickstart Guide",
-                      href: "https://www.notion.so/dust-tt/Getting-to-Know-Dust-b4578a3ded364762b19c8276192cc992",
+                      href: "https://docs.dust.tt/docs/getting-started",
                       icon: LightbulbIcon,
                     },
                     {
                       title: "All help content",
-                      href: "https://www.notion.so/dust-tt/Dust-Library-1aa97619d56d4d9f9c21d7ce89d23dbb",
+                      href: "https://docs.dust.tt",
                       description: "Guides, best practices, and more",
                       icon: FolderIcon,
                     },
@@ -149,7 +149,7 @@ export function HelpDrawer({
                 : [
                     {
                       title: "Quickstart Guide",
-                      href: "https://www.notion.so/dust-tt/Getting-to-Know-Dust-b4578a3ded364762b19c8276192cc992",
+                      href: "https://docs.dust.tt/docs/getting-started",
                       icon: LightbulbIcon,
                     },
                   ]
