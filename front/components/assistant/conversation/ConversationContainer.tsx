@@ -27,7 +27,6 @@ import { AssistantBrowserContainer } from "@app/components/assistant/conversatio
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
   createConversationWithMessage,
@@ -45,6 +44,8 @@ interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
+  setInputbarMention: (mention: string) => void;
+  setAnimate: (animate: boolean) => void;
 }
 
 export function ConversationContainer({
@@ -52,13 +53,13 @@ export function ConversationContainer({
   owner,
   subscription,
   user,
+  setInputbarMention,
+  setAnimate,
 }: ConversationContainerProps) {
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
-
-  const { animate, setAnimate } = useContext(InputBarContext);
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
@@ -71,39 +72,6 @@ export function ConversationContainer({
     workspaceId: owner.sId,
     limit: 50,
   });
-
-  const { setSelectedAssistant } = useContext(InputBarContext);
-
-  const setInputbarMention = useCallback(
-    (agentSid: string) => {
-      setSelectedAssistant({ configurationId: agentSid });
-      setAnimate(true);
-    },
-    [setAnimate, setSelectedAssistant]
-  );
-
-  useEffect(() => {
-    if (animate) {
-      setTimeout(() => setAnimate(false), 500);
-    }
-  });
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const assistantSId = router.query.mention ?? null;
-      if (assistantSId && typeof assistantSId === "string") {
-        setInputbarMention(assistantSId);
-      }
-    };
-
-    // Initial check in case the component mounts with the query already set.
-    handleRouteChange();
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.query, router.events, setInputbarMention]);
 
   const handleSubmit = async (
     input: string,

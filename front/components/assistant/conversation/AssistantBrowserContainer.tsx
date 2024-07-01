@@ -10,7 +10,7 @@ import { useProgressiveAgentConfigurations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 interface AssistantBrowserContainerProps {
-  onAgentConfigurationClick: (agentSid: string) => void;
+  onAgentConfigurationClick: (agentId: string) => void;
   owner: WorkspaceType;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }

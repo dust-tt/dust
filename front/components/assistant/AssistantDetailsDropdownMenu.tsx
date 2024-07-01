@@ -141,7 +141,7 @@ export function AssistantDetailsDropdownMenu({
         <DropdownMenu.Items width={220}>
           <DropdownMenu.Item
             label="Start conversation"
-            href={`/w/${owner.sId}/assistant/new?mention=${agentConfiguration.sId}`}
+            href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
             icon={ChatBubbleBottomCenterTextIcon}
           />
           {!isGlobalAgent && (
