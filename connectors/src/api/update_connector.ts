@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
-import { UPDATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -55,8 +55,10 @@ const _postConnectorUpdateAPIHandler = async (
     });
   }
 
-  const connectorUpdater = UPDATE_CONNECTOR_BY_TYPE[connector.type];
-  const updateRes = await connectorUpdater(connector.id, {
+  const updateRes = await getConnectorManager({
+    connectorProvider: connector.type,
+    connectorId: connector.id,
+  }).update({
     connectionId: connectionId,
   });
 

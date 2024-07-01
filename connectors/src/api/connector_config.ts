@@ -4,10 +4,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import {
-  GET_CONNECTOR_CONFIG_BY_TYPE,
-  SET_CONNECTOR_CONFIG_BY_TYPE,
-} from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -55,8 +52,11 @@ const _getConnectorConfig = async (
       status_code: 404,
     });
   }
-  const getter = GET_CONNECTOR_CONFIG_BY_TYPE[connector.type];
-  const configValueRes = await getter(connector.id, req.params.config_key);
+
+  const configValueRes = await getConnectorManager({
+    connectorId: connector.id,
+    connectorProvider: "webcrawler",
+  }).getConfigurationKey({ configKey: req.params.config_key });
   if (configValueRes.isErr()) {
     return apiError(
       req,
@@ -129,12 +129,14 @@ const _setConnectorConfig = async (
       status_code: 404,
     });
   }
-  const setter = SET_CONNECTOR_CONFIG_BY_TYPE[connector.type];
-  const setConfigRes = await setter(
-    connector.id,
-    req.params.config_key,
-    req.body.configValue
-  );
+
+  const setConfigRes = await getConnectorManager({
+    connectorId: connector.id,
+    connectorProvider: "webcrawler",
+  }).setConfigurationKey({
+    configKey: req.params.config_key,
+    configValue: req.body.configValue,
+  });
   if (setConfigRes.isErr()) {
     return apiError(
       req,

@@ -5,7 +5,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import { RETRIEVE_CONTENT_NODE_PARENTS_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -61,10 +61,13 @@ const _getContentNodesParents = async (
 
   const { internalIds } = bodyValidation.right;
 
-  const parentsGetter = RETRIEVE_CONTENT_NODE_PARENTS_BY_TYPE[connector.type];
+  const connectorManager = getConnectorManager({
+    connectorProvider: connector.type,
+    connectorId: connector.id,
+  });
   const parentsResults = await concurrentExecutor(
     internalIds,
-    (internalId) => parentsGetter(connector.id, internalId),
+    (internalId) => connectorManager.retrieveContentNodeParents({ internalId }),
     { concurrency: 4 }
   );
   const nodes: { internalId: string; parents: string[] }[] = [];

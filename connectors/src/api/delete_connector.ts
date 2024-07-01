@@ -1,10 +1,7 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import {
-  DELETE_CONNECTOR_BY_TYPE,
-  STOP_CONNECTOR_BY_TYPE,
-} from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -36,9 +33,12 @@ const _deleteConnectorAPIHandler = async (
     });
   }
 
-  const connectorStopper = STOP_CONNECTOR_BY_TYPE[connector.type];
+  const connectorManager = getConnectorManager({
+    connectorProvider: connector.type,
+    connectorId: connector.id,
+  });
 
-  const stopRes = await connectorStopper(connector.id);
+  const stopRes = await connectorManager.stop();
 
   if (stopRes.isErr() && !force) {
     return apiError(req, res, {
@@ -50,8 +50,7 @@ const _deleteConnectorAPIHandler = async (
     });
   }
 
-  const connectorDeleter = DELETE_CONNECTOR_BY_TYPE[connector.type];
-  const cleanRes = await connectorDeleter(connector.id, force);
+  const cleanRes = await connectorManager.clean({ force });
   if (cleanRes.isErr()) {
     return apiError(req, res, {
       status_code: 500,

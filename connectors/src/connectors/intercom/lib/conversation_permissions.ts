@@ -1,4 +1,9 @@
-import type { ContentNode, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  ModelId,
+} from "@dust-tt/types";
 
 import {
   fetchIntercomTeam,
@@ -8,7 +13,6 @@ import {
   getAllConversationsInternalId,
   getTeamInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
-import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
   IntercomTeam,
   IntercomWorkspace,
@@ -84,7 +88,12 @@ export async function retrieveIntercomConversationsPermissions({
   connectorId,
   parentInternalId,
   filterPermission,
-}: Parameters<ConnectorPermissionRetriever>[0]): Promise<ContentNode[]> {
+}: {
+  connectorId: ModelId;
+  parentInternalId: string | null;
+  filterPermission: ConnectorPermission | null;
+  viewType: ContentNodesViewType;
+}): Promise<ContentNode[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "[Intercom] Connector not found.");

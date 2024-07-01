@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { SET_CONNECTOR_CONFIGURATION_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -53,9 +53,11 @@ const _patchConnectorConfiguration = async (
           status_code: 400,
         });
       }
-      const setConfiguration =
-        SET_CONNECTOR_CONFIGURATION_BY_TYPE[connector.type];
-      patchRes = await setConfiguration(connector.id, parseRes.value);
+
+      patchRes = await getConnectorManager({
+        connectorId: connector.id,
+        connectorProvider: "webcrawler",
+      }).configure({ configuration: parseRes.value });
       break;
     }
 

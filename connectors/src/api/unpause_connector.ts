@@ -1,7 +1,7 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { UNPAUSE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -37,9 +37,11 @@ const _unpauseConnectorAPIHandler = async (
       );
       return res.sendStatus(204);
     }
-    const connectorUnpauser = UNPAUSE_CONNECTOR_BY_TYPE[connector.type];
 
-    const unpauseRes = await connectorUnpauser(connector.id);
+    const unpauseRes = await getConnectorManager({
+      connectorProvider: connector.type,
+      connectorId: connector.id,
+    }).unpause();
 
     if (unpauseRes.isErr()) {
       return apiError(req, res, {

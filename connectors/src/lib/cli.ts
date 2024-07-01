@@ -34,13 +34,7 @@ import PQueue from "p-queue";
 import readline from "readline";
 import { Op } from "sequelize";
 
-import {
-  DELETE_CONNECTOR_BY_TYPE,
-  GARBAGE_COLLECT_BY_TYPE,
-  RESUME_CONNECTOR_BY_TYPE,
-  STOP_CONNECTOR_BY_TYPE,
-  SYNC_CONNECTOR_BY_TYPE,
-} from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
   launchGithubCodeSyncWorkflow,
@@ -145,21 +139,22 @@ export const connectors = async ({
     );
   }
   const provider = connector.type;
-
+  const manager = getConnectorManager({
+    connectorId: connector.id,
+    connectorProvider: provider,
+  });
   switch (command) {
     case "stop": {
-      await throwOnError(STOP_CONNECTOR_BY_TYPE[provider](connector.id));
+      await throwOnError(manager.stop());
       return { success: true };
     }
     case "delete": {
-      await throwOnError(
-        DELETE_CONNECTOR_BY_TYPE[provider](connector.id, true)
-      );
+      await throwOnError(manager.clean({ force: true }));
       await terminateAllWorkflowsForConnectorId(connector.id);
       return { success: true };
     }
     case "resume": {
-      await throwOnError(RESUME_CONNECTOR_BY_TYPE[provider](connector.id));
+      await throwOnError(manager.resume());
       return { success: true };
     }
     case "full-resync": {
@@ -167,9 +162,7 @@ export const connectors = async ({
       if (args.fromTs) {
         fromTs = parseInt(args.fromTs as string, 10);
       }
-      await throwOnError(
-        SYNC_CONNECTOR_BY_TYPE[provider](connector.id, fromTs)
-      );
+      await throwOnError(manager.sync({ fromTs }));
       return { success: true };
     }
 
@@ -186,8 +179,8 @@ export const connectors = async ({
     }
 
     case "restart": {
-      await throwOnError(STOP_CONNECTOR_BY_TYPE[provider](connector.id));
-      await throwOnError(RESUME_CONNECTOR_BY_TYPE[provider](connector.id));
+      await throwOnError(manager.stop());
+      await throwOnError(manager.resume());
       return { success: true };
     }
     default:
@@ -710,7 +703,10 @@ export const google_drive = async ({
       });
       for (const connector of connectors) {
         await throwOnError(
-          GARBAGE_COLLECT_BY_TYPE[connector.type](connector.id)
+          getConnectorManager({
+            connectorId: connector.id,
+            connectorProvider: "google_drive",
+          }).garbageCollect()
         );
       }
       return { success: true };
@@ -1123,7 +1119,10 @@ export const batch = async ({
 
       for (const connector of connectors) {
         await throwOnError(
-          SYNC_CONNECTOR_BY_TYPE[connector.type](connector.id, fromTs)
+          getConnectorManager({
+            connectorId: connector.id,
+            connectorProvider: connector.type,
+          }).sync({ fromTs })
         );
         logger.info(
           `[Admin] Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`
@@ -1162,10 +1161,16 @@ export const batch = async ({
         promises.push(
           queue.add(async () => {
             await throwOnError(
-              STOP_CONNECTOR_BY_TYPE[connector.type](connector.id)
+              getConnectorManager({
+                connectorId: connector.id,
+                connectorProvider: connector.type,
+              }).stop()
             );
             await throwOnError(
-              RESUME_CONNECTOR_BY_TYPE[connector.type](connector.id)
+              getConnectorManager({
+                connectorId: connector.id,
+                connectorProvider: connector.type,
+              }).resume()
             );
           })
         );

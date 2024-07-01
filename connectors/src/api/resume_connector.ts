@@ -1,7 +1,7 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { RESUME_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -28,9 +28,11 @@ const _resumeConnectorAPIHandler = async (
         },
       });
     }
-    const connectorResumer = RESUME_CONNECTOR_BY_TYPE[connector.type];
 
-    const resumeRes = await connectorResumer(connector.id);
+    const resumeRes = await getConnectorManager({
+      connectorProvider: connector.type,
+      connectorId: connector.id,
+    }).resume();
 
     if (resumeRes.isErr()) {
       return apiError(req, res, {

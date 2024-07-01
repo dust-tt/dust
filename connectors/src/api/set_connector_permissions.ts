@@ -4,7 +4,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import { SET_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -75,16 +75,15 @@ const _setConnectorPermissions = async (
     });
   }
 
-  const connectorPermissionSetter =
-    SET_CONNECTOR_PERMISSIONS_BY_TYPE[connector.type];
-
-  const pRes = await connectorPermissionSetter(
-    connector.id,
-    resources.reduce(
+  const pRes = await getConnectorManager({
+    connectorProvider: connector.type,
+    connectorId: connector.id,
+  }).setPermissions({
+    permissions: resources.reduce(
       (acc, r) => Object.assign(acc, { [r.internal_id]: r.permission }),
       {}
-    )
-  );
+    ),
+  });
 
   if (pRes.isErr()) {
     return apiError(req, res, {
