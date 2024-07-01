@@ -46,7 +46,7 @@ export default function WorkspaceAdmin({
   const [workspaceName, setWorkspaceName] = useState(owner.name);
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDownloadingData, setIsDownloadingData] = useState(false);
   const [showProviderModal, setShowProviderModal] = useState(false);
 
   const formValidation = useCallback(() => {
@@ -102,7 +102,7 @@ export default function WorkspaceAdmin({
 
     const queryString = `mode=month&start=${selectedMonth}&table=all`;
 
-    setIsLoading(true);
+    setIsDownloadingData(true);
     try {
       const response = await fetch(
         `/api/w/${owner.sId}/workspace-usage?${queryString}`
@@ -152,7 +152,7 @@ export default function WorkspaceAdmin({
     } catch (error) {
       alert("Failed to download activity data.");
     } finally {
-      setIsLoading(false);
+      setIsDownloadingData(false);
     }
   };
 
@@ -201,7 +201,7 @@ export default function WorkspaceAdmin({
             <Page.Horizontal gap="lg">
               <QuickInsights owner={owner} />
               <ActivityReport
-                isLoading={isLoading}
+                isDownloading={isDownloadingData}
                 monthOptions={monthOptions}
                 handleDownload={handleDownload}
               />
