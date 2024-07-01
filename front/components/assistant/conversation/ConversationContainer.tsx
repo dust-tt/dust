@@ -27,6 +27,7 @@ import { AssistantBrowserContainer } from "@app/components/assistant/conversatio
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
   createConversationWithMessage,
@@ -44,8 +45,7 @@ interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  setInputbarMention: (mention: string) => void;
-  setAnimate: (animate: boolean) => void;
+  agentIdToMention: string | null;
 }
 
 export function ConversationContainer({
@@ -53,13 +53,15 @@ export function ConversationContainer({
   owner,
   subscription,
   user,
-  setInputbarMention,
-  setAnimate,
+  agentIdToMention,
 }: ConversationContainerProps) {
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+
+  const { animate, setAnimate, setSelectedAssistant } =
+    useContext(InputBarContext);
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
@@ -71,6 +73,26 @@ export function ConversationContainer({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
+  });
+
+  const setInputbarMention = useCallback(
+    (agentId: string) => {
+      setSelectedAssistant({ configurationId: agentId });
+      setAnimate(true);
+    },
+    [setAnimate, setSelectedAssistant]
+  );
+
+  useEffect(() => {
+    if (agentIdToMention) {
+      setInputbarMention(agentIdToMention);
+    }
+  }, [agentIdToMention, setInputbarMention]);
+
+  useEffect(() => {
+    if (animate) {
+      setTimeout(() => setAnimate(false), 500);
+    }
   });
 
   const handleSubmit = async (

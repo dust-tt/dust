@@ -66,23 +66,8 @@ export default function AssistantConversation({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
+  const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
   const router = useRouter();
-  const { animate, setAnimate, setSelectedAssistant } =
-    useContext(InputBarContext);
-
-  const setInputbarMention = useCallback(
-    (agentSid: string) => {
-      setSelectedAssistant({ configurationId: agentSid });
-      setAnimate(true);
-    },
-    [setAnimate, setSelectedAssistant]
-  );
-
-  useEffect(() => {
-    if (animate) {
-      setTimeout(() => setAnimate(false), 500);
-    }
-  });
 
   // This useEffect handles whether to change the key of the ConversationContainer
   // or not. Altering the key forces a re-render of the component. A random number
@@ -110,9 +95,11 @@ export default function AssistantConversation({
     }
 
     const handleRouteChange = () => {
-      const assistantId = router.query.assistant ?? null;
-      if (assistantId && typeof assistantId === "string") {
-        setInputbarMention(assistantId);
+      const agentId = router.query.assistant ?? null;
+      if (agentId && typeof agentId === "string") {
+        setAgentIdToMention(agentId);
+      } else {
+        setAgentIdToMention(null);
       }
     };
 
@@ -123,13 +110,7 @@ export default function AssistantConversation({
     return () => {
       router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [
-    router.query,
-    router.events,
-    setConversationKey,
-    initialConversationId,
-    setInputbarMention,
-  ]);
+  }, [router.query, router.events, setConversationKey, initialConversationId]);
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -154,8 +135,7 @@ export default function AssistantConversation({
       owner={owner}
       subscription={subscription}
       user={user}
-      setInputbarMention={setInputbarMention}
-      setAnimate={setAnimate}
+      agentIdToMention={agentIdToMention}
     />
   );
 }
