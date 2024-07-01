@@ -21,12 +21,12 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *      - in: header
- *        name: Authorization
- *        required: true
- *        description: Bearer token for authentication
- *        schema:
- *         type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Agent configurations for the workspace
