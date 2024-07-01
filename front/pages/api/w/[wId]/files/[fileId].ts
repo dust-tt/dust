@@ -151,7 +151,8 @@ async function handler(
       }
 
       try {
-        const form = new IncomingForm();
+        // Support only one file upload.
+        const form = new IncomingForm({ maxFiles: 1 });
         const [, files] = await form.parse(req);
 
         const maybeFiles = files.file;
