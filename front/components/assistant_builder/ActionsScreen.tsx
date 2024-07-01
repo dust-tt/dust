@@ -757,8 +757,9 @@ function ActionEditor({
                 What's the data?
               </div>
               <div className="text-sm text-element-600">
-                Clarify the data's content and context to guide your Assistant
-                in determining when and how to utilize it.
+                Provide a brief description of the data content and context.
+                This helps the Assistant determine when and how to utilize this
+                information source effectively
               </div>
             </div>
           ) : (
@@ -772,11 +773,13 @@ function ActionEditor({
             }
             value={action.description}
             onChange={(v) => {
-              updateAction({
-                actionName: action.name,
-                actionDescription: v,
-                getNewActionConfig: (old) => old,
-              });
+              if (v.length < 800) {
+                updateAction({
+                  actionName: action.name,
+                  actionDescription: v,
+                  getNewActionConfig: (old) => old,
+                });
+              }
             }}
             error={!descriptionValid ? "Description cannot be empty" : null}
           />

@@ -417,6 +417,10 @@ export async function* runMultiActionsAgent(
 
       return;
     }
+
+    // Truncate the description to 1024 characters
+    specRes.value.description = specRes.value.description.slice(0, 1024);
+
     specifications.push(specRes.value);
   }
 
