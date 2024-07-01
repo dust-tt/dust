@@ -669,10 +669,15 @@ function ActionEditor({
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
 
-  const shouldDisplayAdvancedSettings = action.type !== "DUST_APP_RUN";
-  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS"].includes(
-    action.type
-  );
+  const shouldDisplayAdvancedSettings = ![
+    "DUST_APP_RUN",
+    "WEB_NAVIGATION",
+  ].includes(action.type);
+  const shouldDisplayDescription = ![
+    "DUST_APP_RUN",
+    "PROCESS",
+    "WEB_NAVIGATION",
+  ].includes(action.type);
 
   return (
     <>
