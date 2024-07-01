@@ -23,7 +23,7 @@ const MonthSchema = t.refinement(
 
 export const usageTables = [
   "users",
-  "mentions",
+  "assistant_messages",
   "builders",
   "agent_configurations",
   "all",
@@ -188,7 +188,7 @@ async function fetchUsageData({
   switch (table) {
     case "users":
       return { users: await getUserUsageData(start, end, workspaceId) };
-    case "mentions":
+    case "assistant_messages":
       return { mentions: await getMessageUsageData(start, end, workspaceId) };
     case "builders":
       return { builders: await getBuildersUsageData(start, end, workspaceId) };
@@ -197,14 +197,14 @@ async function fetchUsageData({
         agent_configurations: await getAgentUsageData(start, end, workspaceId),
       };
     case "all":
-      const [users, mentions, builders, agent_configurations] =
+      const [users, assistant_messages, builders, agent_configurations] =
         await Promise.all([
           getUserUsageData(start, end, workspaceId),
           getMessageUsageData(start, end, workspaceId),
           getBuildersUsageData(start, end, workspaceId),
           getAgentUsageData(start, end, workspaceId),
         ]);
-      return { users, mentions, builders, agent_configurations };
+      return { users, assistant_messages, builders, agent_configurations };
     default:
       return {};
   }

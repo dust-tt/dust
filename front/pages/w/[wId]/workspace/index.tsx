@@ -171,7 +171,7 @@ export default function WorkspaceAdmin({
     for (let year = startDateYear; year <= currentYear; year++) {
       const startMonth = year === startDateYear ? startDateMonth : 0;
       const endMonth = year === currentYear ? currentMonth : 11;
-      for (let month = startMonth; month <= endMonth; month++) {
+      for (let month = endMonth; month >= startMonth; month--) {
         monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
       }
     }
