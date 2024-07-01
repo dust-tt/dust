@@ -49,6 +49,7 @@ makeScript(
     },
     workspaceIds: {
       type: "array",
+      coerce: (arr) => arr.map(String),
       demandOption: false,
       default: [],
       description:
