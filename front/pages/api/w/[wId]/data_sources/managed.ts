@@ -194,9 +194,8 @@ async function handler(
           dataSourceDescription = configurationRes.value.url;
           break;
         case "slack":
-          // We accept not receiving a configuration for slack
-          // When creating a Slack data source we don't receive a configuration but pass the default
-          // one as we create the connector.
+          // When creating a Slack data source we don't receive a configuration but pass a default
+          // value for it as we create the connector.
           configuration = {
             botEnabled: true,
             whitelistedDomains: undefined,
