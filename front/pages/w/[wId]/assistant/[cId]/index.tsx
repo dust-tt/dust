@@ -93,23 +93,13 @@ export default function AssistantConversation({
       }
     }
 
-    const handleRouteChange = () => {
-      const agentId = router.query.assistant ?? null;
-      if (agentId && typeof agentId === "string") {
-        setAgentIdToMention(agentId);
-      } else {
-        setAgentIdToMention(null);
-      }
-    };
-
-    // Initial check in case the component mounts with the query already set.
-    handleRouteChange();
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.query, router.events, setConversationKey, initialConversationId]);
+    const agentId = router.query.assistant ?? null;
+    if (agentId && typeof agentId === "string") {
+      setAgentIdToMention(agentId);
+    } else {
+      setAgentIdToMention(null);
+    }
+  }, [router.query, setConversationKey, initialConversationId]);
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
