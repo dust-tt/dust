@@ -1,16 +1,15 @@
 import type {
   AgentAction,
   BrowseConfigurationType,
-  CodeInterpreterConfigurationType,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
+  VisualizationConfigurationType,
   WebsearchConfigurationType,
 } from "@dust-tt/types";
 
 import { BrowseConfigurationServerRunner } from "@app/lib/api/assistant/actions/browse";
-import { CodeInterpreterConfigurationServerRunner } from "@app/lib/api/assistant/actions/code_interpreter";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
 import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
@@ -20,6 +19,7 @@ import type {
   BaseActionConfigurationServerRunnerConstructor,
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/api/assistant/actions/types";
+import { VisualizationConfigurationServerRunner } from "@app/lib/api/assistant/actions/visualization";
 import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actions/websearch";
 
 interface ActionToConfigTypeMap {
@@ -29,7 +29,7 @@ interface ActionToConfigTypeMap {
   tables_query_configuration: TablesQueryConfigurationType;
   websearch_configuration: WebsearchConfigurationType;
   browse_configuration: BrowseConfigurationType;
-  code_interpreter_configuration: CodeInterpreterConfigurationType;
+  visualization_configuration: VisualizationConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -39,7 +39,7 @@ interface ActionTypeToClassMap {
   tables_query_configuration: TablesQueryConfigurationServerRunner;
   websearch_configuration: WebsearchConfigurationServerRunner;
   browse_configuration: BrowseConfigurationServerRunner;
-  code_interpreter_configuration: CodeInterpreterConfigurationServerRunner;
+  visualization_configuration: VisualizationConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -82,7 +82,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   websearch_configuration: WebsearchConfigurationServerRunner,
   browse_configuration: BrowseConfigurationServerRunner,
   retrieval_configuration: RetrievalConfigurationServerRunner,
-  code_interpreter_configuration: CodeInterpreterConfigurationServerRunner,
+  visualization_configuration: VisualizationConfigurationServerRunner,
 } as const;
 
 export function getRunnerforActionConfiguration<K extends keyof CombinedMap>(

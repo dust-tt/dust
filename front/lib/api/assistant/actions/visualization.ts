@@ -1,54 +1,54 @@
 import type {
   AgentActionSpecification,
-  CodeInterpreterActionOutputType,
-  CodeInterpreterActionType,
-  CodeInterpreterConfigurationType,
-  CodeInterpreterErrorEvent,
-  CodeInterpreterParamsEvent,
-  CodeInterpreterSuccessEvent,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
   Result,
+  VisualizationActionOutputType,
+  VisualizationActionType,
+  VisualizationConfigurationType,
+  VisualizationErrorEvent,
+  VisualizationParamsEvent,
+  VisualizationSuccessEvent,
 } from "@dust-tt/types";
 import {
   BaseAction,
   cloneBaseConfig,
-  CodeInterpreterActionOutputSchema,
   DustProdActionRegistry,
   Ok,
+  VisualizationActionOutputSchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_CODE_INTERPRETER_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_VISUALIZATION_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentCodeInterpreterAction } from "@app/lib/models/assistant/actions/code_interpreter";
+import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
 import logger from "@app/logger/logger";
 
-interface CodeInterpreterActionBlob {
-  id: ModelId; // CodeInterpreterAction
+interface VisualizationActionBlob {
+  id: ModelId; // VisualizationAction
   agentMessageId: ModelId;
   query: string;
-  output: CodeInterpreterActionOutputType | null;
+  output: VisualizationActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
 }
 
-export class CodeInterpreterAction extends BaseAction {
+export class VisualizationAction extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly query: string;
-  readonly output: CodeInterpreterActionOutputType | null;
+  readonly output: VisualizationActionOutputType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
-  readonly type = "code_interpreter_action";
+  readonly type = "visualization_action";
 
-  constructor(blob: CodeInterpreterActionBlob) {
-    super(blob.id, "code_interpreter_action");
+  constructor(blob: VisualizationActionBlob) {
+    super(blob.id, "visualization_action");
 
     this.agentMessageId = blob.agentMessageId;
     this.query = blob.query;
@@ -61,22 +61,22 @@ export class CodeInterpreterAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? DEFAULT_CODE_INTERPRETER_ACTION_NAME,
+      name: this.functionCallName ?? DEFAULT_VISUALIZATION_ACTION_NAME,
       arguments: JSON.stringify({ query: this.query }),
     };
   }
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
-    let content = "CODE INTERPRETER OUTPUT:\n";
+    let content = "VISUALIZATION OUTPUT:\n";
     if (this.output === null) {
-      content += "The interpreter failed.\n";
+      content += "The visualization failed.\n";
     } else {
       content += `${JSON.stringify(this.output, null, 2)}\n`;
     }
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? DEFAULT_CODE_INTERPRETER_ACTION_NAME,
+      name: this.functionCallName ?? DEFAULT_VISUALIZATION_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -87,7 +87,7 @@ export class CodeInterpreterAction extends BaseAction {
  * Params generation.
  */
 
-export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigurationServerRunner<CodeInterpreterConfigurationType> {
+export class VisualizationConfigurationServerRunner extends BaseActionConfigurationServerRunner<VisualizationConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
     { name, description }: { name: string; description: string | null }
@@ -95,31 +95,31 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
-        "Unexpected unauthenticated call to `runCodeInterpreterAction`"
+        "Unexpected unauthenticated call to `runVisualizationAction`"
       );
     }
 
     return new Ok({
       name,
       description:
-        description ||
-        "Generate code snippets to solve specified tasks or questions.",
+        description || "Generate graphs to visually represent the data.",
       inputs: [
         {
           name: "query",
-          description: "The query for which the code will be generated.",
+          description:
+            "The query specifying the data visualization to generate.",
           type: "string",
         },
       ],
     });
   }
 
-  // CodeInterpreter does not use citations.
+  // Visualization does not use citations.
   getCitationsCount(): number {
     return 0;
   }
 
-  // Create the CodeInterpreterAction object in the database and yield an event for the generation of
+  // Create the VisualizationAction object in the database and yield an event for the generation of
   // the params. We store the action here as the params have been generated, if an error occurs
   // later on, the action won't have outputs but the error will be stored on the parent agent
   // message.
@@ -134,15 +134,15 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
       step,
     }: BaseActionRunParams
   ): AsyncGenerator<
-    | CodeInterpreterParamsEvent
-    | CodeInterpreterSuccessEvent
-    | CodeInterpreterErrorEvent,
+    | VisualizationParamsEvent
+    | VisualizationSuccessEvent
+    | VisualizationErrorEvent,
     void
   > {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
-        "Unexpected unauthenticated call to `run` for websearch action"
+        "Unexpected unauthenticated call to `run` for visualization action"
       );
     }
 
@@ -152,12 +152,12 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
 
     if (!query || typeof query !== "string" || query.length === 0) {
       yield {
-        type: "code_interpreter_error",
+        type: "visualization_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "code_interpreter_parameters_generation_error",
+          code: "visualization_parameters_generation_error",
           message:
             "The query parameter is required and must be a non-empty string.",
         },
@@ -165,12 +165,12 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
       return;
     }
 
-    // Create the CodeInterpreterAction object in the database and yield an event for the generation of
+    // Create the VisualizationAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs
     // later on, the action won't have outputs but the error will be stored on the parent agent
     // message.
-    const action = await AgentCodeInterpreterAction.create({
-      codeInterpreterConfigurationId: actionConfiguration.sId,
+    const action = await AgentVisualizationAction.create({
+      visualizationConfigurationId: actionConfiguration.sId,
       query,
       output: null,
       functionCallId,
@@ -182,11 +182,11 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
     const now = Date.now();
 
     yield {
-      type: "code_interpreter_params",
+      type: "visualization_params",
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new CodeInterpreterAction({
+      action: new VisualizationAction({
         id: action.id,
         agentMessageId: action.agentMessageId,
         query,
@@ -197,24 +197,23 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
       }),
     };
 
-    // Configure the Code Interpreter Dust App to the assistant model configuration.
+    // Configure the Vizualization Dust App to the assistant model configuration.
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-code-interpreter"].config
+      DustProdActionRegistry["assistant-v2-visualization"].config
     );
     const model = agentConfiguration.model;
     config.MODEL.provider_id = model.providerId;
     config.MODEL.model_id = model.modelId;
     config.MODEL.temperature = model.temperature;
 
-    // Execute the Code Interpreter Dust app.
-    const codeInterpreterRes = await runActionStreamed(
+    // Execute the Vizualization Dust App.
+    const visualizationRes = await runActionStreamed(
       auth,
-      "assistant-v2-code-interpreter",
+      "assistant-v2-visualization",
       config,
       [
         {
           query,
-          runtimeEnvironment: actionConfiguration.runtimeEnvironment,
         },
       ],
       {
@@ -224,22 +223,22 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
       }
     );
 
-    if (codeInterpreterRes.isErr()) {
+    if (visualizationRes.isErr()) {
       yield {
-        type: "code_interpreter_error",
+        type: "visualization_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error: {
           code: "code_interpeter_execution_error",
-          message: codeInterpreterRes.error.message,
+          message: visualizationRes.error.message,
         },
       };
       return;
     }
 
-    const { eventStream, dustRunId } = codeInterpreterRes.value;
-    let output: CodeInterpreterActionOutputType | null = null;
+    const { eventStream, dustRunId } = visualizationRes.value;
+    let output: VisualizationActionOutputType | null = null;
 
     for await (const event of eventStream) {
       if (event.type === "error") {
@@ -249,15 +248,15 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
             conversationId: conversation.id,
             error: event.content.message,
           },
-          "Error running code_interpreter action"
+          "Error running visualization action"
         );
         yield {
-          type: "code_interpreter_error",
+          type: "visualization_error",
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           error: {
-            code: "code_interpreter_execution_error",
+            code: "visualization_execution_error",
             message: event.content.message,
           },
         };
@@ -272,23 +271,23 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
               conversationId: conversation.id,
               error: e.error,
             },
-            "Error running code_interpreter action"
+            "Error running visualization action"
           );
           yield {
-            type: "code_interpreter_error",
+            type: "visualization_error",
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
             error: {
-              code: "code_interpreter_execution_error",
+              code: "visualization_execution_error",
               message: e.error,
             },
           };
           return;
         }
 
-        if (event.content.block_name === "CODE_INTERPRETER_FINAL" && e.value) {
-          const outputValidation = CodeInterpreterActionOutputSchema.decode(
+        if (event.content.block_name === "FINAL" && e.value) {
+          const outputValidation = VisualizationActionOutputSchema.decode(
             e.value
           );
           if (isLeft(outputValidation)) {
@@ -298,16 +297,16 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
                 conversationId: conversation.id,
                 error: outputValidation.left,
               },
-              "Error running code interpreter action"
+              "Error running visualization action"
             );
             yield {
-              type: "code_interpreter_error",
+              type: "visualization_error",
               created: Date.now(),
               configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
               error: {
-                code: "code_interpreter_execution_error",
-                message: `Invalid output from code interpreter action: ${outputValidation.left}`,
+                code: "visualization_execution_error",
+                message: `Invalid output from visualization action: ${outputValidation.left}`,
               },
             };
             return;
@@ -323,7 +322,7 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
         conversationId: conversation.sId,
         elapsed: Date.now() - now,
       },
-      "[ASSISTANT_TRACE] Code Interpreter action execution"
+      "[ASSISTANT_TRACE] Visualization action execution"
     );
 
     await action.update({ runId: await dustRunId, output });
@@ -337,17 +336,17 @@ export class CodeInterpreterConfigurationServerRunner extends BaseActionConfigur
 // Internal interface for the retrieval and rendering of a actions from AgentMessage ModelIds. This
 // should not be used outside of api/assistant. We allow a ModelId interface here because for
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
-export async function codeInterpreterActionTypesFromAgentMessageIds(
+export async function visualizationActionTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
-): Promise<CodeInterpreterActionType[]> {
-  const models = await AgentCodeInterpreterAction.findAll({
+): Promise<VisualizationActionType[]> {
+  const models = await AgentVisualizationAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
     },
   });
 
   return models.map((action) => {
-    return new CodeInterpreterAction({
+    return new VisualizationAction({
       id: action.id,
       agentMessageId: action.agentMessageId,
       query: action.query,

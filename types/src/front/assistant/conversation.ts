@@ -1,8 +1,8 @@
-import { CodeInterpreterActionType } from "../../front/assistant/actions/code_interpreter";
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
 import { ProcessActionType } from "../../front/assistant/actions/process";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
 import { TablesQueryActionType } from "../../front/assistant/actions/tables_query";
+import { VisualizationActionType } from "../../front/assistant/actions/visualization";
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
@@ -94,7 +94,7 @@ export type AgentActionType =
   | ProcessActionType
   | WebsearchActionType
   | BrowseActionType
-  | CodeInterpreterActionType;
+  | VisualizationActionType;
 
 export type AgentMessageStatus =
   | "created"

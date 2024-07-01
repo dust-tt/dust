@@ -218,17 +218,17 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "assistant-v2-code-interpreter": {
+  "assistant-v2-visualization": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "tWcuYDj1OE",
       appHash:
-        "9a9adcfb020630171034d95679a484d8d5a7656968af7a26c9434968da083acc",
+        "7cd6f307204d785f788e2ce9248672f1c72a6c77fda44c818c99d10b07d1fc7c",
     },
     config: {
       MODEL: {
         // `provider_id` and `model_id` must be set by caller.
-        function_call: "generate_code",
+        function_call: "visualize",
         use_cache: false,
       },
     },

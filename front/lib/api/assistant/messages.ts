@@ -15,9 +15,9 @@ import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
-import { codeInterpreterActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/code_interpreter";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
+import { visualizationActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/visualization";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
@@ -135,7 +135,7 @@ export async function batchRenderAgentMessages(
     agentProcessActions,
     agentWebsearchActions,
     agentBrowseActions,
-    agentCodeInterpreterActions,
+    agentVisualizationActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -164,7 +164,7 @@ export async function batchRenderAgentMessages(
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () =>
-      codeInterpreterActionTypesFromAgentMessageIds(agentMessageIds))(),
+      visualizationActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   return agentMessages.map((message) => {
@@ -182,7 +182,7 @@ export async function batchRenderAgentMessages(
       agentProcessActions,
       agentWebsearchActions,
       agentBrowseActions,
-      agentCodeInterpreterActions,
+      agentVisualizationActions,
     ]
       .flat()
       .filter((a) => a.agentMessageId === agentMessage.id)

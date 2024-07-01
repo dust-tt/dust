@@ -453,12 +453,11 @@ export async function createOrUpgradeAgentConfiguration({
         return res;
       }
       actionConfigs.push(res.value);
-    } else if (action.type === "code_interpreter_configuration") {
+    } else if (action.type === "visualization_configuration") {
       const res = await createAgentActionConfiguration(
         auth,
         {
-          type: "code_interpreter_configuration",
-          runtimeEnvironment: action.runtimeEnvironment,
+          type: "visualization_configuration",
           name: action.name ?? null,
           description: action.description ?? null,
         },

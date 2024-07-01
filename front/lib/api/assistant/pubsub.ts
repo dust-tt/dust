@@ -180,7 +180,7 @@ async function handleUserMessageEvents(
             case "process_params":
             case "websearch_params":
             case "browse_params":
-            case "code_interpreter_params":
+            case "visualization_params":
             case "agent_error":
             case "agent_action_success":
             case "generation_tokens":
@@ -322,7 +322,7 @@ export async function retryAgentMessageWithPubSub(
               case "process_params":
               case "websearch_params":
               case "browse_params":
-              case "code_interpreter_params":
+              case "visualization_params":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":

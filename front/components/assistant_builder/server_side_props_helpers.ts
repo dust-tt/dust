@@ -12,11 +12,11 @@ import {
   ConnectorsAPI,
   CoreAPI,
   isBrowseConfiguration,
-  isCodeInterpreterConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
   slugify,
 } from "@dust-tt/types";
@@ -212,7 +212,7 @@ export async function buildInitialActions({
     } else if (isBrowseConfiguration(action)) {
       // Ignore browse actions
       continue;
-    } else if (isCodeInterpreterConfiguration(action)) {
+    } else if (isVisualizationConfiguration(action)) {
       // @todo[daph] this is the builder work, in the next PR.
       continue;
     } else {

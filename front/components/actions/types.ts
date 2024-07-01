@@ -1,11 +1,11 @@
 import type { AgentActionType } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
-import { CodeInterpreterActionDetails } from "@app/components/actions/code_interpreter/CodeInterpreterActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
+import { VisualizationActionDetails } from "@app/components/actions/visualization/VisualizationActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
@@ -51,8 +51,8 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: BrowseActionDetails,
     runningLabel: "Browsing page",
   },
-  code_interpreter_action: {
-    detailsComponent: CodeInterpreterActionDetails,
+  visualization_action: {
+    detailsComponent: VisualizationActionDetails,
     runningLabel: "Analyzing request",
   },
 };

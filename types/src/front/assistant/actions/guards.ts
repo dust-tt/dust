@@ -1,8 +1,4 @@
 import {
-  CodeInterpreterActionType,
-  CodeInterpreterConfigurationType,
-} from "../../../front/assistant/actions/code_interpreter";
-import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
@@ -18,6 +14,10 @@ import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
+import {
+  VisualizationActionType,
+  VisualizationConfigurationType,
+} from "../../../front/assistant/actions/visualization";
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { BrowseActionType, BrowseConfigurationType } from "./browse";
@@ -131,19 +131,19 @@ export function isBrowseActionType(
   return arg.type === "browse_action";
 }
 
-export function isCodeInterpreterConfiguration(
+export function isVisualizationConfiguration(
   arg: unknown
-): arg is CodeInterpreterConfigurationType {
+): arg is VisualizationConfigurationType {
   return (
     !!arg &&
     typeof arg === "object" &&
     "type" in arg &&
-    arg.type === "code_interpreter_configuration"
+    arg.type === "visualization_configuration"
   );
 }
 
-export function isCodeInterpreterActionType(
+export function isVisualizationActionType(
   arg: AgentActionType
-): arg is CodeInterpreterActionType {
-  return arg.type === "code_interpreter_action";
+): arg is VisualizationActionType {
+  return arg.type === "visualization_action";
 }

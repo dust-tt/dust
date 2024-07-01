@@ -25,11 +25,11 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   isBrowseConfiguration,
-  isCodeInterpreterConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
@@ -1106,7 +1106,7 @@ async function* runAction(
           assertNever(event);
       }
     }
-  } else if (isCodeInterpreterConfiguration(actionConfiguration)) {
+  } else if (isVisualizationConfiguration(actionConfiguration)) {
     const eventStream = getRunnerforActionConfiguration(
       actionConfiguration
     ).run(auth, {
@@ -1120,10 +1120,10 @@ async function* runAction(
 
     for await (const event of eventStream) {
       switch (event.type) {
-        case "code_interpreter_params":
+        case "visualization_params":
           yield event;
           break;
-        case "code_interpreter_error":
+        case "visualization_error":
           yield {
             type: "agent_error",
             created: event.created,
@@ -1135,7 +1135,7 @@ async function* runAction(
             },
           };
           return;
-        case "code_interpreter_success":
+        case "visualization_success":
           yield {
             type: "agent_action_success",
             created: event.created,

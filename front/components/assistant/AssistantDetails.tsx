@@ -2,7 +2,6 @@ import {
   Avatar,
   BracesIcon,
   CommandLineIcon,
-  CommandLineStrokeIcon,
   ContentMessage,
   ElementModal,
   ExternalLinkIcon,
@@ -11,6 +10,7 @@ import {
   Page,
   PlanetIcon,
   ServerIcon,
+  ShapesIcon,
   Spinner,
   Tree,
 } from "@dust-tt/sparkle";
@@ -28,11 +28,11 @@ import type {
 import {
   assertNever,
   isBrowseConfiguration,
-  isCodeInterpreterConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -288,15 +288,15 @@ export function AssistantDetails({
             </div>
           ) : isBrowseConfiguration(action) ? (
             false
-          ) : isCodeInterpreterConfiguration(action) ? (
+          ) : isVisualizationConfiguration(action) ? (
             <div className="flex flex-col gap-2" key={`action-${index}`}>
               <div className="text-lg font-bold text-element-800">
-                Code Interpreter
+                Visualization
               </div>
               <div className="flex items-center gap-2">
-                <Icon visual={CommandLineStrokeIcon} size="xs" />
+                <Icon visual={ShapesIcon} size="xs" />
                 <div>
-                  Assistant can generate and execute some code to answer
+                  Assistant can generate graphs to visually represent your data.
                 </div>
               </div>
             </div>
