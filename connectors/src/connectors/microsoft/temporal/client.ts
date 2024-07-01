@@ -5,7 +5,7 @@ import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
 import {
   fullSyncWorkflow,
   microsoftFullSyncWorkflowId,
-} from "@connectors/connectors/microsoft/temporal/workflow";
+} from "@connectors/connectors/microsoft/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";

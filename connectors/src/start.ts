@@ -11,6 +11,7 @@ import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { runWebCrawlerWorker } from "./connectors/webcrawler/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
+import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
 
 const argv = minimist(process.argv.slice(2));
 if (!argv.p) {
@@ -40,4 +41,7 @@ runIntercomWorker().catch((err) =>
 );
 runWebCrawlerWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running webcrawler worker")
+);
+runMicrosoftWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running microsoft worker")
 );
