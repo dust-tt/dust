@@ -35,9 +35,6 @@ class FileStorage {
       gcsFile.createWriteStream({
         metadata: {
           contentType: file.mimetype,
-          metadata: {
-            fileName: file.originalFilename,
-          },
         },
       })
     );
@@ -59,34 +56,9 @@ class FileStorage {
     });
   }
 
-  async uploadStream(
-    filePath: string,
-    fileStream: Readable,
-    metadata: {
-      contentType: string | null;
-      fileName?: string;
-    }
-  ) {
-    const gcsFile = this.file(filePath);
-    const writeStream = gcsFile.createWriteStream({
-      metadata: {
-        contentType: metadata.contentType,
-        metadata: {
-          fileName: metadata.fileName,
-        },
-      },
-    });
-
-    await pipeline(fileStream, writeStream);
-  }
-
   /**
    * Download functions.
    */
-
-  async fetchWithStream(filePath: string): Promise<Readable> {
-    return this.file(filePath).createReadStream();
-  }
 
   async fetchFileContent(filePath: string) {
     const gcsFile = this.file(filePath);

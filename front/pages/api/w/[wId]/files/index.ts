@@ -3,6 +3,7 @@ import type {
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
+  ensureFileSize,
   FileUploadUrlRequestSchema,
   isSupportedFileContentType,
   rateLimiter,
@@ -11,7 +12,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { ensureFileSize } from "@app/lib/api/files/types";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";

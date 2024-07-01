@@ -17,9 +17,27 @@ export interface FileRequestResponseBody {
   file: FileType;
 }
 
-export const MAX_TEXT_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
+// Define max sizes for each category.
+const MAX_SIZES: Record<"plainText" | "image", number> = {
+  plainText: 30 * 1024 * 1024, // 30MB.
+  image: 3 * 1024 * 1024, // 3 MB
+};
 
-export const MAX_IMAGE_FILE_SIZE = 3 * 1024 * 1024; // 3MB in bytes.
+// Function to ensure file size is within max limit for given content type.
+export function ensureFileSize(
+  contentType: SupportedFileContentType,
+  fileSize: number
+): boolean {
+  if (isSupportedPlainTextContentType(contentType)) {
+    return fileSize <= MAX_SIZES.plainText;
+  }
+
+  if (isSupportedImageContenType(contentType)) {
+    return fileSize <= MAX_SIZES.image;
+  }
+
+  return false;
+}
 
 // Supported content types for plain text.
 const supportedPlainTextContentTypes = [

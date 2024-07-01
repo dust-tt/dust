@@ -19,9 +19,6 @@ const config = {
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
-  getFileIdSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_FILE_TOKEN_SECRET");
-  },
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
   },

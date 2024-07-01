@@ -111,18 +111,6 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  get isReady(): boolean {
-    return this.status === "ready";
-  }
-
-  get isCreated(): boolean {
-    return this.status === "created";
-  }
-
-  get isFailed(): boolean {
-    return this.status === "failed";
-  }
-
   // Status logic.
 
   private async update(
@@ -145,6 +133,18 @@ export class FileResource extends BaseResource<FileModel> {
 
   async markAsReady(): Promise<void> {
     return this.update({ status: "ready" });
+  }
+
+  get isReady(): boolean {
+    return this.status === "ready";
+  }
+
+  get isCreated(): boolean {
+    return this.status === "created";
+  }
+
+  get isFailed(): boolean {
+    return this.status === "failed";
   }
 
   // Cloud storage logic.
