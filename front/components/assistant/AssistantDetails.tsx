@@ -227,7 +227,7 @@ export function AssistantDetails({
     agentConfiguration.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReadOnlyTextArea content={agentConfiguration.instructions} />
+        <div>{agentConfiguration.instructions}</div>
       </div>
     ) : (
       "This assistant has no instructions."
@@ -325,8 +325,8 @@ export function AssistantDetails({
             Consider updating it to benefit from the latest Tools features.
           </ContentMessage>
         )}
-        <InstructionsSection />
         <ActionsSection actions={agentConfiguration?.actions ?? []} />
+        <InstructionsSection />
       </div>
     </ElementModal>
   );
