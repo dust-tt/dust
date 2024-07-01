@@ -227,7 +227,7 @@ export function AssistantDetails({
     agentConfiguration.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <div>{agentConfiguration.instructions}</div>
+        <ReadOnlyTextArea content={agentConfiguration.instructions} />
       </div>
     ) : (
       "This assistant has no instructions."
