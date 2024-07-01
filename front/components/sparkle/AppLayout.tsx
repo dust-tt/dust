@@ -159,7 +159,7 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden">
           {!titleChildren && SHOW_INCIDENT_BANNER && (
             <IncidentBanner className="relative" />
           )}
