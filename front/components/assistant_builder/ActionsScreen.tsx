@@ -38,6 +38,10 @@ import {
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import {
+  ActionVisualization,
+  isActionVisualizationValid,
+} from "@app/components/assistant_builder/actions/VisualizationAction";
+import {
   ActionWebNavigation,
   isActionWebsearchValid as isActionWebNavigationValid,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
@@ -64,6 +68,7 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
 
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
+  "VISUALIZATION",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
@@ -96,6 +101,8 @@ export function isActionValid(
       return isActionTablesQueryValid(action);
     case "WEB_NAVIGATION":
       return isActionWebNavigationValid(action);
+    case "VISUALIZATION":
+      return isActionVisualizationValid(action);
     default:
       assertNever(action);
   }
@@ -631,6 +638,8 @@ function ActionConfigEditor({
       );
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
+    case "VISUALIZATION":
+      return <ActionVisualization />;
     default:
       assertNever(action);
   }
