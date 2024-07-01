@@ -55,11 +55,12 @@ makeScript({}, async ({ execute }) => {
 
   const agentRetrievalConfigs = await frontSequelize.query<ActionConfig>(
     `SELECT 
-        id, name, "agentConfigurationId", 'retrieval_configuration' as action 
+        arc.id, arc.name, arc."agentConfigurationId", 'retrieval_configuration' as action 
     FROM 
-        agent_retrieval_configurations
-    WHERE 
-        "name" ~ '_[0-9]+$'`,
+        agent_retrieval_configurations arc
+    INNER JOIN agent_configurations ac ON arc."agentConfigurationId" = ac.id
+    WHERE arc.name is NOT NULL and arc.name != '' AND ac.status = 'active'
+    `,
     {
       type: QueryTypes.SELECT,
     }
@@ -82,11 +83,12 @@ makeScript({}, async ({ execute }) => {
 
   const agentTablesQueryConfigs = await frontSequelize.query<ActionConfig>(
     `SELECT 
-        id, name, "agentConfigurationId", 'tables_query_configuration' as action 
+        arc.id, arc.name, "agentConfigurationId", 'tables_query_configuration' as action 
     FROM 
-        agent_tables_query_configurations
-    WHERE 
-        "name" ~ '_[0-9]+$'`,
+        agent_tables_query_configurations arc
+    INNER JOIN agent_configurations ac ON arc."agentConfigurationId" = ac.id
+    WHERE arc.name is NOT NULL and arc.name != '' AND ac.status = 'active'
+    `,
     {
       type: QueryTypes.SELECT,
     }
@@ -108,11 +110,11 @@ makeScript({}, async ({ execute }) => {
 
   const browseConfigs = await frontSequelize.query<ActionConfig>(
     `SELECT 
-        id, name, "agentConfigurationId", 'browse_configuration' as action 
+        arc.id, arc.name, "agentConfigurationId", 'browse_configuration' as action 
     FROM 
-        agent_browse_configurations
-    WHERE 
-        "name" ~ '_[0-9]+$'`,
+        agent_browse_configurations arc
+    INNER JOIN agent_configurations ac ON arc."agentConfigurationId" = ac.id
+    WHERE arc.name is NOT NULL and arc.name != '' AND ac.status = 'active'`,
     {
       type: QueryTypes.SELECT,
     }
@@ -132,11 +134,11 @@ makeScript({}, async ({ execute }) => {
 
   const websearchConfigs = await frontSequelize.query<ActionConfig>(
     `SELECT 
-        id, name, "agentConfigurationId", 'websearch_configuration' as action 
+        arc.id, arc.name, "agentConfigurationId", 'websearch_configuration' as action 
     FROM 
-        agent_websearch_configurations
-    WHERE 
-        "name" ~ '_[0-9]+$'`,
+        agent_websearch_configurations arc
+    INNER JOIN agent_configurations ac ON arc."agentConfigurationId" = ac.id
+    WHERE arc.name is NOT NULL and arc.name != '' AND ac.status = 'active'`,
     {
       type: QueryTypes.SELECT,
     }
@@ -156,11 +158,11 @@ makeScript({}, async ({ execute }) => {
 
   const processConfigs = await frontSequelize.query<ActionConfig>(
     `SELECT 
-        id, name, "agentConfigurationId", 'process_configuration' as action 
+        arc.id, arc.name, "agentConfigurationId", 'process_configuration' as action 
     FROM 
-        agent_process_configurations
-    WHERE 
-        "name" ~ '_[0-9]+$'`,
+        agent_process_configurations arc
+    INNER JOIN agent_configurations ac ON arc."agentConfigurationId" = ac.id
+    WHERE arc.name is NOT NULL and arc.name != '' AND ac.status = 'active'`,
     {
       type: QueryTypes.SELECT,
     }
