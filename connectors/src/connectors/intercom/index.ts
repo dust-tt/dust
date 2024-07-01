@@ -163,9 +163,8 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     if (connectionId) {
       const oldConnectionId = connector.connectionId;
       const newConnectionId = connectionId;
-      const newIntercomWorkspace = await fetchIntercomWorkspace(
-        newConnectionId
-      );
+      const newIntercomWorkspace =
+        await fetchIntercomWorkspace(newConnectionId);
 
       if (!newIntercomWorkspace) {
         return new Err({

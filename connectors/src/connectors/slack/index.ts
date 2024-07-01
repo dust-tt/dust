@@ -141,9 +141,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
       const newTeamId = teamInfoRes.team.id;
       if (newTeamId !== currentSlackConfig.slackTeamId) {
-        const configurations = await SlackConfigurationResource.listForTeamId(
-          newTeamId
-        );
+        const configurations =
+          await SlackConfigurationResource.listForTeamId(newTeamId);
 
         // Revoke the token if no other slack connector is active on the same slackTeamId.
         if (configurations.length == 0) {
@@ -345,10 +344,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         }),
       ]);
 
-      const localChannelsById = localChannels.reduce((acc, ch) => {
-        acc[ch.slackChannelId] = ch;
-        return acc;
-      }, {} as Record<string, SlackChannel>);
+      const localChannelsById = localChannels.reduce(
+        (acc, ch) => {
+          acc[ch.slackChannelId] = ch;
+          return acc;
+        },
+        {} as Record<string, SlackChannel>
+      );
 
       for (const remoteChannel of remoteChannels) {
         if (!remoteChannel.id || !remoteChannel.name) {
