@@ -88,6 +88,10 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
+  static baseFileUrl(owner: LightWorkspaceType): string {
+    return `${config.getAppUrl()}/api/w/${owner.sId}/files/`;
+  }
+
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
       if (this.isReady) {

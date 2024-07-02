@@ -79,6 +79,7 @@ import {
   fileAttachmentLocation,
   storeContentFragmentText,
 } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -1634,10 +1635,7 @@ export async function postNewContentFragment(
   const messageId = generateModelSId();
 
   let sourceUrl: string | null = null;
-  if (
-    url &&
-    url.startsWith(`${config.getAppUrl()}/api/w/${owner.sId}/files/`)
-  ) {
+  if (url && url.startsWith(FileResource.baseFileUrl(owner))) {
     // Use the provided URL if it is an internal file path.
     sourceUrl = url;
   } else if (isSupportedUploadableContentFragmentType(contentType)) {
