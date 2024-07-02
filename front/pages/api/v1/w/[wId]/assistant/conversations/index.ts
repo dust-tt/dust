@@ -15,6 +15,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   createConversation,
   getConversation,
+  normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
@@ -205,12 +206,16 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       if (contentFragment) {
+        const contentType = normalizeContentFragmentType({
+          contentType: contentFragment.contentType,
+          url: req.url,
+        });
         const cf = await postNewContentFragment(auth, {
           conversation,
           title: contentFragment.title,
           content: contentFragment.content,
           url: contentFragment.url,
-          contentType: contentFragment.contentType,
+          contentType,
           context: {
             username: contentFragment.context?.username || null,
             fullName: contentFragment.context?.fullName || null,

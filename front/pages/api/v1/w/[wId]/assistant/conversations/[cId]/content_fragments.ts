@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getConversation,
+  normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
@@ -166,15 +167,16 @@ async function handler(
           },
         });
       }
-
+      const normalizedContentType = normalizeContentFragmentType({
+        contentType,
+        url: req.url,
+      });
       const contentFragment = await postNewContentFragment(auth, {
         conversation,
         title,
         content,
         url,
-        // hack: for users creating content_fragments through our public API
-        contentType:
-          contentType === "file_attachment" ? "text/plain" : contentType,
+        contentType: normalizedContentType,
         context: {
           username: context?.username || null,
           fullName: context?.fullName || null,
