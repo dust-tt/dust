@@ -52,6 +52,6 @@ export async function getAgentEnabledDataSources({
     ],
   });
   return dataSourceConfigurations.map((dsConfig) => ({
-    dataSourceId: dsConfig.dataSource.id
+    dataSourceId: dsConfig.dataSource.id,
   }));
 }
