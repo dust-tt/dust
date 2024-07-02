@@ -15,6 +15,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -405,7 +406,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return new Ok(undefined);
   }
 
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+  async delete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
         where: {

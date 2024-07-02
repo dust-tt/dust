@@ -15,6 +15,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/models/apps";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
@@ -117,7 +118,10 @@ export class RunResource extends BaseResource<RunModel> {
     });
   }
 
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+  async delete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
     try {
       // Delete the run usage entry.
       await RunUsageModel.destroy({

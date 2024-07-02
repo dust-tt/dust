@@ -697,7 +697,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
     let template: TemplateResource | null = null;
     if (agent.templateId) {
-      template = await TemplateResource.fetchById(agent.templateId);
+      template = await TemplateResource.fetchByModelId(agent.templateId);
     }
 
     const agentConfigurationType: AgentConfigurationType = {

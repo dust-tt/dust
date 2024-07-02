@@ -71,7 +71,7 @@ async function handler(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchById(
+    await LabsTranscriptsConfigurationResource.fetchByModelId(
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
@@ -137,7 +137,7 @@ async function handler(
       if (transcriptsConfiguration.isActive) {
         await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       }
-      await transcriptsConfiguration.delete();
+      await transcriptsConfiguration.delete(auth);
       return res.status(200).json({ configuration: null });
 
     default:

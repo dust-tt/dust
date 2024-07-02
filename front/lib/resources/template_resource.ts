@@ -9,6 +9,7 @@ import type {
 } from "sequelize";
 
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
+import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -76,7 +77,10 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     );
   }
 
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+  async delete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
         where: {

@@ -78,7 +78,11 @@ export type APIErrorType =
   // Labs:
   | "transcripts_configuration_not_found"
   | "transcripts_configuration_default_not_allowed"
-  | "transcripts_configuration_already_exists";
+  | "transcripts_configuration_already_exists"
+  // Files:
+  | "file_not_found"
+  | "file_too_large"
+  | "file_type_not_supported";
 
 export type APIError = {
   type: APIErrorType;

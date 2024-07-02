@@ -81,7 +81,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     workspace: LightWorkspaceType,
     id: ModelId | string
   ) {
-    const key = await this.fetchById(id);
+    const key = await this.fetchByModelId(id);
 
     if (!key) {
       return null;

@@ -11,13 +11,18 @@ export function classNames(...classes: string[]) {
 /**
  * Generates 10-character long model SId from [A-Za-z0-9] characters.
  */
-export function generateModelSId(): string {
+export function generateModelSId(prefix?: string): string {
   const u = uuidv4();
   const b = blake3(u, { length: 10 });
   const sId = Buffer.from(b)
     .map(uniformByteToCode62)
     .map(alphanumFromCode62)
     .toString();
+
+  if (prefix) {
+    return `${prefix}_${sId}`;
+  }
+
   return sId;
 }
 

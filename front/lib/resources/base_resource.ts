@@ -1,6 +1,8 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import type { Attributes, Model, ModelStatic, Transaction } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
+
 interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
   new (model: ModelStatic<M>, blob: Attributes<M>): T;
 }
@@ -9,7 +11,7 @@ interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
  * BaseResource serves as a foundational class for resource management.
  * It encapsulates common CRUD operations for Sequelize models, ensuring a uniform interface
  * across different resources. Each instance represents a specific database row, identified by `id`.
- * - `fetchById`: Static method to retrieve an instance based on its ID, ensuring type safety and
+ * - `fetchByModelId`: Static method to retrieve an instance based on its ID, ensuring type safety and
  *   the correct model instantiation.
  * - `delete`: Instance method to delete the current resource from the database.
  * - `update`: Instance method to update the current resource with new values.
@@ -28,7 +30,7 @@ export abstract class BaseResource<M extends Model> {
     this.id = blob.id;
   }
 
-  static async fetchById<T extends BaseResource<M>, M extends Model>(
+  static async fetchByModelId<T extends BaseResource<M>, M extends Model>(
     this: BaseResourceConstructor<T, M> & {
       model: ModelStatic<M>;
     },
@@ -45,5 +47,8 @@ export abstract class BaseResource<M extends Model> {
     return new this(this.model, blob.get());
   }
 
-  abstract delete(transaction?: Transaction): Promise<Result<undefined, Error>>;
+  abstract delete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>>;
 }

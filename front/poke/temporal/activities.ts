@@ -202,10 +202,11 @@ export async function deleteConversationsActivity({
                 }
               }
               if (msg.contentFragmentId) {
-                const contentFragment = await ContentFragmentResource.fetchById(
-                  msg.contentFragmentId,
-                  t
-                );
+                const contentFragment =
+                  await ContentFragmentResource.fetchByModelId(
+                    msg.contentFragmentId,
+                    t
+                  );
                 if (contentFragment) {
                   await contentFragment.destroy(
                     {
@@ -443,7 +444,7 @@ export async function deleteRunOnDustAppsActivity({
               `Error deleting Run from Core: ${res.error.message}`
             );
           }
-          await run.delete();
+          await run.delete(auth);
         })();
       })
     );
@@ -502,12 +503,12 @@ export async function deleteMembersActivity({
           logger.info(
             `[Workspace delete] Deleting Membership ${membership.id} and user ${user.id}`
           );
-          await membership.delete(t);
+          await membership.delete(auth, t);
           await user.destroy({ transaction: t });
         }
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
-        await membership.delete(t);
+        await membership.delete(auth, t);
       }
     }
   });

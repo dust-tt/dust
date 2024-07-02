@@ -34,7 +34,7 @@ export async function retrieveNewTranscriptsActivity(
   });
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchById(
+    await LabsTranscriptsConfigurationResource.fetchByModelId(
       transcriptsConfigurationId
     );
 
@@ -101,7 +101,7 @@ export async function processTranscriptActivity(
   fileId: string
 ) {
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchById(
+    await LabsTranscriptsConfigurationResource.fetchByModelId(
       transcriptsConfigurationId
     );
 
