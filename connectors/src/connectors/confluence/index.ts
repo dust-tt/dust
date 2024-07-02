@@ -273,7 +273,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
-    viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
