@@ -2,6 +2,7 @@ import type {
   ConnectorProvider,
   ModelId,
   Result,
+  SlackConfiguration,
   WebCrawlerConfiguration,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -60,7 +61,7 @@ export function createConnector({
   params,
 }:
   | {
-      connectorProvider: Exclude<ConnectorProvider, "webcrawler">;
+      connectorProvider: Exclude<ConnectorProvider, "webcrawler" | "slack">;
       params: {
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
@@ -73,6 +74,14 @@ export function createConnector({
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
         configuration: WebCrawlerConfiguration;
+      };
+    }
+  | {
+      connectorProvider: "slack";
+      params: {
+        dataSourceConfig: DataSourceConfig;
+        connectionId: string;
+        configuration: SlackConfiguration;
       };
     }): Promise<Result<string, Error>> {
   switch (connectorProvider) {
