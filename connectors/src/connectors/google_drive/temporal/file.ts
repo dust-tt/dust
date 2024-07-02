@@ -17,8 +17,8 @@ import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/sp
 import {
   getDocumentId,
   getDriveClient,
-  MAX_FILE_SIZE_TO_DOWNLOAD,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_LARGE_DOCUMENT_TXT_LEN,
