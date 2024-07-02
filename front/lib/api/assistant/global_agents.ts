@@ -1,3 +1,4 @@
+import { EnvironmentConfig } from "@dust-tt/types";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
@@ -115,6 +116,7 @@ async function _getHelperGlobalAgent(
       }
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -125,12 +127,23 @@ async function _getHelperGlobalAgent(
     description: "Help on how to use Dust",
     instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
-    status: status,
-    userListStatus: "in-list",
+    status,
     scope: "global",
-    model: model,
-    actions: [],
-    maxToolsUsePerRun: 0,
+    userListStatus: "in-list",
+    model,
+    actions: [
+      {
+        id: -1, 
+        sId: GLOBAL_AGENTS_SID.HELPER + "-dust-app-action",
+        type: "dust_app_run_configuration",
+        appWorkspaceId: EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID"),
+        appId: EnvironmentConfig.getEnvVariable("HELPER_APP_ID"),
+        name: "search-dust-doc",
+        description: `Searching in the Dust documentation`,
+
+      }
+    ],
+    maxToolsUsePerRun: 3,
     templateId: null,
   };
 }
