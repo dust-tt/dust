@@ -202,13 +202,12 @@ export async function syncFiles(
 
   const drive = await getDriveClient(authCredentials);
   const mimeTypesSearchString = mimeTypesToSync
+    .filter(
+      (mimeType) =>
+        mimeTypeFilter === undefined || mimeTypeFilter.includes(mimeType)
+    )
     .map((mimeType) => `mimeType='${mimeType}'`)
     .join(" or ");
-
-  const mimeTypeFilterString =
-    mimeTypeFilter && mimeTypeFilter.length > 0
-      ? `and (${mimeTypeFilter.map((mimeType) => `mimeType='${mimeType}'`).join(" or ")})`
-      : ``;
 
   const res = await drive.files.list({
     corpora: "allDrives",
@@ -216,7 +215,7 @@ export async function syncFiles(
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
-    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false ${mimeTypeFilterString}`,
+    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
     pageToken: nextPageToken,
   });
   if (res.status !== 200) {
