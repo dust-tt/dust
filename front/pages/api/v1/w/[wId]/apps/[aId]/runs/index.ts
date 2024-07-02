@@ -71,8 +71,8 @@ function extractUsageFromExecutions(
  * @swagger
  * /api/v1/w/{wId}/apps/{appId}/run:
  *   post:
- *     summary: Run an app
- *     description: Run an app of a workspace.
+ *     summary: Create an app run
+ *     description: Create a run for an app in the workspace identified by {wId}.
  *     tags:
  *       - Apps
  *     parameters:

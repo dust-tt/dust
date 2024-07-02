@@ -12,6 +12,57 @@ export const config = {
   },
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/data_sources/{name}/tables/csv:
+ *   post:
+ *     summary: Upsert CSV to table
+ *     description: Upsert CSV data to a table in the data source identified by {name} in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: table_id
+ *         description: ID of the table
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: The table
+ *       404:
+ *         description: The table was not found
+ *       405:
+ *         description: Method not supported
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse

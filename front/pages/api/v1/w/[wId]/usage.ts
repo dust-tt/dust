@@ -22,6 +22,50 @@ const GetWorkspaceUsageSchema = t.intersection([
   }),
 ]);
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/usage:
+ *   get:
+ *     summary: Get workspace usage data
+ *     description: Get usage data for the workspace identified by {wId}.
+ *     tags:
+ *       - Workspace
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: start_date
+ *         required: true
+ *         description: The start date in YYYY-MM-DD format
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: end_date
+ *         required: false
+ *         description: The end date in YYYY-MM-DD format
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The usage data
+ *       404:
+ *         description: The workspace was not found
+ *       405:
+ *         description: Method not supported
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse

@@ -11,6 +11,65 @@ export type PostParentsResponseBody = {
   updated: true;
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/data_sources/{name}/documents/{documentId}/parents:
+ *   post:
+ *     summary: Update the parents of a document
+ *     description: Update the parents of a document in the data source identified by {name} in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: documentId
+ *         required: true
+ *         description: ID of the document
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               parents:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: The parents were updated
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       500:
+ *         description: Internal Server Error.
+ *       404:
+ *         description: Data source or workspace not found.
+ *       405:
+ *         description: Method not supported.
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<PostParentsResponseBody>>

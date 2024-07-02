@@ -10,7 +10,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations:
  *   get:
- *     summary: Get the list of assistants
+ *     summary: List assistants
  *     description: Get the agent configurations for the workspace identified by {wId}.
  *     tags:
  *       - Workspace
@@ -21,12 +21,12 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *      - in: header
- *        name: Authorization
- *        required: true
- *        description: Bearer token for authentication
- *        schema:
- *         type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Agent configurations for the workspace

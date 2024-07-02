@@ -12,7 +12,7 @@ export type WorkspaceFeatureFlagsResponseBody = {
  * @swagger
  * /api/v1/w/{wId}/feature_flags:
  *   get:
- *     summary: Get the feature flags for the workspace
+ *     summary: List feature flags
  *     description: Get the feature flags for the workspace identified by {wId}.
  *     tags:
  *       - Workspace
@@ -21,6 +21,12 @@ export type WorkspaceFeatureFlagsResponseBody = {
  *         name: wId
  *         required: true
  *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     responses:

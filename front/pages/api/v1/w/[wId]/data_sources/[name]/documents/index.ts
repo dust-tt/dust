@@ -12,6 +12,52 @@ export type GetDocumentsResponseBody = {
   total: number;
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/data_sources/{name}/documents:
+ *   get:
+ *     summary: Get documents
+ *     description: Get documents in the data source identified by {name} in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         description: Limit the number of documents returned
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: offset
+ *         description: Offset the returned documents
+ *         schema:
+ *           type: integer
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The documents
+ *       404:
+ *         description: The data source was not found
+ *       405:
+ *         description: Method not supported
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<GetDocumentsResponseBody>>

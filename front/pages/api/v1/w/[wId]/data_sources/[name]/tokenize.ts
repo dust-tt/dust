@@ -22,6 +22,51 @@ type PostDatasourceTokenizeResponseBody = {
   tokens: CoreAPITokenType[];
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/data_sources/{name}/tokenize:
+ *   post:
+ *     summary: Tokenize text
+ *     description: Tokenize text for the data source identified by {name} in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *        application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               text:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: The tokens
+ *       404:
+ *         description: The data source was not found
+ *       405:
+ *         description: Method not supported
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<PostDatasourceTokenizeResponseBody>>
