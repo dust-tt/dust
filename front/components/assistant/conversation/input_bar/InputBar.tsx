@@ -156,6 +156,7 @@ export function AssistantInputBar({
           content: cf.content,
           file: cf.file,
           contentType: cf.contentType,
+          url: cf.url,
         };
       })
     );
@@ -163,7 +164,7 @@ export function AssistantInputBar({
     fileUploaderService.resetUpload();
   };
 
-  const fileUploaderService = useFileUploaderService();
+  const fileUploaderService = useFileUploaderService({ owner });
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 

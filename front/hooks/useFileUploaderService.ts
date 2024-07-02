@@ -1,5 +1,9 @@
-import type { SupportedUploadableContentFragmentType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  SupportedUploadableContentFragmentType,
+} from "@dust-tt/types";
 import {
+  getMaximumFileSizeForContentType,
   isSupportedImageContentFragmentType,
   isSupportedUploadableContentFragmentType,
 } from "@dust-tt/types";
@@ -11,20 +15,24 @@ import { getMimeTypeFromFile } from "@app/lib/file";
 
 interface FileContent {
   content: string;
+  // TODO(2024-06-26 flav) Make this configurable.
+  contentType: SupportedUploadableContentFragmentType;
   file: File;
   filename: string;
   id: string;
+  internalId: string | null;
+  isUploading: boolean;
   preview?: string;
   size: number;
-  // TODO(2024-06-26 flav) Make this configurable.
-  contentType: SupportedUploadableContentFragmentType;
+  url: string | null;
 }
 
 type FileBlobUploadErrorCode =
+  | "combined_size_exceeded"
   | "failed_to_read_file"
+  | "failed_to_upload_file"
   | "file_too_large"
-  | "file_type_not_supported"
-  | "combined_size_exceeded";
+  | "file_type_not_supported";
 
 class FileBlobUploadError extends Error {
   constructor(
@@ -37,12 +45,14 @@ class FileBlobUploadError extends Error {
 }
 
 const COMBINED_MAX_TEXT_FILES_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
-const MAX_TEXT_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes.
 
-const MAX_IMAGE_FILE_SIZE = 3 * 1024 * 1024; // 3MB in bytes.
 const COMBINED_MAX_IMAGE_FILES_SIZE = 20 * 1024 * 1024; // 15MB in bytes.
 
-export function useFileUploaderService() {
+export function useFileUploaderService({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
   const [fileBlobs, setFileBlobs] = useState<FileContent[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
@@ -102,29 +112,23 @@ export function useFileUploaderService() {
       const previewPromises: Promise<FileContent>[] = selectedFiles.map(
         async (file) => {
           const contentType = getMimeTypeFromFile(file);
+
           if (!isSupportedUploadableContentFragmentType(contentType)) {
             return Promise.reject(
               new FileBlobUploadError("file_type_not_supported", file)
             );
           }
 
-          if (isSupportedImageContentFragmentType(contentType)) {
-            if (file.size > MAX_IMAGE_FILE_SIZE) {
-              return Promise.reject(
-                new FileBlobUploadError("file_too_large", file)
-              );
-            }
-
-            const base64Text = await getPreview(file);
-
-            // No content for image-like files.
-            return createFileBlob(file, "", contentType, base64Text);
-          }
-
-          if (file.size > MAX_TEXT_FILE_SIZE) {
+          const maxFileSize = getMaximumFileSizeForContentType(contentType);
+          if (file.size > maxFileSize) {
             return Promise.reject(
               new FileBlobUploadError("file_too_large", file)
             );
+          }
+
+          if (isSupportedImageContentFragmentType(contentType)) {
+            // No content for image-like files.
+            return createFileBlob(file, "", contentType);
           }
 
           if (contentType === "application/pdf") {
@@ -142,13 +146,65 @@ export function useFileUploaderService() {
       const results = await Promise.all(previewPromises);
 
       setFileBlobs([...fileBlobs, ...results]);
+
+      for (const fileBlob of results) {
+        // Get upload URL from server.
+        const uploadResponse = await fetch(`/api/w/${owner.sId}/files`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contentType: fileBlob.contentType,
+            fileName: fileBlob.filename,
+            fileSize: fileBlob.size,
+          }),
+        });
+
+        if (!uploadResponse.ok) {
+          throw new FileBlobUploadError("failed_to_upload_file", fileBlob.file);
+        }
+
+        const { fileId, uploadUrl } = await uploadResponse.json();
+
+        const formData = new FormData();
+        formData.append("file", fileBlob.file);
+
+        // Upload file to the obtained URL.
+        const uploadResult = await fetch(uploadUrl, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResult.ok) {
+          throw new FileBlobUploadError("failed_to_upload_file", fileBlob.file);
+        }
+
+        const { downloadUrl } = await uploadResult.json();
+
+        // Update state to show the proper file status.
+        setFileBlobs((prevBlobs) => {
+          return prevBlobs.map((b) => {
+            if (b.id === fileBlob.id) {
+              b.internalId = fileId;
+              b.isUploading = false;
+              b.url = downloadUrl;
+              b.preview = b.contentType.startsWith("image/")
+                ? `${downloadUrl}?action=view`
+                : undefined;
+            }
+
+            return b;
+          });
+        });
+      }
+
+      setIsProcessingFiles(false);
     } catch (err) {
       if (err instanceof FileBlobUploadError) {
         const { name: filename } = err.file;
 
         if (err.code === "file_type_not_supported") {
-          // Even though we don't display the file size limit in the UI, we still check it here to prevent
-          // processing files that are too large.
           sendNotification({
             type: "error",
             title: "File type not supported.",
@@ -162,29 +218,18 @@ export function useFileUploaderService() {
             title: "File too large.",
             description: `Uploads are limited to 100Mb per file. File "${filename}" is too large.`,
           });
+        } else {
+          sendNotification({
+            type: "error",
+            title: "File upload failed.",
+            description: `There was an issue uploading the file "${filename}".`,
+          });
         }
+
+        // Remove the file from the blobs.
+        setFileBlobs((prevFiles) => prevFiles.filter((f) => f.id !== filename));
       }
-    } finally {
-      setIsProcessingFiles(false);
     }
-  };
-
-  const getPreview: (file: File) => Promise<string> = async (file: File) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const { result } = reader;
-
-        if (typeof result === "string") {
-          return resolve(result);
-        }
-
-        return reject(new FileBlobUploadError("file_type_not_supported", file));
-      };
-
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   };
 
   const getTextFromPDF: (file: File) => Promise<string> = async (
@@ -210,7 +255,26 @@ export function useFileUploaderService() {
   };
 
   const removeFile = (fileId: string) => {
-    setFileBlobs((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
+    const fileBlob = fileBlobs.find((f) => f.id === fileId);
+
+    if (fileBlob) {
+      setFileBlobs((prevFiles) =>
+        prevFiles.filter((f) => f.internalId !== fileBlob?.internalId)
+      );
+
+      // Intentionally not awaiting the fetch call to allow it to run asynchronously.
+      void fetch(`/api/w/${owner.sId}/files/${fileBlob.internalId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const allFilesReady = fileBlobs.every((f) => !!f.url);
+      if (allFilesReady && isProcessingFiles) {
+        setIsProcessingFiles(false);
+      }
+    }
   };
 
   const resetUpload = () => {
@@ -234,11 +298,15 @@ const createFileBlob = (
   contentType: SupportedUploadableContentFragmentType,
   preview?: string
 ): FileContent => ({
-  id: file.name,
   content,
-  preview,
-  filename: file.name,
-  file,
-  size: file.size,
   contentType,
+  file,
+  filename: file.name,
+  id: file.name,
+  // Will be set once the file has been uploaded.
+  internalId: null,
+  isUploading: true,
+  preview,
+  size: file.size,
+  url: null,
 });

@@ -36,6 +36,7 @@ export * from "./front/dataset";
 export * from "./front/document";
 export * from "./front/dust_app_secret";
 export * from "./front/feature_flags";
+export * from "./front/files";
 export * from "./front/key";
 export * from "./front/lib/actions/registry";
 export * from "./front/lib/actions/types";

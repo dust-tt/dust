@@ -38,7 +38,7 @@ function getViewUrlForContentFragment(message: ContentFragmentType) {
   }
 
   if (isSupportedImageContentFragmentType(message.contentType)) {
-    return `${message.sourceUrl}&action=view`;
+    return `${message.sourceUrl}?action=view`;
   }
 
   return undefined;
