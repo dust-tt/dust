@@ -118,7 +118,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize access to Microsoft for indexing shared documents stored in SharePoint, OneDrive, and Office365, and Teams discussions.",
     limitations:
-      "Dust will index the documents shared with the authorized account only. Only Teams publi cchannels will be indexed.",
+      "Dust will index the documents shared with the authorized account only. Only Teams public channels will be indexed.",
     guideLink: "https://dust-tt.notion.site/",
     logoComponent: MicrosoftLogo,
     isNested: true,
