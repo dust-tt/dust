@@ -1912,6 +1912,7 @@ export function normalizeContentFragmentType({
       },
       "ContentFragment of type 'file_attachment' being created"
     );
+    return "text/plain";
   }
   return contentType;
 }
