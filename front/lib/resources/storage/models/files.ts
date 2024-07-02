@@ -76,7 +76,13 @@ FileModel.init(
   {
     modelName: "files",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "sId"] }],
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+      },
+      { fields: ["workspaceId", "sId"] },
+    ],
   }
 );
 Workspace.hasMany(FileModel, {
