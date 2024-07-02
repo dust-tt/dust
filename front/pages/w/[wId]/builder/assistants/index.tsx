@@ -1,5 +1,4 @@
 import {
-  AssistantPreview,
   Avatar,
   Button,
   Cog6ToothIcon,
@@ -319,23 +318,6 @@ function AgentViewForScope({
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
 }) {
   const router = useRouter();
-  if (scopeView === "published") {
-    return (
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {agents.map((a) => (
-          <AssistantPreview
-            key={a.sId}
-            title={a.name}
-            pictureUrl={a.pictureUrl}
-            subtitle={a.lastAuthors?.join(", ") ?? ""}
-            description={a.description}
-            variant="list"
-            onClick={() => setShowDetails(a)}
-          />
-        ))}
-      </div>
-    );
-  }
 
   return (
     <ContextItem.List>
