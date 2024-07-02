@@ -1,4 +1,7 @@
+
 module.exports = {
+  productionBrowserSourceMaps: true,
+  
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,

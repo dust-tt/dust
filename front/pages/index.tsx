@@ -1,11 +1,6 @@
 import type { ReactElement } from "react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import { FutureSection } from "@app/components/home/content/Product/FutureSection";
-import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import { TeamSection } from "@app/components/home/content/Product/TeamSection";
-import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import config from "@app/lib/api/config";
@@ -55,13 +50,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 });
 
 export default function Home() {
+  const [counter, setCounter] = useState(0);
+  
+  useEffect(() => {
+    setCounter(counter + 1)
+  }, [counter])
   return (
     <>
-      <IntroSection />
-      <TeamSection />
-      <FutureSection />
-      <BlogSection />
-      <VerticalSection />
+    <button onClick={() => {setCounter((c) => c+ 1)}}>counter{counter}</button>
+      
     </>
   );
 }
