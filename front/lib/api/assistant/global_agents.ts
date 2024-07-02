@@ -138,7 +138,7 @@ async function _getHelperGlobalAgent(
         type: "dust_app_run_configuration",
         appWorkspaceId: EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID"),
         appId: EnvironmentConfig.getEnvVariable("HELPER_APP_ID"),
-        name: "search-dust-doc",
+        name: "help-global-assistant",
         description: `Searching in the Dust documentation`,
 
       }
