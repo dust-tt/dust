@@ -8,8 +8,6 @@ import { Workspace } from "@app/lib/models/workspace";
 
 export type AgentEnabledDataSource = {
   dataSourceId: number;
-  retrievalConfigurationId: number | null;
-  processConfigurationId: number | null;
 };
 
 export async function getAgentEnabledDataSources({
@@ -54,8 +52,6 @@ export async function getAgentEnabledDataSources({
     ],
   });
   return dataSourceConfigurations.map((dsConfig) => ({
-    dataSourceId: dsConfig.dataSource.id,
-    retrievalConfigurationId: dsConfig.retrievalConfigurationId,
-    processConfigurationId: dsConfig.processConfigurationId,
+    dataSourceId: dsConfig.dataSource.id
   }));
 }
