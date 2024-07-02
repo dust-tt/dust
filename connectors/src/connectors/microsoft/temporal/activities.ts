@@ -1,7 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import fs from "fs/promises";
-import os from "os";
-import { uuid4 } from "@temporalio/workflow";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -17,11 +14,19 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import axios from "axios";
-import { dpdf2text } from "@connectors/lib/dpdf2text";
 import mammoth from "mammoth";
 import turndown from "turndown";
 import { Client } from "@microsoft/microsoft-graph-client";
-import { title } from "process";
+import {
+  MAX_DOCUMENT_TXT_LEN,
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  renderDocumentTitleAndContent,
+  sectionLength,
+  upsertToDatasource,
+} from "@connectors/lib/data_sources";
+import { DriveItem } from "@microsoft/microsoft-graph-types";
+import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 
 export async function fullSyncActivity({
   connectorId,
@@ -63,9 +68,14 @@ export async function fullSyncActivity({
     throw new Error(`No file found for folder ${folder.id}`);
   }
 
-  syncOneFile(client, {
+  const startSyncTs = Date.now();
+
+  await syncOneFile(client, {
+    connectorId,
+    dataSourceConfig,
     file,
     parent: folder,
+    startSyncTs,
   });
 
   if (!file?.id) {
@@ -76,11 +86,19 @@ export async function fullSyncActivity({
 export async function syncOneFile(
   client: Client,
   {
+    connectorId,
+    dataSourceConfig,
     file,
     parent,
+    startSyncTs,
+    isBatchSync = false,
   }: {
+    connectorId: ModelId;
+    dataSourceConfig: DataSourceConfig;
     file: microsoftgraph.DriveItem;
     parent: MicrosoftRootResource;
+    startSyncTs: number;
+    isBatchSync?: boolean;
   }
 ) {
   const localLogger = logger.child({
@@ -99,25 +117,173 @@ export async function syncOneFile(
     microsoftInternalIdFromNodeData(parent)
   );
 
-  const fileResource = await MicrosoftNodeResource.fetchByInternalId(
-    microsoftInternalIdFromNodeData({
-      itemApiPath,
-      nodeType: "file",
-    })
-  );
+  const documentId = microsoftInternalIdFromNodeData({
+    itemApiPath,
+    nodeType: "file",
+  });
 
-  const res = await client
-    .api(itemApiPath)
-    .select("@microsoft.graph.downloadUrl")
-    .get();
+  const fileResource =
+    await MicrosoftNodeResource.fetchByInternalId(documentId);
 
-  const url = res["@microsoft.graph.downloadUrl"];
+  // Early return if lastSeenTs is greater than workflow start.
+  // This allows avoiding resyncing already-synced documents in case of activity failure
+  if (
+    fileResource?.lastSeenTs &&
+    fileResource.lastSeenTs > new Date(startSyncTs)
+  ) {
+    return true;
+  }
 
-  logger.info({ url }, "Download URL");
+  if (fileResource?.skipReason) {
+    localLogger.info(
+      { skipReason: fileResource.skipReason },
+      "Skipping file sync"
+    );
+    return false;
+  }
+
+  const url = (file as any)["@microsoft.graph.downloadUrl"];
+
+  if (!url) {
+    localLogger.info("No download URL found");
+    return false;
+  }
+
+  // If the file is too big to be downloaded, we skip it.
+  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
+    localLogger.info("File size exceeded, skipping file.");
+
+    return false;
+  }
+
   const downloadRes = await axios.get(`${url}`, {
     responseType: "arraybuffer",
   });
-  logger.info({ len: downloadRes.data.length }, "File content");
+
+  if (downloadRes.status !== 200) {
+    localLogger.error(
+      `Error while downloading file ${file.name}: ${downloadRes.status}`
+    );
+    throw new Error(
+      `Error while downloading file ${file.name}: ${downloadRes.status}`
+    );
+  }
+
+  const documentContent = await getDocumentContent(localLogger, downloadRes);
+
+  logger.info({ documentContent }, "Document content");
+
+  const documentSection = {
+    prefix: null,
+    content: documentContent,
+    sections: [],
+  };
+
+  const updatedAt = file.lastModifiedDateTime
+    ? new Date(file.lastModifiedDateTime)
+    : undefined;
+
+  const createdAt = file.createdDateTime
+    ? new Date(file.createdDateTime)
+    : undefined;
+
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title: file.name ?? null,
+    updatedAt,
+    createdAt,
+    lastEditor: file.lastModifiedBy?.user
+      ? file.lastModifiedBy.user.displayName ?? undefined
+      : undefined,
+    content: documentSection,
+  });
+
+  if (documentSection === undefined) {
+    localLogger.error({}, "documentContent is undefined");
+    throw new Error("documentContent is undefined");
+  }
+
+  const tags = [`title:${file.name}`];
+
+  if (file.lastModifiedDateTime) {
+    tags.push(`updatedAt:${file.lastModifiedDateTime}`);
+  }
+
+  if (file.createdDateTime) {
+    tags.push(`createdAt:${file.createdDateTime}`);
+  }
+
+  if (file.lastModifiedBy?.user?.displayName) {
+    tags.push(`lastEditor:${file.lastModifiedBy.user.displayName}`);
+  }
+
+  tags.push(`mimeType:${file.file.mimeType}`);
+
+  const documentLength = documentSection ? sectionLength(documentSection) : 0;
+
+  const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
+
+  const isInSizeRange =
+    documentLength > 0 && documentLength < MAX_DOCUMENT_TXT_LEN;
+  if (isInSizeRange) {
+    const parents = (
+      await getFileParentsMemoized(connectorId, client, file, startSyncTs)
+    ).map((f) => f.id);
+    parents.push(file.id);
+    parents.reverse();
+
+    await upsertToDatasource({
+      dataSourceConfig,
+      documentId,
+      documentContent: content,
+      documentUrl: file.webUrl ?? undefined,
+      timestampMs: upsertTimestampMs,
+      tags,
+      parents: parents,
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+      async: true,
+    });
+  } else {
+    localLogger.info(
+      {
+        documentLen: documentLength,
+      },
+      `Document is empty or too big to be upserted (marking as synced without upserting)`
+    );
+  }
+
+  const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
+    internalId: documentId,
+    connectorId: connectorId,
+    lastSeenTs: new Date(),
+    nodeType: "file",
+    name: file.name ?? "",
+    mimeType: file.file.mimeType ?? "",
+    lastUpsertedTs:
+      isInSizeRange && upsertTimestampMs ? new Date(upsertTimestampMs) : null,
+  };
+
+  if (fileResource) {
+    await fileResource.update(resourceBlob);
+  } else {
+    await MicrosoftNodeResource.makeNew(resourceBlob);
+  }
+
+  return isInSizeRange;
+}
+
+function getFileParentsMemoized(
+  connectorId: any,
+  oauth2client: any,
+  file: DriveItem,
+  startSyncTs: number
+): any[] {
+  return [];
+}
+
+async function getDocumentContent(localLogger: any, downloadRes: any) {
   try {
     const converted = await mammoth.convertToHtml({
       buffer: Buffer.from(downloadRes.data),
@@ -127,19 +293,14 @@ export async function syncOneFile(
       .remove(["style", "script", "iframe", "noscript", "form", "img"])
       .turndown(converted.value);
 
-    const documentContent = {
-      prefix: file.name,
-      content: extracted.trim(),
-      sections: [],
-    };
-
-    logger.info({ documentContent }, "Document content");
+    return extracted.trim();
   } catch (err) {
-    logger.warn(
+    localLogger.error(
       {
         error: err,
       },
       `Error while converting docx document to text`
     );
+    throw err;
   }
 }
