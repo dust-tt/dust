@@ -50,7 +50,7 @@ export async function getFilesAndFolders(
       : `${parentResourcePath}/children`;
   const res = await client
     .api(endpoint)
-    .select("id,name,createdDateTime,file,folder")
+    .select("id,name,createdDateTime,file,folder,@microsoft.graph.downloadUrl")
     .get();
   return res.value;
 }
@@ -94,7 +94,7 @@ export async function getChannels(
 export async function getMessages(
   client: Client,
   parentInternalId: string
-): Promise<MicrosoftGraph.Message[]> {
+): Promise<MicrosoftGraph.ChatMessage[]> {
   const { nodeType, itemApiPath: parentResourcePath } =
     microsoftNodeDataFromInternalId(parentInternalId);
 
@@ -106,6 +106,10 @@ export async function getMessages(
 
   const res = await client.api(`${parentResourcePath}/messages`).get();
   return res.value;
+}
+
+export async function getItem(client: Client, itemApiPath: string) {
+  return client.api(itemApiPath).get();
 }
 
 export type MicrosoftNodeData = {
@@ -137,7 +141,9 @@ export function microsoftNodeDataFromInternalId(
 
   const [, nodeType, ...resourcePathArr] = internalId.split("/");
   if (!nodeType || !isValidNodeType(nodeType)) {
-    throw new Error(`Invalid internal id: ${internalId}`);
+    throw new Error(
+      `Invalid internal id: ${internalId} with nodeType: ${nodeType}`
+    );
   }
 
   return { nodeType, itemApiPath: resourcePathArr.join("/") };

@@ -56,6 +56,7 @@ export async function syncOneFile(
   const mimeTypesToDownload = getMimeTypesToDownload({
     pdfEnabled: config?.pdfEnabled || false,
   });
+
   const documentId = getDocumentId(file.id);
   let documentContent: CoreAPIDataSourceDocumentSection | null = null;
 
