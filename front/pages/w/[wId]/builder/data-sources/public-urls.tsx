@@ -58,7 +58,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const readOnly = !auth.isBuilder();
 
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
-  const agentEnabledDataSources = await getAgentEnabledDataSources({ auth });
+  const agentEnabledDataSources = await getAgentEnabledDataSources({
+    auth,
+    providerFilter: "webcrawler",
+  });
 
   const connectorsAPI = new ConnectorsAPI(logger);
   const dataSources = await Promise.all(

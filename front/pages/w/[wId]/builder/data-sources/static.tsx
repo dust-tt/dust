@@ -48,9 +48,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
+  const agentEnabledDataSources = await getAgentEnabledDataSources({
+    auth,
+    providerFilter: null,
+  });
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
   const dataSources = allDataSources.filter((ds) => !ds.connectorId);
-  const agentEnabledDataSources = await getAgentEnabledDataSources({ auth });
   return {
     props: {
       owner,
@@ -90,7 +93,6 @@ export default function DataSourcesView({
       void router.push(`/w/${owner.sId}/builder/data-sources/new`);
     }
   });
-
   const agentCountPerDataSource = useMemo(() => {
     return _.countBy(agentEnabledDataSources, "dataSourceId");
   }, [agentEnabledDataSources]);
