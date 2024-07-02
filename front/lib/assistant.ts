@@ -61,6 +61,28 @@ export enum GLOBAL_AGENTS_SID {
   GEMINI_PRO = "gemini-pro",
 }
 
+export function getGlobalAgentAuthorName(agentId: string): string {
+  switch (agentId) {
+    case GLOBAL_AGENTS_SID.GPT35_TURBO:
+    case GLOBAL_AGENTS_SID.GPT4:
+      return "OpenAI";
+    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
+    case GLOBAL_AGENTS_SID.CLAUDE_2:
+      return "Anthropic";
+    case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
+    case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
+    case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
+      return "Mistral";
+    case GLOBAL_AGENTS_SID.GEMINI_PRO:
+      return "Google";
+    default:
+      return "Dust";
+  }
+}
+
 const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.GPT4,

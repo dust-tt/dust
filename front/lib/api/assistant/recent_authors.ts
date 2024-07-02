@@ -7,6 +7,7 @@ import { removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { renderUserType } from "@app/lib/api/user";
+import { getGlobalAgentAuthorName } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
@@ -14,8 +15,6 @@ import { safeRedisClient } from "@app/lib/redis";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
-
-const DUST_OWNED_ASSISTANTS_AUTHOR_NAME = "Dust";
 
 function _getRecentAuthorIdsKey({
   agentId,
@@ -141,10 +140,9 @@ export async function getAgentsRecentAuthors({
   const recentAuthorsIdsByAgentId: Record<string, number[] | null> = (
     await Promise.all(
       agents.map(async (agent): Promise<[string, number[] | null]> => {
-        const { sId: agentId, versionAuthorId } = agent;
-        const isGlobalAgent = versionAuthorId === null;
+        const { sId: agentId } = agent;
 
-        if (isGlobalAgent) {
+        if (agent.scope === "global") {
           return [agentId, null];
         }
         const agentRecentAuthorIdsKey = _getRecentAuthorIdsKey({
@@ -188,7 +186,7 @@ export async function getAgentsRecentAuthors({
   return agents.map((agent) => {
     const recentAuthorIds = recentAuthorsIdsByAgentId[agent.sId];
     if (recentAuthorIds === null) {
-      return [DUST_OWNED_ASSISTANTS_AUTHOR_NAME];
+      return [getGlobalAgentAuthorName(agent.sId)];
     }
     return renderAuthors(
       removeNulls(recentAuthorIds.map((id) => authorByUserId[id])),
