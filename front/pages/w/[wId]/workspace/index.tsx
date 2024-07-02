@@ -6,10 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  ActivityReport,
-  QuickInsights,
-} from "@app/components/workspace/Analytics";
+import { ActivityReport } from "@app/components/workspace/ActivityReport";
+import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -44,12 +42,11 @@ export default function WorkspaceAdmin({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   const [workspaceName, setWorkspaceName] = useState(owner.name);
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDownloadingData, setIsDownloadingData] = useState(false);
   const [showProviderModal, setShowProviderModal] = useState(false);
 
   const formValidation = useCallback(() => {
@@ -98,21 +95,14 @@ export default function WorkspaceAdmin({
     }
   };
 
-  const handleSelectMonth = (selectedOption: string) => {
-    setSelectedMonth(selectedOption);
-  };
-
   const handleDownload = async (selectedMonth: string | null) => {
     if (!selectedMonth) {
       return;
     }
 
-    const queryString =
-      selectedMonth === "All Time"
-        ? "mode=all"
-        : `mode=month&start=${selectedMonth}`;
+    const queryString = `mode=month&start=${selectedMonth}&table=all`;
 
-    setIsLoading(true);
+    setIsDownloadingData(true);
     try {
       const response = await fetch(
         `/api/w/${owner.sId}/workspace-usage?${queryString}`
@@ -122,16 +112,13 @@ export default function WorkspaceAdmin({
         throw new Error(`Error: ${response.status}`);
       }
 
-      const csvData = await response.text();
-      const blob = new Blob([csvData], { type: "text/csv" });
+      const contentType = response.headers.get("Content-Type");
+      const isZip = contentType === "application/zip";
+
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
 
       const [year, month] = selectedMonth.split("-");
-
-      const currentDay = new Date().getDate();
-      const formattedDay = String(currentDay).padStart(2, "0");
-
-      const currentMonth = new Date().getMonth() + 1;
 
       const getMonthName = (monthIndex: number) => {
         const months = [
@@ -152,24 +139,9 @@ export default function WorkspaceAdmin({
       };
 
       const monthName = getMonthName(Number(month));
-      const currentMonthName = getMonthName(currentMonth);
 
-      let filename = "";
-
-      if (selectedMonth === "All Time") {
-        filename = `dust_${owner.name}_activity_until_${new Date()
-          .toISOString()
-          .substring(0, 10)}`;
-      } else {
-        filename = `dust_${owner.name}_activity_${year}_${monthName}`;
-
-        // If the selected month is the current month, append the day
-        if (monthName === currentMonthName) {
-          filename += `_until_${formattedDay}`;
-        }
-      }
-
-      filename += ".csv";
+      const fileExtension = isZip ? "zip" : "csv";
+      const filename = `dust_${owner.name}_activity_${year}_${monthName}.${fileExtension}`;
 
       const link = document.createElement("a");
       link.href = url;
@@ -180,7 +152,7 @@ export default function WorkspaceAdmin({
     } catch (error) {
       alert("Failed to download activity data.");
     } finally {
-      setIsLoading(false);
+      setIsDownloadingData(false);
     }
   };
 
@@ -199,15 +171,9 @@ export default function WorkspaceAdmin({
     for (let year = startDateYear; year <= currentYear; year++) {
       const startMonth = year === startDateYear ? startDateMonth : 0;
       const endMonth = year === currentYear ? currentMonth : 11;
-      for (let month = startMonth; month <= endMonth; month++) {
+      for (let month = endMonth; month >= startMonth; month--) {
         monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
       }
-    }
-
-    monthOptions.push("All Time");
-
-    if (!selectedMonth) {
-      setSelectedMonth(monthOptions[monthOptions.length - 1]);
     }
   }
 
@@ -235,10 +201,8 @@ export default function WorkspaceAdmin({
             <Page.Horizontal gap="lg">
               <QuickInsights owner={owner} />
               <ActivityReport
+                isDownloading={isDownloadingData}
                 monthOptions={monthOptions}
-                selectedMonth={selectedMonth}
-                handleSelectedMonth={handleSelectMonth}
-                isLoading={isLoading}
                 handleDownload={handleDownload}
               />
             </Page.Horizontal>
