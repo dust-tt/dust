@@ -18,7 +18,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { extractTextFromPDF } from "@app/lib/client/handle_file_upload";
 import { getMimeTypeFromFile } from "@app/lib/file";
 
-interface FileContent {
+interface FileBlob {
   content: string;
   contentType: SupportedFileContentType;
   file: File;
@@ -32,8 +32,6 @@ interface FileContent {
 }
 
 type FileBlobUploadErrorCode =
-  | "combined_size_exceeded"
-  | "failed_to_read_file"
   | "failed_to_upload_file"
   | "file_too_large"
   | "file_type_not_supported";
@@ -57,7 +55,7 @@ export function useFileUploaderService({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const [fileBlobs, setFileBlobs] = useState<FileContent[]>([]);
+  const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
   const sendNotification = useContext(SendNotificationsContext);
@@ -66,7 +64,6 @@ export function useFileUploaderService({
     const selectedFiles = Array.from(
       (e?.target as HTMLInputElement).files ?? []
     );
-
     setIsProcessingFiles(true);
 
     const { totalTextualSize, totalImageSize } = [
@@ -74,21 +71,19 @@ export function useFileUploaderService({
       ...selectedFiles,
     ].reduce(
       (acc, content) => {
+        const { size } = content;
         if (
           isSupportedImageContentType(
             content instanceof File ? content.type : content.contentType
           )
         ) {
-          acc.totalImageSize += content.size;
+          acc.totalImageSize += size;
         } else {
-          acc.totalTextualSize += content.size;
+          acc.totalTextualSize += size;
         }
         return acc;
       },
-      {
-        totalTextualSize: 0,
-        totalImageSize: 0,
-      }
+      { totalTextualSize: 0, totalImageSize: 0 }
     );
 
     if (
@@ -98,149 +93,161 @@ export function useFileUploaderService({
       sendNotification({
         type: "error",
         title: "Files too large.",
-        description:
-          "Combined file sizes exceed the limits. Please upload smaller files.",
+        description: `Combined file sizes exceed the limits. Please upload smaller files.`,
       });
       return;
     }
 
-    // Create the file blobs so the UI can display them.
-    const previewPromises: Promise<Result<FileContent, FileBlobUploadError>>[] =
-      selectedFiles.map(async (file) => {
-        const contentType = getMimeTypeFromFile(file);
+    const previewResults = await processSelectedFiles(selectedFiles);
+    const newFileBlobs = processResults(previewResults);
 
-        if (!isSupportedFileContentType(contentType)) {
-          return new Err(
-            new FileBlobUploadError(
-              "file_type_not_supported",
-              file,
-              `File "${file.name}" is not supported.`
-            )
-          );
-        }
+    const uploadResults = await uploadFiles(newFileBlobs);
+    processResults(uploadResults);
 
-        if (isSupportedImageContentType(contentType)) {
-          return new Ok(createFileBlob(file, "", contentType));
-        }
+    setIsProcessingFiles(false);
+  };
 
-        // TODO(2024-07-02 flav) Remove once this is handled in the BE.
-        const text =
-          contentType === "application/pdf"
-            ? await getTextFromPDF(file)
-            : await file.text();
+  const processSelectedFiles = async (
+    selectedFiles: File[]
+  ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
+    const previewPromises = selectedFiles.map(async (file) => {
+      const contentType = getMimeTypeFromFile(file);
+      if (!isSupportedFileContentType(contentType)) {
+        return new Err(
+          new FileBlobUploadError(
+            "file_type_not_supported",
+            file,
+            `File "${file.name}" is not supported.`
+          )
+        );
+      }
 
-        return new Ok(createFileBlob(file, text, contentType));
+      if (isSupportedImageContentType(contentType)) {
+        return new Ok(createFileBlob(file, "", contentType));
+      }
+
+      const text =
+        contentType === "application/pdf"
+          ? await getTextFromPDF(file)
+          : await file.text();
+
+      return new Ok(createFileBlob(file, text, contentType));
+    });
+
+    return Promise.all(previewPromises);
+  };
+
+  const uploadFiles = async (
+    newFileBlobs: FileBlob[]
+  ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
+    const uploadPromises = newFileBlobs.map(async (fileBlob) => {
+      // Get upload URL from server.
+      let uploadResponse;
+      try {
+        uploadResponse = await fetch(`/api/w/${owner.sId}/files`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contentType: fileBlob.contentType,
+            fileName: fileBlob.filename,
+            fileSize: fileBlob.size,
+            useCase: "conversation",
+          }),
+        });
+      } catch (err) {
+        console.error("Error uploading files:", err);
+
+        return new Err(
+          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+        );
+      }
+
+      if (!uploadResponse.ok) {
+        return new Err(
+          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+        );
+      }
+
+      const { file } =
+        (await uploadResponse.json()) as FileUploadRequestResponseBody;
+
+      const formData = new FormData();
+      formData.append("file", fileBlob.file);
+
+      // Upload file to the obtained URL.
+      let uploadResult;
+      try {
+        uploadResult = await fetch(file.uploadUrl, {
+          method: "POST",
+          body: formData,
+        });
+      } catch (err) {
+        console.error("Error uploading files:", err);
+
+        return new Err(
+          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+        );
+      }
+
+      if (!uploadResult.ok) {
+        return new Err(
+          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+        );
+      }
+
+      const { file: fileUploaded } =
+        (await uploadResult.json()) as FileUploadedRequestResponseBody;
+
+      return new Ok({
+        ...fileBlob,
+        internalId: file.id,
+        isUploading: false,
+        url: fileUploaded.downloadUrl ?? null,
+        preview: isSupportedImageContentType(fileBlob.contentType)
+          ? `${fileUploaded.downloadUrl}?action=view`
+          : undefined,
       });
+    });
 
-    const results = await Promise.all(previewPromises);
+    return Promise.all(uploadPromises); // Run all uploads in parallel.
+  };
 
-    const failedResults = results.filter((result) => result.isErr());
-    if (failedResults.length > 0) {
-      failedResults.forEach((r) => {
-        if (r.isErr()) {
-          sendNotification({
-            type: "error",
-            title: "Failed to upload file.",
-            description: r.error.message,
-          });
+  const processResults = (results: Result<FileBlob, FileBlobUploadError>[]) => {
+    const successfulBlobs: FileBlob[] = [];
+    const erroredBlobs: FileBlobUploadError[] = [];
 
-          setFileBlobs((prevFiles) =>
-            prevFiles.filter((f) => f.id !== r.error.file.name)
-          );
-        }
+    results.forEach((result) => {
+      if (result.isErr()) {
+        erroredBlobs.push(result.error);
+        sendNotification({
+          type: "error",
+          title: "Failed to upload file.",
+          description: result.error.message,
+        });
+      } else {
+        successfulBlobs.push(result.value);
+      }
+    });
+
+    if (erroredBlobs.length > 0) {
+      setFileBlobs((prevFiles) =>
+        prevFiles.filter((f) => !erroredBlobs.some((e) => e.file.name === f.id))
+      );
+    }
+
+    if (successfulBlobs.length > 0) {
+      setFileBlobs((prevFiles) => {
+        const fileBlobMap = new Map(prevFiles.map((blob) => [blob.id, blob]));
+        successfulBlobs.forEach((blob) => {
+          fileBlobMap.set(blob.id, blob);
+        });
+        return Array.from(fileBlobMap.values());
       });
     }
 
-    const newFileBlobs = results
-      .filter((r): r is Ok<FileContent> => r.isOk()) // Type guard to filter only Ok results.
-      .map((r) => r.value);
-
-    setFileBlobs([...fileBlobs, ...newFileBlobs]);
-
-    const uploadFiles = async (newFileBlobs: FileContent[]) => {
-      const uploadPromises = newFileBlobs.map(async (fileBlob) => {
-        // Get upload URL from server.
-        let uploadResponse;
-        try {
-          uploadResponse = await fetch(`/api/w/${owner.sId}/files`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contentType: fileBlob.contentType,
-              fileName: fileBlob.filename,
-              fileSize: fileBlob.size,
-              useCase: "conversation",
-            }),
-          });
-        } catch (err) {
-          console.error("Error uploading files:", err);
-          return;
-        }
-
-        if (!uploadResponse.ok) {
-          sendNotification({
-            type: "error",
-            title: "Failed to upload file.",
-            description: "Failed to get upload URL from server.",
-          });
-
-          return;
-        }
-
-        const { file } =
-          (await uploadResponse.json()) as FileUploadRequestResponseBody;
-
-        const formData = new FormData();
-        formData.append("file", fileBlob.file);
-
-        // Upload file to the obtained URL.
-        let uploadResult;
-        try {
-          uploadResult = await fetch(file.uploadUrl, {
-            method: "POST",
-            body: formData,
-          });
-        } catch (err) {
-          console.error("Error uploading files:", err);
-          return;
-        }
-
-        if (!uploadResult.ok) {
-          sendNotification({
-            type: "error",
-            title: "Failed to upload file.",
-            description: "Failed to upload file to server.",
-          });
-        }
-
-        const { file: fileUploaded } =
-          (await uploadResult.json()) as FileUploadedRequestResponseBody;
-
-        // Update state to show the proper file status.
-        setFileBlobs((prevBlobs) => {
-          return prevBlobs.map((b) => {
-            if (b.id === fileBlob.id) {
-              b.internalId = file.id;
-              b.isUploading = false;
-              b.url = fileUploaded.downloadUrl ?? null;
-              b.preview = isSupportedImageContentType(b.contentType)
-                ? `${fileUploaded.downloadUrl}?action=view`
-                : undefined;
-            }
-
-            return b;
-          });
-        });
-      });
-
-      await Promise.all(uploadPromises); // Run all uploads in parallel.
-    };
-
-    await uploadFiles(newFileBlobs);
-
-    setIsProcessingFiles(false);
+    return successfulBlobs;
   };
 
   const getTextFromPDF: (file: File) => Promise<string> = async (
@@ -308,7 +315,7 @@ const createFileBlob = (
   content: string,
   contentType: SupportedFileContentType,
   preview?: string
-): FileContent => ({
+): FileBlob => ({
   content,
   contentType,
   file,

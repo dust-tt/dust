@@ -237,7 +237,7 @@ export async function createConversationWithMessage({
     contentFragments: contentFragments.map((cf) => ({
       content: cf.content,
       title: cf.title,
-      url: null, // sourceUrl will be set on raw content upload success
+      url: cf.url,
       contentType: cf.contentType,
       context: {
         profilePictureUrl: user.image,

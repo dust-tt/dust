@@ -62,6 +62,7 @@ import {
   batchRenderContentFragment,
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
@@ -1632,17 +1633,27 @@ export async function postNewContentFragment(
 
   const messageId = generateModelSId();
 
-  const sourceUrl = isSupportedUploadableContentFragmentType(contentType)
-    ? fileAttachmentLocation({
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId,
-        contentFormat: "raw",
-      }).downloadUrl
-    : url;
+  let sourceUrl: string | null = null;
+  if (
+    url &&
+    url.startsWith(`${config.getAppUrl()}/api/w/${owner.sId}/files/`)
+  ) {
+    // Use the provided URL if it is an internal file path.
+    sourceUrl = url;
+  } else if (isSupportedUploadableContentFragmentType(contentType)) {
+    // Deprecated, for supported content types, create a file path and use its download URL.
+    sourceUrl = fileAttachmentLocation({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+      messageId,
+      contentFormat: "raw",
+    }).downloadUrl;
+  } else {
+    // Otherwise, use the provided URL (e.g., a Slack thread).
+    sourceUrl = url;
+  }
 
-  // TODO(2024-06-27 flav) Consider resizing images.
-
+  // TODO(2024-07-03 flav) Remove once pdf text extraction is handled by file API.
   const textBytes = await storeContentFragmentText({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
