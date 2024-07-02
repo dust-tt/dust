@@ -17,7 +17,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   AssistantBuilderDataSourceConfiguration,
@@ -128,6 +128,29 @@ export default function AssistantBuilderDataSourceModal({
       setShouldDisplayWebsitesScreen(false);
     }
   }, [dataSourceConfigurations, initialDataSourceConfigurations, isOpen]);
+
+  const handleSelectChange = useCallback(
+    (node: ContentNode, selected: boolean) => {
+      setDataSourceConfigurations((currentConfigurations) => {
+        if (!selectedDataSource) {
+          return null;
+        }
+
+        if (currentConfigurations === null) {
+          // Unreachable
+          return null;
+        }
+
+        return getUpdatedConfigurations(
+          currentConfigurations,
+          selectedDataSource,
+          selected,
+          node
+        );
+      });
+    },
+    [selectedDataSource]
+  );
 
   if (!dataSourceConfigurations) {
     return null;
@@ -249,21 +272,7 @@ export default function AssistantBuilderDataSourceModal({
               dataSourceConfigurations[selectedDataSource.name]?.isSelectAll ||
               false
             }
-            onSelectChange={(node, selected) => {
-              setDataSourceConfigurations((currentConfigurations) => {
-                if (currentConfigurations === null) {
-                  // Unreachable
-                  return null;
-                }
-
-                return getUpdatedConfigurations(
-                  currentConfigurations,
-                  selectedDataSource,
-                  selected,
-                  node
-                );
-              });
-            }}
+            onSelectChange={handleSelectChange}
             toggleSelectAll={() => {
               setDataSourceConfigurations((currentConfigurations) => {
                 if (currentConfigurations === null) {
@@ -395,9 +404,26 @@ function DataSourceResourceSelector({
     selectedResources,
   });
 
-  const selectedParents = [
-    ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
-  ];
+  const selectedParents = useMemo(
+    () => [...new Set(Object.values(parentsById).flatMap((c) => [...c]))],
+    [parentsById]
+  );
+
+  const handleSelectChange = useCallback(
+    (node: ContentNode, parents: string[], selected: boolean) => {
+      setParentsById((parentsById) => {
+        const newParentsById = { ...parentsById };
+        if (selected) {
+          newParentsById[node.internalId] = new Set(parents);
+        } else {
+          delete newParentsById[node.internalId];
+        }
+        return newParentsById;
+      });
+      onSelectChange(node, selected);
+    },
+    [setParentsById, onSelectChange]
+  );
 
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
@@ -446,18 +472,7 @@ function DataSourceResourceSelector({
                 }
                 selectedResourceIds={selectedResources.map((r) => r.internalId)}
                 selectedParents={selectedParents}
-                onSelectChange={(node, parents, selected) => {
-                  setParentsById((parentsById) => {
-                    const newParentsById = { ...parentsById };
-                    if (selected) {
-                      newParentsById[node.internalId] = new Set(parents);
-                    } else {
-                      delete newParentsById[node.internalId];
-                    }
-                    return newParentsById;
-                  });
-                  onSelectChange(node, selected);
-                }}
+                onSelectChange={handleSelectChange}
                 parentIsSelected={isSelectAll}
               />
             </div>
