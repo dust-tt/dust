@@ -9,9 +9,9 @@ import logger from "@app/logger/logger";
 
 const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   auth: Authenticator,
-  fileRes: FileResource
+  file: FileResource
 ) => {
-  const readStream = fileRes.getReadStream(auth, "original");
+  const readStream = file.getReadStream(auth, "original");
 
   // Resize the image, preserving the aspect ratio. Longest side is max 768px.
   const resizedImageStream = sharp().resize(768, 768, {
@@ -19,7 +19,7 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
     withoutEnlargement: true, // Avoid upscaling if image is smaller than 768px.
   });
 
-  const writeStream = fileRes.getWriteStream(auth, "processed");
+  const writeStream = file.getWriteStream(auth, "processed");
 
   try {
     await pipeline(readStream, resizedImageStream, writeStream);
@@ -28,7 +28,7 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   } catch (err) {
     logger.error(
       {
-        fileId: fileRes.sId,
+        fileId: file.sId,
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
@@ -43,7 +43,7 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
 
 type PreprocessingFunction = (
   auth: Authenticator,
-  fileRes: FileResource
+  file: FileResource
 ) => Promise<Result<undefined, Error>>;
 
 type PreprocessingPerContentType = {
@@ -57,20 +57,20 @@ const processingPerContentType: Partial<PreprocessingPerContentType> = {
 
 export async function maybeApplyPreProcessing(
   auth: Authenticator,
-  fileRes: FileResource
+  file: FileResource
 ): Promise<Result<undefined, Error>> {
-  const processing = processingPerContentType[fileRes.contentType];
+  const processing = processingPerContentType[file.contentType];
 
   if (processing) {
-    const res = await processing(auth, fileRes);
+    const res = await processing(auth, file);
     if (res.isErr()) {
-      await fileRes.markAsFailed();
+      await file.markAsFailed();
 
       return res;
     }
   }
 
-  await fileRes.markAsReady();
+  await file.markAsReady();
 
   return new Ok(undefined);
 }

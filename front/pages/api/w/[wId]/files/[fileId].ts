@@ -76,8 +76,8 @@ async function handler(
     });
   }
 
-  const fileRes = await FileResource.fetchById(auth, fileId);
-  if (!fileRes) {
+  const file = await FileResource.fetchById(auth, fileId);
+  if (!file) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -95,7 +95,7 @@ async function handler(
 
       // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
-        const readStream = await fileRes.getReadStream(auth, "original");
+        const readStream = await file.getReadStream(auth, "original");
         readStream.on("error", () => {
           return apiError(req, res, {
             status_code: 404,
@@ -111,14 +111,14 @@ async function handler(
       }
 
       // Redirect to a signed URL.
-      const url = await fileRes.getSignedUrlForDownload(auth, "original");
+      const url = await file.getSignedUrlForDownload(auth, "original");
 
       res.redirect(url);
       return;
     }
 
     case "DELETE": {
-      const deleteRes = await fileRes.delete(auth);
+      const deleteRes = await file.delete(auth);
       if (deleteRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
@@ -134,7 +134,7 @@ async function handler(
     }
 
     case "POST": {
-      if (fileRes.isReady || fileRes.isFailed) {
+      if (file.isReady || file.isFailed) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -146,10 +146,10 @@ async function handler(
       }
 
       if (
-        fileRes.createdAt.getTime() + UPLOAD_DELAY_AFTER_CREATION_MS <
+        file.createdAt.getTime() + UPLOAD_DELAY_AFTER_CREATION_MS <
         Date.now()
       ) {
-        await fileRes.markAsFailed();
+        await file.markAsFailed();
 
         return apiError(req, res, {
           status_code: 400,
@@ -164,18 +164,18 @@ async function handler(
         const form = new IncomingForm({
           // Stream the uploaded document to the cloud storage.
           fileWriteStreamHandler: () => {
-            return fileRes.getWriteStream(auth, "original");
+            return file.getWriteStream(auth, "original");
           },
 
           // Support only one file upload.
           maxFiles: 1,
 
           // Validate the file size.
-          maxFileSize: fileRes.fileSize,
+          maxFileSize: file.fileSize,
 
           // Ensure the file is of the correct type.
           filter: function (part) {
-            if (part.mimetype !== fileRes.contentType) {
+            if (part.mimetype !== file.contentType) {
               return false;
             }
 
@@ -222,7 +222,7 @@ async function handler(
         );
       }
 
-      const preProcessingRes = await maybeApplyPreProcessing(auth, fileRes);
+      const preProcessingRes = await maybeApplyPreProcessing(auth, file);
       if (preProcessingRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
@@ -233,7 +233,7 @@ async function handler(
         });
       }
 
-      res.status(200).json({ file: fileRes.toJSON(auth) });
+      res.status(200).json({ file: file.toJSON(auth) });
       return;
     }
 
