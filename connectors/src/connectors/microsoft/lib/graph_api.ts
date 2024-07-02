@@ -48,10 +48,7 @@ export async function getFilesAndFolders(
     nodeType === "drive"
       ? `${parentResourcePath}/root/children`
       : `${parentResourcePath}/children`;
-  const res = await client
-    .api(endpoint)
-    .select("id,name,createdDateTime,file,folder")
-    .get();
+  const res = await client.api(endpoint).get();
   return res.value;
 }
 
@@ -94,7 +91,7 @@ export async function getChannels(
 export async function getMessages(
   client: Client,
   parentInternalId: string
-): Promise<MicrosoftGraph.Message[]> {
+): Promise<MicrosoftGraph.ChatMessage[]> {
   const { nodeType, itemApiPath: parentResourcePath } =
     microsoftNodeDataFromInternalId(parentInternalId);
 
@@ -108,37 +105,72 @@ export async function getMessages(
   return res.value;
 }
 
+export async function getItem(client: Client, itemApiPath: string) {
+  return client.api(itemApiPath).get();
+}
+
 export type MicrosoftNodeData = {
   nodeType: MicrosoftNodeType;
   itemApiPath: string;
 };
 
 export function microsoftInternalIdFromNodeData(nodeData: MicrosoftNodeData) {
-  if (nodeData.nodeType === "sites-root") {
-    return `microsoft/sites-root`;
+  let stringId = "";
+  if (
+    nodeData.nodeType === "sites-root" ||
+    nodeData.nodeType === "teams-root"
+  ) {
+    stringId = nodeData.nodeType;
+  } else {
+    const { nodeType, itemApiPath } = nodeData;
+    stringId = `${nodeType}/${itemApiPath}`;
   }
-  if (nodeData.nodeType === "teams-root") {
-    return `microsoft/teams-root`;
-  }
-  const { nodeType, itemApiPath } = nodeData;
-  return `microsoft/${nodeType}/${itemApiPath}`;
+  // encode to base64url so the internal id is URL-friendly
+  return "microsoft-" + Buffer.from(stringId).toString("base64url");
 }
 
 export function microsoftNodeDataFromInternalId(
   internalId: string
 ): MicrosoftNodeData {
-  if (internalId === "microsoft/sites-root") {
-    return { nodeType: "sites-root", itemApiPath: "" };
-  }
-
-  if (internalId === "microsoft/teams-root") {
-    return { nodeType: "teams-root", itemApiPath: "" };
-  }
-
-  const [, nodeType, ...resourcePathArr] = internalId.split("/");
-  if (!nodeType || !isValidNodeType(nodeType)) {
+  if (!internalId.startsWith("microsoft-")) {
     throw new Error(`Invalid internal id: ${internalId}`);
   }
 
+  // decode from base64url
+  const decodedId = Buffer.from(
+    internalId.slice("microsoft-".length),
+    "base64url"
+  ).toString();
+
+  if (decodedId === "sites-root" || decodedId === "teams-root") {
+    return { nodeType: decodedId, itemApiPath: "" };
+  }
+
+  const [nodeType, ...resourcePathArr] = decodedId.split("/");
+  if (!nodeType || !isValidNodeType(nodeType)) {
+    throw new Error(
+      `Invalid internal id: ${decodedId} with nodeType: ${nodeType}`
+    );
+  }
+
   return { nodeType, itemApiPath: resourcePathArr.join("/") };
+}
+
+export function getDriveItemApiPath(
+  item: MicrosoftGraph.DriveItem,
+  parentInternalId: string
+) {
+  const { nodeType, itemApiPath: parentItemApiPath } =
+    microsoftNodeDataFromInternalId(parentInternalId);
+
+  if (nodeType !== "drive" && nodeType !== "folder") {
+    throw new Error(`Invalid parent nodeType: ${nodeType}`);
+  }
+
+  const itemApiPath =
+    nodeType === "drive"
+      ? `${parentItemApiPath}/items/${item.id}`
+      : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
+        parentItemApiPath.replace(/items\/[^/]+$/, `items/${item.id}`);
+  return itemApiPath;
 }

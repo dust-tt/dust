@@ -1,6 +1,7 @@
 import type { ContentNode } from "@dust-tt/types";
 
 import {
+  getDriveItemApiPath,
   microsoftInternalIdFromNodeData,
   microsoftNodeDataFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -12,7 +13,10 @@ export function getRootNodes(): ContentNode[] {
 export function getSitesRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: "microsoft/sites-root",
+    internalId: microsoftInternalIdFromNodeData({
+      itemApiPath: "",
+      nodeType: "sites-root",
+    }),
     parentInternalId: null,
     type: "folder",
     title: "Sites",
@@ -27,7 +31,10 @@ export function getSitesRootAsContentNode(): ContentNode {
 export function getTeamsRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: "microsoft/teams-root",
+    internalId: microsoftInternalIdFromNodeData({
+      itemApiPath: "",
+      nodeType: "teams-root",
+    }),
     parentInternalId: null,
     type: "folder",
     title: "Teams",
@@ -146,19 +153,8 @@ export function getFolderAsContentNode(
     // Unexpected, unreachable
     throw new Error("Folder id is required");
   }
-  const { nodeType, itemApiPath: parentItemApiPath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
 
-  if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Invalid parent nodeType: ${nodeType}`);
-  }
-
-  const resourcePath =
-    nodeType === "drive"
-      ? `${parentItemApiPath}/items/${folder.id}`
-      : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
-        parentItemApiPath.replace(/items\/[^/]+$/, `items/${folder.id}`);
-
+  const resourcePath = getDriveItemApiPath(folder, parentInternalId);
   return {
     provider: "microsoft",
     internalId: microsoftInternalIdFromNodeData({

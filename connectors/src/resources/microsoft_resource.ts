@@ -204,3 +204,85 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     };
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface MicrosoftNodeResource
+  extends ReadonlyAttributesType<MicrosoftNodeModel> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
+  static model: ModelStatic<MicrosoftNodeModel> = MicrosoftNodeModel;
+
+  constructor(
+    model: ModelStatic<MicrosoftNodeModel>,
+    blob: Attributes<MicrosoftNodeModel>
+  ) {
+    super(MicrosoftNodeModel, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  static async makeNew(blob: WithCreationAttributes<MicrosoftNodeModel>) {
+    const resource = await MicrosoftNodeModel.create(blob);
+    return new this(this.model, resource.get());
+  }
+
+  static async batchMakeNew(
+    blobs: WithCreationAttributes<MicrosoftNodeModel>[]
+  ) {
+    const resources = await MicrosoftNodeModel.bulkCreate(blobs);
+    return resources.map((resource) => new this(this.model, resource.get()));
+  }
+
+  static async fetchByInternalId(internalId: string) {
+    const blob = await this.model.findOne({
+      where: {
+        internalId,
+      },
+    });
+    if (!blob) {
+      return null;
+    }
+
+    return new this(this.model, blob.get());
+  }
+
+  static async batchDelete({
+    resourceIds,
+    connectorId,
+    transaction,
+  }: {
+    resourceIds: string[];
+    connectorId: ModelId;
+    transaction?: Transaction;
+  }) {
+    return MicrosoftNodeModel.destroy({
+      where: {
+        internalId: resourceIds,
+        connectorId,
+      },
+      transaction,
+    });
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await MicrosoftNodeModel.destroy({
+      where: {
+        id: this.id,
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      nodeType: this.nodeType,
+      connectorId: this.connectorId,
+    };
+  }
+}
