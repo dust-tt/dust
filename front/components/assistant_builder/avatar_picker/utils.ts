@@ -41,3 +41,18 @@ export function buildSelectedEmojiType(
 
   return null;
 }
+
+export function getDefaultAvatarUrlForPreview(): string | null {
+  const emoji = buildSelectedEmojiType("🤖");
+  if (!emoji) {
+    return null;
+  }
+  return makeUrlForEmojiAndBackgroud(
+    {
+      id: emoji.id,
+      unified: emoji.unified,
+      native: emoji.native,
+    },
+    `bg-blue-200`
+  );
+}
