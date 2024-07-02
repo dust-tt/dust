@@ -1,3 +1,4 @@
+import { EnvironmentConfig } from "@dust-tt/types";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
@@ -139,8 +140,8 @@ async function _getHelperGlobalAgent(
         relativeTimeFrame: "auto",
         topK: "auto",
         dataSources: [{
-          dataSourceId: "KdxkeTzfA7",
-          workspaceId: "1dd1f0e33b",
+          dataSourceId: EnvironmentConfig.getEnvVariable("HELPER_DATASOURCE_ID"),
+          workspaceId: EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID"),
           filter: { parents: null },
         }],
         name: DEFAULT_RETRIEVAL_ACTION_NAME,
