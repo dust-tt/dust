@@ -1,4 +1,8 @@
-import type { Result, SupportedFileContentType } from "@dust-tt/types";
+import type {
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import sharp from "sharp";
 import { pipeline } from "stream/promises";
@@ -46,21 +50,35 @@ type PreprocessingFunction = (
   file: FileResource
 ) => Promise<Result<undefined, Error>>;
 
+type PreprocessingPerUseCase = {
+  [k in FileUseCase]: PreprocessingFunction | undefined;
+};
+
 type PreprocessingPerContentType = {
-  [k in SupportedFileContentType]: PreprocessingFunction | undefined;
+  [k in SupportedFileContentType]: PreprocessingPerUseCase | undefined;
 };
 
 const processingPerContentType: Partial<PreprocessingPerContentType> = {
-  "image/jpeg": resizeAndUploadToFileStorage,
-  "image/png": resizeAndUploadToFileStorage,
+  "image/jpeg": {
+    conversation: resizeAndUploadToFileStorage,
+  },
+  "image/png": {
+    conversation: resizeAndUploadToFileStorage,
+  },
 };
 
 export async function maybeApplyPreProcessing(
   auth: Authenticator,
   file: FileResource
 ): Promise<Result<undefined, Error>> {
-  const processing = processingPerContentType[file.contentType];
+  const contentTypeProcessing = processingPerContentType[file.contentType];
+  if (!contentTypeProcessing) {
+    await file.markAsReady();
 
+    return new Ok(undefined);
+  }
+
+  const processing = contentTypeProcessing[file.useCase];
   if (processing) {
     const res = await processing(auth, file);
     if (res.isErr()) {
