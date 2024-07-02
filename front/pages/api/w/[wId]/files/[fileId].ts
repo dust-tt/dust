@@ -195,20 +195,6 @@ async function handler(
             },
           });
         }
-
-        const preProcessingRes = await maybeApplyPreProcessing(auth, fileRes);
-        if (preProcessingRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Failed to process the file.",
-            },
-          });
-        }
-
-        res.status(200).json({ file: fileRes.toJSON(auth) });
-        return;
       } catch (error) {
         if (error instanceof Error) {
           if (error.message.startsWith("options.maxTotalFileSize")) {
@@ -235,6 +221,20 @@ async function handler(
           error instanceof Error ? error : new Error(JSON.stringify(error))
         );
       }
+
+      const preProcessingRes = await maybeApplyPreProcessing(auth, fileRes);
+      if (preProcessingRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to process the file.",
+          },
+        });
+      }
+
+      res.status(200).json({ file: fileRes.toJSON(auth) });
+      return;
     }
 
     default:

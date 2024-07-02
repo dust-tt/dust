@@ -26,8 +26,6 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
 
     return new Ok(undefined);
   } catch (err) {
-    await fileRes.markAsFailed();
-
     logger.error(
       {
         fileId: fileRes.sId,
@@ -66,6 +64,8 @@ export async function maybeApplyPreProcessing(
   if (processing) {
     const res = await processing(auth, fileRes);
     if (res.isErr()) {
+      await fileRes.markAsFailed();
+
       return res;
     }
   }
