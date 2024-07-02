@@ -17,7 +17,7 @@ export async function getAgentEnabledDataSources({
   providerFilter,
 }: {
   auth: Authenticator;
-  providerFilter?: ConnectorProvider;
+  providerFilter: ConnectorProvider | null;
 }): Promise<AgentEnabledDataSource[]> {
   const owner = auth.workspace();
 
@@ -35,19 +35,15 @@ export async function getAgentEnabledDataSources({
   }
   const wId = workspace.id;
 
-  const filters = providerFilter
-    ? {
-        workspaceId: wId,
-        connectorProvider: providerFilter,
-      }
-    : { workspaceId: wId };
-
   const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
     include: [
       {
         model: DataSource,
         as: "dataSource",
-        where: filters,
+        where: {
+          workspaceId: wId,
+          connectorProvider: providerFilter,
+        },
         include: [
           {
             model: User,
@@ -58,7 +54,7 @@ export async function getAgentEnabledDataSources({
     ],
   });
   return dataSourceConfigurations.map((dsConfig) => ({
-    dataSourceId: dsConfig.id,
+    dataSourceId: dsConfig.dataSource.id,
     retrievalConfigurationId: dsConfig.retrievalConfigurationId,
     processConfigurationId: dsConfig.processConfigurationId,
   }));
