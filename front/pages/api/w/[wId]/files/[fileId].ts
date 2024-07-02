@@ -2,7 +2,6 @@ import type {
   FileRequestResponseBody,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { isDustFileId } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
