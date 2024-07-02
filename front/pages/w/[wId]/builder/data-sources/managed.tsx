@@ -728,7 +728,7 @@ export default function DataSourcesView({
                         buttonLabel="Contact us"
                         buttonClick={() => {
                           window.open(
-                            "mailto:team@dust.tt?subject=Early access to the Intercom connection"
+                            `mailto:team@dust.tt?subject=Early access to the ${ds.name} connection`
                           );
                         }}
                         onClose={() => {
