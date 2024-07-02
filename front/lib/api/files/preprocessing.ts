@@ -1,15 +1,21 @@
+import { buffer } from "node:stream/consumers";
+
 import type {
   FileUseCase,
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
+import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+
+// Images preprocessing.
 
 const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   auth: Authenticator,
@@ -39,7 +45,82 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
       "Failed to resize image."
     );
 
-    return new Err(err as Error);
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+
+    return new Err(new Error(`Failed resizing image. ${errorMessage}`));
+  }
+};
+
+// PDF preprocessing.
+
+async function createPdfTextStream(buffer: Buffer) {
+  const loadingTask = getDocument({ data: new Uint8Array(buffer) });
+  const pdf = await loadingTask.promise;
+
+  return new Readable({
+    async read() {
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        const strings = content.items.map((item) => {
+          if (
+            item &&
+            typeof item === "object" &&
+            "str" in item &&
+            typeof item.str === "string"
+          ) {
+            return item.str;
+          }
+        });
+
+        const pageText = `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
+        this.push(pageText);
+      }
+      this.push(null);
+    },
+  });
+}
+
+const extractTextFromPDF: PreprocessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+) => {
+  try {
+    const readStream = file.getReadStream(auth, "original");
+    // Load file in memory.
+    const arrayBuffer = await buffer(readStream);
+
+    const writeStream = file.getWriteStream(auth, "processed");
+    const pdfTextStream = await createPdfTextStream(arrayBuffer);
+
+    await pipeline(
+      pdfTextStream,
+      async function* (source) {
+        for await (const chunk of source) {
+          yield chunk;
+        }
+      },
+      writeStream
+    );
+
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        fileId: file.sId,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to extract text from PDF."
+    );
+
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+
+    return new Err(
+      new Error(`Failed extracting text from PDF. ${errorMessage}`)
+    );
   }
 };
 
@@ -59,6 +140,9 @@ type PreprocessingPerContentType = {
 };
 
 const processingPerContentType: Partial<PreprocessingPerContentType> = {
+  "application/pdf": {
+    conversation: extractTextFromPDF,
+  },
   "image/jpeg": {
     conversation: resizeAndUploadToFileStorage,
   },
