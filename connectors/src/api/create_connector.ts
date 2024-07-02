@@ -125,15 +125,6 @@ const _createConnectorAPIHandler = async (
       case "google_drive":
       case "intercom":
       case "microsoft": {
-        // const connectorCreator =
-        //   CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
-        // connectorRes = await connectorCreator(
-        //   {
-        //     workspaceAPIKey: workspaceAPIKey,
-        //     dataSourceName: dataSourceName,
-        //     workspaceId: workspaceId,
-        //   },
-        // });
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {
