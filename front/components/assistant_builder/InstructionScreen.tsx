@@ -519,7 +519,7 @@ function Suggestions({
               );
             }
             return (
-              <div className="flex w-max">
+              <div className="flex w-max gap-2">
                 {suggestions.map((suggestion) => (
                   <AnimatedSuggestion
                     suggestion={suggestion}
@@ -560,7 +560,7 @@ function AnimatedSuggestion({
         size="sm"
         title=""
         variant={variant}
-        className="h-fit w-[308px]"
+        className="h-full w-[308px]"
       >
         {suggestion}
       </ContentMessage>
