@@ -64,9 +64,9 @@ export default function ConnectorSyncingChip({
           <>
             <Chip color="warning">Synchronization failed.</Chip>
             <div className="text-sm">
-              The webcrawler was unable to parse any pages. This may be because
-              the site is built with JavaScript, which our current crawler
-              cannot interpret.
+              We were unable to extract data from your site's pages using our
+              webcrawler. This problem commonly occurs with JavaScript-based
+              websites, as our current crawler cannot process JavaScript.
             </div>
           </>
         );
