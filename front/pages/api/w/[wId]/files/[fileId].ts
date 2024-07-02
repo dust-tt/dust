@@ -166,8 +166,21 @@ async function handler(
           fileWriteStreamHandler: () => {
             return fileRes.getWriteStream(auth, "original");
           },
+
           // Support only one file upload.
           maxFiles: 1,
+
+          // Validate the file size.
+          maxFileSize: fileRes.fileSize,
+
+          // Ensure the file is of the correct type.
+          filter: function (part) {
+            if (part.mimetype !== fileRes.contentType) {
+              return false;
+            }
+
+            return true;
+          },
         });
         const [, files] = await form.parse(req);
 
@@ -177,22 +190,8 @@ async function handler(
           return apiError(req, res, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
-              message: "No file uploaded",
-            },
-          });
-        }
-
-        const [fileData] = maybeFiles;
-
-        // Ensure the uploaded file matches the original file.
-        const { mimetype, size } = fileData;
-        if (mimetype !== fileRes.contentType || size !== fileRes.fileSize) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "The uploaded file does not match the original file.",
+              type: "file_type_not_supported",
+              message: "File is not supported.",
             },
           });
         }
@@ -211,6 +210,18 @@ async function handler(
         res.status(200).json({ file: fileRes.toJSON(auth) });
         return;
       } catch (error) {
+        if (error instanceof Error) {
+          if (error.message.startsWith("options.maxTotalFileSize")) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "file_too_large",
+                message: "File is too large.",
+              },
+            });
+          }
+        }
+
         return apiError(
           req,
           res,

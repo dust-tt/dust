@@ -166,13 +166,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
-    const basePath = `files/w/${owner.sId}/${this.sId}`;
-
-    if (version === "processed") {
-      return `${basePath}_processed`;
-    }
-
-    return basePath;
+    return `files/w/${owner.sId}/${this.sId}/${version}`;
   }
 
   async getSignedUrlForDownload(
