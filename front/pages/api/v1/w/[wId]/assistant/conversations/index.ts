@@ -205,12 +205,17 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       if (contentFragment) {
+        // hack: for users creating content_fragments through our public API
+        const contentType =
+          contentFragment.contentType === "file_attachment"
+            ? "text/plain"
+            : contentFragment.contentType;
         const cf = await postNewContentFragment(auth, {
           conversation,
           title: contentFragment.title,
           content: contentFragment.content,
           url: contentFragment.url,
-          contentType: contentFragment.contentType,
+          contentType,
           context: {
             username: contentFragment.context?.username || null,
             fullName: contentFragment.context?.fullName || null,
