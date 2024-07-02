@@ -257,7 +257,7 @@ export function DisplayCurlRequest({
           variant="secondary"
           onClick={() => {
             window.open(
-              "https://docs.dust.tt/runs",
+              "https://docs.dust.tt/reference/post_api-v1-w-wid-apps-appid-run",
               "_blank",
               "noopener,noreferrer"
             );
