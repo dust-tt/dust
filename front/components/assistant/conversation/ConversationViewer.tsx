@@ -1,18 +1,17 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type {
+  AgentGenerationCancelledEvent,
+  AgentMention,
+  AgentMessageNewEvent,
   AgentMessageType,
   ContentFragmentType,
+  ConversationTitleEvent,
+  UserMessageNewEvent,
   UserMessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AgentMention } from "@dust-tt/types";
-import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
-import type {
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
-  UserMessageNewEvent,
-} from "@dust-tt/types";
+import { isContentFragmentType } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
@@ -20,8 +19,9 @@ import { useInView } from "react-intersection-observer";
 
 import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import MessageItem from "@app/components/assistant/conversation/MessageItem";
+import MessageGroup from "@app/components/assistant/conversation/messages/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
+import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {
   useConversation,
@@ -359,7 +359,12 @@ const ConversationViewer = React.forwardRef<
   });
   const eventIds = useRef<string[]>([]);
 
-  const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
+  const typedGroupedMessages = useMemo(
+    () => groupMessagesByType(messages),
+    [messages]
+  );
+
+  useLastMessageGroupObserver(typedGroupedMessages);
 
   return (
     <div
@@ -384,30 +389,26 @@ const ConversationViewer = React.forwardRef<
           <Spinner variant="color" size="xs" />
         </div>
       )}
-
       {conversation &&
-        groupedMessages.map((group) => {
-          return group.map((message) => {
-            return (
-              <MessageItem
-                key={`message-${message.sId}`}
-                conversationId={conversation.sId}
-                hideReactions={hideReactions}
-                isInModal={isInModal}
-                message={message}
-                owner={owner}
-                reactions={reactions}
-                ref={
-                  message.sId === prevFirstMessageId
-                    ? prevFirstMessageRef
-                    : undefined
-                }
-                user={user}
-                isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-                latestMentions={latestMentions}
-              />
-            );
-          });
+        typedGroupedMessages.map((typedGroup, index) => {
+          const isLastGroup = index === typedGroupedMessages.length - 1;
+          return (
+            <MessageGroup
+              key={`typed-group-${index}`}
+              messages={typedGroup}
+              isLastMessageGroup={isLastGroup}
+              conversationId={conversationId}
+              hideReactions={hideReactions}
+              isInModal={isInModal}
+              owner={owner}
+              reactions={reactions}
+              prevFirstMessageId={prevFirstMessageId}
+              prevFirstMessageRef={prevFirstMessageRef}
+              user={user}
+              latestPage={latestPage}
+              latestMentions={latestMentions}
+            />
+          );
         })}
     </div>
   );
@@ -415,37 +416,63 @@ const ConversationViewer = React.forwardRef<
 
 export default ConversationViewer;
 
-// Grouping messages into arrays based on their type, associating content_fragments with the upcoming following user_message.
-// Example:
-// Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
-// Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
-// This structure enables layout customization for consecutive messages of the same type
-// and displays content_fragments within user_messages.
-const groupMessages = (
+/**
+ * Groups and organizes messages by their type, associating content_fragments
+ * with the following user_message.
+ *
+ * This function processes an array of messages, collecting content_fragments
+ * and attaching them to subsequent user_messages, then groups these messages
+ * by type, ensuring consecutive messages of the same type are grouped together.
+ *
+ * Example:
+ * Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
+ * Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
+ * This structure enables layout customization for consecutive messages of the same type
+ * and displays content_fragments within user_messages.
+ */
+const groupMessagesByType = (
   messages: FetchConversationMessagesResponse[]
-): MessageWithContentFragmentsType[][] => {
-  const groups: MessageWithContentFragmentsType[][] = [];
+): MessageWithContentFragmentsType[][][] => {
+  const typedGroup: MessageWithContentFragmentsType[][][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages
     .flatMap((page) => page.messages)
     .forEach((message) => {
-      if (message.type === "content_fragment") {
+      if (isContentFragmentType(message)) {
         tempContentFragments.push(message); // Collect content fragments.
       } else {
-        if (message.type === "user_message") {
+        let messageWithContentFragments: MessageWithContentFragmentsType;
+        if (isUserMessageType(message)) {
           // Attach collected content fragments to the user message.
-          const messageWithContentFragments: MessageWithContentFragmentsType = {
+          messageWithContentFragments = {
             ...message,
             contenFragments: tempContentFragments,
           };
-          groups.push([messageWithContentFragments]);
           tempContentFragments = []; // Reset the collected content fragments.
         } else {
-          groups.push([message]); // Directly push agent_message or other types.
+          messageWithContentFragments = message;
+        }
+
+        const currentMessageType = messageWithContentFragments.type;
+        const lastGroup = typedGroup[typedGroup.length - 1];
+
+        if (!lastGroup) {
+          typedGroup.push([[messageWithContentFragments]]);
+          return;
+        }
+
+        const [lastMessageGroup] = lastGroup;
+        const [lastMessage] = lastMessageGroup;
+        const lastGroupType = lastMessage.type;
+
+        if (currentMessageType !== lastGroupType) {
+          typedGroup.push([[messageWithContentFragments]]);
+        } else {
+          lastGroup.push([messageWithContentFragments]);
         }
       }
     });
 
-  return groups;
+  return typedGroup;
 };
