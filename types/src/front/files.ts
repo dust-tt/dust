@@ -13,12 +13,16 @@ export type FileUploadUrlRequestType = t.TypeOf<
   typeof FileUploadUrlRequestSchema
 >;
 
-export interface FileRequestResponseBody {
+export interface FileUploadRequestResponseBody {
+  file: FileTypeWithUploadUrl;
+}
+
+export interface FileUploadedRequestResponseBody {
   file: FileType;
 }
 
 // Define max sizes for each category.
-const MAX_SIZES: Record<"plainText" | "image", number> = {
+export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
   plainText: 30 * 1024 * 1024, // 30MB.
   image: 3 * 1024 * 1024, // 3 MB
 };
@@ -29,11 +33,11 @@ export function ensureFileSize(
   fileSize: number
 ): boolean {
   if (isSupportedPlainTextContentType(contentType)) {
-    return fileSize <= MAX_SIZES.plainText;
+    return fileSize <= MAX_FILE_SIZES.plainText;
   }
 
-  if (isSupportedImageContenType(contentType)) {
-    return fileSize <= MAX_SIZES.image;
+  if (isSupportedImageContentType(contentType)) {
+    return fileSize <= MAX_FILE_SIZES.image;
   }
 
   return false;
@@ -81,7 +85,7 @@ export function isSupportedPlainTextContentType(
   );
 }
 
-export function isSupportedImageContenType(
+export function isSupportedImageContentType(
   contentType: string
 ): contentType is ImageContentType {
   return supportedImageContentTypes.includes(contentType as ImageContentType);
@@ -103,3 +107,5 @@ export interface FileType {
   uploadUrl?: string;
   useCase: FileUseCase;
 }
+
+export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };

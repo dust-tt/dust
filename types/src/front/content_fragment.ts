@@ -78,6 +78,7 @@ export type UploadedContentFragment = {
   content: string;
   file: File;
   contentType: SupportedContentFragmentType;
+  url: string | null;
 };
 
 export function isContentFragmentType(

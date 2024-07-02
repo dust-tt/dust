@@ -1,5 +1,4 @@
 import type {
-  ContentFragmentType,
   ConversationType,
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,
@@ -90,7 +89,7 @@ export async function submitMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: ContentFragmentInput[];
+    contentFragments: UploadedContentFragment[];
   };
 }): Promise<
   Result<{ message: UserMessageWithRankType }, ConversationErrorType>
@@ -110,7 +109,7 @@ export async function submitMessage({
             body: JSON.stringify({
               title: contentFragment.title,
               content: contentFragment.content,
-              url: null,
+              url: contentFragment.url,
               contentType: getMimeTypeFromFile(contentFragment.file),
               context: {
                 timezone:
@@ -123,7 +122,7 @@ export async function submitMessage({
       })
     );
 
-    for (const [i, mcfRes] of contentFragmentsRes.entries()) {
+    for (const mcfRes of contentFragmentsRes) {
       if (!mcfRes.ok) {
         const data = await mcfRes.json();
         console.error("Error creating content fragment", data);
@@ -133,14 +132,6 @@ export async function submitMessage({
           message: data.error.message || "Please try again or contact us.",
         });
       }
-      const cfData = (await mcfRes.json())
-        .contentFragment as ContentFragmentType;
-      uploadRawContentFragment({
-        workspaceId: owner.sId,
-        conversationId,
-        contentFragmentId: cfData.sId,
-        file: contentFragments[i].file,
-      });
     }
   }
 
@@ -245,7 +236,7 @@ export async function createConversationWithMessage({
     contentFragments: contentFragments.map((cf) => ({
       content: cf.content,
       title: cf.title,
-      url: null, // sourceUrl will be set on raw content upload success
+      url: cf.url,
       contentType: cf.contentType,
       context: {
         profilePictureUrl: user.image,
@@ -276,44 +267,5 @@ export async function createConversationWithMessage({
 
   const conversationData = (await cRes.json()) as PostConversationsResponseBody;
 
-  if (conversationData.contentFragments.length > 0) {
-    for (const [i, cf] of conversationData.contentFragments.entries()) {
-      uploadRawContentFragment({
-        workspaceId: owner.sId,
-        conversationId: conversationData.conversation.sId,
-        contentFragmentId: cf.sId,
-        file: contentFragments[i].file,
-      });
-    }
-  }
-
   return new Ok(conversationData.conversation);
-}
-
-function uploadRawContentFragment({
-  workspaceId,
-  conversationId,
-  contentFragmentId,
-  file,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  contentFragmentId: string;
-  file: File;
-}) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  // do not await, to avoid slowing the UX
-  // an error from this function does not prevent the conversation from continuing
-  // API errors are handled server side
-  fetch(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${contentFragmentId}/raw_content_fragment`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  ).catch((e) => {
-    console.error(`Error uploading raw content for file`, e);
-  });
 }

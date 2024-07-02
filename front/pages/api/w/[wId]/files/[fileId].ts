@@ -1,5 +1,5 @@
 import type {
-  FileRequestResponseBody,
+  FileUploadedRequestResponseBody,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
@@ -23,7 +23,7 @@ type Action = (typeof validActions)[number];
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<FileRequestResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<FileUploadedRequestResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

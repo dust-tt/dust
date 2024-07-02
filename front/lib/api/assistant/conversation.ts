@@ -78,6 +78,7 @@ import {
   fileAttachmentLocation,
   storeContentFragmentText,
 } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -1632,17 +1633,24 @@ export async function postNewContentFragment(
 
   const messageId = generateModelSId();
 
-  const sourceUrl = isSupportedUploadableContentFragmentType(contentType)
-    ? fileAttachmentLocation({
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId,
-        contentFormat: "raw",
-      }).downloadUrl
-    : url;
+  let sourceUrl: string | null = null;
+  if (url && url.startsWith(FileResource.baseFileUrl(owner))) {
+    // Use the provided URL if it is an internal file path.
+    sourceUrl = url;
+  } else if (isSupportedUploadableContentFragmentType(contentType)) {
+    // Deprecated, for supported content types, create a file path and use its download URL.
+    sourceUrl = fileAttachmentLocation({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+      messageId,
+      contentFormat: "raw",
+    }).downloadUrl;
+  } else {
+    // Otherwise, use the provided URL (e.g., a Slack thread).
+    sourceUrl = url;
+  }
 
-  // TODO(2024-06-27 flav) Consider resizing images.
-
+  // TODO(2024-07-03 flav) Remove once pdf text extraction is handled by file API.
   const textBytes = await storeContentFragmentText({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
