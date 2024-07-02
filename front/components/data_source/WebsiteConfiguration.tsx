@@ -267,7 +267,7 @@ export default function WebsiteConfiguration({
       })}
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
-          title="Add a Website"
+          title={webCrawlerConfiguration ? "Edit Website" : "Add a Website"}
           onSave={() => {
             setIsSubmitted(true);
             if (!isSaving) {
