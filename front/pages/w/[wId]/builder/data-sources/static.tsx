@@ -1,22 +1,26 @@
 import {
-  Button,
-  Cog6ToothIcon,
   ContextItem,
   DocumentPileIcon,
   FolderOpenIcon,
+  IconButton,
+  MoreIcon,
   Page,
   PlusIcon,
   Popup,
+  RobotIcon,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import type { AgentEnabledDataSource } from "@app/lib/api/agent_data_sources";
+import { getAgentEnabledDataSources } from "@app/lib/api/agent_data_sources";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -30,6 +34,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   dataSources: DataSourceType[];
   gaTrackingId: string;
+  agentEnabledDataSources: AgentEnabledDataSource[];
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -43,9 +48,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
-  const allDataSources = await getDataSources(auth);
+  const allDataSources = await getDataSources(auth, { includeEditedBy: true });
   const dataSources = allDataSources.filter((ds) => !ds.connectorId);
-
+  const agentEnabledDataSources = await getAgentEnabledDataSources({ auth });
   return {
     props: {
       owner,
@@ -54,6 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       dataSources,
       gaTrackingId: GA_TRACKING_ID,
+      agentEnabledDataSources,
     },
   };
 });
@@ -65,11 +71,11 @@ export default function DataSourcesView({
   readOnly,
   dataSources,
   gaTrackingId,
+  agentEnabledDataSources,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
-
   const {
     submit: handleCreateDataSource,
     isSubmitting: isSubmittingCreateDataSource,
@@ -84,6 +90,10 @@ export default function DataSourcesView({
       void router.push(`/w/${owner.sId}/builder/data-sources/new`);
     }
   });
+
+  const agentCountPerDataSource = useMemo(() => {
+    return _.countBy(agentEnabledDataSources, "dataSourceId");
+  }, [agentEnabledDataSources]);
 
   return (
     <AppLayout
@@ -144,7 +154,6 @@ export default function DataSourcesView({
             }}
           />
         )}
-
         <ContextItem.List>
           {dataSources.map((ds) => (
             <ContextItem
@@ -159,19 +168,24 @@ export default function DataSourcesView({
                   }
                 />
               }
+              subElement={
+                <div className="flex items-center gap-1 text-xs text-element-700">
+                  <span>Added by: {ds.editedByUser?.fullName} | </span>
+                  <span className="underline">
+                    {agentCountPerDataSource[ds.id] ?? 0}
+                  </span>
+                  <RobotIcon />
+                </div>
+              }
               action={
-                <Button.List>
-                  <Button
-                    variant="secondary"
-                    icon={Cog6ToothIcon}
-                    onClick={() => {
-                      void router.push(
-                        `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                      );
-                    }}
-                    label="Manage"
-                  />
-                </Button.List>
+                <IconButton
+                  icon={MoreIcon}
+                  onClick={() => {
+                    void router.push(
+                      `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                    );
+                  }}
+                />
               }
             >
               <ContextItem.Description>
