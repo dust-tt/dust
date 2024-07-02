@@ -5,18 +5,23 @@ import { uuid4 } from "@temporalio/workflow";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  getDriveItemApiPath,
   getFilesAndFolders,
   microsoftInternalIdFromNodeData,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
+import {
+  MicrosoftNodeResource,
+  MicrosoftRootResource,
+} from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import axios from "axios";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import mammoth from "mammoth";
 import turndown from "turndown";
 import { Client } from "@microsoft/microsoft-graph-client";
+import { title } from "process";
 
 export async function fullSyncActivity({
   connectorId,
@@ -78,9 +83,31 @@ export async function syncOneFile(
     parent: MicrosoftRootResource;
   }
 ) {
-  const path = parent.itemApiPath.replace(/items\/[^/]+$/, `items/${file.id}`);
+  const localLogger = logger.child({
+    provider: "microsoft",
+    connectorId: parent.connectorId,
+    internalId: file.id,
+    name: file.name,
+  });
+
+  if (!file.file) {
+    throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
+  }
+
+  const itemApiPath = getDriveItemApiPath(
+    file,
+    microsoftInternalIdFromNodeData(parent)
+  );
+
+  const fileResource = await MicrosoftNodeResource.fetchByInternalId(
+    microsoftInternalIdFromNodeData({
+      itemApiPath,
+      nodeType: "file",
+    })
+  );
+
   const res = await client
-    .api(path)
+    .api(itemApiPath)
     .select("@microsoft.graph.downloadUrl")
     .get();
 

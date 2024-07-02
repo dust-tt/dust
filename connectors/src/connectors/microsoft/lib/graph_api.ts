@@ -148,3 +148,22 @@ export function microsoftNodeDataFromInternalId(
 
   return { nodeType, itemApiPath: resourcePathArr.join("/") };
 }
+
+export function getDriveItemApiPath(
+  item: MicrosoftGraph.DriveItem,
+  parentInternalId: string
+) {
+  const { nodeType, itemApiPath: parentItemApiPath } =
+    microsoftNodeDataFromInternalId(parentInternalId);
+
+  if (nodeType !== "drive" && nodeType !== "folder") {
+    throw new Error(`Invalid parent nodeType: ${nodeType}`);
+  }
+
+  const itemApiPath =
+    nodeType === "drive"
+      ? `${parentItemApiPath}/items/${item.id}`
+      : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
+        parentItemApiPath.replace(/items\/[^/]+$/, `items/${item.id}`);
+  return itemApiPath;
+}

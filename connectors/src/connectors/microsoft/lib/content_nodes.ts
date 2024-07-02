@@ -1,6 +1,7 @@
 import type { ContentNode } from "@dust-tt/types";
 
 import {
+  getDriveItemApiPath,
   microsoftInternalIdFromNodeData,
   microsoftNodeDataFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -146,19 +147,8 @@ export function getFolderAsContentNode(
     // Unexpected, unreachable
     throw new Error("Folder id is required");
   }
-  const { nodeType, itemApiPath: parentItemApiPath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
 
-  if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Invalid parent nodeType: ${nodeType}`);
-  }
-
-  const resourcePath =
-    nodeType === "drive"
-      ? `${parentItemApiPath}/items/${folder.id}`
-      : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
-        parentItemApiPath.replace(/items\/[^/]+$/, `items/${folder.id}`);
-
+  const resourcePath = getDriveItemApiPath(folder, parentInternalId);
   return {
     provider: "microsoft",
     internalId: microsoftInternalIdFromNodeData({
