@@ -133,20 +133,15 @@ async function _getHelperGlobalAgent(
     model,
     actions: [
       {
-        id: -1,
-        sId: GLOBAL_AGENTS_SID.HELPER + "-datasource-action",
-        type: "retrieval_configuration",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        topK: "auto",
-        dataSources: [{
-          dataSourceId: EnvironmentConfig.getEnvVariable("HELPER_DATASOURCE_ID"),
-          workspaceId: EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID"),
-          filter: { parents: null },
-        }],
-        name: DEFAULT_RETRIEVAL_ACTION_NAME,
-        description: `The Dust documentation`,
-      },
+        id: -1, 
+        sId: GLOBAL_AGENTS_SID.HELPER + "-dust-app-action",
+        type: "dust_app_run_configuration",
+        appWorkspaceId: EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID"),
+        appId: EnvironmentConfig.getEnvVariable("HELPER_APP_ID"),
+        name: "search-dust-doc",
+        description: `Searching in the Dust documentation`,
+
+      }
     ],
     maxToolsUsePerRun: 3,
     templateId: null,
