@@ -40,10 +40,6 @@ import NamingScreen, {
   validateHandle,
 } from "@app/components/assistant_builder/NamingScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
-import {
-  DROID_AVATAR_URLS,
-  SPIRIT_AVATAR_URLS,
-} from "@app/components/assistant_builder/shared";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -186,18 +182,6 @@ export default function AssistantBuilder({
       ? closeRightPanel()
       : openRightPanelTab(template === null ? "Preview" : "Template");
   };
-
-  useEffect(() => {
-    const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
-    // Only set a random avatar if one isn't already set
-    if (!builderState.avatarUrl) {
-      setBuilderState((state) => ({
-        ...state,
-        avatarUrl:
-          availableUrls[Math.floor(Math.random() * availableUrls.length)],
-      }));
-    }
-  }, [builderState.avatarUrl]);
 
   const formValidation = useCallback(async () => {
     let valid = true;

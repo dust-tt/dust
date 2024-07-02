@@ -17,7 +17,7 @@ import type { AvatarPickerTabElement } from "@app/components/assistant_builder/a
 type AvatarUrlTabId = "droids" | "spirits";
 type TabId = AvatarUrlTabId | "emojis" | "upload";
 
-const DEFAULT_TAB: TabId = "droids";
+const DEFAULT_TAB: TabId = "emojis";
 
 interface TabConfig {
   label: string;
