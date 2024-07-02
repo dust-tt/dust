@@ -4,12 +4,15 @@ import type {
 } from "@dust-tt/types";
 import { isDustFileId } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
+import { file } from "googleapis/build/src/apis/file";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { maybeApplyPreProcessing } from "@app/lib/api/files/preprocessing";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
+
+const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
 export const config = {
   api: {
@@ -139,6 +142,21 @@ async function handler(
             type: "invalid_request_error",
             message:
               "The file has already been uploaded or the upload has failed.",
+          },
+        });
+      }
+
+      if (
+        fileRes.createdAt.getTime() + UPLOAD_DELAY_AFTER_CREATION_MS <
+        Date.now()
+      ) {
+        await fileRes.markAsFailed();
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "File upload has expired. Create a new file.",
           },
         });
       }
