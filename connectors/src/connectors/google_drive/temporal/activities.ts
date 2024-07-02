@@ -135,10 +135,10 @@ export async function getDrivesToSync(
 
 export async function syncFiles(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
   driveFolderId: string,
   startSyncTs: number,
-  nextPageToken?: string
+  nextPageToken?: string,
+  additionalFilter: string | undefined = undefined
 ): Promise<{
   nextPageToken: string | null;
   count: number;
@@ -153,6 +153,8 @@ export async function syncFiles(
       connectorId: connectorId,
     },
   });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   logger.info(
     {
@@ -209,7 +211,7 @@ export async function syncFiles(
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
-    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
+    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false ${additionalFilter ?? ""}`,
     pageToken: nextPageToken,
   });
   if (res.status !== 200) {
