@@ -1,5 +1,5 @@
 import type {
-  FileRequestResponseBody,
+  FileUploadRequestResponseBody,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
@@ -19,7 +19,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<FileRequestResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<FileUploadRequestResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -123,7 +123,7 @@ async function handler(
         useCase,
       });
 
-      res.status(200).json({ file: file.toJSON(auth) });
+      res.status(200).json({ file: file.toJSONWithUploadUrl(auth) });
       return;
     }
 

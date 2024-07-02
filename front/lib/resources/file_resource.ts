@@ -1,7 +1,12 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { FileType, LightWorkspaceType, Result } from "@dust-tt/types";
+import type {
+  FileType,
+  FileTypeWithUploadUrl,
+  LightWorkspaceType,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -209,12 +214,19 @@ export class FileResource extends BaseResource<FileModel> {
       useCase: this.useCase,
     };
 
-    if (this.isCreated) {
-      blob.uploadUrl = this.getPublicUrl(auth);
-    } else if (this.isReady) {
+    if (this.isReady) {
       blob.downloadUrl = this.getPublicUrl(auth);
     }
 
     return blob;
+  }
+
+  toJSONWithUploadUrl(auth: Authenticator): FileTypeWithUploadUrl {
+    const blob = this.toJSON(auth);
+
+    return {
+      ...blob,
+      uploadUrl: this.getPublicUrl(auth),
+    };
   }
 }

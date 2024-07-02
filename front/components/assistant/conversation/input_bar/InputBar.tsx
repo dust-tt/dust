@@ -163,7 +163,7 @@ export function AssistantInputBar({
     fileUploaderService.resetUpload();
   };
 
-  const fileUploaderService = useFileUploaderService();
+  const fileUploaderService = useFileUploaderService({ owner });
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 

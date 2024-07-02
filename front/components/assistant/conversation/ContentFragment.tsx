@@ -3,7 +3,8 @@ import type { CitationType } from "@dust-tt/sparkle/dist/cjs/components/Citation
 import type { ContentFragmentType } from "@dust-tt/types";
 import {
   isSupportedImageContentFragmentType,
-  isSupportedTextContentFragmentType,
+  isSupportedImageContentType,
+  isSupportedPlainTextContentType,
 } from "@dust-tt/types";
 
 export function ContentFragment({ message }: { message: ContentFragmentType }) {
@@ -14,9 +15,9 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
     message.contentType === "dust-application/slack"
   ) {
     citationType = "slack";
-  } else if (isSupportedTextContentFragmentType(message.contentType)) {
+  } else if (isSupportedPlainTextContentType(message.contentType)) {
     citationType = "document";
-  } else if (isSupportedImageContentFragmentType(message.contentType)) {
+  } else if (isSupportedImageContentType(message.contentType)) {
     citationType = "image";
   }
 
@@ -38,7 +39,7 @@ function getViewUrlForContentFragment(message: ContentFragmentType) {
   }
 
   if (isSupportedImageContentFragmentType(message.contentType)) {
-    return `${message.sourceUrl}&action=view`;
+    return `${message.sourceUrl}?action=view`;
   }
 
   return undefined;
