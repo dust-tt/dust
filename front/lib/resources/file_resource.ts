@@ -156,7 +156,6 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getPublicUrl`");
     }
 
-    // TODO:
     return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 

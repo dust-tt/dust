@@ -186,13 +186,14 @@ async function handler(
 
         const [fileData] = maybeFiles;
 
-        const { mimetype } = fileData;
-        if (!mimetype) {
+        // Ensure the uploaded file matches the original file.
+        const { mimetype, size } = fileData;
+        if (mimetype !== fileRes.contentType || size !== fileRes.fileSize) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
-              type: "file_type_not_supported",
-              message: "File type not supported.",
+              type: "invalid_request_error",
+              message: "The uploaded file does not match the original file.",
             },
           });
         }
