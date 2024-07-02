@@ -1,4 +1,9 @@
-import type { ConnectorProvider, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  ModelId,
+  SlackConfigurationType,
+  WebCrawlerConfigurationType,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { CreationAttributes, Model, Transaction } from "sequelize";
 
@@ -23,6 +28,9 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { BaseResource } from "../base_resource";
 
 export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
+
+// ConnectorProvider to Configuration Model mapping used to define the type of the
+// ConfigurationResource.
 
 export interface ConnectorProviderModelM {
   confluence: ConfluenceConfiguration;
@@ -53,6 +61,27 @@ export type ConnectorProviderModelResourceMapping = {
 export type ConnectorProviderConfigurationResource =
   ConnectorProviderModelResourceMapping[keyof ConnectorProviderModelResourceMapping];
 
+// ConnectorProvider to ConfigurationType mapping used to define the type of the toJSON method of
+// the ConnectorProviderStrategy.
+
+export interface ConnectorProviderConfigurationTypeM {
+  confluence: null;
+  github: null;
+  google_drive: null;
+  intercom: null;
+  microsoft: null;
+  notion: null;
+  slack: SlackConfigurationType;
+  webcrawler: WebCrawlerConfigurationType;
+}
+
+export type ConnectorProviderConfigurationTypeMapping = {
+  [K in keyof ConnectorProviderConfigurationTypeM]: ConnectorProviderConfigurationTypeM[K];
+};
+
+export type ConnectorProviderConfigurationType =
+  ConnectorProviderConfigurationTypeMapping[keyof ConnectorProviderConfigurationTypeMapping];
+
 export interface ConnectorProviderStrategy<T extends ConnectorProvider> {
   delete(connector: ConnectorResource, transaction: Transaction): Promise<void>;
 
@@ -65,6 +94,10 @@ export interface ConnectorProviderStrategy<T extends ConnectorProvider> {
   fetchConfigurationsbyConnectorIds(connectorIds: ModelId[]): Promise<{
     [connectorId: ModelId]: ConnectorProviderConfigurationResource;
   }>;
+
+  configurationJSON(
+    configuration: ConnectorProviderModelResourceMapping[T]
+  ): ConnectorProviderConfigurationType;
 }
 
 export function getConnectorProviderStrategy(

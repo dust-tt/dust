@@ -8,6 +8,7 @@ import {
   ConnectorCreateRequestBodySchema,
   ioTsParsePayload,
   isConnectorProvider,
+  SlackConfigurationTypeSchema,
   WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
@@ -59,7 +60,6 @@ const _createConnectorAPIHandler = async (
     } = bodyValidation.right;
 
     let connectorRes: Result<string, Error> | null = null;
-    null;
     switch (req.params.connector_provider) {
       case "webcrawler": {
         const connectorCreator =
@@ -89,13 +89,40 @@ const _createConnectorAPIHandler = async (
         break;
       }
 
+      case "slack": {
+        const connectorCreator =
+          CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
+        const configurationRes = ioTsParsePayload(
+          configuration,
+          SlackConfigurationTypeSchema
+        );
+        if (configurationRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body: ${configurationRes.error}`,
+            },
+          });
+        }
+        connectorRes = await connectorCreator(
+          {
+            workspaceAPIKey: workspaceAPIKey,
+            dataSourceName: dataSourceName,
+            workspaceId: workspaceId,
+          },
+          connectionId,
+          configurationRes.value
+        );
+        break;
+      }
+
       case "github":
       case "notion":
       case "confluence":
       case "google_drive":
       case "intercom":
-      case "microsoft":
-      case "slack": {
+      case "microsoft": {
         const connectorCreator =
           CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
         connectorRes = await connectorCreator(

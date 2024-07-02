@@ -1,9 +1,11 @@
 import * as t from "io-ts";
 
-import { WebCrawlerConfigurationTypeSchema } from "../webcrawler";
+import { SlackConfigurationTypeSchema } from "../../connectors/slack";
+import { WebCrawlerConfigurationTypeSchema } from "../../connectors/webcrawler";
 
 export const ConnectorConfigurationTypeSchema = t.union([
   WebCrawlerConfigurationTypeSchema,
+  SlackConfigurationTypeSchema,
   t.null,
 ]);
 

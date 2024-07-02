@@ -3,6 +3,7 @@ import type { Transaction } from "sequelize";
 
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -50,5 +51,11 @@ export class WebCrawlerStrategy
     Record<ModelId, ConnectorProviderModelResourceMapping["webcrawler"]>
   > {
     return WebCrawlerConfigurationResource.fetchByConnectorIds(connectorIds);
+  }
+
+  configurationJSON(
+    configuration: WebCrawlerConfigurationResource
+  ): ConnectorProviderConfigurationType {
+    return configuration.toJSON();
   }
 }

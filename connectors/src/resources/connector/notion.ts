@@ -9,6 +9,7 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import type {
+  ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -73,5 +74,9 @@ export class NotionConnectorStrategy
     Record<ModelId, ConnectorProviderModelResourceMapping["notion"]>
   > {
     return {};
+  }
+
+  configurationJSON(): ConnectorProviderConfigurationType {
+    return null;
   }
 }
