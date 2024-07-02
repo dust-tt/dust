@@ -138,7 +138,7 @@ export async function syncFiles(
   driveFolderId: string,
   startSyncTs: number,
   nextPageToken?: string,
-  additionalFilter: string | undefined = undefined
+  mimeTypeFilter?: string[]
 ): Promise<{
   nextPageToken: string | null;
   count: number;
@@ -205,13 +205,18 @@ export async function syncFiles(
     .map((mimeType) => `mimeType='${mimeType}'`)
     .join(" or ");
 
+  const mimeTypeFilterString =
+    mimeTypeFilter && mimeTypeFilter.length > 0
+      ? `and (${mimeTypeFilter.map((mimeType) => `mimeType='${mimeType}'`).join(" or ")})`
+      : ``;
+
   const res = await drive.files.list({
     corpora: "allDrives",
     pageSize: 200,
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
-    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false ${additionalFilter ?? ""}`,
+    q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false ${mimeTypeFilterString}`,
     pageToken: nextPageToken,
   });
   if (res.status !== 200) {

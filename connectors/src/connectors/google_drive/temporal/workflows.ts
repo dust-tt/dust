@@ -47,14 +47,14 @@ export async function googleDriveFullSync({
   foldersToBrowse = undefined,
   totalCount = 0,
   startSyncTs = undefined,
-  additionalFilter,
+  mimeTypeFilter,
 }: {
   connectorId: ModelId;
   garbageCollect: boolean;
   foldersToBrowse: string[] | undefined;
   totalCount: number;
   startSyncTs: number | undefined;
-  additionalFilter: string | undefined;
+  mimeTypeFilter?: string[];
 }) {
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
@@ -79,7 +79,7 @@ export async function googleDriveFullSync({
         folder,
         startSyncTs,
         nextPageToken,
-        additionalFilter
+        mimeTypeFilter
       );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
       totalCount += res.count;
@@ -98,7 +98,7 @@ export async function googleDriveFullSync({
         foldersToBrowse,
         totalCount,
         startSyncTs,
-        additionalFilter,
+        mimeTypeFilter,
       });
     }
   }

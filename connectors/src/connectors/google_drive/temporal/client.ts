@@ -24,7 +24,7 @@ const logger = mainLogger.child({ provider: "google" });
 export async function launchGoogleDriveFullSyncWorkflow(
   connectorId: ModelId,
   fromTs: number | null,
-  additionalFilter?: string
+  mimeTypeFilter?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -52,7 +52,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
           startSyncTs: undefined,
           foldersToBrowse: undefined,
           totalCount: 0,
-          additionalFilter: additionalFilter,
+          mimeTypeFilter: mimeTypeFilter,
         },
       ],
       taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,

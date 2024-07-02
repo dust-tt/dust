@@ -13,15 +13,19 @@ export async function main() {
       pausedAt: null,
     },
   });
-  const additionalFilter =
-    " and (mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation' or mimeType = 'application/vnd.google-apps.folder')";
+  const mimeTypeFilter = [
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.google-apps.folder",
+  ];
+
   for (const connector of connectors) {
     try {
       if (LIVE) {
         await launchGoogleDriveFullSyncWorkflow(
           connector.id,
           null,
-          additionalFilter
+          mimeTypeFilter
         );
       }
     } catch (e) {
