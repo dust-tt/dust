@@ -156,6 +156,7 @@ export function AssistantInputBar({
           content: cf.content,
           file: cf.file,
           contentType: cf.contentType,
+          url: cf.url,
         };
       })
     );
