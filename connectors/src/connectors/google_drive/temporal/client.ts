@@ -23,7 +23,8 @@ const logger = mainLogger.child({ provider: "google" });
 
 export async function launchGoogleDriveFullSyncWorkflow(
   connectorId: ModelId,
-  fromTs: number | null
+  fromTs: number | null,
+  mimeTypeFilter?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -44,7 +45,16 @@ export async function launchGoogleDriveFullSyncWorkflow(
   try {
     await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveFullSync, {
-      args: [connectorId, dataSourceConfig],
+      args: [
+        {
+          connectorId: connectorId,
+          garbageCollect: true,
+          startSyncTs: undefined,
+          foldersToBrowse: undefined,
+          totalCount: 0,
+          mimeTypeFilter: mimeTypeFilter,
+        },
+      ],
       taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {

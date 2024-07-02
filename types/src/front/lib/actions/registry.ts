@@ -188,6 +188,21 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-builder-emoji-suggestions": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "b69YdlJ3PJ",
+      appHash:
+        "0b6b63def0224321f2bece0751bad632baca33f6d5bb596bbeb3f95b6bea5966",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "send_suggestions",
+        use_cache: false,
+      },
+    },
+  },
   "assistant-builder-description-suggestions": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

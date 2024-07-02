@@ -41,14 +41,21 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   startToCloseTimeout: "10 minutes",
 });
 
-export async function googleDriveFullSync(
-  connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
+export async function googleDriveFullSync({
+  connectorId,
   garbageCollect = true,
-  foldersToBrowse: string[] | undefined = undefined,
+  foldersToBrowse = undefined,
   totalCount = 0,
-  startSyncTs: number | undefined = undefined
-) {
+  startSyncTs = undefined,
+  mimeTypeFilter,
+}: {
+  connectorId: ModelId;
+  garbageCollect: boolean;
+  foldersToBrowse: string[] | undefined;
+  totalCount: number;
+  startSyncTs: number | undefined;
+  mimeTypeFilter?: string[];
+}) {
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
@@ -69,10 +76,10 @@ export async function googleDriveFullSync(
     do {
       const res = await syncFiles(
         connectorId,
-        dataSourceConfig,
         folder,
         startSyncTs,
-        nextPageToken
+        nextPageToken,
+        mimeTypeFilter
       );
       nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
       totalCount += res.count;
@@ -85,14 +92,14 @@ export async function googleDriveFullSync(
     } while (nextPageToken);
     await markFolderAsVisited(connectorId, folder);
     if (workflowInfo().historyLength > 4000) {
-      await continueAsNew<typeof googleDriveFullSync>(
+      await continueAsNew<typeof googleDriveFullSync>({
         connectorId,
-        dataSourceConfig,
         garbageCollect,
         foldersToBrowse,
         totalCount,
-        startSyncTs
-      );
+        startSyncTs,
+        mimeTypeFilter,
+      });
     }
   }
   await syncSucceeded(connectorId);

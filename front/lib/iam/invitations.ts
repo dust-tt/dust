@@ -56,6 +56,19 @@ export async function getPendingMembershipInvitationForToken(
   return new Ok(null);
 }
 
+export async function getPendingMembershipInvitationForEmailAndWorkspace(
+  email: string,
+  workspaceId: number
+): Promise<MembershipInvitation | null> {
+  return MembershipInvitation.findOne({
+    where: {
+      inviteEmail: email,
+      workspaceId,
+      status: "pending",
+    },
+  });
+}
+
 export async function markInvitationAsConsumed(
   membershipInvite: MembershipInvitation,
   user: UserType

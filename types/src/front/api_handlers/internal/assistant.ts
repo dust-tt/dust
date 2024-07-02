@@ -39,6 +39,10 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
     inputs: t.type({ instructions: t.string, description: t.string }),
   }),
   t.type({
+    type: t.literal("emoji"),
+    inputs: t.type({ instructions: t.string }),
+  }),
+  t.type({
     type: t.literal("instructions"),
     inputs: t.type({
       current_instructions: t.string,
@@ -71,6 +75,13 @@ export const BuilderSuggestionsResponseBodySchema = t.union([
 
 export type BuilderSuggestionsType = t.TypeOf<
   typeof BuilderSuggestionsResponseBodySchema
+>;
+
+export const BuilderEmojiSuggestionsResponseBodySchema = t.type({
+  suggestions: t.array(t.type({ emoji: t.string, backgroundColor: t.string })),
+});
+export type BuilderEmojiSuggestionsType = t.TypeOf<
+  typeof BuilderEmojiSuggestionsResponseBodySchema
 >;
 
 export const InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema =

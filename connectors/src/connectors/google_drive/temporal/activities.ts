@@ -135,10 +135,10 @@ export async function getDrivesToSync(
 
 export async function syncFiles(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig,
   driveFolderId: string,
   startSyncTs: number,
-  nextPageToken?: string
+  nextPageToken?: string,
+  mimeTypeFilter?: string[]
 ): Promise<{
   nextPageToken: string | null;
   count: number;
@@ -153,6 +153,8 @@ export async function syncFiles(
       connectorId: connectorId,
     },
   });
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   logger.info(
     {
@@ -200,6 +202,10 @@ export async function syncFiles(
 
   const drive = await getDriveClient(authCredentials);
   const mimeTypesSearchString = mimeTypesToSync
+    .filter(
+      (mimeType) =>
+        mimeTypeFilter === undefined || mimeTypeFilter.includes(mimeType)
+    )
     .map((mimeType) => `mimeType='${mimeType}'`)
     .join(" or ");
 

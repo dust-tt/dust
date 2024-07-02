@@ -20,6 +20,7 @@ import {
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
+import { getDefaultAvatarUrlForPreview } from "@app/components/assistant_builder/avatar_picker/utils";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -80,13 +81,14 @@ export function usePreviewAssistant({
       // No changes since the last submission
       return;
     }
+
     const aRes = await submitAssistantBuilderForm({
       owner,
       builderState: {
         handle: builderState.handle,
         description: "Draft Assistant",
         instructions: builderState.instructions,
-        avatarUrl: builderState.avatarUrl,
+        avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
         scope: "private",
         generationSettings: builderState.generationSettings,
         actions: builderState.actions,
