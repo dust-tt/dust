@@ -33,7 +33,6 @@ interface FileBlob {
 
 type FileBlobUploadErrorCode =
   | "failed_to_upload_file"
-  | "file_too_large"
   | "file_type_not_supported";
 
 class FileBlobUploadError extends Error {
@@ -93,7 +92,8 @@ export function useFileUploaderService({
       sendNotification({
         type: "error",
         title: "Files too large.",
-        description: `Combined file sizes exceed the limits. Please upload smaller files.`,
+        description:
+          "Combined file sizes exceed the limits. Please upload smaller files.",
       });
       return;
     }
