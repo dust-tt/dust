@@ -117,9 +117,15 @@ async function handler(
       });
       if (query.table === "all") {
         const zip = new JSZip();
+        const csvSuffix = startDate
+          .toLocaleString("default", { month: "short" })
+          .toLowerCase();
         for (const [fileName, data] of Object.entries(csvData)) {
           if (data) {
-            zip.file(`${fileName}.csv`, data);
+            zip.file(
+              `${fileName}_${startDate.getFullYear()}_${csvSuffix}.csv`,
+              data
+            );
           }
         }
 
