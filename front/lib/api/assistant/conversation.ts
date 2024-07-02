@@ -62,7 +62,6 @@ import {
   batchRenderContentFragment,
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
