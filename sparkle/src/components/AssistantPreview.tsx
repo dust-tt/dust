@@ -4,7 +4,7 @@ import { Button, CardButton, MoreIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
 import { classNames } from "@sparkle/lib/utils";
 
-type AssistantPreviewVariant = "item" | "list" | "minimal";
+type AssistantPreviewVariant = "list" | "minimal";
 
 interface BaseAssistantPreviewProps {
   variant: AssistantPreviewVariant;
@@ -14,11 +14,6 @@ interface BaseAssistantPreviewProps {
   subtitle?: string;
   onClick?: () => void;
 }
-
-type ItemVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
-  variant: "item";
-  actions: React.ReactNode;
-};
 
 type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "list";
@@ -33,7 +28,6 @@ type MinimalVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
 };
 
 type AssistantPreviewProps =
-  | ItemVariantAssistantPreviewProps
   | ListVariantAssistantPreviewProps
   | MinimalVariantAssistantPreviewProps;
 
@@ -51,7 +45,6 @@ const getWindowWidth = () => (isBrowser ? window.innerWidth : 0);
 
 const titleClassNames = {
   base: "s-truncate s-font-medium s-text-element-900 s-w-full",
-  item: "s-text-sm",
   list: "s-text-base",
   minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
@@ -64,20 +57,18 @@ const titleClassNames = {
 
 const subtitleClassNames = {
   base: "s-font-normal s-text-element-700 s-truncate s-w-full",
-  item: "s-text-xs",
   list: "s-text-sm",
   minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
       ? "s-text-xs"
       : getWindowWidth() <= breakpoints.md
-      ? "s-text-sm"
-      : ""
+      ? "s-text-xs"
+      : "s-text-sm"
   }`,
 };
 
 const descriptionClassNames = {
   base: "s-font-normal s-mb-1",
-  item: "s-text-xs s-text-element-700 s-pl-1 s-line-clamp-3",
   list: "s-text-base s-text-element-800 s-line-clamp-3",
 };
 
@@ -85,8 +76,6 @@ function renderVariantContent(
   props: AssistantPreviewProps & { isHovered: boolean }
 ) {
   switch (props.variant) {
-    case "item":
-      return <ItemVariantContent {...props} />;
     case "list":
       return <ListVariantContent {...props} />;
     case "minimal":
@@ -95,53 +84,6 @@ function renderVariantContent(
       return <></>;
   }
 }
-
-const ItemVariantContent = ({
-  actions,
-  description,
-  title,
-  pictureUrl,
-  subtitle,
-}: ItemVariantAssistantPreviewProps) => {
-  return (
-    <>
-      <div className="s-flex s-items-center s-gap-2">
-        <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="sm" />
-        <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
-          <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
-            <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
-              <div
-                className={classNames(
-                  titleClassNames["base"],
-                  titleClassNames.item
-                )}
-              >
-                @{title}
-              </div>
-              <div
-                className={classNames(
-                  subtitleClassNames["base"],
-                  subtitleClassNames.item
-                )}
-              >
-                By: {subtitle}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div
-        className={classNames(
-          descriptionClassNames["base"],
-          descriptionClassNames.item
-        )}
-      >
-        {description}
-      </div>
-      {actions}
-    </>
-  );
-};
 
 const ListVariantContent = ({
   description,
@@ -194,6 +136,7 @@ const MinimalVariantContent = ({
   pictureUrl,
   subtitle,
   hasAction = true,
+  description,
   onClick,
   onActionClick,
 }: MinimalVariantAssistantPreviewProps) => {
@@ -217,40 +160,49 @@ const MinimalVariantContent = ({
     <>
       <div
         id="assistant-container"
-        className="s-flex s-grow s-flex-row s-justify-between s-gap-2 s-overflow-hidden s-py-1"
+        className="s-flex s-grow s-flex-col s-justify-start s-gap-2 s-overflow-hidden s-py-1"
         onClick={onClick}
       >
-        <div
-          id="preview"
-          className="s-flex s-w-full s-min-w-0 s-flex-row s-items-center s-gap-2"
-        >
-          <div id="avatar-column" className="s-w-fit">
-            <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="md" />
-          </div>
+        <div className="s-flex s-flex-row s-justify-between s-gap-2 s-overflow-hidden">
           <div
-            id="details-column"
-            className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0 s-overflow-hidden"
+            id="preview"
+            className="s-flex s-w-full s-min-w-0 s-flex-row s-items-center s-gap-2"
           >
-            <div
-              className={classNames(
-                titleClassNames["base"],
-                titleClassNames.minimal
-              )}
-            >
-              @{title}
+            <div id="avatar-column" className="s-w-fit">
+              <Avatar
+                name={`Avatar of ${title}`}
+                visual={pictureUrl}
+                size="md"
+              />
             </div>
             <div
-              className={classNames(
-                subtitleClassNames["base"],
-                subtitleClassNames.minimal
-              )}
+              id="details-column"
+              className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0 s-overflow-hidden"
             >
-              By: {subtitle}
+              <div
+                className={classNames(
+                  titleClassNames["base"],
+                  titleClassNames.minimal
+                )}
+              >
+                @{title}
+              </div>
+              <div
+                className={classNames(
+                  subtitleClassNames["base"],
+                  subtitleClassNames.minimal
+                )}
+              >
+                By: {subtitle}
+              </div>
             </div>
+          </div>
+          <div id="actions-column" className="s-flex s-w-fit s-shrink-0">
+            {hasAction && actionButton}
           </div>
         </div>
-        <div id="actions-column" className="s-flex s-w-fit s-shrink-0">
-          {hasAction && actionButton}
+        <div className="s-line-clamp-2 s-text-sm s-text-element-700">
+          {description}
         </div>
       </div>
     </>
@@ -264,9 +216,9 @@ export function AssistantPreview(props: AssistantPreviewProps) {
 
   return (
     <CardButton
-      variant="tertiary"
+      variant={variant === "minimal" ? "secondary" : "tertiary"}
       className={classNames("s-flex s-flex-col s-gap-2 s-border")}
-      size={variant === "item" || variant === "minimal" ? "sm" : "lg"}
+      size={variant === "minimal" ? "sm" : "lg"}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
