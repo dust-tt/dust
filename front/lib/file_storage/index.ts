@@ -33,7 +33,7 @@ class FileStorage {
       fileStream,
       gcsFile.createWriteStream({
         metadata: {
-          contentType: file.mimetype,
+          contentType: file.mimetype ?? undefined,
         },
       })
     );
@@ -67,7 +67,7 @@ class FileStorage {
     return content.toString();
   }
 
-  async getFileContentType(filename: string): Promise<string | null> {
+  async getFileContentType(filename: string): Promise<string | undefined> {
     const gcsFile = this.file(filename);
 
     const [metadata] = await gcsFile.getMetadata();
