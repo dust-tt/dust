@@ -366,7 +366,7 @@ export async function getBuildersUsageData(
   return generateCsvFromQueryResult(buildersUsage);
 }
 
-export async function getAgentUsageData(
+export async function getAssistantsUsageData(
   startDate: Date,
   endDate: Date,
   workspaceId: string

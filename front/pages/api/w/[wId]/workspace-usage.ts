@@ -8,7 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
-  getAgentUsageData,
+  getAssistantsUsageData,
   getBuildersUsageData,
   getMessageUsageData,
   getUserUsageData,
@@ -25,7 +25,7 @@ export const usageTables = [
   "users",
   "assistant_messages",
   "builders",
-  "agent_configurations",
+  "assistants",
   "all",
 ];
 type usageTableType = (typeof usageTables)[number];
@@ -192,19 +192,19 @@ async function fetchUsageData({
       return { mentions: await getMessageUsageData(start, end, workspaceId) };
     case "builders":
       return { builders: await getBuildersUsageData(start, end, workspaceId) };
-    case "agent_configurations":
+    case "assistants":
       return {
-        agent_configurations: await getAgentUsageData(start, end, workspaceId),
+        assistants: await getAssistantsUsageData(start, end, workspaceId),
       };
     case "all":
-      const [users, assistant_messages, builders, agent_configurations] =
+      const [users, assistant_messages, builders, assistants] =
         await Promise.all([
           getUserUsageData(start, end, workspaceId),
           getMessageUsageData(start, end, workspaceId),
           getBuildersUsageData(start, end, workspaceId),
-          getAgentUsageData(start, end, workspaceId),
+          getAssistantsUsageData(start, end, workspaceId),
         ]);
-      return { users, assistant_messages, builders, agent_configurations };
+      return { users, assistant_messages, builders, assistants };
     default:
       return {};
   }
