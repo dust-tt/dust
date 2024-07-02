@@ -13,7 +13,10 @@ export function getRootNodes(): ContentNode[] {
 export function getSitesRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: "microsoft/sites-root",
+    internalId: microsoftInternalIdFromNodeData({
+      itemApiPath: "",
+      nodeType: "sites-root",
+    }),
     parentInternalId: null,
     type: "folder",
     title: "Sites",
@@ -28,7 +31,10 @@ export function getSitesRootAsContentNode(): ContentNode {
 export function getTeamsRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: "microsoft/teams-root",
+    internalId: microsoftInternalIdFromNodeData({
+      itemApiPath: "",
+      nodeType: "teams-root",
+    }),
     parentInternalId: null,
     type: "folder",
     title: "Teams",

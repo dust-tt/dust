@@ -48,10 +48,7 @@ export async function getFilesAndFolders(
     nodeType === "drive"
       ? `${parentResourcePath}/root/children`
       : `${parentResourcePath}/children`;
-  const res = await client
-    .api(endpoint)
-    .select("id,name,createdDateTime,file,folder,@microsoft.graph.downloadUrl")
-    .get();
+  const res = await client.api(endpoint).get();
   return res.value;
 }
 
@@ -118,31 +115,41 @@ export type MicrosoftNodeData = {
 };
 
 export function microsoftInternalIdFromNodeData(nodeData: MicrosoftNodeData) {
-  if (nodeData.nodeType === "sites-root") {
-    return `microsoft/sites-root`;
+  let stringId = "";
+  if (
+    nodeData.nodeType === "sites-root" ||
+    nodeData.nodeType === "teams-root"
+  ) {
+    stringId = nodeData.nodeType;
+  } else {
+    const { nodeType, itemApiPath } = nodeData;
+    stringId = `${nodeType}/${itemApiPath}`;
   }
-  if (nodeData.nodeType === "teams-root") {
-    return `microsoft/teams-root`;
-  }
-  const { nodeType, itemApiPath } = nodeData;
-  return `microsoft/${nodeType}/${itemApiPath}`;
+  // encode to base64url so the internal id is URL-friendly
+  return "microsoft-" + Buffer.from(stringId).toString("base64url");
 }
 
 export function microsoftNodeDataFromInternalId(
   internalId: string
 ): MicrosoftNodeData {
-  if (internalId === "microsoft/sites-root") {
-    return { nodeType: "sites-root", itemApiPath: "" };
+  if (!internalId.startsWith("microsoft-")) {
+    throw new Error(`Invalid internal id: ${internalId}`);
   }
 
-  if (internalId === "microsoft/teams-root") {
-    return { nodeType: "teams-root", itemApiPath: "" };
+  // decode from base64url
+  const decodedId = Buffer.from(
+    internalId.slice("microsoft-".length),
+    "base64url"
+  ).toString();
+
+  if (decodedId === "sites-root" || decodedId === "teams-root") {
+    return { nodeType: decodedId, itemApiPath: "" };
   }
 
-  const [, nodeType, ...resourcePathArr] = internalId.split("/");
+  const [nodeType, ...resourcePathArr] = decodedId.split("/");
   if (!nodeType || !isValidNodeType(nodeType)) {
     throw new Error(
-      `Invalid internal id: ${internalId} with nodeType: ${nodeType}`
+      `Invalid internal id: ${decodedId} with nodeType: ${nodeType}`
     );
   }
 
