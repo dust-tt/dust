@@ -4,7 +4,6 @@ import type {
 } from "@dust-tt/types";
 import { isDustFileId } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
-import { file } from "googleapis/build/src/apis/file";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { maybeApplyPreProcessing } from "@app/lib/api/files/preprocessing";
