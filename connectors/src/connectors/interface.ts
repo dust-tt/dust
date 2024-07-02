@@ -1,7 +1,5 @@
 import type {
-  ConnectorConfigurations,
   ConnectorPermission,
-  ConnectorProvider,
   ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
@@ -12,96 +10,72 @@ import type { ConnectorConfiguration } from "@dust-tt/types";
 
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-export type ConnectorCreate<T extends ConnectorConfiguration> = (
-  DataSourceConfig: DataSourceConfig,
-  connectionid: string,
-  configuration: T
-) => Promise<Result<string, Error>>;
+export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
+  readonly connectorId: ModelId;
 
-export type ConnectorProviderCreateConnectorMapping = {
-  [K in ConnectorProvider]: ConnectorCreate<ConnectorConfigurations[K]>;
-};
-
-export type ConnectorUpdater = (
-  connectorId: ModelId,
-  params: {
-    connectionId?: string | null;
+  constructor(connectorId: ModelId) {
+    this.connectorId = connectorId;
   }
-) => Promise<Result<string, ConnectorsAPIError>>;
 
-export type ConnectorStopper = (
-  connectorId: ModelId
-) => Promise<Result<undefined, Error>>;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static async create(params: {
+    dataSourceConfig: DataSourceConfig;
+    connectionId: string;
+    configuration: ConnectorConfiguration;
+  }): Promise<Result<string, Error>> {
+    throw new Error("Method not implemented.");
+  }
 
-// Should cleanup any state/resources associated with the connector
-export type ConnectorCleaner = (
-  connectorId: ModelId,
-  force: boolean
-) => Promise<Result<undefined, Error>>;
+  abstract update(params: {
+    connectionId?: string | null;
+  }): Promise<Result<string, ConnectorsAPIError>>;
 
-export type ConnectorResumer = (
-  connectorId: ModelId
-) => Promise<Result<undefined, Error>>;
+  abstract clean(params: { force: boolean }): Promise<Result<undefined, Error>>;
 
-export type SyncConnector = (
-  connectorId: ModelId,
-  fromTs: number | null
-) => Promise<Result<string, Error>>;
+  abstract stop(): Promise<Result<undefined, Error>>;
 
-export type ConnectorPermissionRetriever = (params: {
-  connectorId: ModelId;
-  parentInternalId: string | null;
-  filterPermission: ConnectorPermission | null;
-  viewType: ContentNodesViewType;
-}) => Promise<Result<ContentNode[], Error>>;
+  abstract resume(): Promise<Result<undefined, Error>>;
 
-export type ConnectorPermissionSetter = (
-  connectorId: ModelId,
-  // internalId -> "read" | "write" | "read_write" | "none"
-  permissions: Record<string, ConnectorPermission>
-) => Promise<Result<void, Error>>;
+  abstract sync(params: {
+    fromTs: number | null;
+  }): Promise<Result<string, Error>>;
 
-export type ConnectorBatchContentNodesRetriever = (
-  connectorId: ModelId,
-  internalIds: string[],
-  viewType: ContentNodesViewType
-) => Promise<Result<ContentNode[], Error>>;
+  abstract retrievePermissions(params: {
+    parentInternalId: string | null;
+    filterPermission: ConnectorPermission | null;
+    viewType: ContentNodesViewType;
+  }): Promise<Result<ContentNode[], Error>>;
 
-export type ContentNodeParentsRetriever = (
-  connectorId: ModelId,
-  internalId: string,
-  memoizationKey?: string
-) => Promise<Result<string[], Error>>;
+  abstract setPermissions(params: {
+    permissions: Record<string, ConnectorPermission>;
+  }): Promise<Result<void, Error>>;
 
-export type ConnectorConfigSetter = (
-  connectorId: ModelId,
-  configKey: string,
-  configValue: string
-) => Promise<Result<void, Error>>;
+  abstract retrieveBatchContentNodes(params: {
+    internalIds: string[];
+    viewType: ContentNodesViewType;
+  }): Promise<Result<ContentNode[], Error>>;
 
-export type ConnectorConfigGetter = (
-  connectorId: ModelId,
-  configKey: string
-) => Promise<Result<string | null, Error>>;
+  abstract retrieveContentNodeParents(params: {
+    internalId: string;
+    memoizationKey?: string;
+  }): Promise<Result<string[], Error>>;
 
-export type ConnectorGarbageCollector = (
-  connectorId: ModelId
-) => Promise<Result<string, Error>>;
+  abstract setConfigurationKey(params: {
+    configKey: string;
+    configValue: string;
+  }): Promise<Result<void, Error>>;
 
-export type ConnectorPauser = (
-  connectorId: ModelId
-) => Promise<Result<undefined, Error>>;
-export type ConnectorUnpauser = (
-  connectorId: ModelId
-) => Promise<Result<undefined, Error>>;
+  abstract getConfigurationKey(params: {
+    configKey: string;
+  }): Promise<Result<string | null, Error>>;
 
-export type ConnectorConfigurationSetter<T extends ConnectorConfiguration> = (
-  connectorId: ModelId,
-  configuration: T
-) => Promise<Result<void, Error>>;
+  abstract garbageCollect(): Promise<Result<string, Error>>;
 
-export type ConnectorProviderUpdateConfigurationMapping = {
-  [K in keyof ConnectorConfigurations]: ConnectorConfigurationSetter<
-    ConnectorConfigurations[K]
-  >;
-};
+  abstract pause(): Promise<Result<undefined, Error>>;
+
+  abstract unpause(): Promise<Result<undefined, Error>>;
+
+  abstract configure(params: {
+    configuration: T;
+  }): Promise<Result<void, Error>>;
+}

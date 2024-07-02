@@ -5,7 +5,7 @@ import type {
 import type { ContentNode } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -73,11 +73,10 @@ const _getConnectorPermissions = async (
     });
   }
 
-  const connectorPermissionRetriever =
-    RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE[connector.type];
-
-  const pRes = await connectorPermissionRetriever({
+  const pRes = await getConnectorManager({
+    connectorProvider: connector.type,
     connectorId: connector.id,
+  }).retrievePermissions({
     parentInternalId,
     filterPermission,
     viewType,

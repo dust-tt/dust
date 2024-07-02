@@ -1,7 +1,7 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { SYNC_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -32,10 +32,11 @@ const _syncConnectorAPIHandler = async (
     });
     return;
   }
-  const launchRes = await SYNC_CONNECTOR_BY_TYPE[connector.type](
-    connector.id,
-    null
-  );
+  const launchRes = await getConnectorManager({
+    connectorProvider: connector.type,
+    connectorId: connector.id,
+  }).sync({ fromTs: null });
+
   if (launchRes.isErr()) {
     res.status(500).send({
       error: {

@@ -8,7 +8,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import { BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -58,11 +58,10 @@ const _getContentNodes = async (
   const { internalIds, viewType } = bodyValidation.right;
 
   const contentNodesRes: Result<ContentNode[], Error> =
-    await BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE[connector.type](
-      connector.id,
-      internalIds,
-      viewType
-    );
+    await getConnectorManager({
+      connectorProvider: connector.type,
+      connectorId: connector.id,
+    }).retrieveBatchContentNodes({ internalIds, viewType });
 
   if (contentNodesRes.isErr()) {
     return apiError(req, res, {

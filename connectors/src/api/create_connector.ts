@@ -15,7 +15,7 @@ import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
-import { CREATE_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { createConnector } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -62,8 +62,6 @@ const _createConnectorAPIHandler = async (
     let connectorRes: Result<string, Error> | null = null;
     switch (req.params.connector_provider) {
       case "webcrawler": {
-        const connectorCreator =
-          CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
         const configurationRes = ioTsParsePayload(
           configuration,
           WebCrawlerConfigurationTypeSchema
@@ -77,21 +75,22 @@ const _createConnectorAPIHandler = async (
             },
           });
         }
-        connectorRes = await connectorCreator(
-          {
-            workspaceAPIKey: workspaceAPIKey,
-            dataSourceName: dataSourceName,
-            workspaceId: workspaceId,
+        connectorRes = await createConnector({
+          connectorProvider: "webcrawler",
+          params: {
+            configuration: configurationRes.value,
+            dataSourceConfig: {
+              dataSourceName,
+              workspaceId,
+              workspaceAPIKey,
+            },
+            connectionId,
           },
-          connectionId,
-          configurationRes.value
-        );
+        });
         break;
       }
 
       case "slack": {
-        const connectorCreator =
-          CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
         const configurationRes = ioTsParsePayload(
           configuration,
           SlackConfigurationTypeSchema
@@ -105,15 +104,18 @@ const _createConnectorAPIHandler = async (
             },
           });
         }
-        connectorRes = await connectorCreator(
-          {
-            workspaceAPIKey: workspaceAPIKey,
-            dataSourceName: dataSourceName,
-            workspaceId: workspaceId,
+        connectorRes = await createConnector({
+          connectorProvider: "slack",
+          params: {
+            configuration: configurationRes.value,
+            dataSourceConfig: {
+              dataSourceName,
+              workspaceId,
+              workspaceAPIKey,
+            },
+            connectionId,
           },
-          connectionId,
-          configurationRes.value
-        );
+        });
         break;
       }
 
@@ -123,17 +125,18 @@ const _createConnectorAPIHandler = async (
       case "google_drive":
       case "intercom":
       case "microsoft": {
-        const connectorCreator =
-          CREATE_CONNECTOR_BY_TYPE[req.params.connector_provider];
-        connectorRes = await connectorCreator(
-          {
-            workspaceAPIKey: workspaceAPIKey,
-            dataSourceName: dataSourceName,
-            workspaceId: workspaceId,
+        connectorRes = await createConnector({
+          connectorProvider: req.params.connector_provider,
+          params: {
+            dataSourceConfig: {
+              dataSourceName,
+              workspaceId,
+              workspaceAPIKey,
+            },
+            connectionId,
+            configuration: null,
           },
-          connectionId,
-          null
-        );
+        });
         break;
       }
       default:

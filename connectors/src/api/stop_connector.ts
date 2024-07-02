@@ -1,7 +1,7 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { STOP_CONNECTOR_BY_TYPE } from "@connectors/connectors";
+import { getConnectorManager } from "@connectors/connectors";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -28,9 +28,11 @@ const _stopConnectorAPIHandler = async (
         status_code: 404,
       });
     }
-    const connectorStopper = STOP_CONNECTOR_BY_TYPE[connector.type];
 
-    const stopRes = await connectorStopper(connector.id);
+    const stopRes = await getConnectorManager({
+      connectorProvider: connector.type,
+      connectorId: connector.id,
+    }).stop();
 
     if (stopRes.isErr()) {
       return apiError(req, res, {
