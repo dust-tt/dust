@@ -7,14 +7,9 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 
 export type AgentEnabledDataSource = {
-  workspaceId: number;
   dataSourceId: number;
-  dataSourceName: string;
-  dataSourceDescription: string | null;
-  connectorProvider: ConnectorProvider | null;
-  connectorId: string | null;
-  createdAt: number;
-  createdBy: string;
+  retrievalConfigurationId: number | null;
+  processConfigurationId: number | null;
 };
 
 export async function getAgentEnabledDataSources({
@@ -63,13 +58,8 @@ export async function getAgentEnabledDataSources({
     ],
   });
   return dataSourceConfigurations.map((dsConfig) => ({
-    workspaceId: wId,
-    dataSourceId: dsConfig.dataSource.id,
-    dataSourceName: dsConfig.dataSource.name,
-    connectorProvider: dsConfig.dataSource.connectorProvider,
-    connectorId: dsConfig.dataSource.connectorId,
-    createdAt: dsConfig.createdAt.getTime(),
-    createdBy: dsConfig.dataSource.editedByUser.name,
-    dataSourceDescription: dsConfig.dataSource.description,
+    dataSourceId: dsConfig.id,
+    retrievalConfigurationId: dsConfig.retrievalConfigurationId,
+    processConfigurationId: dsConfig.processConfigurationId,
   }));
 }
