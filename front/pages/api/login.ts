@@ -12,6 +12,7 @@ import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
+  getPendingMembershipInvitationForEmailAndWorkspace,
   getPendingMembershipInvitationForToken,
   markInvitationAsConsumed,
 } from "@app/lib/iam/invitations";
@@ -161,14 +162,25 @@ async function handleEnterpriseSignUpFlow(
       workspace: renderLightWorkspaceType({ workspace }),
     });
 
+  // Look if there is a pending membership invitation for the user at the workspace.
+  const pendingMembershipInvitation =
+    await getPendingMembershipInvitationForEmailAndWorkspace(
+      user.email,
+      workspace.id
+    );
+
   // Initialize membership if it's not present or has been previously revoked.
   // In the case of enterprise connections, Dust access is overridden by the identity management service.
   if (!membership || membership.isRevoked()) {
     await createAndLogMembership({
       workspace,
       user,
-      role: "user",
+      role: pendingMembershipInvitation?.initialRole ?? "user",
     });
+  }
+
+  if (pendingMembershipInvitation) {
+    await markInvitationAsConsumed(pendingMembershipInvitation, user);
   }
 
   return { flow: null, workspace };
