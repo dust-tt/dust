@@ -1,13 +1,8 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type {
-  FileId,
-  FileType,
-  LightWorkspaceType,
-  Result,
-} from "@dust-tt/types";
-import { Err, FILE_ID_PREFIX, Ok } from "@dust-tt/types";
+import type { FileType, LightWorkspaceType, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -26,6 +21,8 @@ import { generateModelSId } from "@app/lib/utils";
 
 type FileVersion = "processed" | "original";
 
+const FILE_ID_PREFIX = "file";
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -39,7 +36,7 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
   ) {
-    const fileId = makeDustFileId();
+    const fileId = generateModelSId(FILE_ID_PREFIX);
 
     const key = await FileResource.model.create({
       ...blob,
@@ -52,7 +49,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   static async fetchById(
     auth: Authenticator,
-    id: FileId
+    id: string
   ): Promise<FileResource | null> {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const owner = auth.workspace();
@@ -220,9 +217,4 @@ export class FileResource extends BaseResource<FileModel> {
 
     return blob;
   }
-}
-
-function makeDustFileId(): FileId {
-  const fileId = generateModelSId();
-  return `${FILE_ID_PREFIX}${fileId}`;
 }

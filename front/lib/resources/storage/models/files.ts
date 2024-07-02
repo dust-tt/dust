@@ -1,5 +1,4 @@
 import type {
-  FileId,
   FileStatus,
   FileUseCase,
   SupportedFileContentType,
@@ -28,10 +27,10 @@ export class FileModel extends Model<
   declare fileName: string;
   declare fileSize: number;
   declare status: FileStatus;
-  declare sId: FileId;
+  declare sId: string;
   declare useCase: FileUseCase;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare userId: ForeignKey<User["id"]> | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare user: NonAttribute<User>;

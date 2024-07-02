@@ -89,10 +89,6 @@ export function isSupportedImageContenType(
 
 // Types.
 
-export const FILE_ID_PREFIX = "file_";
-
-export type FileId = `${typeof FILE_ID_PREFIX}${string}`;
-
 export type FileStatus = "created" | "failed" | "ready";
 
 export type FileUseCase = "conversation";
@@ -102,14 +98,8 @@ export interface FileType {
   downloadUrl?: string;
   fileName: string;
   fileSize: number;
-  id: FileId;
+  id: string;
   status: FileStatus;
   uploadUrl?: string;
   useCase: FileUseCase;
-}
-
-// Helper functions.
-
-export function isDustFileId(fileId: string): fileId is FileId {
-  return fileId.startsWith(FILE_ID_PREFIX);
 }

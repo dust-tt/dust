@@ -66,7 +66,7 @@ async function handler(
   }
 
   const { fileId } = req.query;
-  if (typeof fileId !== "string" || !isDustFileId(fileId)) {
+  if (typeof fileId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
