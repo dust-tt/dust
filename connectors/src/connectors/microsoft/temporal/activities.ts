@@ -1,4 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
+import type { Client } from "@microsoft/microsoft-graph-client";
+import axios from "axios";
+import mammoth from "mammoth";
+import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -6,17 +10,6 @@ import {
   getFilesAndFolders,
   microsoftInternalIdFromNodeData,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
-import {
-  MicrosoftNodeResource,
-  MicrosoftRootResource,
-} from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import axios from "axios";
-import mammoth from "mammoth";
-import turndown from "turndown";
-import { Client } from "@microsoft/microsoft-graph-client";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -24,9 +17,15 @@ import {
   sectionLength,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { DriveItem } from "@microsoft/microsoft-graph-types";
-import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
-import { WithCreationAttributes } from "@connectors/resources/connector/strategy";
+import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import logger from "@connectors/logger/logger";
+import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  MicrosoftNodeResource,
+  MicrosoftRootResource,
+} from "@connectors/resources/microsoft_resource";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export async function fullSyncActivity({
   connectorId,
@@ -142,7 +141,15 @@ export async function syncOneFile(
     return false;
   }
 
-  const url = (file as any)["@microsoft.graph.downloadUrl"];
+  const url =
+    "@microsoft.graph.downloadUrl" in file
+      ? file["@microsoft.graph.downloadUrl"]
+      : null;
+
+  if (!url) {
+    localLogger.error("Unexpected missing download URL");
+    throw new Error("Unexpected missing download URL");
+  }
 
   if (!url) {
     localLogger.info("No download URL found");
@@ -169,7 +176,29 @@ export async function syncOneFile(
     );
   }
 
-  const documentContent = await getDocumentContent(localLogger, downloadRes);
+  async function getDocumentContent() {
+    try {
+      const converted = await mammoth.convertToHtml({
+        buffer: Buffer.from(downloadRes.data),
+      });
+
+      const extracted = new turndown()
+        .remove(["style", "script", "iframe", "noscript", "form", "img"])
+        .turndown(converted.value);
+
+      return extracted.trim();
+    } catch (err) {
+      localLogger.error(
+        {
+          error: err,
+        },
+        `Error while converting docx document to text`
+      );
+      throw err;
+    }
+  }
+
+  const documentContent = await getDocumentContent();
 
   logger.info({ documentContent }, "Document content");
 
@@ -226,10 +255,9 @@ export async function syncOneFile(
   const isInSizeRange =
     documentLength > 0 && documentLength < MAX_DOCUMENT_TXT_LEN;
   if (isInSizeRange) {
-    const parents = (
-      await getFileParentsMemoized(connectorId, client, file, startSyncTs)
-    ).map((f) => f.id);
-    parents.push(file.id);
+    // TODO(pr): add getParents implementation
+    const parents = [];
+    parents.push(documentId);
     parents.reverse();
 
     await upsertToDatasource({
@@ -272,35 +300,4 @@ export async function syncOneFile(
   }
 
   return isInSizeRange;
-}
-
-function getFileParentsMemoized(
-  connectorId: any,
-  oauth2client: any,
-  file: DriveItem,
-  startSyncTs: number
-): any[] {
-  return [];
-}
-
-async function getDocumentContent(localLogger: any, downloadRes: any) {
-  try {
-    const converted = await mammoth.convertToHtml({
-      buffer: Buffer.from(downloadRes.data),
-    });
-
-    const extracted = new turndown()
-      .remove(["style", "script", "iframe", "noscript", "form", "img"])
-      .turndown(converted.value);
-
-    return extracted.trim();
-  } catch (err) {
-    localLogger.error(
-      {
-        error: err,
-      },
-      `Error while converting docx document to text`
-    );
-    throw err;
-  }
 }

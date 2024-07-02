@@ -205,6 +205,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MicrosoftNodeResource
   extends ReadonlyAttributesType<MicrosoftNodeModel> {}
 
