@@ -71,7 +71,7 @@ async function handler(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByInternalId(
+    await LabsTranscriptsConfigurationResource.fetchByModelId(
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.

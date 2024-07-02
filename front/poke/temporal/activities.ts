@@ -203,7 +203,7 @@ export async function deleteConversationsActivity({
               }
               if (msg.contentFragmentId) {
                 const contentFragment =
-                  await ContentFragmentResource.fetchByInternalId(
+                  await ContentFragmentResource.fetchByModelId(
                     msg.contentFragmentId,
                     t
                   );

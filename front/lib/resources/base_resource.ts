@@ -11,7 +11,7 @@ interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
  * BaseResource serves as a foundational class for resource management.
  * It encapsulates common CRUD operations for Sequelize models, ensuring a uniform interface
  * across different resources. Each instance represents a specific database row, identified by `id`.
- * - `fetchByInternalId`: Static method to retrieve an instance based on its ID, ensuring type safety and
+ * - `fetchByModelId`: Static method to retrieve an instance based on its ID, ensuring type safety and
  *   the correct model instantiation.
  * - `delete`: Instance method to delete the current resource from the database.
  * - `update`: Instance method to update the current resource with new values.
@@ -30,7 +30,7 @@ export abstract class BaseResource<M extends Model> {
     this.id = blob.id;
   }
 
-  static async fetchByInternalId<T extends BaseResource<M>, M extends Model>(
+  static async fetchByModelId<T extends BaseResource<M>, M extends Model>(
     this: BaseResourceConstructor<T, M> & {
       model: ModelStatic<M>;
     },
