@@ -1,3 +1,4 @@
+import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
@@ -433,24 +434,19 @@ function generateCsvFromQueryResult(
     | MessageUsageQueryResult[]
     | builderUsageQueryResult[]
 ) {
-  const csvHeader = Object.keys(rows[0]).join(",") + "\n";
-  const csvContent = rows
-    .map((row) =>
-      Object.values(row)
-        .map((value) => {
-          // Escape quotes and wrap in quotes if the value contains commas or quotes
-          if (
-            typeof value === "string" &&
-            (value.includes(",") || value.includes('"'))
-          ) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value;
-        })
-        .join(",")
-    )
-    .join("\n");
-  return csvHeader + csvContent;
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const headers = Object.keys(rows[0]);
+  const data = rows.map((row) => Object.values(row));
+
+  return stringify([headers, ...data], {
+    header: false,
+    cast: {
+      date: (value) => value.toISOString(),
+    },
+  });
 }
 
 /**
