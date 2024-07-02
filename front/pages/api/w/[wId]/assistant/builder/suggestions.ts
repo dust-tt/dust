@@ -1,10 +1,12 @@
 import type {
+  BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   ModelConfigurationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
   assertNever,
+  BuilderEmojiSuggestionsResponseBodySchema,
   BuilderSuggestionsResponseBodySchema,
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -13,6 +15,7 @@ import {
   InternalPostBuilderSuggestionsRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -22,7 +25,9 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<BuilderSuggestionsType>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<BuilderSuggestionsType | BuilderEmojiSuggestionsType>
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -66,6 +71,7 @@ async function handler(
           break;
         case "name":
         case "description":
+        case "emoji":
           model = getSmallWhitelistedModel(owner);
           break;
         default:
@@ -109,9 +115,13 @@ async function handler(
           },
         });
       }
-      const responseValidation = BuilderSuggestionsResponseBodySchema.decode(
-        suggestionsResponse.value.results[0][0].value
-      );
+
+      const responseValidation = t
+        .union([
+          BuilderSuggestionsResponseBodySchema,
+          BuilderEmojiSuggestionsResponseBodySchema,
+        ])
+        .decode(suggestionsResponse.value.results[0][0].value);
       if (isLeft(responseValidation)) {
         const pathError = reporter.formatValidationErrors(
           responseValidation.left

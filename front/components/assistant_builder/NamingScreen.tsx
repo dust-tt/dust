@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   APIError,
+  BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   Result,
   WorkspaceType,
@@ -24,6 +25,10 @@ import React, {
 } from "react";
 
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
+import {
+  buildSelectedEmojiType,
+  makeUrlForEmojiAndBackgroud,
+} from "@app/components/assistant_builder/avatar_picker/utils";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
@@ -168,6 +173,39 @@ export default function NamingScreen({
     }
   }, [owner, builderState.instructions, builderState.description]);
 
+  const updateEmojiFromSuggestions = useCallback(async () => {
+    let avatarUrl: string | null = null;
+    const emojiSuggestions = await getEmojiSuggestions({
+      owner,
+      instructions: builderState.instructions || "",
+    });
+    if (emojiSuggestions.isOk() && emojiSuggestions.value.suggestions.length) {
+      const suggestion = emojiSuggestions.value.suggestions[0];
+      const emoji = buildSelectedEmojiType(suggestion.emoji);
+      if (emoji) {
+        avatarUrl = makeUrlForEmojiAndBackgroud(
+          {
+            id: emoji.id,
+            unified: emoji.unified,
+            native: emoji.native,
+          },
+          suggestion.backgroundColor as `bg-${string}`
+        );
+      }
+      // Default on Ed's babies if no emoji is found
+      if (!avatarUrl) {
+        const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
+        avatarUrl =
+          availableUrls[Math.floor(Math.random() * availableUrls.length)];
+      }
+
+      setBuilderState((state) => ({
+        ...state,
+        avatarUrl,
+      }));
+    }
+  }, [owner, builderState.instructions, setBuilderState]);
+
   useEffect(() => {
     debounce(nameDebounceHandle, updateNameSuggestions);
   }, [
@@ -176,6 +214,14 @@ export default function NamingScreen({
     owner,
     updateNameSuggestions,
   ]);
+
+  // Emoji suggestion handling
+
+  useEffect(() => {
+    if (!builderState.avatarUrl) {
+      void updateEmojiFromSuggestions();
+    }
+  }, [builderState.avatarUrl, updateEmojiFromSuggestions]);
 
   // Description suggestions handling
 
@@ -419,6 +465,25 @@ async function getNamingSuggestions({
     body: JSON.stringify({
       type: "name",
       inputs: { instructions, description },
+    }),
+  });
+}
+
+async function getEmojiSuggestions({
+  owner,
+  instructions,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+}): Promise<Result<BuilderEmojiSuggestionsType, APIError>> {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "emoji",
+      inputs: { instructions },
     }),
   });
 }
