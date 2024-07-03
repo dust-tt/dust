@@ -1,4 +1,5 @@
 import type { AppType } from "@dust-tt/types";
+import { EnvironmentConfig } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -13,17 +14,22 @@ export async function getApp(
     return null;
   }
 
+  const workspaceId =
+    aId == EnvironmentConfig.getEnvVariable("HELPER_APP_ID")
+      ? EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID")
+      : owner.id;
+
   const app = await App.findOne({
     where: auth.isUser()
       ? {
-          workspaceId: owner.id,
+          workspaceId,
           visibility: {
             [Op.or]: ["public", "private", "unlisted"],
           },
           sId: aId,
         }
       : {
-          workspaceId: owner.id,
+          workspaceId,
           visibility: ["public", "unlisted"],
           sId: aId,
         },

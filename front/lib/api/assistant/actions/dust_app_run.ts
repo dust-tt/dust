@@ -123,7 +123,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       actionConfiguration.appId ===
         EnvironmentConfig.getEnvVariable("HELPER_APP_ID") &&
       actionConfiguration.appWorkspaceId ===
-        EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID");
+        EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_SID");
 
     if (
       owner.sId !== actionConfiguration.appWorkspaceId &&
