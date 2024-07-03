@@ -1,7 +1,7 @@
 use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
-use crate::deno::script::Script;
+use crate::deno::script::{call, Script};
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage, SystemChatMessage};
 use crate::providers::llm::{ChatFunction, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
@@ -310,6 +310,12 @@ impl Block for Chat {
             })
             .await?
             .map_err(|e| anyhow!("Error in `messages_code`: {}", e))?;
+        // call(
+        //     &messages_code,
+        //     "_fun",
+        //     &e,
+        //     Some(std::time::Duration::from_secs(10)),
+        // )
 
         const MESSAGES_CODE_OUTPUT: &str = "Invalid messages code output, \
             expecting an array of objects with  fields `role`, possibly `name`, \
@@ -334,6 +340,13 @@ impl Block for Chat {
                     })
                     .await?
                     .map_err(|e| anyhow!("Error in `functions_code`: {}", e))?;
+                // call(
+                //     &functions_code,
+                //     "_fun",
+                //     &e,
+                //     Some(std::time::Duration::from_secs(10)),
+                // )
+                // .await
                 (
                     match functions_value {
                         Value::Null => vec![],

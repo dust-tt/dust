@@ -8,6 +8,10 @@ name = "dust-api"
 path = "bin/dust_api.rs"
 
 [[bin]]
+name = "test_deno"
+path = "bin/test_deno.rs"
+
+[[bin]]
 name = "qdrant_migrator"
 path = "bin/qdrant/migrator.rs"
 
@@ -53,6 +57,7 @@ url = "2.5"
 dns-lookup = "1.0"
 async-stream = "0.3"
 eventsource-client = { git = "https://github.com/dust-tt/rust-eventsource-client", rev = "148050f8fb9f8abb25ca171aa68ea817277ca4f6" }
+# rustyscript = { git = "https://github.com/rscarson/rustyscript", rev="3da68e30c05739126c35b39c4f370c71cdbbbd34"}
 tera = "1.20"
 fancy-regex = "0.13"
 rustc-hash = "1.1"
@@ -63,7 +68,7 @@ qdrant-client = "1.9"
 tower-http = {version = "0.5", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-deno_core = "0.200"
+deno_core = "0.288"
 rayon = "1.10"
 clap = { version = "4.5", features = ["derive"] }
 async-recursion = "1.1"

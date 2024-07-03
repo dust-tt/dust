@@ -3,7 +3,7 @@ use crate::blocks::block::{
 };
 use crate::blocks::helpers::get_data_source_project;
 use crate::data_sources::data_source::{Document, SearchFilter};
-use crate::deno::script::Script;
+use crate::deno::script::{call, Script};
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -252,6 +252,13 @@ impl Block for DataSource {
                     })
                     .await?
                     .map_err(|e| anyhow!("Error in `filter_code`: {}", e))?;
+                // call(
+                //     &filter_code,
+                //     "_fun",
+                //     &e,
+                //     Some(std::time::Duration::from_secs(10)),
+                // )
+                // .await
                 (
                     match filter_value {
                         Value::Null => None,

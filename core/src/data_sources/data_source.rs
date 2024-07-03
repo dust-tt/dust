@@ -1520,10 +1520,8 @@ impl DataSource {
                                     {
                                         let c_offset = parsed_results[counter].1;
                                         if chunk.offset < c_offset {
-                                            chunk.text.push_str(
-                                                &(" ".to_owned()
-                                                    + &parsed_results[counter].0.clone()),
-                                            );
+                                            chunk.text.push_str(" ");
+                                            chunk.text.push_str(&parsed_results[counter].0.clone());
                                         } else {
                                             prepend.push_str(
                                                 &(parsed_results[counter].0.clone() + " "),
@@ -1532,7 +1530,7 @@ impl DataSource {
                                         counter += 1;
                                         token_count += chunk_size;
                                     }
-                                    chunk.text = prepend + &chunk.text;
+                                    chunk.text = format!("{}{}", prepend, &chunk.text);
                                     chunk
                                 })
                                 .collect::<Vec<_>>();
