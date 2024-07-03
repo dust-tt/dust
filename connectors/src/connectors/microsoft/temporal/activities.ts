@@ -1,5 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import type { Client } from "@microsoft/microsoft-graph-client";
 import axios from "axios";
 import mammoth from "mammoth";
 import turndown from "turndown";
@@ -30,6 +29,9 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import PQueue from "p-queue";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 
 export async function fullSyncActivity({
   connectorId,
@@ -78,7 +80,7 @@ export async function fullSyncActivity({
 
   const startSyncTs = Date.now();
 
-  await syncOneFile(client, {
+  await syncOneFile({
     connectorId,
     dataSourceConfig,
     file,
@@ -92,26 +94,99 @@ export async function fullSyncActivity({
   }
 }
 
-export async function syncOneFile(
-  client: Client,
-  {
-    connectorId,
-    dataSourceConfig,
-    file,
-    parent,
-    startSyncTs,
-    config,
-    isBatchSync = false,
-  }: {
-    connectorId: ModelId;
-    dataSourceConfig: DataSourceConfig;
-    file: microsoftgraph.DriveItem;
-    parent: MicrosoftRootResource;
-    startSyncTs: number;
-    config?: MicrosoftConfigurationResource;
-    isBatchSync?: boolean;
+const SUPPORTED_MIME_TYPES = [
+  // docx files
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  // TODO(pr): add support for these
+  // "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  // "text/plain",
+];
+
+const FILES_SYNC_CONCURRENCY = 10;
+
+/**
+ * Given a drive or folder, sync files under it and returns a list of folders to sync
+ */
+export async function syncFiles({
+  connectorId,
+  parent,
+  startSyncTs,
+}: {
+  connectorId: ModelId;
+  parent: MicrosoftNodeResource;
+  startSyncTs: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
   }
-) {
+  logger.info(
+    {
+      connectorId,
+      parent,
+    },
+    `[SyncFiles] Start sync`
+  );
+  const client = await getClient(connector.connectionId);
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  // TODO(pr): handle pagination
+  const children = await getFilesAndFolders(client, parent.internalId);
+
+  const childrenToSync = children.filter(
+    (item) =>
+      item.file?.mimeType && SUPPORTED_MIME_TYPES.includes(item.file.mimeType)
+  );
+
+  // sync files
+  const results = await concurrentExecutor(
+    childrenToSync,
+    async (child) => {
+      await syncOneFile({
+        connectorId,
+        dataSourceConfig,
+        file: child,
+        parent,
+        startSyncTs,
+      });
+    },
+    { concurrency: FILES_SYNC_CONCURRENCY }
+  );
+
+  const count = results.filter((r) => r).length;
+
+  logger.info(
+    {
+      connectorId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      parent,
+      count,
+    },
+    `[SyncFiles] Successful sync.`
+  );
+
+  return {
+    count,
+    subfolders: children.filter((item) => item.folder),
+  };
+}
+
+export async function syncOneFile({
+  connectorId,
+  dataSourceConfig,
+  file,
+  parent,
+  startSyncTs,
+  isBatchSync = false,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  file: microsoftgraph.DriveItem;
+  parent: MicrosoftNodeResource;
+  startSyncTs: number;
+  isBatchSync?: boolean;
+}) {
   const localLogger = logger.child({
     provider: "microsoft",
     connectorId: parent.connectorId,
