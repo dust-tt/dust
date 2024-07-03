@@ -1,6 +1,7 @@
 import type {
   ActiveRoleType,
   APIErrorWithStatusCode,
+  LightWorkspaceType,
   MembershipInvitationType,
   Result,
   SubscriptionType,
@@ -134,22 +135,35 @@ export async function updateOrCreateInvitation(
   );
 }
 
-export async function sendWorkspaceInvitationEmail(
-  owner: WorkspaceType,
-  user: UserType,
+export function getMembershipInvitationToken(
   invitation: MembershipInvitationType
 ) {
-  const invitationToken = sign(
+  return sign(
     {
       membershipInvitationId: invitation.id,
       exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME_SEC,
     },
     config.getDustInviteTokenSecret()
   );
+}
 
-  const invitationUrl = `${config.getAppUrl()}/w/${
-    owner.sId
-  }/join/?t=${invitationToken}`;
+export function getMembershipInvitationUrlForToken(
+  owner: LightWorkspaceType,
+  invitationToken: string
+) {
+  return `${config.getAppUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
+}
+
+export async function sendWorkspaceInvitationEmail(
+  owner: WorkspaceType,
+  user: UserType,
+  invitation: MembershipInvitationType
+) {
+  const invitationToken = getMembershipInvitationToken(invitation);
+  const invitationUrl = getMembershipInvitationUrlForToken(
+    owner,
+    invitationToken
+  );
 
   // Send invite email.
   const message = {

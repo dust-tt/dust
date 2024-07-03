@@ -7,6 +7,10 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  getMembershipInvitationToken,
+  getMembershipInvitationUrlForToken,
+} from "@app/lib/api/invitation";
 import { deleteUser } from "@app/lib/api/user";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
@@ -14,6 +18,7 @@ import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
   getPendingMembershipInvitationForEmailAndWorkspace,
   getPendingMembershipInvitationForToken,
+  getPendingMembershipInvitationWithWorkspaceForEmail,
   markInvitationAsConsumed,
 } from "@app/lib/iam/invitations";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -358,6 +363,26 @@ async function handler(
 
     targetWorkspace = workspace;
   } else {
+    if (userCreated) {
+      // If user is newly created, check if there is a pending invitation for the user.
+      // If present, redirect to the workspace join page.
+      const pendingInvitationAndWorkspace =
+        await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
+      if (pendingInvitationAndWorkspace) {
+        const { invitation: pendingInvitation, workspace } =
+          pendingInvitationAndWorkspace;
+
+        const invitationToken = getMembershipInvitationToken(pendingInvitation);
+        const invitationUrl = getMembershipInvitationUrlForToken(
+          workspace,
+          invitationToken
+        );
+
+        res.redirect(invitationUrl);
+        return;
+      }
+    }
+
     const loginFctn = membershipInvite
       ? async () => handleMembershipInvite(user, membershipInvite)
       : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
