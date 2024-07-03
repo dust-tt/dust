@@ -1,6 +1,7 @@
 import type {
   ActiveRoleType,
   APIErrorWithStatusCode,
+  LightWorkspaceType,
   MembershipInvitationType,
   Result,
   SubscriptionType,
@@ -10,6 +11,7 @@ import type {
 import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
+import type { Light } from "react-syntax-highlighter";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
@@ -134,22 +136,30 @@ export async function updateOrCreateInvitation(
   );
 }
 
-export async function sendWorkspaceInvitationEmail(
-  owner: WorkspaceType,
-  user: UserType,
-  invitation: MembershipInvitationType
-) {
-  const invitationToken = sign(
+export function getInvitationToken(invitation: MembershipInvitationType) {
+  return sign(
     {
       membershipInvitationId: invitation.id,
       exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME_SEC,
     },
     config.getDustInviteTokenSecret()
   );
+}
 
-  const invitationUrl = `${config.getAppUrl()}/w/${
-    owner.sId
-  }/join/?t=${invitationToken}`;
+export function getInvitationUrl(
+  owner: LightWorkspaceType,
+  invitationToken: string
+) {
+  return `${config.getAppUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
+}
+
+export async function sendWorkspaceInvitationEmail(
+  owner: WorkspaceType,
+  user: UserType,
+  invitation: MembershipInvitationType
+) {
+  const invitationToken = getInvitationToken(invitation);
+  const invitationUrl = getInvitationUrl(owner, invitationToken);
 
   // Send invite email.
   const message = {

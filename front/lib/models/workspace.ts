@@ -172,6 +172,8 @@ export class MembershipInvitation extends Model<
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare invitedUserId: ForeignKey<User["id"]> | null;
+
+  declare workspace: NonAttribute<Workspace>;
 }
 MembershipInvitation.init(
   {
@@ -229,6 +231,8 @@ Workspace.hasMany(MembershipInvitation, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+MembershipInvitation.belongsTo(Workspace);
+
 User.hasMany(MembershipInvitation, {
   foreignKey: "invitedUserId",
 });
