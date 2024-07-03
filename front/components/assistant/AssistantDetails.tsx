@@ -461,6 +461,7 @@ function DataSourceSelectedNodes({
                   node.sourceUrl ? "" : "pointer-events-none opacity-0"
                 )}
                 disabled={!node.sourceUrl}
+                variant="tertiary"
               />
               <IconButton
                 size="xs"
@@ -475,6 +476,7 @@ function DataSourceSelectedNodes({
                   node.dustDocumentId ? "" : "pointer-events-none opacity-0"
                 )}
                 disabled={!node.dustDocumentId}
+                variant="tertiary"
               />
             </div>
           }
