@@ -119,7 +119,16 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     const { actionConfiguration } = this;
 
-    if (owner.sId !== actionConfiguration.appWorkspaceId && actionConfiguration.appId != EnvironmentConfig.getEnvVariable("HELPER_APP_ID")) {
+    const isGlobalHelpAction =
+      actionConfiguration.appId ===
+        EnvironmentConfig.getEnvVariable("HELPER_APP_ID") &&
+      actionConfiguration.appWorkspaceId ===
+        EnvironmentConfig.getEnvVariable("HELPER_APP_WORKSPACE_ID");
+
+    if (
+      owner.sId !== actionConfiguration.appWorkspaceId &&
+      !isGlobalHelpAction
+    ) {
       return new Err(
         new Error(
           "Running Dust apps that are not part of your own workspace is not supported yet."
