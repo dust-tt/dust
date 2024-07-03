@@ -234,6 +234,53 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/agent_configurations": {
+      "get": {
+        "summary": "Get the list of assistants",
+        "description": "Get the agent configurations for the workspace identified by {wId}.",
+        "tags": ["Workspace"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent configurations for the workspace"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/content_fragments": {
       "post": {
         "summary": "Create a content fragment",
@@ -676,7 +723,44 @@
                 "type": "object",
                 "properties": {
                   "message": {
-                    "type": "string",
+                    "type": "object",
+                    "properties": {
+                      "content": {
+                        "type": "string",
+                        "description": "The content of the message"
+                      },
+                      "mentions": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "configurationId": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "context": {
+                        "type": "object",
+                        "properties": {
+                          "timezone": {
+                            "type": "string"
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "profilePictureUrl": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
                     "description": "The initial message of the conversation"
                   },
                   "contentFragment": {
@@ -714,9 +798,11 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "conversationId": {
-                      "type": "string",
-                      "description": "ID of the created conversation"
+                    "conversation": {
+                      "type": "object"
+                    },
+                    "message": {
+                      "$ref": "#/components/schemas/Message"
                     }
                   }
                 }
@@ -724,13 +810,13 @@
             }
           },
           "400": {
-            "description": "Bad Request. Missing or invalid parameters."
+            "description": "Bad Request"
           },
           "401": {
-            "description": "Unauthorized. Invalid or missing authentication token."
+            "description": "Unauthorized"
           },
           "500": {
-            "description": "Internal Server Error."
+            "description": "Internal Server Error"
           }
         }
       }
@@ -774,6 +860,48 @@
       }
     }
   },
-  "components": {},
+  "components": {
+    "schemas": {
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "created": {
+            "type": "number"
+          },
+          "sId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          },
+          "user": {
+            "type": "object",
+            "nullable": true
+          },
+          "mentions": {
+            "type": "array"
+          },
+          "content": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object"
+          },
+          "rank": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
   "tags": []
 }
