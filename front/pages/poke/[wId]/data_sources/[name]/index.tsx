@@ -37,22 +37,18 @@ import logger from "@app/logger/logger";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
-type FeaturesType = {
-  slackBotEnabled: boolean;
-  googleDrivePdfEnabled: boolean;
-  googleDriveLargeFilesEnabled: boolean;
-  microsoftPdfEnabled: boolean;
-  microsoftLargeFilesEnabled: boolean;
-  githubCodeSyncEnabled: boolean;
-  autoReadChannelPattern: string | null;
-};
-
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
   coreDataSource: CoreAPIDataSource;
   connector: ConnectorType | null;
-  features: FeaturesType;
+  features: {
+    slackBotEnabled: boolean;
+    googleDrivePdfEnabled: boolean;
+    googleDriveLargeFilesEnabled: boolean;
+    githubCodeSyncEnabled: boolean;
+    autoReadChannelPattern: string | null;
+  };
   temporalWorkspace: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -102,12 +98,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     }
   }
 
-  const features: FeaturesType = {
+  const features: {
+    slackBotEnabled: boolean;
+    googleDrivePdfEnabled: boolean;
+    googleDriveLargeFilesEnabled: boolean;
+    githubCodeSyncEnabled: boolean;
+    autoReadChannelPattern: string | null;
+  } = {
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
     googleDriveLargeFilesEnabled: false,
-    microsoftPdfEnabled: false,
-    microsoftLargeFilesEnabled: false,
     githubCodeSyncEnabled: false,
     autoReadChannelPattern: null,
   };
@@ -136,15 +136,15 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
           autoReadChannelPattern.value.configValue;
         break;
       case "google_drive":
-        const gdrivePdfEnabledRes = await connectorsAPI.getConnectorConfig(
+        const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
           dataSource.connectorId,
           "pdfEnabled"
         );
-        if (gdrivePdfEnabledRes.isErr()) {
-          throw gdrivePdfEnabledRes.error;
+        if (gdrivePDFEnabledRes.isErr()) {
+          throw gdrivePDFEnabledRes.error;
         }
         features.googleDrivePdfEnabled =
-          gdrivePdfEnabledRes.value.configValue === "true";
+          gdrivePDFEnabledRes.value.configValue === "true";
 
         const gdriveLargeFilesEnabledRes =
           await connectorsAPI.getConnectorConfig(
@@ -157,29 +157,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         features.googleDriveLargeFilesEnabled =
           gdriveLargeFilesEnabledRes.value.configValue === "true";
         break;
-      case "microsoft":
-        const microsoftPdfEnabledRes = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "pdfEnabled"
-        );
-        if (microsoftPdfEnabledRes.isErr()) {
-          throw microsoftPdfEnabledRes.error;
-        }
-        features.microsoftPdfEnabled =
-          microsoftPdfEnabledRes.value.configValue === "true";
-
-        const microsoftLargeFilesEnabledRes =
-          await connectorsAPI.getConnectorConfig(
-            dataSource.connectorId,
-            "largeFilesEnabled"
-          );
-        if (microsoftLargeFilesEnabledRes.isErr()) {
-          throw microsoftLargeFilesEnabledRes.error;
-        }
-        features.microsoftLargeFilesEnabled =
-          microsoftLargeFilesEnabledRes.value.configValue === "true";
-        break;
-
       case "github":
         const githubConnectorEnabledRes =
           await connectorsAPI.getConnectorConfig(
@@ -249,6 +226,106 @@ const DataSourcePage = ({
     last = total;
   }
 
+  const { submit: onSlackbotToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "botEnabled",
+            configValue: `${!features.slackBotEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle slackbot.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while toggling slackbot.");
+    }
+  });
+
+  const { submit: onGdrivePDFToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-google_drive/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "pdfEnabled",
+            configValue: `${!features.googleDrivePdfEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle Google Drive PDF sync.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("Failed to toggle Google Drive PDF sync.");
+    }
+  });
+
+  const { submit: onGdriveLargeFilesToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-google_drive/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "largeFilesEnabled",
+            configValue: `${!features.googleDriveLargeFilesEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle Google Drive Large Files sync.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("Failed to toggle Google Drive Large Files sync.");
+    }
+  });
+
+  const { submit: onGithubCodeSyncToggle } = useSubmitFunction(async () => {
+    try {
+      const r = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/managed-github/config`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            configKey: "codeSyncEnabled",
+            configValue: `${!features.githubCodeSyncEnabled}`,
+          }),
+        }
+      );
+      if (!r.ok) {
+        throw new Error("Failed to toggle slackbot.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert("An error occurred while toggling slackbot.");
+    }
+  });
+
   const onDisplayDocumentSource = (documentId: string) => {
     if (
       window.confirm(
@@ -302,14 +379,13 @@ const DataSourcePage = ({
 
           {dataSource.connectorProvider === "slack" && (
             <>
-              <ConfigToggle
-                title="Slackbot enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource.name}
-                configKey="botEnabled"
-                featureKey="slackBotEnabled"
-              />
+              <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+                <div>Slackbot enabled?</div>
+                <SliderToggle
+                  selected={features.slackBotEnabled}
+                  onClick={onSlackbotToggle}
+                />
+              </div>
               <SlackWhitelistBot owner={owner} connectorId={connector?.id} />
               <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
                 <SlackChannelPatternInput
@@ -324,54 +400,30 @@ const DataSourcePage = ({
           )}
           {dataSource.connectorProvider === "google_drive" && (
             <>
-              <ConfigToggle
-                title="PDF syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource.name}
-                configKey="pdfEnabled"
-                featureKey="googleDrivePdfEnabled"
-              />
-
-              <ConfigToggle
-                title="Large Files enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource.name}
-                configKey="largeFilesEnabled"
-                featureKey="googleDriveLargeFilesEnabled"
-              />
-            </>
-          )}
-          {dataSource.connectorProvider === "microsoft" && (
-            <>
-              <ConfigToggle
-                title="Pdf syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource.name}
-                configKey="pdfEnabled"
-                featureKey="microsoftPdfEnabled"
-              />
-              <ConfigToggle
-                title="Large Files enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource.name}
-                configKey="largeFilesEnabled"
-                featureKey="microsoftLargeFilesEnabled"
-              />
+              <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+                <div>PDF syncing enabled?</div>
+                <SliderToggle
+                  selected={features.googleDrivePdfEnabled}
+                  onClick={onGdrivePDFToggle}
+                />
+              </div>
+              <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+                <div>Large Files enabled?</div>
+                <SliderToggle
+                  selected={features.googleDriveLargeFilesEnabled}
+                  onClick={onGdriveLargeFilesToggle}
+                />
+              </div>
             </>
           )}
           {dataSource.connectorProvider === "github" && (
-            <ConfigToggle
-              title="Code sync enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource.name}
-              configKey="codeSyncEnabled"
-              featureKey="githubCodeSyncEnabled"
-            />
+            <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+              <div>Code sync enabled?</div>
+              <SliderToggle
+                selected={features.githubCodeSyncEnabled}
+                onClick={onGithubCodeSyncToggle}
+              />
+            </div>
           )}
 
           {!dataSource.connectorId && (
@@ -684,62 +736,6 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
     </div>
   );
 }
-
-const ConfigToggle = ({
-  title,
-  owner,
-  features,
-  featureKey,
-  configKey,
-  dataSource,
-}: {
-  title: string;
-  owner: WorkspaceType;
-  features: FeaturesType;
-  featureKey: keyof FeaturesType;
-  configKey: string;
-  dataSource: string;
-}) => {
-  const router = useRouter();
-
-  const { isSubmitting, submit: onToggle } = useSubmitFunction(async () => {
-    try {
-      const r = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource}/config`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            configKey,
-            configValue: `${!features[featureKey]}`,
-          }),
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to toggle slackbot.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while toggling slackbot.");
-    }
-  });
-
-  const value = features[featureKey] as boolean;
-
-  return (
-    <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
-      <div>{title}</div>
-      <SliderToggle
-        selected={value}
-        onClick={onToggle}
-        disabled={isSubmitting}
-      />
-    </div>
-  );
-};
 
 function SlackWhitelistBot({
   owner,
