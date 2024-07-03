@@ -58,6 +58,7 @@ type builderUsageQueryResult = {
   userLastName: string;
   agentsEditionsCount: number;
   distinctAgentsEditionsCount: number;
+  lastEditAt: string;
 };
 
 interface AgentUsageQueryResult {
@@ -326,6 +327,13 @@ export async function getBuildersUsageData(
         ),
         "distinctAgentsEditionsCount",
       ],
+      [
+        Sequelize.cast(
+          Sequelize.fn("MAX", Sequelize.col("agent_configuration.updatedAt")),
+          "DATE"
+        ),
+        "lastEditAt",
+      ],
     ],
     where: {
       workspaceId: wId,
@@ -357,6 +365,7 @@ export async function getBuildersUsageData(
         distinctAgentsEditionsCount: (
           result as unknown as { distinctAgentsEditionsCount: number }
         ).distinctAgentsEditionsCount,
+        lastEditAt: (result as unknown as { lastEditAt: string }).lastEditAt,
       };
     }
   );
