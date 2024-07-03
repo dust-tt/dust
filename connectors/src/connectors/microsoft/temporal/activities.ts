@@ -123,10 +123,7 @@ export async function syncOneFile(
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
-  const itemApiPath = getDriveItemApiPath(
-    file,
-    microsoftInternalIdFromNodeData(parent)
-  );
+  const itemApiPath = getDriveItemApiPath(file);
 
   const documentId = microsoftInternalIdFromNodeData({
     itemApiPath,

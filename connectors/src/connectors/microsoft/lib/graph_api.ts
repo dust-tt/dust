@@ -5,10 +5,7 @@ import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/nod
 import { isValidNodeType } from "@connectors/connectors/microsoft/lib/node_types";
 
 export async function getSites(client: Client): Promise<MicrosoftGraph.Site[]> {
-  const res = await client
-    .api("/sites?search=*")
-    .select("id,name,displayName")
-    .get();
+  const res = await client.api("/sites?search=*").get();
   return res.value;
 }
 
@@ -187,23 +184,14 @@ export function microsoftNodeDataFromInternalId(
   return { nodeType, itemApiPath: resourcePathArr.join("/") };
 }
 
-export function getDriveItemApiPath(
-  item: MicrosoftGraph.DriveItem,
-  parentInternalId: string
-) {
-  const { nodeType, itemApiPath: parentItemApiPath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+export function getDriveItemApiPath(item: MicrosoftGraph.DriveItem) {
+  const { parentReference } = item;
 
-  if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Invalid parent nodeType: ${nodeType}`);
+  if (!parentReference?.driveId) {
+    throw new Error("Unexpected: no drive id for item");
   }
 
-  const itemApiPath =
-    nodeType === "drive"
-      ? `${parentItemApiPath}/items/${item.id}`
-      : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
-        parentItemApiPath.replace(/items\/[^/]+$/, `items/${item.id}`);
-  return itemApiPath;
+  return `/${parentReference.driveId}/items/${item.id}`;
 }
 
 export function getWorksheetApiPath(

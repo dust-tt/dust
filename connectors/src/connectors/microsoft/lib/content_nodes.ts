@@ -46,11 +46,6 @@ export function getTeamsRootAsContentNode(): ContentNode {
   };
 }
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
-  if (!team.id) {
-    // Unexpected, unreachable
-    throw new Error("Team id is required");
-  }
-
   return {
     provider: "microsoft",
     internalId: microsoftInternalIdFromNodeData({
@@ -98,8 +93,7 @@ export function getChannelAsContentNode(
     // Unexpected, unreachable
     throw new Error("Channel id is required");
   }
-  const { nodeType, itemApiPath: parentItemApiPath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+  const { nodeType } = microsoftNodeDataFromInternalId(parentInternalId);
   if (nodeType !== "team") {
     throw new Error(`Invalid parent nodeType: ${nodeType}`);
   }
@@ -107,7 +101,7 @@ export function getChannelAsContentNode(
   return {
     provider: "microsoft",
     internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: `${parentItemApiPath}/channels/${channel.id}`,
+      itemApiPath: `/teams/${parentInternalId}/channels/${channel.id}`,
       nodeType: "channel",
     }),
     parentInternalId,
@@ -149,16 +143,10 @@ export function getFolderAsContentNode(
   folder: microsoftgraph.DriveItem,
   parentInternalId: string
 ): ContentNode {
-  if (!folder.id) {
-    // Unexpected, unreachable
-    throw new Error("Folder id is required");
-  }
-
-  const resourcePath = getDriveItemApiPath(folder, parentInternalId);
   return {
     provider: "microsoft",
     internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: resourcePath,
+      itemApiPath: getDriveItemApiPath(folder),
       nodeType: "folder",
     }),
     parentInternalId,
