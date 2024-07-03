@@ -1,10 +1,4 @@
-import {
-  Button,
-  CloudArrowDownIcon,
-  DropdownMenu,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Page, Spinner } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 
 import { useWorkspaceAnalytics } from "@app/lib/swr";
@@ -86,67 +80,5 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
         </div>
       )}
     </div>
-  );
-}
-
-interface ActivityReportProps {
-  monthOptions: string[];
-  selectedMonth: string | null;
-  handleSelectedMonth: (month: string) => void;
-  isLoading: boolean;
-  handleDownload: (selectedMonth: string | null) => void;
-}
-
-export function ActivityReport({
-  monthOptions,
-  selectedMonth,
-  handleSelectedMonth,
-  isLoading,
-  handleDownload,
-}: ActivityReportProps) {
-  return (
-    <>
-      {!!monthOptions.length && (
-        <div className="flex-grow">
-          <div className="flex flex-col gap-3">
-            <Page.H variant="h6">Full activity report</Page.H>
-            <Page.P variant="secondary">
-              Download workspace activity details.
-            </Page.P>
-          </div>
-          <div className="align-center mt-2 flex flex-row gap-2">
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={selectedMonth || ""}
-                  variant="secondary"
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topLeft">
-                {monthOptions.map((month) => (
-                  <DropdownMenu.Item
-                    key={month}
-                    label={month}
-                    onClick={() => handleSelectedMonth(month)}
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-            <Button
-              label={isLoading ? "Loading..." : "Download activity data"}
-              icon={CloudArrowDownIcon}
-              variant="primary"
-              disabled={isLoading}
-              onClick={() => {
-                void handleDownload(selectedMonth);
-              }}
-            />
-          </div>
-        </div>
-      )}
-    </>
   );
 }

@@ -1,3 +1,4 @@
+import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
@@ -142,12 +143,7 @@ export async function unsafeGetUsageData(
   if (!results.length) {
     return "No data available for the selected period.";
   }
-  const csvHeader = Object.keys(results[0]).join(",") + "\n";
-  const csvContent = results
-    .map((row) => Object.values(row).join(","))
-    .join("\n");
-
-  return csvHeader + csvContent;
+  return generateCsvFromQueryResult(results);
 }
 
 export async function getMessageUsageData(
@@ -370,7 +366,7 @@ export async function getBuildersUsageData(
   return generateCsvFromQueryResult(buildersUsage);
 }
 
-export async function getAgentUsageData(
+export async function getAssistantsUsageData(
   startDate: Date,
   endDate: Date,
   workspaceId: string
@@ -395,7 +391,7 @@ export async function getAgentUsageData(
       ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
       COUNT(a."id") AS "messages",
       COUNT(DISTINCT u."id") AS "distinctUsersReached",
-      MAX(CAST(ac."createdAt" AS DATE)) AS "lastConfiguration"
+      MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
     FROM
       "mentions" a
       JOIN "messages" m ON a."id" = m."agentMessageId"
@@ -432,14 +428,25 @@ export async function getAgentUsageData(
 
 function generateCsvFromQueryResult(
   rows:
+    | WorkspaceUsageQueryResult[]
     | userUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
     | builderUsageQueryResult[]
 ) {
-  const csvHeader = Object.keys(rows[0]).join(",") + "\n";
-  const csvContent = rows.map((row) => Object.values(row).join(",")).join("\n");
-  return csvHeader + csvContent;
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const headers = Object.keys(rows[0]);
+  const data = rows.map((row) => Object.values(row));
+
+  return stringify([headers, ...data], {
+    header: false,
+    cast: {
+      date: (value) => value.toISOString(),
+    },
+  });
 }
 
 /**
