@@ -19,7 +19,7 @@ Is considered *"Unfair"* usage:
 - Using Dust programmatically at a large scale on a Pro plan.
 ___
 # "Fair use" limitations
-For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programatic (API) use as well.
+For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programmatic (API) use as well.
 `;
 
 export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
