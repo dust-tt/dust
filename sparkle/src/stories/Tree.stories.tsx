@@ -322,7 +322,7 @@ const TreeItem = ({
           <span className="s-text-xs s-text-element-700">
             last updated Jan 6
           </span>
-          <IconButton icon={CloudArrowDownIcon} size="xs" />
+          <IconButton icon={CloudArrowDownIcon} size="xs" variant="tertiary" />
           <IconButton icon={PlusCircleIcon} size="xs" />
         </div>
       }

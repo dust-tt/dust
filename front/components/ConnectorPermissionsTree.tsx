@@ -223,6 +223,7 @@ export function PermissionTreeChildren({
                       r.sourceUrl ? "" : "pointer-events-none opacity-0"
                     )}
                     disabled={!r.sourceUrl}
+                    variant="tertiary"
                   />
                   <IconButton
                     size="xs"
@@ -236,6 +237,7 @@ export function PermissionTreeChildren({
                       r.dustDocumentId ? "" : "pointer-events-none opacity-0"
                     )}
                     disabled={!r.dustDocumentId}
+                    variant="tertiary"
                   />
                 </div>
               }

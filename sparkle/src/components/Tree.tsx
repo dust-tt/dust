@@ -2,13 +2,11 @@ import React, { useState } from "react";
 
 import {
   ChatBubbleBottomCenterText,
-  ChevronDown,
-  ChevronRight,
   DocumentText,
   Folder,
   Square3Stack3D,
 } from "@sparkle/icons/stroke";
-import { Spinner } from "@sparkle/index";
+import { ChevronDownIcon, ChevronRightIcon, Spinner } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
@@ -102,15 +100,15 @@ Tree.Item = function ({
       <div
         className={classNames(
           className ? className : "",
-          "s-flex s-flex-row s-items-center s-gap-4 s-py-1"
+          "s-group s-flex s-cursor-default s-flex-row s-items-center s-gap-4 s-py-1"
         )}
       >
         {type === "node" && (
           <IconButton
             icon={
               childrenToRender && !effectiveCollapsed
-                ? ChevronDown
-                : ChevronRight
+                ? ChevronDownIcon
+                : ChevronRightIcon
             }
             size="sm"
             variant="secondary"
@@ -133,7 +131,11 @@ Tree.Item = function ({
             )}
 
             <div className="s-truncate">{label}</div>
-            {actions && <div className="s-inline-block s-pl-5">{actions}</div>}
+            {actions && (
+              <div className="s-inline-block s-transform s-pl-5 s-opacity-0 s-duration-300 group-hover:s-opacity-100">
+                {actions}
+              </div>
+            )}
           </div>
         </div>
       </div>
