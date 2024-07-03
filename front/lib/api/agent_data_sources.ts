@@ -26,7 +26,7 @@ export async function getDataSourcesUsageByAgents({
   const agentDataSourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
       attributes: [
-        "dataSource.id",
+        [Sequelize.col("dataSource.id"), "dataSourceId"],
         [Sequelize.fn("COUNT", Sequelize.col("dataSource.id")), "count"],
       ],
       include: [
@@ -43,7 +43,9 @@ export async function getDataSourcesUsageByAgents({
       raw: true,
     });
   return agentDataSourceConfigurations.reduce((acc, dsConfig) => {
-    acc[dsConfig.id] = (dsConfig as unknown as { count: number }).count;
+    acc[dsConfig.dataSourceId] = (
+      dsConfig as unknown as { count: number }
+    ).count;
     return acc;
   }, {} as DataSourcesUsageByAgent);
 }
