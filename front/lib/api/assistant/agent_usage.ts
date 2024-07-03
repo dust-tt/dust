@@ -1,5 +1,5 @@
 import type { AgentConfigurationType, AgentUsageType } from "@dust-tt/types";
-import { Op, Sequelize } from "sequelize";
+import { literal, Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -196,6 +196,11 @@ export async function agentMentionsUserCount(
         model: Message,
         required: true,
         attributes: [],
+        where: {
+          createdAt: {
+            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+          },
+        },
         include: [
           {
             model: UserMessage,
@@ -259,6 +264,11 @@ export async function agentMentionsCount(
         model: Message,
         required: true,
         attributes: [],
+        where: {
+          createdAt: {
+            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+          },
+        },
         include: [
           {
             model: Mention,
