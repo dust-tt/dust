@@ -33,20 +33,16 @@ export type PostConversationsResponseBody = {
  * /api/v1/w/{wId}/assistant/conversations:
  *   post:
  *     summary: Create a new conversation
- *     description: Create a new conversation in the workspace identified by {wId}.
- *     tags:
- *       - Conversations
+ *     tags: [Conversations]
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
  *         schema:
  *           type: string
  *       - in: header
  *         name: Authorization
  *         required: true
- *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     requestBody:
@@ -56,30 +52,19 @@ export type PostConversationsResponseBody = {
  *           schema:
  *             type: object
  *             properties:
- *               message:
+ *               message: 
  *                 type: string
- *                 description: The initial message of the conversation
  *               contentFragment:
  *                 type: string
- *                 description: The initial content fragment of the conversation
  *               blocking:
  *                 type: boolean
- *                 description: Whether to wait for the agent to generate the initial message
  *                 default: false
- *                 example: true
  *               title:
  *                 type: string
- *                 description: The title of the conversation
- *                 example: My conversation
  *               visibility:
  *                 type: string
- *                 description: The visibility of the conversation
- *                 enum:
- *                   - public
- *                   - private
- *                   - unlisted
+ *                 enum: [public, private, unlisted]
  *                 default: public
- *                 example: private
  *     responses:
  *       200:
  *         description: Conversation created successfully.
@@ -88,16 +73,47 @@ export type PostConversationsResponseBody = {
  *             schema:
  *               type: object
  *               properties:
- *                 conversationId:
- *                   type: string
- *                   description: ID of the created conversation
+ *                 conversation:
+ *                   type: object
+ *                 message:
+ *                   $ref: '#/components/schemas/Message'
  *       400:
- *         description: Bad Request. Missing or invalid parameters.
+ *         description: Bad Request
  *       401:
- *         description: Unauthorized. Invalid or missing authentication token.
+ *         description: Unauthorized
  *       500:
- *         description: Internal Server Error.
+ *         description: Internal Server Error
+ * components:
+ *   schemas:
+ *     Message:
+ *       type: object
+ *       properties:
+ *         id: 
+ *           type: number
+ *         created:
+ *           type: number
+ *         sId:
+ *           type: string
+ *         type:
+ *           type: string
+ *         visibility:
+ *           type: string
+ *         version:
+ *           type: number
+ *         user:
+ *           type: object
+ *           nullable: true
+ *         mentions:
+ *           type: array
+ *         content:
+ *           type: string
+ *         context:
+ *           type: object
+ *         rank:
+ *           type: number
  */
+
+
 
 async function handler(
   req: NextApiRequest,
