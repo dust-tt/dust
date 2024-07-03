@@ -1,5 +1,5 @@
 import type { AgentConfigurationType, AgentUsageType } from "@dust-tt/types";
-import { literal, Op, Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -171,21 +171,25 @@ export async function getAgentUsage(
 export async function agentMentionsUserCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
-  const mentions = await Mention.findAll({
+  // We retrieve mentions from conversations in order to optimize the query
+  // Since we need to filter out by workspace id, retrieving mentions first
+  // would lead to retrieve every single messages
+  const mentions = await Conversation.findAll({
     attributes: [
-      "agentConfigurationId",
+      [
+        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
+        "agentConfigurationId",
+      ],
       [
         Sequelize.fn(
           "COUNT",
-          Sequelize.literal('DISTINCT "message->userMessage"."userId"')
+          Sequelize.literal('DISTINCT "messages->userMessage"."userId"')
         ),
         "count",
       ],
     ],
     where: {
-      createdAt: {
-        [Op.gt]: Sequelize.literal("NOW() - INTERVAL '30 days'"),
-      },
+      workspaceId: workspaceId,
     },
     include: [
       {
@@ -196,8 +200,8 @@ export async function agentMentionsUserCount(
           {
             model: UserMessage,
             as: "userMessage",
-            attributes: [], // No attributes are necessary here for grouping
             required: true,
+            attributes: [],
             where: {
               userId: {
                 [Op.not]: null,
@@ -205,40 +209,50 @@ export async function agentMentionsUserCount(
             },
           },
           {
-            model: Conversation,
-            as: "conversation",
-            attributes: [],
+            model: Mention,
+            as: "mentions",
             required: true,
-            where: {
-              workspaceId: workspaceId,
-            },
+            attributes: [],
           },
         ],
       },
     ],
     order: [["count", "DESC"]],
-    group: ["mention.agentConfigurationId"],
+    group: ['"messages->mentions"."agentConfigurationId"'],
     raw: true,
   });
-  return mentions.map((mention) => ({
-    agentId: mention.agentConfigurationId as string,
-    count: (mention as unknown as { count: number }).count,
-    timePeriodSec: rankingTimeframeSec,
-  }));
+  return mentions.map((mention) => {
+    const castMention = mention as unknown as {
+      agentConfigurationId: string;
+      count: number;
+    };
+    return {
+      agentId: castMention.agentConfigurationId,
+      count: castMention.count,
+      timePeriodSec: rankingTimeframeSec,
+    };
+  });
 }
 
 export async function agentMentionsCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
-  const mentions = await Mention.findAll({
+  // We retrieve mentions from conversations in order to optimize the query
+  // Since we need to filter out by workspace id, retrieving mentions first
+  // would lead to retrieve every single messages
+  const mentions = await Conversation.findAll({
     attributes: [
-      "agentConfigurationId",
-      [Sequelize.fn("COUNT", Sequelize.col("mention.id")), "count"],
+      [
+        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
+        "agentConfigurationId",
+      ],
+      [
+        Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
+        "count",
+      ],
     ],
     where: {
-      createdAt: {
-        [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
-      },
+      workspaceId: workspaceId,
     },
     include: [
       {
@@ -247,37 +261,29 @@ export async function agentMentionsCount(
         attributes: [],
         include: [
           {
-            model: UserMessage,
-            as: "userMessage",
-            attributes: [],
+            model: Mention,
+            as: "mentions",
             required: true,
-            where: {
-              userId: {
-                [Op.not]: null,
-              },
-            },
-          },
-          {
-            model: Conversation,
-            as: "conversation",
             attributes: [],
-            required: true,
-            where: {
-              workspaceId: workspaceId,
-            },
           },
         ],
       },
     ],
     order: [["count", "DESC"]],
-    group: ["mention.agentConfigurationId"],
+    group: ['"messages->mentions"."agentConfigurationId"'],
     raw: true,
   });
-  return mentions.map((mention) => ({
-    agentId: mention.agentConfigurationId as string,
-    count: (mention as unknown as { count: number }).count,
-    timePeriodSec: rankingTimeframeSec,
-  }));
+  return mentions.map((mention) => {
+    const castMention = mention as unknown as {
+      agentConfigurationId: string;
+      count: number;
+    };
+    return {
+      agentId: castMention.agentConfigurationId,
+      count: castMention.count,
+      timePeriodSec: rankingTimeframeSec,
+    };
+  });
 }
 
 export async function storeCountsInRedis(
