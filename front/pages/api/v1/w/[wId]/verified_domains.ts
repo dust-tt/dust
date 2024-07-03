@@ -9,6 +9,36 @@ export type ListMemberEmailsResponseBody = {
   verified_domains: WorkspaceDomain[];
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/verified_domains:
+ *   get:
+ *     summary: Get verified domains
+ *     description: Get the verified domain for the workspace identified by {wId}.
+ *     tags:
+ *       - Workspace
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The verified domain
+ *       404:
+ *         description: The workspace was not found
+ *       405:
+ *         description: Method not supported
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<ListMemberEmailsResponseBody>>

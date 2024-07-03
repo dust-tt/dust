@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Dust.tt API Documentation",
+    "title": "API Documentation",
     "version": "1.0"
   },
   "servers": [
@@ -13,7 +13,7 @@
   "paths": {
     "/api/v1/w/{wId}/apps/{aId}/runs/{runId}": {
       "get": {
-        "summary": "Retrieve an app run",
+        "summary": "Get an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
         "tags": ["Apps"],
         "parameters": [
@@ -133,8 +133,8 @@
     },
     "/api/v1/w/{wId}/apps/{appId}/run": {
       "post": {
-        "summary": "Run an app",
-        "description": "Run an app of a workspace.",
+        "summary": "Create an app run",
+        "description": "Create a run for an app in the workspace identified by {wId}.",
         "tags": ["Apps"],
         "parameters": [
           {
@@ -236,7 +236,7 @@
     },
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
-        "summary": "Get the list of assistants",
+        "summary": "List assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
         "tags": ["Workspace"],
         "parameters": [
@@ -411,6 +411,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -455,6 +464,15 @@
             "name": "cId",
             "required": true,
             "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -658,8 +676,13 @@
                       "mentions": {
                         "type": "array",
                         "items": {
-                          "type": "array",
+                          "type": "object",
                           "description": "The mentions of the message, where configurationId is the ID of the assistant mentioned.",
+                          "properties": {
+                            "configurationId": {
+                              "type": "string"
+                            }
+                          },
                           "example": [
                             {
                               "configurationId": "dust"
@@ -821,9 +844,1237 @@
         }
       }
     },
+    "/api/v1/w/{wId}/data_sources/{name}/documents/{documentId}": {
+      "get": {
+        "summary": "Retrieve a document from a data source",
+        "description": "Retrieve a document from a data source in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "description": "ID of the document",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Data source or document not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Upsert a document in a data source",
+        "description": "Upsert a document in a data source in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "description": "ID of the document",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. The data source is managed."
+          },
+          "404": {
+            "description": "Data source or document not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a document from a data source",
+        "description": "Delete a document from a data source in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "description": "ID of the document",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document"
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. The data source is managed."
+          },
+          "404": {
+            "description": "Data source or document not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/documents/{documentId}/parents": {
+      "post": {
+        "summary": "Update the parents of a document",
+        "description": "Update the parents of a document in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "documentId",
+            "required": true,
+            "description": "ID of the document",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The parents were updated"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Data source or workspace not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/documents": {
+      "get": {
+        "summary": "Get documents",
+        "description": "Get documents in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Limit the number of documents returned",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "description": "Offset the returned documents",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The documents"
+          },
+          "404": {
+            "description": "The data source was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/search": {
+      "get": {
+        "summary": "Search the data source",
+        "description": "Search the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "description": "The search query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top_k",
+            "required": true,
+            "description": "The number of results to return",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "full_text",
+            "required": true,
+            "description": "Whether to perform a full text search",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_document_tokens",
+            "required": false,
+            "description": "The number of tokens in the target document",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestamp_gt",
+            "required": false,
+            "description": "The timestamp to filter by",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestamp_lt",
+            "required": false,
+            "description": "The timestamp to filter by",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tags_in",
+            "required": false,
+            "description": "The tags to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tags_not",
+            "required": false,
+            "description": "The tags to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parents_in",
+            "required": false,
+            "description": "The parents to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parents_not",
+            "required": false,
+            "description": "The parents to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "ID of the document"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Title of the document"
+                          },
+                          "content": {
+                            "type": "string",
+                            "description": "Content of the document"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Tags of the document"
+                          },
+                          "parents": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Parents of the document"
+                          },
+                          "timestamp": {
+                            "type": "number",
+                            "description": "Timestamp of the document"
+                          },
+                          "data": {
+                            "type": "object",
+                            "description": "Data of the document"
+                          },
+                          "score": {
+                            "type": "number",
+                            "description": "Score of the document"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request error"
+          },
+          "405": {
+            "description": "Method not supported error"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/tables/{tId}": {
+      "get": {
+        "summary": "Get a table",
+        "description": "Get a table in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tId",
+            "required": true,
+            "description": "ID of the table",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The table"
+          },
+          "404": {
+            "description": "The table was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a table",
+        "description": "Delete a table in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tId",
+            "required": true,
+            "description": "ID of the table",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The table was deleted"
+          },
+          "404": {
+            "description": "The table was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/tables/{tId}/rows/{rId}": {
+      "get": {
+        "summary": "Get a row",
+        "description": "Get a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tId",
+            "required": true,
+            "description": "ID of the table",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rId",
+            "required": true,
+            "description": "ID of the row",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The row"
+          },
+          "404": {
+            "description": "The row was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a row",
+        "description": "Delete a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tId",
+            "required": true,
+            "description": "ID of the table",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rId",
+            "required": true,
+            "description": "ID of the row",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The row was deleted"
+          },
+          "404": {
+            "description": "The row was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/tables/{tId}/rows": {
+      "get": {
+        "summary": "List rows",
+        "description": "List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tId",
+            "required": true,
+            "description": "ID of the table",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Limit the number of rows returned",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "description": "Offset the returned rows",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rows"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      },
+      "post": {
+        "summary": "Upsert rows",
+        "description": "Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tId",
+            "required": true,
+            "description": "ID of the table",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "row_id": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["datetime"]
+                                  },
+                                  "epoch": {
+                                    "type": "number"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "truncate": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The table"
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Data source or workspace not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/tables/csv": {
+      "post": {
+        "summary": "Upsert CSV to table",
+        "description": "Upsert CSV data to a table in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "table_id",
+            "description": "ID of the table",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The table"
+          },
+          "404": {
+            "description": "The table was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/tables": {
+      "get": {
+        "summary": "Get tables",
+        "description": "Get tables in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tables"
+          }
+        }
+      },
+      "post": {
+        "summary": "Upsert a table",
+        "description": "Upsert a table in the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "table_id": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The table"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources/{name}/tokenize": {
+      "post": {
+        "summary": "Tokenize text",
+        "description": "Tokenize text for the data source identified by {name} in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The tokens"
+          },
+          "404": {
+            "description": "The data source was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/data_sources": {
+      "get": {
+        "summary": "Get data sources",
+        "description": "Get data sources in the workspace identified by {wId}.",
+        "tags": ["Datasources"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The data sources"
+          },
+          "404": {
+            "description": "The workspace was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/feature_flags": {
       "get": {
-        "summary": "Get the feature flags for the workspace",
+        "summary": "List feature flags",
         "description": "Get the feature flags for the workspace identified by {wId}.",
         "tags": ["Workspace"],
         "parameters": [
@@ -832,6 +2083,15 @@
             "name": "wId",
             "required": true,
             "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -855,6 +2115,158 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/members/emails": {
+      "get": {
+        "summary": "List member emails",
+        "description": "List the emails of all members in the workspace identified by {wId}.",
+        "tags": ["Workspace"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "activeOnly",
+            "required": false,
+            "description": "Whether to list only active members",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The emails",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "emails": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/usage": {
+      "get": {
+        "summary": "Get workspace usage data",
+        "description": "Get usage data for the workspace identified by {wId}.",
+        "tags": ["Workspace"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "description": "The start date in YYYY-MM-DD format",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "description": "The end date in YYYY-MM-DD format",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The usage data"
+          },
+          "404": {
+            "description": "The workspace was not found"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/verified_domains": {
+      "get": {
+        "summary": "Get verified domains",
+        "description": "Get the verified domain for the workspace identified by {wId}.",
+        "tags": ["Workspace"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer token for authentication",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The verified domain"
+          },
+          "404": {
+            "description": "The workspace was not found"
+          },
+          "405": {
+            "description": "Method not supported"
           }
         }
       }

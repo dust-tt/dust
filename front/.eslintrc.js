@@ -61,6 +61,26 @@ module.exports = {
     {
       files: ["*.jsx", "*.js", "*.ts", "*.tsx", "**/*.jsx"],
     },
+    {
+      // Force the setting of a swagger description on each public api endpoint
+      files: ["pages/api/v1/**/*.ts"],
+      plugins: ["jsdoc"],
+      rules: {
+        "jsdoc/no-missing-syntax": [
+          "error",
+          {
+            contexts: [
+              {
+                comment: "JsdocBlock:has(JsdocTag[tag=swagger])",
+                context: "any",
+                message:
+                  "@swagger documentation is required on each public endpoint.",
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
   env: {
     browser: true,

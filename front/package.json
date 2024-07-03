@@ -167,6 +167,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.2.3",
     "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsdoc": "^48.4.0",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-unused-imports": "^3.2.0",
     "husky": "^9.0.11",
