@@ -64,3 +64,13 @@ export async function launchMicrosoftFullSyncWorkflow(
     return new Err(e as Error);
   }
 }
+
+export async function launchMicrosoftIncrementalSyncWorkflow(
+  connectorId: ModelId
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  return new Ok("Not implemented yet");
+}

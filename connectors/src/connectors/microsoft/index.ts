@@ -28,10 +28,14 @@ import {
   microsoftInternalIdFromNodeData,
   microsoftNodeDataFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import {
+  launchMicrosoftFullSyncWorkflow,
+  launchMicrosoftIncrementalSyncWorkflow,
+} from "@connectors/connectors/microsoft/temporal/client";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -81,6 +85,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     );
 
     await syncSucceeded(connector.id);
+
+    const res = await launchMicrosoftIncrementalSyncWorkflow(connector.id);
+    if (res.isErr()) {
+      return res;
+    }
 
     return new Ok(connector.id.toString());
   }
@@ -263,13 +272,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    console.log("stopMicrosoftConnector", this.connectorId);
+    await terminateAllWorkflowsForConnectorId(this.connectorId);
     return new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    console.log("resumeMicrosoftConnector", this.connectorId);
-    throw Error("Not implemented");
+    const res = await launchMicrosoftIncrementalSyncWorkflow(this.connectorId);
+    if (res.isErr()) {
+      return res;
+    }
+
+    return new Ok(undefined);
   }
 
   async retrieveBatchContentNodes({
@@ -398,13 +411,36 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    console.log("pauseMicrosoftConnector", this.connectorId);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+    await connector.markAsPaused();
+    await terminateAllWorkflowsForConnectorId(this.connectorId);
+    return new Ok(undefined);
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    console.log("unpauseMicrosoftConnector", this.connectorId);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+    await connector.markAsUnpaused();
+    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    if (r.isErr()) {
+      return r;
+    }
+    const incrementalSync = await launchMicrosoftIncrementalSyncWorkflow(
+      this.connectorId
+    );
+    if (incrementalSync.isErr()) {
+      return incrementalSync;
+    }
+    return new Ok(undefined);
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
