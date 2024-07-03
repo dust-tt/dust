@@ -102,36 +102,17 @@ export function InviteEmailModal({
             m.workspaces[0].role !== "none"
         )
       ),
-      revoked: members.filter((m) =>
-        inviteEmailsList.find(
-          (e) => m.email === e && m.workspaces[0].role === "none"
-        )
-      ),
       notInWorkspace: inviteEmailsList.filter(
-        (e) => !members.find((m) => m.email === e)
+        (e) =>
+          !members.find((m) => m.email === e) ||
+          members.find((m) => m.email === e)?.workspaces[0].role === "none"
       ),
     };
 
-    const { notInWorkspace, activeDifferentRole, revoked } = invitesByCase;
+    const { notInWorkspace, activeDifferentRole } = invitesByCase;
 
     const ReinviteUsersMessage = (
       <div className="mt-6 flex flex-col gap-6 px-2">
-        {revoked.length > 0 && (
-          <div>
-            <div>
-              The user(s) below were previously revoked from your workspace.
-              Reinstating them will also immediately reinstate their
-              conversation history on Dust.
-            </div>
-            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
-              {revoked.map((user) => (
-                <div
-                  key={user.email}
-                >{`- ${user.fullName} (${user.email})`}</div>
-              ))}
-            </div>
-          </div>
-        )}
         {activeDifferentRole.length > 0 && (
           <div>
             <div>
@@ -154,8 +135,7 @@ export function InviteEmailModal({
         <div>Do you want to proceed?</div>
       </div>
     );
-    const hasExistingMembers =
-      activeDifferentRole.length > 0 || revoked.length > 0;
+    const hasExistingMembers = activeDifferentRole.length > 0;
 
     const shouldProceedWithInvites =
       !hasExistingMembers ||
@@ -177,7 +157,7 @@ export function InviteEmailModal({
 
       if (hasExistingMembers) {
         await handleMembersRoleChange({
-          members: [...activeDifferentRole, ...revoked],
+          members: activeDifferentRole,
           role: invitationRole,
           sendNotification,
         });
