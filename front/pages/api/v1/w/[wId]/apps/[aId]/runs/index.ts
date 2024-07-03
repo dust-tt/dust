@@ -94,6 +94,40 @@ function extractUsageFromExecutions(
  *         description: Bearer token for authentication
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: use_workspace_credentials
+ *         required: false
+ *         description: Use the workspace credentials instead of the app credentials
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: aId
+ *         required: true
+ *         description: ID of the app
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               specification_hash:
+ *                 type: string
+ *                 description: The hash of the app specification
+ *               config:
+ *                 type: object
+ *                 description: The configuration of the app
+ *               inputs:
+ *                 type: array
+ *                 description: The inputs of the app
  *     responses:
  *       200:
  *         description: App run
