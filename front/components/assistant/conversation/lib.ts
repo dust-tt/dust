@@ -234,7 +234,6 @@ export async function createConversationWithMessage({
     },
     contentFragments: contentFragments.map((cf) => ({
       title: cf.title,
-      url: cf.url,
       context: {
         profilePictureUrl: user.image,
       },
