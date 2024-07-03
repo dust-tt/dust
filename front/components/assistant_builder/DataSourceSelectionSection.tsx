@@ -137,6 +137,7 @@ export default function DataSourceSelectionSection({
                                   : "pointer-events-none opacity-0"
                               )}
                               disabled={!node.sourceUrl}
+                              variant="tertiary"
                             />
                             <IconButton
                               size="xs"
@@ -153,6 +154,7 @@ export default function DataSourceSelectionSection({
                                   : "pointer-events-none opacity-0"
                               )}
                               disabled={!node.dustDocumentId}
+                              variant="tertiary"
                             />
                           </div>
                         }
