@@ -81,12 +81,12 @@ async function handleMembershipInvite(
   });
 
   if (m?.isRevoked()) {
-    return new Err(
-      new AuthFlowError(
-        "revoked",
-        "Your access to the workspace has expired, please contact the workspace admin to update your role."
-      )
-    );
+    await MembershipResource.updateMembershipRole({
+      user,
+      workspace: renderLightWorkspaceType({ workspace }),
+      newRole: membershipInvite.initialRole,
+      allowTerminated: true,
+    });
   }
 
   if (!m) {

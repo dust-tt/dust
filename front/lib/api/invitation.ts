@@ -136,8 +136,12 @@ export async function sendWorkspaceInvitationEmail(
   user: UserType,
   invitation: MembershipInvitationType
 ) {
+  // Make token expire after 7 days
   const invitationToken = sign(
-    { membershipInvitationId: invitation.id },
+    {
+      membershipInvitationId: invitation.id,
+      exp: Math.floor(Date.now() / 1000) + 60 * 24 * 7,
+    },
     config.getDustInviteTokenSecret()
   );
 

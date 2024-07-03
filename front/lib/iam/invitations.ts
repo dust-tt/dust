@@ -2,11 +2,10 @@ import type { Result, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 
+import config from "@app/lib/api/config";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitation } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
-
-const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
 
 export async function getPendingMembershipInvitationForToken(
   inviteToken: string | string[] | undefined
@@ -14,7 +13,7 @@ export async function getPendingMembershipInvitationForToken(
   if (inviteToken && typeof inviteToken === "string") {
     let decodedToken: { membershipInvitationId: number } | null = null;
     try {
-      decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
+      decodedToken = verify(inviteToken, config.getDustInviteTokenSecret()) as {
         membershipInvitationId: number;
       };
     } catch (e) {
