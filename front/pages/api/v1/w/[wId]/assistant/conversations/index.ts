@@ -78,7 +78,6 @@ export type PostConversationsResponseBody = {
  *                         type: string
  *                       email:
  *                         type: string
- *                         nullable: true
  *                       fullName:
  *                         type: string
  *                       profilePictureUrl:
