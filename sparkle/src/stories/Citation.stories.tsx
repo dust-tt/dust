@@ -42,7 +42,7 @@ export const CitationsExample = () => (
         imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
       />
       <Citation
-        title="Lopading state"
+        title="Loading state"
         size="xs"
         type="image"
         onClose={() => alert("Close action clicked")}
