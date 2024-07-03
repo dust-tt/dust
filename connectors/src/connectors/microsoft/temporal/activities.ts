@@ -45,17 +45,16 @@ export async function fullSyncActivity({
 
   const client = await getClient(connector.connectionId);
 
-  const teamResources = resources.filter((resource) =>
+  const folderResources = resources.filter((resource) =>
     ["folder"].includes(resource.nodeType)
   );
 
-  const folder = teamResources[0];
+  const folder = folderResources[0];
 
   if (!folder) {
     throw new Error(`No channel found for connector ${connectorId}`);
   }
 
-  // get a message
   const filesAndFolders = await getFilesAndFolders(
     client,
     microsoftInternalIdFromNodeData(folder)
