@@ -13,7 +13,6 @@ import {
   isSupportedUploadableContentFragmentType,
   Ok,
 } from "@dust-tt/types";
-import type { Transaction } from "sequelize";
 
 import { getConversationRankVersionLock } from "@app/lib/api/assistant/helpers";
 import type { Authenticator } from "@app/lib/auth";
