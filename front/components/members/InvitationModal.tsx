@@ -157,7 +157,7 @@ export function InviteEmailModal({
 
       if (hasExistingMembers) {
         await handleMembersRoleChange({
-          members: [...activeDifferentRole],
+          members: activeDifferentRole,
           role: invitationRole,
           sendNotification,
         });
