@@ -33,16 +33,20 @@ export type PostConversationsResponseBody = {
  * /api/v1/w/{wId}/assistant/conversations:
  *   post:
  *     summary: Create a new conversation
- *     tags: [Conversations]
+ *     description: Create a new conversation in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
+ *         description: ID of the workspace
  *         schema:
  *           type: string
  *       - in: header
  *         name: Authorization
  *         required: true
+ *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     requestBody:
@@ -52,19 +56,54 @@ export type PostConversationsResponseBody = {
  *           schema:
  *             type: object
  *             properties:
- *               message: 
- *                 type: string
+ *               message:
+ *                 type: object
+ *                 properties:
+ *                   content:
+ *                     type: string
+ *                     description: The content of the message
+ *                   mentions:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         configurationId:
+ *                           type: string
+ *                   context:
+ *                     type: object
+ *                     properties:
+ *                       timezone:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       fullName:
+ *                         type: string
+ *                       profilePictureUrl:
+ *                         type: string
+ *                 description: The initial message of the conversation
  *               contentFragment:
  *                 type: string
+ *                 description: The initial content fragment of the conversation
  *               blocking:
  *                 type: boolean
+ *                 description: Whether to wait for the agent to generate the initial message
  *                 default: false
+ *                 example: true
  *               title:
  *                 type: string
+ *                 description: The title of the conversation
+ *                 example: My conversation
  *               visibility:
  *                 type: string
- *                 enum: [public, private, unlisted]
+ *                 description: The visibility of the conversation
+ *                 enum:
+ *                   - public
+ *                   - private
+ *                   - unlisted
  *                 default: public
+ *                 example: private
  *     responses:
  *       200:
  *         description: Conversation created successfully.
@@ -88,7 +127,7 @@ export type PostConversationsResponseBody = {
  *     Message:
  *       type: object
  *       properties:
- *         id: 
+ *         id:
  *           type: number
  *         created:
  *           type: number
@@ -112,8 +151,6 @@ export type PostConversationsResponseBody = {
  *         rank:
  *           type: number
  */
-
-
 
 async function handler(
   req: NextApiRequest,
