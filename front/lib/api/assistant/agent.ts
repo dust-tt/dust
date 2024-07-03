@@ -6,6 +6,7 @@ import type {
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
+  AgentContentEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -45,6 +46,7 @@ import {
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 
@@ -231,6 +233,15 @@ export async function* runMultiActionsAgentLoop(
 
           break;
 
+        case "agent_message_content":
+          // We store the raw content emitted by the agent.
+          await AgentMessageContent.create({
+            agentMessageId: agentMessage.agentMessageId,
+            step: i,
+            content: event.content,
+          });
+          break;
+
         // Generation events
         case "generation_tokens":
           yield event;
@@ -272,7 +283,7 @@ export async function* runMultiActionsAgentLoop(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             message: agentMessage,
-          };
+          } satisfies AgentMessageSuccessEvent;
           return;
 
         case "agent_chain_of_thought":
@@ -315,6 +326,7 @@ export async function* runMultiActionsAgent(
   | GenerationTokensEvent
   | AgentActionsEvent
   | AgentChainOfThoughtEvent
+  | AgentContentEvent
 > {
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -526,6 +538,7 @@ export async function* runMultiActionsAgent(
     model.delimitersConfiguration
   );
 
+  let rawContent = "";
   try {
     const _checkCancellation = async () => {
       try {
@@ -589,6 +602,7 @@ export async function* runMultiActionsAgent(
       }
 
       if (event.type === "tokens" && isGeneration) {
+        rawContent += event.content.tokens.text;
         yield* tokenEmitter.emitTokens(event);
       }
 
@@ -632,6 +646,13 @@ export async function* runMultiActionsAgent(
 
   if (!output.actions.length) {
     if (typeof output.generation === "string") {
+      yield {
+        type: "agent_message_content",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        content: rawContent,
+      } satisfies AgentContentEvent;
       yield {
         type: "generation_success",
         created: Date.now(),
@@ -735,12 +756,24 @@ export async function* runMultiActionsAgent(
     };
   }
 
+  // We emit the raw content that was generated before the tool
+  // use to store it in the AgentMessageContent table.
+  if (rawContent.length) {
+    yield {
+      type: "agent_message_content",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      content: rawContent,
+    } satisfies AgentContentEvent;
+  }
+
   yield {
     type: "agent_actions",
     runId: await dustRunId,
     created: Date.now(),
     actions,
-  };
+  } satisfies AgentActionsEvent;
 
   return;
 }

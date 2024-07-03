@@ -14,6 +14,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -259,6 +260,8 @@ export class AgentMessage extends Model<
   // needs both sId and version to uniquely identify the agent configuration
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
+
+  declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
 }
 
 AgentMessage.init(
