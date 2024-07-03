@@ -15,6 +15,7 @@ import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import { BaseAction, DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { EnvironmentConfig } from "@dust-tt/types";
 
 import { getApp } from "@app/lib/api/app";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
@@ -118,10 +119,10 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     const { actionConfiguration } = this;
 
-    if (owner.sId !== actionConfiguration.appWorkspaceId) {
+    if (owner.sId !== actionConfiguration.appWorkspaceId && actionConfiguration.appId != EnvironmentConfig.getEnvVariable("HELPER_APP_ID")) {
       return new Err(
         new Error(
-          "Runing Dust apps that are not part of your own workspace is not supported yet."
+          "Running Dust apps that are not part of your own workspace is not supported yet."
         )
       );
     }
