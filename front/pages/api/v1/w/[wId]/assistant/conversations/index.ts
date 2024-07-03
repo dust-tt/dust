@@ -57,7 +57,31 @@ export type PostConversationsResponseBody = {
  *             type: object
  *             properties:
  *               message:
- *                 type: string
+ *                 type: object
+ *                 properties:
+ *                   content:
+ *                     type: string
+ *                     description: The content of the message
+ *                   mentions:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         configurationId:
+ *                           type: string
+ *                   context:
+ *                     type: object
+ *                     properties:
+ *                       timezone:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       fullName:
+ *                         type: string
+ *                       profilePictureUrl:
+ *                         type: string
  *                 description: The initial message of the conversation
  *               contentFragment:
  *                 type: string
