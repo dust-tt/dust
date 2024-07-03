@@ -9,7 +9,7 @@
     "build-storybook": "storybook build",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "lint": "eslint ."
+    "lint": "eslint src"
   },
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
