@@ -9,6 +9,7 @@ import { DataTypes, Model } from "sequelize";
 
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 
 export class ContentFragmentModel extends Model<
   InferAttributes<ContentFragmentModel>,
@@ -33,6 +34,7 @@ export class ContentFragmentModel extends Model<
   declare userContextProfilePictureUrl: string | null;
 
   declare userId: ForeignKey<User["id"]> | null;
+  declare fileId: ForeignKey<FileModel["id"]> | null;
 }
 
 ContentFragmentModel.init(
@@ -88,6 +90,7 @@ ContentFragmentModel.init(
   {
     modelName: "content_fragment",
     sequelize: frontSequelize,
+    indexes: [{ fields: ["fileId"] }],
   }
 );
 
@@ -96,4 +99,11 @@ User.hasMany(ContentFragmentModel, {
 });
 ContentFragmentModel.belongsTo(User, {
   foreignKey: { name: "userId", allowNull: true },
+});
+
+ContentFragmentModel.belongsTo(FileModel, {
+  foreignKey: { name: "fileId", allowNull: true },
+});
+FileModel.hasOne(ContentFragmentModel, {
+  foreignKey: { name: "fileId", allowNull: true },
 });

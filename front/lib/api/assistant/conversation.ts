@@ -13,6 +13,7 @@ import type {
   AgentMessageType,
   AgentMessageWithRankType,
   ContentFragmentContextType,
+  ContentFragmentInputType,
   ContentFragmentType,
   ConversationTitleEvent,
   ConversationType,
@@ -30,11 +31,11 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isSupportedUploadableContentFragmentType } from "@dust-tt/types";
 import {
   assertNever,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
+  md5,
 } from "@dust-tt/types";
 import {
   cloneBaseConfig,
@@ -44,7 +45,6 @@ import {
   isAgentMention,
   isAgentMessageType,
   isUserMessageType,
-  md5,
   Ok,
   rateLimiter,
   removeNulls,
@@ -56,6 +56,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import {
   batchRenderAgentMessages,
@@ -73,11 +74,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import {
-  ContentFragmentResource,
-  fileAttachmentLocation,
-  storeContentFragmentText,
-} from "@app/lib/resources/content_fragment_resource";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -1608,47 +1605,26 @@ export async function* retryAgentMessage(
 // Injects a new content fragment in the conversation.
 export async function postNewContentFragment(
   auth: Authenticator,
-  {
-    conversation,
-    title,
-    content,
-    url,
-    contentType,
-    context,
-  }: {
-    conversation: ConversationType;
-    title: string;
-    content: string;
-    url: string | null;
-    contentType: SupportedContentFragmentType;
-    context: ContentFragmentContextType;
-  }
-): Promise<ContentFragmentType> {
+  conversation: ConversationType,
+  cf: ContentFragmentInputType,
+  context: ContentFragmentContextType | null
+): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
-
   if (!owner || owner.id !== conversation.owner.id) {
     throw new Error("Invalid auth for conversation.");
   }
 
   const messageId = generateModelSId();
 
-  const sourceUrl = isSupportedUploadableContentFragmentType(contentType)
-    ? fileAttachmentLocation({
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId,
-        contentFormat: "raw",
-      }).downloadUrl
-    : url;
-
-  // TODO(2024-06-27 flav) Consider resizing images.
-
-  const textBytes = await storeContentFragmentText({
-    workspaceId: owner.sId,
-    conversationId: conversation.sId,
-    messageId,
-    content,
-  });
+  const cfBlobRes = await getContentFragmentBlob(
+    auth,
+    conversation,
+    cf,
+    messageId
+  );
+  if (cfBlobRes.isErr()) {
+    return cfBlobRes;
+  }
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
@@ -1656,15 +1632,12 @@ export async function postNewContentFragment(
 
       const contentFragment = await ContentFragmentResource.makeNew(
         {
-          title,
-          sourceUrl,
-          textBytes,
-          contentType,
+          ...cfBlobRes.value,
           userId: auth.user()?.id,
-          userContextProfilePictureUrl: context.profilePictureUrl,
-          userContextEmail: context.email,
-          userContextFullName: context.fullName,
-          userContextUsername: context.username,
+          userContextProfilePictureUrl: context?.profilePictureUrl,
+          userContextEmail: context?.email,
+          userContextFullName: context?.fullName,
+          userContextUsername: context?.username,
         },
         t
       );
@@ -1690,11 +1663,13 @@ export async function postNewContentFragment(
     }
   );
 
-  return contentFragment.renderFromMessage({
-    auth,
-    conversationId: conversation.sId,
-    message: messageRow,
-  });
+  return new Ok(
+    contentFragment.renderFromMessage({
+      auth,
+      conversationId: conversation.sId,
+      message: messageRow,
+    })
+  );
 }
 
 async function* streamRunAgentEvents(

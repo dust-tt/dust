@@ -224,7 +224,7 @@ MembershipInvitation.init(
     indexes: [
       { fields: ["workspaceId", "status"] },
       { unique: true, fields: ["sId"] },
-      { fields: ["email", "status"] },
+      { fields: ["inviteEmail", "status"] },
     ],
   }
 );

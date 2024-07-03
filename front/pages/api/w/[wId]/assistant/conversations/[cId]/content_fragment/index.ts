@@ -90,22 +90,32 @@ async function handler(
       }
 
       const contentFragmentPayload = bodyValidation.right;
+      const baseContext = {
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+      };
 
-      const contentFragment = await postNewContentFragment(auth, {
+      const contentFragmentRes = await postNewContentFragment(
+        auth,
         conversation,
-        title: contentFragmentPayload.title,
-        content: contentFragmentPayload.content,
-        url: contentFragmentPayload.url,
-        contentType: contentFragmentPayload.contentType,
-        context: {
-          username: user.username,
-          fullName: user.fullName,
-          email: user.email,
+        contentFragmentPayload,
+        {
+          ...baseContext,
           profilePictureUrl: contentFragmentPayload.context.profilePictureUrl,
-        },
-      });
+        }
+      );
+      if (contentFragmentRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: contentFragmentRes.error.message,
+          },
+        });
+      }
 
-      res.status(200).json({ contentFragment });
+      res.status(200).json({ contentFragment: contentFragmentRes.value });
       return;
 
     default:

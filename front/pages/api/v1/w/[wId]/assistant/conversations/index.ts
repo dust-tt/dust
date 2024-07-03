@@ -263,22 +263,33 @@ async function handler(
           contentType: contentFragment.contentType,
           url: req.url,
         });
-        const cf = await postNewContentFragment(auth, {
+
+        const cfRes = await postNewContentFragment(
+          auth,
           conversation,
-          title: contentFragment.title,
-          content: contentFragment.content,
-          url: contentFragment.url,
-          contentType,
-          context: {
+          {
+            ...contentFragment,
+            contentType,
+          },
+          {
             username: contentFragment.context?.username || null,
             fullName: contentFragment.context?.fullName || null,
             email: contentFragment.context?.email || null,
             profilePictureUrl:
               contentFragment.context?.profilePictureUrl || null,
-          },
-        });
+          }
+        );
+        if (cfRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: cfRes.error.message,
+            },
+          });
+        }
 
-        newContentFragment = cf;
+        newContentFragment = cfRes.value;
         const updatedConversation = await getConversation(
           auth,
           conversation.sId
