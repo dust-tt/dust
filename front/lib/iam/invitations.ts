@@ -3,18 +3,15 @@ import type {
   MembershipInvitationType,
   Result,
   UserType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
-import { create, initial } from "lodash";
 
 import config from "@app/lib/api/config";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import status from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 
 export async function getPendingMembershipInvitationForToken(
   inviteToken: string | string[] | undefined
