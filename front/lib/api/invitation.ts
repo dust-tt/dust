@@ -21,8 +21,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateModelSId, isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-// Make token expire after 7 days
-const INVITATION_EXPIRATION_TIME = 60 * 60 * 24 * 7;
+// Make token expires after 7 days
+const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
 
 sgMail.setApiKey(config.getSendgridApiKey());
 
@@ -142,7 +142,7 @@ export async function sendWorkspaceInvitationEmail(
   const invitationToken = sign(
     {
       membershipInvitationId: invitation.id,
-      exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME,
+      exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME_SEC,
     },
     config.getDustInviteTokenSecret()
   );
