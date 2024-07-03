@@ -133,15 +133,14 @@ async function _getHelperGlobalAgent(
     model,
     actions: [
       {
-        id: -1, 
+        id: -1,
         sId: GLOBAL_AGENTS_SID.HELPER + "-dust-app-action",
         type: "dust_app_run_configuration",
         appWorkspaceId: EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID"),
         appId: EnvironmentConfig.getEnvVariable("HELPER_APP_ID"),
         name: "help-global-assistant",
         description: `Searching in the Dust documentation`,
-
-      }
+      },
     ],
     maxToolsUsePerRun: 3,
     templateId: null,
