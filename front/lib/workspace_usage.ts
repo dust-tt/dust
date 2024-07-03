@@ -44,7 +44,7 @@ interface MessageUsageQueryResult {
   source: string | null;
 }
 
-type userUsageQueryResult = {
+type UserUsageQueryResult = {
   userName: string;
   userEmail: string;
   messageCount: number;
@@ -52,12 +52,13 @@ type userUsageQueryResult = {
   activeDaysCount: number;
 };
 
-type builderUsageQueryResult = {
+type BuilderUsageQueryResult = {
   userEmail: string;
   userFirstName: string;
   userLastName: string;
   agentsEditionsCount: number;
   distinctAgentsEditionsCount: number;
+  lastEditAt: string;
 };
 
 interface AgentUsageQueryResult {
@@ -279,7 +280,7 @@ export async function getUserUsageData(
     order: [["count", "DESC"]],
     raw: true,
   });
-  const userUsage: userUsageQueryResult[] = userMessages.map((result) => {
+  const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
     return {
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
@@ -326,6 +327,13 @@ export async function getBuildersUsageData(
         ),
         "distinctAgentsEditionsCount",
       ],
+      [
+        Sequelize.cast(
+          Sequelize.fn("MAX", Sequelize.col("agent_configuration.updatedAt")),
+          "DATE"
+        ),
+        "lastEditAt",
+      ],
     ],
     where: {
       workspaceId: wId,
@@ -345,21 +353,27 @@ export async function getBuildersUsageData(
     raw: true,
     group: ["authorId", "user.email", "user.firstName", "user.lastName"],
   });
-  const buildersUsage: builderUsageQueryResult[] = agentConfigurations.map(
+  const buildersUsage: BuilderUsageQueryResult[] = agentConfigurations.map(
     (result) => {
+      const castResult = result as unknown as {
+        firstName: string;
+        lastName: string;
+        email: string;
+        agentsEditionsCount: number;
+        distinctAgentsEditionsCount: number;
+        lastEditAt: string;
+      };
       return {
-        userFirstName: (result as unknown as { firstName: string }).firstName,
-        userLastName: (result as unknown as { lastName: string }).lastName,
-        userEmail: (result as unknown as { email: string }).email,
-        agentsEditionsCount: (
-          result as unknown as { agentsEditionsCount: number }
-        ).agentsEditionsCount,
-        distinctAgentsEditionsCount: (
-          result as unknown as { distinctAgentsEditionsCount: number }
-        ).distinctAgentsEditionsCount,
+        userFirstName: castResult.firstName,
+        userLastName: castResult.lastName,
+        userEmail: castResult.email,
+        agentsEditionsCount: castResult.agentsEditionsCount,
+        distinctAgentsEditionsCount: castResult.distinctAgentsEditionsCount,
+        lastEditAt: castResult.lastEditAt,
       };
     }
   );
+
   if (!buildersUsage.length) {
     return "No data available for the selected period.";
   }
@@ -429,10 +443,10 @@ export async function getAssistantsUsageData(
 function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
-    | userUsageQueryResult[]
+    | UserUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
-    | builderUsageQueryResult[]
+    | BuilderUsageQueryResult[]
 ) {
   if (rows.length === 0) {
     return "";
