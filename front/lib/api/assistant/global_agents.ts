@@ -129,13 +129,15 @@ async function _getHelperGlobalAgent(
     userListStatus: "in-list",
     scope: "global",
     model: model,
-    actions: [      {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.HELPER + "-websearch-action",
-      type: "websearch_configuration",
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      description: null,
-    },],
+    actions: [
+      {
+        id: -1,
+        sId: GLOBAL_AGENTS_SID.HELPER + "-websearch-action",
+        type: "websearch_configuration",
+        name: DEFAULT_WEBSEARCH_ACTION_NAME,
+        description: null,
+      },
+    ],
     maxToolsUsePerRun: 0,
     templateId: null,
   };
