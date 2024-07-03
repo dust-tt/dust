@@ -150,13 +150,10 @@ export function AssistantInputBar({
     onSubmit(
       text,
       mentions,
-      fileUploaderService.fileBlobs.map((cf) => {
+      fileUploaderService.getFileBlobs().map((cf) => {
         return {
           title: cf.filename,
-          content: cf.content,
-          file: cf.file,
-          contentType: cf.contentType,
-          url: cf.url,
+          fileId: cf.fileId,
         };
       })
     );

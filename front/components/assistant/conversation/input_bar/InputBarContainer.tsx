@@ -27,7 +27,7 @@ export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
-const supportedFileExtensions = [".txt", ".csv", ".md", ".pdf"];
+const supportedFileExtensions = [".txt", ".csv", ".md", ".pdf", "image/*"];
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];

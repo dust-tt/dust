@@ -11,10 +11,14 @@ export const InternalPostMessagesRequestBodySchema = t.type({
   }),
 });
 
-const ContentFragmentBaseSchema = t.type({
-  title: t.string,
-  url: t.union([t.string, t.null]),
-});
+const ContentFragmentBaseSchema = t.intersection([
+  t.type({
+    title: t.string,
+  }),
+  t.partial({
+    url: t.union([t.string, t.null]),
+  }),
+]);
 
 const ContentFragmentInputWithContentSchema = t.intersection([
   ContentFragmentBaseSchema,

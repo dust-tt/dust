@@ -74,11 +74,8 @@ export type ContentFragmentType = {
 };
 
 export type UploadedContentFragment = {
+  fileId: string;
   title: string;
-  content: string;
-  file: File;
-  contentType: SupportedContentFragmentType;
-  url: string | null;
 };
 
 export function isContentFragmentType(

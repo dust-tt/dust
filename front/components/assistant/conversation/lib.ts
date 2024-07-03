@@ -108,9 +108,8 @@ export async function submitMessage({
             },
             body: JSON.stringify({
               title: contentFragment.title,
-              content: contentFragment.content,
               url: contentFragment.url,
-              contentType: getMimeTypeFromFile(contentFragment.file),
+              fileId: contentFragment.fileId,
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -234,13 +233,12 @@ export async function createConversationWithMessage({
       mentions,
     },
     contentFragments: contentFragments.map((cf) => ({
-      content: cf.content,
       title: cf.title,
       url: cf.url,
-      contentType: cf.contentType,
       context: {
         profilePictureUrl: user.image,
       },
+      fileId: cf.fileId,
     })),
   };
 

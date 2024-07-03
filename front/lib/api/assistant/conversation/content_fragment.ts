@@ -21,7 +21,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 
 interface ContentFragmentBlob {
   contentType: SupportedFileContentType;
-  fileModelId: ModelId | null;
+  fileId: ModelId | null;
   sourceUrl: string | null;
   textBytes: number | null;
   title: string;
@@ -59,7 +59,7 @@ export async function getContentFragmentBlob(
 
     return new Ok({
       contentType,
-      fileModelId: null,
+      fileId: null,
       sourceUrl,
       textBytes,
       title,
@@ -74,7 +74,7 @@ export async function getContentFragmentBlob(
     const sourceUrl = url ?? file.getPublicUrl(auth);
     return new Ok({
       contentType: file.contentType,
-      fileModelId: file.id,
+      fileId: file.id,
       sourceUrl,
       textBytes: null,
       title,

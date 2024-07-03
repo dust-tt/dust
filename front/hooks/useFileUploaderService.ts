@@ -15,20 +15,17 @@ import {
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { extractTextFromPDF } from "@app/lib/client/handle_file_upload";
 import { getMimeTypeFromFile } from "@app/lib/file";
 
 interface FileBlob {
-  content: string;
   contentType: SupportedFileContentType;
   file: File;
   filename: string;
   id: string;
-  internalId: string | null;
+  fileId: string | null;
   isUploading: boolean;
   preview?: string;
   size: number;
-  url: string | null;
 }
 
 type FileBlobUploadErrorCode =
@@ -46,7 +43,6 @@ class FileBlobUploadError extends Error {
 }
 
 const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
-
 const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
 export function useFileUploaderService({
@@ -98,7 +94,7 @@ export function useFileUploaderService({
       return;
     }
 
-    const previewResults = await processSelectedFiles(selectedFiles);
+    const previewResults = processSelectedFiles(selectedFiles);
     const newFileBlobs = processResults(previewResults);
 
     const uploadResults = await uploadFiles(newFileBlobs);
@@ -107,10 +103,10 @@ export function useFileUploaderService({
     setIsProcessingFiles(false);
   };
 
-  const processSelectedFiles = async (
+  const processSelectedFiles = (
     selectedFiles: File[]
-  ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
-    const previewPromises = selectedFiles.map(async (file) => {
+  ): Result<FileBlob, FileBlobUploadError>[] => {
+    return selectedFiles.map((file) => {
       const contentType = getMimeTypeFromFile(file);
       if (!isSupportedFileContentType(contentType)) {
         return new Err(
@@ -122,19 +118,8 @@ export function useFileUploaderService({
         );
       }
 
-      if (isSupportedImageContentType(contentType)) {
-        return new Ok(createFileBlob(file, "", contentType));
-      }
-
-      const text =
-        contentType === "application/pdf"
-          ? await getTextFromPDF(file)
-          : await file.text();
-
-      return new Ok(createFileBlob(file, text, contentType));
+      return new Ok(createFileBlob(file, contentType));
     });
-
-    return Promise.all(previewPromises);
   };
 
   const uploadFiles = async (
@@ -160,7 +145,11 @@ export function useFileUploaderService({
         console.error("Error uploading files:", err);
 
         return new Err(
-          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+          new FileBlobUploadError(
+            "failed_to_upload_file",
+            fileBlob.file,
+            err instanceof Error ? err.message : undefined
+          )
         );
       }
 
@@ -187,7 +176,11 @@ export function useFileUploaderService({
         console.error("Error uploading files:", err);
 
         return new Err(
-          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+          new FileBlobUploadError(
+            "failed_to_upload_file",
+            fileBlob.file,
+            err instanceof Error ? err.message : undefined
+          )
         );
       }
 
@@ -202,9 +195,8 @@ export function useFileUploaderService({
 
       return new Ok({
         ...fileBlob,
-        internalId: file.id,
+        fileId: file.id,
         isUploading: false,
-        url: fileUploaded.downloadUrl ?? null,
         preview: isSupportedImageContentType(fileBlob.contentType)
           ? `${fileUploaded.downloadUrl}?action=view`
           : undefined,
@@ -250,45 +242,23 @@ export function useFileUploaderService({
     return successfulBlobs;
   };
 
-  const getTextFromPDF: (file: File) => Promise<string> = async (
-    file: File
-  ) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onloadend = async () => {
-        const { result } = reader;
-        const res = await extractTextFromPDF(file, result);
-
-        if (res.isErr()) {
-          return reject(res.error);
-        }
-
-        return resolve(res.value.content);
-      };
-
-      reader.onerror = reject;
-      reader.readAsArrayBuffer(file);
-    });
-  };
-
   const removeFile = (fileId: string) => {
     const fileBlob = fileBlobs.find((f) => f.id === fileId);
 
     if (fileBlob) {
       setFileBlobs((prevFiles) =>
-        prevFiles.filter((f) => f.internalId !== fileBlob?.internalId)
+        prevFiles.filter((f) => f.fileId !== fileBlob?.fileId)
       );
 
       // Intentionally not awaiting the fetch call to allow it to run asynchronously.
-      void fetch(`/api/w/${owner.sId}/files/${fileBlob.internalId}`, {
+      void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
       });
 
-      const allFilesReady = fileBlobs.every((f) => !!f.url);
+      const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
       if (allFilesReady && isProcessingFiles) {
         setIsProcessingFiles(false);
       }
@@ -299,11 +269,23 @@ export function useFileUploaderService({
     setFileBlobs([]);
   };
 
+  type FileBlobWithFileId = FileBlob & { fileId: string };
+  function fileBlobHasFileId(
+    fileBlob: FileBlob
+  ): fileBlob is FileBlobWithFileId {
+    return fileBlob.fileId !== null;
+  }
+
+  const getFileBlobs: () => FileBlobWithFileId[] = () => {
+    return fileBlobs.filter(fileBlobHasFileId);
+  };
+
   return {
     fileBlobs,
-    removeFile,
-    isProcessingFiles,
+    getFileBlobs,
     handleFileChange,
+    isProcessingFiles,
+    removeFile,
     resetUpload,
   };
 }
@@ -312,19 +294,16 @@ export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 
 const createFileBlob = (
   file: File,
-  content: string,
   contentType: SupportedFileContentType,
   preview?: string
 ): FileBlob => ({
-  content,
   contentType,
   file,
   filename: file.name,
   id: file.name,
   // Will be set once the file has been uploaded.
-  internalId: null,
+  fileId: null,
   isUploading: true,
   preview,
   size: file.size,
-  url: null,
 });
