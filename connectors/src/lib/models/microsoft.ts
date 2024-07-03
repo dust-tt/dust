@@ -18,8 +18,6 @@ export class MicrosoftConfigurationModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare pdfEnabled: boolean;
-  declare largeFilesEnabled: boolean;
 }
 MicrosoftConfigurationModel.init(
   {
@@ -41,16 +39,6 @@ MicrosoftConfigurationModel.init(
     connectorId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-    },
-    pdfEnabled: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    largeFilesEnabled: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
   },
   {
