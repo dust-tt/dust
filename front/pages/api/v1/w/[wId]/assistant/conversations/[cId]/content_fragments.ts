@@ -5,10 +5,10 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { postNewContentFragment } from "@app/lib/api/assistant/content_fragment";
 import {
   getConversation,
   normalizeContentFragmentType,
-  postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
