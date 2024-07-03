@@ -63,6 +63,7 @@ import {
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
   Conversation,
@@ -308,6 +309,14 @@ export async function getConversation(
         model: AgentMessage,
         as: "agentMessage",
         required: false,
+        // We want to get all AgentMessageContent rows for the agent messages.
+        include: [
+          {
+            model: AgentMessageContent,
+            as: "agentMessageContents",
+            required: false,
+          },
+        ],
       },
       // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
       // along with messages in one query). Only once we move to a MessageResource will we be able

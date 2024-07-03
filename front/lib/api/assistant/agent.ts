@@ -6,6 +6,7 @@ import type {
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
+  AgentContentEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -31,7 +32,6 @@ import {
   isTablesQueryConfiguration,
   isVisualizationConfiguration,
   isWebsearchConfiguration,
-  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { escapeRegExp } from "lodash";
@@ -45,6 +45,7 @@ import {
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 
@@ -123,7 +124,9 @@ export async function* runMultiActionsAgentLoop(
 
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
-
+  // We use this array to store the intermediate "contents" emitted by the model before/between
+  // tools use.
+  const contents: string[] = [];
   for (let i = 0; i < maxToolsUsePerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -231,6 +234,16 @@ export async function* runMultiActionsAgentLoop(
 
           break;
 
+        case "agent_message_content":
+          // TODO(fontanierh): Message resource.
+          await AgentMessageContent.create({
+            agentMessageId: agentMessage.agentMessageId,
+            step: i,
+            content: event.content,
+          });
+          contents.push(event.content);
+          break;
+
         // Generation events
         case "generation_tokens":
           yield event;
@@ -264,7 +277,7 @@ export async function* runMultiActionsAgentLoop(
             runId: event.runId,
           } satisfies AgentGenerationSuccessEvent;
 
-          agentMessage.content = event.text;
+          agentMessage.content = [...contents, event.text].join("");
           agentMessage.status = "succeeded";
           yield {
             type: "agent_message_success",
@@ -272,7 +285,7 @@ export async function* runMultiActionsAgentLoop(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             message: agentMessage,
-          };
+          } satisfies AgentMessageSuccessEvent;
           return;
 
         case "agent_chain_of_thought":
@@ -315,6 +328,7 @@ export async function* runMultiActionsAgent(
   | GenerationTokensEvent
   | AgentActionsEvent
   | AgentChainOfThoughtEvent
+  | AgentContentEvent
 > {
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -718,21 +732,29 @@ export async function* runMultiActionsAgent(
   const chainOfThought = tokenEmitter.getChainOfThought();
   const content = tokenEmitter.getContent();
 
-  if (chainOfThought?.length || content?.length) {
+  // TODO(@fontanierh): migrate to content.
+  if (chainOfThought?.length) {
     yield {
       type: "agent_chain_of_thought",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       message: agentMessage,
+      chainOfThought,
+    } satisfies AgentChainOfThoughtEvent;
+  }
 
-      // All content here was generated before a tool use and is not proper generation content
-      // and can therefore be safely assumed to be reflection from the model before using a tool.
-      // In practice, we should never have both chainOfThought and content.
-      // It is not completely impossible that eg Anthropic decides to emit part of the
-      // CoT between `<thinking>` XML tags and the rest outside of any tag.
-      chainOfThought: removeNulls([chainOfThought, content]).join("\n"),
-    };
+  // This content was emitted despite the tools use.
+  // We emit is as a separate event to keep track of it in
+  // the AgentMessageContent table.
+  if (content?.length) {
+    yield {
+      type: "agent_message_content",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      content: content,
+    } satisfies AgentContentEvent;
   }
 
   yield {
@@ -740,7 +762,7 @@ export async function* runMultiActionsAgent(
     runId: await dustRunId,
     created: Date.now(),
     actions,
-  };
+  } satisfies AgentActionsEvent;
 
   return;
 }
