@@ -112,15 +112,44 @@ export type PostConversationsResponseBody = {
  *             schema:
  *               type: object
  *               properties:
- *                 conversationId:
- *                   type: string
- *                   description: ID of the created conversation
+ *                 conversation:
+ *                   type: object
+ *                 message:
+ *                   $ref: '#/components/schemas/Message'
  *       400:
- *         description: Bad Request. Missing or invalid parameters.
+ *         description: Bad Request
  *       401:
- *         description: Unauthorized. Invalid or missing authentication token.
+ *         description: Unauthorized
  *       500:
- *         description: Internal Server Error.
+ *         description: Internal Server Error
+ * components:
+ *   schemas:
+ *     Message:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: number
+ *         created:
+ *           type: number
+ *         sId:
+ *           type: string
+ *         type:
+ *           type: string
+ *         visibility:
+ *           type: string
+ *         version:
+ *           type: number
+ *         user:
+ *           type: object
+ *           nullable: true
+ *         mentions:
+ *           type: array
+ *         content:
+ *           type: string
+ *         context:
+ *           type: object
+ *         rank:
+ *           type: number
  */
 
 async function handler(
