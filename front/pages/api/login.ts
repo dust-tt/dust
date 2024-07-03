@@ -7,7 +7,10 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getInvitationToken, getInvitationUrl } from "@app/lib/api/invitation";
+import {
+  getMembershipInvitationToken,
+  getMembershipInvitationUrlForToken,
+} from "@app/lib/api/invitation";
 import { deleteUser } from "@app/lib/api/user";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
@@ -369,8 +372,11 @@ async function handler(
         const { invitation: pendingInvitation, workspace } =
           pendingInvitationAndWorkspace;
 
-        const invitationToken = getInvitationToken(pendingInvitation);
-        const invitationUrl = getInvitationUrl(workspace, invitationToken);
+        const invitationToken = getMembershipInvitationToken(pendingInvitation);
+        const invitationUrl = getMembershipInvitationUrlForToken(
+          workspace,
+          invitationToken
+        );
 
         res.redirect(invitationUrl);
         return;

@@ -136,7 +136,9 @@ export async function updateOrCreateInvitation(
   );
 }
 
-export function getInvitationToken(invitation: MembershipInvitationType) {
+export function getMembershipInvitationToken(
+  invitation: MembershipInvitationType
+) {
   return sign(
     {
       membershipInvitationId: invitation.id,
@@ -146,7 +148,7 @@ export function getInvitationToken(invitation: MembershipInvitationType) {
   );
 }
 
-export function getInvitationUrl(
+export function getMembershipInvitationUrlForToken(
   owner: LightWorkspaceType,
   invitationToken: string
 ) {
@@ -158,8 +160,11 @@ export async function sendWorkspaceInvitationEmail(
   user: UserType,
   invitation: MembershipInvitationType
 ) {
-  const invitationToken = getInvitationToken(invitation);
-  const invitationUrl = getInvitationUrl(owner, invitationToken);
+  const invitationToken = getMembershipInvitationToken(invitation);
+  const invitationUrl = getMembershipInvitationUrlForToken(
+    owner,
+    invitationToken
+  );
 
   // Send invite email.
   const message = {
