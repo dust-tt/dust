@@ -1,6 +1,6 @@
 import { DustAppType } from "../../../front/lib/dust_api";
-
-const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
+import { EnvironmentConfig } from "../../../shared/utils/config";
+const PRODUCTION_DUST_APPS_WORKSPACE_ID = EnvironmentConfig.getEnvVariable("PRODUCTION_DUST_APPS_WORKSPACE_ID");
 
 export type Action = {
   app: DustAppType;

@@ -23,6 +23,7 @@ import {
   isDevelopment,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
+import { EnvironmentConfig } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -31,7 +32,6 @@ import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/acti
 import { getRefs } from "@app/lib/api/assistant/citations";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/development";
 import {
   AgentRetrievalAction,
   RetrievalDocument,
@@ -465,7 +465,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
         workspace_id: isDevelopment()
-          ? PRODUCTION_DUST_WORKSPACE_ID
+          ? EnvironmentConfig.getEnvVariable("PRODUCTION_DUST_WORKSPACE_ID")
           : d.workspaceId,
         data_source_id: d.dataSourceId,
       })

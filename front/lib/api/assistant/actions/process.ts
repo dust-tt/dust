@@ -23,6 +23,7 @@ import {
   PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
+import { EnvironmentConfig } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -36,7 +37,6 @@ import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/acti
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/development";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
@@ -255,7 +255,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
         workspace_id: isDevelopment()
-          ? PRODUCTION_DUST_WORKSPACE_ID
+          ? EnvironmentConfig.getEnvVariable("PRODUCTION_DUST_WORKSPACE_ID")
           : d.workspaceId,
         data_source_id: d.dataSourceId,
       })
