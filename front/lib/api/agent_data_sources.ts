@@ -1,22 +1,19 @@
 import type { ConnectorProvider } from "@dust-tt/types";
+import { Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSource } from "@app/lib/models/data_source";
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 
-export type AgentEnabledDataSource = {
-  dataSourceId: number;
-};
+export type DataSourcesUsageByAgent = Record<number, number>;
 
-export async function getAgentEnabledDataSources({
+export async function getDataSourcesUsageByAgents({
   auth,
   providerFilter,
 }: {
   auth: Authenticator;
   providerFilter: ConnectorProvider | null;
-}): Promise<AgentEnabledDataSource[]> {
+}): Promise<DataSourcesUsageByAgent> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -25,33 +22,28 @@ export async function getAgentEnabledDataSources({
   if (!owner || !auth.isUser()) {
     return [];
   }
-  const workspace = await Workspace.findOne({
-    where: { sId: owner.sId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found for sId: ${owner.sId}`);
-  }
-  const wId = workspace.id;
 
-  const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
-    include: [
-      {
-        model: DataSource,
-        as: "dataSource",
-        where: {
-          workspaceId: wId,
-          connectorProvider: providerFilter,
-        },
-        include: [
-          {
-            model: User,
-            as: "editedByUser",
+  const agentDataSourceConfigurations =
+    await AgentDataSourceConfiguration.findAll({
+      attributes: [
+        "dataSource.id",
+        [Sequelize.fn("COUNT", Sequelize.col("dataSource.id")), "count"],
+      ],
+      include: [
+        {
+          model: DataSource,
+          as: "dataSource",
+          where: {
+            workspaceId: owner.id,
+            connectorProvider: providerFilter,
           },
-        ],
-      },
-    ],
-  });
-  return dataSourceConfigurations.map((dsConfig) => ({
-    dataSourceId: dsConfig.dataSource.id,
-  }));
+        },
+      ],
+      group: ["dataSource.id"],
+      raw: true,
+    });
+  return agentDataSourceConfigurations.reduce((acc, dsConfig) => {
+    acc[dsConfig.id] = (dsConfig as unknown as { count: number }).count;
+    return acc;
+  }, {} as DataSourcesUsageByAgent);
 }

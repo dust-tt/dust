@@ -11,16 +11,15 @@ import {
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import type { AgentEnabledDataSource } from "@app/lib/api/agent_data_sources";
-import { getAgentEnabledDataSources } from "@app/lib/api/agent_data_sources";
+import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
+import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -34,7 +33,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   dataSources: DataSourceType[];
   gaTrackingId: string;
-  agentEnabledDataSources: AgentEnabledDataSource[];
+  dataSourcesUsage: DataSourcesUsageByAgent;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -48,7 +47,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
-  const agentEnabledDataSources = await getAgentEnabledDataSources({
+  const dataSourcesUsage = await getDataSourcesUsageByAgents({
     auth,
     providerFilter: null,
   });
@@ -62,7 +61,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       dataSources,
       gaTrackingId: GA_TRACKING_ID,
-      agentEnabledDataSources,
+      dataSourcesUsage,
     },
   };
 });
@@ -74,7 +73,7 @@ export default function DataSourcesView({
   readOnly,
   dataSources,
   gaTrackingId,
-  agentEnabledDataSources,
+  dataSourcesUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
@@ -93,10 +92,6 @@ export default function DataSourcesView({
       void router.push(`/w/${owner.sId}/builder/data-sources/new`);
     }
   });
-  const agentCountPerDataSource = useMemo(() => {
-    return _.countBy(agentEnabledDataSources, "dataSourceId");
-  }, [agentEnabledDataSources]);
-
   return (
     <AppLayout
       subscription={subscription}
@@ -174,7 +169,7 @@ export default function DataSourcesView({
                 <div className="flex items-center gap-1 text-xs text-element-700">
                   <span>Added by: {ds.editedByUser?.fullName} | </span>
                   <span className="underline">
-                    {agentCountPerDataSource[ds.id] ?? 0}
+                    {dataSourcesUsage[ds.id] ?? 0}
                   </span>
                   <RobotIcon />
                 </div>
