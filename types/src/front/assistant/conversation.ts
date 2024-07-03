@@ -123,6 +123,10 @@ export type AgentMessageType = {
   actions: AgentActionType[];
   content: string | null;
   chainOfThoughts: string[];
+  rawContents: Array<{
+    step: number;
+    content: string;
+  }>;
   error: {
     code: string;
     message: string;

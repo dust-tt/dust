@@ -64,6 +64,7 @@ import {
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
   Conversation,
@@ -305,6 +306,13 @@ export async function getConversation(
         model: AgentMessage,
         as: "agentMessage",
         required: false,
+        include: [
+          {
+            model: AgentMessageContent,
+            as: "agentMessageContents",
+            required: false,
+          },
+        ],
       },
       // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
       // along with messages in one query). Only once we move to a MessageResource will we be able
@@ -813,6 +821,7 @@ export async function* postUserMessage(
                   actions: [],
                   content: null,
                   chainOfThoughts: [],
+                  rawContents: [],
                   error: null,
                   configuration,
                   rank: messageRow.rank,
@@ -1289,6 +1298,7 @@ export async function* editUserMessage(
                 actions: [],
                 content: null,
                 chainOfThoughts: [],
+                rawContents: [],
                 error: null,
                 configuration,
                 rank: messageRow.rank,
@@ -1505,6 +1515,7 @@ export async function* retryAgentMessage(
         actions: [],
         content: null,
         chainOfThoughts: [],
+        rawContents: [],
         error: null,
         configuration: message.configuration,
         rank: m.rank,
