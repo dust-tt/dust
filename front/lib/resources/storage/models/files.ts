@@ -56,7 +56,7 @@ FileModel.init(
       allowNull: false,
     },
     fileSize: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     sId: {
