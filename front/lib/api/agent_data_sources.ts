@@ -1,11 +1,11 @@
-import type { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider, ModelId } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSource } from "@app/lib/models/data_source";
 
-export type DataSourcesUsageByAgent = Record<number, number>;
+export type DataSourcesUsageByAgent = Record<ModelId, number>;
 
 export async function getDataSourcesUsageByAgents({
   auth,
