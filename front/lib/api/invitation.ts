@@ -11,7 +11,6 @@ import type {
 import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
-import type { Light } from "react-syntax-highlighter";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
