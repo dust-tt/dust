@@ -20,7 +20,7 @@ export async function getDataSourcesUsageByAgents({
   // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
   // be possible to access data sources without being authenticated.
   if (!owner || !auth.isUser()) {
-    return [];
+    return {};
   }
 
   const agentDataSourceConfigurations =
@@ -42,10 +42,13 @@ export async function getDataSourcesUsageByAgents({
       group: ["dataSource.id"],
       raw: true,
     });
-  return agentDataSourceConfigurations.reduce((acc, dsConfig) => {
-    acc[dsConfig.dataSourceId] = (
-      dsConfig as unknown as { count: number }
-    ).count;
-    return acc;
-  }, {} as DataSourcesUsageByAgent);
+  return agentDataSourceConfigurations.reduce<DataSourcesUsageByAgent>(
+    (acc, dsConfig) => {
+      acc[dsConfig.dataSourceId] = (
+        dsConfig as unknown as { count: number }
+      ).count;
+      return acc;
+    },
+    {}
+  );
 }

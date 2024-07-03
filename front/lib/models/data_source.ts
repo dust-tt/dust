@@ -87,7 +87,7 @@ DataSource.init(
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "name"], unique: true },
-      { fields: ["connectorProvider"] },
+      { fields: ["workspaceId", "connectorProvider"] },
     ],
   }
 );
