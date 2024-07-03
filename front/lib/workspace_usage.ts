@@ -1,3 +1,4 @@
+import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
@@ -43,7 +44,7 @@ interface MessageUsageQueryResult {
   source: string | null;
 }
 
-type userUsageQueryResult = {
+type UserUsageQueryResult = {
   userName: string;
   userEmail: string;
   messageCount: number;
@@ -51,12 +52,13 @@ type userUsageQueryResult = {
   activeDaysCount: number;
 };
 
-type builderUsageQueryResult = {
+type BuilderUsageQueryResult = {
   userEmail: string;
   userFirstName: string;
   userLastName: string;
   agentsEditionsCount: number;
   distinctAgentsEditionsCount: number;
+  lastEditAt: string;
 };
 
 interface AgentUsageQueryResult {
@@ -142,12 +144,7 @@ export async function unsafeGetUsageData(
   if (!results.length) {
     return "No data available for the selected period.";
   }
-  const csvHeader = Object.keys(results[0]).join(",") + "\n";
-  const csvContent = results
-    .map((row) => Object.values(row).join(","))
-    .join("\n");
-
-  return csvHeader + csvContent;
+  return generateCsvFromQueryResult(results);
 }
 
 export async function getMessageUsageData(
@@ -283,7 +280,7 @@ export async function getUserUsageData(
     order: [["count", "DESC"]],
     raw: true,
   });
-  const userUsage: userUsageQueryResult[] = userMessages.map((result) => {
+  const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
     return {
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
@@ -330,6 +327,13 @@ export async function getBuildersUsageData(
         ),
         "distinctAgentsEditionsCount",
       ],
+      [
+        Sequelize.cast(
+          Sequelize.fn("MAX", Sequelize.col("agent_configuration.updatedAt")),
+          "DATE"
+        ),
+        "lastEditAt",
+      ],
     ],
     where: {
       workspaceId: wId,
@@ -349,28 +353,34 @@ export async function getBuildersUsageData(
     raw: true,
     group: ["authorId", "user.email", "user.firstName", "user.lastName"],
   });
-  const buildersUsage: builderUsageQueryResult[] = agentConfigurations.map(
+  const buildersUsage: BuilderUsageQueryResult[] = agentConfigurations.map(
     (result) => {
+      const castResult = result as unknown as {
+        firstName: string;
+        lastName: string;
+        email: string;
+        agentsEditionsCount: number;
+        distinctAgentsEditionsCount: number;
+        lastEditAt: string;
+      };
       return {
-        userFirstName: (result as unknown as { firstName: string }).firstName,
-        userLastName: (result as unknown as { lastName: string }).lastName,
-        userEmail: (result as unknown as { email: string }).email,
-        agentsEditionsCount: (
-          result as unknown as { agentsEditionsCount: number }
-        ).agentsEditionsCount,
-        distinctAgentsEditionsCount: (
-          result as unknown as { distinctAgentsEditionsCount: number }
-        ).distinctAgentsEditionsCount,
+        userFirstName: castResult.firstName,
+        userLastName: castResult.lastName,
+        userEmail: castResult.email,
+        agentsEditionsCount: castResult.agentsEditionsCount,
+        distinctAgentsEditionsCount: castResult.distinctAgentsEditionsCount,
+        lastEditAt: castResult.lastEditAt,
       };
     }
   );
+
   if (!buildersUsage.length) {
     return "No data available for the selected period.";
   }
   return generateCsvFromQueryResult(buildersUsage);
 }
 
-export async function getAgentUsageData(
+export async function getAssistantsUsageData(
   startDate: Date,
   endDate: Date,
   workspaceId: string
@@ -395,7 +405,7 @@ export async function getAgentUsageData(
       ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
       COUNT(a."id") AS "messages",
       COUNT(DISTINCT u."id") AS "distinctUsersReached",
-      MAX(CAST(ac."createdAt" AS DATE)) AS "lastConfiguration"
+      MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
     FROM
       "mentions" a
       JOIN "messages" m ON a."id" = m."agentMessageId"
@@ -432,14 +442,25 @@ export async function getAgentUsageData(
 
 function generateCsvFromQueryResult(
   rows:
-    | userUsageQueryResult[]
+    | WorkspaceUsageQueryResult[]
+    | UserUsageQueryResult[]
     | AgentUsageQueryResult[]
     | MessageUsageQueryResult[]
-    | builderUsageQueryResult[]
+    | BuilderUsageQueryResult[]
 ) {
-  const csvHeader = Object.keys(rows[0]).join(",") + "\n";
-  const csvContent = rows.map((row) => Object.values(row).join(",")).join("\n");
-  return csvHeader + csvContent;
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const headers = Object.keys(rows[0]);
+  const data = rows.map((row) => Object.values(row));
+
+  return stringify([headers, ...data], {
+    header: false,
+    cast: {
+      date: (value) => value.toISOString(),
+    },
+  });
 }
 
 /**

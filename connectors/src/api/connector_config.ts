@@ -55,7 +55,7 @@ const _getConnectorConfig = async (
 
   const configValueRes = await getConnectorManager({
     connectorId: connector.id,
-    connectorProvider: "webcrawler",
+    connectorProvider: connector.type,
   }).getConfigurationKey({ configKey: req.params.config_key });
   if (configValueRes.isErr()) {
     return apiError(
@@ -132,7 +132,7 @@ const _setConnectorConfig = async (
 
   const setConfigRes = await getConnectorManager({
     connectorId: connector.id,
-    connectorProvider: "webcrawler",
+    connectorProvider: connector.type,
   }).setConfigurationKey({
     configKey: req.params.config_key,
     configValue: req.body.configValue,

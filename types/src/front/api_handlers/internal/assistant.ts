@@ -11,15 +11,55 @@ export const InternalPostMessagesRequestBodySchema = t.type({
   }),
 });
 
-export const InternalPostContentFragmentRequestBodySchema = t.type({
+const ContentFragmentBaseSchema = t.type({
   title: t.string,
-  content: t.string,
   url: t.union([t.string, t.null]),
-  contentType: getSupportedContentFragmentTypeCodec(),
-  context: t.type({
-    profilePictureUrl: t.union([t.string, t.null]),
-  }),
 });
+
+const ContentFragmentInputWithContentSchema = t.intersection([
+  ContentFragmentBaseSchema,
+  t.type({
+    content: t.string,
+    contentType: getSupportedContentFragmentTypeCodec(),
+  }),
+]);
+
+export type ContentFragmentInputWithContentType = t.TypeOf<
+  typeof ContentFragmentInputWithContentSchema
+>;
+
+const ContentFragmentInputWithFileIdSchema = t.intersection([
+  ContentFragmentBaseSchema,
+  t.type({
+    fileId: t.string,
+  }),
+]);
+
+export type ContentFragmentInputWithFileIdType = t.TypeOf<
+  typeof ContentFragmentInputWithFileIdSchema
+>;
+
+export type ContentFragmentInputType =
+  | ContentFragmentInputWithContentType
+  | ContentFragmentInputWithFileIdType;
+
+export function isContentFragmentInputWithContentType(
+  fragment: ContentFragmentInputType
+): fragment is ContentFragmentInputWithContentType {
+  return "contentType" in fragment;
+}
+
+export const InternalPostContentFragmentRequestBodySchema = t.intersection([
+  t.type({
+    context: t.type({
+      profilePictureUrl: t.union([t.string, t.null]),
+    }),
+  }),
+  t.union([
+    ContentFragmentInputWithContentSchema,
+    ContentFragmentInputWithFileIdSchema,
+  ]),
+]);
 
 export const InternalPostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),

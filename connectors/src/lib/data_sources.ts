@@ -42,6 +42,8 @@ export const MAX_DOCUMENT_TXT_LEN = 750000;
 // For some data sources we allow large documents (5mb) to be processed (behind flag).
 export const MAX_LARGE_DOCUMENT_TXT_LEN = 5000000;
 
+export const MAX_FILE_SIZE_TO_DOWNLOAD = 128 * 1024 * 1024;
+
 type UpsertContext = {
   sync_type: "batch" | "incremental";
 };

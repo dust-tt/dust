@@ -9,8 +9,6 @@ import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
-export const MAX_FILE_SIZE_TO_DOWNLOAD = 128 * 1024 * 1024; // 200 MB in bytes.
-
 export function getDocumentId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;
 }

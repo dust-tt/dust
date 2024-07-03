@@ -57,7 +57,31 @@ export type PostConversationsResponseBody = {
  *             type: object
  *             properties:
  *               message:
- *                 type: string
+ *                 type: object
+ *                 properties:
+ *                   content:
+ *                     type: string
+ *                     description: The content of the message
+ *                   mentions:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         configurationId:
+ *                           type: string
+ *                   context:
+ *                     type: object
+ *                     properties:
+ *                       timezone:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       fullName:
+ *                         type: string
+ *                       profilePictureUrl:
+ *                         type: string
  *                 description: The initial message of the conversation
  *               contentFragment:
  *                 type: string
@@ -88,15 +112,44 @@ export type PostConversationsResponseBody = {
  *             schema:
  *               type: object
  *               properties:
- *                 conversationId:
- *                   type: string
- *                   description: ID of the created conversation
+ *                 conversation:
+ *                   type: object
+ *                 message:
+ *                   $ref: '#/components/schemas/Message'
  *       400:
- *         description: Bad Request. Missing or invalid parameters.
+ *         description: Bad Request
  *       401:
- *         description: Unauthorized. Invalid or missing authentication token.
+ *         description: Unauthorized
  *       500:
- *         description: Internal Server Error.
+ *         description: Internal Server Error
+ * components:
+ *   schemas:
+ *     Message:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: number
+ *         created:
+ *           type: number
+ *         sId:
+ *           type: string
+ *         type:
+ *           type: string
+ *         visibility:
+ *           type: string
+ *         version:
+ *           type: number
+ *         user:
+ *           type: object
+ *           nullable: true
+ *         mentions:
+ *           type: array
+ *         content:
+ *           type: string
+ *         context:
+ *           type: object
+ *         rank:
+ *           type: number
  */
 
 async function handler(
@@ -210,22 +263,33 @@ async function handler(
           contentType: contentFragment.contentType,
           url: req.url,
         });
-        const cf = await postNewContentFragment(auth, {
+
+        const cfRes = await postNewContentFragment(
+          auth,
           conversation,
-          title: contentFragment.title,
-          content: contentFragment.content,
-          url: contentFragment.url,
-          contentType,
-          context: {
+          {
+            ...contentFragment,
+            contentType,
+          },
+          {
             username: contentFragment.context?.username || null,
             fullName: contentFragment.context?.fullName || null,
             email: contentFragment.context?.email || null,
             profilePictureUrl:
               contentFragment.context?.profilePictureUrl || null,
-          },
-        });
+          }
+        );
+        if (cfRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: cfRes.error.message,
+            },
+          });
+        }
 
-        newContentFragment = cf;
+        newContentFragment = cfRes.value;
         const updatedConversation = await getConversation(
           auth,
           conversation.sId

@@ -1,6 +1,7 @@
 import type {
   ActiveRoleType,
   APIErrorWithStatusCode,
+  LightWorkspaceType,
   MembershipInvitationType,
   Result,
   SubscriptionType,
@@ -20,6 +21,9 @@ import { MembershipInvitation } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateModelSId, isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+
+// Make token expires after 7 days
+const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
 
 sgMail.setApiKey(config.getSendgridApiKey());
 
@@ -131,19 +135,35 @@ export async function updateOrCreateInvitation(
   );
 }
 
+export function getMembershipInvitationToken(
+  invitation: MembershipInvitationType
+) {
+  return sign(
+    {
+      membershipInvitationId: invitation.id,
+      exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME_SEC,
+    },
+    config.getDustInviteTokenSecret()
+  );
+}
+
+export function getMembershipInvitationUrlForToken(
+  owner: LightWorkspaceType,
+  invitationToken: string
+) {
+  return `${config.getAppUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
+}
+
 export async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
   invitation: MembershipInvitationType
 ) {
-  const invitationToken = sign(
-    { membershipInvitationId: invitation.id },
-    config.getDustInviteTokenSecret()
+  const invitationToken = getMembershipInvitationToken(invitation);
+  const invitationUrl = getMembershipInvitationUrlForToken(
+    owner,
+    invitationToken
   );
-
-  const invitationUrl = `${config.getAppUrl()}/w/${
-    owner.sId
-  }/join/?t=${invitationToken}`;
 
   // Send invite email.
   const message = {

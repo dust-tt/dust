@@ -11,9 +11,9 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";

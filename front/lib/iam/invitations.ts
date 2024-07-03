@@ -1,12 +1,17 @@
-import type { Result, UserType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  MembershipInvitationType,
+  Result,
+  UserType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 
+import config from "@app/lib/api/config";
 import { AuthFlowError } from "@app/lib/iam/errors";
-import { MembershipInvitation } from "@app/lib/models/workspace";
+import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-
-const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
 
 export async function getPendingMembershipInvitationForToken(
   inviteToken: string | string[] | undefined
@@ -14,7 +19,7 @@ export async function getPendingMembershipInvitationForToken(
   if (inviteToken && typeof inviteToken === "string") {
     let decodedToken: { membershipInvitationId: number } | null = null;
     try {
-      decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
+      decodedToken = verify(inviteToken, config.getDustInviteTokenSecret()) as {
         membershipInvitationId: number;
       };
     } catch (e) {
@@ -67,6 +72,39 @@ export async function getPendingMembershipInvitationForEmailAndWorkspace(
       status: "pending",
     },
   });
+}
+
+export async function getPendingMembershipInvitationWithWorkspaceForEmail(
+  email: string
+): Promise<{
+  invitation: MembershipInvitationType;
+  workspace: LightWorkspaceType;
+} | null> {
+  const pendingInvitation = await MembershipInvitation.findOne({
+    where: {
+      inviteEmail: email,
+      status: "pending",
+    },
+    include: [Workspace],
+  });
+
+  if (pendingInvitation) {
+    return {
+      invitation: {
+        createdAt: pendingInvitation.createdAt.getTime(),
+        id: pendingInvitation.id,
+        initialRole: pendingInvitation.initialRole,
+        inviteEmail: pendingInvitation.inviteEmail,
+        sId: pendingInvitation.sId,
+        status: pendingInvitation.status,
+      },
+      workspace: renderLightWorkspaceType({
+        workspace: pendingInvitation.workspace,
+      }),
+    };
+  }
+
+  return null;
 }
 
 export async function markInvitationAsConsumed(

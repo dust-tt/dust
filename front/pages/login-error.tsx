@@ -81,7 +81,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             }
           />
           <p className={defaultErrorMessageClassName}>
-            For you security, we need to verify your email address.
+            For your security, we need to verify your email address.
             <br />
             Check your inbox for a verification email.
           </p>

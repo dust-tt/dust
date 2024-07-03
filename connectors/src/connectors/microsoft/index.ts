@@ -34,7 +34,10 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
+import {
+  MicrosoftConfigurationResource,
+  MicrosoftRootResource,
+} from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
@@ -61,6 +64,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Error creating Microsoft connector"));
     }
 
+    const microsoftConfigurationBlob = {
+      pdfEnabled: false,
+      largeFilesEnabled: false,
+    };
+
     const connector = await ConnectorResource.makeNew(
       "microsoft",
       {
@@ -69,7 +77,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
       },
-      {}
+      microsoftConfigurationBlob
     );
 
     await syncSucceeded(connector.id);
@@ -292,12 +300,67 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
   async setConfigurationKey({
     configKey,
+    configValue,
   }: {
     configKey: string;
     configValue: string;
   }): Promise<Result<void, Error>> {
-    console.log("setMicrosoftConfig", this.connectorId, configKey);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+    const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (!config) {
+      return new Err(
+        new Error(
+          `Microsoft config not found with connectorId ${this.connectorId}`
+        )
+      );
+    }
+
+    if (!["true", "false"].includes(configValue)) {
+      return new Err(
+        new Error(`Invalid config value ${configValue}, must be true or false`)
+      );
+    }
+
+    switch (configKey) {
+      case "pdfEnabled": {
+        await config.update({
+          pdfEnabled: configValue === "true",
+        });
+        const workflowRes = await launchMicrosoftFullSyncWorkflow(
+          this.connectorId,
+          null
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(undefined);
+      }
+
+      case "largeFilesEnabled": {
+        await config.update({
+          largeFilesEnabled: configValue === "true",
+        });
+        const workflowRes = await launchMicrosoftFullSyncWorkflow(
+          this.connectorId,
+          null
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(undefined);
+      }
+
+      default: {
+        return new Err(new Error(`Invalid config key ${configKey}`));
+      }
+    }
   }
 
   async getConfigurationKey({
@@ -306,7 +369,32 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     configKey: string;
   }): Promise<Result<string | null, Error>> {
     console.log("getMicrosoftConfig", this.connectorId, configKey);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+    const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (!config) {
+      return new Err(
+        new Error(
+          `Microsoft config not found with connectorId ${this.connectorId}`
+        )
+      );
+    }
+    switch (configKey) {
+      case "pdfEnabled": {
+        return new Ok(config.pdfEnabled ? "true" : "false");
+      }
+      case "largeFilesEnabled": {
+        return new Ok(config.largeFilesEnabled ? "true" : "false");
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 
   async pause(): Promise<Result<undefined, Error>> {
