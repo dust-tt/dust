@@ -14,7 +14,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 
-import { getConversationRankVersionLock } from "@app/lib/api/assistant/helpers";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import {
@@ -44,9 +44,10 @@ async function getContentFragmentBlob(
   const { title, url } = cf;
 
   if (isContentFragmentInputWithContentType(cf)) {
-    const { content, contentType: cfContentType } = cf;
+    const { content, contentType } = cf;
 
-    const sourceUrl = isSupportedUploadableContentFragmentType(cfContentType)
+    // TODO(2024-07-03): Remove this once all operations are using files.
+    const sourceUrl = isSupportedUploadableContentFragmentType(contentType)
       ? fileAttachmentLocation({
           workspaceId: owner.sId,
           conversationId: conversation.sId,
@@ -55,6 +56,7 @@ async function getContentFragmentBlob(
         }).downloadUrl
       : url;
 
+    // Only store the text if it is not a file.
     const textBytes = await storeContentFragmentText({
       workspaceId: owner.sId,
       conversationId: conversation.sId,
@@ -63,7 +65,7 @@ async function getContentFragmentBlob(
     });
 
     return new Ok({
-      contentType: cfContentType,
+      contentType,
       fileModelId: null,
       sourceUrl,
       textBytes,

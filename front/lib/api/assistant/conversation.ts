@@ -51,8 +51,8 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/helpers";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
-import { getConversationRankVersionLock } from "@app/lib/api/assistant/helpers";
 import {
   batchRenderAgentMessages,
   batchRenderContentFragment,

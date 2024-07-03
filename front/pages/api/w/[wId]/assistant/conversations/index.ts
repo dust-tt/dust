@@ -10,12 +10,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { postNewContentFragment } from "@app/lib/api/assistant/content_fragment";
 import {
   createConversation,
   getConversation,
   getUserConversations,
 } from "@app/lib/api/assistant/conversation";
+import { postNewContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
