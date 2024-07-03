@@ -154,8 +154,8 @@ async function handler(
         });
       }
 
-      const { content, title, url, contentType, context } =
-        bodyValidation.right;
+      const { right: contentFragmentBody } = bodyValidation;
+      const { content, contentType } = contentFragmentBody;
 
       if (content.length === 0 || content.length > 64 * 1024) {
         return apiError(req, res, {
@@ -167,25 +167,32 @@ async function handler(
           },
         });
       }
+
       const normalizedContentType = normalizeContentFragmentType({
         contentType,
         url: req.url,
       });
-      const contentFragment = await postNewContentFragment(auth, {
-        conversation,
-        title,
-        content,
-        url,
-        contentType: normalizedContentType,
-        context: {
-          username: context?.username || null,
-          fullName: context?.fullName || null,
-          email: context?.email || null,
-          profilePictureUrl: context?.profilePictureUrl || null,
-        },
-      });
 
-      res.status(200).json({ contentFragment });
+      const contentFragmentRes = await postNewContentFragment(
+        auth,
+        conversation,
+        {
+          ...contentFragmentBody,
+          contentType: normalizedContentType,
+        },
+        contentFragmentBody.context
+      );
+      if (contentFragmentRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: contentFragmentRes.error.message,
+          },
+        });
+      }
+
+      res.status(200).json({ contentFragment: contentFragmentRes.value });
       return;
 
     default:

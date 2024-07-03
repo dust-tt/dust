@@ -117,27 +117,40 @@ async function handler(
         visibility,
       });
 
-      let newContentFragments: ContentFragmentType[] = [];
+      const newContentFragments: ContentFragmentType[] = [];
       let newMessage: UserMessageType | null = null;
 
+      const baseContext = {
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+      };
+
       if (contentFragments.length > 0) {
-        newContentFragments = await Promise.all(
+        const newContentFragmentsRes = await Promise.all(
           contentFragments.map((contentFragment) => {
-            return postNewContentFragment(auth, {
-              conversation,
-              title: contentFragment.title,
-              content: contentFragment.content,
-              url: contentFragment.url,
-              contentType: contentFragment.contentType,
-              context: {
-                username: user.username,
-                fullName: user.fullName,
-                email: user.email,
-                profilePictureUrl: contentFragment.context.profilePictureUrl,
-              },
+            return postNewContentFragment(auth, conversation, contentFragment, {
+              ...baseContext,
+              profilePictureUrl: contentFragment.context.profilePictureUrl,
             });
           })
         );
+
+        for (const r of newContentFragmentsRes) {
+          if (r.isErr()) {
+            if (r.isErr()) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: r.error.message,
+                },
+              });
+            }
+          }
+
+          newContentFragments.push(r.value);
+        }
 
         const updatedConversation = await getConversation(
           auth,

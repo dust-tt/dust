@@ -12,7 +12,9 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   AgentMessageWithRankType,
+  APIErrorWithStatusCode,
   ContentFragmentContextType,
+  ContentFragmentInputType,
   ContentFragmentType,
   ConversationTitleEvent,
   ConversationType,
@@ -20,9 +22,11 @@ import type {
   ConversationWithoutContentType,
   GenerationTokensEvent,
   MentionType,
+  ModelId,
   PlanType,
   Result,
   SupportedContentFragmentType,
+  SupportedFileContentType,
   UserMessageContext,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -30,7 +34,10 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isSupportedUploadableContentFragmentType } from "@dust-tt/types";
+import {
+  isContentFragmentInputWithContentType,
+  isSupportedUploadableContentFragmentType,
+} from "@dust-tt/types";
 import {
   assertNever,
   getSmallWhitelistedModel,
@@ -78,6 +85,7 @@ import {
   fileAttachmentLocation,
   storeContentFragmentText,
 } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -1605,50 +1613,89 @@ export async function* retryAgentMessage(
   yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
 }
 
+interface ContentFragmentBlob {
+  contentType: SupportedFileContentType;
+  fileModelId: ModelId | null;
+  sourceUrl: string | null;
+  textBytes: number | null;
+  title: string;
+}
+
+async function getContentFragmentBlob(
+  auth: Authenticator,
+  conversation: ConversationType,
+  cf: ContentFragmentInputType,
+  messageId: string
+): Promise<Result<ContentFragmentBlob, Error>> {
+  const { owner } = conversation;
+  const { title, url } = cf;
+
+  if (isContentFragmentInputWithContentType(cf)) {
+    const { content, contentType: cfContentType } = cf;
+
+    const sourceUrl = isSupportedUploadableContentFragmentType(cfContentType)
+      ? fileAttachmentLocation({
+          workspaceId: owner.sId,
+          conversationId: conversation.sId,
+          messageId,
+          contentFormat: "raw",
+        }).downloadUrl
+      : url;
+
+    const textBytes = await storeContentFragmentText({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+      messageId,
+      content,
+    });
+
+    return new Ok({
+      contentType: cfContentType,
+      fileModelId: null,
+      sourceUrl,
+      textBytes,
+      title,
+    });
+  } else {
+    const file = await FileResource.fetchById(auth, cf.fileId);
+    if (!file) {
+      return new Err(new Error("File not found."));
+    }
+
+    const sourceUrl = url ?? file.getPublicUrl(auth);
+    return new Ok({
+      contentType: file.contentType,
+      fileModelId: file.id,
+      sourceUrl,
+      textBytes: null,
+      title,
+    });
+  }
+}
+
 // Injects a new content fragment in the conversation.
 export async function postNewContentFragment(
   auth: Authenticator,
-  {
-    conversation,
-    title,
-    content,
-    url,
-    contentType,
-    context,
-  }: {
-    conversation: ConversationType;
-    title: string;
-    content: string;
-    url: string | null;
-    contentType: SupportedContentFragmentType;
-    context: ContentFragmentContextType;
-  }
-): Promise<ContentFragmentType> {
+  conversation: ConversationType,
+  cf: ContentFragmentInputType,
+  context: ContentFragmentContextType | null
+): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
-
   if (!owner || owner.id !== conversation.owner.id) {
     throw new Error("Invalid auth for conversation.");
   }
 
   const messageId = generateModelSId();
 
-  const sourceUrl = isSupportedUploadableContentFragmentType(contentType)
-    ? fileAttachmentLocation({
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId,
-        contentFormat: "raw",
-      }).downloadUrl
-    : url;
-
-  // TODO(2024-06-27 flav) Consider resizing images.
-
-  const textBytes = await storeContentFragmentText({
-    workspaceId: owner.sId,
-    conversationId: conversation.sId,
-    messageId,
-    content,
-  });
+  const cfBlobRes = await getContentFragmentBlob(
+    auth,
+    conversation,
+    cf,
+    messageId
+  );
+  if (cfBlobRes.isErr()) {
+    return cfBlobRes;
+  }
 
   const { contentFragment, messageRow } = await frontSequelize.transaction(
     async (t) => {
@@ -1656,15 +1703,12 @@ export async function postNewContentFragment(
 
       const contentFragment = await ContentFragmentResource.makeNew(
         {
-          title,
-          sourceUrl,
-          textBytes,
-          contentType,
+          ...cfBlobRes.value,
           userId: auth.user()?.id,
-          userContextProfilePictureUrl: context.profilePictureUrl,
-          userContextEmail: context.email,
-          userContextFullName: context.fullName,
-          userContextUsername: context.username,
+          userContextProfilePictureUrl: context?.profilePictureUrl,
+          userContextEmail: context?.email,
+          userContextFullName: context?.fullName,
+          userContextUsername: context?.username,
         },
         t
       );
@@ -1690,11 +1734,13 @@ export async function postNewContentFragment(
     }
   );
 
-  return contentFragment.renderFromMessage({
-    auth,
-    conversationId: conversation.sId,
-    message: messageRow,
-  });
+  return new Ok(
+    contentFragment.renderFromMessage({
+      auth,
+      conversationId: conversation.sId,
+      message: messageRow,
+    })
+  );
 }
 
 async function* streamRunAgentEvents(
