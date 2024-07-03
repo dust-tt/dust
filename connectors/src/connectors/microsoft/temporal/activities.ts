@@ -10,9 +10,11 @@ import {
   getFilesAndFolders,
   microsoftInternalIdFromNodeData,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
+  MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
   upsertToDatasource,
@@ -22,6 +24,7 @@ import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
+  MicrosoftConfigurationResource,
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
@@ -38,6 +41,12 @@ export async function fullSyncActivity({
 
   if (!connector) {
     throw new Error(`Connector with id ${connectorId} not found`);
+  }
+
+  const config =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+  if (!config) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
   }
 
   const resources =
@@ -73,6 +82,7 @@ export async function fullSyncActivity({
     dataSourceConfig,
     file,
     parent: folder,
+    config,
     startSyncTs,
   });
 
@@ -89,6 +99,7 @@ export async function syncOneFile(
     file,
     parent,
     startSyncTs,
+    config,
     isBatchSync = false,
   }: {
     connectorId: ModelId;
@@ -96,6 +107,7 @@ export async function syncOneFile(
     file: microsoftgraph.DriveItem;
     parent: MicrosoftRootResource;
     startSyncTs: number;
+    config?: MicrosoftConfigurationResource;
     isBatchSync?: boolean;
   }
 ) {
@@ -161,6 +173,20 @@ export async function syncOneFile(
 
     return false;
   }
+
+  const mimeTypesToSync = getMimeTypesToSync({
+    pdfEnabled: config?.pdfEnabled || false,
+  });
+
+  if (!file.file?.mimeType || !mimeTypesToSync.includes(file.file.mimeType)) {
+    localLogger.info("Type not supported, skipping file.");
+
+    return false;
+  }
+
+  const maxDocumentLen = config?.largeFilesEnabled
+    ? MAX_LARGE_DOCUMENT_TXT_LEN
+    : MAX_DOCUMENT_TXT_LEN;
 
   const downloadRes = await axios.get(`${url}`, {
     responseType: "arraybuffer",
@@ -251,8 +277,7 @@ export async function syncOneFile(
 
   const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
 
-  const isInSizeRange =
-    documentLength > 0 && documentLength < MAX_DOCUMENT_TXT_LEN;
+  const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
   if (isInSizeRange) {
     // TODO(pr): add getParents implementation
     const parents = [];
