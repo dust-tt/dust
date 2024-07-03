@@ -1,4 +1,4 @@
-import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { Button, Div3D, Hover3D, PlayIcon, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
 
@@ -38,10 +38,22 @@ export function IntroSection() {
           alt="MainVisual4"
         />
       </Div3D>
-      <Div3D depth={120} className="absolute top-0">
+      <Div3D depth={100} className="absolute top-0">
         <img
           src="/static/landing/mainVisual/MainVisual5.png"
           alt="MainVisual5"
+        />
+      </Div3D>
+      <Div3D
+        depth={150}
+        className="absolute top-0 flex h-full w-full items-center justify-center"
+      >
+        <Button
+          icon={PlayIcon}
+          variant="primary"
+          size="md"
+          label="Watch the video"
+          className="shadow-xl"
         />
       </Div3D>
     </Hover3D>
