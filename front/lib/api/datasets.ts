@@ -6,6 +6,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { Dataset } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
 
+import { getWorkspaceIdForApp } from "./app";
+
 export async function getDatasets(
   auth: Authenticator,
   app: AppType
@@ -72,9 +74,11 @@ export async function getDatasetSchema(
     return null;
   }
 
+  const workspaceId = getWorkspaceIdForApp(auth, app.sId);
+
   const dataset = await Dataset.findOne({
     where: {
-      workspaceId: owner.id,
+      workspaceId,
       appId: app.id,
       name,
     },
@@ -98,9 +102,11 @@ export async function getDatasetHash(
     return null;
   }
 
+  const workspaceId = getWorkspaceIdForApp(auth, app.sId);
+
   const dataset = await Dataset.findOne({
     where: {
-      workspaceId: owner.id,
+      workspaceId,
       appId: app.id,
       name,
     },

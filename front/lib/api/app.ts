@@ -5,6 +5,15 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/models/apps";
 
+export function getWorkspaceIdForApp(auth: Authenticator, appId: string): number {
+  // Helper app is a special case.
+  if (appId == EnvironmentConfig.getEnvVariable("HELPER_APP_ID")) {
+    return parseInt(EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID"));
+  }
+
+  return auth.workspace()?.id || -1;
+}
+
 export async function getApp(
   auth: Authenticator,
   aId: string
@@ -14,10 +23,7 @@ export async function getApp(
     return null;
   }
 
-  const workspaceId =
-    aId == EnvironmentConfig.getEnvVariable("HELPER_APP_ID")
-      ? EnvironmentConfig.getEnvVariable("HELPER_WORKSPACE_ID")
-      : owner.id;
+  const workspaceId = getWorkspaceIdForApp(auth, aId);
 
   const app = await App.findOne({
     where: auth.isUser()
