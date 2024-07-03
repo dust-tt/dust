@@ -550,7 +550,7 @@ export async function generateConversationTitle(
  * Otherwise, the other query will be competing for a connection in the database connection pool,
  * resulting in a potential deadlock when the pool is fully occupied.
  */
-export async function getConversationRankVersionLock(
+async function getConversationRankVersionLock(
   conversation: ConversationType,
   t: Transaction
 ) {
