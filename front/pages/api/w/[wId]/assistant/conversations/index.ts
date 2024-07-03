@@ -14,8 +14,8 @@ import {
   createConversation,
   getConversation,
   getUserConversations,
+  postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
-import { postNewContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";

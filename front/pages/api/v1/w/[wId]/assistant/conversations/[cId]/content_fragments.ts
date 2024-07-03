@@ -8,8 +8,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   getConversation,
   normalizeContentFragmentType,
+  postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
-import { postNewContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 

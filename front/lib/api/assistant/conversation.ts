@@ -12,6 +12,9 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   AgentMessageWithRankType,
+  ContentFragmentContextType,
+  ContentFragmentInputType,
+  ContentFragmentType,
   ConversationTitleEvent,
   ConversationType,
   ConversationVisibility,
@@ -32,6 +35,7 @@ import {
   assertNever,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
+  md5,
 } from "@dust-tt/types";
 import {
   cloneBaseConfig,
@@ -45,13 +49,14 @@ import {
   rateLimiter,
   removeNulls,
 } from "@dust-tt/types";
+import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/helpers";
+import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import {
   batchRenderAgentMessages,
@@ -69,6 +74,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -537,6 +543,36 @@ export async function generateConversationTitle(
 /**
  * Conversation API
  */
+
+/**
+ * To avoid deadlocks when using Postgresql advisory locks, please make sure to not issue any other
+ * SQL query outside of the transaction `t` that is holding the lock.
+ * Otherwise, the other query will be competing for a connection in the database connection pool,
+ * resulting in a potential deadlock when the pool is fully occupied.
+ */
+export async function getConversationRankVersionLock(
+  conversation: ConversationType,
+  t: Transaction
+) {
+  const now = new Date();
+  // Get a lock using the unique lock key (number withing postgresql BigInt range).
+  const hash = md5(`conversation_message_rank_version_${conversation.id}`);
+  const lockKey = parseInt(hash, 16) % 9999999999;
+  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+    transaction: t,
+    replacements: { key: lockKey },
+  });
+
+  logger.info(
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      duration: new Date().getTime() - now.getTime(),
+      lockKey,
+    },
+    "[ASSISTANT_TRACE] Advisory lock acquired"
+  );
+}
 
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
@@ -1564,6 +1600,76 @@ export async function* retryAgentMessage(
   );
 
   yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
+}
+
+// Injects a new content fragment in the conversation.
+export async function postNewContentFragment(
+  auth: Authenticator,
+  conversation: ConversationType,
+  cf: ContentFragmentInputType,
+  context: ContentFragmentContextType | null
+): Promise<Result<ContentFragmentType, Error>> {
+  const owner = auth.workspace();
+  if (!owner || owner.id !== conversation.owner.id) {
+    throw new Error("Invalid auth for conversation.");
+  }
+
+  const messageId = generateModelSId();
+
+  const cfBlobRes = await getContentFragmentBlob(
+    auth,
+    conversation,
+    cf,
+    messageId
+  );
+  if (cfBlobRes.isErr()) {
+    return cfBlobRes;
+  }
+
+  const { contentFragment, messageRow } = await frontSequelize.transaction(
+    async (t) => {
+      await getConversationRankVersionLock(conversation, t);
+
+      const contentFragment = await ContentFragmentResource.makeNew(
+        {
+          ...cfBlobRes.value,
+          userId: auth.user()?.id,
+          userContextProfilePictureUrl: context?.profilePictureUrl,
+          userContextEmail: context?.email,
+          userContextFullName: context?.fullName,
+          userContextUsername: context?.username,
+        },
+        t
+      );
+      const nextMessageRank =
+        ((await Message.max<number | null, Message>("rank", {
+          where: {
+            conversationId: conversation.id,
+          },
+          transaction: t,
+        })) ?? -1) + 1;
+      const messageRow = await Message.create(
+        {
+          sId: messageId,
+          rank: nextMessageRank,
+          conversationId: conversation.id,
+          contentFragmentId: contentFragment.id,
+        },
+        {
+          transaction: t,
+        }
+      );
+      return { contentFragment, messageRow };
+    }
+  );
+
+  return new Ok(
+    contentFragment.renderFromMessage({
+      auth,
+      conversationId: conversation.sId,
+      message: messageRow,
+    })
+  );
 }
 
 async function* streamRunAgentEvents(
