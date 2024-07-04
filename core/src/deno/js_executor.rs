@@ -152,7 +152,7 @@ impl JSExecutor {
         }
     }
 
-    // JSExecutor must be created ans started on the main thread of the Rust program. The returned
+    // JSExecutor must be created and started on the main thread of the Rust program. The returned
     // client can be cloned and used in any thread or tokio worker.
     pub fn new() -> (Self, JSClient) {
         let (tx, rx) = mpsc::channel();
