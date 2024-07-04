@@ -1,5 +1,7 @@
 import type {
   AgentConfigurationType,
+  AssistantContentMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -72,20 +74,23 @@ export async function renderConversationForModelMultiActions({
       // This array is 2D, because we can have multiple calls per agent message (parallel calls).
 
       const steps = [] as Array<{
-        content: string | null;
+        contents: string[];
         actions: Array<{
           call: FunctionCallType;
           result: FunctionMessageTypeModel;
         }>;
       }>;
 
+      const emptyStep = () =>
+        ({
+          contents: [],
+          actions: [],
+        }) satisfies (typeof steps)[number];
+
       if (!excludeActions) {
         for (const action of actions) {
           const stepIndex = action.step;
-          steps[stepIndex] = steps[stepIndex] || {
-            content: null,
-            actions: [],
-          };
+          steps[stepIndex] = steps[stepIndex] || emptyStep();
           steps[stepIndex].actions.push({
             call: action.renderForFunctionCall(),
             result: action.renderForMultiActionsModel(),
@@ -94,15 +99,14 @@ export async function renderConversationForModelMultiActions({
       }
 
       for (const content of m.rawContents) {
-        steps[content.step] = steps[content.step] || {
-          content: null,
-          actions: [],
-        };
-        steps[content.step].content = content.content;
+        steps[content.step] = steps[content.step] || emptyStep();
+        if (content.content.trim()) {
+          steps[content.step].contents.push(content.content);
+        }
       }
 
       for (const step of steps) {
-        if (!step.actions.length && !step.content) {
+        if (!step.actions.length && !step.contents.length) {
           logger.error(
             {
               workspaceId: conversation.owner.sId,
@@ -110,7 +114,7 @@ export async function renderConversationForModelMultiActions({
               agentMessageId: m.sId,
               panic: true,
             },
-            "Unexpected state, agent message step with no actions and no content"
+            "Unexpected state, agent message step with no actions and no contents"
           );
           continue;
         }
@@ -119,17 +123,18 @@ export async function renderConversationForModelMultiActions({
           messages.push({
             role: "assistant",
             function_calls: step.actions.map((s) => s.call),
-            content: step.content?.trim() ?? undefined,
-          });
+            content: step.contents.join("\n"),
+          } satisfies AssistantFunctionCallMessageTypeModel);
+
           for (const { result } of step.actions) {
             messages.push(result);
           }
-        } else if (step.content?.trim()) {
+        } else if (step.contents.length) {
           messages.push({
             role: "assistant",
             name: m.configuration.name,
-            content: step.content,
-          });
+            content: step.contents.join("\n"),
+          } satisfies AssistantContentMessageTypeModel);
         }
       }
 
