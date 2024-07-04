@@ -1,7 +1,7 @@
 use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
-use crate::deno::script::Script;
+use crate::deno::js_executor::JSExecutor;
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage, SystemChatMessage};
 use crate::providers::llm::{ChatFunction, ChatMessageRole, LLMChatRequest};
 use crate::providers::provider::ProviderID;
@@ -302,13 +302,14 @@ impl Block for Chat {
         // Process messages.
         let e = env.clone();
         let messages_code = self.messages_code.replace("<DUST_TRIPLE_BACKTICKS>", "```");
-        let (messages_value, messages_logs): (Value, Vec<Value>) =
-            tokio::task::spawn_blocking(move || {
-                let mut script = Script::from_string(messages_code.as_str())?
-                    .with_timeout(std::time::Duration::from_secs(10));
-                script.call("_fun", &e)
-            })
-            .await?
+        let (messages_value, messages_logs): (Value, Vec<Value>) = JSExecutor::client()?
+            .exec(
+                &messages_code,
+                "_fun",
+                &e,
+                std::time::Duration::from_secs(10),
+            )
+            .await
             .map_err(|e| anyhow!("Error in `messages_code`: {}", e))?;
 
         const MESSAGES_CODE_OUTPUT: &str = "Invalid messages code output, \
@@ -326,13 +327,15 @@ impl Block for Chat {
             Some(c) => {
                 let e = env.clone();
                 let functions_code = c.clone().replace("<DUST_TRIPLE_BACKTICKS>", "```");
-                let (functions_value, functions_logs): (Value, Vec<Value>) =
-                    tokio::task::spawn_blocking(move || {
-                        let mut script = Script::from_string(functions_code.as_str())?
-                            .with_timeout(std::time::Duration::from_secs(10));
-                        script.call("_fun", &e)
-                    })
-                    .await?
+
+                let (functions_value, functions_logs): (Value, Vec<Value>) = JSExecutor::client()?
+                    .exec(
+                        &functions_code,
+                        "_fun",
+                        &e,
+                        std::time::Duration::from_secs(10),
+                    )
+                    .await
                     .map_err(|e| anyhow!("Error in `functions_code`: {}", e))?;
                 (
                     match functions_value {

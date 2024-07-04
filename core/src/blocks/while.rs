@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
-use crate::deno::script::Script;
+use crate::deno::js_executor::JSExecutor;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -101,13 +101,14 @@ impl Block for While {
             .condition_code
             .replace("<DUST_TRIPLE_BACKTICKS>", "```");
 
-        let (condition_value, condition_logs): (Value, Vec<Value>) =
-            tokio::task::spawn_blocking(move || {
-                let mut script = Script::from_string(condition_code.as_str())?
-                    .with_timeout(std::time::Duration::from_secs(10));
-                script.call("_fun", &e)
-            })
-            .await?
+        let (condition_value, condition_logs): (Value, Vec<Value>) = JSExecutor::client()?
+            .exec(
+                &condition_code,
+                "_fun",
+                &e,
+                std::time::Duration::from_secs(10),
+            )
+            .await
             .map_err(|e| anyhow!("Error in `condition_code`: {}", e))?;
 
         match condition_value {

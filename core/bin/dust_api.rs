@@ -19,7 +19,9 @@ use dust::{
     },
     databases::database::{query_database, QueryDatabaseError, Row, Table},
     databases_store::store::{self as databases_store, DatabasesStore},
-    dataset, project,
+    dataset,
+    deno::js_executor::JSExecutor,
+    project,
     providers::provider::{provider, ProviderID},
     run,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
@@ -2425,6 +2427,8 @@ async fn tokenize(Json(payload): Json<TokenizePayload>) -> (StatusCode, Json<API
 }
 
 fn main() {
+    JSExecutor::init();
+
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
         //.thread_name("dust-api-server")
