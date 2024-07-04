@@ -106,20 +106,37 @@ export function useFileUploaderService({
   const processSelectedFiles = (
     selectedFiles: File[]
   ): Result<FileBlob, FileBlobUploadError>[] => {
-    return selectedFiles.map((file) => {
-      const contentType = getMimeTypeFromFile(file);
-      if (!isSupportedFileContentType(contentType)) {
-        return new Err(
-          new FileBlobUploadError(
-            "file_type_not_supported",
-            file,
-            `File "${file.name}" is not supported.`
-          )
-        );
-      }
+    return selectedFiles.reduce(
+      (acc, file) => {
+        if (fileBlobs.some((f) => f.id === file.name)) {
+          sendNotification({
+            type: "error",
+            title: "File already exists.",
+            description: `File "${file.name}" is already uploaded.`,
+          });
 
-      return new Ok(createFileBlob(file, contentType));
-    });
+          return acc; // Ignore if file already exists.
+        }
+
+        const contentType = getMimeTypeFromFile(file);
+        if (!isSupportedFileContentType(contentType)) {
+          acc.push(
+            new Err(
+              new FileBlobUploadError(
+                "file_type_not_supported",
+                file,
+                `File "${file.name}" is not supported.`
+              )
+            )
+          );
+          return acc;
+        }
+
+        acc.push(new Ok(createFileBlob(file, contentType)));
+        return acc;
+      },
+      [] as (Ok<FileBlob> | Err<FileBlobUploadError>)[]
+    );
   };
 
   const uploadFiles = async (
