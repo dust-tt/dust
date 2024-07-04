@@ -11,6 +11,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { supportedUploadableContentType } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
@@ -26,8 +27,6 @@ import { classNames } from "@app/lib/utils";
 export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
-
-const supportedFileExtensions = [".txt", ".csv", ".md", ".pdf"];
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -129,7 +128,7 @@ const InputBarContainer = ({
           {actions.includes("attachment") && (
             <>
               <input
-                accept={supportedFileExtensions.join(",")}
+                accept={supportedUploadableContentType.join(",")}
                 onChange={async (e) => {
                   await fileUploaderService.handleFileChange(e);
                   if (fileInputRef.current) {

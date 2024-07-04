@@ -57,7 +57,7 @@ const supportedPlainTextContentTypes = [
 // Supported content types for images.
 const supportedImageContentTypes = ["image/jpeg", "image/png"] as const;
 
-const supportedUploadableContentType = [
+export const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
   ...supportedImageContentTypes,
 ];
