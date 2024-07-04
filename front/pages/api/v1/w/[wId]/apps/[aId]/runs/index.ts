@@ -103,7 +103,7 @@ function extractUsageFromExecutions(
  *             properties:
  *               specification_hash:
  *                 type: string
- *                 description: The hash of the app specification
+ *                 description: The hash of the specification to use. If you change your app specifiction, make sure to update the hash. This guarantees that you won't break an existing API integration by iterating on your app design.
  *               config:
  *                 type: object
  *                 properties:
