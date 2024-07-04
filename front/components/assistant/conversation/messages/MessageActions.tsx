@@ -239,7 +239,7 @@ function EmojiSelector({
       </DropdownMenu.Button>
       <DropdownMenu.Items
         width={350}
-        origin="topRight"
+        origin="bottomRight"
         overflow="visible"
         variant="no-padding"
       >
