@@ -20,7 +20,7 @@ export function useLastMessageGroupObserver(
           }
         });
       },
-      { threshold: 0 }
+      { threshold: 0.25 }
     );
 
     const element = document.querySelector(`#${LAST_MESSAGE_GROUP_ID}`);
