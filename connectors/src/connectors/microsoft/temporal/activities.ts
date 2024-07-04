@@ -58,10 +58,6 @@ export async function fullSyncActivity({
   const folderResources = resources.filter((resource) =>
     ["folder"].includes(resource.nodeType)
   );
-  logger.info(
-    { length: folderResources.length },
-    "========= folder resources "
-  );
 
   const folder = folderResources[0];
 
