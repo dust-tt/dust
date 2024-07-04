@@ -63,6 +63,7 @@ module.exports = {
       tls: false,
       dgram: false,
     };
+    // Use source-map-loader for transitively include source maps of dependencies.
     config.module.rules.push({
       test: /\.js$/,
       use: ["source-map-loader"],
