@@ -1,2 +1,2 @@
 import "./styles/global_with_tw_base.css";
-export * from "./_index";
+export * from "./index";
