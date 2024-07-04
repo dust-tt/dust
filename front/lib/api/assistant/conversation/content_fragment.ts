@@ -60,7 +60,7 @@ export async function getContentFragmentBlob(
     return new Ok({
       contentType,
       fileId: null,
-      sourceUrl,
+      sourceUrl: sourceUrl ?? null,
       textBytes,
       title,
     });
@@ -72,6 +72,14 @@ export async function getContentFragmentBlob(
 
     if (file.useCase !== "conversation") {
       return new Err(new Error("File not meant to be used in a conversation."));
+    }
+
+    if (!file.isReady) {
+      return new Err(
+        new Error(
+          "The file is not ready. Please re-upload the file to proceed."
+        )
+      );
     }
 
     // Give priority to the URL if it is provided.

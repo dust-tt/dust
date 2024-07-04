@@ -25,7 +25,6 @@ export function InputBarCitations({
           onClose={() => {
             fileUploaderService.removeFile(blob.id);
           }}
-          // TODO(2026-06-28 flav) Find a better way to display the file while being uploaded.
           isLoading={blob.isUploading}
         />
       );
