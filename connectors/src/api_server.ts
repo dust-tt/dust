@@ -8,7 +8,10 @@ import { adminAPIHandler } from "@connectors/api/admin";
 import { patchConnectorConfigurationAPIHandler } from "@connectors/api/configuration";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
-import { getConnectorAPIHandler } from "@connectors/api/get_connector";
+import {
+  getConnectorAPIHandler,
+  getConnectorsAPIHandler,
+} from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import { getContentNodesParentsAPIHandler } from "@connectors/api/get_content_node_parents";
 import { getContentNodesAPIHandler } from "@connectors/api/get_content_nodes";
@@ -95,6 +98,7 @@ export function startServer(port: number) {
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);
+  app.get("/connectors", getConnectorsAPIHandler);
   app.post("/connectors/sync/:connector_id", syncConnectorAPIHandler);
   app.get(
     "/connectors/:connector_id/permissions",

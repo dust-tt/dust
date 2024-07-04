@@ -1,5 +1,6 @@
 import type {
   ConnectorPermission,
+  ConnectorType,
   ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
@@ -39,6 +40,9 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
   abstract sync(params: {
     fromTs: number | null;
   }): Promise<Result<string, Error>>;
+
+  abstract retrieveConnector(): Promise<Result<ConnectorType, Error>>;
+  abstract retrieveBatchConnectors(): Promise<Result<ConnectorType[], Error>>;
 
   abstract retrievePermissions(params: {
     parentInternalId: string | null;

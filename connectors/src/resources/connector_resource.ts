@@ -142,11 +142,15 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return c;
   }
 
-  static async fetchByIds(type: ConnectorProvider, ids: ModelId[]) {
+  static async fetchByIds(type: ConnectorProvider, ids: (ModelId | string)[]) {
+    const parsedIds = ids.map((id) =>
+      typeof id === "string" ? parseInt(id, 10) : id
+    );
+
     const blobs = await ConnectorResource.model.findAll({
       where: {
         type,
-        id: ids,
+        id: parsedIds,
       },
     });
 
