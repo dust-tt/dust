@@ -26,7 +26,7 @@ export function InputBarCitations({
             fileUploaderService.removeFile(blob.id);
           }}
           // TODO(2026-06-28 flav) Find a better way to display the file while being uploaded.
-          isBlinking={blob.isUploading}
+          isLoading={blob.isUploading}
         />
       );
     }

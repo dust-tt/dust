@@ -13,7 +13,6 @@ import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";
-import { getMimeTypeFromFile } from "@app/lib/file";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 /**
@@ -108,7 +107,6 @@ export async function submitMessage({
             },
             body: JSON.stringify({
               title: contentFragment.title,
-              url: contentFragment.url,
               fileId: contentFragment.fileId,
               context: {
                 timezone:
