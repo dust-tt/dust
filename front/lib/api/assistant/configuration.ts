@@ -70,8 +70,8 @@ import {
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { generateModelSId } from "@app/lib/utils";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -1006,7 +1006,7 @@ export async function createAgentConfiguration(
             }
           );
         }
-        const sId = agentConfigurationId || generateModelSId();
+        const sId = agentConfigurationId || generateLegacyModelSId();
 
         // If creating a new agent, we include it in the user's list by default.
         // This is so it doesn't disappear from their list on scope change
@@ -1209,7 +1209,7 @@ export async function createAgentActionConfiguration(
       return frontSequelize.transaction(async (t) => {
         const retrievalConfig = await AgentRetrievalConfiguration.create(
           {
-            sId: generateModelSId(),
+            sId: generateLegacyModelSId(),
             query: action.query,
             relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
               ? "custom"
@@ -1249,7 +1249,7 @@ export async function createAgentActionConfiguration(
     }
     case "dust_app_run_configuration": {
       const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
-        sId: generateModelSId(),
+        sId: generateLegacyModelSId(),
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
         agentConfigurationId: agentConfiguration.id,
@@ -1269,7 +1269,7 @@ export async function createAgentActionConfiguration(
       return frontSequelize.transaction(async (t) => {
         const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
           {
-            sId: generateModelSId(),
+            sId: generateLegacyModelSId(),
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
@@ -1304,7 +1304,7 @@ export async function createAgentActionConfiguration(
       return frontSequelize.transaction(async (t) => {
         const processConfig = await AgentProcessConfiguration.create(
           {
-            sId: generateModelSId(),
+            sId: generateLegacyModelSId(),
             relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
               ? "custom"
               : action.relativeTimeFrame,
@@ -1343,7 +1343,7 @@ export async function createAgentActionConfiguration(
     }
     case "websearch_configuration": {
       const websearchConfig = await AgentWebsearchConfiguration.create({
-        sId: generateModelSId(),
+        sId: generateLegacyModelSId(),
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
@@ -1359,7 +1359,7 @@ export async function createAgentActionConfiguration(
     }
     case "browse_configuration": {
       const browseConfig = await AgentBrowseConfiguration.create({
-        sId: generateModelSId(),
+        sId: generateLegacyModelSId(),
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
@@ -1375,7 +1375,7 @@ export async function createAgentActionConfiguration(
     }
     case "visualization_configuration": {
       const visualizationConfig = await AgentVisualizationConfiguration.create({
-        sId: generateModelSId(),
+        sId: generateLegacyModelSId(),
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,

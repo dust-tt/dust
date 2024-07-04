@@ -6,7 +6,7 @@ import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App, Clone, Dataset } from "@app/lib/models/apps";
-import { generateModelSId } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -108,7 +108,7 @@ async function handler(
 
       const [cloned] = await Promise.all([
         App.create({
-          sId: generateModelSId(),
+          sId: generateLegacyModelSId(),
           name: req.body.name,
           description,
           visibility: req.body.visibility,

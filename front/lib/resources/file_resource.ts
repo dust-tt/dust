@@ -17,11 +17,9 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateModelSId } from "@app/lib/utils";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 
 type FileVersion = "processed" | "original";
-
-const FILE_ID_PREFIX = "file";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -36,12 +34,9 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
   ) {
-    const fileId = generateModelSId(FILE_ID_PREFIX);
-
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
-      sId: fileId,
     });
 
     return new this(FileResource.model, key.get());
@@ -57,10 +52,15 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
+    const fileModelId = getResourceIdFromSId(id);
+    if (!fileModelId) {
+      return null;
+    }
+
     const blob = await this.model.findOne({
       where: {
         workspaceId: owner.id,
-        sId: id,
+        id: fileModelId,
       },
     });
     if (!blob) {
@@ -195,6 +195,13 @@ export class FileResource extends BaseResource<FileModel> {
     return getPrivateUploadBucket()
       .file(this.getCloudStoragePath(auth, version))
       .createReadStream();
+  }
+
+  get sId(): string {
+    return makeSId("file", {
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
   }
 
   // Serialization logic.

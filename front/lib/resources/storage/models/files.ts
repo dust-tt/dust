@@ -27,7 +27,6 @@ export class FileModel extends Model<
   declare fileName: string;
   declare fileSize: number;
   declare status: FileStatus;
-  declare sId: string;
   declare useCase: FileUseCase;
 
   declare userId: ForeignKey<User["id"]> | null;
@@ -59,10 +58,6 @@ FileModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     status: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -75,13 +70,7 @@ FileModel.init(
   {
     modelName: "files",
     sequelize: frontSequelize,
-    indexes: [
-      {
-        unique: true,
-        fields: ["sId"],
-      },
-      { fields: ["workspaceId", "sId"] },
-    ],
+    indexes: [{ fields: ["workspaceId", "id"] }],
   }
 );
 Workspace.hasMany(FileModel, {

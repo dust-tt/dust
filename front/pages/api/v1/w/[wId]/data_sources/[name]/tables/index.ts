@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { generateModelSId } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -210,7 +210,7 @@ async function handler(
         table_id: maybeTableId,
       } = bodyValidation.right;
 
-      const tableId = maybeTableId || generateModelSId();
+      const tableId = maybeTableId || generateLegacyModelSId();
 
       const tRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,

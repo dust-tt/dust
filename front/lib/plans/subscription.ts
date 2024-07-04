@@ -23,7 +23,7 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { generateModelSId } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
@@ -213,7 +213,7 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
 
     return Subscription.create(
       {
-        sId: generateModelSId(),
+        sId: generateLegacyModelSId(),
         workspaceId: workspace.id,
         planId: newPlan.id,
         status: "active",

@@ -77,8 +77,8 @@ import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -102,7 +102,7 @@ export async function createConversation(
   }
 
   const conversation = await Conversation.create({
-    sId: generateModelSId(),
+    sId: generateLegacyModelSId(),
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
@@ -714,7 +714,7 @@ export async function* postUserMessage(
       async function createMessageAndUserMessage() {
         return Message.create(
           {
-            sId: generateModelSId(),
+            sId: generateLegacyModelSId(),
             rank: nextMessageRank++,
             conversationId: conversation.id,
             parentId: null,
@@ -787,7 +787,7 @@ export async function* postUserMessage(
               );
               const messageRow = await Message.create(
                 {
-                  sId: generateModelSId(),
+                  sId: generateLegacyModelSId(),
                   rank: nextMessageRank++,
                   conversationId: conversation.id,
                   parentId: userMessage.id,
@@ -1175,7 +1175,7 @@ export async function* editUserMessage(
       async function createMessageAndUserMessage(messageRow: Message) {
         return Message.create(
           {
-            sId: generateModelSId(),
+            sId: generateLegacyModelSId(),
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
@@ -1263,7 +1263,7 @@ export async function* editUserMessage(
             );
             const messageRow = await Message.create(
               {
-                sId: generateModelSId(),
+                sId: generateLegacyModelSId(),
                 rank: nextMessageRank++,
                 conversationId: conversation.id,
                 parentId: userMessage.id,
@@ -1481,7 +1481,7 @@ export async function* retryAgentMessage(
       );
       const m = await Message.create(
         {
-          sId: generateModelSId(),
+          sId: generateLegacyModelSId(),
           rank: messageRow.rank,
           conversationId: conversation.id,
           parentId: messageRow.parentId,
@@ -1614,7 +1614,7 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  const messageId = generateModelSId();
+  const messageId = generateLegacyModelSId();
 
   const cfBlobRes = await getContentFragmentBlob(
     auth,
