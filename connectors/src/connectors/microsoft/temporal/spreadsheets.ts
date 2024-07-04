@@ -2,6 +2,7 @@ import { getSanitizedHeaders, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
+import { getClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemApiPath,
   getWorksheetApiPath,
@@ -13,9 +14,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { upsertTableFromCsv } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
-import { getClient } from "@connectors/connectors/microsoft";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 

@@ -34,7 +34,7 @@ export async function launchMicrosoftFullSyncWorkflow(
   try {
     await terminateWorkflow(workflowId);
     await client.workflow.start(fullSyncWorkflow, {
-      args: [{ connectorId, dataSourceConfig }],
+      args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {

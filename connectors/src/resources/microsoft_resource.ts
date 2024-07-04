@@ -2,6 +2,9 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
+import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
+import { microsoftInternalIdFromNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MicrosoftConfigurationModel,
   MicrosoftDeltaModel,
@@ -11,12 +14,6 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import {
-  MicrosoftNodeData,
-  microsoftInternalIdFromNodeData,
-} from "@connectors/connectors/microsoft/lib/graph_api";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { c } from "tar";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -322,7 +319,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       },
     });
 
-    return await concurrentExecutor(
+    return concurrentExecutor(
       nodesData,
       async (root) => {
         const internalId = microsoftInternalIdFromNodeData(root);

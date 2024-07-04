@@ -4,8 +4,8 @@ import mammoth from "mammoth";
 import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
+import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
-  MicrosoftNodeData,
   getDriveApiPath,
   getDriveItemApiPath,
   getDrives,
@@ -16,6 +16,8 @@ import {
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -34,8 +36,6 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 
 export async function getSiteNodesToSync(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
