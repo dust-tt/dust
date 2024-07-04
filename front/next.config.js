@@ -1,3 +1,5 @@
+const path = require("path");
+
 module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
@@ -68,6 +70,7 @@ module.exports = {
       test: /\.js$/,
       use: ["source-map-loader"],
       enforce: "pre",
+      include: [path.resolve(__dirname, "node_modules/@dust-tt/sparkle")],
     });
     return config;
   },
