@@ -236,9 +236,10 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return resources.map((resource) => new this(this.model, resource.get()));
   }
 
-  static async fetchByInternalId(internalId: string) {
+  static async fetchByInternalId(connectorId: ModelId, internalId: string) {
     const blob = await this.model.findOne({
       where: {
+        connectorId,
         internalId,
       },
     });
@@ -247,6 +248,23 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     }
 
     return new this(this.model, blob.get());
+  }
+
+  static async fetchByParentInternalId(
+    connectorId: ModelId,
+    parentInternalId: string
+  ) {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId,
+        parentInternalId,
+      },
+    });
+    if (!blobs) {
+      return [];
+    }
+
+    return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
   static async batchDelete({

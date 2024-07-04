@@ -9,6 +9,7 @@ export const MICROSOFT_NODE_TYPES = [
   "page",
   "channel",
   "message",
+  "worksheet",
 ] as const;
 export type MicrosoftNodeType = (typeof MICROSOFT_NODE_TYPES)[number];
 
