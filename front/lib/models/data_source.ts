@@ -85,7 +85,10 @@ DataSource.init(
   {
     modelName: "data_source",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "name"], unique: true }],
+    indexes: [
+      { fields: ["workspaceId", "name"], unique: true },
+      { fields: ["workspaceId", "connectorProvider"] },
+    ],
   }
 );
 Workspace.hasMany(DataSource, {
