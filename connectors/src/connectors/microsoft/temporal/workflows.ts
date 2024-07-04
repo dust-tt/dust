@@ -9,7 +9,7 @@ const { fullSyncActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
 });
 
-const { syncSucceeded } = proxyActivities<typeof sync_status>({
+const { getNodesToSync, syncSucceeded } = proxyActivities<typeof sync_status>({
   startToCloseTimeout: "10 minutes",
 });
 
@@ -26,17 +26,52 @@ export async function fullSyncWorkflow({
 
 export async function fullSyncSitesWorkflow({
   connectorId,
-  foldersToBrowse = undefined,
+  nodesToBrowse = undefined,
   totalCount = 0,
   startSyncTs = undefined,
 }: {
   connectorId: ModelId;
-  foldersToBrowse?: string[];
+  nodesToBrowse?: string[];
   totalCount: number;
   startSyncTs?: number;
 }) {
-  if (foldersToBrowse === undefined) {
-    foldersToBrowse = await getFoldersToSync(connectorId);
+  if (nodesToBrowse === undefined) {
+    nodesToBrowse = await getFoldersToSync(connectorId);
+  }
+
+  while (nodesToBrowse.length > 0) {
+    const folder = nodesToBrowse.pop();
+    if (!folder) {
+      throw new Error("folderId should be defined");
+    }
+    do {
+      const res = await syncFiles(
+        connectorId,
+        folder,
+        startSyncTs,
+        nextPageToken,
+        mimeTypeFilter
+      );
+      nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+      totalCount += res.count;
+      nodesToBrowse = nodesToBrowse.concat(res.subfolders);
+
+      await reportInitialSyncProgress(
+        connectorId,
+        `Synced ${totalCount} files`
+      );
+    } while (nextPageToken);
+    await markFolderAsVisited(connectorId, folder);
+    if (workflowInfo().historyLength > 4000) {
+      await continueAsNew<typeof googleDriveFullSync>({
+        connectorId,
+        garbageCollect,
+        foldersToBrowse: nodesToBrowse,
+        totalCount,
+        startSyncTs,
+        mimeTypeFilter,
+      });
+    }
   }
 
   await syncSucceeded(connectorId);

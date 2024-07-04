@@ -31,6 +31,12 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 
+export async function getNodesToSync(connectorId) {
+  const rootResources =
+    await MicrosoftNodeResource.listRootsByConnectorId(connectorId);
+
+  const client = await getClient(connector.connectionId);
+}
 export async function fullSyncActivity({
   connectorId,
   dataSourceConfig,
