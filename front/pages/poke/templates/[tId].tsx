@@ -1,9 +1,9 @@
 import {
+  AssistantPreview,
   ColorPicker,
   DropdownMenu,
   EmojiPicker,
   Markdown,
-  TemplateItem,
 } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
@@ -438,12 +438,12 @@ function PreviewDialog({ form }: { form: any }) {
         <PokeDialogHeader>
           <PokeDialogTitle>Preview</PokeDialogTitle>
         </PokeDialogHeader>
-        <TemplateItem
-          name={form.getValues("handle")}
-          id="1"
+        <AssistantPreview
+          title={form.getValues("handle")}
+          pictureUrl={avatarVisual}
           description={form.getValues("description") ?? ""}
-          visual={avatarVisual}
-          href={""}
+          variant="list"
+          onClick={() => console.log("clicked")}
         />
       </PokeDialogContent>
     </PokeDialog>
