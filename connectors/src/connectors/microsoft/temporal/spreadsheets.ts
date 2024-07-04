@@ -1,4 +1,4 @@
-import { slugify } from "@dust-tt/types";
+import { getSanitizedHeaders, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
@@ -15,6 +15,8 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+
+const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
 async function upsertSpreadsheetInDb(
   connector: ConnectorResource,
@@ -96,9 +98,9 @@ async function processSheet(
   if (!worksheet.id) {
     return false;
   }
-  logger.info({ internalId }, "Processing sheet");
   const content = await getWorksheetContent(client, internalId);
   const loggerArgs = {
+    connectorType: "microsoft",
     connectorId: connector.id,
     worksheetId: internalId,
     sheet: {
@@ -112,16 +114,31 @@ async function processSheet(
     "[Spreadsheet] Processing sheet in Microsoft Excel."
   );
 
+  // Content.text is guaranteed to be a 2D array with each row of the same length.
   const rows: string[][] = content.text;
 
+  if (rows.length > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
+    logger.info(
+      { ...loggerArgs, rowCount: rows.length },
+      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, skipping further processing.`
+    );
+
+    // If the sheet has too many rows, return an empty array to ignore it.
+    return false;
+  }
+
+  const [rawHeaders, ...rest] = rows;
+
   // Assuming the first line as headers, at least one additional data line is required.
-  if (rows.length > 1) {
+  if (rawHeaders && rows.length > 1) {
+    const headers = getSanitizedHeaders(rawHeaders);
+
     await upsertTable(
       connector,
       internalId,
       spreadsheet,
       worksheet,
-      rows,
+      [headers, ...rest],
       loggerArgs
     );
 
