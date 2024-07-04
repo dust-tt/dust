@@ -18,7 +18,6 @@ import {
   isRetrievalConfiguration,
   isTextContent,
   isUserMessageType,
-  isVisualizationActionType,
   isVisualizationConfiguration,
   isWebsearchConfiguration,
   Ok,
@@ -396,7 +395,7 @@ export async function constructPromptMultiActions(
     (action) => isVisualizationConfiguration(action)
   );
   if (needVisualizationMetaPrompt) {
-    additionalInstructions += `The React code generated in a <visualization> tag in the tool call is interpreted to render the graph. No need to repeat it.\n`;
+    additionalInstructions += `Graphs are generated with the visualization tool. The tool is rendering the graph to the user. Don't repeat its code.\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;
