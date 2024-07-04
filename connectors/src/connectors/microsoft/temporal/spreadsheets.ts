@@ -191,7 +191,7 @@ export async function syncSpreadSheet(
   const spreadsheet = await upsertSpreadsheetInDb(connector, documentId, file);
 
   // List synced sheets.
-  const syncedWorksheets = await spreadsheet?.fetchChildren(connectorId);
+  const syncedWorksheets = await spreadsheet.fetchChildren();
 
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheets) {

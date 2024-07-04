@@ -255,10 +255,10 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, blob.get());
   }
 
-  async fetchChildren(connectorId: ModelId) {
+  async fetchChildren() {
     const blobs = await this.model.findAll({
       where: {
-        connectorId,
+        connectorId: this.connectorId,
         parentInternalId: this.internalId,
       },
     });
