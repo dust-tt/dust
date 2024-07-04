@@ -143,15 +143,19 @@ export async function renderConversationForModelMultiActions({
             continue;
           }
 
-          messages.push({
-            role: "assistant",
-            function_calls: step.actions.length
-              ? step.actions.map((s) => s.call)
-              : undefined,
-            content: step.contents.join("\n"),
-          } as typeof step.actions.length extends 0
-            ? AssistantContentMessageTypeModel
-            : AssistantFunctionCallMessageTypeModel);
+          if (step.actions.length) {
+            messages.push({
+              role: "assistant",
+              function_calls: step.actions.map((s) => s.call),
+              content: step.contents.join("\n"),
+            } satisfies AssistantFunctionCallMessageTypeModel);
+          } else {
+            messages.push({
+              role: "assistant",
+              content: step.contents.join("\n"),
+              name: m.configuration.name,
+            } satisfies AssistantContentMessageTypeModel);
+          }
 
           for (const { result } of step.actions) {
             messages.push(result);
