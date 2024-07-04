@@ -248,7 +248,17 @@ async function handleUserMessageEvents(
           );
         }
       } catch (e) {
-        logger.error({ error: e }, "Error Posting message");
+        logger.error(
+          {
+            error: e,
+            conversationId: conversation.sId,
+            workspaceId: conversation.owner.sId,
+            type: "handl_user_message_events",
+            userMessageId: userMessage?.sId,
+            agentMessageIds: agentMessages.map((m) => m.sId),
+          },
+          "Error Posting message"
+        );
       } finally {
         await redis.quit();
         if (!didResolve) {
@@ -344,7 +354,16 @@ export async function retryAgentMessageWithPubSub(
             }
           }
         } catch (e) {
-          logger.error({ error: e }, "Error Posting message");
+          logger.error(
+            {
+              error: e,
+              conversationId: conversation.sId,
+              workspaceId: conversation.owner.sId,
+              type: "retry_agent_message",
+              agentMessageId: message.sId,
+            },
+            "Error Posting message"
+          );
         } finally {
           await redis.quit();
           if (!didResolve) {
