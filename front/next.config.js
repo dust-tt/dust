@@ -63,11 +63,11 @@ module.exports = {
       tls: false,
       dgram: false,
     };
-    // config.module.rules.push({
-    //   test: /\.js$/,
-    //   use: ["source-map-loader"],
-    //   enforce: "pre"
-    // });
+    config.module.rules.push({
+      test: /\.js$/,
+      use: ["source-map-loader"],
+      enforce: "pre"
+    });
     return config;
   },
 };
