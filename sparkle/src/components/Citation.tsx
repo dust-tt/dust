@@ -105,7 +105,10 @@ export function Citation({
             {index}
           </div>
         )}
-        <Icon visual={typeIcons[type]} className="s-text-element-700" />
+
+        {!isLoading && (
+          <Icon visual={typeIcons[type]} className="s-text-element-700" />
+        )}
         <div className="s-flex-grow s-text-xs" />
         {onClose && (
           <div
