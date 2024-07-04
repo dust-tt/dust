@@ -4,7 +4,7 @@ import { stringify } from "csv-stringify/sync";
 
 import {
   getDriveItemApiPath,
-  getSheetApiPath,
+  getWorksheetApiPath,
   getWorksheetContent,
   getWorksheets,
   microsoftInternalIdFromNodeData,
@@ -16,25 +16,33 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
-async function upsertSheetInDb(
+async function upsertSpreadsheetInDb(
+  connector: ConnectorResource,
+  internalId: string,
+  file: microsoftgraph.DriveItem
+) {
+  return MicrosoftNodeResource.upsert({
+    internalId,
+    connectorId: connector.id,
+    lastSeenTs: new Date(),
+    nodeType: "file" as const,
+    name: file.name ?? "",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    lastUpsertedTs: new Date(),
+  });
+}
+
+async function upsertWorksheetInDb(
   connector: ConnectorResource,
   internalId: string,
   worksheet: microsoftgraph.WorkbookWorksheet
 ) {
-  console.log("upsertSheetInDb", {
+  return MicrosoftNodeResource.upsert({
     internalId,
     connectorId: connector.id,
     lastSeenTs: new Date(),
-    nodeType: "worksheet",
-    name: worksheet.name ?? "",
-    mimeType: "text/csv",
-    lastUpsertedTs: new Date(),
-  });
-  await MicrosoftNodeResource.upsert({
-    internalId,
-    connectorId: connector.id,
-    lastSeenTs: new Date(),
-    nodeType: "worksheet",
+    nodeType: "worksheet" as const,
     name: worksheet.name ?? "",
     mimeType: "text/csv",
     lastUpsertedTs: new Date(),
@@ -117,7 +125,7 @@ async function processSheet(
       loggerArgs
     );
 
-    await upsertSheetInDb(connector, internalId, worksheet);
+    await upsertWorksheetInDb(connector, internalId, worksheet);
 
     return true;
   }
@@ -180,18 +188,17 @@ export async function syncSpreadSheet(
 
   const worksheets = await getWorksheets(client, documentId);
 
+  const spreadsheet = await upsertSpreadsheetInDb(connector, documentId, file);
+
   // List synced sheets.
-  const syncedWorksheets = await MicrosoftNodeResource.fetchByParentInternalId(
-    connectorId,
-    documentId
-  );
+  const syncedWorksheets = await spreadsheet?.fetchChildren(connectorId);
 
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheets) {
     if (worksheet.id) {
       const internalWorkSheetId = microsoftInternalIdFromNodeData({
         nodeType: "worksheet",
-        itemApiPath: getSheetApiPath(worksheet, documentId),
+        itemApiPath: getWorksheetApiPath(worksheet, documentId),
       });
       const isImported = await processSheet(
         client,

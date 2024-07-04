@@ -206,7 +206,7 @@ export function getDriveItemApiPath(
   return itemApiPath;
 }
 
-export function getSheetApiPath(
+export function getWorksheetApiPath(
   item: MicrosoftGraph.WorkbookWorksheet,
   parentInternalId: string
 ) {

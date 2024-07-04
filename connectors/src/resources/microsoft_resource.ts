@@ -255,21 +255,21 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, blob.get());
   }
 
-  static async fetchByParentInternalId(
-    connectorId: ModelId,
-    parentInternalId: string
-  ) {
+  async fetchChildren(connectorId: ModelId) {
     const blobs = await this.model.findAll({
       where: {
         connectorId,
-        parentInternalId,
+        parentInternalId: this.internalId,
       },
     });
     if (!blobs) {
       return [];
     }
 
-    return blobs.map((blob) => new this(this.model, blob.get()));
+    return blobs.map(
+      (blob) =>
+        new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get())
+    );
   }
 
   static async batchDelete({
