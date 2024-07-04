@@ -1,8 +1,10 @@
 use anyhow::Result;
-use dust::deno::script::{async_call, call, safe_async_call};
-use tokio::{task, try_join};
+use dust::deno::js_executor::{JSClient, JSExecutor};
+use tokio::try_join;
 
-async fn test() -> Result<()> {
+// create a worker on the main thread init
+
+async fn test(js_client: JSClient) -> Result<()> {
     println!("here");
     let js_code = r#"
         _fun = (env) => {
@@ -12,167 +14,85 @@ async fn test() -> Result<()> {
     let env = serde_json::json!({ "state": { "INPUT": { "foo": "bar" } } });
     let timeout = std::time::Duration::from_secs(10);
 
-    let r = tokio::task::spawn_blocking(move || {
-        // let rt = tokio::runtime::Builder::new_current_thread()
-        //     .enable_all()
-        //     .thread_keep_alive(timeout)
-        //     .build()
-        //     .unwrap();
-
-        call(&js_code, "_fun", &env, Some(timeout))
-        // rt.block_on(async move {
-        //     tokio::time::timeout(timeout, async_call(&js_code, "_fun", &env, Some(timeout))).await
-        // })
-    })
-    .await??;
-
-    // let r = safe_async_call(js_code, fun, &env, None).await?;
-
-    // let local = tokio::task::LocalSet::new();
-    // let r = local
-    //     .run_until(async {
-    //         let r = task::spawn_local(async move { async_call(js_code, fun, &env, None).await })
-    //             .await?;
-    //         r
-    //     })
-    //     .await?;
+    js_client
+        .exec(js_code.to_string(), "_fun".to_string(), env, timeout)
+        .await?;
     println!("there");
 
     Ok(())
 }
 
-async fn mutli_test() -> Result<()> {
+async fn mutli_test(js_client: JSClient) -> Result<()> {
     try_join!(
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
-        test(),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
+        test(js_client.clone()),
     )?;
 
-    // let mut futures = vec![];
-    // for _ in 0..32 {
-    //     futures.push(test());
-    // }
-    // // futures::future::join_all(futures).await;
-    // tokio::try_join_all(futures).await?;
-    // sleep for 10s
     println!("sleeping for 10s");
     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     Ok(())
 }
 
 fn main() {
+    let (js_executor, js_client) = JSExecutor::new();
+    JSExecutor::start(js_executor);
+
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
         .enable_all()
+        .max_blocking_threads(4)
         .build()
         .unwrap();
 
-    if let Err(error) = runtime.block_on(mutli_test()) {
+    if let Err(error) = runtime.block_on(mutli_test(js_client)) {
         eprintln!("error: {}", error);
     }
 }

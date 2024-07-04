@@ -57,18 +57,17 @@ url = "2.5"
 dns-lookup = "1.0"
 async-stream = "0.3"
 eventsource-client = { git = "https://github.com/dust-tt/rust-eventsource-client", rev = "148050f8fb9f8abb25ca171aa68ea817277ca4f6" }
-# rustyscript = { git = "https://github.com/rscarson/rustyscript", rev="3da68e30c05739126c35b39c4f370c71cdbbbd34"}
 tera = "1.20"
 fancy-regex = "0.13"
 rustc-hash = "1.1"
 bstr = "1.9"
 base64 = "0.22"
 cloud-storage = { version = "0.11", features = ["global-client"] }
-qdrant-client = "1.9"
+qdrant-client = "=1.9.0"
 tower-http = {version = "0.5", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-deno_core = "0.288"
+deno_core = "0.290"
 rayon = "1.10"
 clap = { version = "4.5", features = ["derive"] }
 async-recursion = "1.1"

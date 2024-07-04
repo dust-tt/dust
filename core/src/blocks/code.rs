@@ -1,4 +1,3 @@
-
 use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
 use crate::deno::script::{async_call, call, safe_async_call, Script};
 use crate::Rule;
@@ -82,7 +81,7 @@ impl Block for Code {
         // export const f1 = async () => resolve_after(4000);
         // export const f2 = async () => resolve_after(2000);
         // export const f3 = async () => resolve_after(1000);
-    // ",
+        // ",
         // );
 
         // let mut runtime = Runtime::new(Default::default())?;
@@ -141,16 +140,17 @@ impl Block for Code {
         // .await;
 
         let r = tokio::task::spawn_blocking(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .thread_keep_alive(timeout)
-                .build()
-                .unwrap();
+            call(&code, "_fun", &env, Some(timeout))
+            // let rt = tokio::runtime::Builder::new_current_thread()
+            //     .enable_all()
+            //     .thread_keep_alive(timeout)
+            //     .build()
+            //     .unwrap();
 
-            // call(&code, "_fun", &env, Some(timeout))
-            rt.block_on(async move {
-                tokio::time::timeout(timeout, async_call(&code, "_fun", &env, Some(timeout))).await
-            })
+            // // call(&code, "_fun", &env, Some(timeout))
+            // rt.block_on(async move {
+            //     tokio::time::timeout(timeout, async_call(&code, "_fun", &env, Some(timeout))).await
+            // })
         })
         .await??;
 

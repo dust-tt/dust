@@ -10,7 +10,6 @@ use axum::{
     Router,
 };
 use datadog_formatting_layer::DatadogFormattingLayer;
-use deno_core::JsRuntime;
 use dust::{
     app,
     blocks::block::BlockType,
@@ -2434,7 +2433,7 @@ fn main() {
         .build()
         .unwrap();
 
-    JsRuntime::init_platform(None);
+    // JsRuntime::init_platform(None);
 
     let r = rt.block_on(async {
         tracing_subscriber::registry()

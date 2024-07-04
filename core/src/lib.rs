@@ -71,6 +71,7 @@ pub mod sqlite_workers {
 }
 
 pub mod deno {
+    pub mod js_executor;
     pub mod script;
 }
 
