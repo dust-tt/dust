@@ -359,6 +359,9 @@ export class ConnectorsAPI {
     provider: ConnectorProvider,
     connectorIds: string[]
   ): Promise<ConnectorsAPIResponse<ConnectorType[]>> {
+    if (connectorIds.length === 0) {
+      return new Ok([]);
+    }
     const res = await this._fetchWithError(
       `${CONNECTORS_API}/connectors?provider=${encodeURIComponent(
         provider

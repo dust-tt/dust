@@ -62,24 +62,36 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     providerFilter: "webcrawler",
   });
 
+  const connectorIds = allDataSources
+    .filter(
+      (ds) => ds.connectorProvider === "webcrawler" && ds.connectorId !== null
+    )
+    .map((ds) => ds.connectorId) as string[];
+
   const connectorsAPI = new ConnectorsAPI(logger);
-  const dataSources = await Promise.all(
-    allDataSources
-      .filter((ds) => ds.connectorProvider === "webcrawler")
-      .map(async (ds): Promise<DataSourceWithConnector> => {
-        if (!ds.connectorId) {
-          throw new Error("Connector ID is missing");
-        }
-        const connectorRes = await connectorsAPI.getConnector(ds.connectorId);
-        if (connectorRes.isErr()) {
-          throw new Error("Connector not found");
-        }
-        return {
-          ...ds,
-          connector: connectorRes.value,
-        };
-      })
+
+  const connectorsRes = await connectorsAPI.getConnectors(
+    "webcrawler",
+    connectorIds
   );
+  if (connectorsRes.isErr()) {
+    throw new Error("Failed to fetch connectors");
+  }
+
+  const dataSources = allDataSources
+    .filter((ds) => ds.connectorProvider === "webcrawler")
+    .map((ds) => {
+      const connector = connectorsRes.value.find(
+        (c) => c.id === ds.connectorId
+      );
+      if (!connector) {
+        throw new Error("Connector not found");
+      }
+      return {
+        ...ds,
+        connector,
+      };
+    });
 
   return {
     props: {
