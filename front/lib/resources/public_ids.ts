@@ -57,13 +57,13 @@ function getIdsFromPublicId(
   }
 
   try {
-    const ids = sqids.decode(publicId);
+    const ids = sqids.decode(publicIdWithoutPrefix);
 
     if (ids.length !== 3) {
       return new Err(new Error("Invalid decoded public Id length"));
     }
 
-    return new Ok([ids[1], ids[2], ids[3]]);
+    return new Ok([ids[0], ids[1], ids[2]]);
   } catch (error) {
     return new Err(
       error instanceof Error ? error : new Error("Failed to decode public Id")
