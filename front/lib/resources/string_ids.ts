@@ -70,7 +70,7 @@ function getIdsFromSId(sId: string): Result<
   try {
     const ids = sqids.decode(sIdWithoutPrefix);
 
-    if (ids.length !== 3) {
+    if (ids.length !== 4) {
       return new Err(new Error("Invalid decoded string Id length"));
     }
 
