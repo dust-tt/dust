@@ -8,10 +8,6 @@ name = "dust-api"
 path = "bin/dust_api.rs"
 
 [[bin]]
-name = "test_deno"
-path = "bin/test_deno.rs"
-
-[[bin]]
 name = "qdrant_migrator"
 path = "bin/qdrant/migrator.rs"
 
@@ -67,7 +63,7 @@ qdrant-client = "=1.9.0"
 tower-http = {version = "0.5", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-deno_core = "0.290"
+deno_core = "0.292"
 rayon = "1.10"
 clap = { version = "4.5", features = ["derive"] }
 async-recursion = "1.1"

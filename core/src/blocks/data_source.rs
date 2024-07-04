@@ -3,7 +3,7 @@ use crate::blocks::block::{
 };
 use crate::blocks::helpers::get_data_source_project;
 use crate::data_sources::data_source::{Document, SearchFilter};
-use crate::deno::script::{call, Script};
+use crate::deno::js_executor::JSExecutor;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -244,21 +244,10 @@ impl Block for DataSource {
             Some(c) => {
                 let e = env.clone();
                 let filter_code = c.clone().replace("<DUST_TRIPLE_BACKTICKS>", "```");
-                let (filter_value, filter_logs): (Value, Vec<Value>) =
-                    tokio::task::spawn_blocking(move || {
-                        let mut script = Script::from_string(filter_code.as_str())?
-                            .with_timeout(std::time::Duration::from_secs(10));
-                        script.call("_fun", &e)
-                    })
-                    .await?
+                let (filter_value, filter_logs): (Value, Vec<Value>) = JSExecutor::client()?
+                    .exec(&filter_code, "_fun", &e, std::time::Duration::from_secs(10))
+                    .await
                     .map_err(|e| anyhow!("Error in `filter_code`: {}", e))?;
-                // call(
-                //     &filter_code,
-                //     "_fun",
-                //     &e,
-                //     Some(std::time::Duration::from_secs(10)),
-                // )
-                // .await
                 (
                     match filter_value {
                         Value::Null => None,

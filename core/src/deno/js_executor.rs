@@ -1,7 +1,8 @@
-use std::{sync::mpsc, time::Duration};
+use std::{ops::Add, sync::mpsc, time::Duration};
 
 use anyhow::{anyhow, Result};
 use deno_core::{error::AnyError, serde_v8, v8, JsRuntime, RuntimeOptions};
+use parking_lot::RwLock;
 use tokio::sync::oneshot;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -16,7 +17,7 @@ struct JSRequest {
     response_channel: oneshot::Sender<Result<ValueWithLogs, AnyError>>,
     js_code: String,
     fn_name: String,
-    arguments: serde_json::Value,
+    json_args: serde_json::Value,
     timeout: Duration,
 }
 
@@ -26,32 +27,131 @@ pub struct JSClient {
 }
 
 impl JSClient {
-    pub async fn exec(
+    pub async fn exec<A, R>(
         &self,
-        js_code: String,
-        fn_name: String,
-        arguments: serde_json::Value,
+        js_code: &str,
+        fn_name: &str,
+        arguments: A,
         timeout: Duration,
-    ) -> Result<ValueWithLogs> {
+    ) -> Result<(R, Vec<serde_json::Value>)>
+    where
+        A: serde::Serialize,
+        R: serde::de::DeserializeOwned,
+    {
+        let json_args = serde_json::to_value(arguments)?;
+
         let (tx, rx) = oneshot::channel();
         let r = JSRequest {
             response_channel: tx,
-            js_code,
-            fn_name,
-            arguments,
+            js_code: js_code.to_string(),
+            fn_name: fn_name.to_string(),
+            json_args,
             timeout,
         };
 
-        self.tx.send(r).unwrap();
-        rx.await?
+        // tx.send is non-blocking since the sync::thread mpsc channel has infinite buffer.
+        self.tx.send(r)?;
+
+        // this is a tokio::sync::oneshot channel so this is a properly supported async await for
+        // the tokio runtime.
+        let r = rx.await??;
+
+        Ok((
+            serde_json::from_value::<R>(r.value)
+                .map_err(|e| anyhow!("Deserialization error: {}", e))?,
+            r.logs,
+        ))
     }
 }
+
+// This is a parking_lot Mutex (so blocking) but the operation will just be a simple clone.
+static JS_CLIENT: RwLock<Option<JSClient>> = RwLock::new(None);
 
 pub struct JSExecutor {
     rx: mpsc::Receiver<JSRequest>,
 }
 
+/// JSExecutor is in charge of spawning a dedicated thread per deno runtime to execute isolated and
+/// sandboxed javascript code. The JSClient is used to send requests to the JSExecutor
+/// asyncrohonously from any thread or tokio worker.
+/// # Example Usage
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// use anyhow::Result;
+/// use dust::deno::js_executor::JSExecutor;
+/// use tokio::try_join;
+///
+/// // create a worker on the main thread init
+///
+/// async fn test(wait: usize) -> Result<()> {
+///     println!("here {}", wait);
+///     let js_code = format!(
+///         r#"
+///         _fun = (env) => {{
+///             let a = 0;
+///             for (var i = 0; i < 1000000 * {wait}; i ++) {{
+///                a += 1;
+///             }}
+///             env.state.INPUT.wait = "{wait}";
+///             return env.state.INPUT;
+///         }}
+///     "#
+///     );
+///     let env = serde_json::json!({ "state": { "INPUT": { "foo": "bar" } } });
+///     let timeout = std::time::Duration::from_secs(10);
+///
+///     let (r, _): (HashMap<String, String>, Vec<serde_json::Value>) = JSExecutor::client()?
+///         .exec(&js_code, "_fun", env, timeout)
+///         .await?;
+///     println!("there {:?}", r);
+///
+///     Ok(())
+/// }
+///
+/// async fn mutli_test() -> Result<()> {
+///     try_join!(test(5), test(2), test(7), test(1), test(3), test(4),)?;
+///
+///     println!("sleeping for 2s");
+///     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+///     Ok(())
+/// }
+///
+/// fn main() {
+///     JSExecutor::init();
+///
+///     let runtime = tokio::runtime::Builder::new_multi_thread()
+///         .worker_threads(32)
+///         .enable_all()
+///         .max_blocking_threads(4)
+///         .build()
+///         .unwrap();
+///
+///     if let Err(error) = runtime.block_on(mutli_test()) {
+///         eprintln!("error: {}", error);
+///     }
+/// }
+/// ```
 impl JSExecutor {
+    pub fn init() {
+        let (executor, client) = JSExecutor::new();
+        JSExecutor::start(executor);
+        let mut guard = JS_CLIENT.write();
+        *guard = Some(client);
+    }
+
+    pub fn client() -> Result<JSClient> {
+        let js_client = {
+            let guard = JS_CLIENT.read();
+            guard.clone()
+        };
+        match js_client {
+            Some(c) => Ok(c),
+            None => Err(anyhow!("JSExecutor not initialized")),
+        }
+    }
+
     // JSExecutor must be created ans started on the main thread of the Rust program. The returned
     // client can be cloned and used in any thread or tokio worker.
     pub fn new() -> (Self, JSClient) {
@@ -78,10 +178,10 @@ impl JSExecutor {
     async fn exec(
         js_code: String,
         fn_name: String,
-        arguments: serde_json::Value,
+        json_args: serde_json::Value,
         timeout: Duration,
     ) -> Result<ValueWithLogs> {
-        let json_args = serde_json::to_string(&arguments)?;
+        let json_args_str = serde_json::to_string(&json_args)?;
 
         let code = format!(
             "let __rust_logs = [];
@@ -93,7 +193,7 @@ impl JSExecutor {
 
              (async () => {{
 		     	let __rust_result = {fn_name}.constructor.name === 'AsyncFunction'
-		     		? await {fn_name}({json_args})
+		     		? await {fn_name}({json_args_str})
 		     		: {fn_name}({json_args});
 
 		     	if (typeof __rust_result === 'undefined')
@@ -130,16 +230,10 @@ impl JSExecutor {
             serde_v8::from_v8::<ValueWithLogs>(scope, local)
         };
 
-        println!(">>>>> DROPPING");
         drop(runtime);
-        println!(">>>>> DROPED");
 
         match result {
-            Ok(r) => {
-                println!("HERE >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 6");
-                println!("value: {:?}", r.value);
-                Ok(r)
-            }
+            Ok(r) => Ok(r),
             Err(err) => Err(anyhow!("Code block deserialization error: {err:?}")),
         }
     }
@@ -161,8 +255,10 @@ impl JSExecutor {
 
                 let v = rt.block_on(async {
                     tokio::time::timeout(
-                        r.timeout,
-                        JSExecutor::exec(r.js_code, r.fn_name, r.arguments, r.timeout),
+                        // This is mostly defense in depth as the exec function will also attempt
+                        // to terminate the execution after the timeout. We therefore add a buffer.
+                        r.timeout.add(Duration::from_secs(1)),
+                        JSExecutor::exec(r.js_code, r.fn_name, r.json_args, r.timeout),
                     )
                     .await?
                 });
