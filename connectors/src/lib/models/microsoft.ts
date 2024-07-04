@@ -170,7 +170,7 @@ MicrosoftNodeModel.init(
       allowNull: false,
     },
     internalId: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(512),
       allowNull: false,
     },
     nodeType: {
@@ -188,7 +188,7 @@ MicrosoftNodeModel.init(
       defaultValue: "",
     },
     parentInternalId: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(512),
       allowNull: true,
     },
   },

@@ -11,6 +11,7 @@ import {
   microsoftInternalIdFromNodeData,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
+import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -132,8 +133,10 @@ export async function syncOneFile(
     nodeType: "file",
   });
 
-  const fileResource =
-    await MicrosoftNodeResource.fetchByInternalId(documentId);
+  const fileResource = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    documentId
+  );
 
   // Early return if lastSeenTs is greater than workflow start.
   // This allows avoiding resyncing already-synced documents in case of activity failure
@@ -178,6 +181,12 @@ export async function syncOneFile(
     pdfEnabled: config?.pdfEnabled || false,
   });
 
+  if (
+    file.file?.mimeType ===
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ) {
+    return syncSpreadSheet(client, { file, parent });
+  }
   if (!file.file?.mimeType || !mimeTypesToSync.includes(file.file.mimeType)) {
     localLogger.info("Type not supported, skipping file.");
 

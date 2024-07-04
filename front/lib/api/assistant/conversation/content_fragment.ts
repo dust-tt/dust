@@ -70,6 +70,10 @@ export async function getContentFragmentBlob(
       return new Err(new Error("File not found."));
     }
 
+    if (file.useCase !== "conversation") {
+      return new Err(new Error("File not meant to be used in a conversation."));
+    }
+
     // Give priority to the URL if it is provided.
     const sourceUrl = url ?? file.getPublicUrl(auth);
     return new Ok({

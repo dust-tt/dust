@@ -60,6 +60,37 @@ export async function getFolders(
   return res.filter((item) => item.folder);
 }
 
+export async function getWorksheets(
+  client: Client,
+  internalId: string
+): Promise<MicrosoftGraph.WorkbookWorksheet[]> {
+  const { nodeType, itemApiPath } = microsoftNodeDataFromInternalId(internalId);
+
+  if (nodeType !== "file") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getWorksheets, expected file`
+    );
+  }
+
+  const res = await client.api(`${itemApiPath}/workbook/worksheets`).get();
+  return res.value;
+}
+
+export async function getWorksheetContent(
+  client: Client,
+  internalId: string
+): Promise<MicrosoftGraph.WorkbookRange> {
+  const { nodeType, itemApiPath } = microsoftNodeDataFromInternalId(internalId);
+
+  if (nodeType !== "worksheet") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getWorksheet content, expected worksheet`
+    );
+  }
+  const res = await client.api(`${itemApiPath}/usedRange?$select=text`).get();
+  return res;
+}
+
 export async function getTeams(client: Client): Promise<MicrosoftGraph.Team[]> {
   const res = await client
     .api("/me/joinedTeams")
@@ -173,4 +204,18 @@ export function getDriveItemApiPath(
       : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
         parentItemApiPath.replace(/items\/[^/]+$/, `items/${item.id}`);
   return itemApiPath;
+}
+
+export function getWorksheetApiPath(
+  item: MicrosoftGraph.WorkbookWorksheet,
+  parentInternalId: string
+) {
+  const { nodeType, itemApiPath: parentItemApiPath } =
+    microsoftNodeDataFromInternalId(parentInternalId);
+
+  if (nodeType !== "file") {
+    throw new Error(`Invalid parent nodeType: ${nodeType}`);
+  }
+
+  return `${parentItemApiPath}/workbook/worksheets/${item.id}`;
 }
