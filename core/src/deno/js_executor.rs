@@ -219,9 +219,6 @@ impl JSExecutor {
         #[allow(deprecated)]
         let value = runtime.resolve_value(promise).await?;
 
-        // let ok = runtime.v8_isolate().cancel_terminate_execution();
-        // println!("ok: {:?}", ok);
-
         let result = {
             let scope = &mut runtime.handle_scope();
             let local = v8::Local::new(scope, value);
@@ -229,8 +226,6 @@ impl JSExecutor {
             // in this case deserialize to a JSON `Value`.
             serde_v8::from_v8::<ValueWithLogs>(scope, local)
         };
-
-        drop(runtime);
 
         match result {
             Ok(r) => Ok(r),
