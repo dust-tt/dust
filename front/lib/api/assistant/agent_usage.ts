@@ -5,7 +5,6 @@ import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
-  Conversation,
   Mention,
   Message,
   UserMessage,
@@ -173,36 +172,42 @@ export async function getAgentUsage(
 export async function agentMentionsUserCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
-  // We retrieve mentions from conversations in order to optimize the query
-  // Since we need to filter out by workspace id, retrieving mentions first
-  // would lead to retrieve every single messages
-  const mentions = await Conversation.findAll({
+  const agentConfigurations = await AgentConfiguration.findAll({
+    attributes: ["sId"],
+    where: {
+      workspaceId: workspaceId,
+    },
+  });
+  const allAgentConfigurationIds = [
+    ...agentConfigurations.map((agentConfiguration) => agentConfiguration.sId),
+    ...Object.values(GLOBAL_AGENTS_SID),
+  ];
+
+  const mentions = await Mention.findAll({
     attributes: [
-      [
-        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
-        "agentConfigurationId",
-      ],
+      "agentConfigurationId",
       [
         Sequelize.fn(
           "COUNT",
-          Sequelize.literal('DISTINCT "messages->userMessage"."userId"')
+          Sequelize.literal('DISTINCT "message->userMessage"."userId"')
         ),
         "count",
       ],
     ],
     where: {
-      workspaceId: workspaceId,
+      createdAt: {
+        [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+      },
+      agentConfigurationId: {
+        [Op.in]: allAgentConfigurationIds,
+      },
     },
     include: [
       {
         model: Message,
+        as: "message",
         required: true,
         attributes: [],
-        where: {
-          createdAt: {
-            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
-          },
-        },
         include: [
           {
             model: UserMessage,
@@ -215,19 +220,13 @@ export async function agentMentionsUserCount(
               },
             },
           },
-          {
-            model: Mention,
-            as: "mentions",
-            required: true,
-            attributes: [],
-          },
         ],
       },
     ],
-    order: [["count", "DESC"]],
-    group: ['"messages->mentions"."agentConfigurationId"'],
+    group: ["agentConfigurationId"],
     raw: true,
   });
+
   return mentions.map((mention) => {
     const castMention = mention as unknown as {
       agentConfigurationId: string;
