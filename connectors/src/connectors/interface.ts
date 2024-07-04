@@ -41,9 +41,6 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     fromTs: number | null;
   }): Promise<Result<string, Error>>;
 
-  abstract retrieveConnector(): Promise<Result<ConnectorType, Error>>;
-  abstract retrieveBatchConnectors(): Promise<Result<ConnectorType[], Error>>;
-
   abstract retrievePermissions(params: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
