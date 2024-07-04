@@ -29,8 +29,6 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import PQueue from "p-queue";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 
 export async function fullSyncActivity({
@@ -46,9 +44,9 @@ export async function fullSyncActivity({
     throw new Error(`Connector with id ${connectorId} not found`);
   }
 
-  const config =
+  const providerConfig =
     await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
-  if (!config) {
+  if (!providerConfig) {
     throw new Error(`Configuration for connector ${connectorId} not found`);
   }
 
@@ -56,6 +54,8 @@ export async function fullSyncActivity({
     await MicrosoftRootResource.listRootsByConnectorId(connectorId);
 
   const client = await getClient(connector.connectionId);
+
+  /** Sync files stored in drives & folders (.docx, .pptx, .pdf, etc.)  */
 
   const folderResources = resources.filter((resource) =>
     ["folder"].includes(resource.nodeType)
@@ -83,9 +83,8 @@ export async function fullSyncActivity({
   await syncOneFile({
     connectorId,
     dataSourceConfig,
+    providerConfig,
     file,
-    parent: folder,
-    config,
     startSyncTs,
   });
 
@@ -93,14 +92,6 @@ export async function fullSyncActivity({
     throw new Error(`No file or no id`);
   }
 }
-
-const SUPPORTED_MIME_TYPES = [
-  // docx files
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  // TODO(pr): add support for these
-  // "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  // "text/plain",
-];
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -110,9 +101,13 @@ const FILES_SYNC_CONCURRENCY = 10;
 export async function syncFiles({
   connectorId,
   parent,
+  dataSourceConfig,
+  providerConfig,
   startSyncTs,
 }: {
   connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  providerConfig: MicrosoftConfigurationResource;
   parent: MicrosoftNodeResource;
   startSyncTs: number;
 }) {
@@ -129,14 +124,13 @@ export async function syncFiles({
   );
   const client = await getClient(connector.connectionId);
 
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
   // TODO(pr): handle pagination
   const children = await getFilesAndFolders(client, parent.internalId);
 
   const childrenToSync = children.filter(
     (item) =>
-      item.file?.mimeType && SUPPORTED_MIME_TYPES.includes(item.file.mimeType)
+      item.file?.mimeType &&
+      getMimeTypesToSync(providerConfig).includes(item.file.mimeType)
   );
 
   // sync files
@@ -146,8 +140,8 @@ export async function syncFiles({
       await syncOneFile({
         connectorId,
         dataSourceConfig,
+        providerConfig,
         file: child,
-        parent,
         startSyncTs,
       });
     },
@@ -175,21 +169,21 @@ export async function syncFiles({
 export async function syncOneFile({
   connectorId,
   dataSourceConfig,
+  providerConfig,
   file,
-  parent,
   startSyncTs,
   isBatchSync = false,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
+  providerConfig: MicrosoftConfigurationResource;
   file: microsoftgraph.DriveItem;
-  parent: MicrosoftNodeResource;
   startSyncTs: number;
   isBatchSync?: boolean;
 }) {
   const localLogger = logger.child({
     provider: "microsoft",
-    connectorId: parent.connectorId,
+    connectorId,
     internalId: file.id,
     name: file.name,
   });
@@ -250,7 +244,7 @@ export async function syncOneFile({
   }
 
   const mimeTypesToSync = getMimeTypesToSync({
-    pdfEnabled: config?.pdfEnabled || false,
+    pdfEnabled: providerConfig.pdfEnabled || false,
   });
 
   if (
@@ -265,7 +259,7 @@ export async function syncOneFile({
     return false;
   }
 
-  const maxDocumentLen = config?.largeFilesEnabled
+  const maxDocumentLen = providerConfig.largeFilesEnabled
     ? MAX_LARGE_DOCUMENT_TXT_LEN
     : MAX_DOCUMENT_TXT_LEN;
 
@@ -389,7 +383,7 @@ export async function syncOneFile({
 
   const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
     internalId: documentId,
-    connectorId: connectorId,
+    connectorId,
     lastSeenTs: new Date(),
     nodeType: "file",
     name: file.name ?? "",

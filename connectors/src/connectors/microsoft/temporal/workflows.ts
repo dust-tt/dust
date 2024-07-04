@@ -24,6 +24,24 @@ export async function fullSyncWorkflow({
   await syncSucceeded(connectorId);
 }
 
+export async function fullSyncSitesWorkflow({
+  connectorId,
+  foldersToBrowse = undefined,
+  totalCount = 0,
+  startSyncTs = undefined,
+}: {
+  connectorId: ModelId;
+  foldersToBrowse?: string[];
+  totalCount: number;
+  startSyncTs?: number;
+}) {
+  if (foldersToBrowse === undefined) {
+    foldersToBrowse = await getFoldersToSync(connectorId);
+  }
+
+  await syncSucceeded(connectorId);
+}
+
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-${connectorId}`;
 }
