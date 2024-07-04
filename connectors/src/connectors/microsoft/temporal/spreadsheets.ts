@@ -15,6 +15,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import { getClient } from "@connectors/connectors/microsoft";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
@@ -155,16 +156,13 @@ async function processSheet(
   return false;
 }
 
-export async function syncSpreadSheet(
-  client: Client,
-  {
-    file,
-    parent,
-  }: {
-    file: microsoftgraph.DriveItem;
-    parent: MicrosoftRootResource;
-  }
-): Promise<
+export async function syncSpreadSheet({
+  connectorId,
+  file,
+}: {
+  connectorId: number;
+  file: microsoftgraph.DriveItem;
+}): Promise<
   | {
       isSupported: false;
     }
@@ -173,12 +171,13 @@ export async function syncSpreadSheet(
       skipReason?: string;
     }
 > {
-  const connectorId = parent.connectorId;
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     throw new Error(`Connector with id ${connectorId} not found`);
   }
+
+  const client = await getClient(connector.connectionId);
 
   const localLogger = logger.child({
     provider: "microsoft",
@@ -193,10 +192,7 @@ export async function syncSpreadSheet(
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
-  const itemApiPath = getDriveItemApiPath(
-    file,
-    microsoftInternalIdFromNodeData(parent)
-  );
+  const itemApiPath = getDriveItemApiPath(file);
 
   const documentId = microsoftInternalIdFromNodeData({
     itemApiPath,

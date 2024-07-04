@@ -110,26 +110,19 @@ export async function getSiteNodesToSync(connectorId: ModelId) {
   );
 }
 
-/*export async function markNodeAsVisited(
+export async function markNodeAsVisited(
   connectorId: ModelId,
-  internalId: string
+  node: MicrosoftNodeResource
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const resource = await MicrosoftNodeResource.fetchByInternalId(internalId);
-  await GoogleDriveFiles.upsert({
-    connectorId: connectorId,
-    dustFileId: getDocumentId(driveFileId),
-    driveFileId: file.id,
-    name: file.name,
-    mimeType: file.mimeType,
-    parentId: file.parent,
+  await node.update({
     lastSeenTs: new Date(),
   });
-}*/
+}
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -309,7 +302,7 @@ export async function syncOneFile({
     file.file?.mimeType ===
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   ) {
-    return syncSpreadSheet(client, { file, parent });
+    return syncSpreadSheet({ connectorId, file });
   }
   if (!file.file?.mimeType || !mimeTypesToSync.includes(file.file.mimeType)) {
     localLogger.info("Type not supported, skipping file.");

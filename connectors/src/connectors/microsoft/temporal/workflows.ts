@@ -7,13 +7,13 @@ import {
 
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
-const { fullSyncActivity, getSiteNodesToSync, syncFiles, markNodeAsVisited } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "20 minutes",
-  });
+const { getSiteNodesToSync, syncFiles, markNodeAsVisited } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "20 minutes",
+});
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   typeof sync_status
@@ -23,13 +23,10 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
 
 export async function fullSyncWorkflow({
   connectorId,
-  dataSourceConfig,
 }: {
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
 }) {
-  await fullSyncActivity({ connectorId, dataSourceConfig });
-  await syncSucceeded(connectorId);
+  await fullSyncSitesWorkflow({ connectorId });
 }
 
 export async function fullSyncSitesWorkflow({
@@ -40,7 +37,7 @@ export async function fullSyncSitesWorkflow({
 }: {
   connectorId: ModelId;
   nodesToSync?: MicrosoftNodeResource[];
-  totalCount: number;
+  totalCount?: number;
   startSyncTs?: number;
 }) {
   if (startSyncTs === undefined) {
