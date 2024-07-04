@@ -1,5 +1,6 @@
 import {
   ArrowPathIcon,
+  BracesIcon,
   Button,
   Chip,
   Citation,
@@ -23,6 +24,7 @@ import type {
   LightAgentConfigurationType,
   RetrievalActionType,
   UserType,
+  VisualizationActionType,
   WebsearchActionType,
   WebsearchResultType,
   WorkspaceType,
@@ -32,6 +34,7 @@ import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import {
   assertNever,
   isRetrievalActionType,
+  isVisualizationActionType,
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
@@ -84,6 +87,20 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
+
+  const defaultVisualizations: VisualizationActionType[] =
+    message.actions.filter((a): a is VisualizationActionType =>
+      isVisualizationActionType(a)
+    ) as VisualizationActionType[];
+
+  const [streamedVisualizations, setStreamedVisualizations] = useState<
+    { index: number; visualization: string }[]
+  >(
+    defaultVisualizations.map((v) => ({
+      index: v.id,
+      visualization: v?.output?.generation ?? "",
+    }))
+  );
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -261,6 +278,24 @@ export function AgentMessage({
         }
         break;
       }
+
+      case "visualization_generation_tokens":
+        setStreamedVisualizations((m) => {
+          const actionId = event.actionId;
+          const tokens = event.text;
+          const index = m.findIndex((v) => v.index === actionId);
+          if (index === -1) {
+            return [...m, { index: actionId, visualization: tokens }];
+          } else {
+            return m.map((v) => {
+              if (v.index === actionId) {
+                return { ...v, visualization: v.visualization + tokens };
+              }
+              return v;
+            });
+          }
+        });
+        break;
 
       default:
         assertNever(event);
@@ -479,6 +514,7 @@ export function AgentMessage({
           references: references,
           streaming: shouldStream,
           lastTokenClassification: lastTokenClassification,
+          streamedVisualizations,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -491,11 +527,13 @@ export function AgentMessage({
     references,
     streaming,
     lastTokenClassification,
+    streamedVisualizations,
   }: {
     agentMessage: AgentMessageType;
     references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
+    streamedVisualizations: { index: number; visualization: string }[];
   }) {
     if (agentMessage.status === "failed") {
       return (
@@ -535,6 +573,23 @@ export function AgentMessage({
             </div>
           </div>
         ) : null}
+
+        {streamedVisualizations.map(({ index, visualization }) => {
+          return (
+            <div key={index}>
+              <div className="flex flex-row gap-2">
+                <Icon size="sm" visual={BracesIcon} />
+                <div className="font-semibold">Visualization</div>
+              </div>
+              <div>
+                <RenderMessageMarkdown
+                  content={"```js" + visualization + "```"}
+                  isStreaming={true}
+                />
+              </div>
+            </div>
+          );
+        })}
 
         {agentMessage.content !== null && (
           <div>

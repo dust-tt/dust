@@ -1770,6 +1770,9 @@ async function* streamRunAgentEvents(
       case "visualization_params":
         yield event;
         break;
+      case "visualization_generation_tokens":
+        yield event;
+        break;
       case "generation_tokens":
         if (event.classification === "tokens") {
           content += event.text;

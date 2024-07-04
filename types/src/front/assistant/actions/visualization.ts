@@ -14,13 +14,12 @@ export type VisualizationConfigurationType = {
 
 // Dust App output
 export type VisualizationActionOutputType = {
-  code: string;
+  generation: string;
 };
 
 // Action execution
 export interface VisualizationActionType extends BaseAction {
   agentMessageId: ModelId;
-  query: string;
   output: VisualizationActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;
@@ -29,5 +28,5 @@ export interface VisualizationActionType extends BaseAction {
 }
 
 export const VisualizationActionOutputSchema = t.type({
-  code: t.string,
+  generation: t.string,
 });

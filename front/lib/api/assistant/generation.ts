@@ -18,6 +18,8 @@ import {
   isRetrievalConfiguration,
   isTextContent,
   isUserMessageType,
+  isVisualizationActionType,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
   Ok,
   removeNulls,
@@ -388,6 +390,13 @@ export async function constructPromptMultiActions(
   );
   if (canCiteDocuments) {
     additionalInstructions += `${citationMetaPrompt()}\n`;
+  }
+
+  const needVisualizationMetaPrompt = agentConfiguration.actions.some(
+    (action) => isVisualizationConfiguration(action)
+  );
+  if (needVisualizationMetaPrompt) {
+    additionalInstructions += `The React code generated in a <visualization> tag in the tool call is interpreted to render the graph. No need to repeat it.\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;
