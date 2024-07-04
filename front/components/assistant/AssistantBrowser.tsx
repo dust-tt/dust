@@ -187,7 +187,7 @@ export function AssistantBrowser({
                     title={agent.name}
                     pictureUrl={agent.pictureUrl}
                     subtitle={agent.lastAuthors?.join(", ") ?? ""}
-                    description=""
+                    description={agent.description}
                     variant="minimal"
                     onActionClick={() => setAssistantIdToShow(agent.sId)}
                   />

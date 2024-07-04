@@ -1,4 +1,4 @@
-import { TemplateItem } from "@dust-tt/sparkle";
+import { AssistantPreview } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
 import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
@@ -21,13 +21,13 @@ export function TemplateGrid({ templates }: TemplateGridProps) {
   };
 
   const items = templates.map((t) => (
-    <TemplateItem
+    <AssistantPreview
       key={t.sId}
+      title={t.handle}
+      pictureUrl={t.pictureUrl}
       description={t.description ?? ""}
-      id={t.sId}
-      name={`@${t.handle}`}
-      visual={t.pictureUrl}
-      href={makeTemplateModalHref(t.sId)}
+      variant="list"
+      onClick={() => router.push(makeTemplateModalHref(t.sId))}
     />
   ));
 
