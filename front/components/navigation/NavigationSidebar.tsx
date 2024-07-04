@@ -125,6 +125,7 @@ export const NavigationSidebar = React.forwardRef<
                       />
                     )}
                     {nav.menus.map((menu) => {
+                      const targetProps = menu.target ? { target: menu.target } : {};
                       return (
                         <React.Fragment key={menu.id}>
                           <Item.Navigation
@@ -132,10 +133,11 @@ export const NavigationSidebar = React.forwardRef<
                             label={menu.label}
                             icon={menu.icon}
                             href={menu.href}
+                            {...targetProps}
                           />
                           {menu.subMenuLabel && (
                             <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
-                              {menu.subMenuLabel}
+                              {menu.subMenuLabel} 
                             </div>
                           )}
                           {menu.subMenu && (
