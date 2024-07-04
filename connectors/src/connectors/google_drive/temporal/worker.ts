@@ -21,8 +21,6 @@ export async function runGoogleWorkers() {
     taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 10,
     connection,
-    // We have 2 workers running on the same process, with 4096MB of memory each.
-    maxCachedWorkflows: 292 / 2,
     reuseV8Context: true,
     namespace,
     interceptors: {
@@ -41,8 +39,6 @@ export async function runGoogleWorkers() {
     taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 15,
     connection,
-    // We have 2 workers running on the same process, with 4096MB of memory each.
-    maxCachedWorkflows: 292 / 2,
     reuseV8Context: true,
     namespace,
     interceptors: {
