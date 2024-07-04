@@ -39,7 +39,7 @@ spec:
               value: https://metabase.dust.tt
 
             - name: MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE
-              value: 30
+              value: "30"
 
           resources:
             requests:
