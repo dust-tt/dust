@@ -124,6 +124,7 @@
     "sharp": "^0.33.4",
     "showdown": "^2.1.0",
     "slick-carousel": "^1.8.1",
+    "sqids": "^0.3.0",
     "sqlite3": "^5.1.4",
     "sse.js": "^0.6.1",
     "stripe": "^14.2.0",
