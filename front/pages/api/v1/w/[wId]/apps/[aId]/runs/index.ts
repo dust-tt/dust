@@ -94,18 +94,6 @@ function extractUsageFromExecutions(
  *         description: Bearer token for authentication
  *         schema:
  *           type: string
- *       - in: query
- *         name: wId
- *         required: true
- *         description: ID of the workspace
- *         schema:
- *           type: string
- *       - in: query
- *         name: aId
- *         required: true
- *         description: ID of the app
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -118,7 +106,23 @@ function extractUsageFromExecutions(
  *                 description: The hash of the app specification
  *               config:
  *                 type: object
- *                 description: The configuration of the app
+ *                 properties:
+ *                   model:
+ *                     type: object
+ *                     description: Configuration for the model
+ *                     properties:
+ *                       provider_id:
+ *                         type: string
+ *                         description: The ID of the model provider
+ *                       model_id:
+ *                         type: string
+ *                         description: The ID of the model
+ *                       use_cache:
+ *                         type: boolean
+ *                         description: Indicates if caching is used
+ *                       use_stream:
+ *                         type: boolean
+ *                         description: Indicates if streaming is used
  *               inputs:
  *                 type: array
  *                 description: The inputs of the app
