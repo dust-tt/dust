@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: connectors-worker-google-drive-deployment
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: connectors-worker
