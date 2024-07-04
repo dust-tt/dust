@@ -5,6 +5,7 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { Err, isSupportedImageContentFragmentType, Ok } from "@dust-tt/types";
 import type {
@@ -19,6 +20,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
@@ -177,6 +179,9 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
     return {
       id: message.id,
+      fileId: this.fileId
+        ? FileResource.modelIdToSId({ id: this.fileId, workspaceId: owner.id })
+        : null,
       sId: message.sId,
       created: message.createdAt.getTime(),
       type: "content_fragment",
@@ -287,23 +292,90 @@ export async function getContentFragmentText({
   return getPrivateUploadBucket().fetchFileContent(filePath);
 }
 
-async function getSignedUrlForRawContentFragment({
-  workspaceId,
-  conversationId,
-  messageId,
-}: {
-  workspaceId: string;
-  conversationId: string;
-  messageId: string;
-}): Promise<string> {
-  const fileLocation = fileAttachmentLocation({
-    workspaceId,
-    conversationId,
-    messageId,
-    contentFormat: "raw",
+export async function getProcessedFileContent(
+  workspace: WorkspaceType,
+  fileId: string
+): Promise<string> {
+  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
+    fileId,
+    workspaceId: workspace.sId,
+    version: "processed",
   });
 
-  return getPrivateUploadBucket().getSignedUrl(fileLocation.filePath);
+  return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
+}
+
+async function getSignedUrlForProcessedContent(
+  workspace: WorkspaceType,
+  fileId: string
+): Promise<string> {
+  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
+    fileId,
+    workspaceId: workspace.sId,
+    version: "processed",
+  });
+
+  return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
+}
+
+async function renderFromFileId(
+  workspace: WorkspaceType,
+  {
+    contentType,
+    excludeImages,
+    fileId,
+    model,
+    title,
+  }: {
+    contentType: string;
+    excludeImages: boolean;
+    fileId: string;
+    model: ModelConfigurationType;
+    title: string;
+  }
+): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
+  if (isSupportedImageContentFragmentType(contentType)) {
+    if (excludeImages || !model.supportsVision) {
+      return new Ok({
+        role: "content_fragment",
+        name: `inject_${contentType}`,
+        content: [
+          {
+            type: "text",
+            text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
+          },
+        ],
+      });
+    }
+
+    const signedUrl = await getSignedUrlForProcessedContent(workspace, fileId);
+
+    return new Ok({
+      role: "content_fragment",
+      name: `inject_${contentType}`,
+      content: [
+        {
+          type: "image_url",
+          image_url: {
+            url: signedUrl,
+          },
+        },
+      ],
+    });
+  } else {
+    const content = await getProcessedFileContent(workspace, fileId);
+
+    return new Ok({
+      role: "content_fragment",
+      name: `inject_${contentType}`,
+      content: [
+        {
+          type: "text",
+          text: `<attachment type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+        },
+      ],
+    });
+  }
 }
 
 export async function renderContentFragmentForModel(
@@ -316,40 +388,16 @@ export async function renderContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const { contentType, sId, title } = message;
+  const { contentType, fileId, sId, title } = message;
 
   try {
-    if (isSupportedImageContentFragmentType(contentType)) {
-      if (excludeImages || !model.supportsVision) {
-        return new Ok({
-          role: "content_fragment",
-          name: `inject_${contentType}`,
-          content: [
-            {
-              type: "text",
-              text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
-            },
-          ],
-        });
-      }
-
-      const signedUrl = await getSignedUrlForRawContentFragment({
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        messageId: sId,
-      });
-
-      return new Ok({
-        role: "content_fragment",
-        name: `inject_${contentType}`,
-        content: [
-          {
-            type: "image_url",
-            image_url: {
-              url: signedUrl,
-            },
-          },
-        ],
+    if (fileId) {
+      return await renderFromFileId(conversation.owner, {
+        contentType,
+        excludeImages,
+        fileId,
+        model,
+        title,
       });
     } else {
       const content = await getContentFragmentText({

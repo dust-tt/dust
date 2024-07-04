@@ -61,6 +61,7 @@ export function getSupportedContentFragmentTypeCodec(): t.Mixed {
 export type ContentFragmentType = {
   id: ModelId;
   sId: string;
+  fileId: string | null;
   created: number;
   type: "content_fragment";
   visibility: MessageVisibility;
