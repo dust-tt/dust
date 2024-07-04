@@ -1,7 +1,12 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { FileType, LightWorkspaceType, Result } from "@dust-tt/types";
+import type {
+  FileType,
+  LightWorkspaceType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -108,6 +113,26 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
+  get sId(): string {
+    return FileResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("file", {
+      id,
+      workspaceId,
+    });
+  }
+
   // Status logic.
 
   private async update(
@@ -163,7 +188,23 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
-    return `files/w/${owner.sId}/${this.sId}/${version}`;
+    return FileResource.getCloudStoragePathForId({
+      fileId: this.sId,
+      workspaceId: owner.sId,
+      version,
+    });
+  }
+
+  static getCloudStoragePathForId({
+    fileId,
+    workspaceId,
+    version,
+  }: {
+    fileId: string;
+    workspaceId: string;
+    version: FileVersion;
+  }) {
+    return `files/w/${workspaceId}/${fileId}/${version}`;
   }
 
   async getSignedUrlForDownload(
@@ -195,13 +236,6 @@ export class FileResource extends BaseResource<FileModel> {
     return getPrivateUploadBucket()
       .file(this.getCloudStoragePath(auth, version))
       .createReadStream();
-  }
-
-  get sId(): string {
-    return makeSId("file", {
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
   }
 
   // Serialization logic.
