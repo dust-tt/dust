@@ -74,45 +74,45 @@ const _getConnector = async (
 
 export const getConnectorAPIHandler = withLogging(_getConnector);
 
-type GetConnectorsResponseBody = WithConnectorsAPIErrorReponse<{
-  connectors: ConnectorType[];
-}>;
+type GetConnectorsResponseBody = WithConnectorsAPIErrorReponse<ConnectorType[]>;
 
 const _getConnectors = async (
   req: Request<Record<string, string>, GetConnectorsResponseBody, undefined>,
   res: Response<GetConnectorsResponseBody>
 ) => {
   if (
-    typeof req.query.connector_provider !== "string" ||
-    !isConnectorProvider(req.query.connector_provider)
+    typeof req.query.provider !== "string" ||
+    !isConnectorProvider(req.query.provider)
   ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "unknown_connector_provider",
-        message: `Unknown connector provider ${req.params.connector_provider}`,
+        message: `Unknown connector provider ${req.params.provider}`,
       },
     });
   }
 
-  if (!Array.isArray(req.query.connector_ids)) {
+  if (typeof req.query.connector_id === "string") {
+    req.query.connector_id = [req.query.connector_id];
+  }
+
+  if (!Array.isArray(req.query.connector_id)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Expecting connector_ids to be passed as query parameters`,
+        message: `Expecting connector_id to be passed as query parameters`,
       },
     });
   }
 
   const connectors = await ConnectorResource.fetchByIds(
-    req.query.connector_provider,
-    req.query.connector_ids as string[]
+    req.query.provider,
+    req.query.connector_id as string[]
   );
 
-  return res.status(200).json({
-    connectors: connectors.map((c) => c.toJSON()),
-  });
+  return res.status(200).json(connectors.map((c) => c.toJSON()));
 };
 
 export const getConnectorsAPIHandler = withLogging(_getConnectors);
