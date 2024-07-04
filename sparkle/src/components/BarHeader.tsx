@@ -1,10 +1,10 @@
 import React from "react";
 
 import {
-  ArrowUpOnSquareIcon,
-  ChevronLeftIcon,
-  TrashIcon,
-  XMarkIcon,
+  ArrowUpOnSquare,
+  ChevronLeft,
+  Trash,
+  XMark,
 } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -82,7 +82,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
       return (
         <Button
           size="sm"
-          icon={ChevronLeftIcon}
+          icon={ChevronLeft}
           variant="tertiary"
           label="Back"
           tooltipPosition="below"
@@ -94,7 +94,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
       return (
         <Button
           size="sm"
-          icon={XMarkIcon}
+          icon={XMark}
           variant="tertiary"
           label="Close"
           tooltipPosition="below"
@@ -131,7 +131,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           <Button
             size="sm"
             label="Delete"
-            icon={TrashIcon}
+            icon={Trash}
             variant="tertiary"
             labelVisible={false}
             tooltipPosition="below"
@@ -140,7 +140,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           <Button
             size="sm"
             label="Share"
-            icon={ArrowUpOnSquareIcon}
+            icon={ArrowUpOnSquare}
             variant="tertiary"
             onClick={props.onShare}
           />

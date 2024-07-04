@@ -2,7 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 import { v4 as uuidv4 } from "uuid";
 
-import { DustIcon } from "@sparkle/icons/solid";
+import { Dust } from "@sparkle/icons/solid";
 
 import {
   CloudArrowDownIcon,
@@ -289,7 +289,7 @@ export const TreeExample = () => {
             <Tree.Item
               label="Dust"
               type="item"
-              visual={<DustIcon color="pink" className="s-h-5 s-w-5" />}
+              visual={<Dust color="pink" className="s-h-5 s-w-5" />}
               checkbox={{
                 variant: "checkable",
                 checked: false,

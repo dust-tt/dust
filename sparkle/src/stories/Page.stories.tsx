@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { ChatBubbleLeftRightIcon } from "@sparkle/icons/solid";
+import { ChatBubbleLeftRight } from "@sparkle/icons/solid";
 
 import {
   Avatar,
@@ -347,7 +347,7 @@ export const HelpExample = () => {
         <Button
           variant="primary"
           label="Hey @helper, how do I use the assistant ?"
-          icon={ChatBubbleLeftRightIcon}
+          icon={ChatBubbleLeftRight}
         />
       </Page.Layout>
       <Page.Separator />
@@ -367,19 +367,19 @@ export const HelpExample = () => {
           <Button
             variant="secondary"
             label="Hey @helper, how do I use the assistant?"
-            icon={ChatBubbleLeftRightIcon}
+            icon={ChatBubbleLeftRight}
             hasMagnifying={false}
           />
           <Button
             variant="secondary"
             label="Hey @helper, What is assistant not good at?"
-            icon={ChatBubbleLeftRightIcon}
+            icon={ChatBubbleLeftRight}
             hasMagnifying={false}
           />
           <Button
             variant="secondary"
             label="Hey @helper, Anything I should know?"
-            icon={ChatBubbleLeftRightIcon}
+            icon={ChatBubbleLeftRight}
             hasMagnifying={false}
           />
         </Page.Layout>

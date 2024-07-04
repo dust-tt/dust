@@ -1,6 +1,6 @@
 import React from "react";
 
-import { CheckIcon, DashIcon } from "@sparkle/icons/solid";
+import { Check, Dash } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -81,7 +81,7 @@ export function Checkbox({
         ></div>
         {variant === "checkable" && (
           <div className="s-absolute">
-            <Icon visual={partialChecked ? DashIcon : CheckIcon} size="xs" />
+            <Icon visual={partialChecked ? Dash : Check} size="xs" />
           </div>
         )}
       </div>
