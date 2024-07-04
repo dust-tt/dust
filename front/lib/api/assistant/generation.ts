@@ -20,6 +20,7 @@ import {
   isRetrievalConfiguration,
   isTextContent,
   isUserMessageType,
+  isVisualizationConfiguration,
   isWebsearchConfiguration,
   Ok,
   removeNulls,
@@ -445,6 +446,13 @@ export async function constructPromptMultiActions(
   );
   if (canCiteDocuments) {
     additionalInstructions += `${citationMetaPrompt()}\n`;
+  }
+
+  const needVisualizationMetaPrompt = agentConfiguration.actions.some(
+    (action) => isVisualizationConfiguration(action)
+  );
+  if (needVisualizationMetaPrompt) {
+    additionalInstructions += `Graphs are generated with the visualization tool. The tool is rendering the graph to the user. Don't repeat its code.\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;

@@ -18,7 +18,7 @@ export function VisualizationActionDetails({
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-normal text-slate-500">
-            <ReadOnlyTextArea content={action.output?.code ?? ""} />
+            <ReadOnlyTextArea content={action.output?.generation ?? ""} />
           </div>
         </div>
       </div>

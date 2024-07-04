@@ -1779,6 +1779,7 @@ async function* streamRunAgentEvents(
       case "websearch_params":
       case "browse_params":
       case "visualization_params":
+      case "visualization_generation_tokens":
         yield event;
         break;
       case "generation_tokens":

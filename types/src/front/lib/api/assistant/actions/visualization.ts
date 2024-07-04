@@ -31,3 +31,12 @@ export type VisualizationSuccessEvent = {
   messageId: string;
   action: VisualizationActionType;
 };
+
+export type VisualizationGenerationTokensEvent = {
+  type: "visualization_generation_tokens";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  actionId: number;
+  text: string;
+};

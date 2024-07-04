@@ -20,6 +20,7 @@ import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
+  VisualizationGenerationTokensEvent,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -117,6 +118,7 @@ export async function* runMultiActionsAgentLoop(
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | AgentChainOfThoughtEvent
+  | VisualizationGenerationTokensEvent
 > {
   const now = Date.now();
 
@@ -248,6 +250,7 @@ export async function* runMultiActionsAgentLoop(
 
         // Generation events
         case "generation_tokens":
+        case "visualization_generation_tokens":
           yield event;
           break;
         case "generation_cancel":
@@ -331,6 +334,7 @@ export async function* runMultiActionsAgent(
   | AgentActionsEvent
   | AgentChainOfThoughtEvent
   | AgentContentEvent
+  | VisualizationGenerationTokensEvent
 > {
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -1189,7 +1193,9 @@ async function* runAction(
           // the agentMessage object, updating this object will update the conversation as well.
           agentMessage.actions.push(event.action);
           break;
-
+        case "visualization_generation_tokens":
+          yield event;
+          break;
         default:
           assertNever(event);
       }

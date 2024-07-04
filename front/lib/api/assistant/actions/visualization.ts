@@ -8,6 +8,7 @@ import type {
   VisualizationActionType,
   VisualizationConfigurationType,
   VisualizationErrorEvent,
+  VisualizationGenerationTokensEvent,
   VisualizationParamsEvent,
   VisualizationSuccessEvent,
 } from "@dust-tt/types";
@@ -24,6 +25,8 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_VISUALIZATION_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
 import logger from "@app/logger/logger";
@@ -31,7 +34,6 @@ import logger from "@app/logger/logger";
 interface VisualizationActionBlob {
   id: ModelId; // VisualizationAction
   agentMessageId: ModelId;
-  query: string;
   output: VisualizationActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;
@@ -40,7 +42,6 @@ interface VisualizationActionBlob {
 
 export class VisualizationAction extends BaseAction {
   readonly agentMessageId: ModelId;
-  readonly query: string;
   readonly output: VisualizationActionOutputType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -51,18 +52,20 @@ export class VisualizationAction extends BaseAction {
     super(blob.id, "visualization_action");
 
     this.agentMessageId = blob.agentMessageId;
-    this.query = blob.query;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
   }
 
+  // Visualization is not a function call, it is pure generation cause we need streaming.
+  // We fake a function call for the multi-actions model because
+  // we cannot render two agent messages in a row.
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
       name: this.functionCallName ?? DEFAULT_VISUALIZATION_ACTION_NAME,
-      arguments: JSON.stringify({ query: this.query }),
+      arguments: JSON.stringify({}),
     };
   }
 
@@ -71,7 +74,7 @@ export class VisualizationAction extends BaseAction {
     if (this.output === null) {
       content += "The visualization failed.\n";
     } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
+      content += this.output?.generation ?? "";
     }
 
     return {
@@ -136,7 +139,8 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
   ): AsyncGenerator<
     | VisualizationParamsEvent
     | VisualizationSuccessEvent
-    | VisualizationErrorEvent,
+    | VisualizationErrorEvent
+    | VisualizationGenerationTokensEvent,
     void
   > {
     const owner = auth.workspace();
@@ -189,13 +193,38 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       action: new VisualizationAction({
         id: action.id,
         agentMessageId: action.agentMessageId,
-        query,
         output: null,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
       }),
     };
+
+    // Turn the conversation into a digest that can be presented to the model.
+    const MIN_GENERATION_TOKENS = 2048;
+    const agentModelConfig = getSupportedModelConfig(agentConfiguration.model);
+    const modelConversationRes = await renderConversationForModelMultiActions({
+      conversation,
+      model: agentModelConfig,
+      prompt: "", // There is no prompt for title generation.
+      allowedTokenCount: agentModelConfig.contextSize - MIN_GENERATION_TOKENS,
+      excludeActions: false,
+      excludeImages: true,
+    });
+
+    if (modelConversationRes.isErr()) {
+      yield {
+        type: "visualization_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "conversation_rendering_error",
+          message: modelConversationRes.error.message,
+        },
+      };
+      return;
+    }
 
     // Configure the Vizualization Dust App to the assistant model configuration.
     const config = cloneBaseConfig(
@@ -213,7 +242,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       config,
       [
         {
-          query,
+          conversation: modelConversationRes.value.modelConversation,
         },
       ],
       {
@@ -241,6 +270,16 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
     let output: VisualizationActionOutputType | null = null;
 
     for await (const event of eventStream) {
+      if (event.type === "tokens") {
+        yield {
+          type: "visualization_generation_tokens",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          actionId: action.id,
+          text: event.content.tokens.text,
+        };
+      }
       if (event.type === "error") {
         logger.error(
           {
@@ -286,7 +325,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
           return;
         }
 
-        if (event.content.block_name === "FINAL" && e.value) {
+        if (event.content.block_name === "OUTPUT" && e.value) {
           const outputValidation = VisualizationActionOutputSchema.decode(
             e.value
           );
@@ -349,7 +388,6 @@ export async function visualizationActionTypesFromAgentMessageIds(
     return new VisualizationAction({
       id: action.id,
       agentMessageId: action.agentMessageId,
-      query: action.query,
       output: action.output,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
