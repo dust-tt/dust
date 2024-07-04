@@ -133,9 +133,6 @@ export { RadioButton };
 import { Popup } from "./components/Popup";
 export { Popup };
 
-import { TemplateItem } from "./components/TemplateItem";
-export { TemplateItem };
-
 import { FilterChips } from "./components/FilterChips";
 export { FilterChips };
 
