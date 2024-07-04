@@ -1,7 +1,9 @@
 import type { AgentConfigurationType, AgentUsageType } from "@dust-tt/types";
 import { literal, Op, Sequelize } from "sequelize";
 
+import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   Conversation,
   Mention,
@@ -242,45 +244,31 @@ export async function agentMentionsUserCount(
 export async function agentMentionsCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
-  // We retrieve mentions from conversations in order to optimize the query
-  // Since we need to filter out by workspace id, retrieving mentions first
-  // would lead to retrieve every single messages
-  const mentions = await Conversation.findAll({
-    attributes: [
-      [
-        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
-        "agentConfigurationId",
-      ],
-      [
-        Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
-        "count",
-      ],
-    ],
+  const agentConfigurations = await AgentConfiguration.findAll({
+    attributes: ["sId"],
     where: {
       workspaceId: workspaceId,
     },
-    include: [
-      {
-        model: Message,
-        required: true,
-        attributes: [],
-        where: {
-          createdAt: {
-            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
-          },
-        },
-        include: [
-          {
-            model: Mention,
-            as: "mentions",
-            required: true,
-            attributes: [],
-          },
-        ],
-      },
+  });
+  const allAgentConfigurationIds = [
+    ...agentConfigurations.map((agentConfiguration) => agentConfiguration.sId),
+    ...Object.values(GLOBAL_AGENTS_SID),
+  ];
+
+  const mentions = await Mention.findAll({
+    attributes: [
+      "agentConfigurationId",
+      [Sequelize.fn("COUNT", Sequelize.col("agentConfigurationId")), "count"],
     ],
-    order: [["count", "DESC"]],
-    group: ['"messages->mentions"."agentConfigurationId"'],
+    where: {
+      createdAt: {
+        [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+      },
+      agentConfigurationId: {
+        [Op.in]: allAgentConfigurationIds,
+      },
+    },
+    group: ["agentConfigurationId"],
     raw: true,
   });
   return mentions.map((mention) => {
