@@ -305,7 +305,7 @@ export async function getProcessedFileContent(
   return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
 }
 
-async function getSignedUrlForRawContentFragment(
+async function getSignedUrlForProcessedContent(
   workspace: WorkspaceType,
   fileId: string
 ): Promise<string> {
@@ -348,10 +348,7 @@ async function renderFromFileId(
       });
     }
 
-    const signedUrl = await getSignedUrlForRawContentFragment(
-      workspace,
-      fileId
-    );
+    const signedUrl = await getSignedUrlForProcessedContent(workspace, fileId);
 
     return new Ok({
       role: "content_fragment",
