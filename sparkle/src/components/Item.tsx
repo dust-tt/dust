@@ -230,6 +230,7 @@ interface NavigationListItemProps {
   icon?: ComponentType;
   className?: string;
   href?: string;
+  target?: string;
   hasAction?: boolean | "hover";
   action?: ComponentType;
 }
