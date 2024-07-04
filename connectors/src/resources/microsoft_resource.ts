@@ -229,6 +229,11 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, resource.get());
   }
 
+  static async upsert(blob: WithCreationAttributes<MicrosoftNodeModel>) {
+    const [resource] = await MicrosoftNodeModel.upsert(blob);
+    return new this(this.model, resource.get());
+  }
+
   static async batchMakeNew(
     blobs: WithCreationAttributes<MicrosoftNodeModel>[]
   ) {

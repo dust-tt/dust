@@ -30,7 +30,7 @@ async function upsertSheetInDb(
     mimeType: "text/csv",
     lastUpsertedTs: new Date(),
   });
-  await MicrosoftNodeResource.makeNew({
+  await MicrosoftNodeResource.upsert({
     internalId,
     connectorId: connector.id,
     lastSeenTs: new Date(),
