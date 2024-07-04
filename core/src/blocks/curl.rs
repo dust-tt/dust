@@ -2,7 +2,7 @@ use crate::blocks::block::{
     parse_pair, replace_secrets_in_string, replace_variables_in_string, Block, BlockResult,
     BlockType, Env,
 };
-use crate::deno::script::Script;
+use crate::deno::js_executor::JSExecutor;
 use crate::http::request::HttpRequest;
 use crate::Rule;
 use anyhow::{anyhow, Result};
@@ -115,24 +115,22 @@ impl Block for Curl {
 
         let e = env.clone_with_unredacted_secrets();
         let headers_code = self.headers_code.clone();
-        let (headers_value, headers_logs): (Value, Vec<Value>) =
-            tokio::task::spawn_blocking(move || {
-                let mut script = Script::from_string(headers_code.as_str())?
-                    .with_timeout(std::time::Duration::from_secs(10));
-                script.call("_fun", &e)
-            })
-            .await?
+        let (headers_value, headers_logs): (Value, Vec<Value>) = JSExecutor::client()?
+            .exec(
+                &headers_code,
+                "_fun",
+                &e,
+                std::time::Duration::from_secs(10),
+            )
+            .await
             .map_err(|e| anyhow!("Error in `headers_code`: {}", e))?;
 
         let e = env.clone_with_unredacted_secrets();
         let body_code = self.body_code.clone();
-        let (body_value, body_logs): (Value, Vec<Value>) = tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(body_code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &e)
-        })
-        .await?
-        .map_err(|e| anyhow!("Error in `body_code`: {}", e))?;
+        let (body_value, body_logs): (Value, Vec<Value>) = JSExecutor::client()?
+            .exec(&body_code, "_fun", &e, std::time::Duration::from_secs(10))
+            .await
+            .map_err(|e| anyhow!("Error in `body_code`: {}", e))?;
 
         let mut url = replace_variables_in_string(&self.url, "url", env)?;
         url = replace_secrets_in_string(&url, "url", env)?;

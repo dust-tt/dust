@@ -49,6 +49,154 @@ export type UpsertDocumentResponseBody = {
   data_source: DataSourceType;
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/data_sources/{name}/documents/{documentId}:
+ *   get:
+ *     summary: Retrieve a document from a data source
+ *     description: Retrieve a document from a data source in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: documentId
+ *         required: true
+ *         description: ID of the document
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The document
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       404:
+ *         description: Data source or document not found.
+ *       500:
+ *         description: Internal Server Error.
+ *       405:
+ *         description: Method not supported.
+ *   post:
+ *     summary: Upsert a document in a data source
+ *     description: Upsert a document in a data source in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: documentId
+ *         required: true
+ *         description: ID of the document
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: The text content of the document to upsert.
+ *               source_url:
+ *                 type: string
+ *                 description: The source URL for the document to upsert.
+ *               light_document_output:
+ *                 type: boolean
+ *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
+ *     responses:
+ *       200:
+ *         description: The document
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. The data source is managed.
+ *       404:
+ *         description: Data source or document not found.
+ *       405:
+ *         description: Method not supported.
+ *   delete:
+ *     summary: Delete a document from a data source
+ *     description: Delete a document from a data source in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: documentId
+ *         required: true
+ *         description: ID of the document
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The document
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. The data source is managed.
+ *       404:
+ *         description: Data source or document not found.
+ *       405:
+ *         description: Method not supported.
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

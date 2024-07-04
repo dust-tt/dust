@@ -9,6 +9,47 @@ export type ListMemberEmailsResponseBody = {
   emails: string[];
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/members/emails:
+ *   get:
+ *     summary: List member emails
+ *     description: List the emails of all members in the workspace identified by {wId}.
+ *     tags:
+ *       - Workspace
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: activeOnly
+ *         required: false
+ *         description: Whether to list only active members
+ *         schema:
+ *           type: boolean
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The emails
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 emails:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<ListMemberEmailsResponseBody>>

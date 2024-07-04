@@ -23,7 +23,7 @@ import {
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateModelSId } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
@@ -37,7 +37,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       const w = await Workspace.create({
-        sId: generateModelSId(),
+        sId: generateLegacyModelSId(),
         name: args.name,
       });
 

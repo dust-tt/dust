@@ -1,5 +1,5 @@
 use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
-use crate::deno::script::Script;
+use crate::deno::js_executor::JSExecutor;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -63,14 +63,15 @@ impl Block for Code {
         // TODO(spolu): revisit, not sure this is optimal.
         let env = env.clone();
         let code = self.code.clone();
-        let (result, logs): (Value, Vec<Value>) = tokio::task::spawn_blocking(move || {
-            let mut script = Script::from_string(code.as_str())?
-                .with_timeout(std::time::Duration::from_secs(10));
-            script.call("_fun", &env)
-        })
-        .await??;
+
+        let timeout = std::time::Duration::from_secs(10);
+        let (value, logs): (Value, Vec<Value>) = JSExecutor::client()?
+            .exec(&code, "_fun", &env, timeout)
+            .await
+            .map_err(|e| anyhow!("Error in `code`: {}", e))?;
+
         Ok(BlockResult {
-            value: result.clone(),
+            value,
             meta: Some(json!({ "logs": logs })),
         })
     }

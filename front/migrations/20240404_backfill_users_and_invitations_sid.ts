@@ -1,6 +1,6 @@
 import { User } from "@app/lib/models/user";
 import { MembershipInvitation } from "@app/lib/models/workspace";
-import { generateModelSId } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -22,7 +22,7 @@ const backfillUsers = async (execute: boolean) => {
     await Promise.all(
       chunk.map((u) => {
         return (async () => {
-          const sId = generateModelSId();
+          const sId = generateLegacyModelSId();
           logger.info(
             `Backfilling user ${u.id} with \`sId=${sId}\` [execute: ${execute}]`
           );
@@ -54,7 +54,7 @@ const backfillInvitations = async (execute: boolean) => {
     await Promise.all(
       chunk.map((i) => {
         return (async () => {
-          const sId = generateModelSId();
+          const sId = generateLegacyModelSId();
           logger.info(
             `Backfilling invitation ${i.id} with \`sId=${sId}\` [execute: ${execute}]`
           );

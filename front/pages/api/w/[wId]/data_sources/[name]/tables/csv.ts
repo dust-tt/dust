@@ -7,8 +7,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
@@ -158,7 +158,7 @@ export async function handlePostTableCsvUpsertRequest(
       status_code: 400,
     });
   }
-  const tableId = bodyValidation.right.tableId ?? generateModelSId();
+  const tableId = bodyValidation.right.tableId ?? generateLegacyModelSId();
 
   if (async) {
     const enqueueRes = await enqueueUpsertTable({

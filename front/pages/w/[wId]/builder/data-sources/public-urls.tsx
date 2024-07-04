@@ -1,11 +1,10 @@
 import {
-  Button,
-  Cog6ToothIcon,
   ContextItem,
   FolderOpenIcon,
   Page,
   PlusIcon,
   Popup,
+  RobotIcon,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -23,6 +22,8 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
+import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -41,6 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   dataSources: DataSourceWithConnector[];
   gaTrackingId: string;
+  dataSourcesUsage: DataSourcesUsageByAgent;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -54,7 +56,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
-  const allDataSources = await getDataSources(auth);
+  const allDataSources = await getDataSources(auth, { includeEditedBy: true });
+  const dataSourcesUsage = await getDataSourcesUsageByAgents({
+    auth,
+    providerFilter: "webcrawler",
+  });
+
   const connectorsAPI = new ConnectorsAPI(logger);
   const dataSources = await Promise.all(
     allDataSources
@@ -82,6 +89,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       dataSources,
       gaTrackingId: GA_TRACKING_ID,
+      dataSourcesUsage,
     },
   };
 });
@@ -93,6 +101,7 @@ export default function DataSourcesView({
   readOnly,
   dataSources,
   gaTrackingId,
+  dataSourcesUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
@@ -112,7 +121,6 @@ export default function DataSourcesView({
       void router.push(`/w/${owner.sId}/builder/data-sources/new-public-url`);
     }
   });
-
   return (
     <AppLayout
       subscription={subscription}
@@ -169,7 +177,6 @@ export default function DataSourcesView({
             icon={PlusIcon}
           />
         )}
-
         <ContextItem.List>
           {dataSources.map((ds) => (
             <ContextItem
@@ -186,30 +193,28 @@ export default function DataSourcesView({
                   }
                 />
               }
+              onClick={() => {
+                void router.push(
+                  `/w/${
+                    owner.sId
+                  }/builder/data-sources/${encodeURIComponent(ds.name)}`
+                );
+              }}
               action={
-                <Button.List>
-                  <Button
-                    variant="secondary"
-                    icon={Cog6ToothIcon}
-                    onClick={() => {
-                      void router.push(
-                        `/w/${
-                          owner.sId
-                        }/builder/data-sources/${encodeURIComponent(ds.name)}`
-                      );
-                    }}
-                    label="Manage"
-                  />
-                </Button.List>
+                <ConnectorSyncingChip
+                  initialState={ds.connector}
+                  workspaceId={ds.connector.workspaceId}
+                  dataSourceName={ds.connector.dataSourceName}
+                />
               }
             >
               <ContextItem.Description>
-                <div className="pt-1">
-                  <ConnectorSyncingChip
-                    initialState={ds.connector}
-                    workspaceId={ds.connector.workspaceId}
-                    dataSourceName={ds.connector.dataSourceName}
-                  />
+                <div className="mt-1 flex items-center gap-1 text-xs text-element-700">
+                  <span>Added by: {ds.editedByUser?.fullName} | </span>
+                  <span className="underline">
+                    {dataSourcesUsage[ds.id] ?? 0}
+                  </span>
+                  <RobotIcon />
                 </div>
               </ContextItem.Description>
             </ContextItem>

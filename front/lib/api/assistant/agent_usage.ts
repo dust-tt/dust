@@ -1,5 +1,5 @@
 import type { AgentConfigurationType, AgentUsageType } from "@dust-tt/types";
-import { Op, Sequelize } from "sequelize";
+import { literal, Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -14,8 +14,8 @@ import { redisClient } from "@app/lib/redis";
 // Ranking of agents is done over a 30 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 
-// Computing agent mention count over a 3h period
-const popularityComputationTimeframeSec = 3 * 60 * 60;
+// Computing agent mention count over a 12h period
+const popularityComputationTimeframeSec = 12 * 60 * 60;
 
 const TTL_KEY_NOT_EXIST = -2;
 const TTL_KEY_NOT_SET = -1;
@@ -196,6 +196,11 @@ export async function agentMentionsUserCount(
         model: Message,
         required: true,
         attributes: [],
+        where: {
+          createdAt: {
+            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+          },
+        },
         include: [
           {
             model: UserMessage,
@@ -259,6 +264,11 @@ export async function agentMentionsCount(
         model: Message,
         required: true,
         attributes: [],
+        where: {
+          createdAt: {
+            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+          },
+        },
         include: [
           {
             model: Mention,

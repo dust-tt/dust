@@ -139,7 +139,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "098b515f8e",
       appHash:
-        "74ece03e8c502d4ae1681847df945248b43b63a0eaa811daed50a3bc81615ac4",
+        "514d54c0967638656b437417228efec26de465796b5ab67ae0480d6976250768",
     },
     config: { SEARCH: { provider_id: "serpapi", use_cache: false } },
   },

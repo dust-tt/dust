@@ -38,6 +38,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
   Conversation,
@@ -137,6 +138,7 @@ async function main() {
   await AgentWebsearchAction.sync({ alter: true });
   await AgentBrowseAction.sync({ alter: true });
   await AgentVisualizationAction.sync({ alter: true });
+  await AgentMessageContent.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });

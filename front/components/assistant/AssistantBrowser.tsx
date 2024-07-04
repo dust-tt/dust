@@ -171,30 +171,18 @@ export function AssistantBrowser({
 
       {displayedTab && (
         <div className="grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
-          {agentsByTab[displayedTab].map((agent) => {
-            return (
-              <div
-                key={agent.sId}
-                className="rounded-xl border border-structure-100"
-              >
-                <div
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleAssistantClick(agent);
-                  }}
-                >
-                  <AssistantPreview
-                    title={agent.name}
-                    pictureUrl={agent.pictureUrl}
-                    subtitle={agent.lastAuthors?.join(", ") ?? ""}
-                    description=""
-                    variant="minimal"
-                    onActionClick={() => setAssistantIdToShow(agent.sId)}
-                  />
-                </div>
-              </div>
-            );
-          })}
+          {agentsByTab[displayedTab].map((agent) => (
+            <AssistantPreview
+              key={agent.sId}
+              title={agent.name}
+              pictureUrl={agent.pictureUrl}
+              subtitle={agent.lastAuthors?.join(", ") ?? ""}
+              description={agent.description}
+              variant="minimal"
+              onClick={() => handleAssistantClick(agent)}
+              onActionClick={() => setAssistantIdToShow(agent.sId)}
+            />
+          ))}
         </div>
       )}
     </>

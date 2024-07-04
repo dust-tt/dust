@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { generateModelSId } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -35,6 +35,81 @@ type UpsertTableResponseBody = {
   };
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/data_sources/{name}/tables:
+ *   get:
+ *     summary: Get tables
+ *     description: Get tables in the data source identified by {name} in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The tables
+ *   post:
+ *     summary: Upsert a table
+ *     description: Upsert a table in the data source identified by {name} in the workspace identified by {wId}.
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         description: Name of the data source
+ *         schema:
+ *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               table_id:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: The table
+ *       400:
+ *         description: Invalid request
+ *       405:
+ *         description: Method not supported
+ */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -135,7 +210,7 @@ async function handler(
         table_id: maybeTableId,
       } = bodyValidation.right;
 
-      const tableId = maybeTableId || generateModelSId();
+      const tableId = maybeTableId || generateLegacyModelSId();
 
       const tRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,

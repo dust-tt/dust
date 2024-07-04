@@ -56,6 +56,130 @@ type ListTableRowsResponseBody = {
   total: number;
 };
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/data_sources/{name}/tables/{tId}/rows:
+ *  get:
+ *    summary: List rows
+ *    description: List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *    tags:
+ *      - Datasources
+ *    parameters:
+ *      - in: path
+ *        name: wId
+ *        required: true
+ *        description: ID of the workspace
+ *        schema:
+ *          type: string
+ *      - in: path
+ *        name: name
+ *        required: true
+ *        description: Name of the data source
+ *        schema:
+ *          type: string
+ *      - in: path
+ *        name: tId
+ *        required: true
+ *        description: ID of the table
+ *        schema:
+ *          type: string
+ *      - in: query
+ *        name: limit
+ *        description: Limit the number of rows returned
+ *        schema:
+ *          type: integer
+ *      - in: query
+ *        name: offset
+ *        description: Offset the returned rows
+ *        schema:
+ *          type: integer
+ *      - in: header
+ *        name: Authorization
+ *        required: true
+ *        description: Bearer token for authentication
+ *        schema:
+ *          type: string
+ *    responses:
+ *      200:
+ *        description: The rows
+ *      405:
+ *        description: Method not supported
+ *  post:
+ *    summary: Upsert rows
+ *    description: Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *    tags:
+ *      - Datasources
+ *    parameters:
+ *      - in: path
+ *        name: wId
+ *        required: true
+ *        description: ID of the workspace
+ *        schema:
+ *          type: string
+ *      - in: path
+ *        name: name
+ *        required: true
+ *        description: Name of the data source
+ *        schema:
+ *          type: string
+ *      - in: path
+ *        name: tId
+ *        required: true
+ *        description: ID of the table
+ *        schema:
+ *          type: string
+ *      - in: header
+ *        name: Authorization
+ *        required: true
+ *        description: Bearer token for authentication
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *              rows:
+ *                type: array
+ *                items:
+ *                  type: object
+ *                  properties:
+ *                    row_id:
+ *                      type: string
+ *                    value:
+ *                      type: object
+ *                      additionalProperties:
+ *                        oneOf:
+ *                          - type: string
+ *                          - type: number
+ *                          - type: boolean
+ *                          - type: object
+ *                            properties:
+ *                              type:
+ *                                type: string
+ *                                enum:
+ *                                  - datetime
+ *                              epoch:
+ *                                type: number
+ *              truncate:
+ *                type: boolean
+ *    responses:
+ *      200:
+ *        description: The table
+ *      400:
+ *        description: Bad Request. Missing or invalid parameters.
+ *      401:
+ *        description: Unauthorized. Invalid or missing authentication token.
+ *      500:
+ *        description: Internal Server Error.
+ *      404:
+ *        description: Data source or workspace not found.
+ *      405:
+ *        description: Method not supported.
+ */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

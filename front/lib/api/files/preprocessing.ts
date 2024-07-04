@@ -38,7 +38,7 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   } catch (err) {
     logger.error(
       {
-        fileId: file.sId,
+        fileModelId: file.id,
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
@@ -108,7 +108,7 @@ const extractTextFromPDF: PreprocessingFunction = async (
   } catch (err) {
     logger.error(
       {
-        fileId: file.sId,
+        fileModelId: file.id,
         workspaceId: auth.workspace()?.sId,
         error: err,
       },

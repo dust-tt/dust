@@ -5,6 +5,7 @@ import type {
   FileType,
   FileTypeWithUploadUrl,
   LightWorkspaceType,
+  ModelId,
   Result,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -22,11 +23,9 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateModelSId } from "@app/lib/utils";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 
 type FileVersion = "processed" | "original";
-
-const FILE_ID_PREFIX = "file";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -41,12 +40,9 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
   ) {
-    const fileId = generateModelSId(FILE_ID_PREFIX);
-
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
-      sId: fileId,
     });
 
     return new this(FileResource.model, key.get());
@@ -62,10 +58,15 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
+    const fileModelId = getResourceIdFromSId(id);
+    if (!fileModelId) {
+      return null;
+    }
+
     const blob = await this.model.findOne({
       where: {
         workspaceId: owner.id,
-        sId: id,
+        id: fileModelId,
       },
     });
     if (!blob) {
@@ -111,6 +112,26 @@ export class FileResource extends BaseResource<FileModel> {
     } catch (error) {
       return new Err(error as Error);
     }
+  }
+
+  get sId(): string {
+    return FileResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("file", {
+      id,
+      workspaceId,
+    });
   }
 
   // Status logic.
@@ -168,7 +189,23 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
-    return `files/w/${owner.sId}/${this.sId}/${version}`;
+    return FileResource.getCloudStoragePathForId({
+      fileId: this.sId,
+      workspaceId: owner.sId,
+      version,
+    });
+  }
+
+  static getCloudStoragePathForId({
+    fileId,
+    workspaceId,
+    version,
+  }: {
+    fileId: string;
+    workspaceId: string;
+    version: FileVersion;
+  }) {
+    return `files/w/${workspaceId}/${fileId}/${version}`;
   }
 
   async getSignedUrlForDownload(

@@ -19,7 +19,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitation } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateModelSId, isEmailValid } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 // Make token expires after 7 days
@@ -126,7 +127,7 @@ export async function updateOrCreateInvitation(
 
   return typeFromModel(
     await MembershipInvitation.create({
-      sId: generateModelSId(),
+      sId: generateLegacyModelSId(),
       workspaceId: owner.id,
       inviteEmail: sanitizeString(inviteEmail),
       status: "pending",

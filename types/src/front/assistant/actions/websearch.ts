@@ -25,6 +25,7 @@ export const WebsearchAppActionOutputSchema = t.union([
   }),
   t.type({
     error: t.string,
+    results: t.array(WebsearchAppResultSchema),
   }),
 ]);
 // Type after processing in the run loop (to add references)

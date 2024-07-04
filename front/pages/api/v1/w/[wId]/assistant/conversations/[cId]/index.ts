@@ -26,6 +26,12 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: ID of the conversation
  *         schema:
  *           type: string
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: Bearer token for authentication
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Conversation retrieved successfully.
