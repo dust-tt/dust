@@ -7,10 +7,10 @@ import logger from "@app/logger/logger";
 const RESOURCE_PUBLIC_ID_MIN_LENGTH = 10;
 
 const sqids = new Sqids({
-  minLength: 10,
+  minLength: RESOURCE_PUBLIC_ID_MIN_LENGTH,
 });
 
-// Start with a shard key to avoid collisions with other IDs.
+// Static shard key until we implement sharding.
 const SHARD_KEY = 1;
 
 const RESOURCES_PREFIX = {
