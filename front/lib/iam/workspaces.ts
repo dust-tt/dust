@@ -2,7 +2,7 @@ import { sendUserOperationMessage } from "@dust-tt/types";
 
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
-import { generateModelSId } from "@app/lib/utils";
+import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 
@@ -18,7 +18,7 @@ export async function createWorkspace(session: SessionWithUser) {
       : null;
 
   const workspace = await Workspace.create({
-    sId: generateModelSId(),
+    sId: generateLegacyModelSId(),
     name: externalUser.nickname,
   });
 
