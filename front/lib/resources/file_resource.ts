@@ -15,13 +15,14 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import {
+  getResourceIdFromPublicId,
+  makePublicId,
+} from "@app/lib/resources/public_ids";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateModelSId } from "@app/lib/utils";
 
 type FileVersion = "processed" | "original";
-
-const FILE_ID_PREFIX = "file";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -36,12 +37,9 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
   ) {
-    const fileId = generateModelSId(FILE_ID_PREFIX);
-
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
-      sId: fileId,
     });
 
     return new this(FileResource.model, key.get());
@@ -57,10 +55,15 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
+    const fileModelId = getResourceIdFromPublicId(id);
+    if (!fileModelId) {
+      return null;
+    }
+
     const blob = await this.model.findOne({
       where: {
         workspaceId: owner.id,
-        sId: id,
+        id: fileModelId,
       },
     });
     if (!blob) {
@@ -153,7 +156,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getPublicUrl`");
     }
 
-    return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.sId}`;
+    return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.publicId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
@@ -163,7 +166,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
-    return `files/w/${owner.sId}/${this.sId}/${version}`;
+    return `files/w/${owner.sId}/${this.publicId}/${version}`;
   }
 
   async getSignedUrlForDownload(
@@ -175,7 +178,7 @@ export class FileResource extends BaseResource<FileModel> {
       {
         // Since we redirect, the use is immediate so expiry can be short.
         expirationDelay: 10 * 1000,
-        promptSaveAs: this.fileName ?? `dust_${this.sId}`,
+        promptSaveAs: this.fileName ?? `dust_${this.publicId}`,
       }
     );
   }
@@ -197,6 +200,13 @@ export class FileResource extends BaseResource<FileModel> {
       .createReadStream();
   }
 
+  get publicId(): string {
+    return makePublicId("file", {
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
   // Serialization logic.
 
   toJSON(auth: Authenticator): FileType {
@@ -204,7 +214,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
-      id: this.sId,
+      id: this.publicId,
       status: this.status,
       useCase: this.useCase,
     };
