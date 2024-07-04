@@ -208,7 +208,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       model: agentModelConfig,
       prompt: "", // There is no prompt for title generation.
       allowedTokenCount: agentModelConfig.contextSize - MIN_GENERATION_TOKENS,
-      excludeActions: true,
+      excludeActions: false,
       excludeImages: true,
     });
 
