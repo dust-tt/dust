@@ -153,7 +153,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getPublicUrl`");
     }
 
-    return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.publicId}`;
+    return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
@@ -163,7 +163,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
-    return `files/w/${owner.sId}/${this.publicId}/${version}`;
+    return `files/w/${owner.sId}/${this.sId}/${version}`;
   }
 
   async getSignedUrlForDownload(
@@ -175,7 +175,7 @@ export class FileResource extends BaseResource<FileModel> {
       {
         // Since we redirect, the use is immediate so expiry can be short.
         expirationDelay: 10 * 1000,
-        promptSaveAs: this.fileName ?? `dust_${this.publicId}`,
+        promptSaveAs: this.fileName ?? `dust_${this.sId}`,
       }
     );
   }
@@ -197,7 +197,7 @@ export class FileResource extends BaseResource<FileModel> {
       .createReadStream();
   }
 
-  get publicId(): string {
+  get sId(): string {
     return makeSId("file", {
       id: this.id,
       workspaceId: this.workspaceId,
@@ -211,7 +211,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
-      id: this.publicId,
+      id: this.sId,
       status: this.status,
       useCase: this.useCase,
     };
