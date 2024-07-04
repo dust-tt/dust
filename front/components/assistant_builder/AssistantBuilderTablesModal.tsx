@@ -327,8 +327,6 @@ const PickTable = ({
     dataSourceName: dataSource.name,
   });
 
-  console.log("tables", tables);
-
   const [query, setQuery] = useState<string>("");
 
   const tablesToDisplay = tables.filter(
