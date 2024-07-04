@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { useState } from "react";
 
-import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/solid";
+import { ChevronLeft, ChevronRight } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
@@ -74,7 +74,7 @@ export function Pagination({
           labelVisible={false}
           disabledTooltip={true}
           disabled={currentPage === 1 ? true : false}
-          icon={ChevronLeftIcon}
+          icon={ChevronLeft}
           onClick={() => {
             onPaginationButtonClick(currentPage - 1);
           }}
@@ -97,7 +97,7 @@ export function Pagination({
           labelVisible={false}
           disabledTooltip={true}
           disabled={currentPage === numPages ? true : false}
-          icon={ChevronRightIcon}
+          icon={ChevronRight}
           onClick={() => {
             onPaginationButtonClick(currentPage + 1);
           }}

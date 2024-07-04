@@ -1,7 +1,7 @@
 import { Disclosure, Transition } from "@headlessui/react";
 import React, { createContext, useContext } from "react";
 
-import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/solid";
+import { ChevronDown, ChevronRight } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -135,7 +135,7 @@ Collapsible.Button = function ({
       )}
     >
       <Icon
-        visual={open ? ChevronDownIcon : ChevronRightIcon}
+        visual={open ? ChevronDown : ChevronRight}
         size="sm"
         className={finalChevronClasses}
       />

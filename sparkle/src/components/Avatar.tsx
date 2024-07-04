@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { UserIcon } from "@sparkle/icons/solid";
+import { User } from "@sparkle/icons/solid";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -190,7 +190,7 @@ export function Avatar({
           {/\+/.test(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
-        <UserIcon className="s-h-1/2 s-w-1/2 s-opacity-20" />
+        <User className="s-h-1/2 s-w-1/2 s-opacity-20" />
       )}
     </div>
   );

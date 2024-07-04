@@ -1,7 +1,7 @@
 import { Transition } from "@headlessui/react";
 import React from "react";
 
-import { XMarkIcon } from "@sparkle/icons/solid";
+import { XMark } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { IconButton } from "..";
@@ -49,7 +49,7 @@ export function Popup({
           {onClose && (
             <div className="-s-mr-1 -s-mt-1 s-flex s-grow s-items-start s-justify-end">
               <IconButton
-                icon={XMarkIcon}
+                icon={XMark}
                 onClick={onClose}
                 variant="secondary"
                 size="sm"
