@@ -25,7 +25,7 @@ interface MessageGroupProps {
 }
 
 // arbitrary offset to scroll the last MessageGroup to
-const VIEWPORT_OFFSET_RATIO = 0.4;
+const VIEWPORT_OFFSET_RATIO = 0.5;
 const MAX_OFFSET_PIXEL = 600;
 
 export const LAST_MESSAGE_GROUP_ID = "last-message-group";
