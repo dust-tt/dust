@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.183",
+  "version": "0.2.184",
   "scripts": {
     "copy": "copyfiles -u 1 src/**/*.css src/**/*.svg src/**/*.png src/**/*.json dist",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -14,7 +14,8 @@
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
   "files": [
-    "dist/"
+    "dist/",
+    "src/"
   ],
   "devDependencies": {
     "@babel/core": "^7.22.9",
