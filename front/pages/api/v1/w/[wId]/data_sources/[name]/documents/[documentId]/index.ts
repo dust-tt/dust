@@ -125,6 +125,22 @@ export type UpsertDocumentResponseBody = {
  *         description: Bearer token for authentication
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: The text content of the document to upsert.
+ *               source_url:
+ *                 type: string
+ *                 description: The source URL for the document to upsert.
+ *               light_document_output:
+ *                 type: boolean
+ *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
  *     responses:
  *       200:
  *         description: The document
