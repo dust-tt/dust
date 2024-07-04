@@ -30,6 +30,8 @@ spec:
             - secretRef:
                 name: connectors-secrets
           env:
+            - name: DD_PROFILING_ENABLED
+              value: "true"
             - name: DD_AGENT_HOST
               valueFrom:
                 fieldRef:
