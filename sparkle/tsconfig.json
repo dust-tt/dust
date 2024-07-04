@@ -22,11 +22,6 @@
     "declaration": true,
     "sourceMap": true,
     "declarationMap": true,
-    "plugins": [
-      // Transform paths in output .js files
-      { "transform": "typescript-transform-paths", "useRootDirs": true },
-      { "transform": "typescript-transform-paths", "useRootDirs": true, "afterDeclarations": true }
-    ]
   },
   "include": [
     "src/**/*.ts",
