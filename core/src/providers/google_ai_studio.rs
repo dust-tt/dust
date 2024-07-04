@@ -623,9 +623,10 @@ impl LLM for GoogleAiStudioLLM {
                 // If the part has text, either append it to the content if we already have some
                 //  or set it as the content.
                 if let Some(t) = p.text.as_ref() {
-                    content = content
-                        .map(|c| format!("{}{}", c, t))
-                        .or_else(|| Some(t.clone()));
+                    content = content.map(|c| c + t).or_else(|| Some(t.clone()));
+                    // content = content
+                    //     .map(|c| format!("{}{}", c, t))
+                    //     .or_else(|| Some(t.clone()));
                 }
 
                 // If the part has a function call, add it to the list of function calls.

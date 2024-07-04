@@ -1635,7 +1635,7 @@ impl Store for PostgresStore {
         let offset: i64;
 
         if let Some((l, o)) = limit_offset {
-            query = format!("{} LIMIT ${} OFFSET ${}", query, p_idx, p_idx + 1);
+            query = query + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1);
             limit = l as i64;
             offset = o as i64;
             params.push(&limit);
