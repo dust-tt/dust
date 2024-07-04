@@ -150,12 +150,10 @@ export function AssistantInputBar({
     onSubmit(
       text,
       mentions,
-      fileUploaderService.fileBlobs.map((cf) => {
+      fileUploaderService.getFileBlobs().map((cf) => {
         return {
           title: cf.filename,
-          content: cf.content,
-          file: cf.file,
-          contentType: cf.contentType,
+          fileId: cf.fileId,
         };
       })
     );
@@ -163,7 +161,7 @@ export function AssistantInputBar({
     fileUploaderService.resetUpload();
   };
 
-  const fileUploaderService = useFileUploaderService();
+  const fileUploaderService = useFileUploaderService({ owner });
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 

@@ -3,6 +3,7 @@
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
   FileType,
+  FileTypeWithUploadUrl,
   LightWorkspaceType,
   ModelId,
   Result,
@@ -250,12 +251,19 @@ export class FileResource extends BaseResource<FileModel> {
       useCase: this.useCase,
     };
 
-    if (this.isCreated) {
-      blob.uploadUrl = this.getPublicUrl(auth);
-    } else if (this.isReady) {
+    if (this.isReady) {
       blob.downloadUrl = this.getPublicUrl(auth);
     }
 
     return blob;
+  }
+
+  toJSONWithUploadUrl(auth: Authenticator): FileTypeWithUploadUrl {
+    const blob = this.toJSON(auth);
+
+    return {
+      ...blob,
+      uploadUrl: this.getPublicUrl(auth),
+    };
   }
 }

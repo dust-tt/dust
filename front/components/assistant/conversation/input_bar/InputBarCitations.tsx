@@ -22,10 +22,10 @@ export function InputBarCitations({
           size="xs"
           type={isImage ? "image" : "document"}
           imgSrc={blob.preview}
-          description={isImage ? undefined : blob.content}
           onClose={() => {
             fileUploaderService.removeFile(blob.id);
           }}
+          isLoading={blob.isUploading}
         />
       );
     }

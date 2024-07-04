@@ -155,6 +155,8 @@ async function handler(
       res.redirect(url);
       return;
     }
+
+    // TODO(2024-07-02 flav) Remove this endpoint.
     case "POST": {
       const { filePath, downloadUrl } = fileAttachmentLocation({
         workspaceId: owner.sId,

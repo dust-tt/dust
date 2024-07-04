@@ -21,7 +21,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 
 interface ContentFragmentBlob {
   contentType: SupportedFileContentType;
-  fileModelId: ModelId | null;
+  fileId: ModelId | null;
   sourceUrl: string | null;
   textBytes: number | null;
   title: string;
@@ -59,8 +59,8 @@ export async function getContentFragmentBlob(
 
     return new Ok({
       contentType,
-      fileModelId: null,
-      sourceUrl,
+      fileId: null,
+      sourceUrl: sourceUrl ?? null,
       textBytes,
       title,
     });
@@ -74,11 +74,19 @@ export async function getContentFragmentBlob(
       return new Err(new Error("File not meant to be used in a conversation."));
     }
 
+    if (!file.isReady) {
+      return new Err(
+        new Error(
+          "The file is not ready. Please re-upload the file to proceed."
+        )
+      );
+    }
+
     // Give priority to the URL if it is provided.
     const sourceUrl = url ?? file.getPublicUrl(auth);
     return new Ok({
       contentType: file.contentType,
-      fileModelId: file.id,
+      fileId: file.id,
       sourceUrl,
       textBytes: null,
       title,
