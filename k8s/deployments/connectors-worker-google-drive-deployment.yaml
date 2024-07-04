@@ -32,6 +32,8 @@ spec:
           env:
             - name: DD_PROFILING_ENABLED
               value: "true"
+            - name: DD_PROFILING_EXPERIMENTAL_CPU_ENABLED
+              value: "true"
             - name: DD_AGENT_HOST
               valueFrom:
                 fieldRef:
