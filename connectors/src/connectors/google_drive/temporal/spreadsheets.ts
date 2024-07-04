@@ -7,6 +7,7 @@ import {
 } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
+import tracer from "dd-trace";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
@@ -374,117 +375,132 @@ export async function syncSpreadSheet(
       skipReason?: string;
     }
 > {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("Connector not found.");
-  }
-
-  const loggerArgs = {
-    connectorId,
-  };
-
-  const localLogger = logger.child({
-    ...loggerArgs,
-    spreadsheet: {
-      id: file.id,
-      size: file.size,
+  return tracer.trace(
+    `gdrive`,
+    {
+      resource: `syncSpreadSheet`,
     },
-  });
+    async (span) => {
+      span?.setTag("connectorId", connectorId);
+      span?.setTag("fileId", file.id);
 
-  localLogger.info("[Spreadsheet] Syncing Google Spreadsheet.");
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector) {
+        throw new Error("Connector not found.");
+      }
 
-  // Avoid import attempts for sheets exceeding the max size due to Node constraints.
-  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
-    localLogger.info(
-      "[Spreadsheet] Spreadsheet size exceeded, skipping further processing."
-    );
+      const loggerArgs = {
+        connectorId,
+      };
 
-    return { isSupported: false };
-  }
+      const localLogger = logger.child({
+        ...loggerArgs,
+        spreadsheet: {
+          id: file.id,
+          size: file.size,
+        },
+      });
 
-  const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
+      localLogger.info("[Spreadsheet] Syncing Google Spreadsheet.");
 
-  const getSpreadsheet = (id: string) =>
-    sheetsAPI.spreadsheets.get({ spreadsheetId: id });
-  let spreadsheet: Awaited<ReturnType<typeof getSpreadsheet>>;
-  // We do 3 local retries for 500 Internal Server Error.
-  // If we still get 500 Internal Server Error after 3 retries and the activity already
-  // has been retried 20 times, we mark the file as skipped.
-  let internalErrorsCount = 0;
-  const maxInternalErrors = 3;
-  for (;;) {
-    try {
-      spreadsheet = await getSpreadsheet(file.id);
-      break;
-    } catch (err) {
-      if (isGAxiosServiceUnavailablError(err)) {
-        throw new ProviderWorkflowError(
-          "google_drive",
-          "503 - Service Unavailable from Google Sheets",
-          "transient_upstream_activity_error",
-          err
+      // Avoid import attempts for sheets exceeding the max size due to Node constraints.
+      if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
+        localLogger.info(
+          "[Spreadsheet] Spreadsheet size exceeded, skipping further processing."
         );
-      } else if (err instanceof Error && "code" in err && err.code === 500) {
-        internalErrorsCount++;
-        if (internalErrorsCount > maxInternalErrors) {
-          if (Context.current().info.attempt > 20) {
-            localLogger.info(
-              "[Spreadsheet] Consistently getting 500 Internal Server Error from Google Sheets, skipping further processing."
+
+        return { isSupported: false };
+      }
+
+      const sheetsAPI = google.sheets({ version: "v4", auth: oauth2client });
+
+      const getSpreadsheet = (id: string) =>
+        sheetsAPI.spreadsheets.get({ spreadsheetId: id });
+      let spreadsheet: Awaited<ReturnType<typeof getSpreadsheet>>;
+      // We do 3 local retries for 500 Internal Server Error.
+      // If we still get 500 Internal Server Error after 3 retries and the activity already
+      // has been retried 20 times, we mark the file as skipped.
+      let internalErrorsCount = 0;
+      const maxInternalErrors = 3;
+      for (;;) {
+        try {
+          spreadsheet = await getSpreadsheet(file.id);
+          break;
+        } catch (err) {
+          if (isGAxiosServiceUnavailablError(err)) {
+            throw new ProviderWorkflowError(
+              "google_drive",
+              "503 - Service Unavailable from Google Sheets",
+              "transient_upstream_activity_error",
+              err
             );
-            return {
-              isSupported: true,
-              skipReason: "google_internal_server_error",
-            };
+          } else if (
+            err instanceof Error &&
+            "code" in err &&
+            err.code === 500
+          ) {
+            internalErrorsCount++;
+            if (internalErrorsCount > maxInternalErrors) {
+              if (Context.current().info.attempt > 20) {
+                localLogger.info(
+                  "[Spreadsheet] Consistently getting 500 Internal Server Error from Google Sheets, skipping further processing."
+                );
+                return {
+                  isSupported: true,
+                  skipReason: "google_internal_server_error",
+                };
+              }
+            } else {
+              // Allow to locally retry the API call.
+              continue;
+            }
           }
-        } else {
-          // Allow to locally retry the API call.
-          continue;
+
+          throw err;
         }
       }
 
-      throw err;
+      const sheets = await getAllSheetsFromSpreadSheet(
+        sheetsAPI,
+        spreadsheet.data,
+        loggerArgs
+      );
+
+      // List synced sheets.
+      const syncedSheets = await GoogleDriveSheet.findAll({
+        where: {
+          connectorId: connector.id,
+          driveFileId: file.id,
+        },
+      });
+
+      const successfulSheetIdImports: number[] = [];
+      for (const sheet of sheets) {
+        const isImported = await processSheet(connector, sheet);
+        if (isImported) {
+          successfulSheetIdImports.push(sheet.id);
+        }
+      }
+
+      // Delete any previously synced sheets that no longer exist in the current spreadsheet
+      // or have exceeded the maximum number of rows.
+      const deletedSyncedSheets = syncedSheets.filter(
+        (synced) =>
+          // Check for undefined explicitly, avoiding incorrect filtering
+          // due to falsy values (0 can be a valid sheet ID).
+          successfulSheetIdImports.find(
+            (sheetId) => sheetId === synced.driveSheetId
+          ) === undefined
+      );
+      if (deletedSyncedSheets.length > 0) {
+        await deleteAllSheets(connector, deletedSyncedSheets, {
+          driveFileId: spreadsheet.data.spreadsheetId ?? "",
+        });
+      }
+
+      return { isSupported: true };
     }
-  }
-
-  const sheets = await getAllSheetsFromSpreadSheet(
-    sheetsAPI,
-    spreadsheet.data,
-    loggerArgs
   );
-
-  // List synced sheets.
-  const syncedSheets = await GoogleDriveSheet.findAll({
-    where: {
-      connectorId: connector.id,
-      driveFileId: file.id,
-    },
-  });
-
-  const successfulSheetIdImports: number[] = [];
-  for (const sheet of sheets) {
-    const isImported = await processSheet(connector, sheet);
-    if (isImported) {
-      successfulSheetIdImports.push(sheet.id);
-    }
-  }
-
-  // Delete any previously synced sheets that no longer exist in the current spreadsheet
-  // or have exceeded the maximum number of rows.
-  const deletedSyncedSheets = syncedSheets.filter(
-    (synced) =>
-      // Check for undefined explicitly, avoiding incorrect filtering
-      // due to falsy values (0 can be a valid sheet ID).
-      successfulSheetIdImports.find(
-        (sheetId) => sheetId === synced.driveSheetId
-      ) === undefined
-  );
-  if (deletedSyncedSheets.length > 0) {
-    await deleteAllSheets(connector, deletedSyncedSheets, {
-      driveFileId: spreadsheet.data.spreadsheetId ?? "",
-    });
-  }
-
-  return { isSupported: true };
 }
 
 async function deleteSheetForSpreadsheet(
