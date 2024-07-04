@@ -129,10 +129,6 @@ function extractUsageFromExecutions(
  *                 items:
  *                   type: object
  *                   description: An individual input for the app
- *                   properties:
- *                     question:
- *                       type: string
- *                       description: The question to be processed by the app
  *                   additionalProperties: true
  *     responses:
  *       200:
