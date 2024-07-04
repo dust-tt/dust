@@ -11,6 +11,7 @@ import {
 import { MAX_CHUNK_SIZE } from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
+import tracer from "dd-trace";
 import http from "http";
 import https from "https";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -75,95 +76,129 @@ async function _upsertToDatasource({
   upsertContext,
   async,
 }: UpsertToDataSourceParams) {
-  const localLogger = logger.child({
-    ...loggerArgs,
-    documentId,
-    documentUrl,
-    documentLength: sectionFullText(documentContent).length,
-    workspaceId: dataSourceConfig.workspaceId,
-    dataSourceName: dataSourceConfig.dataSourceName,
-    parents,
-  });
-  const statsDTags = [
-    `data_source_name:${dataSourceConfig.dataSourceName}`,
-    `workspace_id:${dataSourceConfig.workspaceId}`,
-  ];
-
-  localLogger.info("Attempting to upload document to Dust.");
-  statsDClient.increment("data_source_upserts_attempt.count", 1, statsDTags);
-
-  const now = new Date();
-
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
-  const dustRequestPayload: PostDataSourceDocumentRequestBody = {
-    text: null,
-    section: documentContent,
-    source_url: documentUrl,
-    timestamp: timestampMs,
-    tags: tags?.map((tag) => tag.substring(0, 512)),
-    parents,
-    light_document_output: true,
-    upsert_context: upsertContext,
-    async,
-  };
-
-  const dustRequestConfig: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+  return tracer.trace(
+    `connectors`,
+    {
+      resource: `upsertToDatasource`,
     },
-  };
+    async (span) => {
+      span?.setTag("documentId", documentId);
+      span?.setTag("workspaceId", dataSourceConfig.workspaceId);
+      Object.keys(loggerArgs).forEach((key) => {
+        span?.setTag(key, loggerArgs[key]);
+      });
 
-  let dustRequestResult: AxiosResponse;
-  try {
-    dustRequestResult = await axiosWithTimeout.post(
-      endpoint,
-      dustRequestPayload,
-      dustRequestConfig
-    );
-  } catch (e) {
-    const elapsed = new Date().getTime() - now.getTime();
-    if (axios.isAxiosError(e) && e.config?.data) {
-      e.config.data = "[REDACTED]";
+      const localLogger = logger.child({
+        ...loggerArgs,
+        documentId,
+        documentUrl,
+        documentLength: sectionFullText(documentContent).length,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+        parents,
+      });
+      const statsDTags = [
+        `data_source_name:${dataSourceConfig.dataSourceName}`,
+        `workspace_id:${dataSourceConfig.workspaceId}`,
+      ];
+
+      localLogger.info("Attempting to upload document to Dust.");
+      statsDClient.increment(
+        "data_source_upserts_attempt.count",
+        1,
+        statsDTags
+      );
+
+      const now = new Date();
+
+      const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+      const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+      const dustRequestPayload: PostDataSourceDocumentRequestBody = {
+        text: null,
+        section: documentContent,
+        source_url: documentUrl,
+        timestamp: timestampMs,
+        tags: tags?.map((tag) => tag.substring(0, 512)),
+        parents,
+        light_document_output: true,
+        upsert_context: upsertContext,
+        async,
+      };
+
+      const dustRequestConfig: AxiosRequestConfig = {
+        headers: {
+          Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+        },
+      };
+
+      let dustRequestResult: AxiosResponse;
+      try {
+        dustRequestResult = await axiosWithTimeout.post(
+          endpoint,
+          dustRequestPayload,
+          dustRequestConfig
+        );
+      } catch (e) {
+        const elapsed = new Date().getTime() - now.getTime();
+        if (axios.isAxiosError(e) && e.config?.data) {
+          e.config.data = "[REDACTED]";
+        }
+        statsDClient.increment(
+          "data_source_upserts_error.count",
+          1,
+          statsDTags
+        );
+        statsDClient.distribution(
+          "data_source_upserts_error.duration.distribution",
+          elapsed,
+          statsDTags
+        );
+        localLogger.error({ error: e }, "Error uploading document to Dust.");
+        throw e;
+      }
+
+      const elapsed = new Date().getTime() - now.getTime();
+
+      if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+        statsDClient.increment(
+          "data_source_upserts_success.count",
+          1,
+          statsDTags
+        );
+        statsDClient.distribution(
+          "data_source_upserts_success.duration.distribution",
+          elapsed,
+          statsDTags
+        );
+        localLogger.info("Successfully uploaded document to Dust.");
+      } else {
+        statsDClient.increment(
+          "data_source_upserts_error.count",
+          1,
+          statsDTags
+        );
+        statsDClient.distribution(
+          "data_source_upserts_error.duration.distribution",
+          elapsed,
+          statsDTags
+        );
+        localLogger.error(
+          {
+            status: dustRequestResult.status,
+            elapsed,
+          },
+          "Error uploading document to Dust."
+        );
+        throw new Error(
+          `Error uploading to dust: ${JSON.stringify(
+            dustRequestResult,
+            null,
+            2
+          )}`
+        );
+      }
     }
-    statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
-    statsDClient.distribution(
-      "data_source_upserts_error.duration.distribution",
-      elapsed,
-      statsDTags
-    );
-    localLogger.error({ error: e }, "Error uploading document to Dust.");
-    throw e;
-  }
-
-  const elapsed = new Date().getTime() - now.getTime();
-
-  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
-    statsDClient.increment("data_source_upserts_success.count", 1, statsDTags);
-    statsDClient.distribution(
-      "data_source_upserts_success.duration.distribution",
-      elapsed,
-      statsDTags
-    );
-    localLogger.info("Successfully uploaded document to Dust.");
-  } else {
-    statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
-    statsDClient.distribution(
-      "data_source_upserts_error.duration.distribution",
-      elapsed,
-      statsDTags
-    );
-    localLogger.error(
-      {
-        status: dustRequestResult.status,
-        elapsed,
-      },
-      "Error uploading document to Dust."
-    );
-    throw new Error(
-      `Error uploading to dust: ${JSON.stringify(dustRequestResult, null, 2)}`
-    );
-  }
+  );
 }
 
 export async function deleteFromDataSource(
