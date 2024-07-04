@@ -593,6 +593,7 @@ const EXTENSION_WHITELIST = [
   ".cpp",
   ".hpp",
   ".sh",
+  ".sql",
 ];
 
 const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
