@@ -105,36 +105,51 @@ export async function renderConversationForModelMultiActions({
         }
       }
 
-      for (const step of steps) {
-        if (!step.actions.length && !step.contents.length) {
-          logger.error(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              agentMessageId: m.sId,
-              panic: true,
-            },
-            "Unexpected state, agent message step with no actions and no contents"
-          );
-          continue;
-        }
-
-        if (step.actions.length) {
-          messages.push({
-            role: "assistant",
-            function_calls: step.actions.map((s) => s.call),
-            content: step.contents.join("\n"),
-          } satisfies AssistantFunctionCallMessageTypeModel);
-
-          for (const { result } of step.actions) {
-            messages.push(result);
-          }
-        } else if (step.contents.length) {
+      if (excludeActions) {
+        // In Exclude Actions mode, we only render the last step that has content.
+        const stepsWithContent = steps.filter((s) => s.contents.length);
+        if (stepsWithContent.length) {
+          const lastStepWithContent =
+            stepsWithContent[stepsWithContent.length - 1];
           messages.push({
             role: "assistant",
             name: m.configuration.name,
-            content: step.contents.join("\n"),
+            content: lastStepWithContent.contents.join("\n"),
           } satisfies AssistantContentMessageTypeModel);
+        }
+      } else {
+        // In regular mode, we render all steps.
+        for (const step of steps) {
+          if (!step.actions.length && !step.contents.length) {
+            logger.error(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+                panic: true,
+              },
+              "Unexpected state, agent message step with no actions and no contents"
+            );
+            continue;
+          }
+
+          if (step.actions.length) {
+            messages.push({
+              role: "assistant",
+              function_calls: step.actions.map((s) => s.call),
+              content: step.contents.join("\n"),
+            } satisfies AssistantFunctionCallMessageTypeModel);
+
+            for (const { result } of step.actions) {
+              messages.push(result);
+            }
+          } else if (step.contents.length) {
+            messages.push({
+              role: "assistant",
+              name: m.configuration.name,
+              content: step.contents.join("\n"),
+            } satisfies AssistantContentMessageTypeModel);
+          }
         }
       }
 
