@@ -126,6 +126,13 @@ function extractUsageFromExecutions(
  *               inputs:
  *                 type: array
  *                 description: The inputs of the app
+ *                 items:
+ *                   type: object
+ *                   description: An individual input for the app
+ *                   properties:
+ *                     question:
+ *                       type: string
+ *                       description: The question to be processed by the app
  *     responses:
  *       200:
  *         description: App run
