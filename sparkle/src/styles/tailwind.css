@@ -2,12 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @keyframes bgblink {
-  0%,
-  100% {
-    @apply s-bg-structure-0;
+    0%,
+    100% {
+      @apply s-bg-structure-0;
+    }
+    50% {
+      @apply s-bg-purple-100;
+    }
   }
-  50% {
-    @apply s-bg-purple-100;
-  }
-}
+  
