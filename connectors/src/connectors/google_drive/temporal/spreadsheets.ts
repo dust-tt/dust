@@ -178,6 +178,7 @@ async function processSheet(
 
   const { id, spreadsheet, title } = sheet;
   const loggerArgs = {
+    connectorType: "google_drive",
     connectorId: connector.id,
     sheet: {
       id,
