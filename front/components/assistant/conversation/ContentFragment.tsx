@@ -1,25 +1,26 @@
-import { Citation } from "@dust-tt/sparkle";
+import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import type { CitationType } from "@dust-tt/sparkle/dist/components/Citation";
 import type { ContentFragmentType } from "@dust-tt/types";
-import {
-  isSupportedImageContentFragmentType,
-  isSupportedImageContentType,
-  isSupportedPlainTextContentType,
-} from "@dust-tt/types";
+import { isSupportedImageContentType } from "@dust-tt/types";
 
 export function ContentFragment({ message }: { message: ContentFragmentType }) {
-  let citationType: CitationType = "document";
-
-  if (
-    message.contentType === "slack_thread_content" ||
-    message.contentType === "dust-application/slack"
-  ) {
-    citationType = "slack";
-  } else if (isSupportedPlainTextContentType(message.contentType)) {
-    citationType = "document";
-  } else if (isSupportedImageContentType(message.contentType)) {
-    citationType = "image";
+  if (isSupportedImageContentType(message.contentType)) {
+    return (
+      <ZoomableImageCitationWrapper
+        size="xs"
+        title={message.title}
+        imgSrc={`${message.sourceUrl}?action=view`}
+        alt={message.title}
+      />
+    );
   }
+
+  const citationType: CitationType = [
+    "slack_thread_content",
+    "dust-application/slack",
+  ].includes(message.contentType)
+    ? "slack"
+    : "document";
 
   return (
     <Citation
@@ -27,20 +28,7 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
       size="xs"
       type={citationType}
       href={message.sourceUrl || undefined}
-      imgSrc={getViewUrlForContentFragment(message)}
       avatarSrc={message.context.profilePictureUrl ?? undefined}
     />
   );
-}
-
-function getViewUrlForContentFragment(message: ContentFragmentType) {
-  if (!message.sourceUrl) {
-    return undefined;
-  }
-
-  if (isSupportedImageContentFragmentType(message.contentType)) {
-    return `${message.sourceUrl}?action=view`;
-  }
-
-  return undefined;
 }
