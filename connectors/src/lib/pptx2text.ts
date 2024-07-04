@@ -2,13 +2,15 @@ import tracer from "dd-trace";
 import JSZip from "jszip";
 import turndown from "turndown";
 
+import { getWorkerPool } from "@connectors/lib/workerpool";
+
 type PPTXDocument = {
   pages: {
     content: string;
   }[];
 };
 
-export async function PPTX2Text(
+async function _PPTX2Text(
   fileBuffer: Buffer,
   filename?: string
 ): Promise<PPTXDocument> {
@@ -69,4 +71,11 @@ export async function PPTX2Text(
       return document;
     }
   );
+}
+
+export async function PPTX2Text(
+  fileBuffer: Buffer,
+  filename?: string
+): Promise<PPTXDocument> {
+  return getWorkerPool().exec(_PPTX2Text, [fileBuffer, filename]);
 }
