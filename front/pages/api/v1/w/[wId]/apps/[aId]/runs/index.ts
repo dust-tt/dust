@@ -95,12 +95,6 @@ function extractUsageFromExecutions(
  *         schema:
  *           type: string
  *       - in: query
- *         name: use_workspace_credentials
- *         required: false
- *         description: Use the workspace credentials instead of the app credentials
- *         schema:
- *           type: boolean
- *       - in: query
  *         name: wId
  *         required: true
  *         description: ID of the workspace
