@@ -12,7 +12,15 @@ import {
   Slack,
 } from "@sparkle/logo/platforms";
 
-import { Avatar, CardButton, Icon, IconButton, Tooltip, XCircleIcon } from "..";
+import {
+  Avatar,
+  CardButton,
+  Icon,
+  IconButton,
+  Spinner,
+  Tooltip,
+  XCircleIcon,
+} from "..";
 
 export type CitationType =
   | "confluence"
@@ -26,17 +34,18 @@ export type CitationType =
   | "slack";
 
 interface CitationProps {
-  type?: CitationType;
-  title: string;
+  avatarSrc?: string;
   description?: string;
+  href?: string;
+  imgSrc?: string;
   index?: ReactNode;
   isBlinking?: boolean;
-  href?: string;
+  isLoading?: boolean;
+  onClose?: () => void;
   size?: "xs" | "sm";
   sizing?: "fixed" | "fluid";
-  onClose?: () => void;
-  avatarSrc?: string;
-  imgSrc?: string;
+  title: string;
+  type?: CitationType;
 }
 
 const typeIcons = {
@@ -57,17 +66,18 @@ const typeSizing = {
 };
 
 export function Citation({
-  title,
-  index,
-  type = "document",
-  size = "sm",
-  sizing = "fixed",
+  avatarSrc,
   description,
   href,
-  onClose,
-  isBlinking = false,
-  avatarSrc,
   imgSrc,
+  index,
+  isBlinking = false,
+  isLoading,
+  onClose,
+  size = "sm",
+  sizing = "fixed",
+  title,
+  type = "document",
 }: CitationProps) {
   const cardContent = (
     <>
@@ -95,7 +105,10 @@ export function Citation({
             {index}
           </div>
         )}
-        <Icon visual={typeIcons[type]} className="s-text-element-700" />
+
+        {!isLoading && (
+          <Icon visual={typeIcons[type]} className="s-text-element-700" />
+        )}
         <div className="s-flex-grow s-text-xs" />
         {onClose && (
           <div
@@ -130,40 +143,26 @@ export function Citation({
       )}
     </>
   );
-  if (href) {
-    return (
-      <CardButton
-        variant="secondary"
-        size="sm"
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={classNames(
-          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
-          sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
-          size === "sm" ? "sm:s-w-64" : "",
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
-          type === "image" ? "s-min-h-20" : ""
-        )}
-      >
-        {cardContent}
-      </CardButton>
-    );
-  } else {
-    return (
-      <CardButton
-        variant="secondary"
-        size="sm"
-        className={classNames(
-          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
-          sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
-          size === "sm" ? "sm:s-w-64" : "",
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
-          type === "image" ? "s-min-h-20" : ""
-        )}
-      >
-        {cardContent}
-      </CardButton>
-    );
-  }
+
+  return (
+    <CardButton
+      variant="secondary"
+      size="sm"
+      className={classNames(
+        "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+        sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
+        size === "sm" ? "sm:s-w-64" : "",
+        isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
+        type === "image" ? "s-min-h-20" : ""
+      )}
+      {...(href && { href, target: "_blank", rel: "noopener noreferrer" })}
+    >
+      {isLoading && (
+        <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
+          <Spinner size="xs" variant="color" />
+        </div>
+      )}
+      <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
+    </CardButton>
+  );
 }

@@ -38,6 +38,9 @@ spec:
             - name: MB_SITE_URL
               value: https://metabase.dust.tt
 
+            - name: MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE
+              value: 30
+
           resources:
             requests:
               cpu: 1000m

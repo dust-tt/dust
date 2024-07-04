@@ -41,6 +41,13 @@ export const CitationsExample = () => (
         isBlinking={true}
         imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
       />
+      <Citation
+        title="Loading state"
+        size="xs"
+        type="image"
+        onClose={() => alert("Close action clicked")}
+        isLoading={true}
+      />
       <div>
         <Citation
           title=""

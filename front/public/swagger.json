@@ -165,6 +165,58 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "specification_hash": {
+                    "type": "string",
+                    "description": "The hash of the specification to use. If you change your app specifiction, make sure to update the hash. This guarantees that you won't break an existing API integration by iterating on your app design."
+                  },
+                  "config": {
+                    "type": "object",
+                    "properties": {
+                      "model": {
+                        "type": "object",
+                        "description": "Configuration for the model",
+                        "properties": {
+                          "provider_id": {
+                            "type": "string",
+                            "description": "The ID of the model provider"
+                          },
+                          "model_id": {
+                            "type": "string",
+                            "description": "The ID of the model"
+                          },
+                          "use_cache": {
+                            "type": "boolean",
+                            "description": "Indicates if caching is used"
+                          },
+                          "use_stream": {
+                            "type": "boolean",
+                            "description": "Indicates if streaming is used"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "inputs": {
+                    "type": "array",
+                    "description": "The inputs of the app",
+                    "items": {
+                      "type": "object",
+                      "description": "An individual input for the app",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "App run"
@@ -950,6 +1002,30 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "The text content of the document to upsert."
+                  },
+                  "source_url": {
+                    "type": "string",
+                    "description": "The source URL for the document to upsert."
+                  },
+                  "light_document_output": {
+                    "type": "boolean",
+                    "description": "If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false."
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "The document"
