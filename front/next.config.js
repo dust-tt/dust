@@ -67,7 +67,7 @@ module.exports = {
     config.module.rules.push({
       test: /\.js$/,
       use: ["source-map-loader"],
-      enforce: "pre"
+      enforce: "pre",
     });
     return config;
   },
