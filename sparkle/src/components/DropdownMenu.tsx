@@ -11,7 +11,11 @@ import React, {
   useState,
 } from "react";
 
-import { ChevronDown, ChevronRight, ChevronUpDown } from "@sparkle/icons/solid";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ChevronUpDownIcon,
+} from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -168,10 +172,10 @@ DropdownMenu.Button = function ({
 
   const chevronIcon =
     type === "select"
-      ? ChevronUpDown
+      ? ChevronUpDownIcon
       : type === "submenu"
-        ? ChevronRight
-        : ChevronDown;
+        ? ChevronRightIcon
+        : ChevronDownIcon;
 
   return (
     <>
