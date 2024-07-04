@@ -14,7 +14,7 @@ const sqids = new Sqids({
 const SHARD_KEY = 1;
 
 // Static region for now.
-const REGION = 1;
+const REGION = 1; // US.
 
 const RESOURCES_PREFIX = {
   file: "fil",
