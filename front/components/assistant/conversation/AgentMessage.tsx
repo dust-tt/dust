@@ -94,10 +94,10 @@ export function AgentMessage({
     ) as VisualizationActionType[];
 
   const [streamedVisualizations, setStreamedVisualizations] = useState<
-    { index: number; visualization: string }[]
+    { actionId: number; visualization: string }[]
   >(
     defaultVisualizations.map((v) => ({
-      index: v.id,
+      actionId: v.id,
       visualization: v?.output?.generation ?? "",
     }))
   );
@@ -283,12 +283,12 @@ export function AgentMessage({
         setStreamedVisualizations((m) => {
           const actionId = event.actionId;
           const tokens = event.text;
-          const index = m.findIndex((v) => v.index === actionId);
+          const index = m.findIndex((v) => v.actionId === actionId);
           if (index === -1) {
-            return [...m, { index: actionId, visualization: tokens }];
+            return [...m, { actionId, visualization: tokens }];
           } else {
             return m.map((v) => {
-              if (v.index === actionId) {
+              if (v.actionId === actionId) {
                 return { ...v, visualization: v.visualization + tokens };
               }
               return v;
@@ -533,7 +533,7 @@ export function AgentMessage({
     references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
-    streamedVisualizations: { index: number; visualization: string }[];
+    streamedVisualizations: { actionId: number; visualization: string }[];
   }) {
     if (agentMessage.status === "failed") {
       return (
@@ -574,9 +574,10 @@ export function AgentMessage({
           </div>
         ) : null}
 
-        {streamedVisualizations.map(({ index, visualization }) => {
+        {/* This is where we will we plug Aric's work to render the graph in an iframe. */}
+        {streamedVisualizations.map(({ actionId, visualization }) => {
           return (
-            <div key={index}>
+            <div key={actionId}>
               <div className="flex flex-row gap-2">
                 <Icon size="sm" visual={BracesIcon} />
                 <div className="font-semibold">Visualization</div>
