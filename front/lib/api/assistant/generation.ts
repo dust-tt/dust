@@ -87,15 +87,13 @@ export async function renderConversationForModelMultiActions({
           actions: [],
         }) satisfies (typeof steps)[number];
 
-      if (!excludeActions) {
-        for (const action of actions) {
-          const stepIndex = action.step;
-          steps[stepIndex] = steps[stepIndex] || emptyStep();
-          steps[stepIndex].actions.push({
-            call: action.renderForFunctionCall(),
-            result: action.renderForMultiActionsModel(),
-          });
-        }
+      for (const action of actions) {
+        const stepIndex = action.step;
+        steps[stepIndex] = steps[stepIndex] || emptyStep();
+        steps[stepIndex].actions.push({
+          call: action.renderForFunctionCall(),
+          result: action.renderForMultiActionsModel(),
+        });
       }
 
       for (const content of m.rawContents) {
@@ -107,7 +105,7 @@ export async function renderConversationForModelMultiActions({
 
       if (excludeActions) {
         // In Exclude Actions mode, we only render the last step that has content.
-        const stepsWithContent = steps.filter((s) => s.contents.length);
+        const stepsWithContent = steps.filter((s) => s?.contents.length);
         if (stepsWithContent.length) {
           const lastStepWithContent =
             stepsWithContent[stepsWithContent.length - 1];
@@ -120,6 +118,18 @@ export async function renderConversationForModelMultiActions({
       } else {
         // In regular mode, we render all steps.
         for (const step of steps) {
+          if (!step) {
+            logger.error(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+                panic: true,
+              },
+              "Unexpected state, agent message step is empty"
+            );
+            continue;
+          }
           if (!step.actions.length && !step.contents.length) {
             logger.error(
               {
