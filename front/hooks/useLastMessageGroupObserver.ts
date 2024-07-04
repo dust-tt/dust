@@ -33,5 +33,5 @@ export function useLastMessageGroupObserver(
     return () => {
       observer.disconnect();
     };
-  }, [messages]); // Reacts to changes in the dependency array.
+  }, [messages]);
 }
