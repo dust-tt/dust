@@ -176,6 +176,7 @@ export async function agentMentionsUserCount(
     attributes: ["sId"],
     where: {
       workspaceId: workspaceId,
+      status: "active",
     },
   });
   const allAgentConfigurationIds = [
@@ -247,6 +248,7 @@ export async function agentMentionsCount(
     attributes: ["sId"],
     where: {
       workspaceId: workspaceId,
+      status: "active",
     },
   });
   const allAgentConfigurationIds = [
