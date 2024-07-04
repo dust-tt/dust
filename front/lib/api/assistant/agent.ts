@@ -240,6 +240,10 @@ export async function* runMultiActionsAgentLoop(
             step: i,
             content: event.content,
           });
+          agentMessage.rawContents.push({
+            step: i,
+            content: event.content,
+          });
           break;
 
         // Generation events

@@ -22,6 +22,7 @@ import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
   Conversation,
@@ -223,6 +224,11 @@ export async function batchRenderAgentMessages(
       actions: actions,
       content: agentMessage.content,
       chainOfThoughts: agentMessage.chainOfThoughts,
+      rawContents:
+        agentMessage.agentMessageContents?.map((rc) => ({
+          step: rc.step,
+          content: rc.content,
+        })) ?? [],
       error,
       // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
       configuration: agentConfiguration,
@@ -328,6 +334,13 @@ async function fetchMessagesForPage(
         model: AgentMessage,
         as: "agentMessage",
         required: false,
+        include: [
+          {
+            model: AgentMessageContent,
+            as: "agentMessageContents",
+            required: false,
+          },
+        ],
       },
       // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
       // along with messages in one query). Only once we move to a MessageResource will we be able

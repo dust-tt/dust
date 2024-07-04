@@ -1,5 +1,7 @@
 import type {
   AgentConfigurationType,
+  AssistantContentMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -70,46 +72,97 @@ export async function renderConversationForModelMultiActions({
       const actions = removeNulls(m.actions);
 
       // This array is 2D, because we can have multiple calls per agent message (parallel calls).
-      const steps = [] as Array<
-        Array<{ call: FunctionCallType; result: FunctionMessageTypeModel }>
-      >;
 
-      if (!excludeActions) {
-        for (const action of actions) {
-          const stepIndex = action.step;
-          steps[stepIndex] = steps[stepIndex] || [];
-          steps[stepIndex].push({
-            call: action.renderForFunctionCall(),
-            result: action.renderForMultiActionsModel(),
-          });
+      const steps = [] as Array<{
+        contents: string[];
+        actions: Array<{
+          call: FunctionCallType;
+          result: FunctionMessageTypeModel;
+        }>;
+      }>;
+
+      const emptyStep = () =>
+        ({
+          contents: [],
+          actions: [],
+        }) satisfies (typeof steps)[number];
+
+      for (const action of actions) {
+        const stepIndex = action.step;
+        steps[stepIndex] = steps[stepIndex] || emptyStep();
+        steps[stepIndex].actions.push({
+          call: action.renderForFunctionCall(),
+          result: action.renderForMultiActionsModel(),
+        });
+      }
+
+      for (const content of m.rawContents) {
+        steps[content.step] = steps[content.step] || emptyStep();
+        if (content.content.trim()) {
+          steps[content.step].contents.push(content.content);
         }
       }
 
-      for (const step of steps) {
-        if (!step?.length) {
-          logger.error(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              agentMessageId: m.sId,
-              panic: true,
-            },
-            "Unexpected state, agent message step with no actions"
-          );
-          continue;
+      if (excludeActions) {
+        // In Exclude Actions mode, we only render the last step that has content.
+        const stepsWithContent = steps.filter((s) => s?.contents.length);
+        if (stepsWithContent.length) {
+          const lastStepWithContent =
+            stepsWithContent[stepsWithContent.length - 1];
+          messages.push({
+            role: "assistant",
+            name: m.configuration.name,
+            content: lastStepWithContent.contents.join("\n"),
+          } satisfies AssistantContentMessageTypeModel);
         }
+      } else {
+        // In regular mode, we render all steps.
+        for (const step of steps) {
+          if (!step) {
+            logger.error(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+                panic: true,
+              },
+              "Unexpected state, agent message step is empty"
+            );
+            continue;
+          }
+          if (!step.actions.length && !step.contents.length) {
+            logger.error(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+                panic: true,
+              },
+              "Unexpected state, agent message step with no actions and no contents"
+            );
+            continue;
+          }
+
+          messages.push({
+            role: "assistant",
+            function_calls: step.actions.length
+              ? step.actions.map((s) => s.call)
+              : undefined,
+            content: step.contents.join("\n"),
+          } as typeof step.actions.length extends 0
+            ? AssistantContentMessageTypeModel
+            : AssistantFunctionCallMessageTypeModel);
+
+          for (const { result } of step.actions) {
+            messages.push(result);
+          }
+        }
+      }
+
+      if (!m.rawContents.length && m.content?.trim()) {
+        // We need to maintain support for legacy agent messages that don't have rawContents.
         messages.push({
           role: "assistant",
-          function_calls: step.map((s) => s.call),
-        });
-        for (const { result } of step) {
-          messages.push(result);
-        }
-      }
-
-      if (m.content?.trim()) {
-        messages.push({
-          role: "assistant" as const,
           name: m.configuration.name,
           content: m.content,
         });
