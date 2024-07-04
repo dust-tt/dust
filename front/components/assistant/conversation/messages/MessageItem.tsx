@@ -73,7 +73,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={user}
               conversationId={conversationId}
               reactions={messageReactions}
-              isInModal={isInModal}
               hideReactions={hideReactions}
               size={isInModal ? "compact" : "normal"}
             />
