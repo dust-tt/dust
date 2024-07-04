@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { CardButton } from "@sparkle/components/CardButton";
-import { More as MoreIcon } from "@sparkle/icons/solid";
+import { MoreIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 type AssistantPreviewVariant = "list" | "minimal";

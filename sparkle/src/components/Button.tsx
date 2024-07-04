@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 
-import { ChevronDown, ChevronUpDown } from "@sparkle/icons/solid";
+import { ChevronDownIcon, ChevronUpDownIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Avatar } from "./Avatar";
@@ -225,14 +225,14 @@ export function Button({
       {type === "menu" && (
         <Icon
           className="s-opacity-50"
-          visual={ChevronDown}
+          visual={ChevronDownIcon}
           size={size as IconProps["size"]}
         />
       )}
       {type === "select" && (
         <Icon
           className="s-opacity-60"
-          visual={ChevronUpDown}
+          visual={ChevronUpDownIcon}
           size={size as IconProps["size"]}
         />
       )}
