@@ -1,6 +1,5 @@
 import type {
   ConnectorPermission,
-  ConnectorType,
   ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
