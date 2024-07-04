@@ -295,7 +295,7 @@ export async function syncOneFile(
     ) {
       if (res.data instanceof ArrayBuffer) {
         try {
-          const converted = await PPTX2Text(Buffer.from(res.data), file.name);
+          const converted = await PPTX2Text(Buffer.from(res.data), file.id);
 
           documentContent = {
             prefix: null,
