@@ -124,6 +124,37 @@ const extractTextFromPDF: PreprocessingFunction = async (
   }
 };
 
+// Other text files preprocessing.
+
+// We don't apply any processing to these files, we just store the raw text.
+const storeRawText: PreprocessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+) => {
+  const readStream = file.getReadStream(auth, "original");
+  const writeStream = file.getWriteStream(auth, "processed");
+
+  try {
+    await pipeline(readStream, writeStream);
+
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to store raw text."
+    );
+
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+
+    return new Err(new Error(`Failed to store raw text ${errorMessage}`));
+  }
+};
+
 // Preprocessing for file upload.
 
 type PreprocessingFunction = (
@@ -139,7 +170,7 @@ type PreprocessingPerContentType = {
   [k in SupportedFileContentType]: PreprocessingPerUseCase | undefined;
 };
 
-const processingPerContentType: Partial<PreprocessingPerContentType> = {
+const processingPerContentType: PreprocessingPerContentType = {
   "application/pdf": {
     conversation: extractTextFromPDF,
   },
@@ -148,6 +179,24 @@ const processingPerContentType: Partial<PreprocessingPerContentType> = {
   },
   "image/png": {
     conversation: resizeAndUploadToFileStorage,
+  },
+  "text/comma-separated-values": {
+    conversation: storeRawText,
+  },
+  "text/csv": {
+    conversation: storeRawText,
+  },
+  "text/markdown": {
+    conversation: storeRawText,
+  },
+  "text/plain": {
+    conversation: storeRawText,
+  },
+  "text/tab-separated-values": {
+    conversation: storeRawText,
+  },
+  "text/tsv": {
+    conversation: storeRawText,
   },
 };
 
