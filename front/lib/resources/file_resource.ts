@@ -15,12 +15,9 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import {
-  getResourceIdFromPublicId,
-  makePublicId,
-} from "@app/lib/resources/public_ids";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 
 type FileVersion = "processed" | "original";
 
@@ -55,7 +52,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
     }
 
-    const fileModelId = getResourceIdFromPublicId(id);
+    const fileModelId = getResourceIdFromSId(id);
     if (!fileModelId) {
       return null;
     }
@@ -201,7 +198,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   get publicId(): string {
-    return makePublicId("file", {
+    return makeSId("file", {
       id: this.id,
       workspaceId: this.workspaceId,
     });
