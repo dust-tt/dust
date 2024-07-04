@@ -11,6 +11,12 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import {
+  MicrosoftNodeData,
+  microsoftInternalIdFromNodeData,
+} from "@connectors/connectors/microsoft/lib/graph_api";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { c } from "tar";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -299,6 +305,72 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  static async batchGetOrCreateFromNodesData(
+    connectorId: ModelId,
+    nodesData: MicrosoftNodeData[]
+  ) {
+    const internalIds = nodesData.map((root) =>
+      microsoftInternalIdFromNodeData(root)
+    );
+
+    const nodes = await MicrosoftNodeModel.findAll({
+      where: {
+        connectorId,
+        internalId: internalIds,
+      },
+    });
+
+    return await concurrentExecutor(
+      nodesData,
+      async (root) => {
+        const internalId = microsoftInternalIdFromNodeData(root);
+        const node = nodes.find((node) => node.internalId === internalId);
+        if (node) {
+          return new this(this.model, node);
+        }
+        // Create a new node -- name and mimeType will be populated during the sync
+        const newNode = await MicrosoftNodeModel.create({
+          connectorId,
+          internalId,
+          nodeType: root.nodeType,
+          name: "",
+          parentInternalId: null,
+          mimeType: null,
+        });
+
+        return new this(this.model, newNode.get());
+      },
+      { concurrency: 10 }
+    );
+  }
+
+  static async getOrCreateFromRoot(rootResource: MicrosoftRootResource) {
+    const internalId = microsoftInternalIdFromNodeData(rootResource);
+
+    const node = await MicrosoftNodeModel.findOne({
+      where: {
+        connectorId: rootResource.connectorId,
+        internalId,
+      },
+    });
+
+    if (node) {
+      return new this(this.model, node.get());
+    }
+
+    // Create a new node -- name and mimeType will be populated during the sync
+    const newNode = await MicrosoftNodeModel.create({
+      connectorId: rootResource.connectorId,
+      internalId,
+      nodeType: rootResource.nodeType,
+      name: "",
+      parentInternalId: null,
+      mimeType: null,
+    });
+
+    return new this(this.model, newNode.get());
   }
 
   toJSON() {

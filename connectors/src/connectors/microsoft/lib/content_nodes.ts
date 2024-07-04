@@ -1,7 +1,9 @@
 import type { ContentNode } from "@dust-tt/types";
 
 import {
+  getDriveApiPath,
   getDriveItemApiPath,
+  getSiteApiPath,
   microsoftInternalIdFromNodeData,
   microsoftNodeDataFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -71,7 +73,7 @@ export function getSiteAsContentNode(site: microsoftgraph.Site): ContentNode {
   return {
     provider: "microsoft",
     internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: `/sites/${site.id}`,
+      itemApiPath: getSiteApiPath(site),
       nodeType: "site",
     }),
     parentInternalId: null,
@@ -126,7 +128,7 @@ export function getDriveAsContentNode(
   return {
     provider: "microsoft",
     internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: `/drives/${drive.id}`,
+      itemApiPath: getDriveApiPath(drive),
       nodeType: "drive",
     }),
     parentInternalId,

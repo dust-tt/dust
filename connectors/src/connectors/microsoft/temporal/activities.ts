@@ -5,8 +5,13 @@ import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  MicrosoftNodeData,
+  getDriveApiPath,
   getDriveItemApiPath,
+  getDrives,
   getFilesAndFolders,
+  getSiteApiPath,
+  getSites,
   microsoftInternalIdFromNodeData,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
@@ -30,74 +35,101 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 
-export async function getNodesToSync(connectorId) {
-  const rootResources =
-    await MicrosoftNodeResource.listRootsByConnectorId(connectorId);
-
-  const client = await getClient(connector.connectionId);
-}
-export async function fullSyncActivity({
-  connectorId,
-  dataSourceConfig,
-}: {
-  connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
-}): Promise<void> {
+export async function getSiteNodesToSync(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     throw new Error(`Connector with id ${connectorId} not found`);
   }
 
-  const providerConfig =
-    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
-  if (!providerConfig) {
-    throw new Error(`Configuration for connector ${connectorId} not found`);
-  }
-
-  const resources =
-    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
-
   const client = await getClient(connector.connectionId);
 
-  /** Sync files stored in drives & folders (.docx, .pptx, .pdf, etc.)  */
+  const rootResources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
 
-  const folderResources = resources.filter((resource) =>
-    ["folder"].includes(resource.nodeType)
+  // get root folders and drives and drill down site-root and sites to their
+  // child drives, as MicrosoftNodeData
+  const rootFolderAndDriveNodes: MicrosoftNodeData[] = rootResources.filter(
+    (resource) =>
+      resource.nodeType === "folder" || resource.nodeType === "drive"
   );
 
-  const folder = folderResources[0];
-
-  if (!folder) {
-    throw new Error(`No channel found for connector ${connectorId}`);
-  }
-
-  const filesAndFolders = await getFilesAndFolders(
-    client,
-    microsoftInternalIdFromNodeData(folder)
+  const rootSiteNodes: MicrosoftNodeData[] = rootResources.filter(
+    (resource) => resource.nodeType === "site"
   );
 
-  logger.info({ filesAndFolders, folder }, "Files and folders for folder");
-  const file = filesAndFolders.filter((item) => item.file)[0];
-  if (!file) {
-    throw new Error(`No file found for folder ${folder.id}`);
+  if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
+    const msSites = await getSites(client);
+    rootSiteNodes.concat(
+      msSites.map((site) => ({
+        itemApiPath: getSiteApiPath(site),
+        nodeType: "site",
+      }))
+    );
   }
 
-  const startSyncTs = Date.now();
+  const siteDriveNodes: MicrosoftNodeData[] = (
+    await concurrentExecutor(
+      rootSiteNodes,
+      async (site) => {
+        const msDrives = await getDrives(
+          client,
+          microsoftInternalIdFromNodeData(site)
+        );
+        return msDrives.map((drive) => ({
+          itemApiPath: getDriveApiPath(drive),
+          nodeType: "drive" as const,
+        }));
+      },
+      { concurrency: 5 }
+    )
+  ).flat();
 
-  await syncOneFile({
+  // remove duplicates
+  const allNodes = [...siteDriveNodes, ...rootFolderAndDriveNodes].reduce(
+    (acc, current) => {
+      const x = acc.find(
+        (item) =>
+          item.nodeType === current.nodeType &&
+          item.itemApiPath === current.itemApiPath
+      );
+      if (!x) {
+        return acc.concat([current]);
+      } else {
+        return acc;
+      }
+    },
+    [] as MicrosoftNodeData[]
+  );
+
+  return MicrosoftNodeResource.batchGetOrCreateFromNodesData(
     connectorId,
-    dataSourceConfig,
-    providerConfig,
-    file,
-    startSyncTs,
-  });
-
-  if (!file?.id) {
-    throw new Error(`No file or no id`);
-  }
+    allNodes
+  );
 }
+
+/*export async function markNodeAsVisited(
+  connectorId: ModelId,
+  internalId: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const resource = await MicrosoftNodeResource.fetchByInternalId(internalId);
+  await GoogleDriveFiles.upsert({
+    connectorId: connectorId,
+    dustFileId: getDocumentId(driveFileId),
+    driveFileId: file.id,
+    name: file.name,
+    mimeType: file.mimeType,
+    parentId: file.parent,
+    lastSeenTs: new Date(),
+  });
+}*/
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -107,13 +139,9 @@ const FILES_SYNC_CONCURRENCY = 10;
 export async function syncFiles({
   connectorId,
   parent,
-  dataSourceConfig,
-  providerConfig,
   startSyncTs,
 }: {
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
-  providerConfig: MicrosoftConfigurationResource;
   parent: MicrosoftNodeResource;
   startSyncTs: number;
 }) {
@@ -121,6 +149,20 @@ export async function syncFiles({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
+    throw new Error(`Parent node is not a folder or drive: ${parent.nodeType}`);
+  }
+
+  const providerConfig =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+
+  if (!providerConfig) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   logger.info(
     {
       connectorId,
@@ -166,9 +208,19 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
+  const childNodes = await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
+    connectorId,
+    children
+      .filter((item) => item.folder)
+      .map((item) => ({
+        itemApiPath: getDriveItemApiPath(item),
+        nodeType: "folder",
+      }))
+  );
+
   return {
     count,
-    subfolders: children.filter((item) => item.folder),
+    childNodes,
   };
 }
 

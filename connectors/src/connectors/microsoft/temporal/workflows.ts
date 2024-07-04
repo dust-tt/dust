@@ -1,15 +1,23 @@
 import type { ModelId } from "@dust-tt/types";
-import { proxyActivities } from "@temporalio/workflow";
+import {
+  continueAsNew,
+  proxyActivities,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
-const { fullSyncActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "20 minutes",
-});
+const { fullSyncActivity, getSiteNodesToSync, syncFiles, markNodeAsVisited } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "20 minutes",
+  });
 
-const { getNodesToSync, syncSucceeded } = proxyActivities<typeof sync_status>({
+const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
+  typeof sync_status
+>({
   startToCloseTimeout: "10 minutes",
 });
 
@@ -26,50 +34,52 @@ export async function fullSyncWorkflow({
 
 export async function fullSyncSitesWorkflow({
   connectorId,
-  nodesToBrowse = undefined,
+  nodesToSync = undefined,
   totalCount = 0,
   startSyncTs = undefined,
 }: {
   connectorId: ModelId;
-  nodesToBrowse?: string[];
+  nodesToSync?: MicrosoftNodeResource[];
   totalCount: number;
   startSyncTs?: number;
 }) {
-  if (nodesToBrowse === undefined) {
-    nodesToBrowse = await getFoldersToSync(connectorId);
+  if (startSyncTs === undefined) {
+    startSyncTs = new Date().getTime();
   }
 
-  while (nodesToBrowse.length > 0) {
-    const folder = nodesToBrowse.pop();
-    if (!folder) {
-      throw new Error("folderId should be defined");
+  if (nodesToSync === undefined) {
+    nodesToSync = await getSiteNodesToSync(connectorId);
+  }
+
+  while (nodesToSync.length > 0) {
+    const node = nodesToSync.pop();
+
+    if (!node) {
+      throw new Error("Unreachable: node is undefined");
     }
+
     do {
-      const res = await syncFiles(
+      const res = await syncFiles({
         connectorId,
-        folder,
+        parent: node,
         startSyncTs,
-        nextPageToken,
-        mimeTypeFilter
-      );
-      nextPageToken = res.nextPageToken ? res.nextPageToken : undefined;
+      });
       totalCount += res.count;
-      nodesToBrowse = nodesToBrowse.concat(res.subfolders);
+      nodesToSync = nodesToSync.concat(res.childNodes);
 
       await reportInitialSyncProgress(
         connectorId,
         `Synced ${totalCount} files`
       );
-    } while (nextPageToken);
-    await markFolderAsVisited(connectorId, folder);
+      // TODO(pr): add pagination support
+    } while (false);
+    await markNodeAsVisited(connectorId, node);
     if (workflowInfo().historyLength > 4000) {
-      await continueAsNew<typeof googleDriveFullSync>({
+      await continueAsNew<typeof fullSyncSitesWorkflow>({
         connectorId,
-        garbageCollect,
-        foldersToBrowse: nodesToBrowse,
+        nodesToSync,
         totalCount,
         startSyncTs,
-        mimeTypeFilter,
       });
     }
   }

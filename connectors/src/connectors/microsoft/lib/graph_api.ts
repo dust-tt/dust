@@ -207,3 +207,11 @@ export function getWorksheetApiPath(
 
   return `${parentItemApiPath}/workbook/worksheets/${item.id}`;
 }
+
+export function getDriveApiPath(drive: MicrosoftGraph.Drive) {
+  return `/drives/${drive.id}`;
+}
+
+export function getSiteApiPath(site: MicrosoftGraph.Site) {
+  return `/sites/${site.id}`;
+}
