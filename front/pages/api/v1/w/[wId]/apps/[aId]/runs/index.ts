@@ -133,6 +133,7 @@ function extractUsageFromExecutions(
  *                     question:
  *                       type: string
  *                       description: The question to be processed by the app
+ *                   additionalProperties: true
  *     responses:
  *       200:
  *         description: App run
