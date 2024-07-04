@@ -1,7 +1,9 @@
 import type { ContentNode } from "@dust-tt/types";
+import type { Client } from "@microsoft/microsoft-graph-client";
 
 import {
   getDriveItemApiPath,
+  getItem,
   microsoftInternalIdFromNodeData,
   microsoftNodeDataFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -170,4 +172,46 @@ export function getFolderAsContentNode(
     expandable: true,
     permission: "none",
   };
+}
+
+export async function getContentNode(
+  client: Client,
+  internalId: string
+): Promise<ContentNode> {
+  const { nodeType, itemApiPath } = microsoftNodeDataFromInternalId(internalId);
+  switch (nodeType) {
+    case "sites-root":
+      return getSitesRootAsContentNode();
+    case "teams-root":
+      return getTeamsRootAsContentNode();
+    case "team":
+      return getItem(client, itemApiPath).then(getTeamAsContentNode);
+    case "site":
+      return getItem(client, itemApiPath).then(getSiteAsContentNode);
+    case "drive":
+      return getItem(client, itemApiPath).then((item: microsoftgraph.Drive) =>
+        getDriveAsContentNode(
+          item,
+          microsoftInternalIdFromNodeData({
+            nodeType: "site",
+            itemApiPath: "?? unknown site ??",
+          })
+        )
+      );
+    case "folder":
+      return getItem(client, itemApiPath).then((item) => {
+        const parentId = item.parentReference.path.endsWith("/root:")
+          ? microsoftInternalIdFromNodeData({
+              nodeType: "drive",
+              itemApiPath: `/drives/${item.parentReference.driveId}`,
+            })
+          : microsoftInternalIdFromNodeData({
+              nodeType: "folder",
+              itemApiPath: `/drives/${item.parentReference.driveId}/items/${item.parentReference.id}`,
+            });
+        return getFolderAsContentNode(item, parentId);
+      });
+    default:
+      return Promise.reject(new Error(`Invalid node type: ${nodeType}`));
+  }
 }

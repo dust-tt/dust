@@ -31,7 +31,11 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceNodes, useTables } from "@app/lib/swr";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
-const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = ["google_drive", "notion"];
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "microsoft",
+];
 
 export default function AssistantBuilderTablesModal({
   isOpen,
@@ -322,6 +326,9 @@ const PickTable = ({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
   });
+
+  console.log("tables", tables);
+
   const [query, setQuery] = useState<string>("");
 
   const tablesToDisplay = tables.filter(

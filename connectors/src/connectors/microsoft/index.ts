@@ -13,16 +13,20 @@ import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
 import {
   getChannelAsContentNode,
+  getContentNode,
   getDriveAsContentNode,
   getFolderAsContentNode,
   getRootNodes,
   getSiteAsContentNode,
+  getSitesRootAsContentNode,
   getTeamAsContentNode,
+  getTeamsRootAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
   getChannels,
   getDrives,
   getFolders,
+  getItem,
   getSites,
   getTeams,
   microsoftInternalIdFromNodeData,
@@ -40,6 +44,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
+  MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -181,7 +186,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     );
 
     if (!parentInternalId) {
-      nodes.push(...getRootNodes());
+      if (filterPermission === null) {
+        nodes.push(...getRootNodes());
+      } else if (filterPermission === "read") {
+        nodes.push(
+          ...(await Promise.all(
+            selectedResources.map((internalId) =>
+              getContentNode(client, internalId)
+            )
+          ))
+        );
+      }
     } else {
       const { nodeType } = microsoftNodeDataFromInternalId(parentInternalId);
 
