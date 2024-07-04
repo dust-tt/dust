@@ -26,7 +26,7 @@ const {
 
 // Hotfix: increase timeout on incrementalSync to avoid restarting ongoing activities
 const { incrementalSync } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "60 minutes",
+  startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
 });
 
