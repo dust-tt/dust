@@ -1,8 +1,8 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Button } from "@sparkle/_index";
 import { Banner } from "@sparkle/components/Banner";
+import { Button } from "@sparkle/components/Button";
 
 const meta = {
   title: "Components/Banner",

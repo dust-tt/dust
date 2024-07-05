@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 
 import {
-  ChatBubbleBottomCenterText,
-  DocumentText,
-  Folder,
-  Square3Stack3D,
+  ChatBubbleBottomCenterTextStrokeIcon,
+  DocumentTextStrokeIcon,
+  FolderStrokeIcon,
+  Square3Stack3DStrokeIcon,
 } from "@sparkle/icons/stroke";
 import { ChevronDownIcon, ChevronRightIcon, Spinner } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
@@ -39,10 +39,10 @@ export function Tree({ children, isLoading, isBoxed = false }: TreeProps) {
 }
 
 const visualTable = {
-  file: DocumentText,
-  folder: Folder,
-  database: Square3Stack3D,
-  channel: ChatBubbleBottomCenterText,
+  file: DocumentTextStrokeIcon,
+  folder: FolderStrokeIcon,
+  database: Square3Stack3DStrokeIcon,
+  channel: ChatBubbleBottomCenterTextStrokeIcon,
 };
 
 interface TreeItemProps {

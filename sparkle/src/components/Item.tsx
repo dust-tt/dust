@@ -5,7 +5,7 @@ import {
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
-import { ChevronRight } from "@sparkle/icons/solid";
+import { ChevronRightIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Avatar } from "./Avatar";
@@ -67,14 +67,14 @@ export function Item({
   icon,
   style = "action",
   spacing = "sm",
-  action = ChevronRight,
+  action = ChevronRightIcon,
   hasAction = true,
   onClick,
   selected = false,
   disabled = false,
   className = "",
   href,
-  target
+  target,
 }: ItemProps) {
   const { components } = React.useContext(SparkleContext);
 

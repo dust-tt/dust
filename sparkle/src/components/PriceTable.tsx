@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 
-import { Check, Dash, XMark } from "@sparkle/icons/solid";
+import { CheckIcon, DashIcon, XMarkIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -130,9 +130,9 @@ export function PriceTable({
 }
 
 const iconTable = {
-  check: Check,
-  dash: Dash,
-  xmark: XMark,
+  check: CheckIcon,
+  dash: DashIcon,
+  xmark: XMarkIcon,
 };
 
 const iconColorTable = {
