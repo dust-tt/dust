@@ -4,7 +4,7 @@ import {
   Page,
   PlusIcon,
   Popup,
-  RobotIcon,
+  RobotStrokeIcon,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -212,6 +212,14 @@ export default function DataSourcesView({
                   }/builder/data-sources/${encodeURIComponent(ds.name)}`
                 );
               }}
+              subElement={
+                <div className="flex items-center gap-1 pl-2 pt-1 text-xs text-element-700">
+                  <span>Added by: {ds.editedByUser?.fullName}</span>
+                  <span className="px-1 text-element-500">|</span>
+                  <span>{dataSourcesUsage[ds.id] ?? 0}</span>
+                  <RobotStrokeIcon />
+                </div>
+              }
               action={
                 <ConnectorSyncingChip
                   initialState={ds.connector}
@@ -220,15 +228,6 @@ export default function DataSourcesView({
                 />
               }
             >
-              <ContextItem.Description>
-                <div className="mt-1 flex items-center gap-1 text-xs text-element-700">
-                  <span>Added by: {ds.editedByUser?.fullName} | </span>
-                  <span className="underline">
-                    {dataSourcesUsage[ds.id] ?? 0}
-                  </span>
-                  <RobotIcon />
-                </div>
-              </ContextItem.Description>
             </ContextItem>
           ))}
         </ContextItem.List>
