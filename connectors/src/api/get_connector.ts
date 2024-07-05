@@ -2,6 +2,7 @@ import type {
   ConnectorType,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
+import { isConnectorProvider } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
@@ -72,3 +73,46 @@ const _getConnector = async (
 };
 
 export const getConnectorAPIHandler = withLogging(_getConnector);
+
+type GetConnectorsResponseBody = WithConnectorsAPIErrorReponse<ConnectorType[]>;
+
+const _getConnectors = async (
+  req: Request<Record<string, string>, GetConnectorsResponseBody, undefined>,
+  res: Response<GetConnectorsResponseBody>
+) => {
+  if (
+    typeof req.query.provider !== "string" ||
+    !isConnectorProvider(req.query.provider)
+  ) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "unknown_connector_provider",
+        message: `Unknown connector provider ${req.params.provider}`,
+      },
+    });
+  }
+
+  if (typeof req.query.connector_id === "string") {
+    req.query.connector_id = [req.query.connector_id];
+  }
+
+  if (!Array.isArray(req.query.connector_id)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Expecting connector_id to be passed as query parameters`,
+      },
+    });
+  }
+
+  const connectors = await ConnectorResource.fetchByIds(
+    req.query.provider,
+    req.query.connector_id as string[]
+  );
+
+  return res.status(200).json(connectors.map((c) => c.toJSON()));
+};
+
+export const getConnectorsAPIHandler = withLogging(_getConnectors);

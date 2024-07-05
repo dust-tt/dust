@@ -355,6 +355,28 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async getConnectors(
+    provider: ConnectorProvider,
+    connectorIds: string[]
+  ): Promise<ConnectorsAPIResponse<ConnectorType[]>> {
+    if (connectorIds.length === 0) {
+      return new Ok([]);
+    }
+    const res = await this._fetchWithError(
+      `${CONNECTORS_API}/connectors?provider=${encodeURIComponent(
+        provider
+      )}&${connectorIds
+        .map((id) => `connector_id=${encodeURIComponent(id)}`)
+        .join("&")}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async setConnectorConfig(
     connectorId: string,
     configKey: string,
