@@ -1,5 +1,5 @@
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
-import type { CitationType } from "@dust-tt/sparkle/dist/cjs/components/Citation";
+import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type { ContentFragmentType } from "@dust-tt/types";
 import { isSupportedImageContentType } from "@dust-tt/types";
 

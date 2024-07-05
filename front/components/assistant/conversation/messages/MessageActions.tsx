@@ -4,13 +4,14 @@ import {
   EmojiPicker,
   ReactionIcon,
 } from "@dust-tt/sparkle";
+import type { EmojiSkinType } from "@dust-tt/sparkle/dist/esm/lib/avatar/types";
 import type {
   MessageReactionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 // TODO(2024-04-24 flav) Remove emoji-mart dependency from front.
-import type { Emoji, EmojiMartData } from "@emoji-mart/data";
+import type { EmojiMartData } from "@emoji-mart/data";
 import type { ComponentType, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -247,7 +248,7 @@ function EmojiSelector({
           theme="light"
           previewPosition="none"
           data={emojiData ?? undefined}
-          onEmojiSelect={(emojiData: Emoji) => {
+          onEmojiSelect={(emojiData: EmojiSkinType) => {
             const reaction = reactions.find((r) => r.emoji === emojiData.id);
             const hasReacted =
               (reaction &&
