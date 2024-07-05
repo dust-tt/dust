@@ -1,4 +1,4 @@
-import { Chip } from "@dust-tt/sparkle";
+import { Chip, Tooltip } from "@dust-tt/sparkle";
 import type { ConnectorType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
@@ -46,29 +46,36 @@ export default function ConnectorSyncingChip({
     switch (connector.errorType) {
       case "oauth_token_revoked":
         return (
-          <Chip color="warning">
-            Our access to your account has been revoked. Re-authorize to keep
-            the connection up-to-date.
-          </Chip>
+          <Tooltip
+            label={
+              "Our access to your account has been revoked. Re-authorize to keep the connection up-to-date."
+            }
+          >
+            <Chip color="warning">Re-authorization required</Chip>
+          </Tooltip>
         );
       case "third_party_internal_error":
         return (
-          <Chip color="warning">
-            We have encountered an error with{" "}
-            {CONNECTOR_CONFIGURATIONS[connector.type].name}. We sent you an
-            email to resolve the issue.
-          </Chip>
+          <Tooltip
+            label={
+              `We have encountered an error with ${CONNECTOR_CONFIGURATIONS[connector.type].name}. ` +
+              "We sent you an email to resolve the issue."
+            }
+          >
+            <Chip color="warning">Synchronization failed</Chip>
+          </Tooltip>
         );
       case "webcrawling_error":
         return (
-          <>
-            <Chip color="warning">Synchronization failed.</Chip>
-            <div className="text-sm">
-              We were unable to extract data from your site's pages using our
-              webcrawler. This problem commonly occurs with JavaScript-based
-              websites, as our current crawler cannot process JavaScript.
-            </div>
-          </>
+          <Tooltip
+            label={
+              "We were unable to extract data from your site's pages using our webcrawler." +
+              "This problem commonly occurs with JavaScript-based websites," +
+              " as our current crawler cannot process JavaScript."
+            }
+          >
+            <Chip color="warning">Synchronization failed</Chip>
+          </Tooltip>
         );
       default:
         assertNever(connector.errorType);

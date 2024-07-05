@@ -2,12 +2,10 @@ import {
   ContextItem,
   DocumentPileIcon,
   FolderOpenIcon,
-  IconButton,
-  MoreIcon,
   Page,
   PlusIcon,
   Popup,
-  RobotIcon,
+  RobotStrokeIcon,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -166,24 +164,18 @@ export default function DataSourcesView({
                 />
               }
               subElement={
-                <div className="flex items-center gap-1 text-xs text-element-700">
-                  <span>Added by: {ds.editedByUser?.fullName} | </span>
-                  <span className="underline">
-                    {dataSourcesUsage[ds.id] ?? 0}
-                  </span>
-                  <RobotIcon />
+                <div className="flex items-center gap-1 pl-2 pt-1 text-xs text-element-700">
+                  <span>Added by: {ds.editedByUser?.fullName}</span>
+                  <span className="px-1 text-element-500">|</span>
+                  <span>{dataSourcesUsage[ds.id] ?? 0}</span>
+                  <RobotStrokeIcon />
                 </div>
               }
-              action={
-                <IconButton
-                  icon={MoreIcon}
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                    );
-                  }}
-                />
-              }
+              onClick={() => {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                );
+              }}
             >
               <ContextItem.Description>
                 <div className="text-sm text-element-700">{ds.description}</div>
