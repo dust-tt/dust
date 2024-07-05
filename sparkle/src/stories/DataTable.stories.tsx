@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Button, DataTable } from "../_index";
+import { Button, DataTable } from "../index";
 
 const meta = {
   title: "Components/DataTable",

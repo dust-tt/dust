@@ -1,7 +1,7 @@
 import { Dialog } from "@headlessui/react";
 import React, { useState } from "react";
 
-import { XCircle } from "@sparkle/icons/solid";
+import { XCircleIcon } from "@sparkle/icons/solid";
 import { Citation, IconButton } from "@sparkle/index";
 
 interface ZoomableImageCitationWrapperProps {
@@ -39,7 +39,7 @@ export function ZoomableImageCitationWrapper({
             <Dialog.Title>
               <div className="s-flex s-justify-end">
                 <IconButton
-                  icon={XCircle}
+                  icon={XCircleIcon}
                   onClick={handleZoomToggle}
                   variant="white"
                 />
