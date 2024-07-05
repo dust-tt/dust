@@ -5,7 +5,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ContentMessageProps } from "@dust-tt/sparkle/dist/cjs/components/ContentMessage";
+import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
 import type {
   APIError,
   AssistantCreativityLevel,
