@@ -174,16 +174,11 @@ export default function DataSourcesView({
                   <RobotIcon />
                 </div>
               }
-              action={
-                <IconButton
-                  icon={MoreIcon}
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                    );
-                  }}
-                />
-              }
+              onClick={() => {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                );
+              }}
             >
               <ContextItem.Description>
                 <div className="text-sm text-element-700">{ds.description}</div>
