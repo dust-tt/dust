@@ -422,7 +422,8 @@ export default ConversationViewer;
  *
  * This function processes an array of messages, collecting content_fragments
  * and attaching them to subsequent user_messages, then groups these messages
- * by type, ensuring consecutive messages of the same type are grouped together.
+ * with the previous user_message, ensuring consecutive messages are grouped
+ * together.
  *
  * Example:
  * Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
@@ -433,7 +434,7 @@ export default ConversationViewer;
 const groupMessagesByType = (
   messages: FetchConversationMessagesResponse[]
 ): MessageWithContentFragmentsType[][][] => {
-  const typedGroup: MessageWithContentFragmentsType[][][] = [];
+  const groupedMessages: MessageWithContentFragmentsType[][][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages
@@ -450,29 +451,22 @@ const groupMessagesByType = (
             contenFragments: tempContentFragments,
           };
           tempContentFragments = []; // Reset the collected content fragments.
+
+          // Start a new group for user messages.
+          groupedMessages.push([[messageWithContentFragments]]);
         } else {
           messageWithContentFragments = message;
-        }
 
-        const currentMessageType = messageWithContentFragments.type;
-        const lastGroup = typedGroup[typedGroup.length - 1];
+          const lastGroup = groupedMessages[groupedMessages.length - 1];
 
-        if (!lastGroup) {
-          typedGroup.push([[messageWithContentFragments]]);
-          return;
-        }
-
-        const [lastMessageGroup] = lastGroup;
-        const [lastMessage] = lastMessageGroup;
-        const lastGroupType = lastMessage.type;
-
-        if (currentMessageType !== lastGroupType) {
-          typedGroup.push([[messageWithContentFragments]]);
-        } else {
-          lastGroup.push([messageWithContentFragments]);
+          if (!lastGroup) {
+            groupedMessages.push([[messageWithContentFragments]]);
+          } else {
+            const [lastMessageGroup] = lastGroup;
+            lastMessageGroup.push(messageWithContentFragments); // Add agent messages to the last group.
+          }
         }
       }
     });
-
-  return typedGroup;
+  return groupedMessages;
 };

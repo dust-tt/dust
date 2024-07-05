@@ -3,8 +3,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isAgentMessageType, isUserMessageType } from "@dust-tt/types";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import MessageItem from "@app/components/assistant/conversation/messages/MessageItem";
@@ -26,7 +25,8 @@ interface MessageGroupProps {
 }
 
 // arbitrary offset to scroll the last MessageGroup to
-const VIEWPORT_OFFSET = 450;
+const VIEWPORT_OFFSET_RATIO = 0.5;
+const MAX_OFFSET_PIXEL = 600;
 
 export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 
@@ -46,29 +46,11 @@ export default function MessageGroup({
 }: MessageGroupProps) {
   const lastMessageGroupRef = useRef<HTMLDivElement>(null);
 
-  const shouldExpandHeight = useMemo(() => {
-    if (messages.length === 0) {
-      return false;
-    }
-    const initialMessageGroup = messages[0];
-    if (initialMessageGroup.length === 0) {
-      return false;
-    }
-
-    const initialMessage = initialMessageGroup[0];
-    if (isUserMessageType(initialMessage)) {
-      return false;
-    }
-
-    const isMessageGenerating = initialMessage.status === "created";
-    const isAgentMessage = isAgentMessageType(initialMessage);
-
-    return isLastMessageGroup && isAgentMessage && isMessageGenerating;
-  }, [messages, isLastMessageGroup]);
-
-  const minHeight = shouldExpandHeight
-    ? `${window.innerHeight - VIEWPORT_OFFSET}px`
-    : "0px";
+  const offset = Math.min(
+    window.innerHeight * VIEWPORT_OFFSET_RATIO,
+    MAX_OFFSET_PIXEL
+  );
+  const minHeight = isLastMessageGroup ? `${offset}px` : "0px";
 
   useEffect(() => {
     if (isLastMessageGroup && lastMessageGroupRef.current) {
