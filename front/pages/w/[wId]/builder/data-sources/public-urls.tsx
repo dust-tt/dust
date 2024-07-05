@@ -227,8 +227,7 @@ export default function DataSourcesView({
                   dataSourceName={ds.connector.dataSourceName}
                 />
               }
-            >
-            </ContextItem>
+            ></ContextItem>
           ))}
         </ContextItem.List>
       </Page.Vertical>
