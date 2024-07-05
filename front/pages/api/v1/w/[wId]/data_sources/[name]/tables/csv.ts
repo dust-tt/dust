@@ -80,7 +80,7 @@ async function handler(
   const owner = auth.workspace();
   const plan = auth.plan();
   const isSystemKey = keyRes.value.isSystem;
-  if (!owner || !plan || !auth.isBuilder()) {
+  if (!owner || !plan || !auth.isBuilder() || !isSystemKey) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
