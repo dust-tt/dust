@@ -70,7 +70,7 @@ export default function ConnectorSyncingChip({
           <Tooltip
             label={
               "We were unable to extract data from your site's pages using our webcrawler." +
-              "This problem commonly occurs with JavaScript-based websites," +
+              " This problem commonly occurs with JavaScript-based websites," +
               " as our current crawler cannot process JavaScript."
             }
           >

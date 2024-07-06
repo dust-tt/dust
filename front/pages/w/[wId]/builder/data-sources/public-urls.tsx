@@ -213,7 +213,7 @@ export default function DataSourcesView({
                 );
               }}
               subElement={
-                <div className="flex items-center gap-1 pl-2 pt-1 text-xs text-element-700">
+                <div className="flex items-center gap-1 pl-2 pt-0.5 text-xs text-element-700">
                   <span>Added by: {ds.editedByUser?.fullName}</span>
                   <span className="px-1 text-element-500">|</span>
                   <span>{dataSourcesUsage[ds.id] ?? 0}</span>
