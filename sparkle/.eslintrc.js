@@ -9,6 +9,7 @@ module.exports = {
   ignorePatterns: [
     "rollup.config.js",
     "eslint.js",
+    ".eslintrc.js",
     "dist/",
     "node_modules/",
     "svgr.config.js",

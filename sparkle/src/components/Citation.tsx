@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 
-import { DocumentText, Image } from "@sparkle/icons/stroke";
+import { DocumentTextStrokeIcon, ImageStrokeIcon } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import {
   Confluence,
@@ -50,14 +50,14 @@ interface CitationProps {
 
 const typeIcons = {
   confluence: Confluence,
-  document: DocumentText,
+  document: DocumentTextStrokeIcon,
   github: Github,
   google_drive: Drive,
   intercom: Intercom,
   microsoft: Microsoft,
   notion: Notion,
   slack: Slack,
-  image: Image,
+  image: ImageStrokeIcon,
 };
 
 const typeSizing = {

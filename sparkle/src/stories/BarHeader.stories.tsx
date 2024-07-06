@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ChatBubbleBottomCenterText } from "@sparkle/icons/solid";
+import { ChatBubbleBottomCenterTextIcon } from "@sparkle/icons/solid";
 
 import { BarHeader, Page } from "../index_with_tw_base";
 
@@ -41,7 +41,7 @@ export const BasicBarHeaderValidate = () => {
         }
       />
       <div className="s-mt-16 s-h-full s-w-full s-overflow-y-auto">
-        <Page.Header title="Page Title" icon={ChatBubbleBottomCenterText} />
+        <Page.Header title="Page Title" icon={ChatBubbleBottomCenterTextIcon} />
         <div className="s-flex s-flex-col s-gap-y-96">
           <img src="https://source.unsplash.com/random" />
           <img src="https://source.unsplash.com/random" />
@@ -76,7 +76,7 @@ export const BasicBarHeaderValidateCustomLabel = () => {
         }
       />
       <div className="s-mt-16 s-h-full s-w-full s-overflow-y-auto">
-        <Page.Header title="Page Title" icon={ChatBubbleBottomCenterText} />
+        <Page.Header title="Page Title" icon={ChatBubbleBottomCenterTextIcon} />
         <div className="s-flex s-flex-col s-gap-y-96">
           <img src="https://source.unsplash.com/random" />
           <img src="https://source.unsplash.com/random" />
@@ -95,7 +95,7 @@ export const BasicBarHeaderValidateSaveDisabled = () => (
       rightActions={<BarHeader.ButtonBar variant="validate" />}
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
-      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterText} />
+      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterTextIcon} />
       <div className="s-flex s-flex-col s-gap-y-96">
         <img src="https://source.unsplash.com/random" />
         <img src="https://source.unsplash.com/random" />
@@ -113,7 +113,7 @@ export const BasicBarHeaderBack = () => (
       leftActions={<BarHeader.ButtonBar variant="back" />}
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
-      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterText} />
+      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterTextIcon} />
       <div className="s-flex s-flex-col s-gap-y-96">
         <img src="https://source.unsplash.com/random" />
         <img src="https://source.unsplash.com/random" />
@@ -131,7 +131,7 @@ export const BasicBarHeaderClose = () => (
       rightActions={<BarHeader.ButtonBar variant="close" />}
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
-      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterText} />
+      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterTextIcon} />
       <div className="s-flex s-flex-col s-gap-y-96">
         <img src="https://source.unsplash.com/random" />
         <img src="https://source.unsplash.com/random" />
@@ -149,7 +149,7 @@ export const BasicBarHeaderConversation = () => (
       rightActions={<BarHeader.ButtonBar variant="conversation" />}
     />
     <div className="s-flex s-flex-col s-gap-16 s-overflow-auto">
-      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterText} />
+      <Page.Header title="Page Title" icon={ChatBubbleBottomCenterTextIcon} />
       <div className="s-flex s-flex-col s-gap-y-96">
         <img src="https://source.unsplash.com/random" />
         <img src="https://source.unsplash.com/random" />

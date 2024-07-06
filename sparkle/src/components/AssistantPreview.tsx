@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 
-import { Button, CardButton, MoreIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { CardButton } from "@sparkle/components/CardButton";
+import { MoreIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 type AssistantPreviewVariant = "list" | "minimal";
@@ -50,8 +52,8 @@ const titleClassNames = {
     getWindowWidth() <= breakpoints.sm
       ? "s-text-sm"
       : getWindowWidth() <= breakpoints.md
-      ? "s-text-base"
-      : ""
+        ? "s-text-base"
+        : ""
   }`,
 };
 
@@ -62,8 +64,8 @@ const subtitleClassNames = {
     getWindowWidth() <= breakpoints.sm
       ? "s-text-xs"
       : getWindowWidth() <= breakpoints.md
-      ? "s-text-xs"
-      : "s-text-sm"
+        ? "s-text-xs"
+        : "s-text-sm"
   }`,
 };
 

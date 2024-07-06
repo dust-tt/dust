@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
-import { IconButton, XMarkIcon } from "@sparkle/_index";
+import { IconButton } from "@sparkle/components/IconButton";
+import { XMarkIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 interface BannerProps {

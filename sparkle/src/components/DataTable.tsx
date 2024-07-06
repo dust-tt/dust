@@ -6,7 +6,7 @@ import { useCopyToClipboard } from "@sparkle/lib/utils";
 
 type SupportedRowType = string | number;
 
-interface DataTableProps {
+export interface DataTableProps {
   name?: string;
   columns: string[];
   rows: SupportedRowType[][];
