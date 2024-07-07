@@ -137,6 +137,7 @@ makeScript({}, async ({ execute }) => {
           }
         })
       );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 });
