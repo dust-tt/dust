@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import {
   Err,
+  isAPIErrorResponse,
   isSupportedFileContentType,
   isSupportedImageContentType,
   MAX_FILE_SIZES,
@@ -171,9 +172,21 @@ export function useFileUploaderService({
       }
 
       if (!uploadResponse.ok) {
-        return new Err(
-          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
-        );
+        try {
+          const res = await uploadResponse.json();
+
+          return new Err(
+            new FileBlobUploadError(
+              "failed_to_upload_file",
+              fileBlob.file,
+              isAPIErrorResponse(res) ? res.error.message : undefined
+            )
+          );
+        } catch (err) {
+          return new Err(
+            new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+          );
+        }
       }
 
       const { file } =

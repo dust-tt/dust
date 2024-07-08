@@ -118,4 +118,13 @@ export type APIErrorResponse = {
   error: APIError;
 };
 
+export function isAPIErrorResponse(obj: unknown): obj is APIErrorResponse {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "error" in obj &&
+    isAPIError(obj.error)
+  );
+}
+
 export type WithAPIErrorReponse<T> = T | APIErrorResponse;
