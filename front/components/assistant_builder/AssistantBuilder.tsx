@@ -64,6 +64,7 @@ import {
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { ClientSideTracking } from "@app/lib/tracking/client";
+import { classNames } from "@app/lib/utils";
 
 export default function AssistantBuilder({
   owner,
@@ -164,6 +165,30 @@ export default function AssistantBuilder({
       tab: template != null ? "Template" : null,
       openedAt: template != null ? Date.now() : null,
     });
+
+  // We deactivate the Preview button if the BuilderState is empty (= no instructions, no tools)
+  // Needs the regex cause tiptap always keeps a node, which is a \n when empty.
+  const isBuilderStateEmpty =
+    builderState.actions.length === 0 &&
+    (builderState.instructions === null ||
+      !builderState.instructions.length ||
+      !builderState.instructions.replace(/\s/g, ""));
+
+  const [isPreviewButtonAnimating, setIsPreviewButtonAnimating] =
+    useState(false);
+
+  const triggerPreviewButtonAnimation = () => {
+    setIsPreviewButtonAnimating(true);
+    setTimeout(() => {
+      setIsPreviewButtonAnimating(false);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    if (!isBuilderStateEmpty) {
+      triggerPreviewButtonAnimation();
+    }
+  }, [isBuilderStateEmpty]);
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
     setRightPanelStatus({
@@ -483,9 +508,17 @@ export default function AssistantBuilder({
                   icon={ChatBubbleBottomCenterTextIcon}
                   onClick={() => openRightPanelTab("Preview")}
                   size="md"
-                  label="Preview"
+                  label={
+                    isBuilderStateEmpty
+                      ? "Add instructions or tools to Preview"
+                      : "Preview"
+                  }
                   labelVisible={false}
                   variant="primary"
+                  disabled={isBuilderStateEmpty}
+                  className={classNames(
+                    isPreviewButtonAnimating ? "animate-reload" : ""
+                  )}
                 />
               )}
               {rightPanelStatus.tab === null && template !== null && (
