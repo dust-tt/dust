@@ -41,11 +41,11 @@ import { Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -509,12 +509,7 @@ export async function deleteMembersActivity({
         }
 
         // Delete the user's files
-        await FileModel.destroy({
-          where: {
-            userId: user.id,
-          },
-          transaction: t,
-        });
+        await FileResource.deleteAllForUser(renderUserType(user), t);
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
         await membership.delete(auth, t);
@@ -542,12 +537,7 @@ export async function deleteWorkspaceActivity({
       },
       transaction: t,
     });
-    await FileModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
+    await FileResource.deleteAllForWorkspace(workspace, t);
     logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
     await Workspace.destroy({
       where: {

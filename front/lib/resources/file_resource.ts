@@ -7,6 +7,7 @@ import type {
   LightWorkspaceType,
   ModelId,
   Result,
+  UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -87,6 +88,19 @@ export class FileResource extends BaseResource<FileModel> {
       },
       transaction,
     });
+  }
+
+  static async deleteAllForUser(user: UserType, transaction?: Transaction) {
+    // We don't actually delete, instead we set the userId field to null.
+    return this.model.update(
+      { userId: null },
+      {
+        where: {
+          userId: user.id,
+        },
+        transaction,
+      }
+    );
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
