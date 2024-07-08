@@ -1,4 +1,3 @@
-import type { VisualizationActionOutputType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -91,9 +90,7 @@ export class AgentVisualizationAction extends Model<
 
   declare visualizationConfigurationId: string;
 
-  declare query: string;
-
-  declare output: VisualizationActionOutputType | null;
+  declare generation: string | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
@@ -126,16 +123,10 @@ AgentVisualizationAction.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-
-    query: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    output: {
-      type: DataTypes.JSONB,
+    generation: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
-
     functionCallId: {
       type: DataTypes.STRING,
       allowNull: true,

@@ -4,7 +4,6 @@ import type {
   FunctionMessageTypeModel,
   ModelId,
   Result,
-  VisualizationActionOutputType,
   VisualizationActionType,
   VisualizationConfigurationType,
   VisualizationErrorEvent,
@@ -34,7 +33,7 @@ import logger from "@app/logger/logger";
 interface VisualizationActionBlob {
   id: ModelId; // VisualizationAction
   agentMessageId: ModelId;
-  output: VisualizationActionOutputType | null;
+  generation: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -42,7 +41,7 @@ interface VisualizationActionBlob {
 
 export class VisualizationAction extends BaseAction {
   readonly agentMessageId: ModelId;
-  readonly output: VisualizationActionOutputType | null;
+  readonly generation: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
@@ -52,7 +51,7 @@ export class VisualizationAction extends BaseAction {
     super(blob.id, "visualization_action");
 
     this.agentMessageId = blob.agentMessageId;
-    this.output = blob.output;
+    this.generation = blob.generation;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
@@ -71,10 +70,10 @@ export class VisualizationAction extends BaseAction {
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
     let content = "VISUALIZATION OUTPUT:\n";
-    if (this.output === null) {
+    if (this.generation === null) {
       content += "The visualization failed.\n";
     } else {
-      content += this.output?.generation ?? "";
+      content += this.generation ?? "";
     }
 
     return {
@@ -105,15 +104,9 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
     return new Ok({
       name,
       description:
-        description || "Generate graphs to visually represent the data.",
-      inputs: [
-        {
-          name: "query",
-          description:
-            "The query specifying the data visualization to generate.",
-          type: "string",
-        },
-      ],
+        description ||
+        "Generates code to represent the requested data in a graph.",
+      inputs: [],
     });
   }
 
@@ -132,7 +125,6 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       agentConfiguration,
       conversation,
       agentMessage,
-      rawInputs,
       functionCallId,
       step,
     }: BaseActionRunParams
@@ -152,31 +144,13 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
 
     const { actionConfiguration } = this;
 
-    const query = rawInputs.query;
-
-    if (!query || typeof query !== "string" || query.length === 0) {
-      yield {
-        type: "visualization_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "visualization_parameters_generation_error",
-          message:
-            "The query parameter is required and must be a non-empty string.",
-        },
-      };
-      return;
-    }
-
     // Create the VisualizationAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs
     // later on, the action won't have outputs but the error will be stored on the parent agent
     // message.
     const action = await AgentVisualizationAction.create({
       visualizationConfigurationId: actionConfiguration.sId,
-      query,
-      output: null,
+      generation: null,
       functionCallId,
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
@@ -193,7 +167,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       action: new VisualizationAction({
         id: action.id,
         agentMessageId: action.agentMessageId,
-        output: null,
+        generation: null,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
@@ -267,7 +241,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
     }
 
     const { eventStream, dustRunId } = visualizationRes.value;
-    let output: VisualizationActionOutputType | null = null;
+    let generation: string | null = null;
 
     for await (const event of eventStream) {
       if (event.type === "tokens") {
@@ -350,7 +324,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
             };
             return;
           }
-          output = outputValidation.right;
+          generation = outputValidation.right.generation;
         }
       }
     }
@@ -364,7 +338,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       "[ASSISTANT_TRACE] Visualization action execution"
     );
 
-    await action.update({ runId: await dustRunId, output });
+    await action.update({ runId: await dustRunId, generation });
   }
 }
 
@@ -388,7 +362,7 @@ export async function visualizationActionTypesFromAgentMessageIds(
     return new VisualizationAction({
       id: action.id,
       agentMessageId: action.agentMessageId,
-      output: action.output,
+      generation: action.generation,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       step: action.step,
