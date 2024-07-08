@@ -32,7 +32,6 @@ import {
   getTeamInternalId,
   getTeamsInternalId,
   isInternalIdForAllConversations,
-  isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   launchIntercomSyncWorkflow,
@@ -566,8 +565,21 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     const helpCenterIds: string[] = [];
     const collectionIds: string[] = [];
     const articleIds: string[] = [];
-    let isAllTeams = false;
+    let isAllConversations = false;
     const teamIds: string[] = [];
+
+    const intercomWorkspace = await IntercomWorkspace.findOne({
+      where: {
+        connectorId: this.connectorId,
+      },
+    });
+    if (!intercomWorkspace) {
+      return new Err(
+        new Error(
+          `Intercom workspace not found for connector ${this.connectorId}`
+        )
+      );
+    }
 
     internalIds.forEach((internalId) => {
       let objectId = getHelpCenterIdFromInternalId(
@@ -595,10 +607,10 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         return;
       }
       if (
-        !isAllTeams &&
-        isInternalIdForAllTeams(this.connectorId, internalId)
+        !isAllConversations &&
+        isInternalIdForAllConversations(this.connectorId, internalId)
       ) {
-        isAllTeams = true;
+        isAllConversations = true;
       }
       objectId = getTeamIdFromInternalId(this.connectorId, internalId);
       if (objectId) {
@@ -695,7 +707,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
       });
     }
-    if (isAllTeams) {
+    if (isAllConversations) {
       nodes.push({
         provider: "intercom",
         internalId: getTeamsInternalId(this.connectorId),
@@ -704,7 +716,10 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         title: "Conversations",
         sourceUrl: null,
         expandable: true,
-        permission: "none",
+        permission:
+          intercomWorkspace.syncAllConversations === "activated"
+            ? "read"
+            : "none",
         dustDocumentId: null,
         lastUpdatedAt: null,
       });
