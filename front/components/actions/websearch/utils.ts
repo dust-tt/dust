@@ -1,4 +1,4 @@
-import type { CitationType } from "@dust-tt/sparkle/dist/cjs/components/Citation";
+import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type { WebsearchActionType } from "@dust-tt/types";
 
 interface WebsearchResultCitation {
