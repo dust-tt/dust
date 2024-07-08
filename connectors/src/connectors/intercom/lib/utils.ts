@@ -76,12 +76,6 @@ export function isInternalIdForAllConversations(
 ): boolean {
   return internalId === `intercom-conversations-all-${connectorId}`;
 }
-export function isInternalIdForAllTeams(
-  connectorId: ModelId,
-  internalId: string
-): boolean {
-  return internalId === `intercom-teams-${connectorId}`;
-}
 export function getTeamIdFromInternalId(
   connectorId: ModelId,
   internalId: string
