@@ -247,12 +247,12 @@ const InstructionsCharacterCount = ({
   );
 };
 
-interface ModelItemProps {
+interface ModelsItemProps {
   modelConfigs: ModelConfigurationType[];
   onClick: (modelSettings: SupportedModel) => void;
 }
 
-function ModelsItem({ modelConfigs, onClick }: ModelItemProps) {
+function ModelsItem({ modelConfigs, onClick }: ModelsItemProps) {
   const handleClick = (modelConfig: ModelConfigurationType) => {
     onClick({
       modelId: modelConfig.modelId,
