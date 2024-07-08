@@ -247,12 +247,12 @@ const InstructionsCharacterCount = ({
   );
 };
 
-interface ModelsItemProps {
+interface ModelListProps {
   modelConfigs: ModelConfigurationType[];
   onClick: (modelSettings: SupportedModel) => void;
 }
 
-function ModelsItem({ modelConfigs, onClick }: ModelsItemProps) {
+function ModelList({ modelConfigs, onClick }: ModelListProps) {
   const handleClick = (modelConfig: ModelConfigurationType) => {
     onClick({
       modelId: modelConfig.modelId,
@@ -352,7 +352,7 @@ function AdvancedSettings({
                   <span className="text-sm uppercase text-element-700">
                     Best performing models
                   </span>
-                  <ModelsItem
+                  <ModelList
                     modelConfigs={bestPerformingModelConfig}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
@@ -364,7 +364,7 @@ function AdvancedSettings({
                   <span className="text-sm uppercase text-element-700">
                     Other models
                   </span>
-                  <ModelsItem
+                  <ModelList
                     modelConfigs={otherModelsConfig}
                     onClick={(modelSettings) => {
                       setGenerationSettings({
