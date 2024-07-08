@@ -14,11 +14,12 @@ import type {
   PlanType,
   Result,
   SupportedModel,
-  WorkspaceType} from "@dust-tt/types";
+  WorkspaceType,
+} from "@dust-tt/types";
 import {
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   GPT_4O_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID
+  MISTRAL_LARGE_MODEL_ID,
 } from "@dust-tt/types";
 import { isProviderWhitelisted } from "@dust-tt/types";
 import {
