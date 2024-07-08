@@ -50,8 +50,8 @@ const titleClassNames = {
     getWindowWidth() <= breakpoints.sm
       ? "s-text-sm"
       : getWindowWidth() <= breakpoints.md
-      ? "s-text-base"
-      : ""
+        ? "s-text-base"
+        : ""
   }`,
 };
 
@@ -62,8 +62,8 @@ const subtitleClassNames = {
     getWindowWidth() <= breakpoints.sm
       ? "s-text-xs"
       : getWindowWidth() <= breakpoints.md
-      ? "s-text-xs"
-      : "s-text-sm"
+        ? "s-text-xs"
+        : "s-text-sm"
   }`,
 };
 
@@ -161,7 +161,10 @@ const MinimalVariantContent = ({
       <div
         id="assistant-container"
         className="s-flex s-grow s-flex-col s-justify-start s-gap-2 s-overflow-hidden s-py-1"
-        onClick={onClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.();
+        }}
       >
         <div className="s-flex s-flex-row s-justify-between s-gap-2 s-overflow-hidden">
           <div
