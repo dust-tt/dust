@@ -30,6 +30,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -43,6 +44,7 @@ export default function WebsiteConfiguration({
   dataSource,
   gaTrackingId,
   webCrawlerConfiguration,
+  dataSourceUsage,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -50,9 +52,11 @@ export default function WebsiteConfiguration({
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
   dataSource: DataSourceType | null;
   gaTrackingId: string;
+  dataSourceUsage?: number;
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [dataSourceUrl, setDataSourceUrl] = useState(
     webCrawlerConfiguration?.url || ""
@@ -519,43 +523,21 @@ export default function WebsiteConfiguration({
             ></Button>
           </div>
           {webCrawlerConfiguration && (
-            <div className="flex">
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <Button
-                    variant="secondaryWarning"
-                    icon={TrashIcon}
-                    label={"Delete this Website"}
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items width={280}>
-                  <div className="flex flex-col gap-y-4 px-4 py-4">
-                    <div className="flex flex-col gap-y-2">
-                      <div className="grow text-sm font-medium text-element-800">
-                        Are you sure you want to delete?
-                      </div>
-
-                      <div className="text-sm font-normal text-element-700">
-                        This will delete the Website for everyone.
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <Button
-                        variant="primaryWarning"
-                        size="sm"
-                        label={"Delete for Everyone"}
-                        disabled={false}
-                        icon={TrashIcon}
-                        onClick={async () => {
-                          // setIsSavingOrDeleting(true);
-                          await handleDelete();
-                          // setIsSavingOrDeleting(false);
-                        }}
-                      />
-                    </div>
-                  </div>
-                </DropdownMenu.Items>
-              </DropdownMenu>
+            <div className="flex py-16">
+              <Button
+                variant="secondaryWarning"
+                icon={TrashIcon}
+                label={"Delete this website"}
+                onClick={() => {
+                  setIsDeleteModalOpen(true);
+                }}
+              />
+              <DeleteDataSourceDialog
+                handleDelete={handleDelete}
+                isOpen={isDeleteModalOpen}
+                setIsOpen={setIsDeleteModalOpen}
+                dataSourceUsage={dataSourceUsage ?? 0}
+              />
             </div>
           )}
         </Page.Layout>
