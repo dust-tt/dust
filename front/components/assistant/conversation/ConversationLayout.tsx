@@ -5,6 +5,7 @@ import React, { useContext, useEffect, useState } from "react";
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
+import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -134,7 +135,9 @@ export default function ConversationLayout({
             assistantId={detailViewContent || null}
             onClose={handleCloseModal}
           />
-          <GenerationContextProvider>{children}</GenerationContextProvider>
+          <FileDropProvider>
+            <GenerationContextProvider>{children}</GenerationContextProvider>
+          </FileDropProvider>
         </AppLayout>
       </InputBarProvider>
     </RootLayout>

@@ -56,15 +56,12 @@ export function useFileUploaderService({
 
   const sendNotification = useContext(SendNotificationsContext);
 
-  const handleFileChange = async (e: React.ChangeEvent) => {
-    const selectedFiles = Array.from(
-      (e?.target as HTMLInputElement).files ?? []
-    );
+  const handleFilesUpload = async (files: File[]) => {
     setIsProcessingFiles(true);
 
     const { totalTextualSize, totalImageSize } = [
       ...fileBlobs,
-      ...selectedFiles,
+      ...files,
     ].reduce(
       (acc, content) => {
         const { size } = content;
@@ -95,13 +92,21 @@ export function useFileUploaderService({
       return;
     }
 
-    const previewResults = processSelectedFiles(selectedFiles);
+    const previewResults = processSelectedFiles(files);
     const newFileBlobs = processResults(previewResults);
 
     const uploadResults = await uploadFiles(newFileBlobs);
     processResults(uploadResults);
 
     setIsProcessingFiles(false);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent) => {
+    const selectedFiles = Array.from(
+      (e?.target as HTMLInputElement).files ?? []
+    );
+
+    return handleFilesUpload(selectedFiles);
   };
 
   const processSelectedFiles = (
@@ -314,6 +319,7 @@ export function useFileUploaderService({
     fileBlobs,
     getFileBlobs,
     handleFileChange,
+    handleFilesUpload,
     isProcessingFiles,
     removeFile,
     resetUpload,

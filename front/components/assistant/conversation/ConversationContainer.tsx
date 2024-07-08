@@ -33,6 +33,7 @@ import {
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
+import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
@@ -243,7 +244,7 @@ export function ConversationContainer({
   );
 
   return (
-    <>
+    <DropzoneContainer dropMessage="Drag and drop files here to include them in the conversation.">
       <Transition
         show={!!activeConversationId}
         as={Fragment}
@@ -323,7 +324,7 @@ export function ConversationContainer({
         owner={owner}
         code="message_limit"
       />
-    </>
+    </DropzoneContainer>
   );
 }
 
