@@ -145,6 +145,7 @@ AgentConfiguration.init(
           status: "active",
         },
       },
+      { fields: ["status"] },
     ],
   }
 );
