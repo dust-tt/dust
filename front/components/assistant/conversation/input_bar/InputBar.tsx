@@ -8,6 +8,7 @@ import type { UploadedContentFragment } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
@@ -80,6 +81,22 @@ export function AssistantInputBar({
       workspaceId: owner.sId,
       agentsGetView: "assistants-search",
     });
+
+  // Files upload.
+
+  const fileUploaderService = useFileUploaderService({ owner });
+
+  const { droppedFiles, setDroppedFiles } = useFileDrop();
+
+  useEffect(() => {
+    if (droppedFiles.length > 0) {
+      // Handle the dropped files.
+      void fileUploaderService.handleFilesUpload(droppedFiles);
+
+      // Clear the dropped files after handling them.
+      setDroppedFiles([]);
+    }
+  }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const agentConfigurations = useMemo(() => {
     if (
@@ -160,8 +177,6 @@ export function AssistantInputBar({
     resetEditorText();
     fileUploaderService.resetUpload();
   };
-
-  const fileUploaderService = useFileUploaderService({ owner });
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 

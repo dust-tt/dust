@@ -100,7 +100,6 @@ const InputBarContainer = ({
     disableAutoFocus
   );
 
-  // TODO: Reset after loading.
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const contentEditableClasses = classNames(
