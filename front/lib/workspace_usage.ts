@@ -407,7 +407,7 @@ export async function getAssistantsUsageData(
       COUNT(DISTINCT u."id") AS "distinctUsersReached",
       MAX(CAST(ac."createdAt" AS DATE)) AS "lastEdit"
     FROM
-      "mentions" a
+      "agent_messages" a
       JOIN "messages" m ON a."id" = m."agentMessageId"
       JOIN "messages" parent ON m."parentId" = parent."id"
       JOIN "user_messages" um ON um."id" = parent."userMessageId"
