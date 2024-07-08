@@ -504,12 +504,11 @@ export async function deleteMembersActivity({
           logger.info(
             `[Workspace delete] Deleting Membership ${membership.id} and user ${user.id}`
           );
+          // Delete the user's files
+          await FileResource.deleteAllForUser(renderUserType(user), t);
           await membership.delete(auth, t);
           await user.destroy({ transaction: t });
         }
-
-        // Delete the user's files
-        await FileResource.deleteAllForUser(renderUserType(user), t);
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
         await membership.delete(auth, t);
