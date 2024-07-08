@@ -10,10 +10,17 @@ import type {
   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
+  ModelConfigurationType,
+  ModelIdType,
   PlanType,
   Result,
   SupportedModel,
   WorkspaceType,
+} from "@dust-tt/types";
+import {
+  CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  GPT_4O_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
 } from "@dust-tt/types";
 import { isProviderWhitelisted } from "@dust-tt/types";
 import {
@@ -56,6 +63,16 @@ export const CREATIVITY_LEVELS = Object.entries(
     ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
   value: v,
 }));
+
+const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
+  GPT_4O_MODEL_ID,
+  CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+] as const;
+
+function isBestPerformingModel(modelId: ModelIdType) {
+  return BEST_PERFORMING_MODELS_ID.includes(modelId);
+}
 
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
@@ -230,6 +247,34 @@ const InstructionsCharacterCount = ({
   );
 };
 
+interface ModelListProps {
+  modelConfigs: ModelConfigurationType[];
+  onClick: (modelSettings: SupportedModel) => void;
+}
+
+function ModelList({ modelConfigs, onClick }: ModelListProps) {
+  const handleClick = (modelConfig: ModelConfigurationType) => {
+    onClick({
+      modelId: modelConfig.modelId,
+      providerId: modelConfig.providerId,
+    });
+  };
+
+  return (
+    <>
+      {modelConfigs.map((modelConfig) => (
+        <DropdownMenu.Item
+          key={modelConfig.modelId}
+          icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+          description={modelConfig.shortDescription}
+          label={modelConfig.displayName}
+          onClick={() => handleClick(modelConfig)}
+        />
+      ))}
+    </>
+  );
+}
+
 function AdvancedSettings({
   owner,
   plan,
@@ -250,6 +295,28 @@ function AdvancedSettings({
     // unreachable
     alert("Unsupported model");
   }
+
+  const [bestPerformingModelConfig, otherModelsConfig] =
+    USED_MODEL_CONFIGS.reduce<
+      [ModelConfigurationType[], ModelConfigurationType[]]
+    >(
+      ([best, others], m) => {
+        if (
+          (m.largeModel && !isUpgraded(plan)) ||
+          !isProviderWhitelisted(owner, m.providerId)
+        ) {
+          return [best, others];
+        }
+        if (isBestPerformingModel(m.modelId)) {
+          best.push(m);
+        } else {
+          others.push(m);
+        }
+        return [best, others];
+      },
+      [[], []]
+    );
+
   return (
     <DropdownMenu>
       <DropdownMenu.Button>
@@ -282,28 +349,30 @@ function AdvancedSettings({
               </DropdownMenu.Button>
               <DropdownMenu.Items origin="topRight" width={250}>
                 <div className="z-[120]">
-                  {USED_MODEL_CONFIGS.filter(
-                    (m) =>
-                      !(m.largeModel && !isUpgraded(plan)) &&
-                      isProviderWhitelisted(owner, m.providerId)
-                  ).map((modelConfig) => (
-                    <DropdownMenu.Item
-                      key={modelConfig.modelId}
-                      icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-                      description={modelConfig.shortDescription}
-                      label={modelConfig.displayName}
-                      onClick={() => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings: {
-                            modelId: modelConfig.modelId,
-                            providerId: modelConfig.providerId,
-                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                          } as SupportedModel,
-                        });
-                      }}
-                    />
-                  ))}
+                  <span className="text-sm uppercase text-element-700">
+                    Best performing models
+                  </span>
+                  <ModelList
+                    modelConfigs={bestPerformingModelConfig}
+                    onClick={(modelSettings) => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings,
+                      });
+                    }}
+                  />
+                  <span className="text-sm uppercase text-element-700">
+                    Other models
+                  </span>
+                  <ModelList
+                    modelConfigs={otherModelsConfig}
+                    onClick={(modelSettings) => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings,
+                      });
+                    }}
+                  />
                 </div>
               </DropdownMenu.Items>
             </DropdownMenu>
