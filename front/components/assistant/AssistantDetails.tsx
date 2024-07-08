@@ -46,7 +46,6 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -94,8 +93,6 @@ export function AssistantDetails({
   if (!agentConfiguration) {
     return <></>;
   }
-
-  const isLegacyAgent = isLegacyAgentConfiguration(agentConfiguration);
 
   const updateScope = async (
     scope: Exclude<AgentConfigurationScope, "global">
@@ -317,14 +314,6 @@ export function AssistantDetails({
     >
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
         <DescriptionSection />
-        {isLegacyAgent && (
-          <ContentMessage
-            variant="amber"
-            title="This assistant is using a legacy action configuration."
-          >
-            Consider updating it to benefit from the latest Tools features.
-          </ContentMessage>
-        )}
         <ActionsSection actions={agentConfiguration?.actions ?? []} />
         <InstructionsSection />
       </div>
