@@ -41,6 +41,7 @@ import { Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -506,6 +507,9 @@ export async function deleteMembersActivity({
           await membership.delete(auth, t);
           await user.destroy({ transaction: t });
         }
+
+        // Delete the user's files
+        await FileResource.deleteAllForUser(renderUserType(user), t);
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
         await membership.delete(auth, t);
@@ -533,6 +537,7 @@ export async function deleteWorkspaceActivity({
       },
       transaction: t,
     });
+    await FileResource.deleteAllForWorkspace(workspace, t);
     logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
     await Workspace.destroy({
       where: {
