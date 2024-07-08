@@ -167,12 +167,8 @@ export default function AssistantBuilder({
     });
 
   // We deactivate the Preview button if the BuilderState is empty (= no instructions, no tools)
-  // Needs the regex cause tiptap always keeps a node, which is a \n when empty.
   const isBuilderStateEmpty =
-    builderState.actions.length === 0 &&
-    (builderState.instructions === null ||
-      !builderState.instructions.length ||
-      !builderState.instructions.replace(/\s/g, ""));
+    !builderState.instructions?.trim() && !builderState.actions.length;
 
   const [isPreviewButtonAnimating, setIsPreviewButtonAnimating] =
     useState(false);
