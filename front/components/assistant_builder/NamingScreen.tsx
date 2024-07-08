@@ -239,7 +239,7 @@ export default function NamingScreen({
       if (descriptionSuggestions.isOk()) {
         const suggestion =
           descriptionSuggestions.value.status === "ok" &&
-          descriptionSuggestions.value.suggestions.length > 0
+          descriptionSuggestions.value.suggestions?.length
             ? descriptionSuggestions.value.suggestions[0]
             : null;
         if (suggestion) {
@@ -320,7 +320,7 @@ export default function NamingScreen({
               </div>
             </div>
             {nameSuggestions.status === "ok" &&
-              nameSuggestions.suggestions.length > 0 && (
+              nameSuggestions.suggestions?.length && (
                 <div className="flex items-center gap-2">
                   <div className="text-xs font-semibold text-element-800">
                     Suggestions:
