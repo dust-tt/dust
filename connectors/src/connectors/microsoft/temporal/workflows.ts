@@ -8,7 +8,10 @@ import {
 
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
-import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import type {
+  MicrosoftNodeResource,
+  MicrosoftNodeType,
+} from "@connectors/resources/microsoft_resource";
 
 const { getSiteNodesToSync, syncFiles, markNodeAsVisited } = proxyActivities<
   typeof activities
@@ -51,7 +54,7 @@ export async function fullSyncSitesWorkflow({
 }: {
   connectorId: ModelId;
   startSyncTs: number;
-  nodesToSync?: MicrosoftNodeResource[];
+  nodesToSync?: MicrosoftNodeType[];
   totalCount?: number;
 }) {
   if (nodesToSync === undefined) {

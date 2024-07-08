@@ -30,6 +30,8 @@ import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  MicrosoftNodeType} from "@connectors/resources/microsoft_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
@@ -116,14 +118,15 @@ export async function getSiteNodesToSync(
 
 export async function markNodeAsVisited(
   connectorId: ModelId,
-  node: MicrosoftNodeResource
+  node: MicrosoftNodeType
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  await node.update({
+  await MicrosoftNodeResource.upsert({
+    ...node,
     lastSeenTs: new Date(),
   });
 }
@@ -139,7 +142,7 @@ export async function syncFiles({
   startSyncTs,
 }: {
   connectorId: ModelId;
-  parent: MicrosoftNodeResource;
+  parent: MicrosoftNodeType;
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);

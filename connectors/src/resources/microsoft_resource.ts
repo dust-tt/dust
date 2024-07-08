@@ -208,6 +208,8 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }
 }
 
+export type MicrosoftNodeType = WithCreationAttributes<MicrosoftNodeModel>;
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MicrosoftNodeResource
   extends ReadonlyAttributesType<MicrosoftNodeModel> {}
@@ -370,7 +372,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, newNode.get());
   }
 
-  toJSON(): Attributes<MicrosoftNodeModel> {
+  toJSON(): MicrosoftNodeType {
     return {
       id: this.id,
       nodeType: this.nodeType,
@@ -382,8 +384,6 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       lastSeenTs: this.lastSeenTs,
       lastUpsertedTs: this.lastUpsertedTs,
       skipReason: this.skipReason,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
     };
   }
 }
