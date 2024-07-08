@@ -13,7 +13,6 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
-  DustAppRunTokensEvent,
   GenerationCancelEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
@@ -33,7 +32,6 @@ import {
   isTablesQueryConfiguration,
   isVisualizationConfiguration,
   isWebsearchConfiguration,
-  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { escapeRegExp } from "lodash";
@@ -128,6 +126,7 @@ export async function* runMultiActionsAgentLoop(
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
 
+  let processedContent = "";
   for (let i = 0; i < maxToolsUsePerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -246,6 +245,7 @@ export async function* runMultiActionsAgentLoop(
             step: i,
             content: event.content,
           });
+          processedContent += event.processedContent;
           break;
 
         // Generation events
@@ -282,7 +282,7 @@ export async function* runMultiActionsAgentLoop(
             runId: event.runId,
           } satisfies AgentGenerationSuccessEvent;
 
-          agentMessage.content = event.text;
+          agentMessage.content = processedContent;
           agentMessage.status = "succeeded";
           yield {
             type: "agent_message_success",
@@ -540,9 +540,9 @@ export async function* runMultiActionsAgent(
   let lastCheckCancellation = Date.now();
   const redis = await redisClient();
   let isGeneration = true;
-  const tokenEmitter = new TokenEmitter(
+  const contentParser = new AgentMessageContentParser(
     agentConfiguration,
-    agentMessage,
+    agentMessage.sId,
     model.delimitersConfiguration
   );
 
@@ -575,7 +575,7 @@ export async function* runMultiActionsAgent(
       }
 
       if (event.type === "error") {
-        yield* tokenEmitter.flushTokens();
+        yield* contentParser.flushTokens();
         yield {
           type: "agent_error",
           created: Date.now(),
@@ -599,7 +599,7 @@ export async function* runMultiActionsAgent(
       }
 
       if (shouldYieldCancel) {
-        yield* tokenEmitter.flushTokens();
+        yield* contentParser.flushTokens();
         yield {
           type: "generation_cancel",
           created: Date.now(),
@@ -611,13 +611,13 @@ export async function* runMultiActionsAgent(
 
       if (event.type === "tokens" && isGeneration) {
         rawContent += event.content.tokens.text;
-        yield* tokenEmitter.emitTokens(event);
+        yield* contentParser.emitTokens(event.content.tokens.text);
       }
 
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (e.error) {
-          yield* tokenEmitter.flushTokens();
+          yield* contentParser.flushTokens();
           yield {
             type: "agent_error",
             created: Date.now(),
@@ -633,7 +633,7 @@ export async function* runMultiActionsAgent(
 
         if (event.content.block_name === "OUTPUT" && e.value) {
           // Flush early as we know the generation is terminated here.
-          yield* tokenEmitter.flushTokens();
+          yield* contentParser.flushTokens();
 
           const v = e.value as any;
           if ("actions" in v) {
@@ -650,7 +650,7 @@ export async function* runMultiActionsAgent(
     await redis.quit();
   }
 
-  yield* tokenEmitter.flushTokens();
+  yield* contentParser.flushTokens();
 
   if (!output.actions.length) {
     if (typeof output.generation === "string") {
@@ -660,15 +660,16 @@ export async function* runMultiActionsAgent(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         content: rawContent,
+        processedContent: contentParser.getContent() ?? "",
       } satisfies AgentContentEvent;
       yield {
         type: "generation_success",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        text: tokenEmitter.getContent() ?? "",
+        text: contentParser.getContent() ?? "",
         runId: await dustRunId,
-        chainOfThought: tokenEmitter.getChainOfThought() ?? "",
+        chainOfThought: contentParser.getChainOfThought() ?? "",
       } satisfies GenerationSuccessEvent;
     } else {
       yield {
@@ -742,25 +743,18 @@ export async function* runMultiActionsAgent(
     });
   }
 
-  yield* tokenEmitter.flushTokens();
+  yield* contentParser.flushTokens();
 
-  const chainOfThought = tokenEmitter.getChainOfThought();
-  const content = tokenEmitter.getContent();
+  const chainOfThought = contentParser.getChainOfThought();
 
-  if (chainOfThought?.length || content?.length) {
+  if (chainOfThought?.length) {
     yield {
       type: "agent_chain_of_thought",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       message: agentMessage,
-
-      // All content here was generated before a tool use and is not proper generation content
-      // and can therefore be safely assumed to be reflection from the model before using a tool.
-      // In practice, we should never have both chainOfThought and content.
-      // It is not completely impossible that eg Anthropic decides to emit part of the
-      // CoT between `<thinking>` XML tags and the rest outside of any tag.
-      chainOfThought: removeNulls([chainOfThought, content]).join("\n"),
+      chainOfThought,
     };
   }
 
@@ -773,6 +767,7 @@ export async function* runMultiActionsAgent(
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       content: rawContent,
+      processedContent: contentParser.getContent() ?? "",
     } satisfies AgentContentEvent;
   }
 
@@ -1205,7 +1200,7 @@ async function* runAction(
   }
 }
 
-export class TokenEmitter {
+export class AgentMessageContentParser {
   private buffer: string = "";
   private content: string = "";
   private chainOfThought: string = "";
@@ -1223,8 +1218,8 @@ export class TokenEmitter {
   >;
 
   constructor(
-    private agentConfiguration: AgentConfigurationType,
-    private agentMessage: AgentMessageType,
+    private agentConfiguration: LightAgentConfigurationType,
+    private messageId: string,
     delimitersConfiguration: ModelConfigurationType["delimitersConfiguration"]
   ) {
     this.buffer = "";
@@ -1264,7 +1259,7 @@ export class TokenEmitter {
           };
           return acc;
         },
-        {} as TokenEmitter["specByDelimiter"]
+        {} as AgentMessageContentParser["specByDelimiter"]
       ) ?? {};
 
     // Store the regex pattern that match any of the delimiters.
@@ -1293,7 +1288,7 @@ export class TokenEmitter {
         type: "generation_tokens",
         created: Date.now(),
         configurationId: this.agentConfiguration.sId,
-        messageId: this.agentMessage.sId,
+        messageId: this.messageId,
         text,
         classification: this.chainOfToughtDelimitersOpened
           ? "chain_of_thought"
@@ -1310,11 +1305,9 @@ export class TokenEmitter {
     this.buffer = upTo === undefined ? "" : this.buffer.substring(upTo);
   }
 
-  async *emitTokens(
-    event: DustAppRunTokensEvent
-  ): AsyncGenerator<GenerationTokensEvent> {
+  async *emitTokens(text: string): AsyncGenerator<GenerationTokensEvent> {
     // Add text of the new event to the buffer.
-    this.buffer += event.content.tokens.text;
+    this.buffer += text;
     if (!this.pattern) {
       yield* this.flushTokens();
       return;
@@ -1366,7 +1359,7 @@ export class TokenEmitter {
               type: "generation_tokens",
               created: Date.now(),
               configurationId: this.agentConfiguration.sId,
-              messageId: this.agentMessage.sId,
+              messageId: this.messageId,
               text: separator,
               classification: "chain_of_thought",
             };
@@ -1380,7 +1373,7 @@ export class TokenEmitter {
         type: "generation_tokens",
         created: Date.now(),
         configurationId: this.agentConfiguration.sId,
-        messageId: this.agentMessage.sId,
+        messageId: this.messageId,
         text: del,
         classification,
       } satisfies GenerationTokensEvent;
@@ -1391,6 +1384,24 @@ export class TokenEmitter {
 
     // Emit the remaining text/chain_of_thought.
     yield* this.flushTokens();
+  }
+
+  async parseContents(
+    contents: string[]
+  ): Promise<{ content: string | null; chainOfThought: string | null }> {
+    for (const content of contents) {
+      for await (const _event of this.emitTokens(content)) {
+        void _event;
+      }
+    }
+    for await (const _event of this.flushTokens()) {
+      void _event;
+    }
+
+    return {
+      content: this.content.length ? this.content : null,
+      chainOfThought: this.chainOfThought.length ? this.chainOfThought : null,
+    };
   }
 
   getContent(): string | null {

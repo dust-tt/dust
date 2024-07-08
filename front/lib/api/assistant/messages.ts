@@ -19,8 +19,10 @@ import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actio
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { visualizationActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/visualization";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
+import { AgentMessageContentParser } from "@app/lib/api/assistant/agent";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
@@ -168,77 +170,97 @@ export async function batchRenderAgentMessages(
       visualizationActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
-  return agentMessages.map((message) => {
-    if (!message.agentMessage) {
-      throw new Error(
-        "Unreachable: batchRenderAgentMessages has been filtered on agent message"
+  // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
+  // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
+  return Promise.all(
+    agentMessages.map(async (message) => {
+      if (!message.agentMessage) {
+        throw new Error(
+          "Unreachable: batchRenderAgentMessages has been filtered on agent message"
+        );
+      }
+      const agentMessage = message.agentMessage;
+
+      const actions: AgentActionType[] = [
+        agentRetrievalActions,
+        agentDustAppRunActions,
+        agentTablesQueryActions,
+        agentProcessActions,
+        agentWebsearchActions,
+        agentBrowseActions,
+        agentVisualizationActions,
+      ]
+        .flat()
+        .filter((a) => a.agentMessageId === agentMessage.id)
+        .sort((a, b) => a.step - b.step);
+
+      const agentConfiguration = agentConfigurations.find(
+        (a) => a.sId === agentMessage.agentConfigurationId
       );
-    }
-    const agentMessage = message.agentMessage;
+      if (!agentConfiguration) {
+        throw new Error(
+          "Unreachable: agent configuration must be found for agent message"
+        );
+      }
 
-    const actions: AgentActionType[] = [
-      agentRetrievalActions,
-      agentDustAppRunActions,
-      agentTablesQueryActions,
-      agentProcessActions,
-      agentWebsearchActions,
-      agentBrowseActions,
-      agentVisualizationActions,
-    ]
-      .flat()
-      .filter((a) => a.agentMessageId === agentMessage.id)
-      .sort((a, b) => a.step - b.step);
+      let error: {
+        code: string;
+        message: string;
+      } | null = null;
 
-    const agentConfiguration = agentConfigurations.find(
-      (a) => a.sId === agentMessage.agentConfigurationId
-    );
-    if (!agentConfiguration) {
-      throw new Error(
-        "Unreachable: agent configuration must be found for agent message"
+      if (
+        agentMessage.errorCode !== null &&
+        agentMessage.errorMessage !== null
+      ) {
+        error = {
+          code: agentMessage.errorCode,
+          message: agentMessage.errorMessage,
+        };
+      }
+
+      const rawContents =
+        agentMessage.agentMessageContents?.sort((a, b) => a.step - b.step) ??
+        [];
+      const model = getSupportedModelConfig(agentConfiguration.model);
+      const contentParser = new AgentMessageContentParser(
+        agentConfiguration,
+        message.sId,
+        model.delimitersConfiguration
       );
-    }
+      const parsedContent = await contentParser.parseContents(
+        rawContents.map((r) => r.content)
+      );
 
-    let error: {
-      code: string;
-      message: string;
-    } | null = null;
-
-    if (agentMessage.errorCode !== null && agentMessage.errorMessage !== null) {
-      error = {
-        code: agentMessage.errorCode,
-        message: agentMessage.errorMessage,
+      const m = {
+        id: message.id,
+        agentMessageId: agentMessage.id,
+        sId: message.sId,
+        created: message.createdAt.getTime(),
+        type: "agent_message",
+        visibility: message.visibility,
+        version: message.version,
+        parentMessageId:
+          messages.find((m) => m.id === message.parentId)?.sId ?? null,
+        status: agentMessage.status,
+        actions: actions,
+        content: parsedContent.content,
+        chainOfThoughts: removeNulls([parsedContent.chainOfThought]),
+        rawContents:
+          agentMessage.agentMessageContents?.map((rc) => ({
+            step: rc.step,
+            content: rc.content,
+          })) ?? [],
+        error,
+        // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
+        configuration: agentConfiguration,
+      } satisfies AgentMessageType;
+      return {
+        m,
+        rank: message.rank,
+        version: message.version,
       };
-    }
-
-    const m = {
-      id: message.id,
-      agentMessageId: agentMessage.id,
-      sId: message.sId,
-      created: message.createdAt.getTime(),
-      type: "agent_message",
-      visibility: message.visibility,
-      version: message.version,
-      parentMessageId:
-        messages.find((m) => m.id === message.parentId)?.sId ?? null,
-      status: agentMessage.status,
-      actions: actions,
-      content: agentMessage.content,
-      chainOfThoughts: agentMessage.chainOfThoughts,
-      rawContents:
-        agentMessage.agentMessageContents?.map((rc) => ({
-          step: rc.step,
-          content: rc.content,
-        })) ?? [],
-      error,
-      // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
-      configuration: agentConfiguration,
-    } satisfies AgentMessageType;
-    return {
-      m,
-      rank: message.rank,
-      version: message.version,
-    };
-  });
+    })
+  );
 }
 
 export async function batchRenderContentFragment(
