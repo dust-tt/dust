@@ -62,11 +62,13 @@ export async function getSiteNodesToSync(connectorId: ModelId) {
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getSites(client);
-    rootSiteNodes.concat(
-      msSites.map((site) => ({
-        itemApiPath: getSiteApiPath(site),
-        nodeType: "site",
-      }))
+    rootSiteNodes.push(
+      ...msSites.map(
+        (site): MicrosoftNodeData => ({
+          itemApiPath: getSiteApiPath(site),
+          nodeType: "site",
+        })
+      )
     );
   }
 
