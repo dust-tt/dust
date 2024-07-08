@@ -3,6 +3,8 @@ import { Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
 
 export type DataSourcesUsageByAgent = Record<ModelId, number>;
@@ -33,10 +35,29 @@ export async function getDataSourcesUsageByAgents({
         {
           model: DataSource,
           as: "dataSource",
+          attributes: [],
+          required: true,
           where: {
             workspaceId: owner.id,
             connectorProvider: providerFilter,
           },
+        },
+        {
+          model: AgentRetrievalConfiguration,
+          as: "agent_retrieval_configuration",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: AgentConfiguration,
+              as: "agent_configuration",
+              attributes: [],
+              required: true,
+              where: {
+                status: "active",
+              },
+            },
+          ],
         },
       ],
       group: ["dataSource.id"],

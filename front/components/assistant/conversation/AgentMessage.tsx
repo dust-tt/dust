@@ -98,7 +98,7 @@ export function AgentMessage({
   >(
     defaultVisualizations.map((v) => ({
       actionId: v.id,
-      visualization: v?.output?.generation ?? "",
+      visualization: v.generation ?? "",
     }))
   );
 
@@ -564,7 +564,7 @@ export function AgentMessage({
               </div>
               <div>
                 <RenderMessageMarkdown
-                  content={"```js" + visualization + "```"}
+                  content={"```js" + visualization + "\n```"}
                   isStreaming={true}
                 />
               </div>

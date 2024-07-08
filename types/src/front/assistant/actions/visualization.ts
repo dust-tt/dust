@@ -12,15 +12,10 @@ export type VisualizationConfigurationType = {
   description: string | null;
 };
 
-// Dust App output
-export type VisualizationActionOutputType = {
-  generation: string;
-};
-
 // Action execution
 export interface VisualizationActionType extends BaseAction {
   agentMessageId: ModelId;
-  output: VisualizationActionOutputType | null;
+  generation: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;

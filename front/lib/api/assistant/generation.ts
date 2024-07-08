@@ -452,7 +452,7 @@ export async function constructPromptMultiActions(
     (action) => isVisualizationConfiguration(action)
   );
   if (needVisualizationMetaPrompt) {
-    additionalInstructions += `Graphs are generated with the visualization tool. The tool is rendering the graph to the user. Don't repeat its code.\n`;
+    additionalInstructions += `If mermaid is asked for a graph you can proceed. Otherwise to generate graphs only call the visualization tool. It takes care of writing and rendering the graph above your message.\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;

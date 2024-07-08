@@ -424,7 +424,7 @@ function Suggestions({
       }
       if (
         updatedSuggestions.value.status === "ok" &&
-        !updatedSuggestions.value.suggestions.length
+        !updatedSuggestions.value.suggestions?.length
       ) {
         setSuggestionsStatus("instructions_are_good");
         return;
@@ -616,7 +616,7 @@ function mergeSuggestions(
 ): string[] {
   if (dustAppSuggestions.status === "ok") {
     const visibleSuggestions = suggestions.slice(0, VISIBLE_SUGGESTIONS_NUMBER);
-    const bestRankedSuggestions = dustAppSuggestions.suggestions.slice(
+    const bestRankedSuggestions = (dustAppSuggestions.suggestions ?? []).slice(
       0,
       VISIBLE_SUGGESTIONS_NUMBER
     );
