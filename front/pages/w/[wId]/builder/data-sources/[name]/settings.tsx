@@ -52,7 +52,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
   const dataSourceUsage = await getDataSourceUsage({
     auth,
-    dataSourceId: dataSource.id,
+    dataSource,
   });
   return {
     props: {

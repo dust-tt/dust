@@ -1,4 +1,8 @@
-import type { ConnectorProvider, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  DataSourceType,
+  ModelId,
+} from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -76,10 +80,10 @@ export async function getDataSourcesUsageByAgents({
 
 export async function getDataSourceUsage({
   auth,
-  dataSourceId,
+  dataSource,
 }: {
   auth: Authenticator;
-  dataSourceId: number;
+  dataSource: DataSourceType;
 }): Promise<number> {
   const owner = auth.workspace();
 
@@ -92,7 +96,7 @@ export async function getDataSourceUsage({
 
   return AgentDataSourceConfiguration.count({
     where: {
-      dataSourceId: dataSourceId,
+      dataSourceId: dataSource.id,
     },
     include: [
       {
