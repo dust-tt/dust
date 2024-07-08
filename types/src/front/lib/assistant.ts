@@ -160,13 +160,13 @@ const OPEN_AI_TOOL_USE_META_PROMPT =
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4_TURBO_MODEL_ID,
-  displayName: "GPT-4 Turbo",
+  displayName: "GPT 4 Turbo",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
-  description: "OpenAI's GPT-4 Turbo model for complex tasks (128k context).",
-  shortDescription: "OpenAI's most capable model.",
+  description: "OpenAI's GPT 4 Turbo model for complex tasks (128k context).",
+  shortDescription: "OpenAI's second best model.",
   isLegacy: false,
   toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
@@ -174,12 +174,12 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4O_MODEL_ID,
-  displayName: "GPT-4o",
+  displayName: "GPT 4o",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
-  description: "OpenAI's GPT-4o model (128k context).",
+  description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
   toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
@@ -188,7 +188,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_3_5_TURBO_MODEL_ID,
-  displayName: "GPT-3.5 Turbo",
+  displayName: "GPT 3.5 Turbo",
   contextSize: 16_384,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 24, // 12_288
