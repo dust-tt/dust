@@ -72,7 +72,7 @@ export function DeleteDataSourceDialog({
                     </p>
                   </div>
 
-                  <div className="mt-4 flex justify-between">
+                  <div className="mt-4 flex justify-end gap-2">
                     <Button
                       variant="tertiary"
                       size="sm"
