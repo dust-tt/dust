@@ -171,8 +171,8 @@ export async function streamConversationToSlack(
         break;
       }
 
-      case "agent_generation_success": {
-        fullAnswer = `${botIdentity}${event.text}`;
+      case "agent_message_success": {
+        fullAnswer = `${botIdentity}${event.message.content}`;
 
         const { formattedContent, footnotes } = annotateCitations(
           fullAnswer,
