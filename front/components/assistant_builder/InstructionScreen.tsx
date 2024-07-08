@@ -10,6 +10,7 @@ import type {
   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
+  ModelConfigurationType,
   ModelIdType,
   PlanType,
   Result,
@@ -246,6 +247,30 @@ const InstructionsCharacterCount = ({
   );
 };
 
+interface ModelItemProps {
+  modelConfig: ModelConfigurationType;
+  onClick: (modelSettings: SupportedModel) => void;
+}
+
+function ModelItem({ modelConfig, onClick }: ModelItemProps) {
+  const handleClick = () => {
+    onClick({
+      modelId: modelConfig.modelId,
+      providerId: modelConfig.providerId,
+    });
+  };
+
+  return (
+    <DropdownMenu.Item
+      key={modelConfig.modelId}
+      icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+      description={modelConfig.shortDescription}
+      label={modelConfig.displayName}
+      onClick={handleClick}
+    />
+  );
+}
+
 function AdvancedSettings({
   owner,
   plan,
@@ -267,12 +292,27 @@ function AdvancedSettings({
     alert("Unsupported model");
   }
 
-  const bestPerformingModelConfig = USED_MODEL_CONFIGS.filter((m) =>
-    isBestPerformingModel(m.modelId)
-  );
-  const otherModelsConfig = USED_MODEL_CONFIGS.filter(
-    (m) => !isBestPerformingModel(m.modelId)
-  );
+  const [bestPerformingModelConfig, otherModelsConfig] =
+    USED_MODEL_CONFIGS.reduce<
+      [ModelConfigurationType[], ModelConfigurationType[]]
+    >(
+      ([best, others], m) => {
+        if (
+          (m.largeModel && !isUpgraded(plan)) ||
+          !isProviderWhitelisted(owner, m.providerId)
+        ) {
+          return [best, others];
+        }
+        if (isBestPerformingModel(m.modelId)) {
+          best.push(m);
+        } else {
+          others.push(m);
+        }
+        return [best, others];
+      },
+      [[], []]
+    );
+
   return (
     <DropdownMenu>
       <DropdownMenu.Button>
@@ -308,57 +348,33 @@ function AdvancedSettings({
                   <span className="text-sm uppercase text-element-700">
                     Best performing models
                   </span>
-                  {bestPerformingModelConfig
-                    .filter(
-                      (m) =>
-                        !(m.largeModel && !isUpgraded(plan)) &&
-                        isProviderWhitelisted(owner, m.providerId)
-                    )
-                    .map((modelConfig) => (
-                      <DropdownMenu.Item
-                        key={modelConfig.modelId}
-                        icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-                        description={modelConfig.shortDescription}
-                        label={modelConfig.displayName}
-                        onClick={() => {
-                          setGenerationSettings({
-                            ...generationSettings,
-                            modelSettings: {
-                              modelId: modelConfig.modelId,
-                              providerId: modelConfig.providerId,
-                              // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                            } as SupportedModel,
-                          });
-                        }}
-                      />
-                    ))}
+                  {bestPerformingModelConfig.map((modelConfig) => (
+                    <ModelItem
+                      key={modelConfig.modelId}
+                      modelConfig={modelConfig}
+                      onClick={(modelSettings) => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings,
+                        });
+                      }}
+                    />
+                  ))}
                   <span className="text-sm uppercase text-element-700">
                     Other models
                   </span>
-                  {otherModelsConfig
-                    .filter(
-                      (m) =>
-                        !(m.largeModel && !isUpgraded(plan)) &&
-                        isProviderWhitelisted(owner, m.providerId)
-                    )
-                    .map((modelConfig) => (
-                      <DropdownMenu.Item
-                        key={modelConfig.modelId}
-                        icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-                        description={modelConfig.shortDescription}
-                        label={modelConfig.displayName}
-                        onClick={() => {
-                          setGenerationSettings({
-                            ...generationSettings,
-                            modelSettings: {
-                              modelId: modelConfig.modelId,
-                              providerId: modelConfig.providerId,
-                              // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                            } as SupportedModel,
-                          });
-                        }}
-                      />
-                    ))}
+                  {otherModelsConfig.map((modelConfig) => (
+                    <ModelItem
+                      key={modelConfig.modelId}
+                      modelConfig={modelConfig}
+                      onClick={(modelSettings) => {
+                        setGenerationSettings({
+                          ...generationSettings,
+                          modelSettings,
+                        });
+                      }}
+                    />
+                  ))}
                 </div>
               </DropdownMenu.Items>
             </DropdownMenu>
