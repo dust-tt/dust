@@ -30,7 +30,7 @@ export function DropzoneContainer({
     >
       {isDragActive && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-100 bg-opacity-80 text-element-700">
-          <Icon visual={ArrowDownOnSquareIcon} className="" />
+          <Icon visual={ArrowDownOnSquareIcon} />
           <p className="text-lg font-semibold">{dropMessage}</p>
         </div>
       )}
