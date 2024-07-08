@@ -1,4 +1,9 @@
-import { Button, RobotIcon } from "@dust-tt/sparkle";
+import {
+  AssistantPreview,
+  Button,
+  RobotIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   UserMessageType,
@@ -28,6 +33,7 @@ export function AgentSuggestion({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: { conversationId: conversationId },
+    includes: ["authors"],
   });
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -38,81 +44,87 @@ export function AgentSuggestion({
 
   const [loading, setLoading] = useState(false);
 
-  const {
-    submit: handleSelectSuggestion,
-    isSubmitting: isSelectingSuggestion,
-  } = useSubmitFunction(async (agent: LightAgentConfigurationType) => {
-    const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-    const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: editedContent,
-          mentions: [
-            {
-              type: "agent",
-              configurationId: agent.sId,
-            },
-          ],
-        }),
-      }
-    );
+  const { submit: handleSelectSuggestion } = useSubmitFunction(
+    async (agent: LightAgentConfigurationType) => {
+      const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
+      const mRes = await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: editedContent,
+            mentions: [
+              {
+                type: "agent",
+                configurationId: agent.sId,
+              },
+            ],
+          }),
+        }
+      );
 
-    if (!mRes.ok) {
-      const data = await mRes.json();
-      window.alert(`Error adding mention to message: ${data.error.message}`);
-      sendNotification({
-        type: "error",
-        title: "Invite sent",
-        description: `Error adding mention to message: ${data.error.message}`,
-      });
+      if (!mRes.ok) {
+        const data = await mRes.json();
+        window.alert(`Error adding mention to message: ${data.error.message}`);
+        sendNotification({
+          type: "error",
+          title: "Invite sent",
+          description: `Error adding mention to message: ${data.error.message}`,
+        });
+      }
     }
-  });
+  );
 
   return (
     <div className="pt-4">
-      <div className="text-xs font-bold text-element-600">
-        Which Assistant would you like to talk with?
-      </div>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <Button.List isWrapping={true}>
-          {agents.slice(0, 3).map((agent) => (
-            <div key={`message-${userMessage.sId}-suggestion-${agent.sId}`}>
-              <Button
-                size="xs"
-                variant="avatar"
-                label={`@${agent.name}`}
-                onClick={() => handleSelectSuggestion(agent)}
-                disabled={isSelectingSuggestion}
-                avatar={agent.pictureUrl}
-              />
-            </div>
-          ))}
-          <AssistantPicker
-            owner={owner}
-            assistants={agents.slice(3)}
-            onItemClick={async (agent) => {
-              if (!loading) {
-                setLoading(true);
-                await handleSelectSuggestion(agent);
-                setLoading(false);
-              }
-            }}
-            pickerButton={
-              <Button
-                variant="tertiary"
-                size="xs"
-                icon={RobotIcon}
-                label="Select another"
-              />
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold text-element-600">
+          Which Assistant would you like to talk with?
+        </span>
+        <AssistantPicker
+          owner={owner}
+          assistants={agents.slice(3)}
+          onItemClick={async (agent) => {
+            if (!loading) {
+              setLoading(true);
+              await handleSelectSuggestion(agent);
+              setLoading(false);
             }
-          />
-        </Button.List>
+          }}
+          pickerButton={
+            <Button
+              variant="tertiary"
+              size="xs"
+              icon={RobotIcon}
+              label="Select another"
+              type="menu"
+            />
+          }
+        />
       </div>
+
+      {agents.length === 0 ? (
+        <div className="flex h-full min-h-28 w-full items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-2 md:grid-cols-3">
+          {agents.slice(0, 3).map((agent, id) => (
+            <AssistantPreview
+              key={`${agent.sId}-${id}`}
+              variant="minimal"
+              description={agent.description}
+              subtitle={agent.lastAuthors?.join(", ") ?? ""}
+              title={agent.name}
+              pictureUrl={agent.pictureUrl}
+              onClick={() => handleSelectSuggestion(agent)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
