@@ -45,6 +45,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -506,6 +507,14 @@ export async function deleteMembersActivity({
           await membership.delete(auth, t);
           await user.destroy({ transaction: t });
         }
+
+        // Delete the user's files
+        await FileModel.destroy({
+          where: {
+            userId: user.id,
+          },
+          transaction: t,
+        });
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
         await membership.delete(auth, t);
@@ -528,6 +537,12 @@ export async function deleteWorkspaceActivity({
 
   await frontSequelize.transaction(async (t) => {
     await Subscription.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction: t,
+    });
+    await FileModel.destroy({
       where: {
         workspaceId: workspace.id,
       },
