@@ -138,8 +138,13 @@ export async function retrieveIntercomConversationsPermissions({
   // If Root level we display the fake parent "Conversations"
   // If isReadPermissionsOnly = true, we retrieve the list of Teams from DB that have permission = "read"
   // If isReadPermissionsOnly = false, we retrieve the list of Teams from Intercom
+
   if (isReadPermissionsOnly) {
-    if (isRootLevel && teamsWithReadPermission.length > 0) {
+    if (
+      isRootLevel &&
+      (teamsWithReadPermission.length > 0 ||
+        intercomWorkspace.syncAllConversations === "activated")
+    ) {
       nodes.push(rootConversationNode);
     }
     if (parentInternalId === allConvosInternalId) {
