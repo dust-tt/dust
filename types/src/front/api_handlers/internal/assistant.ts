@@ -106,7 +106,7 @@ export type BuilderSuggestionsRequestType = t.TypeOf<
 export const BuilderSuggestionsResponseBodySchema = t.union([
   t.type({
     status: t.literal("ok"),
-    suggestions: t.array(t.string),
+    suggestions: t.union([t.array(t.string), t.null, t.undefined]),
   }),
   t.type({
     status: t.literal("unavailable"),
