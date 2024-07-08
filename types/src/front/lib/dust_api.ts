@@ -24,6 +24,7 @@ import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
+  AgentMessageSuccessEvent,
 } from "./api/assistant/agent";
 import { UserMessageErrorEvent } from "./api/assistant/conversation";
 import { GenerationTokensEvent } from "./api/assistant/generation";
@@ -633,6 +634,7 @@ export class DustAPI {
       | AgentActionSuccessEvent
       | GenerationTokensEvent
       | AgentGenerationSuccessEvent
+      | AgentMessageSuccessEvent
     )[] = [];
 
     const parser = createParser((event) => {
