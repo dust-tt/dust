@@ -37,7 +37,9 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-export async function getSiteNodesToSync(connectorId: ModelId) {
+export async function getSiteNodesToSync(
+  connectorId: ModelId
+): Promise<MicrosoftNodeResource[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {

@@ -307,7 +307,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   static async batchGetOrCreateFromNodesData(
     connectorId: ModelId,
     nodesData: MicrosoftNodeData[]
-  ) {
+  ): Promise<MicrosoftNodeResource[]> {
     const internalIds = nodesData.map((root) =>
       microsoftInternalIdFromNodeData(root)
     );
@@ -325,7 +325,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
         const internalId = microsoftInternalIdFromNodeData(root);
         const node = nodes.find((node) => node.internalId === internalId);
         if (node) {
-          return new this(this.model, node);
+          return new this(this.model, node.get());
         }
         // Create a new node -- name and mimeType will be populated during the sync
         const newNode = await MicrosoftNodeModel.create({
@@ -370,11 +370,20 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, newNode.get());
   }
 
-  toJSON() {
+  toJSON(): Attributes<MicrosoftNodeModel> {
     return {
       id: this.id,
       nodeType: this.nodeType,
       connectorId: this.connectorId,
+      internalId: this.internalId,
+      parentInternalId: this.parentInternalId,
+      name: this.name,
+      mimeType: this.mimeType,
+      lastSeenTs: this.lastSeenTs,
+      lastUpsertedTs: this.lastUpsertedTs,
+      skipReason: this.skipReason,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 }
