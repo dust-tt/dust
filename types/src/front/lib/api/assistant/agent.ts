@@ -139,4 +139,5 @@ export type AgentContentEvent = {
   configurationId: string;
   messageId: string;
   content: string;
+  processedContent: string;
 };

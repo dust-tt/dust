@@ -184,7 +184,7 @@ export function AgentMessage({
     switch (event.type) {
       case "agent_action_success":
         setStreamedAgentMessage((m) => {
-          return { ...updateMessageWithAction(m, event.action), content: "" };
+          return { ...updateMessageWithAction(m, event.action) };
         });
         break;
       case "retrieval_params":
@@ -206,31 +206,7 @@ export function AgentMessage({
         });
         break;
 
-      case "agent_generation_success":
-        setStreamedAgentMessage((m) => {
-          return { ...m, content: event.text };
-        });
-        break;
-
       case "agent_chain_of_thought":
-        setStreamedAgentMessage((m) => {
-          if (m.chainOfThoughts.length === 0) {
-            // We don't have any chain of thoughts yet. This means the chain of thought was being streamed as regular tokens.
-            // In this case, we clear the content and add the chain of thought.
-            return {
-              ...m,
-              content: "",
-              // We add an empty COT so that subsequent COT tokens (if any) get appended to the new COT (which is consistent with the eventual DB state).
-              chainOfThoughts: [event.chainOfThought, ""],
-            };
-          }
-          // Otherwise, we insert an empty COT so that subsequent COT tokens (if any) get appended to the new COT (which is consistent with the eventual DB state).
-          // Here, we do not need to clear the content because the COT was already being streamed as COT tokens.
-          return {
-            ...m,
-            chainOfThoughts: [...m.chainOfThoughts, ""],
-          };
-        });
         break;
 
       case "agent_generation_cancelled":
@@ -238,7 +214,10 @@ export function AgentMessage({
           return { ...m, status: "cancelled" };
         });
         break;
-
+      case "agent_generation_success":
+        // There is no point in handling this event here, since it is always immediately
+        // followed by an "agent_message_success" event (which includes all content / CoT we need).
+        break;
       case "agent_message_success": {
         setStreamedAgentMessage((m) => {
           return {
