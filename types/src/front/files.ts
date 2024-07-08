@@ -24,7 +24,7 @@ export interface FileUploadedRequestResponseBody {
 // Define max sizes for each category.
 export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
   plainText: 30 * 1024 * 1024, // 30MB.
-  image: 3 * 1024 * 1024, // 3 MB
+  image: 5 * 1024 * 1024, // 5 MB
 };
 
 // Function to ensure file size is within max limit for given content type.
