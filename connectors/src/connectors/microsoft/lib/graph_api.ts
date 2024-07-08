@@ -192,7 +192,7 @@ export function getDriveItemApiPath(item: MicrosoftGraph.DriveItem) {
     throw new Error("Unexpected: no drive id for item");
   }
 
-  return `/${parentReference.driveId}/items/${item.id}`;
+  return `/drives/${parentReference.driveId}/items/${item.id}`;
 }
 
 export function getWorksheetApiPath(
