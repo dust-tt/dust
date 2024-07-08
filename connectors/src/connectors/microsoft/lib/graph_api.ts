@@ -45,6 +45,7 @@ export async function getFilesAndFolders(
     nodeType === "drive"
       ? `${parentResourcePath}/root/children`
       : `${parentResourcePath}/children`;
+
   const res = await client.api(endpoint).get();
   return res.value;
 }

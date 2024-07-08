@@ -30,8 +30,7 @@ import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type {
-  MicrosoftNodeType} from "@connectors/resources/microsoft_resource";
+import type { MicrosoftNodeType } from "@connectors/resources/microsoft_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
