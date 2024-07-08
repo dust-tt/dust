@@ -248,12 +248,12 @@ const InstructionsCharacterCount = ({
 };
 
 interface ModelItemProps {
-  modelConfig: ModelConfigurationType;
+  modelConfigs: ModelConfigurationType[];
   onClick: (modelSettings: SupportedModel) => void;
 }
 
-function ModelItem({ modelConfig, onClick }: ModelItemProps) {
-  const handleClick = () => {
+function ModelsItem({ modelConfigs, onClick }: ModelItemProps) {
+  const handleClick = (modelConfig: ModelConfigurationType) => {
     onClick({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
@@ -261,13 +261,17 @@ function ModelItem({ modelConfig, onClick }: ModelItemProps) {
   };
 
   return (
-    <DropdownMenu.Item
-      key={modelConfig.modelId}
-      icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-      description={modelConfig.shortDescription}
-      label={modelConfig.displayName}
-      onClick={handleClick}
-    />
+    <>
+      {modelConfigs.map((modelConfig) => (
+        <DropdownMenu.Item
+          key={modelConfig.modelId}
+          icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+          description={modelConfig.shortDescription}
+          label={modelConfig.displayName}
+          onClick={() => handleClick(modelConfig)}
+        />
+      ))}
+    </>
   );
 }
 
@@ -348,33 +352,27 @@ function AdvancedSettings({
                   <span className="text-sm uppercase text-element-700">
                     Best performing models
                   </span>
-                  {bestPerformingModelConfig.map((modelConfig) => (
-                    <ModelItem
-                      key={modelConfig.modelId}
-                      modelConfig={modelConfig}
-                      onClick={(modelSettings) => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings,
-                        });
-                      }}
-                    />
-                  ))}
+                  <ModelsItem
+                    modelConfigs={bestPerformingModelConfig}
+                    onClick={(modelSettings) => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings,
+                      });
+                    }}
+                  />
                   <span className="text-sm uppercase text-element-700">
                     Other models
                   </span>
-                  {otherModelsConfig.map((modelConfig) => (
-                    <ModelItem
-                      key={modelConfig.modelId}
-                      modelConfig={modelConfig}
-                      onClick={(modelSettings) => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings,
-                        });
-                      }}
-                    />
-                  ))}
+                  <ModelsItem
+                    modelConfigs={otherModelsConfig}
+                    onClick={(modelSettings) => {
+                      setGenerationSettings({
+                        ...generationSettings,
+                        modelSettings,
+                      });
+                    }}
+                  />
                 </div>
               </DropdownMenu.Items>
             </DropdownMenu>
