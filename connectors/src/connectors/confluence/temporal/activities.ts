@@ -312,7 +312,9 @@ export async function confluenceCheckAndUpsertPageActivity({
     }
 
     // Limit to 10 custom tags.
-    const customTags = page.labels.results.slice(0, 10).map((l) => l.id);
+    const customTags = page.labels.results
+      .slice(0, 10)
+      .map((l) => `labels:${l.id}`);
 
     const tags = [
       `createdAt:${pageCreatedAt.getTime()}`,
