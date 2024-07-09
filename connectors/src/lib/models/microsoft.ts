@@ -132,7 +132,7 @@ export class MicrosoftNodeModel extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
-  declare name: string;
+  declare name: string | null;
   declare mimeType: string | null;
   declare parentInternalId: string | null;
 }
@@ -180,8 +180,7 @@ MicrosoftNodeModel.init(
     },
     name: {
       type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: "",
+      allowNull: true,
     },
     mimeType: {
       type: DataTypes.STRING,

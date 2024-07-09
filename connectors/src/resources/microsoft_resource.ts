@@ -332,7 +332,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
           connectorId,
           internalId,
           nodeType: root.nodeType,
-          name: "",
+          name: null,
           parentInternalId: null,
           mimeType: null,
         });
@@ -362,7 +362,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       connectorId: rootResource.connectorId,
       internalId,
       nodeType: rootResource.nodeType,
-      name: "",
+      name: null,
       parentInternalId: null,
       mimeType: null,
     });
