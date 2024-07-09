@@ -1,46 +1,33 @@
-import {
-  AssistantPreview,
-  Button,
-  RobotIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { AssistantPreview, Button, RobotIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { compareAgentsForSort } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 
 interface AgentSuggestion {
   conversationId: string;
-  latestMentions: string[];
   owner: WorkspaceType;
   userMessage: UserMessageType;
 }
 
 export function AgentSuggestion({
   conversationId,
-  latestMentions,
   owner,
   userMessage,
 }: AgentSuggestion) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: { conversationId: conversationId },
-    includes: ["authors"],
+    includes: ["authors", "usage"],
   });
   const sendNotification = useContext(SendNotificationsContext);
-
-  const compareFctn = createCompareAgentSuggestions(latestMentions);
-  const agents = agentConfigurations
-    .filter((a) => a.status === "active")
-    .sort(compareFctn);
 
   const [loading, setLoading] = useState(false);
 
@@ -76,6 +63,14 @@ export function AgentSuggestion({
         });
       }
     }
+  );
+
+  const agents = useMemo(
+    () =>
+      agentConfigurations.sort((a, b) => {
+        return sortAgents(a, b);
+      }),
+    [agentConfigurations]
   );
 
   return (
@@ -129,21 +124,18 @@ export function AgentSuggestion({
   );
 }
 
-/**
- * Compare agents by whom was last mentioned in conversation from this user. If none has been
- * mentioned, use the shared `compareAgentsForSort` function.
+/*
+ * Custom function to sort agents based on their usage while setting Dust
+ * as a first element
  */
-function createCompareAgentSuggestions(latestMentions: string[]) {
-  return (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => {
-    const aIndex = latestMentions.findIndex((id) => id === a.sId);
-    const bIndex = latestMentions.findIndex((id) => id === b.sId);
-
-    // If both a and b have been mentioned, sort by largest index first.
-    // If only one has been mentioned, sort it first.
-    // If neither has been mentioned, use the default comparison function.
-    return (
-      (aIndex !== -1 ? aIndex : Infinity) -
-        (bIndex !== -1 ? bIndex : Infinity) || compareAgentsForSort(a, b)
-    );
-  };
+function sortAgents(
+  a: LightAgentConfigurationType,
+  b: LightAgentConfigurationType
+) {
+  if (a.sId === "dust") {
+    return -1;
+  } else if (b.sId === "dust") {
+    return 1;
+  }
+  return (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0);
 }
