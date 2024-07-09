@@ -100,9 +100,11 @@ export function useFileUploaderService({
     const newFileBlobs = processResults(previewResults);
 
     const uploadResults = await uploadFiles(newFileBlobs);
-    processResults(uploadResults);
+    const finalFileBlobs = processResults(uploadResults);
 
     setIsProcessingFiles(false);
+
+    return finalFileBlobs;
   };
 
   const handleFileChange = async (e: React.ChangeEvent) => {

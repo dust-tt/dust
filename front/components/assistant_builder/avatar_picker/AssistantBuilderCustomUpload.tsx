@@ -46,7 +46,7 @@ const AssistantBuilderCustomUpload = React.forwardRef<
     return {
       getUrl: async () => {
         if (isUploadingAvatar) {
-          return;
+          return null;
         }
 
         if (imageRef.current && crop.width && crop.height) {
@@ -57,14 +57,16 @@ const AssistantBuilderCustomUpload = React.forwardRef<
           const f = new File([blob], "avatar.jpeg", { type: "image/jpeg" });
 
           setIsUploadingAvatar(true);
-          await fileUploaderService.handleFilesUpload([f]);
+          const files = await fileUploaderService.handleFilesUpload([f]);
           setIsUploadingAvatar(false);
 
-          const files = fileUploaderService.getFileBlobs();
-
-          if (files.length > 0 && files[0].publicUrl) {
-            return files[0].publicUrl;
+          if (files && files.length > 0) {
+            const f = files[0];
+            if (f.publicUrl) {
+              return f.publicUrl;
+            }
           }
+
           return null;
         }
       },
