@@ -77,6 +77,8 @@ async function handler(
     });
   }
 
+  const owner = auth.getNonNullableWorkspace();
+
   switch (req.method) {
     case "GET":
       const queryValidation = GetUsageQueryParamsSchema.decode(req.query);

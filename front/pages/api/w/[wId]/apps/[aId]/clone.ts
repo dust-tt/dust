@@ -6,6 +6,7 @@ import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { App, Clone, Dataset } from "@app/lib/models/apps";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -18,7 +19,8 @@ export type PostAppResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostAppResponseBody>>,
-  auth: Authenticator
+  auth: Authenticator,
+  session: SessionWithUser
 ): Promise<void> {
   const app = await getApp(auth, req.query.aId as string);
 
