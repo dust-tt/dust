@@ -271,6 +271,7 @@ export const withSuperUserAuthRequirements =
     requireCanUseProduct: false,
   });
 
-export const withNoUserAuthRequirements = makeGetServerSidePropsRequirementsWrapper({
-requireUserPrivilege: "none",
-});
+export const withNoUserAuthRequirements =
+  makeGetServerSidePropsRequirementsWrapper({
+    requireUserPrivilege: "none",
+  });

@@ -51,13 +51,13 @@ export default function Pricing() {
             <br />
             <br />
             <Button
-                variant="primary"
-                size="md"
-                label="Start with Pro, 15 Days free"
-                icon={RocketIcon}
-                onClick={() => {
-                  window.location.href = "/api/auth/login";
-                }}
+              variant="primary"
+              size="md"
+              label="Start with Pro, 15 Days free"
+              icon={RocketIcon}
+              onClick={() => {
+                window.location.href = "/api/auth/login";
+              }}
             />
           </>
         }

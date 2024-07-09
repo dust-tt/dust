@@ -13,9 +13,7 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import config from "@app/lib/api/config";
-import {
-  withNoUserAuthRequirements,
-} from "@app/lib/iam/session";
+import { withNoUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
 export const getServerSideProps = withNoUserAuthRequirements<{
