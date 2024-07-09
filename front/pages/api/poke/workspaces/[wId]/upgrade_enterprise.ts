@@ -4,8 +4,8 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withAuthentication } from "@app/lib/iam/session";
 import {
   assertStripeSubscriptionIsValid,
   getStripeSubscription,
@@ -162,4 +162,4 @@ async function handler(
   }
 }
 
-export default withAuthentication(handler);
+export default withSessionAuthentication(handler);

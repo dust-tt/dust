@@ -9,8 +9,9 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostContentFragmentRequestBody = t.TypeOf<
   typeof InternalPostContentFragmentRequestBodySchema
@@ -129,4 +130,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

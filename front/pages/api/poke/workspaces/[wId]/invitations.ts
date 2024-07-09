@@ -6,8 +6,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withAuthentication } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
 
 const PokePostInvitationRequestBodySchema = t.type({
@@ -121,4 +121,4 @@ async function handler(
   }
 }
 
-export default withAuthentication(handler);
+export default withSessionAuthentication(handler);

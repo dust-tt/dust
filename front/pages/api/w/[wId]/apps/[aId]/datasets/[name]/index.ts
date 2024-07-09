@@ -6,11 +6,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash } from "@app/lib/api/datasets";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { Dataset } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 import { PostDatasetRequestBodySchema } from "..";
 
@@ -202,4 +203,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

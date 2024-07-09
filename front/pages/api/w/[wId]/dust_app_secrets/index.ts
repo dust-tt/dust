@@ -6,10 +6,11 @@ import {
   getDustAppSecret,
   getDustAppSecrets,
 } from "@app/lib/api/dust_app_secrets";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetDustAppSecretsResponseBody = {
   secrets: DustAppSecretType[];
@@ -122,4 +123,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -3,8 +3,8 @@ import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserForWorkspace } from "@app/lib/api/user";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withAuthentication } from "@app/lib/iam/session";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -95,4 +95,4 @@ async function handler(
   }
 }
 
-export default withAuthentication(handler);
+export default withSessionAuthentication(handler);

@@ -6,8 +6,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 export const PostAgentScopeRequestBodySchema = t.type({
@@ -160,4 +161,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

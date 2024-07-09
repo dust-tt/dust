@@ -2,11 +2,12 @@ import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App } from "@app/lib/models/apps";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostAppResponseBody = {
   app: AppType;
@@ -112,4 +113,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

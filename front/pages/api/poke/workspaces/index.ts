@@ -4,8 +4,8 @@ import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { renderUserType } from "@app/lib/api/user";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withAuthentication } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -196,4 +196,4 @@ async function handler(
   }
 }
 
-export default withAuthentication(handler);
+export default withSessionAuthentication(handler);

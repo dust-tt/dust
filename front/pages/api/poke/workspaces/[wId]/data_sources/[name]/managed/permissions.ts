@@ -2,8 +2,8 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withAuthentication } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import { getManagedDataSourcePermissionsHandler } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
@@ -74,4 +74,4 @@ async function handler(
   }
 }
 
-export default withAuthentication(handler);
+export default withSessionAuthentication(handler);

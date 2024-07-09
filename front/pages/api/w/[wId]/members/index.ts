@@ -5,8 +5,9 @@ import type {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMembers } from "@app/lib/api/workspace";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
@@ -62,4 +63,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

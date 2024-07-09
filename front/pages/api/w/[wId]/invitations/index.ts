@@ -10,8 +10,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
@@ -139,4 +140,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -5,12 +5,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App, Provider } from "@app/lib/models/apps";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetRunsResponseBody = {
   runs: RunType[];
@@ -275,4 +276,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

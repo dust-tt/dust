@@ -1,13 +1,7 @@
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
-  NextApiRequest,
-  NextApiResponse,
   PreviewData,
 } from "next";
 import type { ParsedUrlQuery } from "querystring";
@@ -24,11 +18,7 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
-import {
-  apiError,
-  withGetServerSidePropsLogging,
-  withLogging,
-} from "@app/logger/withlogging";
+import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
 /**
  * Retrieves the user for a given session
@@ -280,36 +270,3 @@ export const withSuperUserAuthRequirements =
     requireUserPrivilege: "superuser",
     requireCanUseProduct: false,
   });
-
-// API routes handlers.
-
-export function withAuthentication<T>(
-  handler: (
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<T>>
-  ) => Promise<void> | void
-) {
-  return withLogging(
-    async (
-      req: NextApiRequest,
-      res: NextApiResponse<WithAPIErrorResponse<T>>
-    ) => {
-      const session = await getSession(req, res);
-
-      if (!session) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "not_authenticated",
-            message:
-              "The user does not have an active session or is not authenticated",
-          },
-        });
-      }
-
-      // TODO(2024-07-09 Flav) Create `Authenticator` from session.
-
-      return handler(req, res);
-    }
-  );
-}

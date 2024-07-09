@@ -2,9 +2,10 @@ import type { APIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetWorkspaceAnalyticsResponse = {
   memberCount: number;
@@ -71,7 +72,7 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);
 
 interface MemberCountQueryResult {
   member_count: number;

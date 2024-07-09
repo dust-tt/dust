@@ -9,8 +9,9 @@ import {
   createMessageReaction,
   deleteMessageReaction,
 } from "@app/lib/api/assistant/reaction";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const MessageReactionRequestBodySchema = t.type({
   reaction: t.string,
@@ -169,4 +170,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

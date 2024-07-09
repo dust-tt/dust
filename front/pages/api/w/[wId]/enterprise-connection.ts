@@ -12,10 +12,11 @@ import {
   deleteEnterpriseConnection,
   getEnterpriseConnectionForWorkspace,
 } from "@app/lib/api/enterprise_connection";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetEnterpriseConnectionResponseBody = {
   connection: WorkspaceEnterpriseConnection;
@@ -170,4 +171,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -5,8 +5,8 @@ import {
   getAgentConfiguration,
   restoreAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withAuthentication } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
 
 export type RestoreAgentConfigurationResponseBody = {
@@ -90,4 +90,4 @@ async function handler(
   }
 }
 
-export default withAuthentication(handler);
+export default withSessionAuthentication(handler);

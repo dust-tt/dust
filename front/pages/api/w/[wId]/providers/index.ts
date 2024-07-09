@@ -2,9 +2,10 @@ import type { ProviderType, WithAPIErrorResponse } from "@dust-tt/types";
 import { redactString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Provider } from "@app/lib/models/apps";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetProvidersResponseBody = {
   providers: ProviderType[];
@@ -81,4 +82,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

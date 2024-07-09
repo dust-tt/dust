@@ -1,8 +1,8 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { withAuthentication } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
 import type { DatasourceSearchResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/search";
 import { handleSearchDataSource } from "@app/pages/api/w/[wId]/data_sources/[name]/search";
@@ -43,4 +43,4 @@ async function handler(
   }
 }
 
-export default withAuthentication(handler);
+export default withSessionAuthentication(handler);
