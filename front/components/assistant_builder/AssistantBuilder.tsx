@@ -177,7 +177,7 @@ export default function AssistantBuilder({
     setIsPreviewButtonAnimating(true);
     setTimeout(() => {
       setIsPreviewButtonAnimating(false);
-    }, 1000);
+    }, 1500);
   };
 
   useEffect(() => {
@@ -513,7 +513,7 @@ export default function AssistantBuilder({
                   variant="primary"
                   disabled={isBuilderStateEmpty}
                   className={classNames(
-                    isPreviewButtonAnimating ? "animate-reload" : ""
+                    isPreviewButtonAnimating ? "animate-breathing-scale" : ""
                   )}
                 />
               )}

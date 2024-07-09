@@ -97,6 +97,16 @@ module.exports = {
             filter: "brightness(80%)",
           },
         },
+        "breathing-scale": {
+          "0%, 100%": {
+            filter: "brightness(105%)",
+            transform: "scale(1.0)",
+          },
+          "50%": {
+            filter: "brightness(97%)",
+            transform: "scale(0.95)",
+          },
+        },
         "cursor-blink": {
           "0%": {
             opacity: 1,
@@ -130,6 +140,7 @@ module.exports = {
       animation: {
         "move-square": "move-square 4s ease-out infinite",
         breathing: "breathing 4s infinite ease-in-out",
+        "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
         reload: "reload 1000ms ease-out",
