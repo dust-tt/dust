@@ -9,6 +9,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { redisClient, safeRedisClient } from "@app/lib/redis";
+import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 
 // Ranking of agents is done over a 7 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
@@ -140,47 +141,56 @@ export async function getAgentUsage(
 export async function agentMentionsCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
+  // wW are using the front replica because the query is relatively expensive
+  const sequelizeReplica = getFrontReplicaDbConnection();
+
   // We retrieve mentions from conversations in order to optimize the query
   // Since we need to filter out by workspace id, retrieving mentions first
   // would lead to retrieve every single messages
-  const mentions = await Conversation.findAll({
-    attributes: [
-      [
-        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
-        "agentConfigurationId",
-      ],
-      [
-        Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
-        "count",
-      ],
-    ],
-    where: {
-      workspaceId: workspaceId,
-    },
-    include: [
-      {
-        model: Message,
-        required: true,
-        attributes: [],
-        where: {
-          createdAt: {
-            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
-          },
-        },
-        include: [
-          {
-            model: Mention,
-            as: "mentions",
-            required: true,
-            attributes: [],
-          },
+  //
+  // We use a transaction here to run the query against the DB replica
+  // Sequelize doesn't offer any other alternative to achieve so
+  const mentions = await sequelizeReplica.transaction(() => {
+    return Conversation.findAll({
+      attributes: [
+        [
+          Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
+          "agentConfigurationId",
         ],
+        [
+          Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
+          "count",
+        ],
+      ],
+      where: {
+        workspaceId: workspaceId,
       },
-    ],
-    order: [["count", "DESC"]],
-    group: ['"messages->mentions"."agentConfigurationId"'],
-    raw: true,
+      include: [
+        {
+          model: Message,
+          required: true,
+          attributes: [],
+          where: {
+            createdAt: {
+              [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+            },
+          },
+          include: [
+            {
+              model: Mention,
+              as: "mentions",
+              required: true,
+              attributes: [],
+            },
+          ],
+        },
+      ],
+      order: [["count", "DESC"]],
+      group: ['"messages->mentions"."agentConfigurationId"'],
+      raw: true,
+    });
   });
+
   return mentions.map((mention) => {
     const castMention = mention as unknown as {
       agentConfigurationId: string;
