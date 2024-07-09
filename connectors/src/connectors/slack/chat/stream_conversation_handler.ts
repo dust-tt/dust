@@ -6,7 +6,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -116,8 +116,8 @@ export async function streamConversationToSlack(
   }
 
   const botIdentity = assistantName ? `@${assistantName}:\n` : "";
-  let fullAnswer = botIdentity;
-  let action: AgentActionType | null = null;
+  let answer = botIdentity;
+  const actions: AgentActionType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "user_message_error": {
@@ -127,7 +127,6 @@ export async function streamConversationToSlack(
           )
         );
       }
-
       case "agent_error": {
         return new Err(
           new Error(
@@ -135,56 +134,58 @@ export async function streamConversationToSlack(
           )
         );
       }
+      case "error": {
+        return new Err(
+          new Error(
+            `Error: code: ${event.content.code} message: ${event.content.message}`
+          )
+        );
+      }
+
+      case "agent_action_success": {
+        actions.push(event.action);
+        break;
+      }
 
       case "generation_tokens": {
         if (event.classification !== "tokens") {
           continue;
         }
 
-        fullAnswer += event.text;
+        answer += event.text;
 
         const { formattedContent, footnotes } = annotateCitations(
-          fullAnswer,
-          action
+          answer,
+          actions
         );
-
-        const finalAnswer = safelyPrepareAnswer(formattedContent);
+        const slackContent = safelyPrepareAnswer(formattedContent);
         // If the answer cannot be prepared safely, skip processing these tokens.
-        if (!finalAnswer) {
+        if (!slackContent) {
           break;
         }
-
         // If the message is too long, we avoid the update entirely (to reduce
         // rate limiting) the previous update will have shown the "..." and the
         // link to continue the conversation so this is fine.
-        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
+        if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
-
-        await postSlackMessageUpdate({ text: finalAnswer, footnotes });
-
-        break;
-      }
-
-      case "agent_action_success": {
-        action = event.action;
+        await postSlackMessageUpdate({ text: slackContent, footnotes });
         break;
       }
 
       case "agent_message_success": {
-        fullAnswer = `${botIdentity}${event.message.content}`;
-
+        const finalAnswer = `${botIdentity}${event.message.content}`;
+        const actions = event.message.actions;
         const { formattedContent, footnotes } = annotateCitations(
-          fullAnswer,
-          action
+          finalAnswer,
+          actions
         );
-
-        const finalAnswer = slackifyMarkdown(
+        const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
         );
 
         await postSlackMessageUpdate(
-          { text: finalAnswer, footnotes },
+          { text: slackContent, footnotes },
           { adhereToRateLimit: false }
         );
 
@@ -192,7 +193,7 @@ export async function streamConversationToSlack(
       }
 
       default:
-      // Nothing to do on unsupported events.
+        assertNever(event);
     }
   }
 
