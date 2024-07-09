@@ -96,14 +96,16 @@ export default function LandingLayout({
       <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 lg:gap-10">
           <div className="hidden h-[24px] w-[96px] lg:block">
-            <Hover3D className="relative h-[24px] w-[96px]">
-              <Div3D depth={0} className="h-[24px] w-[96px]">
-                <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
-              </Div3D>
-              <Div3D depth={25} className="absolute top-0">
-                <LogoHorizontalColorLogoLayer2 className="h-[24px] w-[96px]" />
-              </Div3D>
-            </Hover3D>
+            <Link href="/">
+              <Hover3D className="relative h-[24px] w-[96px]">
+                <Div3D depth={0} className="h-[24px] w-[96px]">
+                  <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
+                </Div3D>
+                <Div3D depth={25} className="absolute top-0">
+                  <LogoHorizontalColorLogoLayer2 className="h-[24px] w-[96px]" />
+                </Div3D>
+              </Hover3D>
+            </Link>
           </div>
           <MobileNavigation />
           <div className="block lg:hidden">

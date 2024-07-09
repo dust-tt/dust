@@ -13,8 +13,6 @@ import {
 import { PricePlans } from "@app/components/plans/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
-import { getSession } from "@app/lib/auth";
-import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
@@ -22,26 +20,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 })<{
   gaTrackingId: string;
   shape: number;
-}>(async (context) => {
-  // Fetch session explicitly as this page redirects logged in users to our home page.
-  const session = await getSession(context.req, context.res);
-  const user = await getUserFromSession(session);
-
-  if (user && user.workspaces.length > 0) {
-    let url = `/w/${user.workspaces[0].sId}`;
-
-    if (context.query.inviteToken) {
-      url = `/api/login?inviteToken=${context.query.inviteToken}`;
-    }
-
-    return {
-      redirect: {
-        destination: url,
-        permanent: false,
-      },
-    };
-  }
-
+}>(async () => {
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
@@ -63,7 +42,7 @@ export default function Pricing() {
         }}
       />
       <HeaderContentBlock
-        title={<>Meet our pricing plans.</>}
+        title="Meet our pricing plans."
         from="from-emerald-200"
         to="to-emerald-500"
         hasCTA={false}
@@ -71,17 +50,17 @@ export default function Pricing() {
           <>
             Pro: For small teams and startups, from 1 member. <br />
             Enterprise: From 100 members, multiple workspaces, SSO…
-            <div className="pt-8">
-              <Button
-                variant="primary"
-                size="md"
-                label="Start with Pro, 15 Days free"
-                icon={RocketIcon}
-                onClick={() => {
-                  window.location.href = "/api/auth/login";
-                }}
-              />
-            </div>
+            <br />
+            <br />
+            <Button
+              variant="primary"
+              size="md"
+              label="Start with Pro, 15 Days free"
+              icon={RocketIcon}
+              onClick={() => {
+                window.location.href = "/api/auth/login";
+              }}
+            />
           </>
         }
       />

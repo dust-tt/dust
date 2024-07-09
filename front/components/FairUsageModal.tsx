@@ -8,9 +8,9 @@ interface FairUsageModalProps {
 const FAIR_USE_CONTENT = `
 # Fair use principles
 **Dust Pro** is designed company setting and team use
-of AI. It is not designed as a model wrapper for programatic usage.
+of AI. It is not designed as a model wrapper for programmatic usage.
 
-**Dust Enterprise** provides programatic usage (though
+**Dust Enterprise** provides programmatic usage (though
 API), with custom prices.
 ___
 # What is "unfair" usage?
