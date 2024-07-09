@@ -32,12 +32,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       url = `/api/login?inviteToken=${inviteToken}`;
     }
 
-    return {
-      redirect: {
-        destination: url,
-        permanent: false,
-      },
-    };
+    // Don't redirect if we want to explicitly see the product page
+    if(!context.query.show) {
+  return {
+    redirect: {
+      destination: url,
+      permanent: false,
+    },
+  };
+    }
   }
 
   let postLoginCallbackUrl = "/api/login";

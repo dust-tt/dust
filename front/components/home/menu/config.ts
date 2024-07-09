@@ -172,7 +172,7 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/",
+      href: "/?show=true",
     },
     {
       title: SolutionsMenuConfig.title,
