@@ -7,6 +7,7 @@ import type { Crop } from "react-image-crop";
 import { centerCrop, makeAspectCrop, ReactCrop } from "react-image-crop";
 
 import type { AvatarPickerTabElement } from "@app/components/assistant_builder/avatar_picker/types";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_CROP: Crop = {
@@ -36,50 +37,42 @@ const AssistantBuilderCustomUpload = React.forwardRef<
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
 
+  const fileUploaderService = useFileUploaderService({
+    owner,
+    useCase: "avatar",
+  });
+
   useImperativeHandle(ref, () => {
     return {
       getUrl: async () => {
         if (isUploadingAvatar) {
-          return;
+          return null;
         }
 
         if (imageRef.current && crop.width && crop.height) {
           const croppedImageUrl = await getCroppedImg(imageRef.current, crop);
-
-          const formData = new FormData();
           const response = await fetch(croppedImageUrl);
+
           const blob = await response.blob();
           const f = new File([blob], "avatar.jpeg", { type: "image/jpeg" });
-          formData.append("file", f);
 
           setIsUploadingAvatar(true);
+          const files = await fileUploaderService.handleFilesUpload([f]);
+          setIsUploadingAvatar(false);
 
-          try {
-            const res = await fetch(
-              `/api/w/${owner.sId}/assistant/agent_configurations/avatar`,
-              {
-                method: "POST",
-                body: formData,
-              }
-            );
-            if (!res.ok) {
-              console.error("Error uploading avatar");
-              alert("Error uploading avatar");
+          fileUploaderService.resetUpload();
+
+          if (files && files.length > 0) {
+            const f = files[0];
+            if (f.publicUrl) {
+              return f.publicUrl;
             }
-
-            const { fileUrl } = await res.json();
-
-            return fileUrl;
-          } catch (e) {
-            console.error("Error uploading avatar");
-            alert("Error uploading avatar");
-          } finally {
-            setIsUploadingAvatar(false);
           }
         }
+        return null;
       },
     };
-  }, [crop, imageRef, isUploadingAvatar, owner.sId]);
+  }, [crop, imageRef, isUploadingAvatar, fileUploaderService]);
 
   const getCroppedImg = (
     image: HTMLImageElement,

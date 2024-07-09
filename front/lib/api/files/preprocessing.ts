@@ -15,6 +15,50 @@ import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
+// NotSupported preprocessing
+
+const notSupportedError: PreprocessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+) => {
+  return new Err(
+    new Error(
+      "Pre-processing not supported for " +
+        `content type ${file.contentType} and use case ${file.useCase}`
+    )
+  );
+};
+
+// Upload to public bucket.
+
+const uploadToPublicBucket: PreprocessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+) => {
+  const readStream = file.getReadStream(auth, "original");
+  const writeStream = file.getWriteStream(auth, "public");
+  try {
+    await pipeline(readStream, writeStream);
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to upload file to public url."
+    );
+
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+
+    return new Err(
+      new Error(`Failed uploading to public bucket. ${errorMessage}`)
+    );
+  }
+};
+
 // Images preprocessing.
 
 const resizeAndUploadToFileStorage: PreprocessingFunction = async (
@@ -173,30 +217,39 @@ type PreprocessingPerContentType = {
 const processingPerContentType: PreprocessingPerContentType = {
   "application/pdf": {
     conversation: extractTextFromPDF,
+    avatar: notSupportedError,
   },
   "image/jpeg": {
     conversation: resizeAndUploadToFileStorage,
+    avatar: uploadToPublicBucket,
   },
   "image/png": {
     conversation: resizeAndUploadToFileStorage,
+    avatar: uploadToPublicBucket,
   },
   "text/comma-separated-values": {
     conversation: storeRawText,
+    avatar: notSupportedError,
   },
   "text/csv": {
     conversation: storeRawText,
+    avatar: notSupportedError,
   },
   "text/markdown": {
     conversation: storeRawText,
+    avatar: notSupportedError,
   },
   "text/plain": {
     conversation: storeRawText,
+    avatar: notSupportedError,
   },
   "text/tab-separated-values": {
     conversation: storeRawText,
+    avatar: notSupportedError,
   },
   "text/tsv": {
     conversation: storeRawText,
+    avatar: notSupportedError,
   },
 };
 

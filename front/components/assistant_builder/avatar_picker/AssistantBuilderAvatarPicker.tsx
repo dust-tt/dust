@@ -47,6 +47,7 @@ export function AvatarPicker({
 }) {
   const [currentTab, setCurrentTab] = useState<TabId>(DEFAULT_TAB);
   const [isStale, setIsStale] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const avatarUrls: Record<AvatarUrlTabId, string[]> = {
     droids: droidAvatarUrls,
@@ -99,13 +100,14 @@ export function AvatarPicker({
     parentRef: React.RefObject<AvatarPickerTabElement>
   ) => {
     if (isStale && parentRef.current) {
+      setIsSaving(true);
       const imageUrl = await parentRef.current.getUrl();
 
       if (imageUrl) {
         onPick(imageUrl);
       }
     }
-
+    setIsSaving(false);
     onClose();
   };
 
@@ -160,6 +162,7 @@ export function AvatarPicker({
       variant="side-md"
       hasChanged={isStale}
       onSave={async () => handleSave(parentRef)}
+      isSaving={isSaving}
     >
       <div className="h-full w-full overflow-visible">
         <Tab

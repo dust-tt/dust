@@ -6,7 +6,7 @@ export const FileUploadUrlRequestSchema = t.type({
   contentType: t.string,
   fileName: t.string,
   fileSize: t.number,
-  useCase: t.literal("conversation"),
+  useCase: t.union([t.literal("conversation"), t.literal("avatar")]),
 });
 
 export type FileUploadUrlRequestType = t.TypeOf<
@@ -95,7 +95,7 @@ export function isSupportedImageContentType(
 
 export type FileStatus = "created" | "failed" | "ready";
 
-export type FileUseCase = "conversation";
+export type FileUseCase = "conversation" | "avatar";
 
 export interface FileType {
   contentType: SupportedFileContentType;
@@ -105,7 +105,23 @@ export interface FileType {
   id: string;
   status: FileStatus;
   uploadUrl?: string;
+  publicUrl?: string;
   useCase: FileUseCase;
 }
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
+
+export function ensureContentTypeForUseCase(
+  contentType: SupportedFileContentType,
+  useCase: FileUseCase
+) {
+  if (useCase === "conversation") {
+    return isSupportedFileContentType(contentType);
+  }
+
+  if (useCase === "avatar") {
+    return isSupportedImageContentType(contentType);
+  }
+
+  return false;
+}

@@ -95,7 +95,7 @@ async function handler(
 
       // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
-        const readStream = await file.getReadStream(auth, "original");
+        const readStream = file.getReadStream(auth, "original");
         readStream.on("error", () => {
           return apiError(req, res, {
             status_code: 404,

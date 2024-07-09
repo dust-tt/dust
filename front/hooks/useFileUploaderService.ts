@@ -1,6 +1,7 @@
 import type {
   FileUploadedRequestResponseBody,
   FileUploadRequestResponseBody,
+  FileUseCase,
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
@@ -27,6 +28,7 @@ interface FileBlob {
   isUploading: boolean;
   preview?: string;
   size: number;
+  publicUrl?: string;
 }
 
 type FileBlobUploadErrorCode =
@@ -48,8 +50,10 @@ const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
 export function useFileUploaderService({
   owner,
+  useCase,
 }: {
   owner: LightWorkspaceType;
+  useCase: FileUseCase;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -96,9 +100,11 @@ export function useFileUploaderService({
     const newFileBlobs = processResults(previewResults);
 
     const uploadResults = await uploadFiles(newFileBlobs);
-    processResults(uploadResults);
+    const finalFileBlobs = processResults(uploadResults);
 
     setIsProcessingFiles(false);
+
+    return finalFileBlobs;
   };
 
   const handleFileChange = async (e: React.ChangeEvent) => {
@@ -161,7 +167,7 @@ export function useFileUploaderService({
             contentType: fileBlob.contentType,
             fileName: fileBlob.filename,
             fileSize: fileBlob.size,
-            useCase: "conversation",
+            useCase,
           }),
         });
       } catch (err) {
@@ -235,6 +241,7 @@ export function useFileUploaderService({
         preview: isSupportedImageContentType(fileBlob.contentType)
           ? `${fileUploaded.downloadUrl}?action=view`
           : undefined,
+        publicUrl: file.publicUrl,
       });
     });
 
