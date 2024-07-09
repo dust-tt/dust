@@ -33,10 +33,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dataSources = await getDataSources(auth);
-  const dataSource = await getDataSource(auth, context.params?.name as string, {
-    includeEditedBy: true,
-  });
+  const [dataSources, dataSource] = await Promise.all([
+    getDataSources(auth),
+    getDataSource(auth, context.params?.name as string, {
+      includeEditedBy: true,
+    }),
+  ]);
 
   if (!dataSource) {
     return {
@@ -52,17 +54,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const connectorRes = await new ConnectorsAPI(logger).getConnector(
-    dataSource.connectorId
-  );
+  const [connectorRes, dataSourceUsage] = await Promise.all([
+    new ConnectorsAPI(logger).getConnector(dataSource.connectorId),
+    getDataSourceUsage({ auth, dataSource }),
+  ]);
+
   if (connectorRes.isErr()) {
     throw new Error(connectorRes.error.message);
   }
-
-  const dataSourceUsage = await getDataSourceUsage({
-    auth,
-    dataSource,
-  });
 
   return {
     props: {
