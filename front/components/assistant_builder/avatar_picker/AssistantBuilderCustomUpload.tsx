@@ -60,6 +60,8 @@ const AssistantBuilderCustomUpload = React.forwardRef<
           const files = await fileUploaderService.handleFilesUpload([f]);
           setIsUploadingAvatar(false);
 
+          fileUploaderService.resetUpload();
+
           if (files && files.length > 0) {
             const f = files[0];
             if (f.publicUrl) {
