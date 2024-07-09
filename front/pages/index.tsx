@@ -23,17 +23,17 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
 
-  const { inviteToken } = context.query;
+  const { inviteToken, show } = context.query;
 
-  if (user && user.workspaces.length > 0) {
-    let url = `/w/${user.workspaces[0].sId}`;
+  // ?show explicitly shows the landing page
+  if (!show || inviteToken) {
+    if (user && user.workspaces.length > 0) {
+      let url = `/w/${user.workspaces[0].sId}`;
 
-    if (context.query.inviteToken) {
-      url = `/api/login?inviteToken=${inviteToken}`;
-    }
+      if (inviteToken) {
+        url = `/api/login?inviteToken=${inviteToken}`;
+      }
 
-    // Don't redirect if we want to explicitly see the product page
-    if (!context.query.show) {
       return {
         redirect: {
           destination: url,
@@ -44,6 +44,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   let postLoginCallbackUrl = "/api/login";
+
   if (inviteToken) {
     postLoginCallbackUrl += `?inviteToken=${inviteToken}`;
   }
