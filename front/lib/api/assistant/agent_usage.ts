@@ -6,13 +6,12 @@ import {
   Conversation,
   Mention,
   Message,
-  UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { redisClient } from "@app/lib/redis";
 
-// Ranking of agents is done over a 30 days period.
-const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
+// Ranking of agents is done over a 7 days period.
+const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
 
 // Computing agent mention count over a 12h period
 const popularityComputationTimeframeSec = 12 * 60 * 60;
@@ -23,7 +22,6 @@ const TTL_KEY_NOT_SET = -1;
 type agentUsage = {
   agentId: string;
   messageCount: number;
-  userCount: number;
   timePeriodSec: number;
 };
 
@@ -33,19 +31,10 @@ type mentionCount = {
   timePeriodSec: number;
 };
 
-function _getUsageKeys(workspaceId: string) {
+function _getUsageKey(workspaceId: string) {
   // One hash per workspace with keys the agent id and value the corresponding
   // number of mentions
-  const agentMessageCountKey = `agent_usage_count_${workspaceId}`;
-
-  // One hash per workspace with keys agent id for counting the number of
-  // users that have mentioned the agent.
-  const agentUserCountKey = `agent_user_count_${workspaceId}`;
-
-  return {
-    agentMessageCountKey,
-    agentUserCountKey,
-  };
+  return `agent_usage_count_${workspaceId}`;
 }
 
 export async function getAgentsUsage({
@@ -64,8 +53,7 @@ export async function getAgentsUsage({
 
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
 
-  const { agentMessageCountKey, agentUserCountKey } =
-    _getUsageKeys(workspaceId);
+  const agentMessageCountKey = _getUsageKey(workspaceId);
 
   try {
     redis = providedRedis ?? (await redisClient());
@@ -76,41 +64,23 @@ export async function getAgentsUsage({
       agentMessageCountTTL === TTL_KEY_NOT_EXIST ||
       agentMessageCountTTL === TTL_KEY_NOT_SET
     ) {
-      const [agentMessageCounts, userCounts] = await Promise.all([
-        agentMentionsCount(owner.id),
-        agentMentionsUserCount(owner.id),
-      ]);
-      await storeCountsInRedis(
-        workspaceId,
-        agentMessageCounts,
-        userCounts,
-        redis
-      );
+      const agentMessageCounts = await agentMentionsCount(owner.id);
+      await storeCountsInRedis(workspaceId, agentMessageCounts, redis);
       // agent mention count is stale
     } else if (agentMessageCountTTL < popularityComputationTimeframeSec) {
       void (async () => {
-        const [agentMessageCounts, userCounts] = await Promise.all([
-          agentMentionsCount(owner.id),
-          agentMentionsUserCount(owner.id),
-        ]);
-        void storeCountsInRedis(
-          workspaceId,
-          agentMessageCounts,
-          userCounts,
-          redis
-        );
+        const agentMessageCounts = await agentMentionsCount(owner.id);
+        void storeCountsInRedis(workspaceId, agentMessageCounts, redis);
       })();
     }
 
     // Retrieve and parse agents usage
     const agentsUsage = await redis.hGetAll(agentMessageCountKey);
-    const userCount = await redis.hGetAll(agentUserCountKey);
     return Object.entries(agentsUsage)
       .map(([agentId, count]) => ({
         agentId,
         messageCount: parseInt(count),
         timePeriodSec: rankingTimeframeSec,
-        userCount: parseInt(userCount[agentId]) ?? 1,
       }))
       .sort((a, b) => b.messageCount - a.messageCount)
       .slice(0, limit);
@@ -144,21 +114,18 @@ export async function getAgentUsage(
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
   const { sId: agentConfigurationId } = agentConfiguration;
 
-  const { agentMessageCountKey, agentUserCountKey } =
-    _getUsageKeys(workspaceId);
+  const agentMessageCountKey = _getUsageKey(workspaceId);
 
   try {
     redis = providedRedis ?? (await redisClient());
 
-    const [agentUsage, userUsage] = await Promise.all([
-      redis.hGet(agentMessageCountKey, agentConfigurationId),
-      redis.hGet(agentUserCountKey, agentConfigurationId),
-    ]);
+    const agentUsage = await redis.hGet(
+      agentMessageCountKey,
+      agentConfigurationId
+    );
     const messageCount = agentUsage ? parseInt(agentUsage, 10) : 0;
-    const userCount = userUsage ? parseInt(userUsage, 10) : 0;
     return {
       messageCount,
-      userCount,
       timePeriodSec: rankingTimeframeSec,
     };
   } finally {
@@ -166,77 +133,6 @@ export async function getAgentUsage(
       await redis.quit();
     }
   }
-}
-
-export async function agentMentionsUserCount(
-  workspaceId: number
-): Promise<mentionCount[]> {
-  // We retrieve mentions from conversations in order to optimize the query
-  // Since we need to filter out by workspace id, retrieving mentions first
-  // would lead to retrieve every single messages
-  const mentions = await Conversation.findAll({
-    attributes: [
-      [
-        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
-        "agentConfigurationId",
-      ],
-      [
-        Sequelize.fn(
-          "COUNT",
-          Sequelize.literal('DISTINCT "messages->userMessage"."userId"')
-        ),
-        "count",
-      ],
-    ],
-    where: {
-      workspaceId: workspaceId,
-    },
-    include: [
-      {
-        model: Message,
-        required: true,
-        attributes: [],
-        where: {
-          createdAt: {
-            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
-          },
-        },
-        include: [
-          {
-            model: UserMessage,
-            as: "userMessage",
-            required: true,
-            attributes: [],
-            where: {
-              userId: {
-                [Op.not]: null,
-              },
-            },
-          },
-          {
-            model: Mention,
-            as: "mentions",
-            required: true,
-            attributes: [],
-          },
-        ],
-      },
-    ],
-    order: [["count", "DESC"]],
-    group: ['"messages->mentions"."agentConfigurationId"'],
-    raw: true,
-  });
-  return mentions.map((mention) => {
-    const castMention = mention as unknown as {
-      agentConfigurationId: string;
-      count: number;
-    };
-    return {
-      agentId: castMention.agentConfigurationId,
-      count: castMention.count,
-      timePeriodSec: rankingTimeframeSec,
-    };
-  });
 }
 
 export async function agentMentionsCount(
@@ -299,12 +195,10 @@ export async function agentMentionsCount(
 export async function storeCountsInRedis(
   workspaceId: string,
   agentMessageCounts: mentionCount[],
-  userCounts: mentionCount[],
   redis: Awaited<ReturnType<typeof redisClient>>
 ) {
   const transaction = redis.multi();
-  const { agentMessageCountKey, agentUserCountKey } =
-    _getUsageKeys(workspaceId);
+  const agentMessageCountKey = _getUsageKey(workspaceId);
 
   agentMessageCounts.forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
@@ -313,11 +207,6 @@ export async function storeCountsInRedis(
     agentMessageCountKey,
     popularityComputationTimeframeSec * 2
   );
-
-  userCounts.forEach(({ agentId, count }) => {
-    transaction.hSet(agentUserCountKey, agentId, count);
-  });
-  transaction.expire(agentUserCountKey, popularityComputationTimeframeSec * 2);
 
   const results = await transaction.exec();
   if (results.includes(null)) {
@@ -336,8 +225,9 @@ export async function signalAgentUsage({
 
   try {
     redis = await redisClient();
-    const { agentMessageCountKey } = _getUsageKeys(workspaceId);
+    const agentMessageCountKey = _getUsageKey(workspaceId);
     const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
+
     if (agentMessageCountTTL !== TTL_KEY_NOT_EXIST) {
       // We only want to increment if the counts have already been computed
       await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);

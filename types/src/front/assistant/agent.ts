@@ -134,9 +134,7 @@ export type AgentsGetViewType =
   | "archived";
 
 export type AgentUsageType = {
-  userCount: number;
   messageCount: number;
-  // userCount and messageCount are over the last `timePeriodSec` seconds
   timePeriodSec: number;
 };
 

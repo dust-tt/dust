@@ -135,7 +135,6 @@ async function handler(
           ...agentConfiguration,
           usage: {
             messageCount: usageMap[agentConfiguration.sId]?.messageCount || 0,
-            userCount: usageMap[agentConfiguration.sId]?.userCount || 0,
             timePeriodSec: usageMap[agentConfiguration.sId]?.timePeriodSec || 0,
           },
         }));
