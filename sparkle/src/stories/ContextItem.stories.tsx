@@ -142,7 +142,7 @@ export const ListItemExample = () => (
           <>
             Added by: Edouard Wautier
             <span className="s-mx-2 s-h-3 s-w-0.5 s-bg-element-500" />
-            3
+            Used by: 3
             <Icon visual={RobotIcon} size="xs" />
           </>
         }

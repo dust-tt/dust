@@ -217,7 +217,7 @@ export default function DataSourcesView({
                 <>
                   Added by: {ds.editedByUser?.fullName}
                   <span className="mx-2 h-3 w-0.5 bg-element-500" />
-                  {dataSourcesUsage[ds.id] ?? 0}
+                  Used by: {dataSourcesUsage[ds.id] ?? 0}
                   <Icon visual={RobotIcon} />
                 </>
               }
