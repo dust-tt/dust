@@ -20,32 +20,18 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<BuilderSuggestionsType | BuilderEmojiSuggestionsType>
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Workspace not found or user not authenticated to this workspace.",
-      },
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {
     case "POST":
@@ -149,4 +135,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

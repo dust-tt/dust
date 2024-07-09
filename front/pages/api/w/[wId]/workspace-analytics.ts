@@ -2,8 +2,8 @@ import type { APIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
 
@@ -25,25 +25,9 @@ export type GetWorkspaceAnalyticsResponse = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetWorkspaceAnalyticsResponse | APIErrorResponse>
+  res: NextApiResponse<GetWorkspaceAnalyticsResponse | APIErrorResponse>,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -72,7 +56,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);
 
 interface MemberCountQueryResult {
   member_count: number;

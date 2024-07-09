@@ -13,6 +13,7 @@ export type GetDocumentsResponseBody = {
   total: number;
 };
 
+// TODO(2024-07-09 flav) Create a dedicated endpoint on Poke.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseBody>>

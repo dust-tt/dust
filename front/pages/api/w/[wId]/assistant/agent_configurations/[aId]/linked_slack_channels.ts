@@ -6,8 +6,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -24,23 +24,10 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<PatchLinkedSlackChannelsResponseBody | void>
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
-      },
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   if (!auth.isBuilder()) {
     return apiError(req, res, {
@@ -144,4 +131,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

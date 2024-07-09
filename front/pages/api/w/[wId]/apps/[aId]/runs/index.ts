@@ -5,8 +5,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { App, Provider } from "@app/lib/models/apps";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { dumpSpecification } from "@app/lib/specification";
@@ -26,24 +27,11 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<GetRunsResponseBody | PostRunsResponseBody>
-  >
+  >,
+  auth: Authenticator,
+  session: SessionWithUser
 ) {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
-  let owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "app_not_found",
-        message: "The app was not found.",
-      },
-    });
-  }
+  let owner = auth.getNonNullableWorkspace();
 
   const app = await getApp(auth, req.query.aId as string);
 
@@ -190,8 +178,8 @@ async function handler(
           );
         }
 
-        owner = target.workspace();
-        if (!owner) {
+        const targetOwner = target.workspace();
+        if (!targetOwner) {
           return apiError(req, res, {
             status_code: 404,
             api_error: {
@@ -200,6 +188,8 @@ async function handler(
             },
           });
         }
+
+        owner = targetOwner;
 
         if (!target.isUser()) {
           return apiError(req, res, {
@@ -276,4 +266,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

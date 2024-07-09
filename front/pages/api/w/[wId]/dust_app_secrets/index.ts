@@ -6,8 +6,8 @@ import {
   getDustAppSecret,
   getDustAppSecrets,
 } from "@app/lib/api/dust_app_secrets";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -26,17 +26,13 @@ async function handler(
     WithAPIErrorResponse<
       GetDustAppSecretsResponseBody | PostDustAppSecretsResponseBody
     >
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
+  const owner = auth.getNonNullableWorkspace();
 
-  const owner = auth.workspace();
   const user = auth.user();
-  if (!owner || !user) {
+  if (!user) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -123,4 +119,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

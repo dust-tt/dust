@@ -2,8 +2,8 @@ import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/models/apps";
 import { apiError } from "@app/logger/withlogging";
 
@@ -13,24 +13,10 @@ export type GetOrPostAppResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetOrPostAppResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetOrPostAppResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "app_not_found",
-        message: "The app was not found.",
-      },
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const app = await App.findOne({
     where: auth.isUser()
@@ -159,4 +145,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

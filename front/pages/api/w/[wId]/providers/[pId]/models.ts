@@ -1,8 +1,8 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { Provider } from "@app/lib/models/apps";
 import { apiError } from "@app/logger/withlogging";
 
@@ -19,26 +19,9 @@ async function handler(
     WithAPIErrorResponse<
       GetProviderModelsResponseBody | GetProviderModelsErrorResponseBody
     >
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "provider_not_found",
-        message:
-          "The provider you're trying to list models from was not found.",
-      },
-    });
-  }
-
   if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,
@@ -49,6 +32,8 @@ async function handler(
       },
     });
   }
+
+  const owner = auth.getNonNullableWorkspace();
 
   const [provider] = await Promise.all([
     Provider.findOne({
@@ -289,4 +274,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

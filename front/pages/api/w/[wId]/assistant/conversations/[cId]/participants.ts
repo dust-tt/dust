@@ -7,8 +7,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export type FetchConversationParticipantsResponse = {
@@ -21,36 +21,9 @@ async function handler(
     WithAPIErrorResponse<
       { message: UserMessageType } | FetchConversationParticipantsResponse
     >
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
-      },
-    });
-  }
-
-  const user = auth.user();
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_user_not_found",
-        message: "Could not find the user of the current session.",
-      },
-    });
-  }
-
   if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,
@@ -117,4 +90,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);
