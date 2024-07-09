@@ -30,8 +30,8 @@ import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 import {
-  MicrosoftConfigurationResource,
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
@@ -170,7 +170,7 @@ export async function syncFiles({
   }
 
   const providerConfig =
-    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+    connector.providerConfiguration as MicrosoftConfigurationResource;
 
   if (!providerConfig) {
     throw new Error(`Configuration for connector ${connectorId} not found`);
