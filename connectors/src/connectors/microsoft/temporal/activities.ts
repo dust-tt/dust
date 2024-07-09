@@ -38,6 +38,8 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+const FILES_SYNC_CONCURRENCY = 10;
+
 export async function getSiteNodesToSync(
   connectorId: ModelId
 ): Promise<MicrosoftNodeResource[]> {
@@ -129,8 +131,6 @@ export async function markNodeAsVisited(
     lastSeenTs: new Date(),
   });
 }
-
-const FILES_SYNC_CONCURRENCY = 10;
 
 /**
  * Given a drive or folder, sync files under it and returns a list of folders to sync
