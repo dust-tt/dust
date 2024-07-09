@@ -210,7 +210,7 @@ export function ProPriceTable({
     <>
       <FairUsageModal
         isOpened={isFairUseModalOpened}
-        onClose={() => setIsFairUseModalOpened(true)}
+        onClose={() => setIsFairUseModalOpened(false)}
       />
       <PriceTable
         title="Pro"
