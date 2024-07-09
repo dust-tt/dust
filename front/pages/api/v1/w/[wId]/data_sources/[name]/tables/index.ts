@@ -1,4 +1,4 @@
-import type { CoreAPITableSchema, WithAPIErrorReponse } from "@dust-tt/types";
+import type { CoreAPITableSchema, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -113,7 +113,7 @@ type UpsertTableResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<ListTablesResponseBody | UpsertTableResponseBody>
+    WithAPIErrorResponse<ListTablesResponseBody | UpsertTableResponseBody>
   >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);

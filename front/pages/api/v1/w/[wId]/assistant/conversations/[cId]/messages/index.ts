@@ -1,7 +1,7 @@
 import type {
   AgentMessageType,
   UserMessageType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   isEmptyString,
@@ -118,7 +118,7 @@ export type PostMessagesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostMessagesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

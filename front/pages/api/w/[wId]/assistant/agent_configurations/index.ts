@@ -3,7 +3,7 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
   Result,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -27,10 +27,11 @@ import {
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -42,7 +43,7 @@ export type PostAgentConfigurationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetAgentConfigurationsResponseBody
       | PostAgentConfigurationResponseBody
       | void
@@ -255,7 +256,7 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);
 
 /**
  * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided, it will create a

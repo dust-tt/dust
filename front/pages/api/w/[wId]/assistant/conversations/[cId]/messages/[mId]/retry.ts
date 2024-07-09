@@ -1,4 +1,4 @@
-import type { AgentMessageType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { AgentMessageType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isAgentMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -7,8 +7,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { retryAgentMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const PostRetryRequestBodySchema = t.union([
   t.null,
@@ -19,7 +20,7 @@ export const PostRetryRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ message: AgentMessageType }>>
+  res: NextApiResponse<WithAPIErrorResponse<{ message: AgentMessageType }>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -144,4 +145,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

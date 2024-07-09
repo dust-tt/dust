@@ -4,7 +4,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
   TraceType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
 import {
@@ -147,7 +147,7 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostRunResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

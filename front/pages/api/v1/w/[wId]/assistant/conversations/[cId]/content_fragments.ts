@@ -1,4 +1,4 @@
-import type { ContentFragmentType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ContentFragmentType, WithAPIErrorResponse } from "@dust-tt/types";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
@@ -103,7 +103,7 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostContentFragmentsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

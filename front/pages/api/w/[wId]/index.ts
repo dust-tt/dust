@@ -1,13 +1,14 @@
-import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
+import type { WithAPIErrorResponse, WorkspaceType } from "@dust-tt/types";
 import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;
@@ -40,7 +41,7 @@ const PostWorkspaceRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostWorkspaceResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostWorkspaceResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -158,4 +159,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

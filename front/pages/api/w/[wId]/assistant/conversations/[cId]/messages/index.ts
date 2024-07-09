@@ -1,4 +1,4 @@
-import type { UserMessageType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { UserMessageType, WithAPIErrorResponse } from "@dust-tt/types";
 import { InternalPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -9,13 +9,14 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { getPaginationParams } from "@app/lib/api/pagination";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       { message: UserMessageType } | FetchConversationMessagesResponse
     >
   >
@@ -179,4 +180,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -1,9 +1,10 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type AssistantTemplateListType = ReturnType<
   TemplateResource["toListJSON"]
@@ -15,7 +16,7 @@ export interface FetchAssistantTemplatesResponse {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<FetchAssistantTemplatesResponse>>
+  res: NextApiResponse<WithAPIErrorResponse<FetchAssistantTemplatesResponse>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -55,4 +56,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

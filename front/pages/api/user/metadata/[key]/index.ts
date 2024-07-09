@@ -1,10 +1,11 @@
-import type { UserMetadataType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { UserMetadataType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserMetadata, setUserMetadata } from "@app/lib/api/user";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostUserMetadataResponseBody = {
   metadata: UserMetadataType;
@@ -16,7 +17,7 @@ export type GetUserMetadataResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       PostUserMetadataResponseBody | GetUserMetadataResponseBody
     >
   >
@@ -89,4 +90,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

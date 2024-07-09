@@ -1,9 +1,10 @@
-import type { KeyType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { KeyType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostKeysResponseBody = {
   key: KeyType;
@@ -11,7 +12,7 @@ export type PostKeysResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostKeysResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostKeysResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -87,4 +88,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -6,6 +6,7 @@ import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
@@ -13,7 +14,7 @@ import {
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 const MonthSchema = t.refinement(
   t.string,
@@ -158,7 +159,7 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);
 
 function resolveDates(query: t.TypeOf<typeof GetUsageQueryParamsSchema>) {
   switch (query.mode) {

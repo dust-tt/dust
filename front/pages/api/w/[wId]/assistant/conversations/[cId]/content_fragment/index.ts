@@ -1,4 +1,4 @@
-import type { ContentFragmentType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ContentFragmentType, WithAPIErrorResponse } from "@dust-tt/types";
 import { InternalPostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
@@ -9,8 +9,9 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostContentFragmentRequestBody = t.TypeOf<
   typeof InternalPostContentFragmentRequestBodySchema
@@ -19,7 +20,7 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<{ contentFragment: ContentFragmentType }>
+    WithAPIErrorResponse<{ contentFragment: ContentFragmentType }>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -129,4 +130,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

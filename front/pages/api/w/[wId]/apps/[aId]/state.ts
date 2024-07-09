@@ -1,10 +1,11 @@
-import type { AppType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App } from "@app/lib/models/apps";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostStateResponseBody = {
   app: AppType;
@@ -12,7 +13,7 @@ export type PostStateResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostStateResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostStateResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -138,4 +139,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

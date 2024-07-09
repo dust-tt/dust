@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse, WorkspaceDomain } from "@dust-tt/types";
+import type { WithAPIErrorResponse, WorkspaceDomain } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
@@ -41,7 +41,7 @@ export type ListMemberEmailsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<ListMemberEmailsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

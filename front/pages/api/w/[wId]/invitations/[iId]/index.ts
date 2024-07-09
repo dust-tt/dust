@@ -1,6 +1,6 @@
 import type {
   MembershipInvitationType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -12,8 +12,9 @@ import {
   getInvitation,
   updateInvitationStatusAndRole,
 } from "@app/lib/api/invitation";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostMemberInvitationsResponseBody = {
   invitation: MembershipInvitationType;
@@ -26,7 +27,7 @@ export const PostMemberInvitationBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostMemberInvitationsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostMemberInvitationsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -115,4 +116,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

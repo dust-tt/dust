@@ -1,11 +1,12 @@
-import type { RunType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { RunType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetRunStatusResponseBody = {
   run: RunType | null;
@@ -13,7 +14,7 @@ export type GetRunStatusResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetRunStatusResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetRunStatusResponseBody>>
 ) {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -74,4 +75,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

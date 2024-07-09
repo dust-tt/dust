@@ -1,6 +1,6 @@
 import type {
   APIErrorWithStatusCode,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import tracer from "dd-trace";
 import StatsD from "hot-shots";
@@ -19,13 +19,13 @@ export const statsDClient = new StatsD();
 export function withLogging<T>(
   handler: (
     req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorReponse<T>>
+    res: NextApiResponse<WithAPIErrorResponse<T>>
   ) => Promise<void>,
   streaming = false
 ) {
   return async (
     req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorReponse<T>>
+    res: NextApiResponse<WithAPIErrorResponse<T>>
   ): Promise<void> => {
     const ddtraceSpan = tracer.scope().active();
     if (ddtraceSpan) {
@@ -114,7 +114,7 @@ export function withLogging<T>(
 
 export function apiError<T>(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<T>>,
+  res: NextApiResponse<WithAPIErrorResponse<T>>,
   apiError: APIErrorWithStatusCode,
   error?: Error
 ): void {

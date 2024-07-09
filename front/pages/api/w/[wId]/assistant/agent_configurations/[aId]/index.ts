@@ -1,6 +1,6 @@
 import type {
   AgentConfigurationType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -12,8 +12,9 @@ import {
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 export type GetAgentConfigurationResponseBody = {
@@ -26,7 +27,7 @@ export type DeleteAgentConfigurationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetAgentConfigurationResponseBody
       | DeleteAgentConfigurationResponseBody
       | void
@@ -194,4 +195,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

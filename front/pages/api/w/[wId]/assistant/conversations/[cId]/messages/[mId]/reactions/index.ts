@@ -1,4 +1,4 @@
-import type { MessageReactionType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { MessageReactionType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,8 +9,9 @@ import {
   createMessageReaction,
   deleteMessageReaction,
 } from "@app/lib/api/assistant/reaction";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const MessageReactionRequestBodySchema = t.type({
   reaction: t.string,
@@ -19,7 +20,7 @@ export const MessageReactionRequestBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       { reactions: MessageReactionType[] } | { success: boolean }
     >
   >
@@ -169,4 +170,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   ConnectorsAPI,
   sendUserOperationMessage,
@@ -12,11 +12,12 @@ import {
   getDataSource,
   updateDataSourceEditedBy,
 } from "@app/lib/api/data_sources";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
@@ -25,7 +26,7 @@ export type GetDataSourceUpdateResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetDataSourceUpdateResponseBody | void>
+    WithAPIErrorResponse<GetDataSourceUpdateResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -151,4 +152,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

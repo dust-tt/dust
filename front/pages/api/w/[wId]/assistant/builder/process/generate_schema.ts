@@ -1,6 +1,6 @@
 import type {
   ProcessSchemaPropertyType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   cloneBaseConfig,
@@ -14,13 +14,14 @@ import { DustProdActionRegistry } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<{
+    WithAPIErrorResponse<{
       schema: ProcessSchemaPropertyType[];
     }>
   >
@@ -143,4 +144,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

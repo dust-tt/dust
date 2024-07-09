@@ -1,7 +1,7 @@
 import type {
   CoreAPIRow,
   CoreAPITableSchema,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { CoreAPI, isSlugified } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -183,7 +183,9 @@ type ListTableRowsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<UpsertTableRowsResponseBody | ListTableRowsResponseBody>
+    WithAPIErrorResponse<
+      UpsertTableRowsResponseBody | ListTableRowsResponseBody
+    >
   >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);

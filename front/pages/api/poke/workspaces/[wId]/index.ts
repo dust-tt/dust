@@ -1,12 +1,13 @@
-import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { LightWorkspaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export const WorkspaceTypeSchema = t.type({
@@ -24,7 +25,7 @@ export type DeleteWorkspaceResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       SegmentWorkspaceResponseBody | DeleteWorkspaceResponseBody
     >
   >
@@ -86,4 +87,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

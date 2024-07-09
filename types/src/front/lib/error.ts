@@ -6,6 +6,7 @@ export type InternalErrorWithStatusCode = {
 };
 
 export type APIErrorType =
+  | "not_authenticated"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
   | "invalid_api_key_error"
@@ -127,4 +128,4 @@ export function isAPIErrorResponse(obj: unknown): obj is APIErrorResponse {
   );
 }
 
-export type WithAPIErrorReponse<T> = T | APIErrorResponse;
+export type WithAPIErrorResponse<T> = T | APIErrorResponse;

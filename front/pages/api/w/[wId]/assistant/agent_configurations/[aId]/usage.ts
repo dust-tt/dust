@@ -1,10 +1,11 @@
-import type { AgentUsageType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { AgentUsageType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetAgentUsageResponseBody = {
   agentUsage: AgentUsageType;
@@ -12,7 +13,7 @@ export type GetAgentUsageResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetAgentUsageResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetAgentUsageResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -73,4 +74,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

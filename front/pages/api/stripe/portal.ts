@@ -1,12 +1,13 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 const PostStripePortalRequestBody = t.type({
   workspaceId: t.string,
@@ -16,7 +17,7 @@ type PostStripePortalResponseBody = {
 };
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostStripePortalResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostStripePortalResponseBody>>
 ): Promise<void> {
   const bodyValidation = PostStripePortalRequestBody.decode(req.body);
   if (isLeft(bodyValidation)) {
@@ -87,4 +88,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -2,7 +2,7 @@ import type {
   ConnectorPermission,
   ContentNode,
   DataSourceType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { assertNever, ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -11,9 +11,10 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 const SetConnectorPermissionsRequestBodySchema = t.type({
   resources: t.array(
@@ -40,7 +41,7 @@ export type SetDataSourcePermissionsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetDataSourcePermissionsResponseBody
       | SetDataSourcePermissionsResponseBody
     >
@@ -186,7 +187,7 @@ export async function getManagedDataSourcePermissionsHandler(
   dataSource: DataSourceType & { connectorId: string },
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetDataSourcePermissionsResponseBody>
+    WithAPIErrorResponse<GetDataSourcePermissionsResponseBody>
   >
 ) {
   let parentId: string | undefined = undefined;
@@ -286,4 +287,4 @@ export async function getManagedDataSourcePermissionsHandler(
   return;
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -1,12 +1,13 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 type PatchGlobalAgentSettingResponseBody = {
   success: boolean;
@@ -18,7 +19,7 @@ const PatchGlobalAgentSettingsRequestBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<PatchGlobalAgentSettingResponseBody | void>
+    WithAPIErrorResponse<PatchGlobalAgentSettingResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -93,4 +94,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

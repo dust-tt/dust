@@ -1,14 +1,15 @@
-import type { DocumentType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DocumentType, WithAPIErrorResponse } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { JSONSchemaType } from "ajv";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -46,7 +47,7 @@ export type DatasourceSearchResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<DatasourceSearchResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -81,7 +82,7 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);
 
 export async function handleSearchDataSource({
   req,
@@ -89,7 +90,7 @@ export async function handleSearchDataSource({
   auth,
 }: {
   req: NextApiRequest;
-  res: NextApiResponse<WithAPIErrorReponse<DatasourceSearchResponseBody>>;
+  res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>;
   auth: Authenticator;
 }) {
   const dataSource = await getDataSource(auth, req.query.name as string);

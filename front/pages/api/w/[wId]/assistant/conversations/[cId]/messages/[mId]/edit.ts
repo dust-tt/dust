@@ -1,4 +1,4 @@
-import type { UserMessageType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { UserMessageType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isUserMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -7,8 +7,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const PostEditRequestBodySchema = t.type({
   content: t.string,
@@ -17,7 +18,7 @@ export const PostEditRequestBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ message: UserMessageType }>>
+  res: NextApiResponse<WithAPIErrorResponse<{ message: UserMessageType }>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -145,4 +146,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

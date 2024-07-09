@@ -1,7 +1,7 @@
 import type {
   CoreAPITable,
   DataSourceType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, CoreAPI } from "@dust-tt/types";
@@ -9,9 +9,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { deleteTable } from "@app/lib/api/tables";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetTableResponseBody = {
   table: CoreAPITable;
@@ -19,7 +20,7 @@ export type GetTableResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetTableResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetTableResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -140,7 +141,7 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);
 
 export async function handleDeleteTableByIdRequest(
   req: NextApiRequest,

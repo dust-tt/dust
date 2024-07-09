@@ -1,10 +1,14 @@
-import type { WhitelistableFeature, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  WhitelistableFeature,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { isWhitelistableFeature } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetPokeFeaturesResponseBody = {
   features: WhitelistableFeature[];
@@ -17,7 +21,7 @@ export type CreateOrDeleteFeatureFlagResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       CreateOrDeleteFeatureFlagResponseBody | GetPokeFeaturesResponseBody
     >
   >
@@ -134,4 +138,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

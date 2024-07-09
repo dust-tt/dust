@@ -1,4 +1,7 @@
-import type { CoreAPILightDocument, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  CoreAPILightDocument,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { DocumentType } from "@dust-tt/types";
 import {
   PostDataSourceDocumentRequestBodySchema,
@@ -11,10 +14,11 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const config = {
   api: {
@@ -30,7 +34,7 @@ export type GetDocumentResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetDocumentResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetDocumentResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -324,4 +328,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -1,13 +1,14 @@
-import type { PlanType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { PlanType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/subscription";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const PlanTypeSchema = t.type({
   code: t.string,
@@ -53,7 +54,7 @@ export type GetPokePlansResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetPokePlansResponseBody | UpsertPokePlanResponseBody>
+    WithAPIErrorResponse<GetPokePlansResponseBody | UpsertPokePlanResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -132,4 +133,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   CreateTemplateFormSchema,
   isTemplateTagCodeArray,
@@ -8,10 +8,11 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 
 export interface CreateTemplateResponseBody {
@@ -25,7 +26,7 @@ interface PokeFetchAssistantTemplatesResponse {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       CreateTemplateResponseBody | PokeFetchAssistantTemplatesResponse
     >
   >
@@ -124,4 +125,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

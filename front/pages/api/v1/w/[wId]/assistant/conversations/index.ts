@@ -2,7 +2,7 @@ import type {
   ContentFragmentType,
   ConversationType,
   UserMessageType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   isEmptyString,
@@ -154,7 +154,7 @@ export type PostConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostConversationsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

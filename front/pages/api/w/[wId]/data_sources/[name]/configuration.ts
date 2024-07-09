@@ -1,4 +1,4 @@
-import type { ConnectorType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ConnectorType, WithAPIErrorResponse } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorsAPI,
@@ -8,9 +8,10 @@ import {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostDataSourceConfigurationResBody = {
   connector: ConnectorType;
@@ -19,7 +20,7 @@ export type PostDataSourceConfigurationResBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<PostDataSourceConfigurationResBody | void>
+    WithAPIErrorResponse<PostDataSourceConfigurationResBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -183,4 +184,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);

@@ -1,15 +1,16 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { createAndLogMembership } from "@app/pages/api/login";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ sId: string }>>
+  res: NextApiResponse<WithAPIErrorResponse<{ sId: string }>>
 ): Promise<void> {
   const session = await getSession(req, res);
   if (!session) {
@@ -59,4 +60,4 @@ async function handler(
   res.status(200).json({ sId: workspace.sId });
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);
