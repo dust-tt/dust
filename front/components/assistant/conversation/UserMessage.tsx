@@ -14,7 +14,6 @@ interface UserMessageProps {
   conversationId: string;
   hideReactions?: boolean;
   isLastMessage: boolean;
-  latestMentions: string[];
   message: UserMessageType;
   owner: WorkspaceType;
   reactions: MessageReactionType[];
@@ -27,7 +26,6 @@ export function UserMessage({
   conversationId,
   hideReactions,
   isLastMessage,
-  latestMentions,
   message,
   owner,
   reactions,
@@ -60,7 +58,6 @@ export function UserMessage({
         {message.mentions.length === 0 && isLastMessage && (
           <AgentSuggestion
             conversationId={conversationId}
-            latestMentions={latestMentions}
             owner={owner}
             userMessage={message}
           />

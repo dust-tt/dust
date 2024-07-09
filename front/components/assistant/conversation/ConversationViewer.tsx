@@ -151,27 +151,6 @@ const ConversationViewer = React.forwardRef<
     }
   }, [isInModal, latestPage]);
 
-  // Compute the latest mentions ordered by the most recents first.
-  const latestMentions = useMemo(() => {
-    const recentMentions = latestPage?.messages.reduce((acc, message) => {
-      if (isUserMessageType(message)) {
-        for (const mention of message.mentions) {
-          if (isAgentMention(mention)) {
-            acc.add(mention.configurationId);
-          }
-        }
-      }
-
-      return acc;
-    }, new Set<string>());
-
-    if (!recentMentions) {
-      return [];
-    }
-
-    return [...recentMentions].reverse();
-  }, [latestPage]);
-
   // Keep a reference to the previous oldest message to maintain user position
   // after fetching more data. This is a best effort approach to keep the user
   // roughly at the same place they were before the new data is loaded.
@@ -406,7 +385,6 @@ const ConversationViewer = React.forwardRef<
               prevFirstMessageRef={prevFirstMessageRef}
               user={user}
               latestPage={latestPage}
-              latestMentions={latestMentions}
             />
           );
         })}
