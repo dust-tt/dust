@@ -70,9 +70,8 @@ export async function getAgentsUsage({
     } else if (agentMessageCountTTL < popularityComputationTimeframeSec) {
       void (async () => {
         const agentMessageCounts = await agentMentionsCount(owner.id);
-        void safeRedisClient(
-          async (redis) =>
-            await storeCountsInRedis(workspaceId, agentMessageCounts, redis)
+        void safeRedisClient((redis) =>
+          storeCountsInRedis(workspaceId, agentMessageCounts, redis)
         );
       })();
     }
