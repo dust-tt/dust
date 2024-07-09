@@ -383,10 +383,10 @@ async function renderFromFileId(
     }
 
     // For CSV files we have a custom rule:
-    // We render completely the content if the csv is small or a snippet if the csv is big.
+    // We render the full content if the csv is small or a snippet if the csv is big.
     // A big CSV is a CSV for which tokens counts for more than 10% of the context size of the model.
     const tokenSize = await tokenCountForText(content, model);
-    const maxTokens = model.contextSize * 0.1;
+    const maxTokens = model.contextSize * 0.3;
 
     if (tokenSize.isErr()) {
       logger.error(
@@ -396,16 +396,17 @@ async function renderFromFileId(
       return new Ok(messageWithFullContent);
     }
 
-    // If token count < 10% of the model context size, we return the full content.
-    if (tokenSize.value < maxTokens) {
+    // If token count < 10% of the model context size or just a single line, we return the full content.
+    const lines = content.split("\n");
+    if (tokenSize.value < maxTokens || lines.length < 2) {
       return new Ok(messageWithFullContent);
     }
 
     // If token count > 10% of the model context size, we return a snippet.
     // We want at least one line, and at most reach 10% of the model context size but always full lines.
+    // We take line 1 as index 0 is potentially the header so potentially not a good representation of the content.
     // We will count the number of tokens in the first line and use it as a reference to decide how many lines to keep.
-    const lines = content.split("\n");
-    const tokensPerLineRes = await tokenCountForText(lines[0], model);
+    const tokensPerLineRes = await tokenCountForText(lines[1], model);
     if (tokensPerLineRes.isErr()) {
       logger.error(
         { error: tokensPerLineRes.error },
