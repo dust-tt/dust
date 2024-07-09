@@ -66,9 +66,8 @@ const AssistantBuilderCustomUpload = React.forwardRef<
               return f.publicUrl;
             }
           }
-
-          return null;
         }
+        return null;
       },
     };
   }, [crop, imageRef, isUploadingAvatar, fileUploaderService]);
