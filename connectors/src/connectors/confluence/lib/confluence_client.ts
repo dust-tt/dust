@@ -60,6 +60,15 @@ const ConfluencePageWithBodyCodec = t.intersection([
         value: t.string,
       }),
     }),
+    labels: t.type({
+      results: t.array(
+        t.type({
+          id: t.string,
+          name: t.string,
+          prefix: t.string,
+        })
+      ),
+    }),
   }),
 ]);
 export type ConfluencePageWithBodyType = t.TypeOf<
@@ -396,6 +405,7 @@ export class ConfluenceClient {
   async getPageById(pageId: string) {
     const params = new URLSearchParams({
       "body-format": "storage", // Returns HTML.
+      "include-labels": "true", // Include labels.
     });
 
     return this.request(

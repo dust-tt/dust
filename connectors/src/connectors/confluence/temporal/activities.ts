@@ -302,12 +302,27 @@ export async function confluenceCheckAndUpsertPageActivity({
       baseUrl: confluenceConfig.url,
       suffix: page._links.tinyui,
     });
+
+    // We log the number of labels to help define the importance of labels in the future.
+    if (page.labels.results.length > 0) {
+      localLogger.info(
+        { labelsCount: page.labels.results.length },
+        "Confluence page has labels."
+      );
+    }
+
+    // Limit to 10 custom tags.
+    const customTags = page.labels.results
+      .slice(0, 10)
+      .map((l) => `labels:${l.id}`);
+
     const tags = [
       `createdAt:${pageCreatedAt.getTime()}`,
       `space:${spaceName}`,
       `title:${page.title}`,
       `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
       `version:${page.version.number}`,
+      ...customTags,
     ];
 
     await upsertToDatasource({
