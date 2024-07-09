@@ -2440,7 +2440,10 @@ fn main() {
     let r = rt.block_on(async {
         tracing_subscriber::registry()
             .with(JsonStorageLayer)
-            .with(BunyanFormattingLayer::new("core".into(), std::io::stdout))
+            .with(BunyanFormattingLayer::new(
+                "dust_api".into(),
+                std::io::stdout,
+            ))
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 

@@ -5,7 +5,6 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
-use datadog_formatting_layer::DatadogFormattingLayer;
 use dust::{
     databases::database::Table,
     databases_store::{self, store::DatabasesStore},
@@ -31,6 +30,7 @@ use tokio::{
 };
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
 // Duration after which a database is considered inactive and can be removed from the registry.
@@ -283,7 +283,11 @@ fn main() {
 
     let r = rt.block_on(async {
         tracing_subscriber::registry()
-            .with(DatadogFormattingLayer)
+            .with(JsonStorageLayer)
+            .with(BunyanFormattingLayer::new(
+                "sqlite_worker".into(),
+                std::io::stdout,
+            ))
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
