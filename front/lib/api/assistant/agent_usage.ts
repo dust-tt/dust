@@ -11,7 +11,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { redisClient } from "@app/lib/redis";
 
 // Ranking of agents is done over a 7 days period.
-const rankingTimeframeSec = 60 * 60 * 24 * 7; // 30 days
+const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
 
 // Computing agent mention count over a 12h period
 const popularityComputationTimeframeSec = 12 * 60 * 60;
