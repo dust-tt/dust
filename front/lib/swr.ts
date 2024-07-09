@@ -13,7 +13,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher, SWRConfiguration } from "swr";
+import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
@@ -51,6 +51,20 @@ import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
+
+const DEFAULT_SWR_CONFIG: SWRConfiguration = {
+  errorRetryCount: 16,
+};
+
+function useSWRWithDefaults<T>(
+  key: Key,
+  fetcher: Fetcher<T>,
+  config?: SWRConfiguration
+) {
+  const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
+
+  return useSWR<T>(key, fetcher, mergedConfig);
+}
 
 const resHandler = async (res: Response) => {
   if (res.status >= 300) {
@@ -91,7 +105,7 @@ export function useDatasets({
 }) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     disabled ? null : `/api/w/${owner.sId}/apps/${app.sId}/datasets`,
     datasetsFetcher
   );
@@ -111,7 +125,7 @@ export function useDataset(
 ) {
   const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/apps/${app.sId}/datasets/${dataset}${
       showData ? "?data=true" : ""
     }`,
@@ -135,7 +149,7 @@ export function useProviders({
 }) {
   const providersFetcher: Fetcher<GetProvidersResponseBody> = fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     disabled ? null : `/api/w/${owner.sId}/providers`,
     providersFetcher
   );
@@ -153,7 +167,7 @@ export function useSavedRunStatus(
   refresh: (data: GetRunStatusResponseBody | undefined) => number
 ) {
   const runStatusFetcher: Fetcher<GetRunStatusResponseBody> = fetcher;
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`,
     runStatusFetcher,
     {
@@ -177,7 +191,7 @@ export function useRunBlock(
   refresh: (data: GetRunBlockResponseBody | undefined) => number
 ) {
   const runBlockFetcher: Fetcher<GetRunBlockResponseBody> = fetcher;
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
     runBlockFetcher,
     {
@@ -194,7 +208,7 @@ export function useRunBlock(
 
 export function useDustAppSecrets(owner: WorkspaceType) {
   const keysFetcher: Fetcher<GetDustAppSecretsResponseBody> = fetcher;
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/dust_app_secrets`,
     keysFetcher
   );
@@ -208,7 +222,10 @@ export function useDustAppSecrets(owner: WorkspaceType) {
 
 export function useKeys(owner: WorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
-  const { data, error } = useSWR(`/api/w/${owner.sId}/keys`, keysFetcher);
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/keys`,
+    keysFetcher
+  );
 
   return {
     keys: useMemo(() => (data ? data.keys : []), [data]),
@@ -230,7 +247,7 @@ export function useRuns(
   if (wIdTarget) {
     url += `&wIdTarget=${wIdTarget}`;
   }
-  const { data, error } = useSWR(url, runsFetcher);
+  const { data, error } = useSWRWithDefaults(url, runsFetcher);
 
   return {
     runs: useMemo(() => (data ? data.runs : []), [data]),
@@ -248,7 +265,7 @@ export function useDocuments(
   asDustSuperUser?: boolean
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/data_sources/${
       dataSource.name
     }/documents?limit=${limit}&offset=${offset}${
@@ -272,7 +289,7 @@ export function useDataSources(
 ) {
   const { disabled } = options;
   const dataSourcesFetcher: Fetcher<GetDataSourcesResponseBody> = fetcher;
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled ? null : `/api/w/${owner.sId}/data_sources`,
     dataSourcesFetcher
   );
@@ -287,7 +304,7 @@ export function useDataSources(
 
 export function useMembers(owner: WorkspaceType) {
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/members`,
     membersFetcher
   );
@@ -303,7 +320,7 @@ export function useMembers(owner: WorkspaceType) {
 export function useWorkspaceInvitations(owner: WorkspaceType) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/invitations`,
     workspaceInvitationsFetcher
   );
@@ -318,7 +335,7 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
 
 export function useUser() {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
-  const { data, error } = useSWR("/api/user", userFetcher);
+  const { data, error } = useSWRWithDefaults("/api/user", userFetcher);
 
   return {
     user: data ? data.user : null,
@@ -330,7 +347,7 @@ export function useUser() {
 export function useUserMetadata(key: string) {
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/user/metadata/${encodeURIComponent(key)}`,
     userMetadataFetcher
   );
@@ -365,7 +382,7 @@ export function useDataSourceContentNodes({
     return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness
   }, [url, body]);
 
-  const { data, error } = useSWR(fetchKey, async () => {
+  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
     const options = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -409,7 +426,10 @@ export function useConnectorPermissions({
     url += `&filterPermission=${filterPermission}`;
   }
 
-  const { data, error } = useSWR(disabled ? null : url, permissionsFetcher);
+  const { data, error } = useSWRWithDefaults(
+    disabled ? null : url,
+    permissionsFetcher
+  );
 
   return {
     resources: useMemo(() => (data ? data.resources : []), [data]),
@@ -442,7 +462,10 @@ export function usePokeConnectorPermissions({
     url += `&filterPermission=${filterPermission}`;
   }
 
-  const { data, error } = useSWR(disabled ? null : url, permissionsFetcher);
+  const { data, error } = useSWRWithDefaults(
+    disabled ? null : url,
+    permissionsFetcher
+  );
 
   return {
     resources: data ? data.resources : [],
@@ -467,7 +490,7 @@ export function useConnectorConfig({
     dataSource.name
   )}/managed/config/${configKey}`;
 
-  const { data, error, mutate } = useSWR(url, configFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
 
   return {
     configValue: data ? data.configValue : null,
@@ -488,7 +511,7 @@ export function useConnector({
 
   const url = `/api/w/${workspaceId}/data_sources/${dataSourceName}/connector`;
 
-  const { data, error, mutate } = useSWR(url, configFetcher, {
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     refreshInterval: (connectorResBody) => {
       if (connectorResBody?.connector.errorType !== undefined) {
         // We have an error, no need to auto refresh.
@@ -543,7 +566,7 @@ export function usePokeWorkspaces({
     query = `?${queryParams.join("&")}`;
   }
 
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     disabled ? null : `api/poke/workspaces${query}`,
     workspacesFetcher
   );
@@ -558,7 +581,7 @@ export function usePokeWorkspaces({
 export function usePokePlans() {
   const plansFetcher: Fetcher<GetPokePlansResponseBody> = fetcher;
 
-  const { data, error } = useSWR("/api/poke/plans", plansFetcher);
+  const { data, error } = useSWRWithDefaults("/api/poke/plans", plansFetcher);
 
   return {
     plans: useMemo(() => (data ? data.plans : []), [data]),
@@ -575,7 +598,7 @@ export function useWorkspaceSubscriptions({
   const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     `/api/w/${workspaceId}/subscriptions`,
     workspaceSubscrptionsFetcher
   );
@@ -597,7 +620,7 @@ export function useConversation({
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
       : null,
@@ -616,7 +639,7 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
   const conversationFetcher: Fetcher<{ conversations: ConversationType[] }> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations`,
     conversationFetcher
   );
@@ -640,7 +663,7 @@ export function useConversationReactions({
     reactions: ConversationMessageReactions;
   }> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations/${conversationId}/reactions`,
     conversationReactionsFetcher
   );
@@ -715,7 +738,7 @@ export function useConversationParticipants({
   const conversationParticipantsFetcher: Fetcher<FetchConversationParticipantsResponse> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/participants`
       : null,
@@ -741,7 +764,7 @@ export function useAssistantTemplates({
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/builder/templates`,
     assistantTemplatesFetcher
   );
@@ -764,7 +787,7 @@ export function useAssistantTemplate({
   const assistantTemplateFetcher: Fetcher<FetchAssistantTemplateResponse> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     templateId !== null
       ? `/api/w/${workspaceId}/assistant/builder/templates/${templateId}`
       : null,
@@ -827,7 +850,7 @@ export function useAgentConfigurations({
   }
 
   const queryString = getQueryString();
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     agentsGetView
       ? `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`
       : null,
@@ -898,7 +921,7 @@ export function usePokeAgentConfigurations({
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     agentsGetView
       ? `/api/poke/workspaces/${workspaceId}/agent_configurations?view=${agentsGetView}`
       : null,
@@ -927,7 +950,7 @@ export function useAgentConfiguration({
     agentConfiguration: AgentConfigurationType;
   }> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     agentConfigurationId
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}`
       : null,
@@ -953,7 +976,10 @@ export function useAgentUsage({
   const fetchUrl = agentConfigurationId
     ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/usage`
     : null;
-  const { data, error, mutate } = useSWR(fetchUrl, agentUsageFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(
+    fetchUrl,
+    agentUsageFetcher
+  );
 
   return {
     agentUsage: data ? data.agentUsage : null,
@@ -975,7 +1001,7 @@ export function useSlackChannelsLinkedWithAgent({
   const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     dataSourceName && !disabled
       ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`
       : null,
@@ -999,7 +1025,7 @@ export function useTables({
 }) {
   const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     dataSourceName
       ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables`
       : null,
@@ -1025,7 +1051,7 @@ export function useTable({
 }) {
   const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     tableId
       ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`
       : null,
@@ -1049,7 +1075,7 @@ export function useApp({
 }) {
   const appFetcher: Fetcher<{ app: AppType }> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/apps/${appId}`,
     appFetcher
   );
@@ -1071,7 +1097,7 @@ export function useWorkspaceAnalytics({
 }) {
   const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     !disabled ? `/api/w/${workspaceId}/workspace-analytics` : null,
     analyticsFetcher
   );
@@ -1092,7 +1118,7 @@ export function useWorkspaceEnterpriseConnection({
     connection: WorkspaceEnterpriseConnection;
   }> = fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     workspaceId ? `/api/w/${workspaceId}/enterprise-connection` : null,
     workspaceEnterpriseConnectionFetcher
   );
@@ -1167,7 +1193,7 @@ export function useDataSourceNodes(
 
   const serializeKey = (k: UseDataSourceKey) => JSON.stringify(k);
 
-  const { data, error } = useSWR(
+  const { data, error } = useSWRWithDefaults(
     serializeKey(key),
     contentNodesFetcher,
     options
@@ -1195,7 +1221,7 @@ export function useLabsTranscriptsConfiguration({
   const transcriptsConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
     fetcher;
 
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/labs/transcripts`,
     transcriptsConfigurationFetcher
   );
