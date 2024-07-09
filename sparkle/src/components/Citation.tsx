@@ -126,16 +126,15 @@ export function Citation({
           </div>
         )}
       </div>
-      <Tooltip label={title} position="above">
-        <div
-          className={classNames(
-            "s-line-clamp-1 s-text-sm s-text-element-800",
-            size === "sm" ? "s-font-bold" : "s-font-semibold"
-          )}
-        >
-          {title}
-        </div>
-      </Tooltip>
+      <div
+        className={classNames(
+          "s-line-clamp-1 s-text-sm s-text-element-800",
+          size === "sm" ? "s-font-bold" : "s-font-semibold"
+        )}
+      >
+        {title}
+      </div>
+
       {description && (
         <div className="s-line-clamp-2 s-text-xs s-font-normal s-text-element-700">
           {description}
@@ -145,24 +144,26 @@ export function Citation({
   );
 
   return (
-    <CardButton
-      variant="secondary"
-      size="sm"
-      className={classNames(
-        "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
-        sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
-        size === "sm" ? "sm:s-w-64" : "",
-        isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
-        type === "image" ? "s-min-h-20" : ""
-      )}
-      {...(href && { href, target: "_blank", rel: "noopener noreferrer" })}
-    >
-      {isLoading && (
-        <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
-          <Spinner size="xs" variant="color" />
-        </div>
-      )}
-      <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
-    </CardButton>
+    <Tooltip label={title} position="above">
+      <CardButton
+        variant="secondary"
+        size="sm"
+        className={classNames(
+          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+          sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
+          size === "sm" ? "sm:s-w-64" : "",
+          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
+          type === "image" ? "s-min-h-20" : ""
+        )}
+        {...(href && { href, target: "_blank", rel: "noopener noreferrer" })}
+      >
+        {isLoading && (
+          <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
+            <Spinner size="xs" variant="color" />
+          </div>
+        )}
+        <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
+      </CardButton>
+    </Tooltip>
   );
 }
