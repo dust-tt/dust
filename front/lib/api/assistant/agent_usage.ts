@@ -119,9 +119,10 @@ export async function getAgentUsage(
   try {
     redis = providedRedis ?? (await redisClient());
 
-    const [agentUsage] = await Promise.all([
-      redis.hGet(agentMessageCountKey, agentConfigurationId),
-    ]);
+    const agentUsage = await redis.hGet(
+      agentMessageCountKey,
+      agentConfigurationId
+    );
     const messageCount = agentUsage ? parseInt(agentUsage, 10) : 0;
     return {
       messageCount,

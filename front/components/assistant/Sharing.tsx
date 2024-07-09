@@ -300,7 +300,6 @@ export function SharingDropdown({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration?.sId || null,
   });
-  const assistantInMyList = agentConfiguration?.userListStatus === "in-list";
   const assistantName = agentConfiguration?.name;
 
   const usageText = assistantName
