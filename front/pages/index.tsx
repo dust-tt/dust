@@ -23,28 +23,24 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   const session = await getSession(context.req, context.res);
   const user = await getUserFromSession(session);
 
-  const { inviteToken, show } = context.query;
+  const { inviteToken } = context.query;
 
-  // ?show explicitly shows the landing page
-  if (!show || inviteToken) {
-    if (user && user.workspaces.length > 0) {
-      let url = `/w/${user.workspaces[0].sId}`;
+  if (user && user.workspaces.length > 0) {
+    let url = `/w/${user.workspaces[0].sId}`;
 
-      if (inviteToken) {
-        url = `/api/login?inviteToken=${inviteToken}`;
-      }
-
-      return {
-        redirect: {
-          destination: url,
-          permanent: false,
-        },
-      };
+    if (context.query.inviteToken) {
+      url = `/api/login?inviteToken=${inviteToken}`;
     }
+
+    return {
+      redirect: {
+        destination: url,
+        permanent: false,
+      },
+    };
   }
 
   let postLoginCallbackUrl = "/api/login";
-
   if (inviteToken) {
     postLoginCallbackUrl += `?inviteToken=${inviteToken}`;
   }
