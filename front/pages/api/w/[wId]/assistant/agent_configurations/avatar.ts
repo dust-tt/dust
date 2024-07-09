@@ -1,8 +1,8 @@
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
-import { withLogging } from "@app/logger/withlogging";
 
 export const config = {
   api: {
@@ -55,4 +55,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthentication(handler);
