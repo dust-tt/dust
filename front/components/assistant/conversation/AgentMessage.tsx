@@ -67,6 +67,7 @@ interface AgentMessageProps {
   conversationId: string;
   reactions: MessageReactionType[];
   hideReactions?: boolean;
+  isInModal: boolean;
   size: MessageSizeType;
 }
 
@@ -83,6 +84,7 @@ export function AgentMessage({
   conversationId,
   reactions,
   hideReactions,
+  isInModal,
   size,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -452,15 +454,17 @@ export function AgentMessage({
       enableEmojis={!hideReactions}
       renderName={() => {
         return (
-          <div className="flex flex-row gap-2">
+          <div className="flex flex-row items-center gap-2">
             <div className="text-base font-medium">
               {AssitantDetailViewLink(agentConfiguration)}
             </div>
-            <AssistantDetailsDropdownMenu
-              agentConfigurationId={agentConfiguration.sId}
-              owner={owner}
-              showAddRemoveToList
-            />
+            {!isInModal && (
+              <AssistantDetailsDropdownMenu
+                agentConfigurationId={agentConfiguration.sId}
+                owner={owner}
+                showAddRemoveToList
+              />
+            )}
           </div>
         );
       }}
