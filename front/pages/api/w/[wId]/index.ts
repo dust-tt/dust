@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
+import type { WithAPIErrorResponse, WorkspaceType } from "@dust-tt/types";
 import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -40,7 +40,7 @@ const PostWorkspaceRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostWorkspaceResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostWorkspaceResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

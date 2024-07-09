@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -22,7 +22,7 @@ type PokePostInvitationResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PokePostInvitationResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PokePostInvitationResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

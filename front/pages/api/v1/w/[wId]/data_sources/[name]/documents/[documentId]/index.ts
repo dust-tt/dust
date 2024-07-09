@@ -2,7 +2,7 @@ import type {
   CoreAPILightDocument,
   DataSourceType,
   DocumentType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   PostDataSourceDocumentRequestBodySchema,
@@ -200,7 +200,7 @@ export type UpsertDocumentResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetDocumentResponseBody
       | DeleteDocumentResponseBody
       | UpsertDocumentResponseBody

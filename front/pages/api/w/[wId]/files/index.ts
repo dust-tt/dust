@@ -1,6 +1,6 @@
 import type {
   FileUploadRequestResponseBody,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   ensureFileSize,
@@ -19,7 +19,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<FileUploadRequestResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<FileUploadRequestResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

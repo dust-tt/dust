@@ -1,7 +1,7 @@
 import type {
   ConversationParticipantsType,
   UserMessageType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -17,7 +17,7 @@ export type FetchConversationParticipantsResponse = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       { message: UserMessageType } | FetchConversationParticipantsResponse
     >
   >

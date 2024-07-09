@@ -1,4 +1,4 @@
-import type { BlockType, RunType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { BlockType, RunType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -19,7 +19,7 @@ export type GetRunBlockResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetRunBlockResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetRunBlockResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -14,7 +14,7 @@ export type RevokeUserResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<RevokeUserResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<RevokeUserResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(

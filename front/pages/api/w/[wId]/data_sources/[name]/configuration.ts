@@ -1,4 +1,4 @@
-import type { ConnectorType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ConnectorType, WithAPIErrorResponse } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorsAPI,
@@ -19,7 +19,7 @@ export type PostDataSourceConfigurationResBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<PostDataSourceConfigurationResBody | void>
+    WithAPIErrorResponse<PostDataSourceConfigurationResBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   CreateTemplateFormSchema,
   isTemplateTagCodeArray,
@@ -23,7 +23,7 @@ interface PokeCreateTemplateResponseBody {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       PokeCreateTemplateResponseBody | PokeFetchAssistantTemplateResponse
     >
   >

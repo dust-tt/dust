@@ -127,4 +127,4 @@ export function isAPIErrorResponse(obj: unknown): obj is APIErrorResponse {
   );
 }
 
-export type WithAPIErrorReponse<T> = T | APIErrorResponse;
+export type WithAPIErrorResponse<T> = T | APIErrorResponse;

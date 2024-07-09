@@ -1,6 +1,6 @@
 import type {
   ProcessSchemaPropertyType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   cloneBaseConfig,
@@ -20,7 +20,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<{
+    WithAPIErrorResponse<{
       schema: ProcessSchemaPropertyType[];
     }>
   >

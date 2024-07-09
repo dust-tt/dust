@@ -1,4 +1,4 @@
-import type { UserMetadataType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { UserMetadataType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserMetadata, setUserMetadata } from "@app/lib/api/user";
@@ -16,7 +16,7 @@ export type GetUserMetadataResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       PostUserMetadataResponseBody | GetUserMetadataResponseBody
     >
   >

@@ -3,7 +3,7 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
   Result,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -42,7 +42,7 @@ export type PostAgentConfigurationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetAgentConfigurationsResponseBody
       | PostAgentConfigurationResponseBody
       | void

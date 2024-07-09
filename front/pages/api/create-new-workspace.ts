@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getSession } from "@app/lib/auth";
@@ -9,7 +9,7 @@ import { createAndLogMembership } from "@app/pages/api/login";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ sId: string }>>
+  res: NextApiResponse<WithAPIErrorResponse<{ sId: string }>>
 ): Promise<void> {
   const session = await getSession(req, res);
   if (!session) {

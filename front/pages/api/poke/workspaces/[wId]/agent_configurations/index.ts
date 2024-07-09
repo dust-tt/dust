@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -16,7 +16,7 @@ const GetAgentConfigurationsQuerySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetAgentConfigurationsResponseBody | void>
+    WithAPIErrorResponse<GetAgentConfigurationsResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

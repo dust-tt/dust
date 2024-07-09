@@ -1,4 +1,7 @@
-import type { CoreAPILightDocument, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  CoreAPILightDocument,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { DocumentType } from "@dust-tt/types";
 import {
   PostDataSourceDocumentRequestBodySchema,
@@ -30,7 +33,7 @@ export type GetDocumentResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetDocumentResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetDocumentResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,4 +1,4 @@
-import type { ConversationType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ConversationType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -11,7 +11,7 @@ export type GetConversationResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetConversationResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(

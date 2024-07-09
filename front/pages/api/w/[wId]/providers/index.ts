@@ -1,4 +1,4 @@
-import type { ProviderType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ProviderType, WithAPIErrorResponse } from "@dust-tt/types";
 import { redactString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -21,7 +21,7 @@ function redactConfig(config: string) {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetProvidersResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetProvidersResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

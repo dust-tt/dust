@@ -1,6 +1,6 @@
 import type {
   MembershipInvitationType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -26,7 +26,7 @@ export const PostMemberInvitationBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostMemberInvitationsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostMemberInvitationsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

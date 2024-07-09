@@ -2,7 +2,7 @@ import type {
   ActiveRoleType,
   Result,
   UserType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -300,7 +300,7 @@ async function handleRegularSignupFlow(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<void>>
+  res: NextApiResponse<WithAPIErrorResponse<void>>
 ): Promise<void> {
   const session = await getSession(req, res);
   if (!session) {

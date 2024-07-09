@@ -1,4 +1,4 @@
-import type { DocumentType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DocumentType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { CredentialsType } from "@dust-tt/types";
 import {
   credentialsFromProviders,
@@ -185,7 +185,7 @@ type DatasourceSearchResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<DatasourceSearchResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -18,7 +18,7 @@ export type GetSlackChannelsLinkedWithAgentResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetSlackChannelsLinkedWithAgentResponseBody>
+    WithAPIErrorResponse<GetSlackChannelsLinkedWithAgentResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

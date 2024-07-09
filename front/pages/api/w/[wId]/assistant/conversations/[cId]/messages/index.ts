@@ -1,4 +1,4 @@
-import type { UserMessageType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { UserMessageType, WithAPIErrorResponse } from "@dust-tt/types";
 import { InternalPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -15,7 +15,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       { message: UserMessageType } | FetchConversationMessagesResponse
     >
   >

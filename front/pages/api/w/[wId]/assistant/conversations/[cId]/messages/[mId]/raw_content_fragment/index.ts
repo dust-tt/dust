@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isContentFragmentType } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -24,7 +24,7 @@ type Action = (typeof validActions)[number];
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<{ sourceUrl: string }>>
+  res: NextApiResponse<WithAPIErrorResponse<{ sourceUrl: string }>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

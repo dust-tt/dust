@@ -1,6 +1,6 @@
 import type {
   ConversationMessageReactions,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -12,7 +12,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<{ reactions: ConversationMessageReactions }>
+    WithAPIErrorResponse<{ reactions: ConversationMessageReactions }>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

@@ -1,6 +1,6 @@
 import type {
   UserTypeWithWorkspaces,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -14,7 +14,7 @@ export type GetMembersResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetMembersResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetMembersResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,5 +1,5 @@
 import type {
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
   WorkspaceEnterpriseConnection,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -30,7 +30,9 @@ const PostCreateEnterpriseConnectionRequestBodySchema = t.type({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetEnterpriseConnectionResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetEnterpriseConnectionResponseBody>
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,4 +1,7 @@
-import type { WhitelistableFeature, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  WhitelistableFeature,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getAPIKey } from "@app/lib/auth";
@@ -45,7 +48,7 @@ export type WorkspaceFeatureFlagsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<WorkspaceFeatureFlagsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<WorkspaceFeatureFlagsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   ConnectorsAPI,
   sendUserOperationMessage,
@@ -25,7 +25,7 @@ export type GetDataSourceUpdateResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetDataSourceUpdateResponseBody | void>
+    WithAPIErrorResponse<GetDataSourceUpdateResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

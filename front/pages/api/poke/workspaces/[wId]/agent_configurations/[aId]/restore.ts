@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -15,7 +15,7 @@ export type RestoreAgentConfigurationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<RestoreAgentConfigurationResponseBody>
+    WithAPIErrorResponse<RestoreAgentConfigurationResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

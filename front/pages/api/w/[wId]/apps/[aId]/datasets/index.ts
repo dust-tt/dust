@@ -1,4 +1,4 @@
-import type { DatasetType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DatasetType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -44,7 +44,7 @@ export const PostDatasetRequestBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetDatasetsResponseBody | PostDatasetResponseBody>
+    WithAPIErrorResponse<GetDatasetsResponseBody | PostDatasetResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

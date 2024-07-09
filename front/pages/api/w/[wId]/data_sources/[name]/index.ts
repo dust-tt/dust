@@ -1,4 +1,4 @@
-import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -17,7 +17,7 @@ export type GetOrPostDataSourceResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetOrPostDataSourceResponseBody | void>
+    WithAPIErrorResponse<GetOrPostDataSourceResponseBody | void>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

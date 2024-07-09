@@ -2,7 +2,7 @@ import type {
   ConnectorPermission,
   ContentNode,
   DataSourceType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { assertNever, ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -40,7 +40,7 @@ export type SetDataSourcePermissionsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetDataSourcePermissionsResponseBody
       | SetDataSourcePermissionsResponseBody
     >
@@ -186,7 +186,7 @@ export async function getManagedDataSourcePermissionsHandler(
   dataSource: DataSourceType & { connectorId: string },
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetDataSourcePermissionsResponseBody>
+    WithAPIErrorResponse<GetDataSourcePermissionsResponseBody>
   >
 ) {
   let parentId: string | undefined = undefined;

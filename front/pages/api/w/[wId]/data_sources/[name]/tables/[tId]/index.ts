@@ -1,7 +1,7 @@
 import type {
   CoreAPITable,
   DataSourceType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, CoreAPI } from "@dust-tt/types";
@@ -19,7 +19,7 @@ export type GetTableResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetTableResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetTableResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

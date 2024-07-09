@@ -1,7 +1,7 @@
 import type {
   PlanType,
   SubscriptionType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -45,7 +45,7 @@ export const PatchSubscriptionRequestBody = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetSubscriptionsResponseBody
       | PostSubscriptionResponseBody
       | PatchSubscriptionResponseBody

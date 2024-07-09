@@ -1,6 +1,6 @@
 import type {
   AgentConfigurationType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -26,7 +26,7 @@ export type DeleteAgentConfigurationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       | GetAgentConfigurationResponseBody
       | DeleteAgentConfigurationResponseBody
       | void

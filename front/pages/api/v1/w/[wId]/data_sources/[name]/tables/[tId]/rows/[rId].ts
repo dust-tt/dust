@@ -1,4 +1,4 @@
-import type { CoreAPIRow, WithAPIErrorReponse } from "@dust-tt/types";
+import type { CoreAPIRow, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -105,7 +105,7 @@ type GetTableRowsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetTableRowsResponseBody | { success: boolean }>
+    WithAPIErrorResponse<GetTableRowsResponseBody | { success: boolean }>
   >
 ): Promise<void> {
   const keyRes = await getAPIKey(req);

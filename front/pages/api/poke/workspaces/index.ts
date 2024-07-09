@@ -1,4 +1,4 @@
-import type { LightWorkspaceType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { LightWorkspaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -19,7 +19,7 @@ export type GetWorkspacesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetWorkspacesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetWorkspacesResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(session, null);

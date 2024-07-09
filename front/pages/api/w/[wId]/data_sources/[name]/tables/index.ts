@@ -1,4 +1,4 @@
-import type { CoreAPITable, WithAPIErrorReponse } from "@dust-tt/types";
+import type { CoreAPITable, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -13,7 +13,7 @@ export type ListTablesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<ListTablesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<ListTablesResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

@@ -1,4 +1,4 @@
-import type { DustAppSecretType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DustAppSecretType, WithAPIErrorResponse } from "@dust-tt/types";
 import { encrypt, rateLimiter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -22,7 +22,7 @@ export type PostDustAppSecretsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       GetDustAppSecretsResponseBody | PostDustAppSecretsResponseBody
     >
   >

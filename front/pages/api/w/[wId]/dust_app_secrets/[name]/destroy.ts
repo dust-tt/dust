@@ -1,5 +1,5 @@
 import type { DustAppSecretType } from "@dust-tt/types";
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDustAppSecret } from "@app/lib/api/dust_app_secrets";
@@ -12,7 +12,7 @@ export type PostDustAppSecretsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostDustAppSecretsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostDustAppSecretsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

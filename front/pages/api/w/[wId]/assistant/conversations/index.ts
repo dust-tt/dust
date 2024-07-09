@@ -3,7 +3,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
   UserMessageType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { InternalPostConversationsRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -32,7 +32,7 @@ export type PostConversationsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       GetConversationsResponseBody | PostConversationsResponseBody | void
     >
   >

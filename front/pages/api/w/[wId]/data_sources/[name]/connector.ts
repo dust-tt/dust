@@ -1,4 +1,4 @@
-import type { ConnectorType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ConnectorType, WithAPIErrorResponse } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -13,7 +13,7 @@ export type GetConnectorResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetConnectorResponseBody | void>>
+  res: NextApiResponse<WithAPIErrorResponse<GetConnectorResponseBody | void>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

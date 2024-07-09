@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -10,7 +10,7 @@ import { getManagedDataSourcePermissionsHandler } from "@app/pages/api/w/[wId]/d
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetDataSourcePermissionsResponseBody>
+    WithAPIErrorResponse<GetDataSourcePermissionsResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

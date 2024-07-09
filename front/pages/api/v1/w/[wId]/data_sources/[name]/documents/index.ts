@@ -1,4 +1,4 @@
-import type { DocumentType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DocumentType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -60,7 +60,7 @@ export type GetDocumentsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetDocumentsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

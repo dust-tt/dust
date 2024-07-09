@@ -1,4 +1,4 @@
-import type { DatasetType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DatasetType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -18,7 +18,7 @@ export type GetDatasetResponseBody = { dataset: DatasetType };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetDatasetResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetDatasetResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

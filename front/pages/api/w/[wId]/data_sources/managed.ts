@@ -1,4 +1,4 @@
-import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import {
   assertNever,
@@ -48,7 +48,7 @@ export type PostManagedDataSourceResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostManagedDataSourceResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostManagedDataSourceResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

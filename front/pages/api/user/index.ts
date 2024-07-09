@@ -1,6 +1,6 @@
 import type {
   UserTypeWithWorkspaces,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -30,7 +30,7 @@ export type GetUserResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<PostUserMetadataResponseBody | GetUserResponseBody>
+    WithAPIErrorResponse<PostUserMetadataResponseBody | GetUserResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

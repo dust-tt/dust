@@ -1,4 +1,4 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -72,7 +72,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<void>>
+  res: NextApiResponse<WithAPIErrorResponse<void>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {

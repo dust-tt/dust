@@ -1,4 +1,4 @@
-import type { KeyType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { KeyType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -22,7 +22,7 @@ const CreateKeyPostBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetKeysResponseBody | PostKeysResponseBody>
+    WithAPIErrorResponse<GetKeysResponseBody | PostKeysResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

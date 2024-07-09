@@ -1,6 +1,6 @@
 import type {
   MembershipInvitationType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -37,7 +37,7 @@ export type PostInvitationResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       GetWorkspaceInvitationsResponseBody | PostInvitationResponseBody
     >
   >

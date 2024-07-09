@@ -1,4 +1,4 @@
-import type { ContentNode, WithAPIErrorReponse } from "@dust-tt/types";
+import type { ContentNode, WithAPIErrorResponse } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -20,7 +20,7 @@ export type GetContentNodeResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetContentNodeResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetContentNodeResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

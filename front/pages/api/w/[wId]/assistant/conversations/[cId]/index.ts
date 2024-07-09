@@ -1,6 +1,6 @@
 import type {
   ConversationWithoutContentType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -31,7 +31,9 @@ export type GetConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetConversationsResponseBody | void>>
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetConversationsResponseBody | void>
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(

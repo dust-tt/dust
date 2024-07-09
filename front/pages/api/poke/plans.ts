@@ -1,4 +1,4 @@
-import type { PlanType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { PlanType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -53,7 +53,7 @@ export type GetPokePlansResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetPokePlansResponseBody | UpsertPokePlanResponseBody>
+    WithAPIErrorResponse<GetPokePlansResponseBody | UpsertPokePlanResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

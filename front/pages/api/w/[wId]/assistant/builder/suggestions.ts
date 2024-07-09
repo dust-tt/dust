@@ -2,7 +2,7 @@ import type {
   BuilderEmojiSuggestionsType,
   BuilderSuggestionsType,
   ModelConfigurationType,
-  WithAPIErrorReponse,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -26,7 +26,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<BuilderSuggestionsType | BuilderEmojiSuggestionsType>
+    WithAPIErrorResponse<BuilderSuggestionsType | BuilderEmojiSuggestionsType>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

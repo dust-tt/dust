@@ -1,4 +1,4 @@
-import type { MessageReactionType, WithAPIErrorReponse } from "@dust-tt/types";
+import type { MessageReactionType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -19,7 +19,7 @@ export const MessageReactionRequestBodySchema = t.type({
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<
+    WithAPIErrorResponse<
       { reactions: MessageReactionType[] } | { success: boolean }
     >
   >
