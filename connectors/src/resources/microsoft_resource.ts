@@ -2,6 +2,9 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
+import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
+import { microsoftInternalIdFromNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MicrosoftConfigurationModel,
   MicrosoftDeltaModel,
@@ -301,11 +304,84 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new Ok(undefined);
   }
 
+  static async batchGetOrCreateFromNodesData(
+    connectorId: ModelId,
+    nodesData: MicrosoftNodeData[]
+  ): Promise<MicrosoftNodeResource[]> {
+    const internalIds = nodesData.map((root) =>
+      microsoftInternalIdFromNodeData(root)
+    );
+
+    const nodes = await MicrosoftNodeModel.findAll({
+      where: {
+        connectorId,
+        internalId: internalIds,
+      },
+    });
+
+    return concurrentExecutor(
+      nodesData,
+      async (root) => {
+        const internalId = microsoftInternalIdFromNodeData(root);
+        const node = nodes.find((node) => node.internalId === internalId);
+        if (node) {
+          return new this(this.model, node.get());
+        }
+        // Create a new node -- name and mimeType will be populated during the sync
+        const newNode = await MicrosoftNodeModel.create({
+          connectorId,
+          internalId,
+          nodeType: root.nodeType,
+          name: null,
+          parentInternalId: null,
+          mimeType: null,
+        });
+
+        return new this(this.model, newNode.get());
+      },
+      { concurrency: 10 }
+    );
+  }
+
+  static async getOrCreateFromRoot(rootResource: MicrosoftRootResource) {
+    const internalId = microsoftInternalIdFromNodeData(rootResource);
+
+    const node = await MicrosoftNodeModel.findOne({
+      where: {
+        connectorId: rootResource.connectorId,
+        internalId,
+      },
+    });
+
+    if (node) {
+      return new this(this.model, node.get());
+    }
+
+    // Create a new node -- name and mimeType will be populated during the sync
+    const newNode = await MicrosoftNodeModel.create({
+      connectorId: rootResource.connectorId,
+      internalId,
+      nodeType: rootResource.nodeType,
+      name: null,
+      parentInternalId: null,
+      mimeType: null,
+    });
+
+    return new this(this.model, newNode.get());
+  }
+
   toJSON() {
     return {
       id: this.id,
       nodeType: this.nodeType,
       connectorId: this.connectorId,
+      internalId: this.internalId,
+      parentInternalId: this.parentInternalId,
+      name: this.name,
+      mimeType: this.mimeType,
+      lastSeenTs: this.lastSeenTs,
+      lastUpsertedTs: this.lastUpsertedTs,
+      skipReason: this.skipReason,
     };
   }
 }

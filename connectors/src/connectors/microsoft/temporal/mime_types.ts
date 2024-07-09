@@ -1,11 +1,13 @@
 export function getMimeTypesToSync({ pdfEnabled }: { pdfEnabled: boolean }) {
   const mimeTypes = [
-    "text/plain",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    // TODO(pr): support those
+    // "text/plain",
+    // "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
   if (pdfEnabled) {
-    mimeTypes.push("application/pdf");
+    // TODO(pr): support it
+    // mimeTypes.push("application/pdf");
   }
 
   return mimeTypes;

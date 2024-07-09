@@ -1,17 +1,23 @@
 import type { ModelId } from "@dust-tt/types";
-import type { Client } from "@microsoft/microsoft-graph-client";
 import axios from "axios";
 import mammoth from "mammoth";
 import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
+import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
-  getDriveItemApiPath,
+  getDriveAPIPath,
+  getDriveItemAPIPath,
+  getDrives,
   getFilesAndFolders,
+  getSiteAPIPath,
+  getSites,
   microsoftInternalIdFromNodeData,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -31,90 +37,227 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-export async function fullSyncActivity({
-  connectorId,
-  dataSourceConfig,
-}: {
-  connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
-}): Promise<void> {
+const FILES_SYNC_CONCURRENCY = 10;
+
+export async function getSiteNodesToSync(
+  connectorId: ModelId
+): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     throw new Error(`Connector with id ${connectorId} not found`);
   }
 
-  const config =
+  const client = await getClient(connector.connectionId);
+
+  const rootResources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+
+  // get root folders and drives and drill down site-root and sites to their
+  // child drives, as MicrosoftNodeData
+  const rootFolderAndDriveNodes: MicrosoftNodeData[] = rootResources.filter(
+    (resource) =>
+      resource.nodeType === "folder" || resource.nodeType === "drive"
+  );
+
+  const rootSiteNodes: MicrosoftNodeData[] = rootResources.filter(
+    (resource) => resource.nodeType === "site"
+  );
+
+  if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
+    const msSites = await getSites(client);
+    rootSiteNodes.push(
+      ...msSites.map(
+        (site): MicrosoftNodeData => ({
+          itemApiPath: getSiteAPIPath(site),
+          nodeType: "site",
+        })
+      )
+    );
+  }
+
+  const siteDriveNodes: MicrosoftNodeData[] = (
+    await concurrentExecutor(
+      rootSiteNodes,
+      async (site) => {
+        const msDrives = await getDrives(
+          client,
+          microsoftInternalIdFromNodeData(site)
+        );
+        return msDrives.map((drive) => ({
+          itemApiPath: getDriveAPIPath(drive),
+          nodeType: "drive" as const,
+        }));
+      },
+      { concurrency: 5 }
+    )
+  ).flat();
+
+  // remove duplicates
+  const allNodes = [...siteDriveNodes, ...rootFolderAndDriveNodes].reduce(
+    (acc, current) => {
+      const x = acc.find(
+        (item) =>
+          item.nodeType === current.nodeType &&
+          item.itemApiPath === current.itemApiPath
+      );
+      if (!x) {
+        return acc.concat([current]);
+      } else {
+        return acc;
+      }
+    },
+    [] as MicrosoftNodeData[]
+  );
+
+  return (
+    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
+      connectorId,
+      allNodes
+    )
+  ).map((r) => r.internalId);
+}
+
+export async function markNodeAsVisited(
+  connectorId: ModelId,
+  internalId: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const node = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    internalId
+  );
+
+  if (!node) {
+    throw new Error(`Node ${internalId} not found`);
+  }
+
+  await node.update({ lastSeenTs: new Date() });
+}
+
+/**
+ * Given a drive or folder, sync files under it and returns a list of folders to sync
+ */
+export async function syncFiles({
+  connectorId,
+  parentInternalId,
+  startSyncTs,
+}: {
+  connectorId: ModelId;
+  parentInternalId: string;
+  startSyncTs: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const parent = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    parentInternalId
+  );
+
+  if (!parent) {
+    throw new Error(`Parent node not found: ${parentInternalId}`);
+  }
+
+  if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
+    throw new Error(`Parent node is not a folder or drive: ${parent.nodeType}`);
+  }
+
+  const providerConfig =
     await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
-  if (!config) {
+
+  if (!providerConfig) {
     throw new Error(`Configuration for connector ${connectorId} not found`);
   }
 
-  const resources =
-    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  logger.info(
+    {
+      connectorId,
+      parent,
+    },
+    `[SyncFiles] Start sync`
+  );
   const client = await getClient(connector.connectionId);
 
-  const folderResources = resources.filter((resource) =>
-    ["folder"].includes(resource.nodeType)
+  // TODO(pr): handle pagination
+  const children = await getFilesAndFolders(client, parent.internalId);
+
+  const childrenToSync = children.filter(
+    (item) =>
+      item.file?.mimeType &&
+      getMimeTypesToSync(providerConfig).includes(item.file.mimeType)
   );
 
-  const folder = folderResources[0];
-
-  if (!folder) {
-    throw new Error(`No channel found for connector ${connectorId}`);
-  }
-
-  const filesAndFolders = await getFilesAndFolders(
-    client,
-    microsoftInternalIdFromNodeData(folder)
+  // sync files
+  const results = await concurrentExecutor(
+    childrenToSync,
+    async (child) => {
+      await syncOneFile({
+        connectorId,
+        dataSourceConfig,
+        providerConfig,
+        file: child,
+        startSyncTs,
+      });
+    },
+    { concurrency: FILES_SYNC_CONCURRENCY }
   );
 
-  logger.info({ filesAndFolders, folder }, "Files and folders for folder");
-  const file = filesAndFolders.filter((item) => item.file)[0];
-  if (!file) {
-    throw new Error(`No file found for folder ${folder.id}`);
-  }
+  const count = results.filter((r) => r).length;
 
-  const startSyncTs = Date.now();
+  logger.info(
+    {
+      connectorId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      parent,
+      count,
+    },
+    `[SyncFiles] Successful sync.`
+  );
 
-  await syncOneFile(client, {
-    connectorId,
-    dataSourceConfig,
-    file,
-    parent: folder,
-    config,
-    startSyncTs,
-  });
+  const childFolderResources =
+    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
+      connectorId,
+      children
+        .filter((item) => item.folder)
+        .map((child) => ({
+          itemApiPath: getDriveItemAPIPath(child),
+          nodeType: child.folder ? "folder" : "file",
+        }))
+    );
 
-  if (!file?.id) {
-    throw new Error(`No file or no id`);
-  }
+  return {
+    count,
+    childNodes: childFolderResources.map((r) => r.internalId),
+  };
 }
 
-export async function syncOneFile(
-  client: Client,
-  {
-    connectorId,
-    dataSourceConfig,
-    file,
-    parent,
-    startSyncTs,
-    config,
-    isBatchSync = false,
-  }: {
-    connectorId: ModelId;
-    dataSourceConfig: DataSourceConfig;
-    file: microsoftgraph.DriveItem;
-    parent: MicrosoftRootResource;
-    startSyncTs: number;
-    config?: MicrosoftConfigurationResource;
-    isBatchSync?: boolean;
-  }
-) {
+export async function syncOneFile({
+  connectorId,
+  dataSourceConfig,
+  providerConfig,
+  file,
+  startSyncTs,
+  isBatchSync = false,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  providerConfig: MicrosoftConfigurationResource;
+  file: microsoftgraph.DriveItem;
+  startSyncTs: number;
+  isBatchSync?: boolean;
+}) {
   const localLogger = logger.child({
     provider: "microsoft",
-    connectorId: parent.connectorId,
+    connectorId,
     internalId: file.id,
     name: file.name,
   });
@@ -123,10 +266,7 @@ export async function syncOneFile(
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
-  const itemApiPath = getDriveItemApiPath(
-    file,
-    microsoftInternalIdFromNodeData(parent)
-  );
+  const itemApiPath = getDriveItemAPIPath(file);
 
   const documentId = microsoftInternalIdFromNodeData({
     itemApiPath,
@@ -178,14 +318,14 @@ export async function syncOneFile(
   }
 
   const mimeTypesToSync = getMimeTypesToSync({
-    pdfEnabled: config?.pdfEnabled || false,
+    pdfEnabled: providerConfig.pdfEnabled || false,
   });
 
   if (
     file.file?.mimeType ===
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   ) {
-    return syncSpreadSheet(client, { file, parent });
+    return syncSpreadSheet({ connectorId, file });
   }
   if (!file.file?.mimeType || !mimeTypesToSync.includes(file.file.mimeType)) {
     localLogger.info("Type not supported, skipping file.");
@@ -193,7 +333,7 @@ export async function syncOneFile(
     return false;
   }
 
-  const maxDocumentLen = config?.largeFilesEnabled
+  const maxDocumentLen = providerConfig.largeFilesEnabled
     ? MAX_LARGE_DOCUMENT_TXT_LEN
     : MAX_DOCUMENT_TXT_LEN;
 
@@ -317,7 +457,7 @@ export async function syncOneFile(
 
   const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
     internalId: documentId,
-    connectorId: connectorId,
+    connectorId,
     lastSeenTs: new Date(),
     nodeType: "file",
     name: file.name ?? "",

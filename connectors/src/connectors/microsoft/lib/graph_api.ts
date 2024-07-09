@@ -5,10 +5,7 @@ import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/nod
 import { isValidNodeType } from "@connectors/connectors/microsoft/lib/node_types";
 
 export async function getSites(client: Client): Promise<MicrosoftGraph.Site[]> {
-  const res = await client
-    .api("/sites?search=*")
-    .select("id,name,displayName")
-    .get();
+  const res = await client.api("/sites?search=*").get();
   return res.value;
 }
 
@@ -48,6 +45,7 @@ export async function getFilesAndFolders(
     nodeType === "drive"
       ? `${parentResourcePath}/root/children`
       : `${parentResourcePath}/children`;
+
   const res = await client.api(endpoint).get();
   return res.value;
 }
@@ -187,26 +185,17 @@ export function microsoftNodeDataFromInternalId(
   return { nodeType, itemApiPath: resourcePathArr.join("/") };
 }
 
-export function getDriveItemApiPath(
-  item: MicrosoftGraph.DriveItem,
-  parentInternalId: string
-) {
-  const { nodeType, itemApiPath: parentItemApiPath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+export function getDriveItemAPIPath(item: MicrosoftGraph.DriveItem) {
+  const { parentReference } = item;
 
-  if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Invalid parent nodeType: ${nodeType}`);
+  if (!parentReference?.driveId) {
+    throw new Error("Unexpected: no drive id for item");
   }
 
-  const itemApiPath =
-    nodeType === "drive"
-      ? `${parentItemApiPath}/items/${item.id}`
-      : // replace items/${parentFolderId} with items/${folder.id} in parentResourcePath
-        parentItemApiPath.replace(/items\/[^/]+$/, `items/${item.id}`);
-  return itemApiPath;
+  return `/drives/${parentReference.driveId}/items/${item.id}`;
 }
 
-export function getWorksheetApiPath(
+export function getWorksheetAPIPath(
   item: MicrosoftGraph.WorkbookWorksheet,
   parentInternalId: string
 ) {
@@ -218,4 +207,12 @@ export function getWorksheetApiPath(
   }
 
   return `${parentItemApiPath}/workbook/worksheets/${item.id}`;
+}
+
+export function getDriveAPIPath(drive: MicrosoftGraph.Drive) {
+  return `/drives/${drive.id}`;
+}
+
+export function getSiteAPIPath(site: MicrosoftGraph.Site) {
+  return `/sites/${site.id}`;
 }

@@ -2,9 +2,10 @@ import { getSanitizedHeaders, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
+import { getClient } from "@connectors/connectors/microsoft";
 import {
-  getDriveItemApiPath,
-  getWorksheetApiPath,
+  getDriveItemAPIPath,
+  getWorksheetAPIPath,
   getWorksheetContent,
   getWorksheets,
   microsoftInternalIdFromNodeData,
@@ -13,7 +14,6 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { upsertTableFromCsv } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
@@ -155,16 +155,13 @@ async function processSheet(
   return false;
 }
 
-export async function syncSpreadSheet(
-  client: Client,
-  {
-    file,
-    parent,
-  }: {
-    file: microsoftgraph.DriveItem;
-    parent: MicrosoftRootResource;
-  }
-): Promise<
+export async function syncSpreadSheet({
+  connectorId,
+  file,
+}: {
+  connectorId: number;
+  file: microsoftgraph.DriveItem;
+}): Promise<
   | {
       isSupported: false;
     }
@@ -173,12 +170,13 @@ export async function syncSpreadSheet(
       skipReason?: string;
     }
 > {
-  const connectorId = parent.connectorId;
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
     throw new Error(`Connector with id ${connectorId} not found`);
   }
+
+  const client = await getClient(connector.connectionId);
 
   const localLogger = logger.child({
     provider: "microsoft",
@@ -193,10 +191,7 @@ export async function syncSpreadSheet(
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
-  const itemApiPath = getDriveItemApiPath(
-    file,
-    microsoftInternalIdFromNodeData(parent)
-  );
+  const itemApiPath = getDriveItemAPIPath(file);
 
   const documentId = microsoftInternalIdFromNodeData({
     itemApiPath,
@@ -215,7 +210,7 @@ export async function syncSpreadSheet(
     if (worksheet.id) {
       const internalWorkSheetId = microsoftInternalIdFromNodeData({
         nodeType: "worksheet",
-        itemApiPath: getWorksheetApiPath(worksheet, documentId),
+        itemApiPath: getWorksheetAPIPath(worksheet, documentId),
       });
       const isImported = await processSheet(
         client,

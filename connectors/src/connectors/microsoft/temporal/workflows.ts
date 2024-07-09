@@ -1,29 +1,97 @@
 import type { ModelId } from "@dust-tt/types";
-import { proxyActivities } from "@temporalio/workflow";
+import {
+  continueAsNew,
+  executeChild,
+  proxyActivities,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const { fullSyncActivity } = proxyActivities<typeof activities>({
+const { getSiteNodesToSync, syncFiles, markNodeAsVisited } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "20 minutes",
 });
 
-const { syncSucceeded } = proxyActivities<typeof sync_status>({
+const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
+  typeof sync_status
+>({
   startToCloseTimeout: "10 minutes",
 });
 
 export async function fullSyncWorkflow({
   connectorId,
-  dataSourceConfig,
+  startSyncTs = undefined,
 }: {
   connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
+  startSyncTs?: number;
 }) {
-  await fullSyncActivity({ connectorId, dataSourceConfig });
+  if (startSyncTs === undefined) {
+    startSyncTs = new Date().getTime();
+  }
+
+  await executeChild(fullSyncSitesWorkflow, {
+    workflowId: microsoftFullSyncSitesWorkflowId(connectorId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    args: [{ connectorId, startSyncTs }],
+    memo: workflowInfo().memo,
+  });
+}
+
+export async function fullSyncSitesWorkflow({
+  connectorId,
+  startSyncTs,
+  nodeIdsToSync = undefined,
+  totalCount = 0,
+}: {
+  connectorId: ModelId;
+  startSyncTs: number;
+  nodeIdsToSync?: string[];
+  totalCount?: number;
+}) {
+  if (nodeIdsToSync === undefined) {
+    nodeIdsToSync = await getSiteNodesToSync(connectorId);
+  }
+
+  while (nodeIdsToSync.length > 0) {
+    const nodeId = nodeIdsToSync.pop();
+
+    if (!nodeId) {
+      throw new Error("Unreachable: node is undefined");
+    }
+
+    const res = await syncFiles({
+      connectorId,
+      parentInternalId: nodeId,
+      startSyncTs,
+    });
+    totalCount += res.count;
+    nodeIdsToSync = nodeIdsToSync.concat(res.childNodes);
+
+    await reportInitialSyncProgress(connectorId, `Synced ${totalCount} files`);
+    // TODO(pr): add pagination support
+    await markNodeAsVisited(connectorId, nodeId);
+    if (workflowInfo().historyLength > 4000) {
+      await continueAsNew<typeof fullSyncSitesWorkflow>({
+        connectorId,
+        nodeIdsToSync: nodeIdsToSync,
+        totalCount,
+        startSyncTs,
+      });
+    }
+  }
+
   await syncSucceeded(connectorId);
 }
 
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-${connectorId}`;
+}
+
+export function microsoftFullSyncSitesWorkflowId(connectorId: ModelId) {
+  return `microsoft-fullSync-sites-${connectorId}`;
 }

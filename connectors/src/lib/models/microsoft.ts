@@ -118,7 +118,7 @@ MicrosoftRootModel.init(
 );
 ConnectorModel.hasMany(MicrosoftRootModel);
 
-// MicrosftNode stores files/folders/channels and other nodes synced from Microsoft.
+// MicrosftNode stores nodes (e.g. files, folder, channels, ...) synced from Microsoft.
 export class MicrosoftNodeModel extends Model<
   InferAttributes<MicrosoftNodeModel>,
   InferCreationAttributes<MicrosoftNodeModel>
@@ -132,10 +132,11 @@ export class MicrosoftNodeModel extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
-  declare name: string;
-  declare mimeType: string;
+  declare name: string | null;
+  declare mimeType: string | null;
   declare parentInternalId: string | null;
 }
+
 MicrosoftNodeModel.init(
   {
     id: {
@@ -179,13 +180,11 @@ MicrosoftNodeModel.init(
     },
     name: {
       type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: "",
+      allowNull: true,
     },
     mimeType: {
       type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "",
+      allowNull: true,
     },
     parentInternalId: {
       type: DataTypes.STRING(512),
