@@ -111,7 +111,7 @@ async function handler(
       }
 
       // Redirect to a signed URL.
-      const url = await file.getUrlSignedForDownload(auth, "original");
+      const url = await file.getSignedUrlForDownload(auth, "original");
 
       res.redirect(url);
       return;

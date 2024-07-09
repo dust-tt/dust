@@ -225,14 +225,14 @@ export class FileResource extends BaseResource<FileModel> {
     return `files/w/${workspaceId}/${fileId}/${version}`;
   }
 
+  // Available when the file has been pre-processed with uploadToPublicBucket.
   getPublicUrlForDownload(auth: Authenticator): string {
-    return (
-      "https://storage.googleapis.com/" +
-      `${getPublicUploadBucket().name}/${this.getCloudStoragePath(auth, "public")}`
-    );
+    return getPublicUploadBucket()
+      .file(this.getCloudStoragePath(auth, "public"))
+      .publicUrl();
   }
 
-  async getUrlSignedForDownload(
+  async getSignedUrlForDownload(
     auth: Authenticator,
     version: FileVersion
   ): Promise<string> {
