@@ -9,7 +9,9 @@ import {
   Chip,
   Cog6ToothIcon,
   ContextItem,
+  Icon,
   PencilSquareIcon,
+  RobotIcon,
   SliderToggle,
   TrashIcon,
 } from "../index_with_tw_base";
@@ -117,6 +119,33 @@ export const ListItemExample = () => (
       <ContextItem
         title="@SupportFr"
         subElement={<>By: Edouard Wautier, Amira Hadad</>}
+        action={
+          <Button
+            variant="secondary"
+            label="Manage"
+            size="sm"
+            icon={Cog6ToothIcon}
+          />
+        }
+        visual={
+          <Avatar
+            visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
+            size="sm"
+          />
+        }
+      >
+        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
+      </ContextItem>
+      <ContextItem
+        title="@SupportFr"
+        subElement={
+          <>
+            Added by: Edouard Wautier
+            <span className="s-mx-2 s-h-3 s-w-0.5 s-bg-element-500" />
+            3
+            <Icon visual={RobotIcon} size="xs" />
+          </>
+        }
         action={
           <Button
             variant="secondary"
