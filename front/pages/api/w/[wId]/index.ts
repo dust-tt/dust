@@ -28,7 +28,7 @@ const WorkspaceAllowedDomainUpdateBodySchema = t.type({
 
 const WorkspaceProvidersUpdateBodySchema = t.type({
   whiteListedProviders: t.array(ModelProviderIdCodec),
-  defaultEmbeddingProvider: EmbeddingProviderCodec,
+  defaultEmbeddingProvider: t.union([EmbeddingProviderCodec, t.null]),
 });
 
 const PostWorkspaceRequestBodySchema = t.union([
