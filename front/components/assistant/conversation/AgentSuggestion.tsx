@@ -29,7 +29,7 @@ export function AgentSuggestion({
   });
   const sendNotification = useContext(SendNotificationsContext);
 
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
@@ -55,7 +55,6 @@ export function AgentSuggestion({
 
       if (!mRes.ok) {
         const data = await mRes.json();
-        window.alert(`Error adding mention to message: ${data.error.message}`);
         sendNotification({
           type: "error",
           title: "Invite sent",
@@ -83,10 +82,10 @@ export function AgentSuggestion({
           owner={owner}
           assistants={agents.slice(3)}
           onItemClick={async (agent) => {
-            if (!loading) {
-              setLoading(true);
+            if (!isLoading) {
+              setIsLoading(true);
               await handleSelectSuggestion(agent);
-              setLoading(false);
+              setIsLoading(false);
             }
           }}
           pickerButton={
