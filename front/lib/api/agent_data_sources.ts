@@ -1,4 +1,8 @@
-import type { ConnectorProvider, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  DataSourceType,
+  ModelId,
+} from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -72,4 +76,54 @@ export async function getDataSourcesUsageByAgents({
     },
     {}
   );
+}
+
+export async function getDataSourceUsage({
+  auth,
+  dataSource,
+}: {
+  auth: Authenticator;
+  dataSource: DataSourceType;
+}): Promise<number> {
+  const owner = auth.workspace();
+
+  // This condition is critical it checks that we can identify the workspace and that the current
+  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
+  // be possible to access data sources without being authenticated.
+  if (!owner || !auth.isUser()) {
+    return 0;
+  }
+
+  return AgentDataSourceConfiguration.count({
+    where: {
+      dataSourceId: dataSource.id,
+    },
+    include: [
+      {
+        model: DataSource,
+        as: "dataSource",
+        where: {
+          workspaceId: owner.id,
+        },
+        attributes: [],
+      },
+      {
+        model: AgentRetrievalConfiguration,
+        as: "agent_retrieval_configuration",
+        attributes: [],
+        required: true,
+        include: [
+          {
+            model: AgentConfiguration,
+            as: "agent_configuration",
+            attributes: [],
+            required: true,
+            where: {
+              status: "active",
+            },
+          },
+        ],
+      },
+    ],
+  });
 }

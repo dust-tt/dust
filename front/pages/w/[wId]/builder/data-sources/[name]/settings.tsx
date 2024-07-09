@@ -1,4 +1,4 @@
-import { Button, DropdownMenu, TrashIcon } from "@dust-tt/sparkle";
+import { Button, TrashIcon } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceType,
@@ -12,9 +12,11 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
@@ -27,6 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSource: DataSourceType;
   fetchConnectorError?: boolean;
   gaTrackingId: string;
+  dataSourceUsage: number;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -47,13 +50,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
-
+  const dataSourceUsage = await getDataSourceUsage({
+    auth,
+    dataSource,
+  });
   return {
     props: {
       owner,
       subscription,
       dataSource,
       gaTrackingId: GA_TRACKING_ID,
+      dataSourceUsage,
     },
   };
 });
@@ -63,6 +70,7 @@ export default function DataSourceSettings({
   subscription,
   dataSource,
   gaTrackingId,
+  dataSourceUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -105,6 +113,7 @@ export default function DataSourceSettings({
         assistantDefaultSelected: boolean;
       }) => handleUpdate(settings)}
       gaTrackingId={gaTrackingId}
+      dataSourceUsage={dataSourceUsage}
     />
   );
 }
@@ -115,6 +124,7 @@ function StandardDataSourceSettings({
   dataSource,
   handleUpdate,
   gaTrackingId,
+  dataSourceUsage,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -124,12 +134,14 @@ function StandardDataSourceSettings({
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
   gaTrackingId: string;
+  dataSourceUsage: number;
 }) {
   const { mutate } = useSWRConfig();
 
   const [dataSourceDescription, setDataSourceDescription] = useState(
     dataSource.description || ""
   );
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [isEdited, setIsEdited] = useState(false);
 
@@ -267,45 +279,20 @@ function StandardDataSourceSettings({
           </div>
 
           <div className="flex py-16">
-            <div className="flex">
-              <DropdownMenu>
-                <DropdownMenu.Button>
-                  <Button
-                    variant="secondaryWarning"
-                    icon={TrashIcon}
-                    label={"Delete this Folder"}
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items width={280}>
-                  <div className="flex flex-col gap-y-4 px-4 py-4">
-                    <div className="flex flex-col gap-y-2">
-                      <div className="grow text-sm font-medium text-element-800">
-                        Are you sure you want to delete?
-                      </div>
-
-                      <div className="text-sm font-normal text-element-700">
-                        This will delete the Folder and all associated Documents
-                        for everyone.
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <Button
-                        variant="primaryWarning"
-                        size="sm"
-                        label={"Delete for Everyone"}
-                        disabled={isSavingOrDeleting}
-                        icon={TrashIcon}
-                        onClick={async () => {
-                          setIsSavingOrDeleting(true);
-                          await handleDelete();
-                          setIsSavingOrDeleting(false);
-                        }}
-                      />
-                    </div>
-                  </div>
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            </div>
+            <Button
+              variant="secondaryWarning"
+              icon={TrashIcon}
+              label={"Delete this Folder"}
+              onClick={() => {
+                setIsDeleteModalOpen(true);
+              }}
+            />
+            <DeleteDataSourceDialog
+              handleDelete={handleDelete}
+              isOpen={isDeleteModalOpen}
+              setIsOpen={setIsDeleteModalOpen}
+              dataSourceUsage={dataSourceUsage}
+            />
           </div>
         </div>
       </div>

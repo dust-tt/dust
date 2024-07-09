@@ -8,6 +8,7 @@ import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import WebsiteConfiguration from "@app/components/data_source/WebsiteConfiguration";
+import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
@@ -21,6 +22,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSource: DataSourceType;
   webCrawlerConfiguration: WebCrawlerConfigurationType;
   gaTrackingId: string;
+  dataSourceUsage: number;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -31,10 +33,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dataSources = await getDataSources(auth);
-  const dataSource = await getDataSource(auth, context.params?.name as string, {
-    includeEditedBy: true,
-  });
+  const [dataSources, dataSource] = await Promise.all([
+    getDataSources(auth),
+    getDataSource(auth, context.params?.name as string, {
+      includeEditedBy: true,
+    }),
+  ]);
 
   if (!dataSource) {
     return {
@@ -50,9 +54,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const connectorRes = await new ConnectorsAPI(logger).getConnector(
-    dataSource.connectorId
-  );
+  const [connectorRes, dataSourceUsage] = await Promise.all([
+    new ConnectorsAPI(logger).getConnector(dataSource.connectorId),
+    getDataSourceUsage({ auth, dataSource }),
+  ]);
+
   if (connectorRes.isErr()) {
     throw new Error(connectorRes.error.message);
   }
@@ -66,6 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,
       gaTrackingId: GA_TRACKING_ID,
+      dataSourceUsage,
     },
   };
 });
@@ -77,6 +84,7 @@ export default function DataSourceNew({
   dataSource,
   gaTrackingId,
   webCrawlerConfiguration,
+  dataSourceUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <WebsiteConfiguration
@@ -86,6 +94,7 @@ export default function DataSourceNew({
       gaTrackingId={gaTrackingId}
       webCrawlerConfiguration={webCrawlerConfiguration}
       dataSource={dataSource}
+      dataSourceUsage={dataSourceUsage}
     />
   );
 }
