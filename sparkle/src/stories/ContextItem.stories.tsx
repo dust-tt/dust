@@ -9,6 +9,7 @@ import {
   Chip,
   Cog6ToothIcon,
   ContextItem,
+  FolderIcon,
   Icon,
   PencilSquareIcon,
   RobotIcon,
@@ -26,6 +27,23 @@ export default meta;
 export const ListItemExample = () => (
   <div>
     <ContextItem.List>
+      <ContextItem
+        title="docs.stripe.com-payments-payment-intents-verifying-status"
+        subElement={
+          <>
+            Added by: Edouard Wautier
+            <span className="s-h-3 s-w-0.5 s-bg-element-500" />
+            <div className="s-flex s-items-center s-gap-1">
+              Used by: 3
+              <Icon visual={RobotIcon} size="xs" />
+            </div>
+          </>
+        }
+        action={<Chip size="xs" label="Last Sync ~7 days ago" color="pink" />}
+        visual={<Icon visual={FolderIcon} size="md" />}
+      >
+        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
+      </ContextItem>
       <ContextItem.SectionHeader
         title="Connected platforms"
         description="Platforms connected"
@@ -119,33 +137,6 @@ export const ListItemExample = () => (
       <ContextItem
         title="@SupportFr"
         subElement={<>By: Edouard Wautier, Amira Hadad</>}
-        action={
-          <Button
-            variant="secondary"
-            label="Manage"
-            size="sm"
-            icon={Cog6ToothIcon}
-          />
-        }
-        visual={
-          <Avatar
-            visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
-            size="sm"
-          />
-        }
-      >
-        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </ContextItem>
-      <ContextItem
-        title="@SupportFr"
-        subElement={
-          <>
-            Added by: Edouard Wautier
-            <span className="s-mx-2 s-h-3 s-w-0.5 s-bg-element-500" />
-            Used by: 3
-            <Icon visual={RobotIcon} size="xs" />
-          </>
-        }
         action={
           <Button
             variant="secondary"
