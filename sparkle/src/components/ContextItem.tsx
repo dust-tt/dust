@@ -35,20 +35,20 @@ export function ContextItem({
     >
       <div
         className={classNames(
-          "s-flex s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
+          "s-flex s-w-full s-flex-row s-items-start s-gap-3 s-px-4 s-py-3",
           onClick
             ? "s-cursor-pointer s-transition s-duration-200 hover:s-bg-structure-50 active:s-bg-structure-100"
             : ""
         )}
         onClick={onClick}
       >
-        <div className="s-flex">{visual}</div>
-        <div className="s-mb-0.5 s-flex s-grow s-flex-col s-gap-0">
-          <div className="s-flex s-grow s-flex-row s-gap-3">
-            <div className="s-flex s-flex-col s-justify-center s-text-base s-font-semibold">
+        {visual}
+        <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-0">
+          <div className="s-flex s-min-w-0 s-grow s-flex-col sm:s-flex-row sm:s-gap-3">
+            <div className="s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-base s-font-semibold">
               {title}
             </div>
-            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-element-600">
+            <div className="s-flex s-flex-shrink-0 s-items-center s-gap-3 s-whitespace-nowrap s-pt-0.5 s-text-sm s-text-element-600">
               {subElement}
             </div>
           </div>

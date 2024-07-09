@@ -2,10 +2,11 @@ import {
   ContextItem,
   DocumentPileIcon,
   FolderOpenIcon,
+  Icon,
   Page,
   PlusIcon,
   Popup,
-  RobotStrokeIcon,
+  RobotIcon,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -164,12 +165,12 @@ export default function DataSourcesView({
                 />
               }
               subElement={
-                <div className="flex items-center gap-1 pl-2 pt-0.5 text-xs text-element-700">
-                  <span>Added by: {ds.editedByUser?.fullName}</span>
-                  <span className="px-1 text-element-500">|</span>
-                  <span>{dataSourcesUsage[ds.id] ?? 0}</span>
-                  <RobotStrokeIcon />
-                </div>
+                <>
+                  Added by: {ds.editedByUser?.fullName}
+                  <span className="mx-2 h-3 w-0.5 bg-element-500" />
+                  Used by: {dataSourcesUsage[ds.id] ?? 0}
+                  <Icon visual={RobotIcon} />
+                </>
               }
               onClick={() => {
                 void router.push(

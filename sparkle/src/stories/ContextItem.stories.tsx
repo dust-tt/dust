@@ -9,7 +9,10 @@ import {
   Chip,
   Cog6ToothIcon,
   ContextItem,
+  FolderIcon,
+  Icon,
   PencilSquareIcon,
+  RobotIcon,
   SliderToggle,
   TrashIcon,
 } from "../index_with_tw_base";
@@ -24,6 +27,23 @@ export default meta;
 export const ListItemExample = () => (
   <div>
     <ContextItem.List>
+      <ContextItem
+        title="docs.stripe.com-payments-payment-intents-verifying-status"
+        subElement={
+          <>
+            Added by: Edouard Wautier
+            <span className="s-h-3 s-w-0.5 s-bg-element-500" />
+            <div className="s-flex s-items-center s-gap-1">
+              Used by: 3
+              <Icon visual={RobotIcon} size="xs" />
+            </div>
+          </>
+        }
+        action={<Chip size="xs" label="Last Sync ~7 days ago" color="pink" />}
+        visual={<Icon visual={FolderIcon} size="md" />}
+      >
+        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
+      </ContextItem>
       <ContextItem.SectionHeader
         title="Connected platforms"
         description="Platforms connected"
