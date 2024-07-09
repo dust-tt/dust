@@ -790,7 +790,8 @@ function ActionEditor({
                 });
               }
             }}
-            error={!descriptionValid ? "Description cannot be empty" : null}
+            error={!descriptionValid ? "Description cannot be empty." : null}
+            showErrorLabel={true}
           />
         </div>
       )}
