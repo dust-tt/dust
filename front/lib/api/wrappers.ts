@@ -6,6 +6,13 @@ import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+/**
+ * This function is a wrapper for API routes that require session authentication.
+ *
+ * @param handler
+ * @param param1
+ * @returns
+ */
 export function withSessionAuthentication<T>(
   handler: (
     req: NextApiRequest,
@@ -37,6 +44,15 @@ export function withSessionAuthentication<T>(
     isStreaming
   );
 }
+
+/**
+ * This function is a wrapper for API routes that require session authentication for a workspace.
+ * It must be used on all routes that require workspace authentication (prefix: /w/[wId/]).
+ *
+ * @param handler
+ * @param opts
+ * @returns
+ */
 export function withSessionAuthenticationForWorkspace<T>(
   handler: (
     req: NextApiRequest,
