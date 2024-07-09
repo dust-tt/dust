@@ -6,7 +6,8 @@ import {
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withAuthentication } from "@app/lib/iam/session";
+import { apiError } from "@app/logger/withlogging";
 
 export type DeleteAgentConfigurationResponseBody = {
   success: true;
@@ -76,4 +77,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

@@ -6,7 +6,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withAuthentication } from "@app/lib/iam/session";
+import { apiError } from "@app/logger/withlogging";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 const GetAgentConfigurationsQuerySchema = t.type({
@@ -85,4 +86,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

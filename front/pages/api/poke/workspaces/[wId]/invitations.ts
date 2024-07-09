@@ -7,7 +7,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withAuthentication } from "@app/lib/iam/session";
+import { apiError } from "@app/logger/withlogging";
 
 const PokePostInvitationRequestBodySchema = t.type({
   email: t.string,
@@ -120,4 +121,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

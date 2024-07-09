@@ -4,8 +4,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withAuthentication } from "@app/lib/iam/session";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
 export type RevokeUserResponseBody = {
@@ -94,4 +95,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

@@ -9,9 +9,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withAuthentication } from "@app/lib/iam/session";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 
 export interface CreateTemplateResponseBody {
@@ -124,4 +125,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

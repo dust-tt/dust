@@ -5,13 +5,14 @@ import { Op } from "sequelize";
 
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withAuthentication } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetWorkspacesResponseBody = {
   workspaces: LightWorkspaceType[];
@@ -195,4 +196,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

@@ -6,7 +6,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withAuthentication } from "@app/lib/iam/session";
+import { apiError } from "@app/logger/withlogging";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export const WorkspaceTypeSchema = t.type({
@@ -86,4 +87,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

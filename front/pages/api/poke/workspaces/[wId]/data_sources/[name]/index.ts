@@ -3,7 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { deleteDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withAuthentication } from "@app/lib/iam/session";
+import { apiError } from "@app/logger/withlogging";
 
 export type DeleteDataSourceResponseBody = {
   success: true;
@@ -64,4 +65,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);

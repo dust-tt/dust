@@ -5,9 +5,10 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
+import { withAuthentication } from "@app/lib/iam/session";
 import { Plan } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/subscription";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const PlanTypeSchema = t.type({
   code: t.string,
@@ -132,4 +133,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withAuthentication(handler);
