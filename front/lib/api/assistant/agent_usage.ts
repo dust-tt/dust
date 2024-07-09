@@ -8,7 +8,7 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
-import { redisClient } from "@app/lib/redis";
+import { redisClient, safeRedisClient } from "@app/lib/redis";
 
 // Ranking of agents is done over a 7 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
@@ -70,7 +70,9 @@ export async function getAgentsUsage({
     } else if (agentMessageCountTTL < popularityComputationTimeframeSec) {
       void (async () => {
         const agentMessageCounts = await agentMentionsCount(owner.id);
-        void storeCountsInRedis(workspaceId, agentMessageCounts, redis);
+        void safeRedisClient((redis) =>
+          storeCountsInRedis(workspaceId, agentMessageCounts, redis)
+        );
       })();
     }
 
