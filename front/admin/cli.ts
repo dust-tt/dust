@@ -462,17 +462,9 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       });
 
       if (response.isErr()) {
-        logger.error(response.error.message);
+        console.log(response.error.message);
       } else {
-        logger.info(
-          {
-            model,
-            prompt,
-          },
-          "Called renderConversationForModel with params:"
-        );
         const result = response.value;
-
         if (!verbose) {
           // For convenience we shorten the content when role = "tool"
           result.modelConversation.messages =
@@ -487,7 +479,11 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
             });
         }
 
-        logger.info(result, "Result from renderConversationForModel:");
+        console.log(
+          "Result from renderConversationForModel:",
+          JSON.stringify(result, null, 2)
+        );
+        // console.dir(result, { depth: null, colors: true });
       }
       return;
     }

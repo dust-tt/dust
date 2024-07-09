@@ -1,4 +1,5 @@
 import type {
+  Content,
   ContentFragmentMessageTypeModel,
   ContentFragmentType,
   ConversationType,
@@ -23,6 +24,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { tokenCountForText } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -365,13 +367,68 @@ async function renderFromFileId(
   } else {
     const content = await getProcessedFileContent(workspace, fileId);
 
+    const messageWithFullContent = {
+      role: "content_fragment" as const,
+      name: `inject_${contentType}`,
+      content: [
+        {
+          type: "text",
+          text: `<attachment type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+        } as Content,
+      ],
+    };
+
+    if (contentType !== "text/csv") {
+      return new Ok(messageWithFullContent);
+    }
+
+    // For CSV files we have a custom rule:
+    // We render completely the content if the csv is small or a snippet if the csv is big.
+    // A big CSV is a CSV for which tokens counts for more than 10% of the context size of the model.
+    const tokenSize = await tokenCountForText(content, model);
+    const maxTokens = model.contextSize * 0.1;
+
+    if (tokenSize.isErr()) {
+      logger.error(
+        { error: tokenSize.error },
+        "Failed to count tokens for CSV content. Returning full content."
+      );
+      return new Ok(messageWithFullContent);
+    }
+
+    // If token count < 10% of the model context size, we return the full content.
+    if (tokenSize.value < maxTokens) {
+      return new Ok(messageWithFullContent);
+    }
+
+    // If token count > 10% of the model context size, we return a snippet.
+    // We want at least one line, and at most reach 10% of the model context size but always full lines.
+    // We will count the number of tokens in the first line and use it as a reference to decide how many lines to keep.
+    const lines = content.split("\n");
+    const tokensPerLineRes = await tokenCountForText(lines[0], model);
+    if (tokensPerLineRes.isErr()) {
+      logger.error(
+        { error: tokensPerLineRes.error },
+        "Failed to count tokens for first line of CSV content. Returning full content."
+      );
+      return new Ok(messageWithFullContent);
+    }
+    const tokensPerLine = tokensPerLineRes.value;
+
+    let tokens = 0;
+    let nbLines = 0;
+    while (tokens + tokensPerLine < maxTokens && nbLines < lines.length) {
+      tokens += tokensPerLine;
+      nbLines += 1;
+    }
+
     return new Ok({
       role: "content_fragment",
       name: `inject_${contentType}`,
       content: [
         {
           type: "text",
-          text: `<attachment type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+          text: `<attachment type="${contentType}" title="${title}">\n${lines.slice(0, nbLines).join("\n")}\n... (truncated)</attachment>`,
         },
       ],
     });

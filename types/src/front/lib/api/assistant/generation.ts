@@ -24,7 +24,7 @@ interface TextContent {
   text: string;
 }
 
-type Content = TextContent | ImageContent;
+export type Content = TextContent | ImageContent;
 
 export function isTextContent(content: Content): content is TextContent {
   return content.type === "text";
