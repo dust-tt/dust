@@ -23,7 +23,6 @@ import { WhitelistableFeature } from "../feature_flags";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
-  AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
 } from "./api/assistant/agent";
 import { UserMessageErrorEvent } from "./api/assistant/conversation";
@@ -633,7 +632,6 @@ export class DustAPI {
       | AgentErrorEvent
       | AgentActionSuccessEvent
       | GenerationTokensEvent
-      | AgentGenerationSuccessEvent
       | AgentMessageSuccessEvent
     )[] = [];
 
@@ -659,8 +657,8 @@ export class DustAPI {
                 pendingEvents.push(data as GenerationTokensEvent);
                 break;
               }
-              case "agent_generation_success": {
-                pendingEvents.push(data as AgentGenerationSuccessEvent);
+              case "agent_message_success": {
+                pendingEvents.push(data as AgentMessageSuccessEvent);
                 break;
               }
             }

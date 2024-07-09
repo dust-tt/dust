@@ -17,7 +17,7 @@ export type SlackMessageFootnotes = SlackMessageFootnote[];
 
 export function annotateCitations(
   content: string,
-  action: AgentActionType | null
+  actions: AgentActionType[]
 ): { formattedContent: string; footnotes: SlackMessageFootnotes } {
   const references: {
     [key: string]: {
@@ -27,29 +27,31 @@ export function annotateCitations(
     };
   } = {};
 
-  if (action && isRetrievalActionType(action) && action.documents) {
-    action.documents.forEach((d) => {
-      references[d.reference] = {
-        reference: d.reference,
-        link: d.sourceUrl
-          ? d.sourceUrl
-          : makeDustAppUrl(
-              `/w/${d.dataSourceWorkspaceId}/builder/data-sources/${
-                d.dataSourceId
-              }/upsert?documentId=${encodeURIComponent(d.documentId)}`
-            ),
-        title: getTitleFromRetrievedDocument(d),
-      };
-    });
-  }
-  if (action && isWebsearchActionType(action) && action.output) {
-    action.output.results.forEach((r) => {
-      references[r.reference] = {
-        reference: r.reference,
-        link: r.link,
-        title: r.title,
-      };
-    });
+  for (const action of actions) {
+    if (action && isRetrievalActionType(action) && action.documents) {
+      action.documents.forEach((d) => {
+        references[d.reference] = {
+          reference: d.reference,
+          link: d.sourceUrl
+            ? d.sourceUrl
+            : makeDustAppUrl(
+                `/w/${d.dataSourceWorkspaceId}/builder/data-sources/${
+                  d.dataSourceId
+                }/upsert?documentId=${encodeURIComponent(d.documentId)}`
+              ),
+          title: getTitleFromRetrievedDocument(d),
+        };
+      });
+    }
+    if (action && isWebsearchActionType(action) && action.output) {
+      action.output.results.forEach((r) => {
+        references[r.reference] = {
+          reference: r.reference,
+          link: r.link,
+          title: r.title,
+        };
+      });
+    }
   }
 
   if (references) {
