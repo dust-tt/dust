@@ -158,4 +158,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler, true);
+export default withSessionAuthentication(handler, { isStreaming: true });

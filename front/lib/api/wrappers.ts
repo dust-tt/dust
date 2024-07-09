@@ -8,7 +8,8 @@ export function withSessionAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>
-  ) => Promise<void> | void
+  ) => Promise<void> | void,
+  { isStreaming = false }: { isStreaming?: boolean } = {}
 ) {
   return withLogging(
     async (
@@ -31,6 +32,7 @@ export function withSessionAuthentication<T>(
       // TODO(2024-07-09 Flav) Create `Authenticator` from session.
 
       return handler(req, res);
-    }
+    },
+    isStreaming
   );
 }

@@ -1,11 +1,9 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { getSession } from "@app/lib/auth";
-import {
-  getUserFromSession,
-  withSessionAuthentication,
-} from "@app/lib/iam/session";
+import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { apiError } from "@app/logger/withlogging";
 import { createAndLogMembership } from "@app/pages/api/login";
