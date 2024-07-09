@@ -3,6 +3,7 @@ import type {
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
+  ensureContentTypeForUseCase,
   ensureFileSize,
   FileUploadUrlRequestSchema,
   isSupportedFileContentType,
@@ -99,13 +100,22 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "file_type_not_supported",
-            message: `File "${fileName}" is not supported.`,
+            message: `Content type "${contentType}" is not supported.`,
           },
         });
       }
 
-      const isFileSizeWithinLimit = ensureFileSize(contentType, fileSize);
-      if (!isFileSizeWithinLimit) {
+      if (!ensureContentTypeForUseCase(contentType, useCase)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "file_type_not_supported",
+            message: `Content type "${contentType}" is not supported for use-case ${useCase}.`,
+          },
+        });
+      }
+
+      if (!ensureFileSize(contentType, fileSize)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

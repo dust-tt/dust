@@ -20,13 +20,16 @@ import type { Readable, Writable } from "stream";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  getPrivateUploadBucket,
+  getPublicUploadBucket,
+} from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 
-type FileVersion = "processed" | "original";
+type FileVersion = "processed" | "original" | "public";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -222,7 +225,14 @@ export class FileResource extends BaseResource<FileModel> {
     return `files/w/${workspaceId}/${fileId}/${version}`;
   }
 
-  async getSignedUrlForDownload(
+  getPublicUrlForDownload(auth: Authenticator): string {
+    return (
+      "https://storage.googleapis.com/" +
+      `${getPublicUploadBucket().name}/${this.getCloudStoragePath(auth, "public")}`
+    );
+  }
+
+  async getUrlSignedForDownload(
     auth: Authenticator,
     version: FileVersion
   ): Promise<string> {
@@ -239,18 +249,33 @@ export class FileResource extends BaseResource<FileModel> {
   // Stream logic.
 
   getWriteStream(auth: Authenticator, version: FileVersion): Writable {
-    return getPrivateUploadBucket()
-      .file(this.getCloudStoragePath(auth, version))
-      .createWriteStream({
-        resumable: false,
-        gzip: true,
-      });
+    if (version === "public") {
+      return getPublicUploadBucket()
+        .file(this.getCloudStoragePath(auth, version))
+        .createWriteStream({
+          resumable: false,
+          gzip: true,
+        });
+    } else {
+      return getPrivateUploadBucket()
+        .file(this.getCloudStoragePath(auth, version))
+        .createWriteStream({
+          resumable: false,
+          gzip: true,
+        });
+    }
   }
 
   getReadStream(auth: Authenticator, version: FileVersion): Readable {
-    return getPrivateUploadBucket()
-      .file(this.getCloudStoragePath(auth, version))
-      .createReadStream();
+    if (version === "public") {
+      return getPublicUploadBucket()
+        .file(this.getCloudStoragePath(auth, version))
+        .createReadStream();
+    } else {
+      return getPrivateUploadBucket()
+        .file(this.getCloudStoragePath(auth, version))
+        .createReadStream();
+    }
   }
 
   // Serialization logic.
@@ -267,6 +292,10 @@ export class FileResource extends BaseResource<FileModel> {
 
     if (this.isReady) {
       blob.downloadUrl = this.getPublicUrl(auth);
+    }
+
+    if (this.useCase === "avatar") {
+      blob.publicUrl = this.getPublicUrlForDownload(auth);
     }
 
     return blob;
