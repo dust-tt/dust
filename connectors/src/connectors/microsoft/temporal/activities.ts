@@ -30,7 +30,6 @@ import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { MicrosoftNodeType } from "@connectors/resources/microsoft_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
@@ -42,7 +41,7 @@ const FILES_SYNC_CONCURRENCY = 10;
 
 export async function getSiteNodesToSync(
   connectorId: ModelId
-): Promise<MicrosoftNodeResource[]> {
+): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -111,25 +110,33 @@ export async function getSiteNodesToSync(
     [] as MicrosoftNodeData[]
   );
 
-  return MicrosoftNodeResource.batchGetOrCreateFromNodesData(
-    connectorId,
-    allNodes
-  );
+  return (
+    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
+      connectorId,
+      allNodes
+    )
+  ).map((r) => r.internalId);
 }
 
 export async function markNodeAsVisited(
   connectorId: ModelId,
-  node: MicrosoftNodeType
+  internalId: string
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  await MicrosoftNodeResource.upsert({
-    ...node,
-    lastSeenTs: new Date(),
-  });
+  const node = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    internalId
+  );
+
+  if (!node) {
+    throw new Error(`Node ${internalId} not found`);
+  }
+
+  await node.update({ lastSeenTs: new Date() });
 }
 
 /**
@@ -137,16 +144,25 @@ export async function markNodeAsVisited(
  */
 export async function syncFiles({
   connectorId,
-  parent,
+  parentInternalId,
   startSyncTs,
 }: {
   connectorId: ModelId;
-  parent: MicrosoftNodeType;
+  parentInternalId: string;
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const parent = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    parentInternalId
+  );
+
+  if (!parent) {
+    throw new Error(`Parent node not found: ${parentInternalId}`);
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
@@ -207,19 +223,20 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
-  const childNodes = await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
-    connectorId,
-    children
-      .filter((item) => item.folder)
-      .map((item) => ({
-        itemApiPath: getDriveItemAPIPath(item),
-        nodeType: "folder",
-      }))
-  );
+  const childFolderResources =
+    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
+      connectorId,
+      children
+        .filter((item) => item.folder)
+        .map((child) => ({
+          itemApiPath: getDriveItemAPIPath(child),
+          nodeType: child.folder ? "folder" : "file",
+        }))
+    );
 
   return {
     count,
-    childNodes,
+    childNodes: childFolderResources.map((r) => r.internalId),
   };
 }
 

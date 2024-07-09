@@ -208,8 +208,6 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }
 }
 
-export type MicrosoftNodeType = WithCreationAttributes<MicrosoftNodeModel>;
-
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MicrosoftNodeResource
   extends ReadonlyAttributesType<MicrosoftNodeModel> {}
@@ -372,7 +370,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, newNode.get());
   }
 
-  toJSON(): MicrosoftNodeType {
+  toJSON() {
     return {
       id: this.id,
       nodeType: this.nodeType,

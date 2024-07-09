@@ -8,7 +8,6 @@ import {
 
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
-import type { MicrosoftNodeType } from "@connectors/resources/microsoft_resource";
 
 const { getSiteNodesToSync, syncFiles, markNodeAsVisited } = proxyActivities<
   typeof activities
@@ -46,40 +45,40 @@ export async function fullSyncWorkflow({
 export async function fullSyncSitesWorkflow({
   connectorId,
   startSyncTs,
-  nodesToSync = undefined,
+  nodeIdsToSync = undefined,
   totalCount = 0,
 }: {
   connectorId: ModelId;
   startSyncTs: number;
-  nodesToSync?: MicrosoftNodeType[];
+  nodeIdsToSync?: string[];
   totalCount?: number;
 }) {
-  if (nodesToSync === undefined) {
-    nodesToSync = await getSiteNodesToSync(connectorId);
+  if (nodeIdsToSync === undefined) {
+    nodeIdsToSync = await getSiteNodesToSync(connectorId);
   }
 
-  while (nodesToSync.length > 0) {
-    const node = nodesToSync.pop();
+  while (nodeIdsToSync.length > 0) {
+    const nodeId = nodeIdsToSync.pop();
 
-    if (!node) {
+    if (!nodeId) {
       throw new Error("Unreachable: node is undefined");
     }
 
     const res = await syncFiles({
       connectorId,
-      parent: node,
+      parentInternalId: nodeId,
       startSyncTs,
     });
     totalCount += res.count;
-    nodesToSync = nodesToSync.concat(res.childNodes);
+    nodeIdsToSync = nodeIdsToSync.concat(res.childNodes);
 
     await reportInitialSyncProgress(connectorId, `Synced ${totalCount} files`);
     // TODO(pr): add pagination support
-    await markNodeAsVisited(connectorId, node);
+    await markNodeAsVisited(connectorId, nodeId);
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof fullSyncSitesWorkflow>({
         connectorId,
-        nodesToSync,
+        nodeIdsToSync: nodeIdsToSync,
         totalCount,
         startSyncTs,
       });
