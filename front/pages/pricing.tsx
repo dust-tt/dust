@@ -13,9 +13,11 @@ import {
 import { PricePlans } from "@app/components/plans/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
-import { withNoUserAuthRequirements } from "@app/lib/iam/session";
+import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
-export const getServerSideProps = withNoUserAuthRequirements<{
+export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
+  requireUserPrivilege: "none",
+})<{
   gaTrackingId: string;
   shape: number;
 }>(async () => {
