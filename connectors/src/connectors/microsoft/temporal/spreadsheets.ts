@@ -4,8 +4,8 @@ import { stringify } from "csv-stringify/sync";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
-  getDriveItemApiPath,
-  getWorksheetApiPath,
+  getDriveItemAPIPath,
+  getWorksheetAPIPath,
   getWorksheetContent,
   getWorksheets,
   microsoftInternalIdFromNodeData,
@@ -191,7 +191,7 @@ export async function syncSpreadSheet({
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
-  const itemApiPath = getDriveItemApiPath(file);
+  const itemApiPath = getDriveItemAPIPath(file);
 
   const documentId = microsoftInternalIdFromNodeData({
     itemApiPath,
@@ -210,7 +210,7 @@ export async function syncSpreadSheet({
     if (worksheet.id) {
       const internalWorkSheetId = microsoftInternalIdFromNodeData({
         nodeType: "worksheet",
-        itemApiPath: getWorksheetApiPath(worksheet, documentId),
+        itemApiPath: getWorksheetAPIPath(worksheet, documentId),
       });
       const isImported = await processSheet(
         client,

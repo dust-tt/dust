@@ -6,11 +6,11 @@ import turndown from "turndown";
 import { getClient } from "@connectors/connectors/microsoft";
 import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
-  getDriveApiPath,
-  getDriveItemApiPath,
+  getDriveAPIPath,
+  getDriveItemAPIPath,
   getDrives,
   getFilesAndFolders,
-  getSiteApiPath,
+  getSiteAPIPath,
   getSites,
   microsoftInternalIdFromNodeData,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -68,7 +68,7 @@ export async function getSiteNodesToSync(
     rootSiteNodes.push(
       ...msSites.map(
         (site): MicrosoftNodeData => ({
-          itemApiPath: getSiteApiPath(site),
+          itemApiPath: getSiteAPIPath(site),
           nodeType: "site",
         })
       )
@@ -84,7 +84,7 @@ export async function getSiteNodesToSync(
           microsoftInternalIdFromNodeData(site)
         );
         return msDrives.map((drive) => ({
-          itemApiPath: getDriveApiPath(drive),
+          itemApiPath: getDriveAPIPath(drive),
           nodeType: "drive" as const,
         }));
       },
@@ -212,7 +212,7 @@ export async function syncFiles({
     children
       .filter((item) => item.folder)
       .map((item) => ({
-        itemApiPath: getDriveItemApiPath(item),
+        itemApiPath: getDriveItemAPIPath(item),
         nodeType: "folder",
       }))
   );
@@ -249,7 +249,7 @@ export async function syncOneFile({
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
-  const itemApiPath = getDriveItemApiPath(file);
+  const itemApiPath = getDriveItemAPIPath(file);
 
   const documentId = microsoftInternalIdFromNodeData({
     itemApiPath,

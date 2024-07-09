@@ -185,7 +185,7 @@ export function microsoftNodeDataFromInternalId(
   return { nodeType, itemApiPath: resourcePathArr.join("/") };
 }
 
-export function getDriveItemApiPath(item: MicrosoftGraph.DriveItem) {
+export function getDriveItemAPIPath(item: MicrosoftGraph.DriveItem) {
   const { parentReference } = item;
 
   if (!parentReference?.driveId) {
@@ -195,7 +195,7 @@ export function getDriveItemApiPath(item: MicrosoftGraph.DriveItem) {
   return `/drives/${parentReference.driveId}/items/${item.id}`;
 }
 
-export function getWorksheetApiPath(
+export function getWorksheetAPIPath(
   item: MicrosoftGraph.WorkbookWorksheet,
   parentInternalId: string
 ) {
@@ -209,10 +209,10 @@ export function getWorksheetApiPath(
   return `${parentItemApiPath}/workbook/worksheets/${item.id}`;
 }
 
-export function getDriveApiPath(drive: MicrosoftGraph.Drive) {
+export function getDriveAPIPath(drive: MicrosoftGraph.Drive) {
   return `/drives/${drive.id}`;
 }
 
-export function getSiteApiPath(site: MicrosoftGraph.Site) {
+export function getSiteAPIPath(site: MicrosoftGraph.Site) {
   return `/sites/${site.id}`;
 }
