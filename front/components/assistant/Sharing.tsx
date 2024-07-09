@@ -394,12 +394,7 @@ export function SharingDropdown({
                     // selection unchanged
                     entryScope === newScope ||
                     // selection back to initial state
-                    entryScope === initialScope ||
-                    // the only user of the assistant is the user changing the scope
-                    ((entryScope === "private" || entryScope === "company") &&
-                      assistantInMyList &&
-                      (!agentUsage.agentUsage ||
-                        agentUsage.agentUsage.userCount === 1))
+                    entryScope === initialScope
                   ) {
                     setNewScope(entryScope as NonGlobalScope);
                     return;
