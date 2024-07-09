@@ -9,7 +9,6 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
-use datadog_formatting_layer::DatadogFormattingLayer;
 use dust::{
     app,
     blocks::block::BlockType,
@@ -43,6 +42,7 @@ use tokio::{
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
 /// API State
@@ -2439,7 +2439,11 @@ fn main() {
 
     let r = rt.block_on(async {
         tracing_subscriber::registry()
-            .with(DatadogFormattingLayer)
+            .with(JsonStorageLayer)
+            .with(BunyanFormattingLayer::new(
+                "dust_api".into(),
+                std::io::stdout,
+            ))
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
