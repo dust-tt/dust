@@ -64,13 +64,12 @@ export function AgentSuggestion({
     }
   );
 
-  const agents = useMemo(
-    () =>
-      agentConfigurations.sort((a, b) => {
-        return sortAgents(a, b);
-      }),
-    [agentConfigurations]
-  );
+  const [topAgents, otherAgents] = useMemo(() => {
+    const agents = agentConfigurations.sort((a, b) => {
+      return sortAgents(a, b);
+    });
+    return [agents.slice(0, 3), agents.slice(3)];
+  }, [agentConfigurations]);
 
   return (
     <div className="pt-4">
@@ -80,7 +79,7 @@ export function AgentSuggestion({
         </span>
         <AssistantPicker
           owner={owner}
-          assistants={agents.slice(3)}
+          assistants={otherAgents}
           onItemClick={async (agent) => {
             if (!isLoading) {
               setIsLoading(true);
@@ -100,13 +99,13 @@ export function AgentSuggestion({
         />
       </div>
 
-      {agents.length === 0 ? (
+      {agentConfigurations.length === 0 ? (
         <div className="flex h-full min-h-28 w-full items-center justify-center">
           <Spinner />
         </div>
       ) : (
         <div className="mt-3 grid gap-2 md:grid-cols-3">
-          {agents.slice(0, 3).map((agent, id) => (
+          {topAgents.map((agent, id) => (
             <AssistantPreview
               key={`${agent.sId}-${id}`}
               variant="minimal"
