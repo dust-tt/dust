@@ -9,12 +9,13 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { redisClient, safeRedisClient } from "@app/lib/redis";
+import { launchMentionCountWorkflow } from "@app/temporal/mention_count_queue/client";
 
 // Ranking of agents is done over a 7 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
 
 // Computing agent mention count over a 4h period
-const popularityComputationTimeframeSec = 4 * 60 * 60;
+const MENTION_COUNT_UPDATE_PERIOD_SEC = 4 * 60 * 60;
 
 const TTL_KEY_NOT_EXIST = -2;
 const TTL_KEY_NOT_SET = -1;
@@ -31,7 +32,7 @@ type mentionCount = {
   timePeriodSec: number;
 };
 
-function _getUsageKey(workspaceId: string) {
+function getUsageKey(workspaceId: string) {
   // One hash per workspace with keys the agent id and value the corresponding
   // number of mentions
   return `agent_usage_count_${workspaceId}`;
@@ -53,7 +54,7 @@ export async function getAgentsUsage({
 
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
 
-  const agentMessageCountKey = _getUsageKey(workspaceId);
+  const agentMessageCountKey = getUsageKey(workspaceId);
 
   try {
     redis = providedRedis ?? (await redisClient());
@@ -67,13 +68,8 @@ export async function getAgentsUsage({
       const agentMessageCounts = await agentMentionsCount(owner.id);
       await storeCountsInRedis(workspaceId, agentMessageCounts, redis);
       // agent mention count is stale
-    } else if (agentMessageCountTTL < popularityComputationTimeframeSec) {
-      void (async () => {
-        const agentMessageCounts = await agentMentionsCount(owner.id);
-        void safeRedisClient((redis) =>
-          storeCountsInRedis(workspaceId, agentMessageCounts, redis)
-        );
-      })();
+    } else if (agentMessageCountTTL < MENTION_COUNT_UPDATE_PERIOD_SEC) {
+      await launchMentionCountWorkflow({ workspaceId });
     }
 
     // Retrieve and parse agents usage
@@ -116,7 +112,7 @@ export async function getAgentUsage(
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
   const { sId: agentConfigurationId } = agentConfiguration;
 
-  const agentMessageCountKey = _getUsageKey(workspaceId);
+  const agentMessageCountKey = getUsageKey(workspaceId);
 
   try {
     redis = providedRedis ?? (await redisClient());
@@ -200,15 +196,12 @@ export async function storeCountsInRedis(
   redis: Awaited<ReturnType<typeof redisClient>>
 ) {
   const transaction = redis.multi();
-  const agentMessageCountKey = _getUsageKey(workspaceId);
+  const agentMessageCountKey = getUsageKey(workspaceId);
 
   agentMessageCounts.forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
   });
-  transaction.expire(
-    agentMessageCountKey,
-    popularityComputationTimeframeSec * 2
-  );
+  transaction.expire(agentMessageCountKey, MENTION_COUNT_UPDATE_PERIOD_SEC * 2);
 
   const results = await transaction.exec();
   if (results.includes(null)) {
@@ -227,7 +220,7 @@ export async function signalAgentUsage({
 
   try {
     redis = await redisClient();
-    const agentMessageCountKey = _getUsageKey(workspaceId);
+    const agentMessageCountKey = getUsageKey(workspaceId);
     const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
     if (agentMessageCountTTL !== TTL_KEY_NOT_EXIST) {
