@@ -109,7 +109,7 @@ export async function syncOneFile(
       if (!file.capabilities.canDownload) {
         localLogger.info(
           {},
-          `Google Drive document skipped because it cannot be downloaded`
+          "Google Drive document skipped because it cannot be downloaded"
         );
         return false;
       }
@@ -198,7 +198,7 @@ export async function syncOneFile(
           if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
             // This error happens when the file is too big to be downloaded.
             // We skip this file.
-            localLogger.info({}, `File too big to be downloaded. Skipping`);
+            localLogger.info({}, "File too big to be downloaded. Skipping");
             return false;
           }
           throw e;
@@ -217,7 +217,7 @@ export async function syncOneFile(
             // avoids operations on very long text files, that can cause
             // Buffer.toString to crash if the file is > 500MB
             if (res.data.byteLength > 4 * maxDocumentLen) {
-              localLogger.info({}, `File too big to be chunked. Skipping`);
+              localLogger.info({}, "File too big to be chunked. Skipping");
               return false;
             }
             documentContent = {
@@ -261,14 +261,14 @@ export async function syncOneFile(
               {
                 pagesCount: pages.length,
               },
-              `Successfully converted PDF to text`
+              "Successfully converted PDF to text"
             );
           } catch (err) {
             localLogger.warn(
               {
                 error: err,
               },
-              `Error while converting PDF to text`
+              "Error while converting PDF to text"
             );
             // we don't know what to do with PDF files that fails to be converted to text.
             // So we log the error and skip the file.
@@ -297,7 +297,7 @@ export async function syncOneFile(
                 {
                   error: err,
                 },
-                `Error while converting docx document to text`
+                "Error while converting docx document to text"
               );
               return false;
             }
@@ -324,7 +324,7 @@ export async function syncOneFile(
                 {
                   error: err,
                 },
-                `Error while converting pptx document to text`
+                "Error while converting pptx document to text"
               );
               return false;
             }
@@ -336,7 +336,7 @@ export async function syncOneFile(
             // avoids operations on very long text files, that can cause
             // Buffer.toString to crash if the file is > 500MB
             if (res.data.byteLength > 4 * maxDocumentLen) {
-              localLogger.info({}, `File too big to be chunked. Skipping`);
+              localLogger.info({}, "File too big to be chunked. Skipping");
               return false;
             }
             const tableCsv = Buffer.from(res.data).toString("utf-8").trim();
@@ -388,7 +388,7 @@ export async function syncOneFile(
           if (res.skipReason) {
             localLogger.info(
               {},
-              "Google Spreadsheet document skipped with skip reason ${res.skipReason}"
+              `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
             );
             skipReason = res.skipReason;
           }
@@ -462,7 +462,7 @@ export async function syncOneFile(
             {
               documentLen: documentLen,
             },
-            `Document is empty or too big to be upserted. Skipping`
+            "Document is empty or too big to be upserted. Skipping"
           );
         }
       }
