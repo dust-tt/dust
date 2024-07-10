@@ -65,14 +65,8 @@ export async function getAgentsUsage({
       agentMessageCountTTL === TTL_KEY_NOT_EXIST ||
       agentMessageCountTTL === TTL_KEY_NOT_SET
     ) {
-      void (async () => {
-        const agentMessageCounts = await agentMentionsCount(owner.id);
-        void safeRedisClient((redis) =>
-          storeCountsInRedis(workspaceId, agentMessageCounts, redis)
-        );
-      })();
+      await launchMentionsCountWorkflow({ workspaceId });
       return [];
-
       // agent mention count is stale
     } else if (agentMessageCountTTL < MENTION_COUNT_UPDATE_PERIOD_SEC) {
       await launchMentionsCountWorkflow({ workspaceId });
