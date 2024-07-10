@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetAgentUsageResponseBody = {
-  agentUsage: AgentUsageType;
+  agentUsage: AgentUsageType | null;
 };
 
 async function handler(

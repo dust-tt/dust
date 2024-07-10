@@ -118,13 +118,17 @@ async function handler(
           });
         });
         const usageMap = _.keyBy(mentionCounts, "agentId");
-        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
-          ...agentConfiguration,
-          usage: {
-            messageCount: usageMap[agentConfiguration.sId]?.messageCount || 0,
-            timePeriodSec: usageMap[agentConfiguration.sId]?.timePeriodSec || 0,
-          },
-        }));
+        agentConfigurations = agentConfigurations.map((agentConfiguration) =>
+          usageMap[agentConfiguration.sId]
+            ? {
+                ...agentConfiguration,
+                usage: {
+                  messageCount: usageMap[agentConfiguration.sId].messageCount,
+                  timePeriodSec: usageMap[agentConfiguration.sId].timePeriodSec,
+                },
+              }
+            : agentConfiguration
+        );
       }
       if (withAuthors === "true") {
         const recentAuthors = await getAgentsRecentAuthors({
