@@ -6,11 +6,13 @@ import { Op } from "sequelize";
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
+import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
@@ -22,6 +24,8 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
+import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -194,11 +198,40 @@ export async function deleteConversationsActivity({
                       });
                       await retrievalDocument.destroy({ transaction: t });
                     }
+
                     await AgentRetrievalAction.destroy({
                       where: { id: retrievalAction.id },
                       transaction: t,
                     });
                   }
+
+                  // Delete associated actions.
+
+                  await AgentBrowseAction.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
+
+                  await AgentProcessAction.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
+
+                  await AgentTablesQueryAction.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
+
+                  await AgentVisualizationAction.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
+
+                  await AgentWebsearchAction.destroy({
+                    where: { agentMessageId: agentMessage.id },
+                    transaction: t,
+                  });
+
                   await agentMessage.destroy({ transaction: t });
                 }
               }
