@@ -8,14 +8,14 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
-import { redisClient, safeRedisClient } from "@app/lib/redis";
-import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+import { redisClient } from "@app/lib/redis";
+import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
 // Ranking of agents is done over a 7 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
 
-// Computing agent mention count over a 12h period
-const popularityComputationTimeframeSec = 12 * 60 * 60;
+// Computing agent mention count over a 4h period
+const MENTION_COUNT_UPDATE_PERIOD_SEC = 4 * 60 * 60;
 
 const TTL_KEY_NOT_EXIST = -2;
 const TTL_KEY_NOT_SET = -1;
@@ -68,13 +68,8 @@ export async function getAgentsUsage({
       const agentMessageCounts = await agentMentionsCount(owner.id);
       await storeCountsInRedis(workspaceId, agentMessageCounts, redis);
       // agent mention count is stale
-    } else if (agentMessageCountTTL < popularityComputationTimeframeSec) {
-      void (async () => {
-        const agentMessageCounts = await agentMentionsCount(owner.id);
-        void safeRedisClient((redis) =>
-          storeCountsInRedis(workspaceId, agentMessageCounts, redis)
-        );
-      })();
+    } else if (agentMessageCountTTL < MENTION_COUNT_UPDATE_PERIOD_SEC) {
+      await launchMentionsCountWorkflow({ workspaceId });
     }
 
     // Retrieve and parse agents usage
@@ -141,56 +136,47 @@ export async function getAgentUsage(
 export async function agentMentionsCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
-  // wW are using the front replica because the query is relatively expensive
-  const sequelizeReplica = getFrontReplicaDbConnection();
-
   // We retrieve mentions from conversations in order to optimize the query
   // Since we need to filter out by workspace id, retrieving mentions first
   // would lead to retrieve every single messages
-  //
-  // We use a transaction here to run the query against the DB replica
-  // Sequelize doesn't offer any other alternative to achieve so
-  const mentions = await sequelizeReplica.transaction(() => {
-    return Conversation.findAll({
-      attributes: [
-        [
-          Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
-          "agentConfigurationId",
-        ],
-        [
-          Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
-          "count",
-        ],
+  const mentions = await Conversation.findAll({
+    attributes: [
+      [
+        Sequelize.literal('"messages->mentions"."agentConfigurationId"'),
+        "agentConfigurationId",
       ],
-      where: {
-        workspaceId: workspaceId,
-      },
-      include: [
-        {
-          model: Message,
-          required: true,
-          attributes: [],
-          where: {
-            createdAt: {
-              [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
-            },
+      [
+        Sequelize.fn("COUNT", Sequelize.literal('"messages->mentions"."id"')),
+        "count",
+      ],
+    ],
+    where: {
+      workspaceId,
+    },
+    include: [
+      {
+        model: Message,
+        required: true,
+        attributes: [],
+        where: {
+          createdAt: {
+            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
           },
-          include: [
-            {
-              model: Mention,
-              as: "mentions",
-              required: true,
-              attributes: [],
-            },
-          ],
         },
-      ],
-      order: [["count", "DESC"]],
-      group: ['"messages->mentions"."agentConfigurationId"'],
-      raw: true,
-    });
+        include: [
+          {
+            model: Mention,
+            as: "mentions",
+            required: true,
+            attributes: [],
+          },
+        ],
+      },
+    ],
+    order: [["count", "DESC"]],
+    group: ['"messages->mentions"."agentConfigurationId"'],
+    raw: true,
   });
-
   return mentions.map((mention) => {
     const castMention = mention as unknown as {
       agentConfigurationId: string;
@@ -215,10 +201,7 @@ export async function storeCountsInRedis(
   agentMessageCounts.forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
   });
-  transaction.expire(
-    agentMessageCountKey,
-    popularityComputationTimeframeSec * 2
-  );
+  transaction.expire(agentMessageCountKey, MENTION_COUNT_UPDATE_PERIOD_SEC * 2);
 
   const results = await transaction.exec();
   if (results.includes(null)) {

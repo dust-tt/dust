@@ -9,6 +9,7 @@ import { runProductionChecksWorker } from "@app/temporal/production_checks/worke
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
+import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 
 setupGlobalErrorHandler(logger);
 
@@ -41,4 +42,8 @@ runLabsWorker().catch((err) =>
 
 runHardDeleteWorker().catch((err) =>
   logger.error({ error: err }, "Error running hard delete worker.")
+);
+
+runMentionsCountWorker().catch((err) =>
+  logger.error({ error: err }, "Error running mentions count worker.")
 );
