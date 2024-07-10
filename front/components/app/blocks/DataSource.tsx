@@ -87,7 +87,7 @@ export default function DataSource({
     if (!b.config.filter.tags.in) {
       b.config.filter.tags.in = [];
     }
-    // Check if index is provided and valid, then remove the tag at that index
+
     if (
       index !== undefined &&
       index >= 0 &&
@@ -95,7 +95,6 @@ export default function DataSource({
     ) {
       b.config.filter.tags.in.splice(index, 1);
     } else {
-      // Existing logic to remove the last tag
       b.config.filter.tags.in.splice(b.config.filter.tags.in.length - 1, 1);
     }
     if (b.config.filter.tags.in.length === 0) {
@@ -138,7 +137,7 @@ export default function DataSource({
     if (!b.config.filter.tags.not) {
       b.config.filter.tags.not = [];
     }
-    // Check if index is provided and valid, then remove the tag at that index
+
     if (
       index !== undefined &&
       index >= 0 &&
@@ -146,7 +145,6 @@ export default function DataSource({
     ) {
       b.config.filter.tags.not.splice(index, 1);
     } else {
-      // Existing logic to remove the last tag
       b.config.filter.tags.not.splice(b.config.filter.tags.not.length - 1, 1);
     }
     if (b.config.filter.tags.not.length === 0) {
