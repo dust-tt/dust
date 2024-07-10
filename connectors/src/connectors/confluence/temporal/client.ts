@@ -44,6 +44,7 @@ export async function launchConfluenceSyncWorkflow(
 
   const signalArgs: SpaceUpdatesSignal[] = spaceIds.map((sId) => ({
     action: "added",
+    forceUpsert,
     spaceId: sId,
   }));
 
@@ -55,7 +56,6 @@ export async function launchConfluenceSyncWorkflow(
       args: [
         {
           connectorId: connector.id,
-          forceUpsert,
         },
       ],
       taskQueue: QUEUE_NAME,
@@ -92,6 +92,7 @@ export async function launchConfluenceRemoveSpacesSyncWorkflow(
   const signalArgs: SpaceUpdatesSignal[] = spaceIds.map((sId) => ({
     action: "removed",
     spaceId: sId,
+    forceUpsert: false,
   }));
 
   const workflowId = makeConfluenceRemoveSpacesWorkflowId(connector.id);

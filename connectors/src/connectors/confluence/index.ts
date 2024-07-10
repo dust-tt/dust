@@ -264,7 +264,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchConfluenceSyncWorkflow(this.connectorId, fromTs);
+    return launchConfluenceSyncWorkflow(this.connectorId, fromTs, [], true);
   }
 
   async retrievePermissions({

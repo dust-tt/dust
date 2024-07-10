@@ -48,24 +48,24 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 export async function confluenceSyncWorkflow({
   connectorId,
   spaceIdsToBrowse,
-  forceUpsert = false,
 }: {
   connectorId: ModelId;
   spaceIdsToBrowse?: string[];
-  forceUpsert: boolean;
 }) {
   await confluenceSaveStartSyncActivity(connectorId);
 
   const spaceIdsToSync =
     spaceIdsToBrowse ?? (await getSpaceIdsToSyncActivity(connectorId));
 
-  const uniqueSpaceIds = new Set(spaceIdsToSync);
+  const uniqueSpaceIds = new Map<string, { forceUpsert: boolean }>(
+    spaceIdsToSync.map((spaceId) => [spaceId, { forceUpsert: false }])
+  );
 
   setHandler(spaceUpdatesSignal, (spaceUpdates: SpaceUpdatesSignal[]) => {
     // If we get a signal, update the workflow state by adding/removing space ids.
-    for (const { action, spaceId } of spaceUpdates) {
+    for (const { action, forceUpsert, spaceId } of spaceUpdates) {
       if (action === "added") {
-        uniqueSpaceIds.add(spaceId);
+        uniqueSpaceIds.set(spaceId, { forceUpsert });
       } else {
         uniqueSpaceIds.delete(spaceId);
       }
@@ -81,9 +81,9 @@ export async function confluenceSyncWorkflow({
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (uniqueSpaceIds.size > 0) {
-    // Create a copy of the set to iterate over, to avoid issues with concurrent modification.
-    const spaceIdsToProcess = new Set(uniqueSpaceIds);
-    for (const spaceId of spaceIdsToProcess) {
+    // Create a copy of the map to iterate over, to avoid issues with concurrent modification.
+    const spaceIdsToProcess = new Map(uniqueSpaceIds);
+    for (const [spaceId, opts] of spaceIdsToProcess) {
       // Async operation yielding control to the Temporal runtime.
       await executeChild(confluenceSpaceSyncWorkflow, {
         workflowId: makeConfluenceSpaceSyncWorkflowIdFromParentId(
@@ -96,7 +96,7 @@ export async function confluenceSyncWorkflow({
             connectorId,
             isBatchSync: true,
             spaceId,
-            forceUpsert,
+            forceUpsert: opts.forceUpsert,
           },
         ],
         memo,
