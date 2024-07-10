@@ -9,7 +9,7 @@ use dust::{
     databases::database::Table,
     databases_store::{self, store::DatabasesStore},
     sqlite_workers::sqlite_database::{SqliteDatabase, SqliteDatabaseError},
-    utils::{error_response, APIResponse},
+    utils::{error_response, APIResponse, CoreRequestMakeSpan},
 };
 use hyper::StatusCode;
 use reqwest::Method;
@@ -164,7 +164,7 @@ impl WorkerState {
 /// Index
 
 async fn index() -> &'static str {
-    "Welcome to SQLite worker."
+    "sqlite_worker server ready"
 }
 
 // Databases
@@ -284,10 +284,11 @@ fn main() {
     let r = rt.block_on(async {
         tracing_subscriber::registry()
             .with(JsonStorageLayer)
-            .with(BunyanFormattingLayer::new(
-                "sqlite_worker".into(),
-                std::io::stdout,
-            ))
+            .with(
+                BunyanFormattingLayer::new("sqlite_worker".into(), std::io::stdout)
+                    .skip_fields(vec!["file", "line", "target"].into_iter())
+                    .unwrap(),
+            )
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
@@ -309,7 +310,7 @@ fn main() {
             .route("/databases/:database_id", delete(databases_delete))
             .layer(
                 TraceLayer::new_for_http()
-                    .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                    .make_span_with(CoreRequestMakeSpan::new())
                     .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
             )
             .with_state(state.clone());
@@ -345,7 +346,7 @@ fn main() {
 
         info!(
             pid = std::process::id() as u64,
-            "SQLITE WORKER server started"
+            "sqlite_worker server started"
         );
 
         let mut stream = signal(SignalKind::terminate()).unwrap();
@@ -377,7 +378,7 @@ fn main() {
         info!("[GRACEFUL] Awaiting database queries to finish...");
         state.await_pending_queries().await;
 
-        info!("[GRACEFUL] Exiting in 1 second...");
+        info!("[GRACEFUL] Exiting");
 
         // sleep for 1 second to allow the logger to flush
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -388,7 +389,7 @@ fn main() {
     match r {
         Ok(_) => (),
         Err(e) => {
-            error!(error = %e, "SQLITE WORKER Server error");
+            error!(error = %e, "sqlite_worker server error");
             std::process::exit(1);
         }
     }
