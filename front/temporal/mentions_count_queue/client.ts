@@ -6,6 +6,7 @@ import logger from "@app/logger/logger";
 
 import { QUEUE_NAME } from "./config";
 import { mentionsCountWorkflow } from "./workflows";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
 export async function launchMentionsCountWorkflow({
   workspaceId,
@@ -19,16 +20,23 @@ export async function launchMentionsCountWorkflow({
   try {
     // if workflow is already running, no need to update mention count again
     const handle = client.workflow.getHandle(workflowId);
-    const workflowExecution = await handle.describe();
-    if (workflowExecution.status.name === "RUNNING") {
-      logger.info(
-        {
-          workspaceId,
-          workflowId,
-        },
-        "Workflow already running."
-      );
-      return new Ok(workflowId);
+    try {
+      const workflowExecution = await handle.describe();
+      if (workflowExecution.status.name === "RUNNING") {
+        logger.info(
+          {
+            workspaceId,
+            workflowId,
+          },
+          "Workflow already running."
+        );
+        return new Ok(workflowId);
+      }
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+      // workflow not found, continue
     }
 
     await client.workflow.start(mentionsCountWorkflow, {
