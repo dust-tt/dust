@@ -74,7 +74,7 @@ export function AgentSuggestion({
   return (
     <div className="pt-4">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-element-600">
+        <span className="grow text-sm text-element-800">
           Which Assistant would you like to chat with?
         </span>
         <AssistantPicker
