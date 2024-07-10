@@ -25,7 +25,7 @@ use dust::{
     run,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
-    utils::{error_response, APIError, APIResponse},
+    utils::{error_response, APIError, APIResponse, CoreRequestMakeSpan},
 };
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
@@ -2440,10 +2440,11 @@ fn main() {
     let r = rt.block_on(async {
         tracing_subscriber::registry()
             .with(JsonStorageLayer)
-            .with(BunyanFormattingLayer::new(
-                "dust_api".into(),
-                std::io::stdout,
-            ))
+            .with(
+                BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
+                    .skip_fields(vec!["file", "line", "target"].into_iter())
+                    .unwrap(),
+            )
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
@@ -2613,7 +2614,7 @@ fn main() {
         .layer(DefaultBodyLimit::disable())
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .make_span_with(CoreRequestMakeSpan::new())
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
         .with_state(state.clone());
