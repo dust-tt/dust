@@ -5,6 +5,7 @@ use hyper::StatusCode;
 use serde::Serialize;
 use serde_json::Value;
 use std::io::Write;
+use tower_http::trace::MakeSpan;
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -134,4 +135,32 @@ pub fn error_response(
             response: None,
         }),
     )
+}
+
+/// Core requests span creation.
+#[derive(Debug, Clone)]
+pub struct CoreRequestMakeSpan {}
+
+impl CoreRequestMakeSpan {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Default for CoreRequestMakeSpan {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<B> MakeSpan<B> for CoreRequestMakeSpan {
+    fn make_span(&mut self, request: &http::Request<B>) -> tracing::Span {
+        tracing::span!(
+            tracing::Level::INFO,
+            "core request",
+            method = %request.method(),
+            uri = %request.uri(),
+            request_span_id = new_id()[0..12].to_string(),
+        )
+    }
 }

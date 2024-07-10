@@ -1084,6 +1084,7 @@ dependencies = [
  "eventsource-client",
  "fancy-regex",
  "futures",
+ "http 1.1.0",
  "hyper 1.4.0",
  "itertools 0.10.5",
  "lazy_static",
