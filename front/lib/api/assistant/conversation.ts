@@ -2,7 +2,6 @@ import type {
   AgentActionsEvent,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
-  AgentChainOfThoughtEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -607,11 +606,9 @@ export async function* postUserMessage(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | ConversationTitleEvent
-  | AgentChainOfThoughtEvent,
+  | ConversationTitleEvent,
   void
 > {
   const user = auth.user();
@@ -820,7 +817,7 @@ export async function* postUserMessage(
                   status: "created",
                   actions: [],
                   content: null,
-                  chainOfThoughts: [],
+                  chainOfThought: null,
                   rawContents: [],
                   error: null,
                   configuration,
@@ -1020,10 +1017,8 @@ export async function* editUserMessage(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const user = auth.user();
@@ -1297,7 +1292,7 @@ export async function* editUserMessage(
                 status: "created",
                 actions: [],
                 content: null,
-                chainOfThoughts: [],
+                chainOfThought: null,
                 rawContents: [],
                 error: null,
                 configuration,
@@ -1434,10 +1429,8 @@ export async function* retryAgentMessage(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   class AgentMessageError extends Error {}
@@ -1514,7 +1507,7 @@ export async function* retryAgentMessage(
         status: "created",
         actions: [],
         content: null,
-        chainOfThoughts: [],
+        chainOfThought: null,
         rawContents: [],
         error: null,
         configuration: message.configuration,
@@ -1693,8 +1686,7 @@ async function* streamRunAgentEvents(
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent
-    | AgentChainOfThoughtEvent,
+    | AgentMessageSuccessEvent,
     void
   >,
   agentMessage: AgentMessageType,
@@ -1704,13 +1696,10 @@ async function* streamRunAgentEvents(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
-  let content = "";
   const runIds = [];
   for await (const event of eventStream) {
     switch (event.type) {
@@ -1745,9 +1734,7 @@ async function* streamRunAgentEvents(
         runIds.push(event.runId);
         await agentMessageRow.update({
           runIds,
-          content: event.text,
         });
-        yield event;
         break;
 
       case "agent_message_success":
@@ -1762,7 +1749,6 @@ async function* streamRunAgentEvents(
         if (agentMessageRow.status !== "cancelled") {
           await agentMessageRow.update({
             status: "cancelled",
-            content: content,
           });
           yield event;
         }
@@ -1784,7 +1770,6 @@ async function* streamRunAgentEvents(
         break;
       case "generation_tokens":
         if (event.classification === "tokens") {
-          content += event.text;
           yield event;
         } else if (event.classification === "chain_of_thought") {
           yield event;
@@ -1796,16 +1781,6 @@ async function* streamRunAgentEvents(
         } else {
           assertNever(event.classification);
         }
-        break;
-
-      case "agent_chain_of_thought":
-        await agentMessageRow.update({
-          chainOfThoughts: [
-            ...agentMessageRow.chainOfThoughts,
-            event.chainOfThought,
-          ],
-        });
-        yield event;
         break;
 
       default:

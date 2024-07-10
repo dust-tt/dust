@@ -9,11 +9,6 @@ import { DataTypes, Model } from "sequelize";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-// Captures content that is emitted by an assistant before using a tool.
-// This content is not part of the final message sent to the user and is not
-// stored in the AgentMessage table.
-// TODO(fontanierh): Also store the final generation in this table.
-// Ultimately, this table should model the `content` field of the model provider messages.
 export class AgentMessageContent extends Model<
   InferAttributes<AgentMessageContent>,
   InferCreationAttributes<AgentMessageContent>

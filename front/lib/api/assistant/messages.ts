@@ -244,7 +244,7 @@ export async function batchRenderAgentMessages(
         status: agentMessage.status,
         actions: actions,
         content: parsedContent.content,
-        chainOfThoughts: removeNulls([parsedContent.chainOfThought]),
+        chainOfThought: parsedContent.chainOfThought,
         rawContents:
           agentMessage.agentMessageContents?.map((rc) => ({
             step: rc.step,

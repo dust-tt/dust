@@ -15,10 +15,8 @@ import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentActionType,
-  AgentChainOfThoughtEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
@@ -164,10 +162,8 @@ export function AgentMessage({
         | AgentActionSpecificEvent
         | AgentActionSuccessEvent
         | GenerationTokensEvent
-        | AgentGenerationSuccessEvent
         | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent
-        | AgentChainOfThoughtEvent;
+        | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
     const updateMessageWithAction = (
@@ -208,17 +204,10 @@ export function AgentMessage({
         });
         break;
 
-      case "agent_chain_of_thought":
-        break;
-
       case "agent_generation_cancelled":
         setStreamedAgentMessage((m) => {
           return { ...m, status: "cancelled" };
         });
-        break;
-      case "agent_generation_success":
-        // There is no point in handling this event here, since it is always immediately
-        // followed by an "agent_message_success" event (which includes all content / CoT we need).
         break;
       case "agent_message_success": {
         setStreamedAgentMessage((m) => {
@@ -245,13 +234,11 @@ export function AgentMessage({
           case "chain_of_thought":
             setLastTokenClassification("chain_of_thought");
             setStreamedAgentMessage((m) => {
-              const currentChainOfThoughts = m.chainOfThoughts;
-              const lastChainOfThought = currentChainOfThoughts.pop() ?? "";
-              const chainOfThoughts = [
-                ...currentChainOfThoughts,
-                lastChainOfThought + event.text,
-              ];
-              return { ...m, chainOfThoughts };
+              const currentChainOfThought = m.chainOfThought ?? "";
+              return {
+                ...m,
+                chainOfThought: currentChainOfThought + event.text,
+              };
             });
             break;
           default:
@@ -526,14 +513,11 @@ export function AgentMessage({
 
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
 
-    const chainOfThought = agentMessage.chainOfThoughts
-      .filter((cot) => !!cot) // Remove empty chain of thoughts.
-      .join("\n");
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />
 
-        {chainOfThought.length ? (
+        {agentMessage.chainOfThought?.length ? (
           <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">
             <div className="flex flex-row gap-2">
               <Icon size="sm" visual={PuzzleIcon} />
@@ -542,7 +526,7 @@ export function AgentMessage({
 
             <div className="italic">
               <RenderMessageMarkdown
-                content={chainOfThought}
+                content={agentMessage.chainOfThought}
                 isStreaming={false}
               />
             </div>

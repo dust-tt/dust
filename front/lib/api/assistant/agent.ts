@@ -9,7 +9,6 @@ import type {
   AgentContentEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
@@ -66,10 +65,8 @@ export async function* runAgent(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const fullConfiguration = await getAgentConfiguration(
@@ -112,10 +109,8 @@ export async function* runMultiActionsAgentLoop(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent
   | VisualizationGenerationTokensEvent
 > {
   const now = Date.now();
@@ -263,25 +258,11 @@ export async function* runMultiActionsAgentLoop(
           return;
         case "generation_success":
           if (event.chainOfThought.length) {
-            yield {
-              type: "agent_chain_of_thought",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              message: agentMessage,
-              chainOfThought: event.chainOfThought,
-            };
-            agentMessage.chainOfThoughts.push(event.chainOfThought);
+            if (!agentMessage.chainOfThought) {
+              agentMessage.chainOfThought = "";
+            }
+            agentMessage.chainOfThought += event.chainOfThought;
           }
-          yield {
-            type: "agent_generation_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            text: event.text,
-            runId: event.runId,
-          } satisfies AgentGenerationSuccessEvent;
-
           agentMessage.content = processedContent;
           agentMessage.status = "succeeded";
           yield {
@@ -294,8 +275,11 @@ export async function* runMultiActionsAgentLoop(
           return;
 
         case "agent_chain_of_thought":
-          agentMessage.chainOfThoughts.push(event.chainOfThought);
-          yield event;
+          if (!agentMessage.chainOfThought) {
+            agentMessage.chainOfThought = "";
+          }
+          agentMessage.chainOfThought += event.chainOfThought;
+          // This event is not useful outside of the multi-actions loop, so we don't yield it.
           break;
 
         default:

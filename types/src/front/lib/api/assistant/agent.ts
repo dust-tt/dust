@@ -130,9 +130,6 @@ export type AgentChainOfThoughtEvent = {
   chainOfThought: string;
 };
 
-// Content that is emitted right before a Tool Use
-// and therefore not part of the "final" generation.
-// TODO(fontanierh): Also store the final generation in this table.
 export type AgentContentEvent = {
   type: "agent_message_content";
   created: number;
