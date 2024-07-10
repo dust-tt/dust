@@ -66,8 +66,7 @@ export async function* runAgent(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const fullConfiguration = await getAgentConfiguration(
@@ -112,7 +111,6 @@ export async function* runMultiActionsAgentLoop(
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent
   | VisualizationGenerationTokensEvent
 > {
   const now = Date.now();
@@ -260,15 +258,10 @@ export async function* runMultiActionsAgentLoop(
           return;
         case "generation_success":
           if (event.chainOfThought.length) {
-            yield {
-              type: "agent_chain_of_thought",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              message: agentMessage,
-              chainOfThought: event.chainOfThought,
-            };
-            agentMessage.chainOfThoughts.push(event.chainOfThought);
+            if (!agentMessage.chainOfThought) {
+              agentMessage.chainOfThought = "";
+            }
+            agentMessage.chainOfThought += event.chainOfThought;
           }
           agentMessage.content = processedContent;
           agentMessage.status = "succeeded";
@@ -282,8 +275,11 @@ export async function* runMultiActionsAgentLoop(
           return;
 
         case "agent_chain_of_thought":
-          agentMessage.chainOfThoughts.push(event.chainOfThought);
-          yield event;
+          if (!agentMessage.chainOfThought) {
+            agentMessage.chainOfThought = "";
+          }
+          agentMessage.chainOfThought += event.chainOfThought;
+          // This event is not useful outside of the multi-actions loop, so we don't yield it.
           break;
 
         default:

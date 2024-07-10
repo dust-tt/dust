@@ -1,5 +1,4 @@
 import type {
-  AgentChainOfThoughtEvent,
   AgentDisabledErrorEvent,
   AgentMessageType,
   ConversationType,
@@ -117,8 +116,7 @@ async function handleUserMessageEvents(
     | GenerationTokensEvent
     | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent
-    | ConversationTitleEvent
-    | AgentChainOfThoughtEvent,
+    | ConversationTitleEvent,
     void
   >,
   resolveAfterFullGeneration = false
@@ -184,7 +182,6 @@ async function handleUserMessageEvents(
             case "agent_action_success":
             case "generation_tokens":
             case "agent_generation_cancelled":
-            case "agent_chain_of_thought":
             case "agent_message_success": {
               const pubsubChannel = getMessageChannelId(event.messageId);
               await redis.xAdd(pubsubChannel, "*", {
@@ -336,7 +333,6 @@ export async function retryAgentMessageWithPubSub(
               case "agent_action_success":
               case "generation_tokens":
               case "agent_generation_cancelled":
-              case "agent_chain_of_thought":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await redis.xAdd(pubsubChannel, "*", {

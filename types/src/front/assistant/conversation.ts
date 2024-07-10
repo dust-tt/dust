@@ -122,7 +122,7 @@ export type AgentMessageType = {
   status: AgentMessageStatus;
   actions: AgentActionType[];
   content: string | null;
-  chainOfThoughts: string[];
+  chainOfThought: string | null;
   rawContents: Array<{
     step: number;
     content: string;

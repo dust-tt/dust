@@ -2,7 +2,6 @@ import type {
   AgentActionsEvent,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
-  AgentChainOfThoughtEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -609,8 +608,7 @@ export async function* postUserMessage(
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | ConversationTitleEvent
-  | AgentChainOfThoughtEvent,
+  | ConversationTitleEvent,
   void
 > {
   const user = auth.user();
@@ -819,7 +817,7 @@ export async function* postUserMessage(
                   status: "created",
                   actions: [],
                   content: null,
-                  chainOfThoughts: [],
+                  chainOfThought: null,
                   rawContents: [],
                   error: null,
                   configuration,
@@ -1020,8 +1018,7 @@ export async function* editUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const user = auth.user();
@@ -1295,7 +1292,7 @@ export async function* editUserMessage(
                 status: "created",
                 actions: [],
                 content: null,
-                chainOfThoughts: [],
+                chainOfThought: null,
                 rawContents: [],
                 error: null,
                 configuration,
@@ -1433,8 +1430,7 @@ export async function* retryAgentMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   class AgentMessageError extends Error {}
@@ -1511,7 +1507,7 @@ export async function* retryAgentMessage(
         status: "created",
         actions: [],
         content: null,
-        chainOfThoughts: [],
+        chainOfThought: null,
         rawContents: [],
         error: null,
         configuration: message.configuration,
@@ -1690,8 +1686,7 @@ async function* streamRunAgentEvents(
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent
-    | AgentChainOfThoughtEvent,
+    | AgentMessageSuccessEvent,
     void
   >,
   agentMessage: AgentMessageType,
@@ -1702,8 +1697,7 @@ async function* streamRunAgentEvents(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | AgentChainOfThoughtEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const runIds = [];
@@ -1787,10 +1781,6 @@ async function* streamRunAgentEvents(
         } else {
           assertNever(event.classification);
         }
-        break;
-
-      case "agent_chain_of_thought":
-        yield event;
         break;
 
       default:
