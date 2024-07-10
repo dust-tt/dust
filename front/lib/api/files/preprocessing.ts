@@ -203,12 +203,8 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
           callback();
         },
         flush(callback: TransformCallback) {
-          analyzeCSVColumns(rows)
-            .then((columnTypes) => {
-              this.push(JSON.stringify(columnTypes, null, 2));
-              callback();
-            })
-            .catch((err) => callback(err));
+          this.push(JSON.stringify(analyzeCSVColumns(rows), null, 2));
+          callback();
         },
       });
     };

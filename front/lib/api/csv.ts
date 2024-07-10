@@ -73,9 +73,9 @@ function detectColumnType(columnValues: Iterable<string>): ColumnTypeInfo {
 /**
  * Analyze each column of a CSV row by row to determine column types incrementally.
  */
-export async function analyzeCSVColumns(
+export function analyzeCSVColumns(
   rows: CSVRow[]
-): Promise<Record<string, ColumnTypeInfo>> {
+): Record<string, ColumnTypeInfo> {
   const columnSamples: Record<string, Set<string>> = {};
   const columnTypes: Record<string, ColumnTypeInfo> = {};
 
