@@ -39,8 +39,14 @@ const uploadToPublicBucket: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const readStream = file.getReadStream(auth, "original");
-  const writeStream = file.getWriteStream(auth, "public");
+  const readStream = file.getReadStream({
+    auth,
+    version: "original",
+  });
+  const writeStream = file.getWriteStream({
+    auth,
+    version: "public",
+  });
   try {
     await pipeline(readStream, writeStream);
     return new Ok(undefined);
@@ -69,7 +75,10 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const readStream = file.getReadStream(auth, "original");
+  const readStream = file.getReadStream({
+    auth,
+    version: "original",
+  });
 
   // Resize the image, preserving the aspect ratio. Longest side is max 768px.
   const resizedImageStream = sharp().resize(768, 768, {
@@ -77,7 +86,10 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
     withoutEnlargement: true, // Avoid upscaling if image is smaller than 768px.
   });
 
-  const writeStream = file.getWriteStream(auth, "processed");
+  const writeStream = file.getWriteStream({
+    auth,
+    version: "processed",
+  });
 
   try {
     await pipeline(readStream, resizedImageStream, writeStream);
@@ -135,11 +147,17 @@ const extractTextFromPDF: PreprocessingFunction = async (
   file: FileResource
 ) => {
   try {
-    const readStream = file.getReadStream(auth, "original");
+    const readStream = file.getReadStream({
+      auth,
+      version: "original",
+    });
     // Load file in memory.
     const arrayBuffer = await buffer(readStream);
 
-    const writeStream = file.getWriteStream(auth, "processed");
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
     const pdfTextStream = await createPdfTextStream(arrayBuffer);
 
     await pipeline(
@@ -195,9 +213,19 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
   file: FileResource
 ): Promise<Result<undefined, Error>> => {
   try {
-    const readStream = file.getReadStream(auth, "original");
-    const processedWriteStream = file.getWriteStream(auth, "processed");
-    const schemaWriteStream = file.getWriteStream(auth, "snippet");
+    const readStream = file.getReadStream({
+      auth,
+      version: "original",
+    });
+    const processedWriteStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
+    const schemaWriteStream = file.getWriteStream({
+      auth,
+      version: "snippet",
+      overrideContentType: "application/json",
+    });
 
     // Process the first stream for processed file
     const processedPipeline = pipeline(
@@ -242,8 +270,14 @@ const storeRawText: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const readStream = file.getReadStream(auth, "original");
-  const writeStream = file.getWriteStream(auth, "processed");
+  const readStream = file.getReadStream({
+    auth,
+    version: "original",
+  });
+  const writeStream = file.getWriteStream({
+    auth,
+    version: "processed",
+  });
 
   try {
     await pipeline(readStream, writeStream);

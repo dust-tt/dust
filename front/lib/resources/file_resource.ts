@@ -256,14 +256,22 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Stream logic.
 
-  getWriteStream(auth: Authenticator, version: FileVersion): Writable {
+  getWriteStream({
+    auth,
+    version,
+    overrideContentType,
+  }: {
+    auth: Authenticator;
+    version: FileVersion;
+    overrideContentType?: string;
+  }): Writable {
     if (version === "public") {
       return getPublicUploadBucket()
         .file(this.getCloudStoragePath(auth, version))
         .createWriteStream({
           resumable: false,
           gzip: true,
-          contentType: this.contentType,
+          contentType: overrideContentType ?? this.contentType,
         });
     } else {
       return getPrivateUploadBucket()
@@ -271,12 +279,18 @@ export class FileResource extends BaseResource<FileModel> {
         .createWriteStream({
           resumable: false,
           gzip: true,
-          contentType: this.contentType,
+          contentType: overrideContentType ?? this.contentType,
         });
     }
   }
 
-  getReadStream(auth: Authenticator, version: FileVersion): Readable {
+  getReadStream({
+    auth,
+    version,
+  }: {
+    auth: Authenticator;
+    version: FileVersion;
+  }): Readable {
     if (version === "public") {
       return getPublicUploadBucket()
         .file(this.getCloudStoragePath(auth, version))
