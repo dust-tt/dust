@@ -264,7 +264,19 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchConfluenceSyncWorkflow(this.connectorId, fromTs);
+    const spaces = await ConfluenceSpace.findAll({
+      attributes: ["spaceId"],
+      where: {
+        connectorId: this.connectorId,
+      },
+    });
+
+    return launchConfluenceSyncWorkflow(
+      this.connectorId,
+      fromTs,
+      spaces.map((s) => s.spaceId),
+      true
+    );
   }
 
   async retrievePermissions({

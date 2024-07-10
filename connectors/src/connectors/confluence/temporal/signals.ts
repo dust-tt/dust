@@ -1,8 +1,9 @@
 import { defineSignal } from "@temporalio/workflow";
 
 export interface SpaceUpdatesSignal {
-  spaceId: string;
   action: "added" | "removed";
+  forceUpsert: boolean;
+  spaceId: string;
 }
 
 export const spaceUpdatesSignal =
