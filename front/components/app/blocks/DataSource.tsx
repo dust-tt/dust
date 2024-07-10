@@ -88,11 +88,7 @@ export default function DataSource({
       b.config.filter.tags.in = [];
     }
 
-    if (
-      index !== undefined &&
-      index >= 0 &&
-      index < b.config.filter.tags.in.length
-    ) {
+    if (Number.isFinite(index) && index < b.config.filter.tags.in.length) {
       b.config.filter.tags.in.splice(index, 1);
     } else {
       b.config.filter.tags.in.splice(b.config.filter.tags.in.length - 1, 1);
