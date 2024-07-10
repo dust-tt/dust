@@ -211,9 +211,11 @@ export function AssistantDetails({
               {agentConfiguration.lastAuthors.join(", ")}
             </div>
           )}
-          <div>
-            {editedSentence + ", "} {usageSentence}
-          </div>
+          {usageSentence ? (
+            <div>{[editedSentence, usageSentence].join(", ")}</div>
+          ) : (
+            <div className="justify-self-end">{editedSentence}</div>
+          )}
         </div>
       )}
       <Page.Separator />
