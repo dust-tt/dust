@@ -5,16 +5,16 @@ import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
 import { QUEUE_NAME } from "./config";
-import { mentionCountWorkflow } from "./workflows";
+import { mentionsCountWorkflow } from "./workflows";
 
-export async function launchMentionCountWorkflow({
+export async function launchMentionsCountWorkflow({
   workspaceId,
 }: {
   workspaceId: string;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `mention-count-queue-${workspaceId}`;
+  const workflowId = `mentions-count-queue-${workspaceId}`;
 
   try {
     // if workflow is already running, no need to update mention count again
@@ -31,7 +31,7 @@ export async function launchMentionCountWorkflow({
       return new Ok(workflowId);
     }
 
-    await client.workflow.start(mentionCountWorkflow, {
+    await client.workflow.start(mentionsCountWorkflow, {
       args: [workspaceId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,

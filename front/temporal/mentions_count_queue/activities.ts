@@ -5,7 +5,7 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { safeRedisClient } from "@app/lib/redis";
 
-export async function mentionCountActivity(workspaceId: string) {
+export async function mentionsCountActivity(workspaceId: string) {
   const owner = await Workspace.findOne({ where: { sId: workspaceId } });
   if (!owner) {
     throw new Error(`Workspace ${workspaceId} not found`);

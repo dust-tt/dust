@@ -9,7 +9,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { redisClient } from "@app/lib/redis";
-import { launchMentionCountWorkflow } from "@app/temporal/mention_count_queue/client";
+import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
 // Ranking of agents is done over a 7 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
@@ -69,7 +69,7 @@ export async function getAgentsUsage({
       await storeCountsInRedis(workspaceId, agentMessageCounts, redis);
       // agent mention count is stale
     } else if (agentMessageCountTTL < MENTION_COUNT_UPDATE_PERIOD_SEC) {
-      await launchMentionCountWorkflow({ workspaceId });
+      await launchMentionsCountWorkflow({ workspaceId });
     }
 
     // Retrieve and parse agents usage
@@ -151,7 +151,7 @@ export async function agentMentionsCount(
       ],
     ],
     where: {
-      workspaceId: workspaceId,
+      workspaceId,
     },
     include: [
       {
