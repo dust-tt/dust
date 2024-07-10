@@ -1,4 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { slugify } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import tracer from "dd-trace";
 import fs from "fs/promises";
@@ -17,7 +18,10 @@ import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
+import {
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertTableFromCsv,
+} from "@connectors/lib/data_sources";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_LARGE_DOCUMENT_TXT_LEN,
@@ -323,6 +327,49 @@ export async function syncOneFile(
               );
               return false;
             }
+          }
+        } else if (file.mimeType === "text/csv") {
+          if (res.data instanceof ArrayBuffer) {
+            // If data is > 4 times the limit, we skip the file since even if
+            // converted to utf-8 it will overcome the limit enforced below. This
+            // avoids operations on very long text files, that can cause
+            // Buffer.toString to crash if the file is > 500MB
+            if (res.data.byteLength > 4 * maxDocumentLen) {
+              localLogger.info({}, `File too big to be chunked. Skipping`);
+              return false;
+            }
+            const tableCsv = Buffer.from(res.data).toString("utf-8").trim();
+            const tableId = file.id;
+            const tableName = slugify(file.name.substring(0, 32));
+            const tableDescription = `Structured data from Google Drive (${file.name})`;
+
+            await upsertTableFromCsv({
+              dataSourceConfig,
+              tableId,
+              tableName,
+              tableDescription,
+              tableCsv,
+              loggerArgs: {
+                connectorId,
+                fileId: tableId,
+                fileName: tableName,
+              },
+              truncate: true,
+            });
+
+            documentContent = {
+              prefix: null,
+              content: tableCsv,
+              sections: [],
+            };
+          } else {
+            localLogger.error(
+              {
+                resDataTypeOf: typeof res.data,
+                type: "download",
+              },
+              "Unexpected GDrive export response type"
+            );
           }
         }
       } else if (isGoogleDriveSpreadSheetFile(file)) {
