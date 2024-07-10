@@ -385,8 +385,12 @@ async function rowsFromCsv(
             DateTime.fromRFC2822,
             DateTime.fromHTTP,
             DateTime.fromSQL,
-            // Google Spreadsheet date format parser.
+            // Google Spreadsheet date format parsers.
             (text: string) => DateTime.fromFormat(text, "d-MMM-yyyy"),
+            // Default Google Spreadsheet format - US date format.
+            (text: string) => DateTime.fromFormat(text, "M/d/yyyy"),
+            // Default Google Spreadsheet format - EU date format.
+            (text: string) => DateTime.fromFormat(text, "d/M/yyyy"),
           ];
           const trimmedV = v.trim();
           for (const parse of dateParsers) {
