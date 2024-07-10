@@ -17,6 +17,7 @@ import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/sp
 import {
   getDocumentId,
   getDriveClient,
+  isValidCsv,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -339,6 +340,12 @@ export async function syncOneFile(
               return false;
             }
             const tableCsv = Buffer.from(res.data).toString("utf-8").trim();
+
+            const isValid = await isValidCsv(tableCsv);
+            if (!isValid) {
+              return false;
+            }
+
             const tableId = file.id;
             const tableName = slugify(file.name.substring(0, 32));
             const tableDescription = `Structured data from Google Drive (${file.name})`;
@@ -381,7 +388,7 @@ export async function syncOneFile(
           if (res.skipReason) {
             localLogger.info(
               {},
-              `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
+              "Google Spreadsheet document skipped with skip reason ${res.skipReason}"
             );
             skipReason = res.skipReason;
           }
