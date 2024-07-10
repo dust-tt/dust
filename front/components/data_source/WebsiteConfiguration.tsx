@@ -111,10 +111,10 @@ export default function WebsiteConfiguration({
   };
 
   useEffect(() => {
-    if (isUrlValid(dataSourceUrl) && !dataSourceName.length) {
+    if (isUrlValid(dataSourceUrl)) {
       setDataSourceName(urlToDataSourceName(dataSourceUrl));
     }
-  }, [dataSourceUrl, dataSourceName.length]);
+  }, [dataSourceUrl]);
 
   const validateForm = useCallback(() => {
     let urlError = null;
