@@ -40,12 +40,23 @@ async function handler(
         res.status(200).json({ run: null });
         return;
       }
+
       const coreAPI = new CoreAPI(logger);
       const run = await coreAPI.getRunStatus({
         projectId: app.dustAPIProjectId,
         runId: runId,
       });
       if (run.isErr()) {
+        if (run.error.code === "run_not_found") {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "run_not_found",
+              message: "The run was not found.",
+            },
+          });
+        }
+
         return apiError(req, res, {
           status_code: 500,
           api_error: {

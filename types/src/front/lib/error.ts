@@ -83,7 +83,9 @@ export type APIErrorType =
   // Files:
   | "file_not_found"
   | "file_too_large"
-  | "file_type_not_supported";
+  | "file_type_not_supported"
+  // Runs:
+  | "run_not_found";
 
 export type APIError = {
   type: APIErrorType;
