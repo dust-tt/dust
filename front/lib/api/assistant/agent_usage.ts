@@ -14,6 +14,9 @@ import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/
 // Ranking of agents is done over a 7 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
 
+//
+const MENTION_COUNT_TTL = 60 * 60 * 24 * 7; // 7 days
+
 // Computing agent mention count over a 4h period
 const MENTION_COUNT_UPDATE_PERIOD_SEC = 4 * 60 * 60;
 
@@ -68,7 +71,10 @@ export async function getAgentsUsage({
       await launchMentionsCountWorkflow({ workspaceId });
       return [];
       // agent mention count is stale
-    } else if (agentMessageCountTTL < MENTION_COUNT_UPDATE_PERIOD_SEC) {
+    } else if (
+      agentMessageCountTTL <
+      MENTION_COUNT_TTL - MENTION_COUNT_UPDATE_PERIOD_SEC
+    ) {
       await launchMentionsCountWorkflow({ workspaceId });
     }
 
@@ -203,7 +209,7 @@ export async function storeCountsInRedis(
   agentMessageCounts.forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
   });
-  transaction.expire(agentMessageCountKey, MENTION_COUNT_UPDATE_PERIOD_SEC * 2);
+  transaction.expire(agentMessageCountKey, MENTION_COUNT_TTL);
 
   const results = await transaction.exec();
   if (results.includes(null)) {
