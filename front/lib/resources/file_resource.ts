@@ -255,6 +255,7 @@ export class FileResource extends BaseResource<FileModel> {
         .createWriteStream({
           resumable: false,
           gzip: true,
+          contentType: this.contentType,
         });
     } else {
       return getPrivateUploadBucket()
@@ -262,6 +263,7 @@ export class FileResource extends BaseResource<FileModel> {
         .createWriteStream({
           resumable: false,
           gzip: true,
+          contentType: this.contentType,
         });
     }
   }
