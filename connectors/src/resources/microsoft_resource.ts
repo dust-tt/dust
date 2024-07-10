@@ -2,7 +2,10 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/graph_api";
+import {
+  internalId as internalIdFromNode,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/graph_api";
 import {
   MicrosoftConfigurationModel,
   MicrosoftDeltaModel,
@@ -12,6 +15,8 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -322,6 +327,44 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     });
 
     return new this(this.model, newNode.get());
+  }
+
+  static async batchGetOrCreateFromNodes(
+    connectorId: ModelId,
+    nodes: MicrosoftNode[]
+  ): Promise<MicrosoftNodeResource[]> {
+    const internalIds = nodes.map((root) => internalIdFromNode(root));
+
+    const nodeModels = await MicrosoftNodeModel.findAll({
+      where: {
+        connectorId,
+        internalId: internalIds,
+      },
+    });
+
+    return concurrentExecutor(
+      nodes,
+      async (root) => {
+        const internalId = internalIdFromNode(root);
+        const node = nodeModels.find((node) => node.internalId === internalId);
+        if (node) {
+          return new this(this.model, node.get());
+        }
+        // Create a new node -- parentInternalId will be populated during the
+        // sync if relevant
+        const newNode = await MicrosoftNodeModel.create({
+          connectorId,
+          internalId,
+          nodeType: root.nodeType,
+          name: root.name,
+          parentInternalId: null,
+          mimeType: root.mimeType,
+        });
+
+        return new this(this.model, newNode.get());
+      },
+      { concurrency: 10 }
+    );
   }
 
   toJSON() {

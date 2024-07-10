@@ -181,22 +181,6 @@ export async function syncFiles({
   );
   const client = await getClient(connector.connectionId);
 
-  const { itemAPIPath, nodeType } = typeAndPathFromInternalId(parentInternalId);
-
-  // TODO(pr) type this
-  const item = await getItem(client, itemAPIPath);
-
-  if (!item) {
-    throw new Error(`Item not found: ${itemAPIPath}`);
-  }
-
-  parent.update({
-    name: item.name,
-    mimeType: item.folder
-      ? "application/vnd.google-apps.folder"
-      : item.file?.mimeType,
-  });
-
   // TODO(pr): handle pagination
   const children = await getFilesAndFolders(client, parent.internalId);
 

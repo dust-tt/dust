@@ -158,31 +158,34 @@ export type MicrosoftEntityMapping = {
   [K in keyof MicrosoftEntity]: MicrosoftEntity[K];
 };
 
-type test = MicrosoftEntityMapping["folder"];
-
 export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
   nodeType: T,
-  item: MicrosoftEntityMapping[T]
+  itemRaw: MicrosoftEntityMapping[T]
 ): MicrosoftNode & { nodeType: T } {
   switch (nodeType) {
-    case "folder":
+    case "folder": {
+      const item: MicrosoftGraph.DriveItem = itemRaw as any;
       return {
         nodeType,
-        name: item.name,
-        itemAPIPath: item.id,
-        mimeType: "application/vnd.google-apps.folder",
+        name: item.name ?? null,
+        itemAPIPath: getDriveItemAPIPath(item),
+        mimeType: null,
       };
-    case "file":
+    }
+    case "file": {
+      const item: MicrosoftGraph.DriveItem = itemRaw as any;
       return {
         nodeType,
-        name: item.name,
+        name: item.name ?? null,
         itemAPIPath: getDriveItemAPIPath(item),
         mimeType: item.file?.mimeType ?? null,
       };
+    }
     case "drive":
+      const item: MicrosoftGraph.Drive = itemRaw as any;
       return {
         nodeType,
-        name: item.name,
+        name: item.name ?? null,
         itemAPIPath: getDriveAPIPath(item),
         mimeType: null,
       };
