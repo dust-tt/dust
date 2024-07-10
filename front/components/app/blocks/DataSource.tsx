@@ -73,7 +73,7 @@ export default function DataSource({
     setNewTagsIn("");
   };
 
-  const handleRemoveTagsIn = () => {
+  const handleRemoveTagsIn = (index?: number) => {
     const b = shallowBlockClone(block);
     if (!b.config.filter) {
       b.config.filter = {};
@@ -87,7 +87,16 @@ export default function DataSource({
     if (!b.config.filter.tags.in) {
       b.config.filter.tags.in = [];
     }
-    b.config.filter.tags.in.splice(b.config.filter.tags.in.length - 1, 1);
+
+    if (
+      index !== undefined &&
+      Number.isFinite(index) &&
+      index < b.config.filter.tags.in.length
+    ) {
+      b.config.filter.tags.in.splice(index, 1);
+    } else {
+      b.config.filter.tags.in.splice(b.config.filter.tags.in.length - 1, 1);
+    }
     if (b.config.filter.tags.in.length === 0) {
       b.config.filter.tags.in = null;
     }
@@ -114,7 +123,7 @@ export default function DataSource({
     setNewTagsNot("");
   };
 
-  const handleRemoveTagsNot = () => {
+  const handleRemoveTagsNot = (index?: number) => {
     const b = shallowBlockClone(block);
     if (!b.config.filter) {
       b.config.filter = {};
@@ -128,7 +137,16 @@ export default function DataSource({
     if (!b.config.filter.tags.not) {
       b.config.filter.tags.not = [];
     }
-    b.config.filter.tags.not.splice(b.config.filter.tags.not.length - 1, 1);
+
+    if (
+      index !== undefined &&
+      Number.isFinite(index) &&
+      index < b.config.filter.tags.not.length
+    ) {
+      b.config.filter.tags.not.splice(index, 1);
+    } else {
+      b.config.filter.tags.not.splice(b.config.filter.tags.not.length - 1, 1);
+    }
     if (b.config.filter.tags.not.length === 0) {
       b.config.filter.tags.not = null;
     }
@@ -309,6 +327,12 @@ export default function DataSource({
                               className="flex rounded-md bg-slate-100 px-1"
                             >
                               {tag}
+                              <span
+                                onClick={() => handleRemoveTagsIn(i)}
+                                className="ml-1 cursor-pointer"
+                              >
+                                &nbsp;x
+                              </span>
                             </div>
                           )
                         )}
@@ -316,7 +340,7 @@ export default function DataSource({
                       {readOnly ? null : (
                         <input
                           type="text"
-                          placeholder="add"
+                          placeholder="add tag"
                           value={newTagsIn}
                           onChange={(e) => setNewTagsIn(e.target.value)}
                           className={classNames(
@@ -324,7 +348,7 @@ export default function DataSource({
                             "placeholder-gray-300",
                             readOnly
                               ? "border-white ring-0 focus:border-white focus:ring-0"
-                              : "border-white focus:border-gray-300 focus:ring-0"
+                              : "border-gray-300 focus:border-gray-500 focus:ring-0"
                           )}
                           readOnly={readOnly}
                           onBlur={(e) => {
@@ -371,6 +395,12 @@ export default function DataSource({
                               className="flex rounded-md bg-slate-100 px-1"
                             >
                               {tag}
+                              <span
+                                onClick={() => handleRemoveTagsNot(i)}
+                                className="ml-1 cursor-pointer"
+                              >
+                                &nbsp;x
+                              </span>
                             </div>
                           )
                         )}
@@ -378,7 +408,7 @@ export default function DataSource({
                       {readOnly ? null : (
                         <input
                           type="text"
-                          placeholder="add"
+                          placeholder="add tag"
                           value={newTagsNot}
                           onChange={(e) => setNewTagsNot(e.target.value)}
                           className={classNames(
@@ -386,7 +416,7 @@ export default function DataSource({
                             "placeholder-gray-300",
                             readOnly
                               ? "border-white ring-0 focus:border-white focus:ring-0"
-                              : "border-white focus:border-gray-300 focus:ring-0"
+                              : "border-gray-300 focus:border-gray-500 focus:ring-0"
                           )}
                           readOnly={readOnly}
                           onBlur={(e) => {
