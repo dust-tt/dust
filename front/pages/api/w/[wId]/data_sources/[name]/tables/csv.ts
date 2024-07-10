@@ -6,8 +6,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { apiError } from "@app/logger/withlogging";
@@ -50,17 +50,10 @@ export type UpsertTableFromCsvRequestBody = Omit<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  if (!owner || !plan || !auth.isBuilder()) {
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -95,7 +88,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);
 
 export async function handlePostTableCsvUpsertRequest(
   auth: Authenticator,

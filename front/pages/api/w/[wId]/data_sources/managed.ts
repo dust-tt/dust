@@ -19,12 +19,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import {
-  Authenticator,
-  getOrCreateSystemApiKey,
-  getSession,
-} from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -49,15 +46,11 @@ export type PostManagedDataSourceResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostManagedDataSourceResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostManagedDataSourceResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
+  const owner = auth.getNonNullableWorkspace();
 
-  const owner = auth.workspace();
   const plan = auth.plan();
   const user = auth.user();
   if (
@@ -433,4 +426,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

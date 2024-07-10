@@ -6,8 +6,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -21,14 +21,9 @@ export type GetContentNodesResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetContentNodesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetContentNodesResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -36,18 +31,6 @@ async function handler(
         type: "data_source_auth_error",
         message:
           "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
-      },
-    });
-  }
-
-  const owner = auth.workspace();
-
-  if (!owner || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
       },
     });
   }
@@ -160,4 +143,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

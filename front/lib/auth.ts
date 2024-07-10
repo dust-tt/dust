@@ -459,6 +459,18 @@ export class Authenticator {
       : null;
   }
 
+  getNonNullableWorkspace(): WorkspaceType {
+    const workspace = this.workspace();
+
+    if (!workspace) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullableWorkspace`."
+      );
+    }
+
+    return workspace;
+  }
+
   subscription(): SubscriptionType | null {
     return this._subscription;
   }

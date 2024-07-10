@@ -4,8 +4,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError } from "@app/logger/withlogging";
 import {
@@ -29,18 +29,12 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<GetLabsTranscriptsConfigurationResponseBody>
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-
-  const owner = auth.workspace();
   const userId = auth.user()?.id;
 
-  if (!owner || !userId) {
+  if (!userId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -49,6 +43,8 @@ async function handler(
       },
     });
   }
+
+  const owner = auth.getNonNullableWorkspace();
 
   if (!owner.flags.includes("labs_transcripts")) {
     return apiError(req, res, {
@@ -152,4 +148,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);

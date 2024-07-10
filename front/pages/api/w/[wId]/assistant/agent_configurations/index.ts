@@ -27,8 +27,8 @@ import {
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
-import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
@@ -48,23 +48,10 @@ async function handler(
       | PostAgentConfigurationResponseBody
       | void
     >
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const session = await getSession(req, res);
-  const auth = await Authenticator.fromSession(
-    session,
-    req.query.wId as string
-  );
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
-      },
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {
     case "GET":
@@ -255,7 +242,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForWorkspace(handler);
 
 /**
  * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided, it will create a
