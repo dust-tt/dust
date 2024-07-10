@@ -9,9 +9,11 @@ import { Err, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
-import { PassThrough, Readable } from "stream";
+import type { TransformCallback } from "stream";
+import { PassThrough, Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
+import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -188,6 +190,28 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
     );
 
     // Process the second stream for snippet file
+    const createCSVColumnAnalyzer = () => {
+      const rows: CSVRow[] = [];
+      return new Transform({
+        objectMode: true,
+        transform(
+          chunk: CSVRow,
+          encoding: string,
+          callback: TransformCallback
+        ) {
+          rows.push(chunk);
+          callback();
+        },
+        flush(callback: TransformCallback) {
+          analyzeCSVColumns(rows)
+            .then((columnTypes) => {
+              this.push(JSON.stringify(columnTypes, null, 2));
+              callback();
+            })
+            .catch((err) => callback(err));
+        },
+      });
+    };
     const snippetPipeline = pipeline(
       readStream.pipe(new PassThrough()),
       parse({
@@ -195,15 +219,9 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
         skip_empty_lines: true,
         trim: true,
       }),
-      analyzeCSVColumns,
-      async function* (schema) {
-        for await (const schemaData of schema) {
-          yield JSON.stringify(schemaData, null, 2);
-        }
-      },
+      createCSVColumnAnalyzer(),
       schemaWriteStream
     );
-
     // Wait for both pipelines to finish
     await Promise.all([processedPipeline, snippetPipeline]);
 

@@ -8,7 +8,7 @@ interface ColumnTypeInfo {
   possibleValues?: string[];
 }
 
-interface CSVRow {
+export interface CSVRow {
   [key: string]: string;
 }
 
@@ -73,33 +73,33 @@ function detectColumnType(columnValues: Iterable<string>): ColumnTypeInfo {
 /**
  * Analyze each column of a CSV row by row to determine column types incrementally.
  */
-export async function* analyzeCSVColumns(
-  source: AsyncIterable<CSVRow>
-): AsyncIterable<Record<string, ColumnTypeInfo>> {
+export async function analyzeCSVColumns(
+  rows: CSVRow[]
+): Promise<Record<string, ColumnTypeInfo>> {
   const columnSamples: Record<string, Set<string>> = {};
   const columnTypes: Record<string, ColumnTypeInfo> = {};
-  let initialized = false;
 
-  for await (const row of source) {
-    if (!initialized) {
-      for (const column of Object.keys(row)) {
-        columnSamples[column] = new Set();
-      }
-      initialized = true;
+  // Initialize column samples
+  if (rows.length > 0) {
+    for (const column of Object.keys(rows[0])) {
+      columnSamples[column] = new Set();
     }
+  }
 
-    for (const column of Object.keys(row)) {
+  // Collect samples
+  rows.forEach((row) => {
+    Object.keys(row).forEach((column) => {
       columnSamples[column].add(row[column]);
-    }
-  }
+    });
+  });
 
-  for (const column of Object.keys(columnSamples)) {
+  // Determine column types
+  Object.keys(columnSamples).forEach((column) => {
     columnTypes[column] = detectColumnType(columnSamples[column]);
-  }
+  });
 
-  yield columnTypes;
+  return columnTypes;
 }
-
 export async function guessDelimiter(csv: string): Promise<string | undefined> {
   // Detect the delimiter: try to parse the first 2 lines with different delimiters,
   // keep the one that works for both lines and has the most columns.
