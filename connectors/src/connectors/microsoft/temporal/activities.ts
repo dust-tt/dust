@@ -10,9 +10,11 @@ import {
   getDriveItemAPIPath,
   getDrives,
   getFilesAndFolders,
+  getItem,
   getSiteAPIPath,
   getSites,
-  microsoftInternalIdFromNodeData,
+  internalId,
+  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
@@ -69,7 +71,7 @@ export async function getSiteNodesToSync(
     rootSiteNodes.push(
       ...msSites.map(
         (site): MicrosoftNodeData => ({
-          itemApiPath: getSiteAPIPath(site),
+          itemAPIPath: getSiteAPIPath(site),
           nodeType: "site",
         })
       )
@@ -80,12 +82,9 @@ export async function getSiteNodesToSync(
     await concurrentExecutor(
       rootSiteNodes,
       async (site) => {
-        const msDrives = await getDrives(
-          client,
-          microsoftInternalIdFromNodeData(site)
-        );
+        const msDrives = await getDrives(client, internalId(site));
         return msDrives.map((drive) => ({
-          itemApiPath: getDriveAPIPath(drive),
+          itemAPIPath: getDriveAPIPath(drive),
           nodeType: "drive" as const,
         }));
       },
@@ -99,7 +98,7 @@ export async function getSiteNodesToSync(
       const x = acc.find(
         (item) =>
           item.nodeType === current.nodeType &&
-          item.itemApiPath === current.itemApiPath
+          item.itemAPIPath === current.itemAPIPath
       );
       if (!x) {
         return acc.concat([current]);
@@ -110,12 +109,7 @@ export async function getSiteNodesToSync(
     [] as MicrosoftNodeData[]
   );
 
-  return (
-    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
-      connectorId,
-      allNodes
-    )
-  ).map((r) => r.internalId);
+  return allNodes.map((r) => internalId(r));
 }
 
 export async function markNodeAsVisited(
@@ -156,7 +150,7 @@ export async function syncFiles({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const parent = await MicrosoftNodeResource.fetchByInternalId(
+  const parent = await MicrosoftNodeResource.getOrCreate(
     connectorId,
     parentInternalId
   );
@@ -186,6 +180,22 @@ export async function syncFiles({
     `[SyncFiles] Start sync`
   );
   const client = await getClient(connector.connectionId);
+
+  const { itemAPIPath, nodeType } = typeAndPathFromInternalId(parentInternalId);
+
+  // TODO(pr) type this
+  const item = await getItem(client, itemAPIPath);
+
+  if (!item) {
+    throw new Error(`Item not found: ${itemAPIPath}`);
+  }
+
+  parent.update({
+    name: item.name,
+    mimeType: item.folder
+      ? "application/vnd.google-apps.folder"
+      : item.file?.mimeType,
+  });
 
   // TODO(pr): handle pagination
   const children = await getFilesAndFolders(client, parent.internalId);
@@ -223,20 +233,18 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
-  const childFolderResources =
-    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
-      connectorId,
-      children
-        .filter((item) => item.folder)
-        .map((child) => ({
-          itemApiPath: getDriveItemAPIPath(child),
-          nodeType: child.folder ? "folder" : "file",
-        }))
-    );
+  const childNodes = children
+    .filter((item) => item.folder)
+    .map((item) => {
+      return internalId({
+        itemAPIPath: getDriveItemAPIPath(item),
+        nodeType: "folder",
+      });
+    });
 
   return {
     count,
-    childNodes: childFolderResources.map((r) => r.internalId),
+    childNodes,
   };
 }
 
@@ -268,8 +276,8 @@ export async function syncOneFile({
 
   const itemApiPath = getDriveItemAPIPath(file);
 
-  const documentId = microsoftInternalIdFromNodeData({
-    itemApiPath,
+  const documentId = internalId({
+    itemAPIPath: itemApiPath,
     nodeType: "file",
   });
 

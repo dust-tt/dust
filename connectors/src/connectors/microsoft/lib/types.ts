@@ -18,3 +18,10 @@ export function isValidNodeType(
 ): nodeType is MicrosoftNodeType {
   return MICROSOFT_NODE_TYPES.includes(nodeType as MicrosoftNodeType);
 }
+
+export type MicrosoftNode = {
+  nodeType: MicrosoftNodeType;
+  name: string | null;
+  itemAPIPath: string;
+  mimeType: string | null;
+};

@@ -74,7 +74,7 @@ export class MicrosoftRootModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare itemApiPath: string;
+  declare itemAPIPath: string;
   declare nodeType: MicrosoftNodeType;
 }
 MicrosoftRootModel.init(
@@ -98,7 +98,7 @@ MicrosoftRootModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    itemApiPath: {
+    itemAPIPath: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -213,7 +213,7 @@ export class MicrosoftDeltaModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare rootId: ForeignKey<MicrosoftRootModel["itemApiPath"]>;
+  declare rootId: ForeignKey<MicrosoftRootModel["itemAPIPath"]>;
   declare deltaToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
