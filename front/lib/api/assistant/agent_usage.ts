@@ -1,4 +1,4 @@
-import type { AgentConfigurationType, AgentUsageType } from "@dust-tt/types";
+import type { AgentConfigurationType } from "@dust-tt/types";
 import { literal, Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -20,7 +20,7 @@ const MENTION_COUNT_UPDATE_PERIOD_SEC = 4 * 60 * 60;
 const TTL_KEY_NOT_EXIST = -2;
 const TTL_KEY_NOT_SET = -1;
 
-type agentUsage = {
+type AgentUsageCount = {
   agentId: string;
   messageCount: number;
   timePeriodSec: number;
@@ -46,7 +46,7 @@ export async function getAgentsUsage({
   workspaceId: string;
   providedRedis?: Awaited<ReturnType<typeof redisClient>>;
   limit?: number;
-}): Promise<agentUsage[]> {
+}): Promise<AgentUsageCount[]> {
   const owner = await Workspace.findOne({ where: { sId: workspaceId } });
   if (!owner) {
     throw new Error(`Workspace ${workspaceId} not found`);
@@ -65,8 +65,14 @@ export async function getAgentsUsage({
       agentMessageCountTTL === TTL_KEY_NOT_EXIST ||
       agentMessageCountTTL === TTL_KEY_NOT_SET
     ) {
-      const agentMessageCounts = await agentMentionsCount(owner.id);
-      await storeCountsInRedis(workspaceId, agentMessageCounts, redis);
+      void (async () => {
+        const agentMessageCounts = await agentMentionsCount(owner.id);
+        void safeRedisClient((redis) =>
+          storeCountsInRedis(workspaceId, agentMessageCounts, redis)
+        );
+      })();
+      return [];
+
       // agent mention count is stale
     } else if (agentMessageCountTTL < MENTION_COUNT_UPDATE_PERIOD_SEC) {
       await launchMentionsCountWorkflow({ workspaceId });
@@ -100,7 +106,7 @@ export async function getAgentUsage(
     agentConfiguration: AgentConfigurationType;
     providedRedis?: Awaited<ReturnType<typeof redisClient>>;
   }
-): Promise<AgentUsageType> {
+): Promise<AgentUsageCount | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected unauthenticated call");
@@ -121,11 +127,13 @@ export async function getAgentUsage(
       agentMessageCountKey,
       agentConfigurationId
     );
-    const messageCount = agentUsage ? parseInt(agentUsage, 10) : 0;
-    return {
-      messageCount,
-      timePeriodSec: rankingTimeframeSec,
-    };
+    return agentUsage
+      ? {
+          agentId: agentConfigurationId,
+          messageCount: parseInt(agentUsage, 10),
+          timePeriodSec: rankingTimeframeSec,
+        }
+      : null;
   } finally {
     if (redis && !providedRedis) {
       await redis.quit();
