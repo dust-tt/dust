@@ -88,7 +88,7 @@ export async function getContentFragmentBlob(
       contentType: file.contentType,
       fileId: file.id,
       sourceUrl,
-      textBytes: null,
+      textBytes: file.fileSize,
       title,
     });
   }
