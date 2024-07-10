@@ -1,5 +1,4 @@
 import { cacheWithRedis } from "@dust-tt/types";
-import { parse } from "csv-parse";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
@@ -177,85 +176,4 @@ export async function getDriveClient(
   }
 
   throw new Error("Invalid auth_credentials type");
-}
-
-export async function isValidCsv(csv: string): Promise<boolean> {
-  try {
-    const delimiter = await guessCsvDelimiter(csv);
-    if (!delimiter) {
-      return false;
-    }
-
-    const parser = parse(csv, { delimiter });
-    let header: string[] | undefined = undefined;
-    const headerSet = new Set<string>();
-
-    for await (const record of parser) {
-      if (!Array.isArray(record) || record.some((r) => typeof r !== "string")) {
-        return false;
-      }
-
-      if (!header) {
-        header = record.map((h) => h.trim().toLowerCase());
-        const firstEmptyCellIndex = header.indexOf("");
-        if (firstEmptyCellIndex !== -1) {
-          if (header.slice(firstEmptyCellIndex).some((c) => c !== "")) {
-            return false;
-          }
-          header = header.slice(0, firstEmptyCellIndex);
-        }
-
-        for (const h of header) {
-          if (headerSet.has(h)) {
-            return false;
-          }
-          headerSet.add(h);
-        }
-      } else {
-        if (record.length !== header.length) {
-          return false;
-        }
-      }
-    }
-    return !!header && headerSet.size > 0;
-  } catch (error) {
-    return false;
-  }
-}
-
-async function guessCsvDelimiter(csv: string): Promise<string | undefined> {
-  const possibleDelimiters = [",", ";", "\t"];
-  let bestDelimiter: string | undefined;
-  let maxColumns = 0;
-
-  for (const delimiter of possibleDelimiters) {
-    try {
-      const parser = parse(csv, {
-        delimiter,
-        to_line: 2, // Only parse first two lines
-        skip_empty_lines: true,
-      });
-
-      const rows: string[][] = [];
-      for await (const record of parser) {
-        rows.push(record);
-        if (rows.length === 2) {
-          break;
-        } // Stop after we have two rows
-      }
-
-      if (rows.length >= 2 && rows[0] && rows[1]) {
-        const firstRowLength = rows[0].length;
-        const secondRowLength = rows[1].length;
-        if (firstRowLength > maxColumns && firstRowLength === secondRowLength) {
-          maxColumns = firstRowLength;
-          bestDelimiter = delimiter;
-        }
-      }
-    } catch {
-      // If parsing fails, try the next delimiter
-    }
-  }
-
-  return bestDelimiter;
 }
