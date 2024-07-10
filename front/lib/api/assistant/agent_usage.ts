@@ -32,7 +32,7 @@ type mentionCount = {
   timePeriodSec: number;
 };
 
-function getUsageKey(workspaceId: string) {
+function _getUsageKey(workspaceId: string) {
   // One hash per workspace with keys the agent id and value the corresponding
   // number of mentions
   return `agent_usage_count_${workspaceId}`;
@@ -54,7 +54,7 @@ export async function getAgentsUsage({
 
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
 
-  const agentMessageCountKey = getUsageKey(workspaceId);
+  const agentMessageCountKey = _getUsageKey(workspaceId);
 
   try {
     redis = providedRedis ?? (await redisClient());
@@ -112,7 +112,7 @@ export async function getAgentUsage(
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
   const { sId: agentConfigurationId } = agentConfiguration;
 
-  const agentMessageCountKey = getUsageKey(workspaceId);
+  const agentMessageCountKey = _getUsageKey(workspaceId);
 
   try {
     redis = providedRedis ?? (await redisClient());
@@ -196,7 +196,7 @@ export async function storeCountsInRedis(
   redis: Awaited<ReturnType<typeof redisClient>>
 ) {
   const transaction = redis.multi();
-  const agentMessageCountKey = getUsageKey(workspaceId);
+  const agentMessageCountKey = _getUsageKey(workspaceId);
 
   agentMessageCounts.forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
@@ -220,7 +220,7 @@ export async function signalAgentUsage({
 
   try {
     redis = await redisClient();
-    const agentMessageCountKey = getUsageKey(workspaceId);
+    const agentMessageCountKey = _getUsageKey(workspaceId);
     const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
     if (agentMessageCountTTL !== TTL_KEY_NOT_EXIST) {
