@@ -174,6 +174,22 @@ const extractTextFromPDF: PreprocessingFunction = async (
 
 // CSV preprocessing.
 // We upload the content of the CSV on the processed bucket and the schema in the snippet bucket.
+class CSVColumnAnalyzerTransform extends Transform {
+  private rows: CSVRow[] = [];
+
+  constructor(options = {}) {
+    super({ ...options, objectMode: true });
+  }
+  _transform(chunk: CSVRow, encoding: string, callback: TransformCallback) {
+    this.rows.push(chunk);
+    callback();
+  }
+  _flush(callback: TransformCallback) {
+    this.push(JSON.stringify(analyzeCSVColumns(this.rows), null, 2));
+    callback();
+  }
+}
+
 const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
@@ -190,24 +206,6 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
     );
 
     // Process the second stream for snippet file
-    const createCSVColumnAnalyzer = () => {
-      const rows: CSVRow[] = [];
-      return new Transform({
-        objectMode: true,
-        transform(
-          chunk: CSVRow,
-          encoding: string,
-          callback: TransformCallback
-        ) {
-          rows.push(chunk);
-          callback();
-        },
-        flush(callback: TransformCallback) {
-          this.push(JSON.stringify(analyzeCSVColumns(rows), null, 2));
-          callback();
-        },
-      });
-    };
     const snippetPipeline = pipeline(
       readStream.pipe(new PassThrough()),
       parse({
@@ -215,7 +213,7 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
         skip_empty_lines: true,
         trim: true,
       }),
-      createCSVColumnAnalyzer(),
+      new CSVColumnAnalyzerTransform(),
       schemaWriteStream
     );
     // Wait for both pipelines to finish
