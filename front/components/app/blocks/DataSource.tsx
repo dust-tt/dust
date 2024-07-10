@@ -88,7 +88,11 @@ export default function DataSource({
       b.config.filter.tags.in = [];
     }
     // Check if index is provided and valid, then remove the tag at that index
-    if (index !== undefined && index >= 0 && index < b.config.filter.tags.in.length) {
+    if (
+      index !== undefined &&
+      index >= 0 &&
+      index < b.config.filter.tags.in.length
+    ) {
       b.config.filter.tags.in.splice(index, 1);
     } else {
       // Existing logic to remove the last tag
@@ -121,32 +125,36 @@ export default function DataSource({
   };
 
   const handleRemoveTagsNot = (index?: number) => {
-      const b = shallowBlockClone(block);
-      if (!b.config.filter) {
-        b.config.filter = {};
-      }
-      if (!b.config.filter.tags) {
-        b.config.filter.tags = {
-          in: null,
-          not: null,
-        };
-      }
-      if (!b.config.filter.tags.not) {
-        b.config.filter.tags.not = [];
-      }
-      // Check if index is provided and valid, then remove the tag at that index
-      if (index !== undefined && index >= 0 && index < b.config.filter.tags.not.length) {
-        b.config.filter.tags.not.splice(index, 1);
-      } else {
-        // Existing logic to remove the last tag
-        b.config.filter.tags.not.splice(b.config.filter.tags.not.length - 1, 1);
-      }
-      if (b.config.filter.tags.not.length === 0) {
-        b.config.filter.tags.not = null;
-      }
-      onBlockUpdate(b);
-      setNewTagsNot("");
-    };
+    const b = shallowBlockClone(block);
+    if (!b.config.filter) {
+      b.config.filter = {};
+    }
+    if (!b.config.filter.tags) {
+      b.config.filter.tags = {
+        in: null,
+        not: null,
+      };
+    }
+    if (!b.config.filter.tags.not) {
+      b.config.filter.tags.not = [];
+    }
+    // Check if index is provided and valid, then remove the tag at that index
+    if (
+      index !== undefined &&
+      index >= 0 &&
+      index < b.config.filter.tags.not.length
+    ) {
+      b.config.filter.tags.not.splice(index, 1);
+    } else {
+      // Existing logic to remove the last tag
+      b.config.filter.tags.not.splice(b.config.filter.tags.not.length - 1, 1);
+    }
+    if (b.config.filter.tags.not.length === 0) {
+      b.config.filter.tags.not = null;
+    }
+    onBlockUpdate(b);
+    setNewTagsNot("");
+  };
 
   const handleDataSourcesChange = (
     dataSources: { workspace_id: string; data_source_id: string }[]
@@ -321,7 +329,10 @@ export default function DataSource({
                               className="flex rounded-md bg-slate-100 px-1"
                             >
                               {tag}
-                              <span onClick={() => handleRemoveTagsIn(i)} className="cursor-pointer ml-1">
+                              <span
+                                onClick={() => handleRemoveTagsIn(i)}
+                                className="ml-1 cursor-pointer"
+                              >
                                 &nbsp;x
                               </span>
                             </div>
@@ -331,7 +342,7 @@ export default function DataSource({
                       {readOnly ? null : (
                         <input
                           type="text"
-                          placeholder="add"
+                          placeholder="add tag"
                           value={newTagsIn}
                           onChange={(e) => setNewTagsIn(e.target.value)}
                           className={classNames(
@@ -386,7 +397,10 @@ export default function DataSource({
                               className="flex rounded-md bg-slate-100 px-1"
                             >
                               {tag}
-                              <span onClick={() => handleRemoveTagsNot(i)} className="cursor-pointer ml-1">
+                              <span
+                                onClick={() => handleRemoveTagsNot(i)}
+                                className="ml-1 cursor-pointer"
+                              >
                                 &nbsp;x
                               </span>
                             </div>
