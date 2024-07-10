@@ -385,6 +385,8 @@ export function AgentMessage({
           },
         ];
 
+  // References logic.
+
   function updateActiveReferences(
     document: RetrievalDocumentType | WebsearchResultType,
     index: number
@@ -398,6 +400,16 @@ export function AgentMessage({
   const [lastHoveredReference, setLastHoveredReference] = useState<
     number | null
   >(null);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (lastHoveredReference !== null) {
+      timer = setTimeout(() => {
+        setLastHoveredReference(null);
+      }, 1000); // Reset after 1 second.
+    }
+    return () => clearTimeout(timer);
+  }, [lastHoveredReference]);
 
   useEffect(() => {
     // Retrieval actions
