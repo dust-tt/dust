@@ -8,7 +8,7 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
-import { redisClient, safeRedisClient } from "@app/lib/redis";
+import { redisClient } from "@app/lib/redis";
 import { launchMentionCountWorkflow } from "@app/temporal/mention_count_queue/client";
 
 // Ranking of agents is done over a 7 days period.
