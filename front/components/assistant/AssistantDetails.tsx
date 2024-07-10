@@ -212,7 +212,10 @@ export function AssistantDetails({
             </div>
           )}
           {usageSentence ? (
-            <div>{editedSentence + ", "}{usageSentence}</div>
+            <div>
+              {editedSentence + ", "}
+              {usageSentence}
+            </div>
           ) : (
             <div className="justify-self-end">{editedSentence}</div>
           )}
