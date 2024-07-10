@@ -343,6 +343,7 @@ export async function syncOneFile(
 
             const isValid = await isValidCsv(tableCsv);
             if (!isValid) {
+              localLogger.info({}, "File is not a valid CSV. Skipping");
               return false;
             }
 
@@ -350,25 +351,28 @@ export async function syncOneFile(
             const tableName = slugify(file.name.substring(0, 32));
             const tableDescription = `Structured data from Google Drive (${file.name})`;
 
-            await upsertTableFromCsv({
-              dataSourceConfig,
-              tableId,
-              tableName,
-              tableDescription,
-              tableCsv,
-              loggerArgs: {
-                connectorId,
-                fileId: tableId,
-                fileName: tableName,
-              },
-              truncate: true,
-            });
-
-            documentContent = {
-              prefix: null,
-              content: tableCsv,
-              sections: [],
-            };
+            try {
+              await upsertTableFromCsv({
+                dataSourceConfig,
+                tableId,
+                tableName,
+                tableDescription,
+                tableCsv,
+                loggerArgs: {
+                  connectorId,
+                  fileId: tableId,
+                  fileName: tableName,
+                },
+                truncate: true,
+              });
+            } catch (err) {
+              localLogger.warn(
+                {
+                  error: err,
+                },
+                "Error while upserting table"
+              );
+            }
           } else {
             localLogger.error(
               {
@@ -399,8 +403,9 @@ export async function syncOneFile(
       }
 
       let upsertTimestampMs: number | undefined = undefined;
-      // We only upsert the document if it's not a google drive spreadsheet.
-      if (!isGoogleDriveSpreadSheetFile(file)) {
+      // We only upsert the document if it's not a google drive spreadsheet
+      // nor a csv.
+      if (!isGoogleDriveSpreadSheetFile(file) || file.mimeType === "text/csv") {
         const content = await renderDocumentTitleAndContent({
           dataSourceConfig,
           title: file.name,
