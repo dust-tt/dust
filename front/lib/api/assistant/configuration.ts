@@ -894,8 +894,9 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
     return false;
   }
 
-  const contentType =
-    await getPublicUploadBucket().getFileContentType(filename);
+  const contentType = await getPublicUploadBucket().getFileContentType(
+    decodeURIComponent(filename)
+  );
   if (!contentType) {
     return false;
   }
