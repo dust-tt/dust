@@ -894,6 +894,7 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
     return false;
   }
 
+  // Attempt to decode the URL, since Google Cloud Storage URL encodes the filename.
   const contentType = await getPublicUploadBucket().getFileContentType(
     decodeURIComponent(filename)
   );
