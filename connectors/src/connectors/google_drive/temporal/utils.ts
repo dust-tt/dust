@@ -179,55 +179,83 @@ export async function getDriveClient(
   throw new Error("Invalid auth_credentials type");
 }
 
-export async function isValidCsv(tableCsv: string): Promise<boolean> {
-  // Check if a string is a valid CSV
+export async function isValidCsv(csv: string): Promise<boolean> {
   try {
-    const delimiter = await guessCsvDelimiter(tableCsv);
-    parse(tableCsv, { delimiter });
-  } catch (err) {
-    if (err instanceof Error) {
+    const delimiter = await guessCsvDelimiter(csv);
+    if (!delimiter) {
       return false;
     }
+
+    const parser = parse(csv, { delimiter });
+    let header: string[] | undefined = undefined;
+    const headerSet = new Set<string>();
+
+    for await (const record of parser) {
+      if (!Array.isArray(record) || record.some((r) => typeof r !== "string")) {
+        return false;
+      }
+
+      if (!header) {
+        header = record.map((h) => h.trim().toLowerCase());
+        const firstEmptyCellIndex = header.indexOf("");
+        if (firstEmptyCellIndex !== -1) {
+          if (header.slice(firstEmptyCellIndex).some((c) => c !== "")) {
+            return false;
+          }
+          header = header.slice(0, firstEmptyCellIndex);
+        }
+
+        for (const h of header) {
+          if (headerSet.has(h)) {
+            return false;
+          }
+          headerSet.add(h);
+        }
+      } else {
+        if (record.length !== header.length) {
+          return false;
+        }
+      }
+    }
+    return !!header && headerSet.size > 0;
+  } catch (error) {
+    return false;
   }
-  return true;
 }
 
 async function guessCsvDelimiter(csv: string): Promise<string | undefined> {
-  // Detect the delimiter: try to parse the first 2 lines with different delimiters,
-  // keep the one that works for both lines and has the most columns.
-  let delimiter: string | undefined = undefined;
-  let delimiterColsCount = 0;
-  for (const d of [",", ";", "\t"]) {
-    const records: unknown[][] = [];
+  const possibleDelimiters = [",", ";", "\t"];
+  let bestDelimiter: string | undefined;
+  let maxColumns = 0;
+
+  for (const delimiter of possibleDelimiters) {
     try {
-      const parser = parse(csv, { delimiter: d });
+      const parser = parse(csv, {
+        delimiter,
+        to_line: 2, // Only parse first two lines
+        skip_empty_lines: true,
+      });
+
+      const rows: string[][] = [];
       for await (const record of parser) {
-        records.push(record);
-        if (records.length == 2) {
+        rows.push(record);
+        if (rows.length === 2) {
           break;
+        } // Stop after we have two rows
+      }
+
+      if (rows.length >= 2 && rows[0] && rows[1]) {
+        const firstRowLength = rows[0].length;
+        const secondRowLength = rows[1].length;
+        if (firstRowLength > maxColumns && firstRowLength === secondRowLength) {
+          maxColumns = firstRowLength;
+          bestDelimiter = delimiter;
         }
       }
-    } catch (e) {
-      // Ignore error.
-      continue;
-    }
-
-    const [firstRecord, secondRecord] = records;
-    // Check for more than one line to ensure sufficient data for accurate delimiter detection.
-    if (!secondRecord) {
-      continue;
-    }
-
-    if (
-      firstRecord &&
-      firstRecord.length &&
-      firstRecord.length === secondRecord.length
-    ) {
-      if (firstRecord.length > delimiterColsCount) {
-        delimiterColsCount = firstRecord.length;
-        delimiter = d;
-      }
+    } catch {
+      // If parsing fails, try the next delimiter
     }
   }
-  return delimiter;
+
+  return bestDelimiter;
 }
