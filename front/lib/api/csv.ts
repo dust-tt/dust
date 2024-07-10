@@ -8,26 +8,46 @@ interface ColumnTypeInfo {
   possibleValues: string[] | null;
 }
 
-export interface CSVRow {
+interface CSVRow {
   [key: string]: string;
 }
 
 /**
  * Detect the type of a column based on its values.
  */
-function detectColumnType(columnValues: string[]): ColumnTypeInfo {
-  const uniqueValues = new Set(columnValues);
+function detectColumnType(columnValues: Iterable<string>): ColumnTypeInfo {
+  const uniqueValues = new Set<string>();
+  let allNumbers = true;
+  let allBooleans = true;
 
-  if (columnValues.every((value) => !isNaN(Number(value)))) {
+  for (const value of columnValues) {
+    uniqueValues.add(value);
+
+    if (allNumbers && isNaN(Number(value))) {
+      allNumbers = false;
+    }
+
+    if (
+      allBooleans &&
+      !(value.toLowerCase() === "true" || value.toLowerCase() === "false")
+    ) {
+      allBooleans = false;
+    }
+
+    if (
+      !allNumbers &&
+      !allBooleans &&
+      uniqueValues.size > POSSIBLE_VALUES_MAX_COUNT
+    ) {
+      break; // Early exit if no further checks are needed
+    }
+  }
+
+  if (allNumbers) {
     return { type: "number", possibleValues: null };
   }
 
-  if (
-    columnValues.every(
-      (value) =>
-        value.toLowerCase() === "true" || value.toLowerCase() === "false"
-    )
-  ) {
+  if (allBooleans) {
     return { type: "boolean", possibleValues: null };
   }
 
@@ -44,20 +64,33 @@ function detectColumnType(columnValues: string[]): ColumnTypeInfo {
 }
 
 /**
- * Analyze the columns of a CSV file and return the type of each column.
+ * Analyze each column of a CSV row by row to determine column types incrementally.
  */
-export function analyzeCSVColumns(
-  csvData: CSVRow[]
-): Record<string, ColumnTypeInfo> {
+export async function* analyzeCSVColumns(
+  source: AsyncIterable<CSVRow>
+): AsyncIterable<Record<string, ColumnTypeInfo>> {
+  const columnSamples: Record<string, Set<string>> = {};
   const columnTypes: Record<string, ColumnTypeInfo> = {};
-  const columns = Object.keys(csvData[0]);
+  let initialized = false;
 
-  for (const column of columns) {
-    const columnValues = csvData.map((row) => row[column]);
-    columnTypes[column] = detectColumnType(columnValues);
+  for await (const row of source) {
+    if (!initialized) {
+      for (const column of Object.keys(row)) {
+        columnSamples[column] = new Set();
+      }
+      initialized = true;
+    }
+
+    for (const column of Object.keys(row)) {
+      columnSamples[column].add(row[column]);
+    }
   }
 
-  return columnTypes;
+  for (const column of Object.keys(columnSamples)) {
+    columnTypes[column] = detectColumnType(columnSamples[column]);
+  }
+
+  yield columnTypes;
 }
 
 export async function guessDelimiter(csv: string): Promise<string | undefined> {

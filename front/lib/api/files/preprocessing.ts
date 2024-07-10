@@ -12,7 +12,6 @@ import sharp from "sharp";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
-import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -184,6 +183,7 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
 
     const readStreamForSnippetFile = file.getReadStream(auth, "original");
     const schemaWriteStream = file.getWriteStream(auth, "snippet");
+
     await pipeline(
       readStreamForSnippetFile,
       parse({
@@ -191,13 +191,11 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
         skip_empty_lines: true,
         trim: true,
       }),
-      async function* (source) {
-        const csvRows: CSVRow[] = [];
-        for await (const row of source) {
-          csvRows.push(row);
+      analyzeCSVColumns, // Use the generator function to process rows
+      async function* (schema) {
+        for await (const schemaData of schema) {
+          yield JSON.stringify(schemaData, null, 2);
         }
-        const schema = analyzeCSVColumns(csvRows);
-        yield JSON.stringify(schema, null, 2);
       },
       schemaWriteStream
     );
@@ -212,10 +210,8 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
       },
       "Failed to extract text or snippet from CSV."
     );
-
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
-
     return new Err(new Error(`Failed extracting from CSV. ${errorMessage}`));
   }
 };
