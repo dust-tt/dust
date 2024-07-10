@@ -13,8 +13,8 @@ import { redisClient, safeRedisClient } from "@app/lib/redis";
 // Ranking of agents is done over a 7 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
 
-// Computing agent mention count over a 12h period
-const popularityComputationTimeframeSec = 12 * 60 * 60;
+// Computing agent mention count over a 4h period
+const popularityComputationTimeframeSec = 4 * 60 * 60;
 
 const TTL_KEY_NOT_EXIST = -2;
 const TTL_KEY_NOT_SET = -1;
