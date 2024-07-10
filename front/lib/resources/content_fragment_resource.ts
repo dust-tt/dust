@@ -415,9 +415,9 @@ export async function renderContentFragmentForModel(
   const { contentType, fileId, sId, title, textBytes } = message;
 
   try {
-    // If the content fragment is a file, we render it from the file and we have a logic
-    // to render a snippet version if it is a CSV file and the content is too large (CSV schema).
-    // If the content fragment is not a file (public API), we render the content always.
+    // Render content based on fragment type:
+    // - If the fragment is a file, render it from the file. For large CSV files, render a snippet version (CSV schema).
+    // - If the fragment is not a file (public API), always render the full content.
     if (fileId) {
       return await renderFromFileId(conversation.owner, {
         contentType,

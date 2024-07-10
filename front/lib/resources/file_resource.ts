@@ -121,6 +121,10 @@ export class FileResource extends BaseResource<FileModel> {
         await getPrivateUploadBucket()
           .file(this.getCloudStoragePath(auth, "snippet"))
           .delete({ ignoreNotFound: true });
+        // Delete the public file if it exists.
+        await getPublicUploadBucket()
+          .file(this.getCloudStoragePath(auth, "public"))
+          .delete({ ignoreNotFound: true });
       }
 
       await this.model.destroy({

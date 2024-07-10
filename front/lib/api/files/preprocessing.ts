@@ -9,7 +9,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
-import { Readable } from "stream";
+import { PassThrough, Readable } from "stream";
 import { pipeline } from "stream/promises";
 
 import { analyzeCSVColumns } from "@app/lib/api/csv";
@@ -177,21 +177,25 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
   file: FileResource
 ): Promise<Result<undefined, Error>> => {
   try {
-    const readStreamForProcessedFile = file.getReadStream(auth, "original");
+    const readStream = file.getReadStream(auth, "original");
     const processedWriteStream = file.getWriteStream(auth, "processed");
-    await pipeline(readStreamForProcessedFile, processedWriteStream);
-
-    const readStreamForSnippetFile = file.getReadStream(auth, "original");
     const schemaWriteStream = file.getWriteStream(auth, "snippet");
 
-    await pipeline(
-      readStreamForSnippetFile,
+    // Process the first stream for processed file
+    const processedPipeline = pipeline(
+      readStream.pipe(new PassThrough()),
+      processedWriteStream
+    );
+
+    // Process the second stream for snippet file
+    const snippetPipeline = pipeline(
+      readStream.pipe(new PassThrough()),
       parse({
         columns: true,
         skip_empty_lines: true,
         trim: true,
       }),
-      analyzeCSVColumns, // Use the generator function to process rows
+      analyzeCSVColumns,
       async function* (schema) {
         for await (const schemaData of schema) {
           yield JSON.stringify(schemaData, null, 2);
@@ -199,6 +203,9 @@ const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
       },
       schemaWriteStream
     );
+
+    // Wait for both pipelines to finish
+    await Promise.all([processedPipeline, snippetPipeline]);
 
     return new Ok(undefined);
   } catch (err) {

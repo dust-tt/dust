@@ -4,8 +4,8 @@ const POSSIBLE_VALUES_MAX_LEN = 32;
 const POSSIBLE_VALUES_MAX_COUNT = 16;
 
 interface ColumnTypeInfo {
-  type: "string" | "number" | "boolean" | "enum";
-  possibleValues: string[] | null;
+  type: "string" | "number" | "boolean";
+  possibleValues?: string[];
 }
 
 interface CSVRow {
@@ -43,24 +43,31 @@ function detectColumnType(columnValues: Iterable<string>): ColumnTypeInfo {
     }
   }
 
-  if (allNumbers) {
-    return { type: "number", possibleValues: null };
-  }
-
-  if (allBooleans) {
-    return { type: "boolean", possibleValues: null };
-  }
-
+  let possibleValues = null;
   if (
     uniqueValues.size <= POSSIBLE_VALUES_MAX_COUNT &&
     Array.from(uniqueValues).every(
       (value) => value.length <= POSSIBLE_VALUES_MAX_LEN
     )
   ) {
-    return { type: "enum", possibleValues: Array.from(uniqueValues) };
+    possibleValues = Array.from(uniqueValues);
   }
 
-  return { type: "string", possibleValues: null };
+  if (allNumbers) {
+    return possibleValues
+      ? { type: "number", possibleValues }
+      : { type: "number" };
+  }
+
+  if (allBooleans) {
+    return possibleValues
+      ? { type: "boolean", possibleValues }
+      : { type: "boolean" };
+  }
+
+  return possibleValues
+    ? { type: "string", possibleValues }
+    : { type: "string" };
 }
 
 /**
