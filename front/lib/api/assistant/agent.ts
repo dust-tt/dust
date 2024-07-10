@@ -9,7 +9,6 @@ import type {
   AgentContentEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
@@ -66,7 +65,6 @@ export async function* runAgent(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | AgentChainOfThoughtEvent,
@@ -112,7 +110,6 @@ export async function* runMultiActionsAgentLoop(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | AgentChainOfThoughtEvent
@@ -273,15 +270,6 @@ export async function* runMultiActionsAgentLoop(
             };
             agentMessage.chainOfThoughts.push(event.chainOfThought);
           }
-          yield {
-            type: "agent_generation_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            text: event.text,
-            runId: event.runId,
-          } satisfies AgentGenerationSuccessEvent;
-
           agentMessage.content = processedContent;
           agentMessage.status = "succeeded";
           yield {

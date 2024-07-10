@@ -18,7 +18,6 @@ import type {
   AgentChainOfThoughtEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
@@ -164,7 +163,6 @@ export function AgentMessage({
         | AgentActionSpecificEvent
         | AgentActionSuccessEvent
         | GenerationTokensEvent
-        | AgentGenerationSuccessEvent
         | AgentGenerationCancelledEvent
         | AgentMessageSuccessEvent
         | AgentChainOfThoughtEvent;
@@ -215,10 +213,6 @@ export function AgentMessage({
         setStreamedAgentMessage((m) => {
           return { ...m, status: "cancelled" };
         });
-        break;
-      case "agent_generation_success":
-        // There is no point in handling this event here, since it is always immediately
-        // followed by an "agent_message_success" event (which includes all content / CoT we need).
         break;
       case "agent_message_success": {
         setStreamedAgentMessage((m) => {

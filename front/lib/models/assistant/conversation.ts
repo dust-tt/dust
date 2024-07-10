@@ -251,8 +251,6 @@ export class AgentMessage extends Model<
   declare runIds: string[] | null;
   declare status: CreationOptional<AgentMessageStatus>;
 
-  declare content: string | null;
-  declare chainOfThoughts: CreationOptional<string[]>;
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
@@ -289,15 +287,6 @@ AgentMessage.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "created",
-    },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    chainOfThoughts: {
-      type: DataTypes.ARRAY(DataTypes.TEXT),
-      allowNull: false,
-      defaultValue: [],
     },
     errorCode: {
       type: DataTypes.STRING,

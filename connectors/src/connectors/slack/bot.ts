@@ -1,14 +1,12 @@
 import type {
+  AgentMessageSuccessEvent,
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
-import type {
-  AgentGenerationSuccessEvent,
-  PublicPostContentFragmentRequestBodySchema,
-} from "@dust-tt/types";
+import type { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
@@ -56,7 +54,7 @@ export async function botAnswerMessageWithErrorHandling(
   slackBotId: string | null,
   slackMessageTs: string,
   slackThreadTs: string | null
-): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
+): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
   const slackConfig =
     await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
   if (!slackConfig) {
@@ -153,7 +151,7 @@ async function botAnswerMessage(
   slackThreadTs: string | null,
   connector: ConnectorResource,
   slackConfig: SlackConfigurationResource
-): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
+): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
     lastSlackChatBotMessage = await SlackChatBotMessage.findOne({

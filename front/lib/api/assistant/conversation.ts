@@ -607,7 +607,6 @@ export async function* postUserMessage(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | ConversationTitleEvent
@@ -1020,7 +1019,6 @@ export async function* editUserMessage(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | AgentChainOfThoughtEvent,
@@ -1434,7 +1432,6 @@ export async function* retryAgentMessage(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | AgentChainOfThoughtEvent,
@@ -1704,13 +1701,11 @@ async function* streamRunAgentEvents(
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
-  | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | AgentChainOfThoughtEvent,
   void
 > {
-  let content = "";
   const runIds = [];
   for await (const event of eventStream) {
     switch (event.type) {
@@ -1745,9 +1740,7 @@ async function* streamRunAgentEvents(
         runIds.push(event.runId);
         await agentMessageRow.update({
           runIds,
-          content: event.text,
         });
-        yield event;
         break;
 
       case "agent_message_success":
@@ -1762,7 +1755,6 @@ async function* streamRunAgentEvents(
         if (agentMessageRow.status !== "cancelled") {
           await agentMessageRow.update({
             status: "cancelled",
-            content: content,
           });
           yield event;
         }
@@ -1784,7 +1776,6 @@ async function* streamRunAgentEvents(
         break;
       case "generation_tokens":
         if (event.classification === "tokens") {
-          content += event.text;
           yield event;
         } else if (event.classification === "chain_of_thought") {
           yield event;
@@ -1799,12 +1790,6 @@ async function* streamRunAgentEvents(
         break;
 
       case "agent_chain_of_thought":
-        await agentMessageRow.update({
-          chainOfThoughts: [
-            ...agentMessageRow.chainOfThoughts,
-            event.chainOfThought,
-          ],
-        });
         yield event;
         break;
 
