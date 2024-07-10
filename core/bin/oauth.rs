@@ -42,13 +42,14 @@ async fn index() -> &'static str {
 #[derive(Deserialize)]
 struct ConnectionCreatePayload {
     provider: ConnectionProvider,
+    metadata: serde_json::Value,
 }
 
 async fn connections_create(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<ConnectionCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match Connection::create(state.store.clone(), payload.provider).await {
+    match Connection::create(state.store.clone(), payload.provider, payload.metadata).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",

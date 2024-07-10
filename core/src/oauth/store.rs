@@ -8,7 +8,11 @@ use tokio_postgres::NoTls;
 
 #[async_trait]
 pub trait OAuthStore {
-    async fn create_connection(&self, provider: ConnectionProvider) -> Result<Connection>;
+    async fn create_connection(
+        &self,
+        provider: ConnectionProvider,
+        metadata: serde_json::Value,
+    ) -> Result<Connection>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
 }
@@ -45,7 +49,11 @@ impl PostgresOAuthStore {
 
 #[async_trait]
 impl OAuthStore for PostgresOAuthStore {
-    async fn create_connection(&self, provider: ConnectionProvider) -> Result<Connection> {
+    async fn create_connection(
+        &self,
+        provider: ConnectionProvider,
+        metadata: serde_json::Value,
+    ) -> Result<Connection> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -57,7 +65,7 @@ impl OAuthStore for PostgresOAuthStore {
         let stmt = c
             .prepare(
                 "INSERT INTO connections (id, created, provider, status, secret)
-                   VALUES (DEFAULT, $1, $2, $3, $4) RETURNING id",
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
             )
             .await?;
         let row_id: i64 = c
@@ -68,19 +76,20 @@ impl OAuthStore for PostgresOAuthStore {
                     &serde_json::to_string(&provider)?,
                     &serde_json::to_string(&status)?,
                     &secret,
+                    &serde_json::to_string(&metadata)?,
                 ],
             )
             .await?
             .get(0);
 
-        let connection_id = utils::make_id("con", row_id as u64)?;
+        let connection_id = Connection::connection_id_from_row_id_and_secret(row_id, &secret)?;
 
         Ok(Connection::new(
             connection_id,
             created,
             provider,
             status,
-            secret,
+            metadata,
         ))
     }
 

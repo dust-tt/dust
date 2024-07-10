@@ -1,4 +1,5 @@
 use crate::oauth::store::OAuthStore;
+use crate::utils;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +27,7 @@ pub struct Connection {
     created: u64,
     provider: ConnectionProvider,
     status: ConnectionStatus,
-    secret: String,
+    metadata: serde_json::Value,
     authorization_code: Option<String>,
     access_token: Option<String>,
     access_token_expiry: Option<u64>,
@@ -40,20 +41,28 @@ impl Connection {
         created: u64,
         provider: ConnectionProvider,
         status: ConnectionStatus,
-        secret: String,
+        metadata: serde_json::Value,
     ) -> Self {
         Connection {
             connection_id,
             created,
             provider,
             status,
-            secret,
+            metadata,
             authorization_code: None,
             access_token: None,
             access_token_expiry: None,
             refresh_token: None,
             raw_json: None,
         }
+    }
+
+    pub fn connection_id_from_row_id_and_secret(row_id: i64, secret: &str) -> Result<String> {
+        Ok(format!(
+            "{}-{}",
+            utils::make_id("con", row_id as u64)?,
+            secret
+        ))
     }
 
     pub fn connection_id(&self) -> String {
@@ -72,14 +81,11 @@ impl Connection {
         self.status
     }
 
-    pub fn secret(&self) -> String {
-        self.secret.clone()
-    }
-
     pub async fn create(
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: ConnectionProvider,
+        metadata: serde_json::Value,
     ) -> Result<Self> {
-        store.create_connection(provider).await
+        store.create_connection(provider, metadata).await
     }
 }
