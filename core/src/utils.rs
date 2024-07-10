@@ -172,15 +172,15 @@ const RESOURCE_S_ID_MIN_LENGTH: u8 = 10;
 const SHARD_KEY: u64 = 1;
 const REGION: u64 = 1;
 
-pub fn make_id(prefix: &str, id: usize) -> Result<String> {
+pub fn make_id(prefix: &str, id: u64) -> Result<String> {
     let sqids = Sqids::builder()
         .min_length(RESOURCE_S_ID_MIN_LENGTH)
         .build()?;
-    let id = sqids.encode(&[REGION, SHARD_KEY, id as u64])?;
+    let id = sqids.encode(&[REGION, SHARD_KEY, id])?;
     Ok(format!("{}_{}", prefix, id))
 }
 
-pub fn parse_id(id: &str) -> Result<(String, u64, u64, usize)> {
+pub fn parse_id(id: &str) -> Result<(String, u64, u64, u64)> {
     let sqids = Sqids::builder()
         .min_length(RESOURCE_S_ID_MIN_LENGTH)
         .build()?;
@@ -196,10 +196,5 @@ pub fn parse_id(id: &str) -> Result<(String, u64, u64, usize)> {
         return Err(anyhow::anyhow!("Invalid id decoding failed: {}", id));
     }
 
-    Ok((
-        prefix.to_string(),
-        decoded[0],
-        decoded[1],
-        decoded[2] as usize,
-    ))
+    Ok((prefix.to_string(), decoded[0], decoded[1], decoded[2]))
 }

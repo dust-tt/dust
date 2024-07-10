@@ -1,6 +1,7 @@
 use crate::providers::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::embedder::Embedder;
+use crate::providers::google_ai_studio::GoogleAiStudioProvider;
 use crate::providers::llm::LLM;
 use crate::providers::mistral::MistralProvider;
 use crate::providers::openai::OpenAIProvider;
@@ -13,8 +14,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
-
-use super::google_ai_studio::GoogleAiStudioProvider;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
