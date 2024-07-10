@@ -57,7 +57,7 @@ export async function confluenceSyncWorkflow({
   const spaceIdsToSync =
     spaceIdsToBrowse ?? (await getSpaceIdsToSyncActivity(connectorId));
 
-  const uniqueSpaceIds = new Map<string, { forceUpsert: boolean }>(
+  const spaceIdsMap = new Map<string, { forceUpsert: boolean }>(
     spaceIdsToSync.map((spaceId) => [spaceId, { forceUpsert: false }])
   );
 
@@ -65,9 +65,9 @@ export async function confluenceSyncWorkflow({
     // If we get a signal, update the workflow state by adding/removing space ids.
     for (const { action, forceUpsert, spaceId } of spaceUpdates) {
       if (action === "added") {
-        uniqueSpaceIds.set(spaceId, { forceUpsert });
+        spaceIdsMap.set(spaceId, { forceUpsert });
       } else {
-        uniqueSpaceIds.delete(spaceId);
+        spaceIdsMap.delete(spaceId);
       }
     }
   });
@@ -80,9 +80,9 @@ export async function confluenceSyncWorkflow({
 
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
-  while (uniqueSpaceIds.size > 0) {
+  while (spaceIdsMap.size > 0) {
     // Create a copy of the map to iterate over, to avoid issues with concurrent modification.
-    const spaceIdsToProcess = new Map(uniqueSpaceIds);
+    const spaceIdsToProcess = new Map(spaceIdsMap);
     for (const [spaceId, opts] of spaceIdsToProcess) {
       // Async operation yielding control to the Temporal runtime.
       await executeChild(confluenceSpaceSyncWorkflow, {
@@ -103,7 +103,7 @@ export async function confluenceSyncWorkflow({
       });
 
       // Remove the processed space from the original set after the async operation.
-      uniqueSpaceIds.delete(spaceId);
+      spaceIdsMap.delete(spaceId);
     }
   }
 
