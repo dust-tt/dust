@@ -243,14 +243,6 @@ const ANTHROPIC_DELIMITERS_CONFIGURATION = {
   ],
 };
 
-const ANTHROPIC_TOOL_USE_META_PROMPT = `<tools_instructions>
-When using tools to answer the user's question, the assistant should follow these guidelines:
-
-1. Immediately before invoking a tool, think for one sentence in <thinking> tags about how it evaluates against the criteria for a good and bad tool use. The <thinking> section must never be longer than a single sentence. Text should never be emitted outside of <thinking> tags before using a tool.
-2. Do not reflect on the quality of the returned search results in the response.
-3. The response to the user must be wrapped in <response> tags.
-</tools_instructions>`;
-
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -263,7 +255,6 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's largest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   supportsVision: false,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -278,7 +269,6 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's latest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   supportsVision: false,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -293,7 +283,6 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   supportsVision: false,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
