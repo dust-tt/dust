@@ -6,11 +6,14 @@ import type {
   SupportedFileContentType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { parse } from "csv-parse";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
+import type { CSVRow } from "@app/lib/api/csv";
+import { analyzeCSVColumns } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -168,6 +171,55 @@ const extractTextFromPDF: PreprocessingFunction = async (
   }
 };
 
+// CSV preprocessing.
+// We upload the content of the CSV on the processed bucket and the schema in the snippet bucket.
+const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+): Promise<Result<undefined, Error>> => {
+  try {
+    const readStreamForProcessedFile = file.getReadStream(auth, "original");
+    const processedWriteStream = file.getWriteStream(auth, "processed");
+    await pipeline(readStreamForProcessedFile, processedWriteStream);
+
+    const readStreamForSnippetFile = file.getReadStream(auth, "original");
+    const schemaWriteStream = file.getWriteStream(auth, "snippet");
+    await pipeline(
+      readStreamForSnippetFile,
+      parse({
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      }),
+      async function* (source) {
+        const csvRows: CSVRow[] = [];
+        for await (const row of source) {
+          csvRows.push(row);
+        }
+        const schema = analyzeCSVColumns(csvRows);
+        yield JSON.stringify(schema, null, 2);
+      },
+      schemaWriteStream
+    );
+
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to extract text or snippet from CSV."
+    );
+
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+
+    return new Err(new Error(`Failed extracting from CSV. ${errorMessage}`));
+  }
+};
+
 // Other text files preprocessing.
 
 // We don't apply any processing to these files, we just store the raw text.
@@ -232,7 +284,7 @@ const processingPerContentType: PreprocessingPerContentType = {
     avatar: notSupportedError,
   },
   "text/csv": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,
   },
   "text/markdown": {
