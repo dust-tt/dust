@@ -1,16 +1,18 @@
-import { ArrowDownOnSquareIcon, Icon } from "@dust-tt/sparkle";
+import { DropzoneOverlay } from "@dust-tt/sparkle";
 import { useDropzone } from "react-dropzone";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 
 interface DropzoneContainerProps {
   children: React.ReactNode;
-  dropMessage: string;
+  description: string;
+  title: string;
 }
 
 export function DropzoneContainer({
   children,
-  dropMessage,
+  description,
+  title,
 }: DropzoneContainerProps) {
   const { setDroppedFiles } = useFileDrop();
 
@@ -28,12 +30,11 @@ export function DropzoneContainer({
       {...getRootProps()}
       className="flex h-full w-full flex-col items-center"
     >
-      {isDragActive && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-100 bg-opacity-80 text-element-700">
-          <Icon visual={ArrowDownOnSquareIcon} />
-          <p className="text-lg font-semibold">{dropMessage}</p>
-        </div>
-      )}
+      <DropzoneOverlay
+        description={description}
+        isDragActive={isDragActive}
+        title={title}
+      />
       {children}
     </div>
   );
