@@ -76,12 +76,8 @@ export type UpsertDocumentResponseBody = {
  *         description: ID of the document
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: The document
@@ -119,12 +115,8 @@ export type UpsertDocumentResponseBody = {
  *         description: ID of the document
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -178,12 +170,8 @@ export type UpsertDocumentResponseBody = {
  *         description: ID of the document
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: The document

@@ -75,23 +75,19 @@ function extractUsageFromExecutions(
  *     description: Create a run for an app in the workspace identified by {wId}.
  *     tags:
  *       - Apps
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
  *         name: appId
  *         required: true
  *         description: ID of the app
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     requestBody:
@@ -133,6 +129,10 @@ function extractUsageFromExecutions(
  *     responses:
  *       200:
  *         description: App run
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Workspace'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:

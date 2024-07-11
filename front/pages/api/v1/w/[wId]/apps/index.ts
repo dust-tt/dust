@@ -17,22 +17,24 @@ export type GetAppsResponseBody = {
  *     description: Get all apps of a workspace.
  *     tags:
  *       - Apps
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *     responses:
  *       200:
  *         description: Apps of the workspace
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Workspace'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:

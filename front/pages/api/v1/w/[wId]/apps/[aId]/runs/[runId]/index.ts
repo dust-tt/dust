@@ -25,11 +25,13 @@ export type GetRunResponseBody = {
  *     description: Retrieve a run for an app in the workspace identified by {wId}.
  *     tags:
  *       - Apps
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
@@ -42,12 +44,6 @@ export type GetRunResponseBody = {
  *         name: runId
  *         required: true
  *         description: ID of the run
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     responses:

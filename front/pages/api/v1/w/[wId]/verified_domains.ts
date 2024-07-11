@@ -17,22 +17,22 @@ export type ListMemberEmailsResponseBody = {
  *     description: Get the verified domain for the workspace identified by {wId}.
  *     tags:
  *       - Workspace
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *     responses:
  *       200:
  *         description: The verified domain
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Workspace'
  *       404:
  *         description: The workspace was not found
  *       405:

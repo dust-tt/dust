@@ -21,15 +21,17 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Agent configurations for the workspace
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/AgentConfiguration'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:

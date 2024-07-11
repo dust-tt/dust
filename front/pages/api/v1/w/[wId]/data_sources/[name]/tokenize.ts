@@ -43,12 +43,8 @@ type PostDatasourceTokenizeResponseBody = {
  *         description: Name of the data source
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:

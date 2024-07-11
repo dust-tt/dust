@@ -27,25 +27,21 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: ID of the conversation
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Events for the conversation
+ *         description: Events for the conversation, view the "Events" page from this documentation for more information.
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
- *       500:
- *         description: Internal Server Error.
  *       404:
  *         description: Conversation not found.
  *       405:
  *         description: Method not supported. Only GET is expected.
+ *       500:
+ *         description: Internal Server Error.
  */
 
 async function handler(

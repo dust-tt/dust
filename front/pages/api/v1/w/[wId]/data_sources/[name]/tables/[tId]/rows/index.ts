@@ -64,11 +64,13 @@ type ListTableRowsResponseBody = {
  *    description: List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
  *    tags:
  *      - Datasources
+ *    security:
+ *      - BearerAuth: []
  *    parameters:
  *      - in: path
  *        name: wId
  *        required: true
- *        description: ID of the workspace
+ *        description: Unique string identifier for the workspace
  *        schema:
  *          type: string
  *      - in: path
@@ -93,15 +95,15 @@ type ListTableRowsResponseBody = {
  *        description: Offset the returned rows
  *        schema:
  *          type: integer
- *      - in: header
- *        name: Authorization
- *        required: true
- *        description: Bearer token for authentication
- *        schema:
- *          type: string
  *    responses:
  *      200:
  *        description: The rows
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: array
+ *              items:
+ *                $ref: '#/components/schemas/Datasource'
  *      405:
  *        description: Method not supported
  *  post:
@@ -109,11 +111,13 @@ type ListTableRowsResponseBody = {
  *    description: Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
  *    tags:
  *      - Datasources
+ *    security:
+ *      - BearerAuth: []
  *    parameters:
  *      - in: path
  *        name: wId
  *        required: true
- *        description: ID of the workspace
+ *        description: Unique string identifier for the workspace
  *        schema:
  *          type: string
  *      - in: path
@@ -126,12 +130,6 @@ type ListTableRowsResponseBody = {
  *        name: tId
  *        required: true
  *        description: ID of the table
- *        schema:
- *          type: string
- *      - in: header
- *        name: Authorization
- *        required: true
- *        description: Bearer token for authentication
  *        schema:
  *          type: string
  *    requestBody:
@@ -148,6 +146,7 @@ type ListTableRowsResponseBody = {
  *                  properties:
  *                    row_id:
  *                      type: string
+ *                      description: Unique identifier for the row
  *                    value:
  *                      type: object
  *                      additionalProperties:
@@ -165,9 +164,14 @@ type ListTableRowsResponseBody = {
  *                                type: number
  *              truncate:
  *                type: boolean
+ *                description: Whether to truncate existing rows
  *    responses:
  *      200:
  *        description: The table
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/Datasource'
  *      400:
  *        description: Bad Request. Missing or invalid parameters.
  *      401:

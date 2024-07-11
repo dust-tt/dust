@@ -19,17 +19,13 @@ export type WorkspaceFeatureFlagsResponseBody = {
  *     description: Get the feature flags for the workspace identified by {wId}.
  *     tags:
  *       - Workspace
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *     responses:
@@ -44,6 +40,7 @@ export type WorkspaceFeatureFlagsResponseBody = {
  *                   type: array
  *                   items:
  *                     type: string
+ *                     description: Feature flags enabled for the workspace
  */
 
 async function handler(

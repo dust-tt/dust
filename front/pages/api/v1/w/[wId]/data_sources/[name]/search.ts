@@ -57,6 +57,8 @@ type DatasourceSearchResponseBody = {
  *     description: Search the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
@@ -128,12 +130,6 @@ type DatasourceSearchResponseBody = {
  *         name: parents_not
  *         required: false
  *         description: The parents to filter by
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     responses:

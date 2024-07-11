@@ -43,12 +43,8 @@ export type PostConversationsResponseBody = {
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -57,96 +53,9 @@ export type PostConversationsResponseBody = {
  *             type: object
  *             properties:
  *               message:
- *                 type: object
- *                 properties:
- *                   content:
- *                     type: string
- *                     description: The content of the message
- *                     example: This is my message
- *                   mentions:
- *                     type: array
- *                     items:
- *                       type: object
- *                       description: The mentions of the message, where configurationId is the ID of the assistant mentioned.
- *                       properties:
- *                         configurationId:
- *                           type: string
- *                           example: [{ "configurationId":"dust" }]
- *                   context:
- *                     type: object
- *                     properties:
- *                       timezone:
- *                         type: string
- *                         description: The timezone of the user who created the message
- *                         example: Europe/Paris
- *                       username:
- *                         type: string
- *                         description: The username of the user who created the message
- *                         example: johndoe
- *                       fullName:
- *                         type: string
- *                         description: The full name of the user who created the message
- *                         example: John Doe
- *                         nullable: true
- *                       email:
- *                         type: string
- *                         description: The email of the user who created the message
- *                         example: johndoe@example.com
- *                         nullable: true
- *                       profilePictureUrl:
- *                         type: string
- *                         nullable: true
- *                         description: The profile picture URL of the user who created the message
- *                         example: https://example.com/profile_picture.jpg
- *                       origin:
- *                         type: string
- *                         nullable: true
- *                         description: The origin of the message
- *                         enum:
- *                           - api
- *                           - web
- *                           - slack
- *                           - 'null'
- *                         default: api
- *                         example: api
+ *                 $ref: '#/components/schemas/Message'
  *               contentFragment:
- *                 type: object
- *                 properties:
- *                   title:
- *                     type: string
- *                     description: The title of the content fragment
- *                     example: My content fragment
- *                   content:
- *                     type: string
- *                     description: The content of the content fragment
- *                     example: This is my content fragment
- *                   url:
- *                     type: string
- *                     description: The URL of the content fragment
- *                     example: https://example.com/content
- *                   contentType:
- *                     type: string
- *                     description: The content type of the content fragment
- *                     example: text/plain
- *                   context:
- *                     type: object
- *                     properties:
- *                       username:
- *                         type: string
- *                         description: The username of the user who created the content fragment
- *                         example: johndoe
- *                       fullName:
- *                         type: string
- *                         description: The full name of the user who created the content fragment
- *                         example: John Doe
- *                       email:
- *                         type: string
- *                         description: The email of the user who created the content fragment
- *                         example: johndoe@example.com
- *                       profilePictureUrl:
- *                         type: string
- *                         description: The profile picture URL of the user who created the content fragment
- *                         example: https://example.com/profile_picture.jpg
+ *                 $ref: '#/components/schemas/ContentFragment'
  *               blocking:
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message
@@ -172,46 +81,13 @@ export type PostConversationsResponseBody = {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 conversation:
- *                   type: object
- *                 message:
- *                   $ref: '#/components/schemas/Message'
+ *               $ref: '#/components/schemas/Conversation'
  *       400:
  *         description: Bad Request
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Internal Server Error
- * components:
- *   schemas:
- *     Message:
- *       type: object
- *       properties:
- *         id:
- *           type: number
- *         created:
- *           type: number
- *         sId:
- *           type: string
- *         type:
- *           type: string
- *         visibility:
- *           type: string
- *         version:
- *           type: number
- *         user:
- *           type: object
- *           nullable: true
- *         mentions:
- *           type: array
- *         content:
- *           type: string
- *         context:
- *           type: object
- *         rank:
- *           type: number
  */
 
 async function handler(

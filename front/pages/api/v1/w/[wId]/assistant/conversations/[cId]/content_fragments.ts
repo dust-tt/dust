@@ -42,57 +42,21 @@ export type PostContentFragmentRequestBody = t.TypeOf<
  *         description: ID of the conversation
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *                 description: The title of the content fragment
- *                 example: My content fragment
- *               content:
- *                 type: string
- *                 description: The content of the content fragment
- *                 example: This is my content fragment
- *               url:
- *                 type: string
- *                 description: The URL of the content fragment
- *                 example: https://example.com/content
- *               contentType:
- *                 type: string
- *                 description: The content type of the content fragment
- *                 example: text/plain
- *               context:
- *                 type: object
- *                 properties:
- *                   username:
- *                     type: string
- *                     description: The username of the user who created the content fragment
- *                     example: johndoe
- *                   fullName:
- *                     type: string
- *                     description: The full name of the user who created the content fragment
- *                     example: John Doe
- *                   email:
- *                     type: string
- *                     description: The email of the user who created the content fragment
- *                     example: johndoe@example.com
- *                   profilePictureUrl:
- *                     type: string
- *                     description: The profile picture URL of the user who created the content fragment
- *                     example: https://example.com/profile_picture.jpg
+ *             $ref: '#/components/schemas/ContentFragment'
  *     responses:
  *       200:
  *         description: Content fragment created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ContentFragment'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
