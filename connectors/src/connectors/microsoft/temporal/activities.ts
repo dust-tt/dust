@@ -12,7 +12,9 @@ import {
   getSites,
   internalId,
   itemToMicrosoftNode,
+  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -35,7 +37,6 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -63,7 +64,7 @@ export async function getSiteNodesToSync(
       )
       .map(async (resource) =>
         itemToMicrosoftNode(
-          resource.nodeType,
+          resource.nodeType as "folder" | "drive",
           await getItem(client, resource.itemAPIPath)
         )
       )
@@ -159,11 +160,13 @@ export async function syncFiles({
   );
 
   if (!parent) {
-    throw new Error(`Parent node not found: ${parentInternalId}`);
+    throw new Error(`Unexpected: parent node not found: ${parentInternalId}`);
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
-    throw new Error(`Parent node is not a folder or drive: ${parent.nodeType}`);
+    throw new Error(
+      `Unexpected: parent node is not a folder or drive: ${parent.nodeType}`
+    );
   }
 
   const providerConfig =
@@ -220,18 +223,21 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
-  const childNodes = children
-    .filter((item) => item.folder)
-    .map((item) => {
-      return internalId({
-        itemAPIPath: getDriveItemAPIPath(item),
-        nodeType: "folder",
-      });
-    });
+  const childResources = await MicrosoftNodeResource.batchUpdateOrCreate(
+    connectorId,
+    children
+      .filter((item) => item.folder)
+      .map((item) => ({
+        ...itemToMicrosoftNode("folder", item),
+        // add parent information to new node resources
+        parentItemAPIPath:
+          typeAndPathFromInternalId(parentInternalId).itemAPIPath,
+      }))
+  );
 
   return {
     count,
-    childNodes,
+    childNodes: childResources.map((r) => r.internalId),
   };
 }
 

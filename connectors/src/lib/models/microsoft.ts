@@ -6,7 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/node_types";
+import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 

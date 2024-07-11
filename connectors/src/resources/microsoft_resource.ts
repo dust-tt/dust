@@ -2,10 +2,7 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import {
-  internalId as internalIdFromNode,
-  typeAndPathFromInternalId,
-} from "@connectors/connectors/microsoft/lib/graph_api";
+import { internalId as internalIdFromNode } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
