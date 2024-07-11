@@ -62,7 +62,7 @@ export function CodeBlockBanner({
 
   return (
     <div className="relative">
-      <div className="relative w-auto overflow-x-auto rounded-lg border border-structure-200 dark:border-structure-200-dark">
+      <div className="relative w-auto overflow-x-auto rounded-lg">
         <div className="w-full table-auto">{children}</div>
       </div>
 
