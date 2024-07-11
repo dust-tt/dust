@@ -308,15 +308,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -327,92 +323,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer"
-                      },
-                      "sId": {
-                        "type": "string"
-                      },
-                      "version": {
-                        "type": "integer"
-                      },
-                      "versionCreatedAt": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "versionAuthorId": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "name": {
-                        "type": "string"
-                      },
-                      "description": {
-                        "type": "string"
-                      },
-                      "instructions": {
-                        "type": "string"
-                      },
-                      "pictureUrl": {
-                        "type": "string"
-                      },
-                      "status": {
-                        "type": "string"
-                      },
-                      "userListStatus": {
-                        "type": "string"
-                      },
-                      "scope": {
-                        "type": "string"
-                      },
-                      "model": {
-                        "type": "object",
-                        "properties": {
-                          "providerId": {
-                            "type": "string"
-                          },
-                          "modelId": {
-                            "type": "string"
-                          },
-                          "temperature": {
-                            "type": "number"
-                          }
-                        }
-                      },
-                      "actions": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "integer"
-                            },
-                            "sId": {
-                              "type": "string"
-                            },
-                            "type": {
-                              "type": "string"
-                            },
-                            "name": {
-                              "type": "string"
-                            },
-                            "description": {
-                              "type": "string",
-                              "nullable": true
-                            }
-                          }
-                        }
-                      },
-                      "maxToolsUsePerRun": {
-                        "type": "integer"
-                      },
-                      "templateId": {
-                        "type": "string",
-                        "nullable": true
-                      }
-                    }
+                    "$ref": "#/components/schemas/AgentConfiguration"
                   }
                 }
               }
@@ -461,15 +372,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "requestBody": {
@@ -477,61 +384,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "title": {
-                    "type": "string",
-                    "description": "The title of the content fragment",
-                    "example": "My content fragment"
-                  },
-                  "content": {
-                    "type": "string",
-                    "description": "The content of the content fragment",
-                    "example": "This is my content fragment"
-                  },
-                  "url": {
-                    "type": "string",
-                    "description": "The URL of the content fragment",
-                    "example": "https://example.com/content"
-                  },
-                  "contentType": {
-                    "type": "string",
-                    "description": "The content type of the content fragment",
-                    "example": "text/plain"
-                  },
-                  "context": {
-                    "type": "object",
-                    "properties": {
-                      "username": {
-                        "type": "string",
-                        "description": "The username of the user who created the content fragment",
-                        "example": "johndoe"
-                      },
-                      "fullName": {
-                        "type": "string",
-                        "description": "The full name of the user who created the content fragment",
-                        "example": "John Doe"
-                      },
-                      "email": {
-                        "type": "string",
-                        "description": "The email of the user who created the content fragment",
-                        "example": "johndoe@example.com"
-                      },
-                      "profilePictureUrl": {
-                        "type": "string",
-                        "description": "The profile picture URL of the user who created the content fragment",
-                        "example": "https://example.com/profile_picture.jpg"
-                      }
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/ContentFragment"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Content fragment created successfully."
+            "description": "Content fragment created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentFragment"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -570,20 +437,26 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "responses": {
           "200": {
-            "description": "Events for the conversation"
+            "description": "Events for the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Conversation"
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -706,15 +579,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -739,8 +608,7 @@
                             "description": "Type of the event"
                           },
                           "data": {
-                            "type": "object",
-                            "description": "Data of the event"
+                            "$ref": "#/components/schemas/Message"
                           }
                         }
                       }
@@ -749,6 +617,18 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         }
       }
@@ -778,15 +658,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "requestBody": {
@@ -794,84 +670,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "content": {
-                    "type": "string",
-                    "description": "The content of the message",
-                    "example": "This is my message"
-                  },
-                  "mentions": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "description": "The mentions of the message, where configurationId is the ID of the assistant mentioned.",
-                      "properties": {
-                        "configurationId": {
-                          "type": "string",
-                          "example": [
-                            {
-                              "configurationId": "dust"
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  },
-                  "context": {
-                    "type": "object",
-                    "properties": {
-                      "timezone": {
-                        "type": "string",
-                        "description": "The timezone of the user who created the message",
-                        "example": "Europe/Paris"
-                      },
-                      "username": {
-                        "type": "string",
-                        "description": "The username of the user who created the message",
-                        "example": "johndoe"
-                      },
-                      "fullName": {
-                        "type": "string",
-                        "description": "The full name of the user who created the message",
-                        "example": "John Doe",
-                        "nullable": true
-                      },
-                      "email": {
-                        "type": "string",
-                        "description": "The email of the user who created the message",
-                        "example": "johndoe@example.com",
-                        "nullable": true
-                      },
-                      "profilePictureUrl": {
-                        "type": "string",
-                        "nullable": true,
-                        "description": "The profile picture URL of the user who created the message",
-                        "example": "https://example.com/profile_picture.jpg"
-                      },
-                      "origin": {
-                        "type": "string",
-                        "nullable": true,
-                        "description": "The origin of the message",
-                        "enum": [
-                          "api",
-                          "web",
-                          "slack",
-                          "null"
-                        ],
-                        "default": "api",
-                        "example": "api"
-                      }
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/Message"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Message created successfully."
+            "description": "Message created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -916,58 +729,10 @@
                 "type": "object",
                 "properties": {
                   "message": {
-                    "type": "object",
-                    "properties": {
-                      "content": {
-                        "type": "string",
-                        "description": "The content of the message",
-                        "example": "This is my message"
-                      },
-                      "mentions": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "description": "The mentions of the message, where configurationId is the ID of the assistant mentioned.",
-                          "properties": {
-                            "configurationId": {
-                              "type": "string",
-                              "example": "dust"
-                            }
-                          }
-                        }
-                      },
-                      "context": {
-                        "$ref": "#/components/schemas/Context"
-                      }
-                    }
+                    "$ref": "#/components/schemas/Message"
                   },
                   "contentFragment": {
-                    "type": "object",
-                    "properties": {
-                      "title": {
-                        "type": "string",
-                        "description": "The title of the content fragment",
-                        "example": "My content fragment"
-                      },
-                      "content": {
-                        "type": "string",
-                        "description": "The content of the content fragment",
-                        "example": "This is my content fragment"
-                      },
-                      "url": {
-                        "type": "string",
-                        "description": "The URL of the content fragment",
-                        "example": "https://example.com/content"
-                      },
-                      "contentType": {
-                        "type": "string",
-                        "description": "The content type of the content fragment",
-                        "example": "text/plain"
-                      },
-                      "context": {
-                        "$ref": "#/components/schemas/Context"
-                      }
-                    }
+                    "$ref": "#/components/schemas/ContentFragment"
                   },
                   "blocking": {
                     "type": "boolean",
@@ -2521,7 +2286,7 @@
       "BearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Your DUST API key prefixed by `Bearer sk-...`"
+        "description": "Your DUST API key is a Bearer token."
       }
     },
     "schemas": {

@@ -41,12 +41,8 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: ID of the last event received
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: The events
@@ -67,9 +63,17 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *                         type: string
  *                         description: Type of the event
  *                       data:
- *                         type: object
- *                         description: Data of the event
+ *                         $ref: '#/components/schemas/Message'
+ *       400:
+ *         description: Bad Request
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
  */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<void>>

@@ -53,44 +53,9 @@ export type PostConversationsResponseBody = {
  *             type: object
  *             properties:
  *               message:
- *                 type: object
- *                 properties:
- *                   content:
- *                     type: string
- *                     description: The content of the message
- *                     example: This is my message
- *                   mentions:
- *                     type: array
- *                     items:
- *                       type: object
- *                       description: The mentions of the message, where configurationId is the ID of the assistant mentioned.
- *                       properties:
- *                         configurationId:
- *                           type: string
- *                           example: dust
- *                   context:
- *                     $ref: '#/components/schemas/Context'
+ *                 $ref: '#/components/schemas/Message'
  *               contentFragment:
- *                 type: object
- *                 properties:
- *                   title:
- *                     type: string
- *                     description: The title of the content fragment
- *                     example: My content fragment
- *                   content:
- *                     type: string
- *                     description: The content of the content fragment
- *                     example: This is my content fragment
- *                   url:
- *                     type: string
- *                     description: The URL of the content fragment
- *                     example: https://example.com/content
- *                   contentType:
- *                     type: string
- *                     description: The content type of the content fragment
- *                     example: text/plain
- *                   context:
- *                     $ref: '#/components/schemas/Context'
+ *                 $ref: '#/components/schemas/ContentFragment'
  *               blocking:
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message

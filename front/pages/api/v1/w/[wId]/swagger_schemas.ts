@@ -5,7 +5,7 @@
  *     BearerAuth:
  *       type: http
  *       scheme: bearer
- *       description: Your DUST API key prefixed by `Bearer sk-...`
+ *       description: Your DUST API key is a Bearer token.
  *   schemas:
  *     User:
  *       type: object

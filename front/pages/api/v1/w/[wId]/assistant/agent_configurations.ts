@@ -21,12 +21,8 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Agent configurations for the workspace
@@ -35,64 +31,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   sId:
- *                     type: string
- *                   version:
- *                     type: integer
- *                   versionCreatedAt:
- *                     type: string
- *                     nullable: true
- *                   versionAuthorId:
- *                     type: string
- *                     nullable: true
- *                   name:
- *                     type: string
- *                   description:
- *                     type: string
- *                   instructions:
- *                     type: string
- *                   pictureUrl:
- *                     type: string
- *                   status:
- *                     type: string
- *                   userListStatus:
- *                     type: string
- *                   scope:
- *                     type: string
- *                   model:
- *                     type: object
- *                     properties:
- *                       providerId:
- *                         type: string
- *                       modelId:
- *                         type: string
- *                       temperature:
- *                         type: number
- *                   actions:
- *                     type: array
- *                     items:
- *                       type: object
- *                       properties:
- *                         id:
- *                           type: integer
- *                         sId:
- *                           type: string
- *                         type:
- *                           type: string
- *                         name:
- *                           type: string
- *                         description:
- *                           type: string
- *                           nullable: true
- *                   maxToolsUsePerRun:
- *                     type: integer
- *                   templateId:
- *                     type: string
- *                     nullable: true
+ *                 $ref: '#/components/schemas/AgentConfiguration'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
@@ -104,6 +43,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *       405:
  *         description: Method not supported. Only GET is expected.
  */
+
 
 async function handler(
   req: NextApiRequest,
