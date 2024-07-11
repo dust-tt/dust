@@ -11,7 +11,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  * /api/v1/w/{wId}/assistant/conversations/{cId}/events:
  *   get:
  *     summary: Get the events for a conversation
- *     description: Get the events for a conversation in the workspace identified by {wId}. This is a STREAMING ENDPOINT and trying it from the documentation will likely not work.
+ *     description: Get the events for a conversation in the workspace identified by {wId}.
  *     tags:
  *       - Conversations
  *     parameters:
