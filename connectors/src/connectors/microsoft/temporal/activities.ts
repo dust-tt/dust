@@ -203,6 +203,7 @@ export async function syncFiles({
         dataSourceConfig,
         providerConfig,
         file: child,
+        parentInternalId,
         startSyncTs,
       });
     },
@@ -245,6 +246,7 @@ export async function syncOneFile({
   dataSourceConfig,
   providerConfig,
   file,
+  parentInternalId,
   startSyncTs,
   isBatchSync = false,
 }: {
@@ -252,6 +254,7 @@ export async function syncOneFile({
   dataSourceConfig: DataSourceConfig;
   providerConfig: MicrosoftConfigurationResource;
   file: microsoftgraph.DriveItem;
+  parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
 }) {
@@ -266,10 +269,8 @@ export async function syncOneFile({
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
-  const itemApiPath = getDriveItemAPIPath(file);
-
   const documentId = internalId({
-    itemAPIPath: itemApiPath,
+    itemAPIPath: getDriveItemAPIPath(file),
     nodeType: "file",
   });
 
@@ -461,6 +462,7 @@ export async function syncOneFile({
     lastSeenTs: new Date(),
     nodeType: "file",
     name: file.name ?? "",
+    parentInternalId,
     mimeType: file.file.mimeType ?? "",
     lastUpsertedTs:
       isInSizeRange && upsertTimestampMs ? new Date(upsertTimestampMs) : null,
