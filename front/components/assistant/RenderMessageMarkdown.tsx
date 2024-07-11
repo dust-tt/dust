@@ -1,16 +1,10 @@
-import {
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  IconButton,
-  SparklesIcon,
-  WrenchIcon,
-} from "@dust-tt/sparkle";
+import { IconButton, SparklesIcon, WrenchIcon } from "@dust-tt/sparkle";
 import type { WebsearchResultType } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
@@ -36,40 +30,14 @@ import {
   MermaidGraph,
   useMermaidDisplay,
 } from "@app/components/assistant/RenderMermaid";
+import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
+import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { classNames } from "@app/lib/utils";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
 );
-
-export function useCopyToClipboard(
-  resetInterval = 2000
-): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
-  const [isCopied, setCopied] = useState(false);
-
-  const copy = useCallback(
-    async (d: ClipboardItem) => {
-      if (!navigator?.clipboard) {
-        console.warn("Clipboard not supported");
-        return false;
-      }
-      try {
-        await navigator.clipboard.write([d]);
-        setCopied(true);
-        setTimeout(() => setCopied(false), resetInterval);
-        return true;
-      } catch (error) {
-        console.warn("Copy failed", error);
-        setCopied(false);
-        return false;
-      }
-    },
-    [resetInterval]
-  );
-
-  return [isCopied, copy];
-}
 
 function mentionDirective() {
   return (tree: any) => {
@@ -347,9 +315,7 @@ function CiteBlock(props: ReactMarkdownProps) {
 }
 
 function TableBlock({ children }: { children: React.ReactNode }) {
-  const [isCopied, copyToClipboard] = useCopyToClipboard();
-
-  const handleCopyTable = () => {
+  const tableData = useMemo(() => {
     const getNodeText = (node: ReactNode): string => {
       if (["string", "number"].includes(typeof node)) {
         return node as string;
@@ -395,32 +361,19 @@ function TableBlock({ children }: { children: React.ReactNode }) {
       .join("")}</tbody>`;
     const bodyPlain = bodyRows.map((row: any) => row.join("\t")).join("\n");
 
-    const data = new ClipboardItem({
-      "text/html": new Blob([`<table>${headHtml}${bodyHtml}</table>`], {
-        type: "text/html",
-      }),
-      "text/plain": new Blob([headPlain + "\n" + bodyPlain], {
-        type: "text/plain",
-      }),
-    });
-    void copyToClipboard(data);
-  };
+    return {
+      "text/html": `<table>${headHtml}${bodyHtml}</table>`,
+      "text/plain": headPlain + "\n" + bodyPlain,
+    };
+  }, [children]);
 
   return (
-    <div className="relative">
-      <div className="relative w-auto overflow-x-auto rounded-lg border border-structure-200 dark:border-structure-200-dark">
-        <table className="w-full table-auto">{children}</table>
-      </div>
-
-      <div className="absolute right-2 top-2 mx-2 rounded-xl bg-structure-50">
-        <IconButton
-          variant="tertiary"
-          size="xs"
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-          onClick={handleCopyTable}
-        />
-      </div>
-    </div>
+    <ContentBlockWrapper
+      className="border border-structure-200 dark:border-structure-200-dark"
+      content={tableData}
+    >
+      <table className="w-full table-auto">{children}</table>
+    </ContentBlockWrapper>
   );
 }
 
@@ -471,6 +424,14 @@ function LinkBlock({
   );
 }
 
+const detectLanguage = (children: React.ReactNode) => {
+  if (Array.isArray(children) && children[0]) {
+    return children[0].props.className?.replace("language-", "") || "text";
+  }
+
+  return "text";
+};
+
 function PreBlock({
   children,
   isStreaming,
@@ -478,7 +439,6 @@ function PreBlock({
   children: React.ReactNode;
   isStreaming: boolean;
 }) {
-  const [isCopied, copyToClipboard] = useCopyToClipboard();
   const validChildrenContent =
     Array.isArray(children) && children[0]
       ? children[0].props.children[0]
@@ -493,16 +453,20 @@ function PreBlock({
         : null;
   }
 
-  const handleCopyPre = async () => {
-    const text = validChildrenContent || fallbackData || "";
-    void copyToClipboard(
-      new ClipboardItem({
-        "text/plain": new Blob([text], {
-          type: "text/plain",
-        }),
-      })
-    );
-  };
+  const text = validChildrenContent || fallbackData || "";
+  const language = detectLanguage(children);
+
+  // If the output file is a CSV let the user download it.
+  const getContentToDownload: GetContentToDownloadFunction | undefined =
+    language === "csv"
+      ? async () => {
+          return {
+            content: text,
+            filename: `dust_output_${Date.now()}`,
+            type: "text/csv",
+          };
+        }
+      : undefined;
 
   const { isValidMermaid, showMermaid, setIsValidMermaid, setShowMermaid } =
     useMermaidDisplay();
@@ -511,6 +475,7 @@ function PreBlock({
     if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
       return;
     }
+
     void mermaid
       .parse(validChildrenContent)
       .then(() => {
@@ -533,59 +498,50 @@ function PreBlock({
   return (
     <pre
       className={classNames(
-        "my-2 w-full break-all rounded-md",
+        "my-2 w-full break-all rounded-lg",
         showMermaid ? "bg-slate-100" : "bg-slate-800"
       )}
     >
       <div className="relative">
-        <div className="absolute right-2 top-2">
-          {(validChildrenContent || fallbackData) && (
-            <div className="flex gap-2 align-bottom">
-              {isValidMermaid && (
-                <>
-                  <div
-                    className={classNames(
-                      "text-xs",
-                      showMermaid ? "text-slate-400" : "text-slate-300"
-                    )}
-                  >
-                    <a
-                      onClick={() => setShowMermaid(!showMermaid)}
-                      className="cursor-pointer"
+        <ContentBlockWrapper
+          content={{
+            "text/plain": text,
+          }}
+          getContentToDownload={getContentToDownload}
+        >
+          <div className="absolute right-2 top-2">
+            {(validChildrenContent || fallbackData) && (
+              <div className="flex gap-2 align-bottom">
+                {isValidMermaid && (
+                  <>
+                    <div
+                      className={classNames(
+                        "text-xs",
+                        showMermaid ? "text-slate-400" : "text-slate-300"
+                      )}
                     >
-                      {showMermaid ? "See Markdown" : "See Graph"}
-                    </a>
-                  </div>
-                  <IconButton
-                    variant="tertiary"
-                    size="xs"
-                    icon={showMermaid ? WrenchIcon : SparklesIcon}
-                    onClick={() => setShowMermaid(!showMermaid)}
-                  />
-                </>
-              )}
-              <div
-                className={classNames(
-                  "text-xs",
-                  showMermaid ? "text-slate-400" : "text-slate-300"
+                      <a
+                        onClick={() => setShowMermaid(!showMermaid)}
+                        className="cursor-pointer"
+                      >
+                        {showMermaid ? "See Markdown" : "See Graph"}
+                      </a>
+                    </div>
+                    <IconButton
+                      variant="tertiary"
+                      size="xs"
+                      icon={showMermaid ? WrenchIcon : SparklesIcon}
+                      onClick={() => setShowMermaid(!showMermaid)}
+                    />
+                  </>
                 )}
-              >
-                <a onClick={handleCopyPre} className="cursor-pointer">
-                  {isCopied ? "Copied!" : "Copy"}
-                </a>
               </div>
-              <IconButton
-                variant="tertiary"
-                size="xs"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                onClick={handleCopyPre}
-              />
-            </div>
-          )}
-        </div>
-        <div className="overflow-auto pt-8 text-sm">
-          {validChildrenContent ? children : fallbackData || children}
-        </div>
+            )}
+          </div>
+          <div className="overflow-auto pt-8 text-sm">
+            {validChildrenContent ? children : fallbackData || children}
+          </div>
+        </ContentBlockWrapper>
       </div>
     </pre>
   );
@@ -674,7 +630,7 @@ export function CodeBlock({
   return !inline && language ? (
     <SyntaxHighlighter
       wrapLongLines={wrapLongLines}
-      className="rounded-md"
+      className="rounded-lg"
       style={{
         "hljs-comment": {
           color: amber200,
@@ -777,7 +733,7 @@ export function CodeBlock({
       {String(children).replace(/\n$/, "")}
     </SyntaxHighlighter>
   ) : (
-    <code className="rounded-md border-structure-200 bg-structure-100 px-1.5 py-1 text-sm text-amber-600 dark:border-structure-200-dark dark:bg-structure-100-dark dark:text-amber-400">
+    <code className="rounded-lg border-structure-200 bg-structure-100 px-1.5 py-1 text-sm text-amber-600 dark:border-structure-200-dark dark:bg-structure-100-dark dark:text-amber-400">
       {children}
     </code>
   );
