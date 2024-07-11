@@ -131,29 +131,31 @@ export async function processTranscriptActivity(
     );
   }
 
-  const localLogger = mainLogger.child({
-    fileId,
-    transcriptsConfigurationId,
-  });
-
   const user = await User.findByPk(transcriptsConfiguration.userId);
   if (!user) {
-    localLogger.error(
-      {},
+    mainLogger.error(
+      { fileId },
       "[processTranscriptActivity] User not found. Stopping."
     );
     return;
   }
 
+  const localLogger = mainLogger.child({
+    userId: user.id,
+    fileId,
+    transcriptsConfigurationId,
+  });
+
   localLogger.info(
     {},
-    "[processTranscriptActivity] Starting processing of file "
+    "[processTranscriptActivity] Starting processing of file."
   );
 
   const hasExistingHistory =
     await transcriptsConfiguration.fetchHistoryForFileId(fileId);
   if (hasExistingHistory) {
     localLogger.info(
+      {},
       "[processTranscriptActivity] History record already exists. Stopping."
     );
     return;
@@ -207,7 +209,10 @@ export async function processTranscriptActivity(
   const owner = auth.workspace();
 
   if (!owner) {
-    localLogger.error("[processTranscriptActivity] No owner found. Stopping.");
+    localLogger.error(
+      {},
+      "[processTranscriptActivity] No owner found. Stopping."
+    );
     return;
   }
 
@@ -222,6 +227,7 @@ export async function processTranscriptActivity(
   const { agentConfigurationId } = transcriptsConfiguration;
   if (!agentConfigurationId) {
     localLogger.error(
+      {},
       "[processTranscriptActivity] No agent configuration id found. Stopping."
     );
     return;
@@ -238,7 +244,12 @@ export async function processTranscriptActivity(
   );
 
   if (!agent) {
-    localLogger.error("[processTranscriptActivity] No agent found. Stopping.");
+    localLogger.error(
+      {
+        agentConfigurationId,
+      },
+      "[processTranscriptActivity] No agent found. Stopping."
+    );
     return;
   }
 
@@ -277,7 +288,7 @@ export async function processTranscriptActivity(
 
   if (convRes.isErr()) {
     localLogger.error(
-      { error: convRes.error },
+      { agentConfigurationId, error: convRes.error },
       "[processTranscriptActivity] Error creating conversation."
     );
     return new Err(new Error(convRes.error.message));
@@ -286,6 +297,9 @@ export async function processTranscriptActivity(
   const { conversation } = convRes.value;
   if (!conversation) {
     localLogger.error(
+      {
+        agentConfigurationId,
+      },
       "[processTranscriptActivity] No conversation found. Stopping."
     );
     return;
@@ -293,9 +307,8 @@ export async function processTranscriptActivity(
 
   localLogger.info(
     {
-      conversation: {
-        sId: conversation.sId,
-      },
+      agentConfigurationId,
+      conservationSid: conversation.sId,
     },
     "[processTranscriptActivity] Created conversation."
   );
