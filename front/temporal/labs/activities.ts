@@ -218,11 +218,13 @@ export async function processTranscriptActivity(
   const owner = auth.workspace();
 
   if (!owner) {
-    localLogger.error({
-      userId: user.id,
-      fileId,
-    },
-    "[processTranscriptActivity] No owner found. Stopping.");
+    localLogger.error(
+      {
+        userId: user.id,
+        fileId,
+      },
+      "[processTranscriptActivity] No owner found. Stopping."
+    );
     return;
   }
 
@@ -257,11 +259,14 @@ export async function processTranscriptActivity(
   );
 
   if (!agent) {
-    localLogger.error({
-      userId: user.id,
-      fileId,
-      agentConfigurationId,
-    },"[processTranscriptActivity] No agent found. Stopping.");
+    localLogger.error(
+      {
+        userId: user.id,
+        fileId,
+        agentConfigurationId,
+      },
+      "[processTranscriptActivity] No agent found. Stopping."
+    );
     return;
   }
 
@@ -300,9 +305,7 @@ export async function processTranscriptActivity(
 
   if (convRes.isErr()) {
     localLogger.error(
-      { userId: user.id,
-        fileId,
-        agentConfigurationId, error: convRes.error },
+      { userId: user.id, fileId, agentConfigurationId, error: convRes.error },
       "[processTranscriptActivity] Error creating conversation."
     );
     return new Err(new Error(convRes.error.message));
@@ -313,8 +316,8 @@ export async function processTranscriptActivity(
     localLogger.error(
       {
         userId: user.id,
-      fileId,
-      agentConfigurationId
+        fileId,
+        agentConfigurationId,
       },
       "[processTranscriptActivity] No conversation found. Stopping."
     );
@@ -324,9 +327,9 @@ export async function processTranscriptActivity(
   localLogger.info(
     {
       userId: user.id,
-    fileId,
-    agentConfigurationId,
-    conservationSid: conversation.sId,
+      fileId,
+      agentConfigurationId,
+      conservationSid: conversation.sId,
     },
     "[processTranscriptActivity] Created conversation."
   );
