@@ -5,16 +5,16 @@ import { ArrowUpOnSquareIcon, Icon } from "@sparkle/_index";
 import anim from "@sparkle/lottie/dragArea";
 
 export interface DropzoneOverlayProps {
-  description?: string;
+  description: string;
   isDragActive: boolean;
-  title?: string;
+  title: string;
   visual?: React.ReactNode;
 }
 
 export default function DropzoneOverlay({
-  description = "Drag and drop your files here",
+  description,
   isDragActive,
-  title = "Drag and drop",
+  title,
   visual = (
     <Icon visual={ArrowUpOnSquareIcon} size="lg" className="s-text-white" />
   ),

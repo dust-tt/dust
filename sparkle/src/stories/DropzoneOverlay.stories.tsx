@@ -23,7 +23,11 @@ export const DropzoneOverlayExample = () => {
         setIsDragActive(false);
       }}
     >
-      <DropzoneOverlay isDragActive={isDragActive} />
+      <DropzoneOverlay
+        isDragActive={isDragActive}
+        description={"Drag and drop your files here"}
+        title={"Drag and drop"}
+      />
       <div className="s-flex s-min-h-96 s-items-center s-justify-center">
         This is some placeholder content.
       </div>
