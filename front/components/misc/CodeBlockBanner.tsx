@@ -4,9 +4,9 @@ import {
   ClipboardIcon,
   IconButton,
 } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
-import { useCopyToClipboard } from "@app/components/assistant/RenderMessageMarkdown";
+import { classNames } from "@app/lib/utils";
 
 type SupportedContentType = "application/json" | "text/csv";
 
@@ -23,25 +23,40 @@ export interface ContentToDownload {
 
 export type GetContentToDownloadFunction = () => Promise<ContentToDownload>;
 
+type ClipboardContent = {
+  "text/plain"?: string;
+  "text/html"?: string;
+};
+
 interface CodeBlockBannerProps {
   children: React.ReactNode;
-  content: string;
+  className?: string;
+  content?: ClipboardContent;
   getContentToDownload?: GetContentToDownloadFunction;
 }
 
 export function CodeBlockBanner({
   children,
+  className,
   content,
   getContentToDownload,
 }: CodeBlockBannerProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const handleCopyToClipboard = useCallback(() => {
-    const data = new ClipboardItem({
-      "text/plain": new Blob([content], {
-        type: "text/plain",
-      }),
-    });
+    if (!content) {
+      return;
+    }
+
+    const data = new ClipboardItem(
+      Object.entries(content).reduce(
+        (acc, [type, data]) => {
+          acc[type] = new Blob([data], { type });
+          return acc;
+        },
+        {} as Record<string, Blob>
+      )
+    );
     void copyToClipboard(data);
   }, [content, copyToClipboard]);
 
@@ -62,7 +77,12 @@ export function CodeBlockBanner({
 
   return (
     <div className="relative">
-      <div className="relative w-auto overflow-x-auto rounded-lg">
+      <div
+        className={classNames(
+          "relative w-auto overflow-x-auto rounded-lg",
+          className ?? ""
+        )}
+      >
         <div className="w-full table-auto">{children}</div>
       </div>
 
@@ -75,13 +95,43 @@ export function CodeBlockBanner({
             onClick={handleDownload}
           />
         )}
-        <IconButton
-          variant="tertiary"
-          size="xs"
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-          onClick={handleCopyToClipboard}
-        />
+        {content && (
+          <IconButton
+            variant="tertiary"
+            size="xs"
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+            onClick={handleCopyToClipboard}
+          />
+        )}
       </div>
     </div>
   );
+}
+
+function useCopyToClipboard(
+  resetInterval = 2000
+): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
+  const [isCopied, setCopied] = useState(false);
+
+  const copy = useCallback(
+    async (d: ClipboardItem) => {
+      if (!navigator?.clipboard) {
+        console.warn("Clipboard not supported");
+        return false;
+      }
+      try {
+        await navigator.clipboard.write([d]);
+        setCopied(true);
+        setTimeout(() => setCopied(false), resetInterval);
+        return true;
+      } catch (error) {
+        console.warn("Copy failed", error);
+        setCopied(false);
+        return false;
+      }
+    },
+    [resetInterval]
+  );
+
+  return [isCopied, copy];
 }
