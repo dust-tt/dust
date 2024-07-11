@@ -6,7 +6,6 @@ import {
   minTranscriptsSize,
 } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
-import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
@@ -132,25 +131,23 @@ export async function processTranscriptActivity(
     );
   }
 
-  const localLogger = mainLogger.child({
-    fileId,
-    transcriptsConfigurationId,
-  });
-
   const user = await User.findByPk(transcriptsConfiguration.userId);
   if (!user) {
-    localLogger.error(
-      {},
+    mainLogger.error(
+      { fileId },
       "[processTranscriptActivity] User not found. Stopping."
     );
     return;
   }
 
+  const localLogger = mainLogger.child({
+    userId: user.id,
+    fileId,
+    transcriptsConfigurationId,
+  });
+
   localLogger.info(
-    {
-      userId: user.id,
-      fileId,
-    },
+    {},
     "[processTranscriptActivity] Starting processing of file."
   );
 
@@ -158,10 +155,7 @@ export async function processTranscriptActivity(
     await transcriptsConfiguration.fetchHistoryForFileId(fileId);
   if (hasExistingHistory) {
     localLogger.info(
-      {
-        userId: user.id,
-        fileId,
-      },
+      {},
       "[processTranscriptActivity] History record already exists. Stopping."
     );
     return;
@@ -200,10 +194,7 @@ export async function processTranscriptActivity(
   // Short transcripts are likely not useful to process.
   if (transcriptContent.length < minTranscriptsSize) {
     localLogger.info(
-      {
-        userId: user.id,
-        fileId,
-      },
+      {},
       "[processTranscriptActivity] Transcript content too short or empty. Skipping."
     );
     await transcriptsConfiguration.recordHistory({
@@ -219,10 +210,7 @@ export async function processTranscriptActivity(
 
   if (!owner) {
     localLogger.error(
-      {
-        userId: user.id,
-        fileId,
-      },
+      {},
       "[processTranscriptActivity] No owner found. Stopping."
     );
     return;
@@ -239,10 +227,7 @@ export async function processTranscriptActivity(
   const { agentConfigurationId } = transcriptsConfiguration;
   if (!agentConfigurationId) {
     localLogger.error(
-      {
-        userId: user.id,
-        fileId,
-      },
+      {},
       "[processTranscriptActivity] No agent configuration id found. Stopping."
     );
     return;
@@ -261,8 +246,6 @@ export async function processTranscriptActivity(
   if (!agent) {
     localLogger.error(
       {
-        userId: user.id,
-        fileId,
         agentConfigurationId,
       },
       "[processTranscriptActivity] No agent found. Stopping."
@@ -305,7 +288,7 @@ export async function processTranscriptActivity(
 
   if (convRes.isErr()) {
     localLogger.error(
-      { userId: user.id, fileId, agentConfigurationId, error: convRes.error },
+      { agentConfigurationId, error: convRes.error },
       "[processTranscriptActivity] Error creating conversation."
     );
     return new Err(new Error(convRes.error.message));
@@ -315,8 +298,6 @@ export async function processTranscriptActivity(
   if (!conversation) {
     localLogger.error(
       {
-        userId: user.id,
-        fileId,
         agentConfigurationId,
       },
       "[processTranscriptActivity] No conversation found. Stopping."
@@ -326,8 +307,6 @@ export async function processTranscriptActivity(
 
   localLogger.info(
     {
-      userId: user.id,
-      fileId,
       agentConfigurationId,
       conservationSid: conversation.sId,
     },
