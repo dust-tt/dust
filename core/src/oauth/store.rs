@@ -119,7 +119,7 @@ impl OAuthStore for PostgresOAuthStore {
                         authorization_code, access_token, access_token_expiry,
                         refresh_token, raw_json
                    FROM connections
-                   WHERE row_id = $1 AND provider = $2 AND secret = $3",
+                   WHERE id = $1 AND provider = $2 AND secret = $3",
                 &[&row_id, &serde_json::to_string(&provider)?, &secret],
             )
             .await?;

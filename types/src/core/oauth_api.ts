@@ -86,7 +86,7 @@ export class OAuthAPI {
     code: string;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const response = await this._fetchWithError(
-      `${OAUTH_API}/connections/${connectionId}`,
+      `${OAUTH_API}/connections/${connectionId}/finalize`,
       {
         method: "POST",
         headers: {
