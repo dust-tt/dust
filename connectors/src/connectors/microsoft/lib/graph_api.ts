@@ -158,10 +158,17 @@ export type MicrosoftEntityMapping = {
   [K in keyof MicrosoftEntity]: MicrosoftEntity[K];
 };
 
+/**
+ * Converts a Microsoft entity to a MicrosoftNode depending on the nodeType
+ * Note: parentItemAPIPath is not set in the returned object, the parent logic
+ * is not explicit in the Microsoft Graph API and is handled on our side
+ * @param nodeType
+ * @param itemRaw
+ */
 export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
   nodeType: T,
   itemRaw: MicrosoftEntityMapping[T]
-): MicrosoftNode & { nodeType: T } {
+): MicrosoftNode {
   switch (nodeType) {
     case "folder": {
       const item = itemRaw as MicrosoftGraph.DriveItem;

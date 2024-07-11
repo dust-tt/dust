@@ -4,14 +4,11 @@ import mammoth from "mammoth";
 import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
-import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
-  getDriveAPIPath,
   getDriveItemAPIPath,
   getDrives,
   getFilesAndFolders,
   getItem,
-  getSiteAPIPath,
   getSites,
   internalId,
   itemToMicrosoftNode,
@@ -38,6 +35,7 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -56,7 +54,7 @@ export async function getSiteNodesToSync(
     await MicrosoftRootResource.listRootsByConnectorId(connectorId);
 
   // get root folders and drives and drill down site-root and sites to their
-  // child drives, as MicrosoftNodeData
+  // child drives (converted to MicrosoftNode types)
   const rootFolderAndDriveNodes = await Promise.all(
     rootResources
       .filter(
@@ -71,22 +69,25 @@ export async function getSiteNodesToSync(
       )
   );
 
-  const rootSiteNodes: MicrosoftNodeData[] = rootResources.filter(
-    (resource) => resource.nodeType === "site"
-  );
+  const rootSitePaths: string[] = rootResources
+    .filter((resource) => resource.nodeType === "site")
+    .map((resource) => resource.itemAPIPath);
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getSites(client);
-    rootSiteNodes.push(
-      ...msSites.map((site) => itemToMicrosoftNode("site", site))
+    rootSitePaths.push(
+      ...msSites.map((site) => itemToMicrosoftNode("site", site).itemAPIPath)
     );
   }
 
   const siteDriveNodes = (
     await concurrentExecutor(
-      rootSiteNodes,
-      async (site) => {
-        const msDrives = await getDrives(client, internalId(site));
+      rootSitePaths,
+      async (sitePath) => {
+        const msDrives = await getDrives(
+          client,
+          internalId({ nodeType: "site", itemAPIPath: sitePath })
+        );
         return msDrives.map((drive) => itemToMicrosoftNode("drive", drive));
       },
       { concurrency: 5 }
@@ -96,22 +97,22 @@ export async function getSiteNodesToSync(
   // remove duplicates
   const allNodes = [...siteDriveNodes, ...rootFolderAndDriveNodes].reduce(
     (acc, current) => {
-      const x = acc.find(
-        (item) =>
-          item.nodeType === current.nodeType &&
-          item.itemAPIPath === current.itemAPIPath
-      );
+      const x = acc.find((item) => item.itemAPIPath === current.itemAPIPath);
       if (!x) {
         return acc.concat([current]);
       } else {
         return acc;
       }
     },
-    [] as MicrosoftNodeData[]
+    [] as MicrosoftNode[]
   );
 
-  const nodeResources = await batchGetOrCreateFromNodes(connectorId, allNodes);
-  return allNodes.map((r) => internalId(r));
+  const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
+    connectorId,
+    allNodes
+  );
+
+  return nodeResources.map((r) => r.internalId);
 }
 
 export async function markNodeAsVisited(
@@ -152,7 +153,7 @@ export async function syncFiles({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const parent = await MicrosoftNodeResource.getOrCreate(
+  const parent = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     parentInternalId
   );
