@@ -286,7 +286,7 @@ fn main() {
             .with(JsonStorageLayer)
             .with(
                 BunyanFormattingLayer::new("sqlite_worker".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target", "v", "pid"].into_iter())
+                    .skip_fields(vec!["file", "line", "target"].into_iter())
                     .unwrap(),
             )
             .with(tracing_subscriber::EnvFilter::new("info"))
