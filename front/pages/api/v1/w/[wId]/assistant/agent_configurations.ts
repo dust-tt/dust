@@ -105,7 +105,6 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: Method not supported. Only GET is expected.
  */
 
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationsResponseBody>>

@@ -172,12 +172,7 @@ export type PostConversationsResponseBody = {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 conversation:
- *                   type: object
- *                 message:
- *                   $ref: '#/components/schemas/Message'
+ *               $ref: '#/components/schemas/Conversation'
  *       400:
  *         description: Bad Request
  *       401:
