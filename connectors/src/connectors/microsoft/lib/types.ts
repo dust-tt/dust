@@ -22,7 +22,7 @@ export function isValidNodeType(
 export type MicrosoftNode = {
   nodeType: MicrosoftNodeType;
   name: string | null;
-  itemAPIPath: string;
-  parentItemAPIPath?: string;
+  internalId: string;
+  parentInternalId: string | null;
   mimeType: string | null;
 };

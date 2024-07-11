@@ -9,6 +9,7 @@ import {
   getDrives,
   getFilesAndFolders,
   getItem,
+  getSiteAPIPath,
   getSites,
   internalId,
   itemToMicrosoftNode,
@@ -76,9 +77,7 @@ export async function getSiteNodesToSync(
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getSites(client);
-    rootSitePaths.push(
-      ...msSites.map((site) => itemToMicrosoftNode("site", site).itemAPIPath)
-    );
+    rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
   }
 
   const siteDriveNodes = (
@@ -98,7 +97,7 @@ export async function getSiteNodesToSync(
   // remove duplicates
   const allNodes = [...siteDriveNodes, ...rootFolderAndDriveNodes].reduce(
     (acc, current) => {
-      const x = acc.find((item) => item.itemAPIPath === current.itemAPIPath);
+      const x = acc.find((item) => item.internalId === current.internalId);
       if (!x) {
         return acc.concat([current]);
       } else {
@@ -227,12 +226,13 @@ export async function syncFiles({
     connectorId,
     children
       .filter((item) => item.folder)
-      .map((item) => ({
-        ...itemToMicrosoftNode("folder", item),
-        // add parent information to new node resources
-        parentItemAPIPath:
-          typeAndPathFromInternalId(parentInternalId).itemAPIPath,
-      }))
+      .map(
+        (item): MicrosoftNode => ({
+          ...itemToMicrosoftNode("folder", item),
+          // add parent information to new node resources
+          parentInternalId,
+        })
+      )
   );
 
   return {

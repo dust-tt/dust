@@ -175,7 +175,11 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        itemAPIPath: getDriveItemAPIPath(item),
+        internalId: internalId({
+          nodeType,
+          itemAPIPath: getDriveItemAPIPath(item),
+        }),
+        parentInternalId: null,
         mimeType: null,
       };
     }
@@ -184,7 +188,11 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        itemAPIPath: getDriveItemAPIPath(item),
+        internalId: internalId({
+          nodeType,
+          itemAPIPath: getDriveItemAPIPath(item),
+        }),
+        parentInternalId: null,
         mimeType: item.file?.mimeType ?? null,
       };
     }
@@ -193,11 +201,24 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        itemAPIPath: getDriveAPIPath(item),
+        internalId: internalId({
+          nodeType,
+          itemAPIPath: getDriveAPIPath(item),
+        }),
+        parentInternalId: null,
         mimeType: null,
       };
     }
-    case "site":
+    case "site": {
+      const item = itemRaw as MicrosoftGraph.Site;
+      return {
+        nodeType,
+        name: item.name ?? null,
+        internalId: internalId({ nodeType, itemAPIPath: getSiteAPIPath(item) }),
+        mimeType: null,
+        parentInternalId: null,
+      };
+    }
     case "team":
     case "channel":
     case "message":

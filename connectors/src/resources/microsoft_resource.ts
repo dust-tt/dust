@@ -2,7 +2,6 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import { internalId as internalIdFromNode } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -319,7 +318,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     connectorId: ModelId,
     nodes: MicrosoftNode[]
   ): Promise<MicrosoftNodeResource[]> {
-    const internalIds = nodes.map((root) => internalIdFromNode(root));
+    const internalIds = nodes.map((n) => n.internalId);
 
     const existingNodeResources =
       await MicrosoftNodeResource.fetchByInternalIds(connectorId, internalIds);
@@ -329,7 +328,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       existingNodeResources,
       async (resource) => {
         const node = nodes.find(
-          (node) => internalIdFromNode(node) === resource.internalId
+          (node) => node.internalId === resource.internalId
         );
         if (!node) {
           throw new Error(
@@ -345,17 +344,17 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     const inexistantNodes = nodes.filter(
       (node) =>
         !existingNodeResources.find(
-          (resource) => resource.internalId === internalIdFromNode(node)
+          (resource) => resource.internalId === node.internalId
         )
     );
 
     const newNodeResources = await MicrosoftNodeResource.batchMakeNew(
       inexistantNodes.map((node) => ({
         connectorId,
-        internalId: internalIdFromNode(node),
+        internalId: node.internalId,
         nodeType: node.nodeType,
         name: node.name,
-        parentInternalId: null,
+        parentInternalId: node.parentInternalId,
         mimeType: node.mimeType,
       }))
     );
