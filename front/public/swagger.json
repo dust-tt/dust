@@ -15,7 +15,9 @@
       "get": {
         "summary": "Get an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -135,7 +137,9 @@
       "post": {
         "summary": "Create an app run",
         "description": "Create a run for an app in the workspace identified by {wId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -243,7 +247,9 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps of a workspace.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -290,7 +296,9 @@
       "get": {
         "summary": "List assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -432,7 +440,9 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -539,7 +549,9 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -595,7 +607,9 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "security": [
           {
             "ApiKeyAuth": []
@@ -654,7 +668,9 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -741,7 +757,9 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -835,7 +853,12 @@
                         "type": "string",
                         "nullable": true,
                         "description": "The origin of the message",
-                        "enum": ["api", "web", "slack", "null"],
+                        "enum": [
+                          "api",
+                          "web",
+                          "slack",
+                          "null"
+                        ],
                         "default": "api",
                         "example": "api"
                       }
@@ -866,7 +889,9 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -876,15 +901,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "ApiKeyAuth": []
           }
         ],
         "requestBody": {
@@ -910,55 +931,13 @@
                           "properties": {
                             "configurationId": {
                               "type": "string",
-                              "example": [
-                                {
-                                  "configurationId": "dust"
-                                }
-                              ]
+                              "example": "dust"
                             }
                           }
                         }
                       },
                       "context": {
-                        "type": "object",
-                        "properties": {
-                          "timezone": {
-                            "type": "string",
-                            "description": "The timezone of the user who created the message",
-                            "example": "Europe/Paris"
-                          },
-                          "username": {
-                            "type": "string",
-                            "description": "The username of the user who created the message",
-                            "example": "johndoe"
-                          },
-                          "fullName": {
-                            "type": "string",
-                            "description": "The full name of the user who created the message",
-                            "example": "John Doe",
-                            "nullable": true
-                          },
-                          "email": {
-                            "type": "string",
-                            "description": "The email of the user who created the message",
-                            "example": "johndoe@example.com",
-                            "nullable": true
-                          },
-                          "profilePictureUrl": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "The profile picture URL of the user who created the message",
-                            "example": "https://example.com/profile_picture.jpg"
-                          },
-                          "origin": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "The origin of the message",
-                            "enum": ["api", "web", "slack", "null"],
-                            "default": "api",
-                            "example": "api"
-                          }
-                        }
+                        "$ref": "#/components/schemas/Context"
                       }
                     }
                   },
@@ -986,29 +965,7 @@
                         "example": "text/plain"
                       },
                       "context": {
-                        "type": "object",
-                        "properties": {
-                          "username": {
-                            "type": "string",
-                            "description": "The username of the user who created the content fragment",
-                            "example": "johndoe"
-                          },
-                          "fullName": {
-                            "type": "string",
-                            "description": "The full name of the user who created the content fragment",
-                            "example": "John Doe"
-                          },
-                          "email": {
-                            "type": "string",
-                            "description": "The email of the user who created the content fragment",
-                            "example": "johndoe@example.com"
-                          },
-                          "profilePictureUrl": {
-                            "type": "string",
-                            "description": "The profile picture URL of the user who created the content fragment",
-                            "example": "https://example.com/profile_picture.jpg"
-                          }
-                        }
+                        "$ref": "#/components/schemas/Context"
                       }
                     }
                   },
@@ -1027,7 +984,11 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation",
-                    "enum": ["public", "private", "unlisted"],
+                    "enum": [
+                      "public",
+                      "private",
+                      "unlisted"
+                    ],
                     "default": "public",
                     "example": "private"
                   }
@@ -1063,7 +1024,9 @@
       "get": {
         "summary": "Retrieve a document from a data source",
         "description": "Retrieve a document from a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1126,7 +1089,9 @@
       "post": {
         "summary": "Upsert a document in a data source",
         "description": "Upsert a document in a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1213,7 +1178,9 @@
       "delete": {
         "summary": "Delete a document from a data source",
         "description": "Delete a document from a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1275,7 +1242,9 @@
       "post": {
         "summary": "Update the parents of a document",
         "description": "Update the parents of a document in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1358,7 +1327,9 @@
       "get": {
         "summary": "Get documents",
         "description": "Get documents in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1421,7 +1392,9 @@
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1613,7 +1586,9 @@
       "get": {
         "summary": "Get a table",
         "description": "Get a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1667,7 +1642,9 @@
       "delete": {
         "summary": "Delete a table",
         "description": "Delete a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1723,7 +1700,9 @@
       "get": {
         "summary": "Get a row",
         "description": "Get a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1786,7 +1765,9 @@
       "delete": {
         "summary": "Delete a row",
         "description": "Delete a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1851,7 +1832,9 @@
       "get": {
         "summary": "List rows",
         "description": "List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1918,7 +1901,9 @@
       "post": {
         "summary": "Upsert rows",
         "description": "Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1990,7 +1975,9 @@
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": ["datetime"]
+                                    "enum": [
+                                      "datetime"
+                                    ]
                                   },
                                   "epoch": {
                                     "type": "number"
@@ -2037,7 +2024,9 @@
       "post": {
         "summary": "Upsert CSV to table",
         "description": "Upsert CSV data to a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2108,7 +2097,9 @@
       "get": {
         "summary": "Get tables",
         "description": "Get tables in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2147,7 +2138,9 @@
       "post": {
         "summary": "Upsert a table",
         "description": "Upsert a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2215,7 +2208,9 @@
       "post": {
         "summary": "Tokenize text",
         "description": "Tokenize text for the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2277,7 +2272,9 @@
       "get": {
         "summary": "Get data sources",
         "description": "Get data sources in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2315,7 +2312,9 @@
       "get": {
         "summary": "List feature flags",
         "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2362,7 +2361,9 @@
       "get": {
         "summary": "List member emails",
         "description": "List the emails of all members in the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2418,7 +2419,9 @@
       "get": {
         "summary": "Get workspace usage data",
         "description": "Get usage data for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2476,7 +2479,9 @@
       "get": {
         "summary": "Get verified domains",
         "description": "Get the verified domain for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2512,43 +2517,178 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "API key authentication. Prefix the key with 'Bearer '"
+      }
+    },
     "schemas": {
-      "Message": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "sId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          }
+        }
+      },
+      "Workspace": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "number"
-          },
-          "created": {
-            "type": "number"
+            "type": "integer"
           },
           "sId": {
             "type": "string"
           },
-          "type": {
+          "name": {
             "type": "string"
           },
-          "visibility": {
+          "role": {
+            "type": "string"
+          },
+          "segmentation": {
+            "type": "string",
+            "nullable": true
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ssoEnforced": {
+            "type": "boolean"
+          },
+          "whiteListedProviders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "defaultEmbeddingProvider": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Context": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "profilePictureUrl": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          }
+        }
+      },
+      "AgentConfiguration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "sId": {
             "type": "string"
           },
           "version": {
-            "type": "number"
+            "type": "integer"
           },
-          "user": {
-            "type": "object",
+          "versionCreatedAt": {
+            "type": "string",
             "nullable": true
           },
-          "mentions": {
-            "type": "array"
+          "versionAuthorId": {
+            "type": "string",
+            "nullable": true
           },
-          "content": {
+          "name": {
             "type": "string"
           },
-          "context": {
-            "type": "object"
+          "description": {
+            "type": "string"
           },
-          "rank": {
-            "type": "number"
+          "instructions": {
+            "type": "string",
+            "nullable": true
+          },
+          "pictureUrl": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "userListStatus": {
+            "type": "string"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "providerId": {
+                "type": "string"
+              },
+              "modelId": {
+                "type": "string"
+              },
+              "temperature": {
+                "type": "number"
+              }
+            }
+          },
+          "actions": {
+            "type": "array"
+          },
+          "maxToolsUsePerRun": {
+            "type": "integer"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -2568,44 +2708,7 @@
                 "type": "string"
               },
               "owner": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  },
-                  "sId": {
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "role": {
-                    "type": "string"
-                  },
-                  "segmentation": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "flags": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "ssoEnforced": {
-                    "type": "boolean"
-                  },
-                  "whiteListedProviders": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "defaultEmbeddingProvider": {
-                    "type": "string",
-                    "nullable": true
-                  }
-                }
+                "$ref": "#/components/schemas/Workspace"
               },
               "title": {
                 "type": "string"
@@ -2639,39 +2742,7 @@
                         "type": "integer"
                       },
                       "user": {
-                        "type": "object",
-                        "properties": {
-                          "sId": {
-                            "type": "string"
-                          },
-                          "id": {
-                            "type": "integer"
-                          },
-                          "createdAt": {
-                            "type": "integer"
-                          },
-                          "username": {
-                            "type": "string"
-                          },
-                          "email": {
-                            "type": "string"
-                          },
-                          "firstName": {
-                            "type": "string"
-                          },
-                          "lastName": {
-                            "type": "string"
-                          },
-                          "fullName": {
-                            "type": "string"
-                          },
-                          "provider": {
-                            "type": "string"
-                          },
-                          "image": {
-                            "type": "string"
-                          }
-                        }
+                        "$ref": "#/components/schemas/User"
                       },
                       "mentions": {
                         "type": "array",
@@ -2688,27 +2759,7 @@
                         "type": "string"
                       },
                       "context": {
-                        "type": "object",
-                        "properties": {
-                          "username": {
-                            "type": "string"
-                          },
-                          "timezone": {
-                            "type": "string"
-                          },
-                          "fullName": {
-                            "type": "string"
-                          },
-                          "email": {
-                            "type": "string"
-                          },
-                          "profilePictureUrl": {
-                            "type": "string"
-                          },
-                          "origin": {
-                            "type": "string"
-                          }
-                        }
+                        "$ref": "#/components/schemas/Context"
                       },
                       "agentMessageId": {
                         "type": "integer"
@@ -2745,72 +2796,7 @@
                         "nullable": true
                       },
                       "configuration": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer"
-                          },
-                          "sId": {
-                            "type": "string"
-                          },
-                          "version": {
-                            "type": "integer"
-                          },
-                          "versionCreatedAt": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "versionAuthorId": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "description": {
-                            "type": "string"
-                          },
-                          "instructions": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "pictureUrl": {
-                            "type": "string"
-                          },
-                          "status": {
-                            "type": "string"
-                          },
-                          "scope": {
-                            "type": "string"
-                          },
-                          "userListStatus": {
-                            "type": "string"
-                          },
-                          "model": {
-                            "type": "object",
-                            "properties": {
-                              "providerId": {
-                                "type": "string"
-                              },
-                              "modelId": {
-                                "type": "string"
-                              },
-                              "temperature": {
-                                "type": "number"
-                              }
-                            }
-                          },
-                          "actions": {
-                            "type": "array"
-                          },
-                          "maxToolsUsePerRun": {
-                            "type": "integer"
-                          },
-                          "templateId": {
-                            "type": "string",
-                            "nullable": true
-                          }
-                        }
+                        "$ref": "#/components/schemas/AgentConfiguration"
                       }
                     }
                   }
@@ -2819,14 +2805,6 @@
             }
           }
         }
-      }
-    },
-    "securitySchemes": {
-      "ApiKeyAuth": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "Authorization",
-        "description": "API key authentication. Prefix the key with 'Bearer '"
       }
     }
   },
