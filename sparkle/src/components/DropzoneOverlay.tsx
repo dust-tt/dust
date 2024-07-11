@@ -30,7 +30,7 @@ export default function DropzoneOverlay({
     } else {
       const timeoutId = setTimeout(() => {
         setIsActiveDelayed(false);
-      }, 1000);
+      }, 400);
       return () => clearTimeout(timeoutId);
     }
   }, [isDragActive]);
@@ -44,6 +44,7 @@ export default function DropzoneOverlay({
       className="s-absolute s-inset-0 s-z-50 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0 s-bg-white/80 s-text-element-800"
       onMouseLeave={() => {
         lottieRef.current?.setDirection(-1);
+        lottieRef.current?.setSpeed(2);
         lottieRef.current?.play();
       }}
       onDrop={() => {
