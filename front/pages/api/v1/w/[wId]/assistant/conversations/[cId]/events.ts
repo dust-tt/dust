@@ -11,7 +11,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  * /api/v1/w/{wId}/assistant/conversations/{cId}/events:
  *   get:
  *     summary: Get the events for a conversation
- *     description: Get the events for a conversation in the workspace identified by {wId}.
+ *     description: Get the events for a conversation in the workspace identified by {wId}. This is a STREAMING ENDPOINT and trying it from the documentation will likely not work.
  *     tags:
  *       - Conversations
  *     parameters:
@@ -31,13 +31,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Events for the conversation
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Conversation'
+ *         description: Events for the conversation, view the "Events" page from this documentation for more information.
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
