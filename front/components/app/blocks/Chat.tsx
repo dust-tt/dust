@@ -229,12 +229,12 @@ export default function Chat({
               >
                 <div className="flex flex-row items-center space-x-1">
                   {(block.spec.stop || ([] as string[])).map(
-                    (tag: string, i: number) => (
+                    (stop: string, i: number) => (
                       <div
                         key={i}
                         className="flex rounded-md bg-slate-100 px-1"
                       >
-                        {tag}
+                        {stop}
                         <span
                           onClick={() => handleRemoveStop(i)}
                           className="ml-1 cursor-pointer flex items-center"
