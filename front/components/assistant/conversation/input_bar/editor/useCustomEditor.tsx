@@ -8,6 +8,7 @@ import { useEffect, useMemo } from "react";
 import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/MentionStorage";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import { ParagraphExtension } from "@app/components/text_editor/extensions";
 
 export interface EditorMention {
   id: string;
@@ -167,7 +168,10 @@ const useCustomEditor = ({
     extensions: [
       StarterKit.configure({
         heading: false,
+        // Disable the paragraph extension to handle Enter key press manually.
+        paragraph: false,
       }),
+      ParagraphExtension,
       MentionStorage,
       Mention.configure({
         HTMLAttributes: {
@@ -224,11 +228,11 @@ const useCustomEditor = ({
             clearEditor
           );
 
-          // Return true to indicate that this key event has been handled
+          // Return true to indicate that this key event has been handled.
           return true;
         }
 
-        // Return false to let other keydown handlers or TipTap's default behavior process the event
+        // Return false to let other keydown handlers or TipTap's default behavior process the event.
         return false;
       },
     },
