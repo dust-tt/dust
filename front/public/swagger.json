@@ -826,15 +826,22 @@
                     "properties": {
                       "content": {
                         "type": "string",
-                        "description": "The content of the message"
+                        "description": "The content of the message",
+                        "example": "This is my message"
                       },
                       "mentions": {
                         "type": "array",
                         "items": {
                           "type": "object",
+                          "description": "The mentions of the message, where configurationId is the ID of the assistant mentioned.",
                           "properties": {
                             "configurationId": {
-                              "type": "string"
+                              "type": "string",
+                              "example": [
+                                {
+                                  "configurationId": "dust"
+                                }
+                              ]
                             }
                           }
                         }
@@ -843,28 +850,99 @@
                         "type": "object",
                         "properties": {
                           "timezone": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "The timezone of the user who created the message",
+                            "example": "Europe/Paris"
                           },
                           "username": {
-                            "type": "string"
-                          },
-                          "email": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "The username of the user who created the message",
+                            "example": "johndoe"
                           },
                           "fullName": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "The full name of the user who created the message",
+                            "example": "John Doe",
+                            "nullable": true
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "The email of the user who created the message",
+                            "example": "johndoe@example.com",
+                            "nullable": true
                           },
                           "profilePictureUrl": {
-                            "type": "string"
+                            "type": "string",
+                            "nullable": true,
+                            "description": "The profile picture URL of the user who created the message",
+                            "example": "https://example.com/profile_picture.jpg"
+                          },
+                          "origin": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "The origin of the message",
+                            "enum": [
+                              "api",
+                              "web",
+                              "slack",
+                              "null"
+                            ],
+                            "default": "api",
+                            "example": "api"
                           }
                         }
                       }
-                    },
-                    "description": "The initial message of the conversation"
+                    }
                   },
                   "contentFragment": {
-                    "type": "string",
-                    "description": "The initial content fragment of the conversation"
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "description": "The title of the content fragment",
+                        "example": "My content fragment"
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "The content of the content fragment",
+                        "example": "This is my content fragment"
+                      },
+                      "url": {
+                        "type": "string",
+                        "description": "The URL of the content fragment",
+                        "example": "https://example.com/content"
+                      },
+                      "contentType": {
+                        "type": "string",
+                        "description": "The content type of the content fragment",
+                        "example": "text/plain"
+                      },
+                      "context": {
+                        "type": "object",
+                        "properties": {
+                          "username": {
+                            "type": "string",
+                            "description": "The username of the user who created the content fragment",
+                            "example": "johndoe"
+                          },
+                          "fullName": {
+                            "type": "string",
+                            "description": "The full name of the user who created the content fragment",
+                            "example": "John Doe"
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "The email of the user who created the content fragment",
+                            "example": "johndoe@example.com"
+                          },
+                          "profilePictureUrl": {
+                            "type": "string",
+                            "description": "The profile picture URL of the user who created the content fragment",
+                            "example": "https://example.com/profile_picture.jpg"
+                          }
+                        }
+                      }
+                    }
                   },
                   "blocking": {
                     "type": "boolean",
@@ -875,6 +953,7 @@
                   "title": {
                     "type": "string",
                     "description": "The title of the conversation",
+                    "nullable": true,
                     "example": "My conversation"
                   },
                   "visibility": {
