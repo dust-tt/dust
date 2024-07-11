@@ -7,10 +7,9 @@ import type { OAuthProvider } from "@dust-tt/types";
 import { Err, OAuthAPI, Ok } from "@dust-tt/types";
 import type { ParsedUrlQuery } from "querystring";
 
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-
-const { OAUTH_GITHUB_APP = "" } = process.env;
 
 export const OAUTH_USE_CASES = ["connection"] as const;
 
@@ -51,7 +50,7 @@ const PROVIDER_STRATEGIES: Record<
     redirectUrl: (connection) => {
       // Only the `installations/new` URL supports state passing.
       return new Ok(
-        `https://github.com/apps/${OAUTH_GITHUB_APP}/installations/new` +
+        `https://github.com/apps/${config.getOAuthGithubApp()}/installations/new` +
           `?state=${connection.connection_id}`
       );
     },
