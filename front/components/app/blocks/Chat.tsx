@@ -1,6 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { ChevronDownIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { ChevronDownIcon, ChevronRightIcon, XMarkIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SpecificationBlockType, SpecificationType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
@@ -77,12 +77,16 @@ export default function Chat({
     setNewStop("");
   };
 
-  const handleRemoveStop = () => {
-    if (block.spec.stop.length > 0) {
-      const b = shallowBlockClone(block);
-      b.spec.stop.splice(b.spec.stop.length - 1, 1);
-      onBlockUpdate(b);
+  const handleRemoveStop = (index?: number) => {
+    const b = shallowBlockClone(block);
+    if (typeof index === "number") {
+      if (index >= 0 && index < b.spec.stop.length) {
+        b.spec.stop.splice(index, 1);
+      }
+    } else if (b.spec.stop.length > 0) {
+      b.spec.stop.pop();
     }
+    onBlockUpdate(b);
   };
 
   const handlePresencePenaltyChange = (presence_penalty: string) => {
@@ -231,6 +235,12 @@ export default function Chat({
                         className="flex rounded-md bg-slate-100 px-1"
                       >
                         {stop}
+                        <span
+                          onClick={() => handleRemoveStop(i)}
+                          className="ml-1 flex cursor-pointer items-center"
+                        >
+                          <XMarkIcon />
+                        </span>
                       </div>
                     )
                   )}
@@ -238,7 +248,7 @@ export default function Chat({
                 {readOnly ? null : (
                   <input
                     type="text"
-                    placeholder="add"
+                    placeholder="add stop"
                     value={newStop}
                     onChange={(e) => setNewStop(e.target.value)}
                     className={classNames(
@@ -246,7 +256,7 @@ export default function Chat({
                       "placeholder-gray-300",
                       readOnly
                         ? "border-white ring-0 focus:border-white focus:ring-0"
-                        : "border-white focus:border-gray-300 focus:ring-0"
+                        : "border-gray-300 focus:border-gray-300 focus:border-gray-500 focus:ring-0"
                     )}
                     readOnly={readOnly}
                     onBlur={(e) => {

@@ -1,5 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { XMarkIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -329,9 +330,9 @@ export default function DataSource({
                               {tag}
                               <span
                                 onClick={() => handleRemoveTagsIn(i)}
-                                className="ml-1 cursor-pointer"
+                                className="ml-1 flex cursor-pointer items-center"
                               >
-                                &nbsp;x
+                                <XMarkIcon />
                               </span>
                             </div>
                           )
@@ -397,9 +398,9 @@ export default function DataSource({
                               {tag}
                               <span
                                 onClick={() => handleRemoveTagsNot(i)}
-                                className="ml-1 cursor-pointer"
+                                className="ml-1 flex cursor-pointer items-center"
                               >
-                                &nbsp;x
+                                <XMarkIcon />
                               </span>
                             </div>
                           )
