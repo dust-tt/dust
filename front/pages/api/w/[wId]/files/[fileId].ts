@@ -68,7 +68,10 @@ async function handler(
 
       // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
-        const readStream = file.getReadStream(auth, "original");
+        const readStream = file.getReadStream({
+          auth,
+          version: "original",
+        });
         readStream.on("error", () => {
           return apiError(req, res, {
             status_code: 404,
@@ -137,7 +140,10 @@ async function handler(
         const form = new IncomingForm({
           // Stream the uploaded document to the cloud storage.
           fileWriteStreamHandler: () => {
-            return file.getWriteStream(auth, "original");
+            return file.getWriteStream({
+              auth,
+              version: "original",
+            });
           },
 
           // Support only one file upload.

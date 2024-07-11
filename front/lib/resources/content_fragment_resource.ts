@@ -25,6 +25,8 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
 
+const MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT = 500 * 1024; // 500 KB
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -305,6 +307,19 @@ export async function getProcessedFileContent(
   return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
 }
 
+export async function getSnippetFileContent(
+  workspace: WorkspaceType,
+  fileId: string
+): Promise<string> {
+  const fileCloudStoragePath = FileResource.getCloudStoragePathForId({
+    fileId,
+    workspaceId: workspace.sId,
+    version: "snippet",
+  });
+
+  return getPrivateUploadBucket().fetchFileContent(fileCloudStoragePath);
+}
+
 async function getSignedUrlForProcessedContent(
   workspace: WorkspaceType,
   fileId: string
@@ -326,12 +341,14 @@ async function renderFromFileId(
     fileId,
     model,
     title,
+    textBytes,
   }: {
     contentType: string;
     excludeImages: boolean;
     fileId: string;
     model: ModelConfigurationType;
     title: string;
+    textBytes: number | null;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   if (isSupportedImageContentFragmentType(contentType)) {
@@ -363,7 +380,14 @@ async function renderFromFileId(
       ],
     });
   } else {
-    const content = await getProcessedFileContent(workspace, fileId);
+    const shouldRetrieveSnippetVersion =
+      contentType === "text/csv" &&
+      textBytes &&
+      textBytes > MAX_BYTE_SIZE_CSV_RENDER_FULL_CONTENT;
+
+    const content = shouldRetrieveSnippetVersion
+      ? await getSnippetFileContent(workspace, fileId)
+      : await getProcessedFileContent(workspace, fileId);
 
     return new Ok({
       role: "content_fragment",
@@ -388,9 +412,12 @@ export async function renderContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const { contentType, fileId, sId, title } = message;
+  const { contentType, fileId, sId, title, textBytes } = message;
 
   try {
+    // Render content based on fragment type:
+    // - If the fragment is a file, render it from the file. For large CSV files, render a snippet version (CSV schema).
+    // - If the fragment is not a file (public API), always render the full content.
     if (fileId) {
       return await renderFromFileId(conversation.owner, {
         contentType,
@@ -398,6 +425,7 @@ export async function renderContentFragmentForModel(
         fileId,
         model,
         title,
+        textBytes,
       });
     } else {
       const content = await getContentFragmentText({

@@ -6,11 +6,15 @@ import type {
   SupportedFileContentType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { parse } from "csv-parse";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
-import { Readable } from "stream";
+import type { TransformCallback } from "stream";
+import { PassThrough, Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
+import type { CSVRow } from "@app/lib/api/csv";
+import { analyzeCSVColumns } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -35,8 +39,14 @@ const uploadToPublicBucket: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const readStream = file.getReadStream(auth, "original");
-  const writeStream = file.getWriteStream(auth, "public");
+  const readStream = file.getReadStream({
+    auth,
+    version: "original",
+  });
+  const writeStream = file.getWriteStream({
+    auth,
+    version: "public",
+  });
   try {
     await pipeline(readStream, writeStream);
     return new Ok(undefined);
@@ -65,7 +75,10 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const readStream = file.getReadStream(auth, "original");
+  const readStream = file.getReadStream({
+    auth,
+    version: "original",
+  });
 
   // Resize the image, preserving the aspect ratio. Longest side is max 768px.
   const resizedImageStream = sharp().resize(768, 768, {
@@ -73,7 +86,10 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
     withoutEnlargement: true, // Avoid upscaling if image is smaller than 768px.
   });
 
-  const writeStream = file.getWriteStream(auth, "processed");
+  const writeStream = file.getWriteStream({
+    auth,
+    version: "processed",
+  });
 
   try {
     await pipeline(readStream, resizedImageStream, writeStream);
@@ -131,11 +147,17 @@ const extractTextFromPDF: PreprocessingFunction = async (
   file: FileResource
 ) => {
   try {
-    const readStream = file.getReadStream(auth, "original");
+    const readStream = file.getReadStream({
+      auth,
+      version: "original",
+    });
     // Load file in memory.
     const arrayBuffer = await buffer(readStream);
 
-    const writeStream = file.getWriteStream(auth, "processed");
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
     const pdfTextStream = await createPdfTextStream(arrayBuffer);
 
     await pipeline(
@@ -168,6 +190,79 @@ const extractTextFromPDF: PreprocessingFunction = async (
   }
 };
 
+// CSV preprocessing.
+// We upload the content of the CSV on the processed bucket and the schema in the snippet bucket.
+class CSVColumnAnalyzerTransform extends Transform {
+  private rows: CSVRow[] = [];
+
+  constructor(options = {}) {
+    super({ ...options, objectMode: true });
+  }
+  _transform(chunk: CSVRow, encoding: string, callback: TransformCallback) {
+    this.rows.push(chunk);
+    callback();
+  }
+  _flush(callback: TransformCallback) {
+    this.push(JSON.stringify(analyzeCSVColumns(this.rows), null, 2));
+    callback();
+  }
+}
+
+const extractContentAndSchemaFromCSV: PreprocessingFunction = async (
+  auth: Authenticator,
+  file: FileResource
+): Promise<Result<undefined, Error>> => {
+  try {
+    const readStream = file.getReadStream({
+      auth,
+      version: "original",
+    });
+    const processedWriteStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
+    const schemaWriteStream = file.getWriteStream({
+      auth,
+      version: "snippet",
+      overrideContentType: "application/json",
+    });
+
+    // Process the first stream for processed file
+    const processedPipeline = pipeline(
+      readStream.pipe(new PassThrough()),
+      processedWriteStream
+    );
+
+    // Process the second stream for snippet file
+    const snippetPipeline = pipeline(
+      readStream.pipe(new PassThrough()),
+      parse({
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      }),
+      new CSVColumnAnalyzerTransform(),
+      schemaWriteStream
+    );
+    // Wait for both pipelines to finish
+    await Promise.all([processedPipeline, snippetPipeline]);
+
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to extract text or snippet from CSV."
+    );
+    const errorMessage =
+      err instanceof Error ? err.message : "Unexpected error";
+    return new Err(new Error(`Failed extracting from CSV. ${errorMessage}`));
+  }
+};
+
 // Other text files preprocessing.
 
 // We don't apply any processing to these files, we just store the raw text.
@@ -175,8 +270,14 @@ const storeRawText: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  const readStream = file.getReadStream(auth, "original");
-  const writeStream = file.getWriteStream(auth, "processed");
+  const readStream = file.getReadStream({
+    auth,
+    version: "original",
+  });
+  const writeStream = file.getWriteStream({
+    auth,
+    version: "processed",
+  });
 
   try {
     await pipeline(readStream, writeStream);
@@ -232,7 +333,7 @@ const processingPerContentType: PreprocessingPerContentType = {
     avatar: notSupportedError,
   },
   "text/csv": {
-    conversation: storeRawText,
+    conversation: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,
   },
   "text/markdown": {
