@@ -1,27 +1,47 @@
 import Lottie, { LottieRefCurrentProps } from "lottie-react";
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { ArrowUpOnSquareIcon, Icon } from "@sparkle/_index";
 import anim from "@sparkle/lottie/dragArea";
 
-export interface DragZoneProps {
-  title?: string;
+export interface DropzoneOverlayProps {
   description?: string;
+  isDragActive: boolean;
+  title?: string;
   visual?: React.ReactNode;
 }
 
-const DragArea: React.FC<DragZoneProps> = ({
+export default function DropzoneOverlay({
+  isDragActive,
   title = "Drag and drop",
   description = "Drag and drop your files here",
   visual = (
     <Icon visual={ArrowUpOnSquareIcon} size="lg" className="s-text-white" />
   ),
-}) => {
+}: DropzoneOverlayProps) {
   const lottieRef = useRef<LottieRefCurrentProps | null>(null);
+
+  const [isActiveDelayed, setIsActiveDelayed] = useState(false);
+
+  // This is used to delay the removal of the overlay when the user stops dragging.
+  useEffect(() => {
+    if (isDragActive) {
+      setIsActiveDelayed(true);
+    } else {
+      const timeoutId = setTimeout(() => {
+        setIsActiveDelayed(false);
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isDragActive]);
+
+  if (!isActiveDelayed) {
+    return null;
+  }
 
   return (
     <div
-      className="s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0 s-bg-white/80 s-text-element-800"
+      className="s-absolute s-inset-0 s-z-50 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0 s-bg-white/80 s-text-element-800"
       onMouseLeave={() => {
         lottieRef.current?.setDirection(-1);
         lottieRef.current?.play();
@@ -47,6 +67,4 @@ const DragArea: React.FC<DragZoneProps> = ({
       <div className="s-font-base s-text-base">{description}</div>
     </div>
   );
-};
-
-export default DragArea;
+}

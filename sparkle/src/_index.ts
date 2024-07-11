@@ -103,8 +103,8 @@ export { Avatar };
 import Spinner from "./components/Spinner";
 export { Spinner };
 
-import DragArea from "./components/DragArea";
-export { DragArea };
+import DropzoneOverlay from "./components/DropzoneOverlay";
+export { DropzoneOverlay };
 
 import CollapseButton from "./components/CollapseButton";
 export { CollapseButton };
