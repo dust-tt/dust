@@ -69,7 +69,7 @@ function extractUsageFromExecutions(
 
 /**
  * @swagger
- * /api/v1/w/{wId}/apps/{appId}/run:
+ * /api/v1/w/{wId}/apps/{aId}/run:
  *   post:
  *     summary: Create an app run
  *     description: Create a run for an app in the workspace identified by {wId}.
@@ -85,7 +85,7 @@ function extractUsageFromExecutions(
  *         schema:
  *           type: string
  *       - in: path
- *         name: appId
+ *         name: aId
  *         required: true
  *         description: ID of the app
  *         schema:
