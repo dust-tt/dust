@@ -15,9 +15,7 @@
       "get": {
         "summary": "Get an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
-        "tags": [
-          "Apps"
-        ],
+        "tags": ["Apps"],
         "parameters": [
           {
             "in": "path",
@@ -137,9 +135,7 @@
       "post": {
         "summary": "Create an app run",
         "description": "Create a run for an app in the workspace identified by {wId}.",
-        "tags": [
-          "Apps"
-        ],
+        "tags": ["Apps"],
         "parameters": [
           {
             "in": "path",
@@ -247,9 +243,7 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps of a workspace.",
-        "tags": [
-          "Apps"
-        ],
+        "tags": ["Apps"],
         "parameters": [
           {
             "in": "path",
@@ -296,9 +290,7 @@
       "get": {
         "summary": "List assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -440,9 +432,7 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -549,9 +539,7 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -607,9 +595,7 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "security": [
           {
             "ApiKeyAuth": []
@@ -668,9 +654,7 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -757,9 +741,7 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -853,12 +835,7 @@
                         "type": "string",
                         "nullable": true,
                         "description": "The origin of the message",
-                        "enum": [
-                          "api",
-                          "web",
-                          "slack",
-                          "null"
-                        ],
+                        "enum": ["api", "web", "slack", "null"],
                         "default": "api",
                         "example": "api"
                       }
@@ -889,9 +866,7 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -984,11 +959,7 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation",
-                    "enum": [
-                      "public",
-                      "private",
-                      "unlisted"
-                    ],
+                    "enum": ["public", "private", "unlisted"],
                     "default": "public",
                     "example": "private"
                   }
@@ -1024,9 +995,7 @@
       "get": {
         "summary": "Retrieve a document from a data source",
         "description": "Retrieve a document from a data source in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1089,9 +1058,7 @@
       "post": {
         "summary": "Upsert a document in a data source",
         "description": "Upsert a document in a data source in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1178,9 +1145,7 @@
       "delete": {
         "summary": "Delete a document from a data source",
         "description": "Delete a document from a data source in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1242,9 +1207,7 @@
       "post": {
         "summary": "Update the parents of a document",
         "description": "Update the parents of a document in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1327,9 +1290,7 @@
       "get": {
         "summary": "Get documents",
         "description": "Get documents in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1392,9 +1353,7 @@
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1586,9 +1545,7 @@
       "get": {
         "summary": "Get a table",
         "description": "Get a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1642,9 +1599,7 @@
       "delete": {
         "summary": "Delete a table",
         "description": "Delete a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1700,9 +1655,7 @@
       "get": {
         "summary": "Get a row",
         "description": "Get a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1765,9 +1718,7 @@
       "delete": {
         "summary": "Delete a row",
         "description": "Delete a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1832,9 +1783,7 @@
       "get": {
         "summary": "List rows",
         "description": "List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1901,9 +1850,7 @@
       "post": {
         "summary": "Upsert rows",
         "description": "Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1975,9 +1922,7 @@
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [
-                                      "datetime"
-                                    ]
+                                    "enum": ["datetime"]
                                   },
                                   "epoch": {
                                     "type": "number"
@@ -2024,9 +1969,7 @@
       "post": {
         "summary": "Upsert CSV to table",
         "description": "Upsert CSV data to a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -2097,9 +2040,7 @@
       "get": {
         "summary": "Get tables",
         "description": "Get tables in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -2138,9 +2079,7 @@
       "post": {
         "summary": "Upsert a table",
         "description": "Upsert a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -2208,9 +2147,7 @@
       "post": {
         "summary": "Tokenize text",
         "description": "Tokenize text for the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -2272,9 +2209,7 @@
       "get": {
         "summary": "Get data sources",
         "description": "Get data sources in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -2312,9 +2247,7 @@
       "get": {
         "summary": "List feature flags",
         "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -2361,9 +2294,7 @@
       "get": {
         "summary": "List member emails",
         "description": "List the emails of all members in the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -2419,9 +2350,7 @@
       "get": {
         "summary": "Get workspace usage data",
         "description": "Get usage data for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -2479,9 +2408,7 @@
       "get": {
         "summary": "Get verified domains",
         "description": "Get the verified domain for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -2530,7 +2457,8 @@
         "type": "object",
         "properties": {
           "sId": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique string identifier for the user"
           },
           "id": {
             "type": "integer"
@@ -2539,25 +2467,32 @@
             "type": "integer"
           },
           "username": {
-            "type": "string"
+            "type": "string",
+            "description": "User's chosen username"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "User's email address"
           },
           "firstName": {
-            "type": "string"
+            "type": "string",
+            "description": "User's first name"
           },
           "lastName": {
-            "type": "string"
+            "type": "string",
+            "description": "User's last name"
           },
           "fullName": {
-            "type": "string"
+            "type": "string",
+            "description": "User's full name"
           },
           "provider": {
-            "type": "string"
+            "type": "string",
+            "description": "Authentication provider used by the user"
           },
           "image": {
-            "type": "string"
+            "type": "string",
+            "description": "URL of the user's profile image"
           }
         }
       },
@@ -2568,22 +2503,27 @@
             "type": "integer"
           },
           "sId": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique string identifier for the workspace"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of the workspace"
           },
           "role": {
-            "type": "string"
+            "type": "string",
+            "description": "User's role in the workspace"
           },
           "segmentation": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Segmentation information for the workspace"
           },
           "flags": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "description": "Feature flags enabled for the workspace"
             }
           },
           "ssoEnforced": {
@@ -2592,12 +2532,14 @@
           "whiteListedProviders": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "description": "List of allowed authentication providers"
             }
           },
           "defaultEmbeddingProvider": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Default provider for embeddings in the workspace"
           }
         }
       },
@@ -2605,22 +2547,28 @@
         "type": "object",
         "properties": {
           "username": {
-            "type": "string"
+            "type": "string",
+            "description": "Username in the current context"
           },
           "timezone": {
-            "type": "string"
+            "type": "string",
+            "description": "User's timezone"
           },
           "fullName": {
-            "type": "string"
+            "type": "string",
+            "description": "User's full name in the current context"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "User's email in the current context"
           },
           "profilePictureUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "URL of the user's profile picture"
           },
           "origin": {
-            "type": "string"
+            "type": "string",
+            "description": "Origin of the context (e.g., 'slack', 'web')"
           }
         }
       },
@@ -2631,49 +2579,61 @@
             "type": "integer"
           },
           "sId": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique string identifier for the agent configuration"
           },
           "version": {
             "type": "integer"
           },
           "versionCreatedAt": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Timestamp of when the version was created"
           },
           "versionAuthorId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "ID of the user who created this version"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of the agent configuration"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Description of the agent configuration"
           },
           "instructions": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Instructions for the agent"
           },
           "pictureUrl": {
-            "type": "string"
+            "type": "string",
+            "description": "URL of the agent's picture"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "Current status of the agent configuration"
           },
           "scope": {
-            "type": "string"
+            "type": "string",
+            "description": "Scope of the agent configuration"
           },
           "userListStatus": {
-            "type": "string"
+            "type": "string",
+            "description": "Status of the user list for this configuration"
           },
           "model": {
             "type": "object",
             "properties": {
               "providerId": {
-                "type": "string"
+                "type": "string",
+                "description": "ID of the model provider"
               },
               "modelId": {
-                "type": "string"
+                "type": "string",
+                "description": "ID of the specific model"
               },
               "temperature": {
                 "type": "number"
@@ -2688,7 +2648,8 @@
           },
           "templateId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "ID of the template used for this configuration"
           }
         }
       },
@@ -2705,16 +2666,19 @@
                 "type": "integer"
               },
               "sId": {
-                "type": "string"
+                "type": "string",
+                "description": "Unique string identifier for the conversation"
               },
               "owner": {
                 "$ref": "#/components/schemas/Workspace"
               },
               "title": {
-                "type": "string"
+                "type": "string",
+                "description": "Title of the conversation"
               },
               "visibility": {
-                "type": "string"
+                "type": "string",
+                "description": "Visibility setting of the conversation"
               },
               "content": {
                 "type": "array",
@@ -2727,13 +2691,16 @@
                         "type": "integer"
                       },
                       "sId": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Unique string identifier for the message"
                       },
                       "type": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Type of the message"
                       },
                       "visibility": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Visibility setting of the message"
                       },
                       "version": {
                         "type": "integer"
@@ -2747,16 +2714,12 @@
                       "mentions": {
                         "type": "array",
                         "items": {
-                          "type": "object",
-                          "properties": {
-                            "configurationId": {
-                              "type": "string"
-                            }
-                          }
+                          "$ref": "#/components/schemas/Mention"
                         }
                       },
                       "content": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Content of the message"
                       },
                       "context": {
                         "$ref": "#/components/schemas/Context"
@@ -2765,17 +2728,20 @@
                         "type": "integer"
                       },
                       "parentMessageId": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "ID of the parent message"
                       },
                       "status": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Status of the message"
                       },
                       "actions": {
                         "type": "array"
                       },
                       "chainOfThought": {
                         "type": "string",
-                        "nullable": true
+                        "nullable": true,
+                        "description": "Chain of thought for the message"
                       },
                       "rawContents": {
                         "type": "array",
@@ -2786,14 +2752,16 @@
                               "type": "integer"
                             },
                             "content": {
-                              "type": "string"
+                              "type": "string",
+                              "description": "Content for each step"
                             }
                           }
                         }
                       },
                       "error": {
                         "type": "string",
-                        "nullable": true
+                        "nullable": true,
+                        "description": "Error message, if any"
                       },
                       "configuration": {
                         "$ref": "#/components/schemas/AgentConfiguration"
@@ -2803,6 +2771,63 @@
                 }
               }
             }
+          }
+        }
+      },
+      "Mention": {
+        "type": "object",
+        "properties": {
+          "configurationId": {
+            "type": "string",
+            "description": "ID of the mentioned agent configuration",
+            "example": "dust"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "The content of the message",
+            "example": "This is my message"
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Mention"
+            }
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          }
+        }
+      },
+      "ContentFragment": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title of the content fragment",
+            "example": "My content fragment"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content of the content fragment",
+            "example": "This is my content fragment"
+          },
+          "url": {
+            "type": "string",
+            "description": "The URL of the content fragment",
+            "example": "https://example.com/content"
+          },
+          "contentType": {
+            "type": "string",
+            "description": "The content type of the content fragment",
+            "example": "text/plain"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
           }
         }
       }
