@@ -109,11 +109,11 @@ fn main() {
             // Connections
             .route("/connections", post(connections_create))
             // .route(
-            //     "/connections/:connection_id/:secret/finalize",
+            //     "/connections/:connection_id/finalize",
             //     post(connections_finalize),
             // )
             // .route(
-            //     "/connections/:connection_id/:secret/access_token",
+            //     "/connections/:connection_id/access_token",
             //     get(connections_access_token),
             // )
             // Extensions

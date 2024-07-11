@@ -56,10 +56,13 @@ export class OAuthAPI {
     return OAUTH_API;
   }
 
-  async createConnection(
-    provider: OAuthProvider,
-    metadata: Record<string, unknown> | null = null
-  ): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
+  async createConnection({
+    provider,
+    metadata,
+  }: {
+    provider: OAuthProvider;
+    metadata: Record<string, unknown> | null;
+  }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const response = await this._fetchWithError(`${OAUTH_API}/connections`, {
       method: "POST",
       headers: {
@@ -70,6 +73,28 @@ export class OAuthAPI {
         metadata,
       }),
     });
+    return this._resultFromResponse(response);
+  }
+
+  async finalizeConnection({
+    connectionId,
+    code,
+  }: {
+    connectionId: string;
+    code: string;
+  }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
+    const response = await this._fetchWithError(
+      `${OAUTH_API}/connections/${connectionId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+        }),
+      }
+    );
     return this._resultFromResponse(response);
   }
 

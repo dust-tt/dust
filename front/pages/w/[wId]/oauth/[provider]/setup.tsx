@@ -14,7 +14,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       };
     }
 
-    console.log("context.query", context.query);
     const provider = context.query.provider as string;
     if (!isOAuthProvider(provider)) {
       return {
