@@ -277,4 +277,31 @@
  *           example: text/plain
  *         context:
  *           $ref: '#/components/schemas/Context'
+ *     Datasource:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Unique identifier for the datasource
+ *         createdAt:
+ *           type: integer
+ *           description: Timestamp of when the datasource was created
+ *         name:
+ *           type: string
+ *           description: Name of the datasource
+ *         description:
+ *           type: string
+ *           description: Description of the datasource
+ *         dustAPIProjectId:
+ *           type: string
+ *           description: ID of the associated Dust API project
+ *         connectorId:
+ *           type: string
+ *           description: ID of the connector used for this datasource
+ *         connectorProvider:
+ *           type: string
+ *           description: Provider of the connector (e.g., 'webcrawler')
+ *         assistantDefaultSelected:
+ *           type: boolean
+ *           description: Whether this datasource is selected by default for assistants
  */

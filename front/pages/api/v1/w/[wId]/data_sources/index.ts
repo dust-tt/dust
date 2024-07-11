@@ -34,15 +34,13 @@ export type GetDataSourcesResponseBody = {
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 # Note: The schema doesn't provide a specific DataSource type,
- *                 # so we're keeping this generic. You may want to define a
- *                 # DataSource schema if there's a specific structure.
+ *                 $ref: '#/components/schemas/Datasource'
  *       404:
  *         description: The workspace was not found
  *       405:
  *         description: Method not supported
  */
+
 
 
 async function handler(
