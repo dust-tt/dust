@@ -209,29 +209,27 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
   }
 }
 
-export type MicrosoftNodeData = {
+export function internalId({
+  nodeType,
+  itemAPIPath,
+}: {
   nodeType: MicrosoftNodeType;
   itemAPIPath: string;
-};
-
-export function internalId(nodeData: MicrosoftNodeData) {
+}) {
   let stringId = "";
-  if (
-    nodeData.nodeType === "sites-root" ||
-    nodeData.nodeType === "teams-root"
-  ) {
-    stringId = nodeData.nodeType;
+  if (nodeType === "sites-root" || nodeType === "teams-root") {
+    stringId = nodeType;
   } else {
-    const { nodeType, itemAPIPath } = nodeData;
     stringId = `${nodeType}/${itemAPIPath}`;
   }
   // encode to base64url so the internal id is URL-friendly
   return "microsoft-" + Buffer.from(stringId).toString("base64url");
 }
 
-export function typeAndPathFromInternalId(
-  internalId: string
-): MicrosoftNodeData {
+export function typeAndPathFromInternalId(internalId: string): {
+  nodeType: MicrosoftNodeType;
+  itemAPIPath: string;
+} {
   if (!internalId.startsWith("microsoft-")) {
     throw new Error(`Invalid internal id: ${internalId}`);
   }
