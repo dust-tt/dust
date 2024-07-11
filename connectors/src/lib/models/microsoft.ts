@@ -111,7 +111,7 @@ MicrosoftRootModel.init(
     sequelize: sequelizeConnection,
     modelName: "microsoft_roots",
     indexes: [
-      { fields: ["connectorId", "itemApiPath"], unique: true },
+      { fields: ["connectorId", "itemAPIPath"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
     ],
   }
