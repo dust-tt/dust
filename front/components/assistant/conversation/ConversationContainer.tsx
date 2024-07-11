@@ -244,7 +244,10 @@ export function ConversationContainer({
   );
 
   return (
-    <DropzoneContainer dropMessage="Drag and drop files here to include them in the conversation.">
+    <DropzoneContainer
+      description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+      title="Attach files to the conversation"
+    >
       <Transition
         show={!!activeConversationId}
         as={Fragment}
