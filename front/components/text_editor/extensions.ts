@@ -4,7 +4,6 @@ export const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
     return {
       "Shift-Enter": () => this.editor.commands.splitBlock(),
-      Enter: () => false,
     };
   },
 });
