@@ -1,8 +1,11 @@
 use crate::oauth::{providers::github::GithubConnectionProvider, store::OAuthStore};
 use crate::utils;
+use crate::utils::ParseError;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -13,6 +16,22 @@ pub enum ConnectionProvider {
     Intercom,
     Notion,
     Slack,
+}
+
+impl fmt::Display for ConnectionProvider {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
+}
+
+impl FromStr for ConnectionProvider {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match serde_json::from_str(s) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::new()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
@@ -55,6 +74,22 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
 pub enum ConnectionStatus {
     Pending,
     Finalized,
+}
+
+impl fmt::Display for ConnectionStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
+}
+
+impl FromStr for ConnectionStatus {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match serde_json::from_str(s) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::new()),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]

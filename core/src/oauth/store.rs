@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::oauth::connection::{Connection, ConnectionProvider, ConnectionStatus};
 use crate::utils;
 use anyhow::Result;
@@ -78,9 +80,9 @@ impl OAuthStore for PostgresOAuthStore {
                 &stmt,
                 &[
                     &(created as i64),
-                    &serde_json::to_string(&provider)?,
+                    &provider.to_string(),
                     &secret,
-                    &serde_json::to_string(&status)?,
+                    &status.to_string(),
                     &metadata,
                 ],
             )
@@ -120,12 +122,12 @@ impl OAuthStore for PostgresOAuthStore {
                         refresh_token, raw_json
                    FROM connections
                    WHERE id = $1 AND provider = $2 AND secret = $3",
-                &[&row_id, &serde_json::to_string(&provider)?, &secret],
+                &[&row_id, &provider.to_string(), &secret],
             )
             .await?;
 
         let created: i64 = r.get(0);
-        let status: ConnectionStatus = serde_json::from_str(r.get(1))?;
+        let status: ConnectionStatus = ConnectionStatus::from_str(r.get(1))?;
         let metadata: serde_json::Value = r.get(2);
         let authorization_code: Option<String> = r.get(3);
         let access_token: Option<String> = r.get(4);
