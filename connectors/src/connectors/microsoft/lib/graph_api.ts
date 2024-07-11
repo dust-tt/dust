@@ -175,7 +175,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalId({
+        internalId: internalIdFromTypeAndPath({
           nodeType,
           itemAPIPath: getDriveItemAPIPath(item),
         }),
@@ -188,7 +188,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalId({
+        internalId: internalIdFromTypeAndPath({
           nodeType,
           itemAPIPath: getDriveItemAPIPath(item),
         }),
@@ -201,7 +201,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalId({
+        internalId: internalIdFromTypeAndPath({
           nodeType,
           itemAPIPath: getDriveAPIPath(item),
         }),
@@ -214,7 +214,10 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalId({ nodeType, itemAPIPath: getSiteAPIPath(item) }),
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: getSiteAPIPath(item),
+        }),
         mimeType: null,
         parentInternalId: null,
       };
@@ -230,13 +233,13 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
   }
 }
 
-export function internalId({
+export function internalIdFromTypeAndPath({
   nodeType,
   itemAPIPath,
 }: {
   nodeType: MicrosoftNodeType;
   itemAPIPath: string;
-}) {
+}): string {
   let stringId = "";
   if (nodeType === "sites-root" || nodeType === "teams-root") {
     stringId = nodeType;

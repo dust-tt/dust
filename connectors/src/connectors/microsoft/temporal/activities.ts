@@ -11,7 +11,7 @@ import {
   getItem,
   getSiteAPIPath,
   getSites,
-  internalId,
+  internalIdFromTypeAndPath,
   itemToMicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
@@ -85,7 +85,7 @@ export async function getSiteNodesToSync(
       async (sitePath) => {
         const msDrives = await getDrives(
           client,
-          internalId({ nodeType: "site", itemAPIPath: sitePath })
+          internalIdFromTypeAndPath({ nodeType: "site", itemAPIPath: sitePath })
         );
         return msDrives.map((drive) => itemToMicrosoftNode("drive", drive));
       },
@@ -269,7 +269,7 @@ export async function syncOneFile({
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
-  const documentId = internalId({
+  const documentId = internalIdFromTypeAndPath({
     itemAPIPath: getDriveItemAPIPath(file),
     nodeType: "file",
   });

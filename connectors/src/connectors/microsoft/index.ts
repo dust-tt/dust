@@ -25,7 +25,7 @@ import {
   getFolders,
   getSites,
   getTeams,
-  internalId,
+  internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
@@ -174,7 +174,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const selectedResources = (
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
     ).map((r) =>
-      internalId({
+      internalIdFromTypeAndPath({
         nodeType: r.nodeType,
         itemAPIPath: r.itemAPIPath,
       })
@@ -251,10 +251,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     await MicrosoftRootResource.batchDelete({
       resourceIds: Object.entries(permissions).map((internalId) => {
-        const { itemAPIPath: itemApiPath } = typeAndPathFromInternalId(
-          internalId[0]
-        );
-        return itemApiPath;
+        const { itemAPIPath } = typeAndPathFromInternalId(internalId[0]);
+        return itemAPIPath;
       }),
       connectorId: connector.id,
     });

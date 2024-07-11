@@ -8,7 +8,7 @@ import {
   getWorksheetAPIPath,
   getWorksheetContent,
   getWorksheets,
-  internalId,
+  internalIdFromTypeAndPath,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertTableFromCsv } from "@connectors/lib/data_sources";
@@ -193,7 +193,7 @@ export async function syncSpreadSheet({
 
   const itemApiPath = getDriveItemAPIPath(file);
 
-  const documentId = internalId({
+  const documentId = internalIdFromTypeAndPath({
     itemAPIPath: itemApiPath,
     nodeType: "file",
   });
@@ -208,7 +208,7 @@ export async function syncSpreadSheet({
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheets) {
     if (worksheet.id) {
-      const internalWorkSheetId = internalId({
+      const internalWorkSheetId = internalIdFromTypeAndPath({
         nodeType: "worksheet",
         itemAPIPath: getWorksheetAPIPath(worksheet, documentId),
       });

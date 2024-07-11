@@ -4,7 +4,7 @@ import {
   getDriveAPIPath,
   getDriveItemAPIPath,
   getSiteAPIPath,
-  internalId,
+  internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 
@@ -15,7 +15,7 @@ export function getRootNodes(): ContentNode[] {
 export function getSitesRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: internalId({
+    internalId: internalIdFromTypeAndPath({
       itemAPIPath: "",
       nodeType: "sites-root",
     }),
@@ -33,7 +33,7 @@ export function getSitesRootAsContentNode(): ContentNode {
 export function getTeamsRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: internalId({
+    internalId: internalIdFromTypeAndPath({
       itemAPIPath: "",
       nodeType: "teams-root",
     }),
@@ -50,7 +50,7 @@ export function getTeamsRootAsContentNode(): ContentNode {
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
   return {
     provider: "microsoft",
-    internalId: internalId({
+    internalId: internalIdFromTypeAndPath({
       itemAPIPath: `/teams/${team.id}`,
       nodeType: "team",
     }),
@@ -72,7 +72,7 @@ export function getSiteAsContentNode(site: microsoftgraph.Site): ContentNode {
   }
   return {
     provider: "microsoft",
-    internalId: internalId({
+    internalId: internalIdFromTypeAndPath({
       itemAPIPath: getSiteAPIPath(site),
       nodeType: "site",
     }),
@@ -102,7 +102,7 @@ export function getChannelAsContentNode(
 
   return {
     provider: "microsoft",
-    internalId: internalId({
+    internalId: internalIdFromTypeAndPath({
       itemAPIPath: `/teams/${parentInternalId}/channels/${channel.id}`,
       nodeType: "channel",
     }),
@@ -127,7 +127,7 @@ export function getDriveAsContentNode(
   }
   return {
     provider: "microsoft",
-    internalId: internalId({
+    internalId: internalIdFromTypeAndPath({
       itemAPIPath: getDriveAPIPath(drive),
       nodeType: "drive",
     }),
@@ -147,7 +147,7 @@ export function getFolderAsContentNode(
 ): ContentNode {
   return {
     provider: "microsoft",
-    internalId: internalId({
+    internalId: internalIdFromTypeAndPath({
       itemAPIPath: getDriveItemAPIPath(folder),
       nodeType: "folder",
     }),
