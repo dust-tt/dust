@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use axum::{
-    extract::State,
+    extract::{Path, State},
     response::Json,
     routing::{get, post},
     Router,
@@ -74,6 +74,54 @@ async fn connections_create(
     }
 }
 
+#[derive(Deserialize)]
+struct ConnectionFinalizePayload {
+    provider: ConnectionProvider,
+    code: String,
+}
+
+async fn connections_finalize(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+    Json(payload): Json<ConnectionFinalizePayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state
+        .store
+        .retrieve_connection(payload.provider, &connection_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            Some(e),
+        ),
+        Ok(mut c) => match c.finalize(state.clone().store.clone(), &payload.code).await {
+            Err(e) => error_response(
+                StatusCode::BAD_REQUEST,
+                "connection_finalization_failed",
+                "Requested to finalize connection failed",
+                Some(e),
+            ),
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "connection": {
+                            "connection_id": c.connection_id(),
+                            "created": c.created(),
+                            "provider": c.provider(),
+                            "status": c.status(),
+                            "metadata": c.metadata(),
+                        },
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -108,10 +156,10 @@ fn main() {
             .route("/", get(index))
             // Connections
             .route("/connections", post(connections_create))
-            // .route(
-            //     "/connections/:connection_id/finalize",
-            //     post(connections_finalize),
-            // )
+            .route(
+                "/connections/:connection_id/finalize",
+                post(connections_finalize),
+            )
             // .route(
             //     "/connections/:connection_id/access_token",
             //     get(connections_access_token),

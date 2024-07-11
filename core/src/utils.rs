@@ -180,7 +180,7 @@ pub fn make_id(prefix: &str, id: u64) -> Result<String> {
     Ok(format!("{}_{}", prefix, id))
 }
 
-pub fn parse_id(id: &str) -> Result<(String, u64, u64, u64)> {
+pub fn parse_id(id: &str) -> Result<(String, u64)> {
     let sqids = Sqids::builder()
         .min_length(RESOURCE_S_ID_MIN_LENGTH)
         .build()?;
@@ -196,5 +196,5 @@ pub fn parse_id(id: &str) -> Result<(String, u64, u64, u64)> {
         return Err(anyhow::anyhow!("Invalid id decoding failed: {}", id));
     }
 
-    Ok((prefix.to_string(), decoded[0], decoded[1], decoded[2]))
+    Ok((prefix.to_string(), decoded[2]))
 }

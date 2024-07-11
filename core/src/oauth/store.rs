@@ -13,6 +13,11 @@ pub trait OAuthStore {
         provider: ConnectionProvider,
         metadata: serde_json::Value,
     ) -> Result<Connection>;
+    async fn retrieve_connection(
+        &self,
+        provider: ConnectionProvider,
+        connection_id: &str,
+    ) -> Result<Connection>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
 }
@@ -90,6 +95,58 @@ impl OAuthStore for PostgresOAuthStore {
             provider,
             status,
             metadata,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ))
+    }
+
+    async fn retrieve_connection(
+        &self,
+        provider: ConnectionProvider,
+        connection_id: &str,
+    ) -> Result<Connection> {
+        let (row_id, secret) = Connection::row_id_and_secret_from_connection_id(connection_id)?;
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query_one(
+                "SELECT created, status, metadata,
+                        authorization_code, access_token, access_token_expiry,
+                        refresh_token, raw_json
+                   FROM connections
+                   WHERE row_id = $1 AND provider = $2 AND secret = $3",
+                &[&row_id, &serde_json::to_string(&provider)?, &secret],
+            )
+            .await?;
+
+        let created: i64 = r.get(0);
+        let status: ConnectionStatus = serde_json::from_str(r.get(1))?;
+        let metadata: serde_json::Value = r.get(2);
+        let authorization_code: Option<String> = r.get(3);
+        let access_token: Option<String> = r.get(4);
+        let access_token_expiry: Option<i64> = r.get(5);
+        let refresh_token: Option<String> = r.get(6);
+        let raw_json: Option<serde_json::Value> = r.get(7);
+
+        Ok(Connection::new(
+            connection_id.to_string(),
+            created as u64,
+            provider,
+            status,
+            metadata,
+            authorization_code,
+            access_token,
+            match access_token_expiry {
+                Some(e) => Some(e as u64),
+                None => None,
+            },
+            refresh_token,
+            raw_json,
         ))
     }
 

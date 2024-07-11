@@ -77,9 +77,11 @@ export class OAuthAPI {
   }
 
   async finalizeConnection({
+    provider,
     connectionId,
     code,
   }: {
+    provider: OAuthProvider;
     connectionId: string;
     code: string;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
@@ -91,6 +93,7 @@ export class OAuthAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          provider,
           code,
         }),
       }

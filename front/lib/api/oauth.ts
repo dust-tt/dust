@@ -192,7 +192,7 @@ export async function finalizeConnection(
 
   const api = new OAuthAPI(logger);
 
-  const cRes = await api.finalizeConnection({ connectionId, code });
+  const cRes = await api.finalizeConnection({ provider, connectionId, code });
   logger.error(
     {
       provider,

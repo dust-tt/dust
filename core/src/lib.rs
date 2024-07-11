@@ -84,4 +84,7 @@ pub mod consts;
 pub mod oauth {
     pub mod connection;
     pub mod store;
+    pub mod providers {
+        pub mod github;
+    }
 }
