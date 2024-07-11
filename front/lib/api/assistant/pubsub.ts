@@ -23,6 +23,7 @@ import type {
   UserMessageNewEvent,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { RedisClientType } from "redis";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -101,6 +102,17 @@ export async function editUserMessageWithPubSub(
     mentions,
   });
   return handleUserMessageEvents(conversation, editMessageEvents, false);
+}
+
+const END_OF_STREAM_EVENTS = ["agent_message_success", "agent_error"];
+
+function addEndOfStreamToMessageChannel(
+  redis: RedisClientType,
+  streamChannel: string
+) {
+  return redis.xAdd(streamChannel, "*", {
+    payload: JSON.stringify({ type: "end-of-stream" }),
+  });
 }
 
 async function handleUserMessageEvents(
@@ -194,6 +206,10 @@ async function handleUserMessageEvents(
                 resolveAfterFullGeneration
               ) {
                 agentMessages.push(event.message);
+              }
+
+              if (END_OF_STREAM_EVENTS.includes(event.type)) {
+                await addEndOfStreamToMessageChannel(redis, pubsubChannel);
               }
               break;
             }
@@ -339,6 +355,11 @@ export async function retryAgentMessageWithPubSub(
                   payload: JSON.stringify(event),
                 });
                 await redis.expire(pubsubChannel, 60 * 10);
+
+                if (END_OF_STREAM_EVENTS.includes(event.type)) {
+                  await addEndOfStreamToMessageChannel(redis, pubsubChannel);
+                }
+
                 break;
               }
               default:
@@ -490,6 +511,12 @@ export async function* getMessagesEvents(
           const messageId = message.id;
           const payload = JSON.parse(payloadStr);
           lastEventId = messageId;
+
+          // If the payload is an end-of-stream event, we stop the generator.
+          if (payload.type === "end-of-stream") {
+            return;
+          }
+
           yield {
             eventId: messageId,
             data: payload,

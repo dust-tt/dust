@@ -1,4 +1,5 @@
 import type { AgentConfigurationType } from "@dust-tt/types";
+import type { RedisClientType } from "redis";
 import { literal, Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -47,7 +48,7 @@ export async function getAgentsUsage({
   limit,
 }: {
   workspaceId: string;
-  providedRedis?: Awaited<ReturnType<typeof redisClient>>;
+  providedRedis?: RedisClientType;
   limit?: number;
 }): Promise<AgentUsageCount[]> {
   const owner = await Workspace.findOne({ where: { sId: workspaceId } });
@@ -55,7 +56,7 @@ export async function getAgentsUsage({
     throw new Error(`Workspace ${workspaceId} not found`);
   }
 
-  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+  let redis: RedisClientType | null = null;
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
@@ -104,7 +105,7 @@ export async function getAgentUsage(
   }: {
     workspaceId: string;
     agentConfiguration: AgentConfigurationType;
-    providedRedis?: Awaited<ReturnType<typeof redisClient>>;
+    providedRedis?: RedisClientType;
   }
 ): Promise<AgentUsageCount | null> {
   const owner = auth.workspace();
@@ -115,7 +116,7 @@ export async function getAgentUsage(
     throw new Error("Provided workspace and owner workspace do not match.");
   }
 
-  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+  let redis: RedisClientType | null = null;
   const { sId: agentConfigurationId } = agentConfiguration;
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
@@ -201,7 +202,7 @@ export async function agentMentionsCount(
 export async function storeCountsInRedis(
   workspaceId: string,
   agentMessageCounts: mentionCount[],
-  redis: Awaited<ReturnType<typeof redisClient>>
+  redis: RedisClientType
 ) {
   const transaction = redis.multi();
   const agentMessageCountKey = _getUsageKey(workspaceId);
@@ -224,7 +225,7 @@ export async function signalAgentUsage({
   agentConfigurationId: string;
   workspaceId: string;
 }) {
-  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+  let redis: RedisClientType | null = null;
 
   try {
     redis = await redisClient();
