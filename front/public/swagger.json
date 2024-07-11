@@ -612,7 +612,7 @@
         ],
         "security": [
           {
-            "ApiKeyAuth": []
+            "BearerAuth": []
           }
         ],
         "parameters": [
@@ -905,7 +905,7 @@
         ],
         "security": [
           {
-            "ApiKeyAuth": []
+            "BearerAuth": []
           }
         ],
         "requestBody": {

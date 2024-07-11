@@ -14,7 +14,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *     tags:
  *       - Conversations
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId

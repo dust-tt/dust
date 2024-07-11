@@ -44,7 +44,7 @@ export type PostConversationsResponseBody = {
  *         schema:
  *           type: string
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
