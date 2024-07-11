@@ -25,11 +25,13 @@ export type GetTableResponseBody = {
  *     description: Get a table in the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
@@ -44,15 +46,13 @@ export type GetTableResponseBody = {
  *         description: ID of the table
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: The table
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Datasource'
  *       404:
  *         description: The table was not found
  *       405:
@@ -62,11 +62,13 @@ export type GetTableResponseBody = {
  *     description: Delete a table in the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
@@ -79,12 +81,6 @@ export type GetTableResponseBody = {
  *         name: tId
  *         required: true
  *         description: ID of the table
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     responses:

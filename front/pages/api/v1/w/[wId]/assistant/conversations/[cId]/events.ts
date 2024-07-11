@@ -50,7 +50,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: Internal Server Error.
  */
 
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<void>>

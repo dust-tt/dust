@@ -30,11 +30,13 @@ const GetWorkspaceUsageSchema = t.intersection([
  *     description: Get usage data for the workspace identified by {wId}.
  *     tags:
  *       - Workspace
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: query
@@ -51,15 +53,13 @@ const GetWorkspaceUsageSchema = t.intersection([
  *         schema:
  *           type: string
  *           format: date
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: The usage data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Workspace'
  *       404:
  *         description: The workspace was not found
  *       405:

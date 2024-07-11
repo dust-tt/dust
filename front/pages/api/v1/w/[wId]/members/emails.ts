@@ -21,7 +21,7 @@ export type ListMemberEmailsResponseBody = {
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: query
@@ -30,12 +30,8 @@ export type ListMemberEmailsResponseBody = {
  *         description: Whether to list only active members
  *         schema:
  *           type: boolean
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: The emails
@@ -48,6 +44,7 @@ export type ListMemberEmailsResponseBody = {
  *                   type: array
  *                   items:
  *                     type: string
+ *                     description: Email address of a workspace member
  */
 
 async function handler(

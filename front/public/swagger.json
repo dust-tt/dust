@@ -15,15 +15,18 @@
       "get": {
         "summary": "Get an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
-        "tags": [
-          "Apps"
+        "tags": ["Apps"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -42,15 +45,6 @@
             "name": "runId",
             "required": true,
             "description": "ID of the run",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -137,15 +131,18 @@
       "post": {
         "summary": "Create an app run",
         "description": "Create a run for an app in the workspace identified by {wId}.",
-        "tags": [
-          "Apps"
+        "tags": ["Apps"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -155,15 +152,6 @@
             "name": "appId",
             "required": true,
             "description": "ID of the app",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -223,7 +211,14 @@
         },
         "responses": {
           "200": {
-            "description": "App run"
+            "description": "App run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -247,24 +242,18 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps of a workspace.",
-        "tags": [
-          "Apps"
+        "tags": ["Apps"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -272,7 +261,17 @@
         ],
         "responses": {
           "200": {
-            "description": "Apps of the workspace"
+            "description": "Apps of the workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Workspace"
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -296,9 +295,7 @@
       "get": {
         "summary": "List assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
@@ -351,9 +348,7 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -416,9 +411,7 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -480,9 +473,7 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "security": [
           {
             "BearerAuth": []
@@ -541,9 +532,7 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -637,9 +626,7 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -702,9 +689,7 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": [
-          "Conversations"
-        ],
+        "tags": ["Conversations"],
         "parameters": [
           {
             "in": "path",
@@ -749,11 +734,7 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation",
-                    "enum": [
-                      "public",
-                      "private",
-                      "unlisted"
-                    ],
+                    "enum": ["public", "private", "unlisted"],
                     "default": "public",
                     "example": "private"
                   }
@@ -789,9 +770,7 @@
       "get": {
         "summary": "Retrieve a document from a data source",
         "description": "Retrieve a document from a data source in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -819,15 +798,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -854,9 +829,7 @@
       "post": {
         "summary": "Upsert a document in a data source",
         "description": "Upsert a document in a data source in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -884,15 +857,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "requestBody": {
@@ -943,9 +912,7 @@
       "delete": {
         "summary": "Delete a document from a data source",
         "description": "Delete a document from a data source in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -973,15 +940,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -1007,15 +970,13 @@
       "post": {
         "summary": "Update the parents of a document",
         "description": "Update the parents of a document in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1037,15 +998,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "requestBody": {
@@ -1059,7 +1016,8 @@
                     "type": "array",
                     "items": {
                       "type": "string"
-                    }
+                    },
+                    "description": "Array of parent document IDs"
                   }
                 }
               }
@@ -1092,8 +1050,11 @@
       "get": {
         "summary": "Get documents",
         "description": "Get documents in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
@@ -1129,20 +1090,21 @@
             "schema": {
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The documents"
+            "description": "The documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Datasource"
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "The data source was not found"
@@ -1157,8 +1119,11 @@
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
@@ -1268,15 +1233,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -1351,15 +1307,18 @@
       "get": {
         "summary": "Get a table",
         "description": "Get a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1381,20 +1340,18 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The table"
+            "description": "The table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Datasource"
+                }
+              }
+            }
           },
           "404": {
             "description": "The table was not found"
@@ -1407,15 +1364,18 @@
       "delete": {
         "summary": "Delete a table",
         "description": "Delete a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1434,15 +1394,6 @@
             "name": "tId",
             "required": true,
             "description": "ID of the table",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -1465,15 +1416,18 @@
       "get": {
         "summary": "Get a row",
         "description": "Get a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1504,20 +1458,18 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The row"
+            "description": "The row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Datasource"
+                }
+              }
+            }
           },
           "404": {
             "description": "The row was not found"
@@ -1530,15 +1482,18 @@
       "delete": {
         "summary": "Delete a row",
         "description": "Delete a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1566,15 +1521,6 @@
             "name": "rId",
             "required": true,
             "description": "ID of the row",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -1597,15 +1543,18 @@
       "get": {
         "summary": "List rows",
         "description": "List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1643,20 +1592,21 @@
             "schema": {
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The rows"
+            "description": "The rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Datasource"
+                  }
+                }
+              }
+            }
           },
           "405": {
             "description": "Method not supported"
@@ -1666,15 +1616,18 @@
       "post": {
         "summary": "Upsert rows",
         "description": "Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1696,15 +1649,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
@@ -1720,7 +1664,8 @@
                       "type": "object",
                       "properties": {
                         "row_id": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Unique identifier for the row"
                         },
                         "value": {
                           "type": "object",
@@ -1740,9 +1685,7 @@
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [
-                                      "datetime"
-                                    ]
+                                    "enum": ["datetime"]
                                   },
                                   "epoch": {
                                     "type": "number"
@@ -1756,7 +1699,8 @@
                     }
                   },
                   "truncate": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Whether to truncate existing rows"
                   }
                 }
               }
@@ -1765,7 +1709,14 @@
         },
         "responses": {
           "200": {
-            "description": "The table"
+            "description": "The table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Datasource"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -1789,15 +1740,18 @@
       "post": {
         "summary": "Upsert CSV to table",
         "description": "Upsert CSV data to a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1818,15 +1772,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
@@ -1838,7 +1783,8 @@
                 "properties": {
                   "file": {
                     "type": "string",
-                    "format": "binary"
+                    "format": "binary",
+                    "description": "CSV file to be uploaded"
                   }
                 }
               }
@@ -1847,7 +1793,14 @@
         },
         "responses": {
           "200": {
-            "description": "The table"
+            "description": "The table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Datasource"
+                }
+              }
+            }
           },
           "404": {
             "description": "The table was not found"
@@ -1862,15 +1815,18 @@
       "get": {
         "summary": "Get tables",
         "description": "Get tables in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1880,15 +1836,6 @@
             "name": "name",
             "required": true,
             "description": "Name of the data source",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -1896,22 +1843,35 @@
         ],
         "responses": {
           "200": {
-            "description": "The tables"
+            "description": "The tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Datasource"
+                  }
+                }
+              }
+            }
           }
         }
       },
       "post": {
         "summary": "Upsert a table",
         "description": "Upsert a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
+        "tags": ["Datasources"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -1921,15 +1881,6 @@
             "name": "name",
             "required": true,
             "description": "Name of the data source",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
             "schema": {
               "type": "string"
             }
@@ -1943,13 +1894,16 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Name of the table"
                   },
                   "table_id": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Unique identifier for the table"
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Description of the table"
                   }
                 }
               }
@@ -1958,7 +1912,14 @@
         },
         "responses": {
           "200": {
-            "description": "The table"
+            "description": "The table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Datasource"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request"
@@ -1973,9 +1934,7 @@
       "post": {
         "summary": "Tokenize text",
         "description": "Tokenize text for the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -1994,15 +1953,11 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "requestBody": {
@@ -2037,9 +1992,7 @@
       "get": {
         "summary": "Get data sources",
         "description": "Get data sources in the workspace identified by {wId}.",
-        "tags": [
-          "Datasources"
-        ],
+        "tags": ["Datasources"],
         "parameters": [
           {
             "in": "path",
@@ -2083,24 +2036,18 @@
       "get": {
         "summary": "List feature flags",
         "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
+        "tags": ["Workspace"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -2117,7 +2064,8 @@
                     "feature_flags": {
                       "type": "array",
                       "items": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Feature flags enabled for the workspace"
                       }
                     }
                   }
@@ -2132,15 +2080,13 @@
       "get": {
         "summary": "List member emails",
         "description": "List the emails of all members in the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -2153,15 +2099,11 @@
             "schema": {
               "type": "boolean"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "responses": {
@@ -2175,7 +2117,8 @@
                     "emails": {
                       "type": "array",
                       "items": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Email address of a workspace member"
                       }
                     }
                   }
@@ -2190,15 +2133,18 @@
       "get": {
         "summary": "Get workspace usage data",
         "description": "Get usage data for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
+        "tags": ["Workspace"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -2222,20 +2168,18 @@
               "type": "string",
               "format": "date"
             }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The usage data"
+            "description": "The usage data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
           },
           "404": {
             "description": "The workspace was not found"
@@ -2250,24 +2194,18 @@
       "get": {
         "summary": "Get verified domains",
         "description": "Get the verified domain for the workspace identified by {wId}.",
-        "tags": [
-          "Workspace"
+        "tags": ["Workspace"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
         ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
-            "description": "ID of the workspace",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
+            "description": "Unique string identifier for the workspace",
             "schema": {
               "type": "string"
             }
@@ -2275,7 +2213,14 @@
         ],
         "responses": {
           "200": {
-            "description": "The verified domain"
+            "description": "The verified domain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
           },
           "404": {
             "description": "The workspace was not found"

@@ -20,11 +20,13 @@ export const config = {
  *     description: Upsert CSV data to a table in the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
@@ -38,12 +40,6 @@ export const config = {
  *         description: ID of the table
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -54,9 +50,14 @@ export const config = {
  *               file:
  *                 type: string
  *                 format: binary
+ *                 description: CSV file to be uploaded
  *     responses:
  *       200:
  *         description: The table
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Datasource'
  *       404:
  *         description: The table was not found
  *       405:

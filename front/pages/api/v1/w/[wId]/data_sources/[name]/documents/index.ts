@@ -20,6 +20,8 @@ export type GetDocumentsResponseBody = {
  *     description: Get documents in the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
@@ -43,15 +45,15 @@ export type GetDocumentsResponseBody = {
  *         description: Offset the returned documents
  *         schema:
  *           type: integer
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: The documents
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Datasource'
  *       404:
  *         description: The data source was not found
  *       405:

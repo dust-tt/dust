@@ -43,50 +43,48 @@ type UpsertTableResponseBody = {
  *     description: Get tables in the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
  *         name: name
  *         required: true
  *         description: Name of the data source
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     responses:
  *       200:
  *         description: The tables
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Datasource'
  *   post:
  *     summary: Upsert a table
  *     description: Upsert a table in the data source identified by {name} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
  *         name: name
  *         required: true
  *         description: Name of the data source
- *         schema:
- *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
  *         schema:
  *           type: string
  *     requestBody:
@@ -98,18 +96,26 @@ type UpsertTableResponseBody = {
  *             properties:
  *               name:
  *                 type: string
+ *                 description: Name of the table
  *               table_id:
  *                 type: string
+ *                 description: Unique identifier for the table
  *               description:
  *                 type: string
+ *                 description: Description of the table
  *     responses:
  *       200:
  *         description: The table
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Datasource'
  *       400:
  *         description: Invalid request
  *       405:
  *         description: Method not supported
  */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

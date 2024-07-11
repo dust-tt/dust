@@ -41,8 +41,6 @@ export type GetDataSourcesResponseBody = {
  *         description: Method not supported
  */
 
-
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourcesResponseBody>>

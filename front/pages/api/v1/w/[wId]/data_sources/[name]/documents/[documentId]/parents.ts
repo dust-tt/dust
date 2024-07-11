@@ -23,7 +23,7 @@ export type PostParentsResponseBody = {
  *       - in: path
  *         name: wId
  *         required: true
- *         description: ID of the workspace
+ *         description: Unique string identifier for the workspace
  *         schema:
  *           type: string
  *       - in: path
@@ -38,12 +38,8 @@ export type PostParentsResponseBody = {
  *         description: ID of the document
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -55,6 +51,7 @@ export type PostParentsResponseBody = {
  *                 type: array
  *                 items:
  *                   type: string
+ *                 description: Array of parent document IDs
  *     responses:
  *       200:
  *         description: The parents were updated
