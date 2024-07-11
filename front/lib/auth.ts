@@ -492,6 +492,18 @@ export class Authenticator {
     return this._user ? renderUserType(this._user) : null;
   }
 
+  getNonNullableUser(): UserType {
+    const user = this.user();
+
+    if (!user) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullableUser`."
+      );
+    }
+
+    return user;
+  }
+
   isDustSuperUser(): boolean {
     if (!this._user) {
       return false;

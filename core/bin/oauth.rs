@@ -66,7 +66,7 @@ async fn connections_create(
                         "created": c.created(),
                         "provider": c.provider(),
                         "status": c.status(),
-                        "secret": c.secret(),
+                        "metadata": c.metadata(),
                     },
                 })),
             }),

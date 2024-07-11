@@ -57,7 +57,8 @@ export class OAuthAPI {
   }
 
   async createConnection(
-    provider: OAuthProvider
+    provider: OAuthProvider,
+    metadata: Record<string, unknown> | null = null
   ): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const response = await this._fetchWithError(`${OAUTH_API}/connections`, {
       method: "POST",
@@ -66,6 +67,7 @@ export class OAuthAPI {
       },
       body: JSON.stringify({
         provider,
+        metadata,
       }),
     });
     return this._resultFromResponse(response);

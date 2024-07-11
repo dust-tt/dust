@@ -64,8 +64,8 @@ impl OAuthStore for PostgresOAuthStore {
         // Create connection
         let stmt = c
             .prepare(
-                "INSERT INTO connections (id, created, provider, status, secret)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+                "INSERT INTO connections (id, created, provider, secret, status, metadata)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5::jsonb) RETURNING id",
             )
             .await?;
         let row_id: i64 = c
@@ -74,9 +74,9 @@ impl OAuthStore for PostgresOAuthStore {
                 &[
                     &(created as i64),
                     &serde_json::to_string(&provider)?,
-                    &serde_json::to_string(&status)?,
                     &secret,
-                    &serde_json::to_string(&metadata)?,
+                    &serde_json::to_string(&status)?,
+                    &metadata,
                 ],
             )
             .await?
@@ -103,8 +103,9 @@ pub const POSTGRES_TABLES: [&'static str; 1] = ["-- connections
        id                   BIGSERIAL PRIMARY KEY,
        created              BIGINT NOT NULL,
        provider             TEXT NOT NULL,
-       status               TEXT NOT NULL,
        secret               TEXT NOT NULL,
+       status               TEXT NOT NULL,
+       metadata             JSONB,
        authorization_code   TEXT,
        access_token         TEXT,
        access_token_expiry  BIGINT,

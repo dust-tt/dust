@@ -1,7 +1,10 @@
-import { isOAuthAPIError } from "@dust-tt/types";
+import { isOAuthProvider } from "@dust-tt/types";
 
+import {
+  createConnectionAndGetRedirectURL,
+  isOAuthUseCase,
+} from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { createConnectionAndGetRedirectURL } from "@app/lib/oauth";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<object>(
   async (context, auth) => {
@@ -11,23 +14,40 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       };
     }
 
+    console.log("context.query", context.query);
     const provider = context.query.provider as string;
-    if (!isOAuthAPIError(provider)) {
+    if (!isOAuthProvider(provider)) {
       return {
         notFound: true,
       };
     }
 
-    const url = await createConnectionAndGetRedirectURL(auth, provider);
+    const useCase = context.query.useCase as string;
+    if (!isOAuthUseCase(useCase)) {
+      return {
+        notFound: true,
+      };
+    }
+
     // Optionally retrieve connectionId to update an existing connection.
     // const connectionId = (context.query.connectionId as string) || null;
 
-    // Create a new connection
-    // Generate URL for redirect
+    const urlRes = await createConnectionAndGetRedirectURL(
+      auth,
+      provider,
+      useCase
+    );
+
+    if (!urlRes.isOk()) {
+      console.log("urlRes.error", urlRes.error);
+      return {
+        notFound: true,
+      };
+    }
 
     return {
       redirect: {
-        destination: `/w/${context.query.wId}/assistant/new`,
+        destination: urlRes.value,
         permanent: false,
       },
     };

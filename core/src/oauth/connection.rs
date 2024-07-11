@@ -81,6 +81,10 @@ impl Connection {
         self.status
     }
 
+    pub fn metadata(&self) -> &serde_json::Value {
+        &self.metadata
+    }
+
     pub async fn create(
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: ConnectionProvider,
