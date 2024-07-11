@@ -2049,20 +2049,26 @@
             "schema": {
               "type": "string"
             }
-          },
+          }
+        ],
+        "security": [
           {
-            "in": "header",
-            "name": "Authorization",
-            "required": true,
-            "description": "Bearer token for authentication",
-            "schema": {
-              "type": "string"
-            }
+            "BearerAuth": []
           }
         ],
         "responses": {
           "200": {
-            "description": "The data sources"
+            "description": "The data sources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "The workspace was not found"

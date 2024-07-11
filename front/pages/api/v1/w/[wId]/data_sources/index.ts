@@ -24,20 +24,26 @@ export type GetDataSourcesResponseBody = {
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: header
- *         name: Authorization
- *         required: true
- *         description: Bearer token for authentication
- *         schema:
- *           type: string
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: The data sources
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 # Note: The schema doesn't provide a specific DataSource type,
+ *                 # so we're keeping this generic. You may want to define a
+ *                 # DataSource schema if there's a specific structure.
  *       404:
  *         description: The workspace was not found
  *       405:
  *         description: Method not supported
  */
+
 
 async function handler(
   req: NextApiRequest,
