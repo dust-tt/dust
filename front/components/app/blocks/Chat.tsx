@@ -79,7 +79,7 @@ export default function Chat({
 
   const handleRemoveStop = (index?: number) => {
     const b = shallowBlockClone(block);
-    if (typeof index === 'number') {
+    if (typeof index === "number") {
       if (index >= 0 && index < b.spec.stop.length) {
         b.spec.stop.splice(index, 1);
       }
@@ -237,7 +237,7 @@ export default function Chat({
                         {stop}
                         <span
                           onClick={() => handleRemoveStop(i)}
-                          className="ml-1 cursor-pointer flex items-center"
+                          className="ml-1 flex cursor-pointer items-center"
                         >
                           <XMarkIcon />
                         </span>
@@ -256,7 +256,7 @@ export default function Chat({
                       "placeholder-gray-300",
                       readOnly
                         ? "border-white ring-0 focus:border-white focus:ring-0"
-                        : "border-gray-300 focus:border-gray-500 focus:border-gray-300 focus:ring-0"
+                        : "border-gray-300 focus:border-gray-300 focus:border-gray-500 focus:ring-0"
                     )}
                     readOnly={readOnly}
                     onBlur={(e) => {

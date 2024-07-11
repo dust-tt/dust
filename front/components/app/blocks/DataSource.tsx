@@ -330,7 +330,7 @@ export default function DataSource({
                               {tag}
                               <span
                                 onClick={() => handleRemoveTagsIn(i)}
-                                className="ml-1 cursor-pointer flex items-center"
+                                className="ml-1 flex cursor-pointer items-center"
                               >
                                 <XMarkIcon />
                               </span>
@@ -398,7 +398,7 @@ export default function DataSource({
                               {tag}
                               <span
                                 onClick={() => handleRemoveTagsNot(i)}
-                                className="ml-1 cursor-pointer flex items-center"
+                                className="ml-1 flex cursor-pointer items-center"
                               >
                                 <XMarkIcon />
                               </span>
