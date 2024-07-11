@@ -12,9 +12,9 @@ export interface DropzoneOverlayProps {
 }
 
 export default function DropzoneOverlay({
+  description = "Drag and drop your files here",
   isDragActive,
   title = "Drag and drop",
-  description = "Drag and drop your files here",
   visual = (
     <Icon visual={ArrowUpOnSquareIcon} size="lg" className="s-text-white" />
   ),
