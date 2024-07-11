@@ -59,6 +59,15 @@ export type PostMessagesResponseBody = {
  *                 type: string
  *                 description: The content of the message
  *                 example: This is my message
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   description: The mentions of the message, where configurationId is the ID of the assistant mentioned.
+ *                   properties:
+ *                     configurationId:
+ *                       type: string
+ *                       example: [{ "configurationId":"dust" }]
  *               context:
  *                 type: object
  *                 properties:
@@ -74,37 +83,28 @@ export type PostMessagesResponseBody = {
  *                     type: string
  *                     description: The full name of the user who created the message
  *                     example: John Doe
+ *                     nullable: true
  *                   email:
  *                     type: string
  *                     description: The email of the user who created the message
  *                     example: johndoe@example.com
+ *                     nullable: true
  *                   profilePictureUrl:
  *                     type: string
+ *                     nullable: true
  *                     description: The profile picture URL of the user who created the message
  *                     example: https://example.com/profile_picture.jpg
  *                   origin:
  *                     type: string
+ *                     nullable: true
  *                     description: The origin of the message
  *                     enum:
  *                       - api
  *                       - web
  *                       - slack
- *                       - null
+ *                       - 'null'
  *                     default: api
  *                     example: api
- *                   content:
- *                     type: string
- *                     description: The content of the message
- *                     example: This is my message
- *                   mentions:
- *                     type: array
- *                     items:
- *                       type: object
- *                       description: The mentions of the message, where configurationId is the ID of the assistant mentioned.
- *                       properties:
- *                        configurationId:
- *                         type: string
- *                       example: [{ "configurationId":"dust" }]
  *     responses:
  *       200:
  *         description: Message created successfully.
