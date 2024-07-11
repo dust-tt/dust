@@ -304,4 +304,49 @@
  *         assistantDefaultSelected:
  *           type: boolean
  *           description: Whether this datasource is selected by default for assistants
+ *     Run:
+ *       type: object
+ *       properties:
+ *         run_id:
+ *           type: string
+ *           description: The ID of the run
+ *           example: 1234
+ *         app_id:
+ *           type: string
+ *           description: The ID of the app
+ *           example: 1234
+ *         status:
+ *           type: object
+ *           properties:
+ *             run:
+ *               type: string
+ *               description: The status of the run
+ *               example: succeeded
+ *             build:
+ *               type: string
+ *               description: The status of the build
+ *               example: succeeded
+ *         results:
+ *           type: object
+ *           description: The results of the run
+ *           example: {}
+ *         specification_hash:
+ *           type: string
+ *           description: The hash of the app specification
+ *           example: 1234
+ *         traces:
+ *           type: array
+ *           items:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 timestamp:
+ *                   type: number
+ *                   description: The timestamp of the trace
+ *                   example: 1234567890
+ *                 trace:
+ *                   type: object
+ *                   description: The trace
+ *                   example: {}
  */
