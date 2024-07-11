@@ -1,10 +1,10 @@
+import { assertNever } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
-import * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
+import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
+import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { isValidNodeType } from "@connectors/connectors/microsoft/lib/types";
-import { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
-import { assertNever } from "@dust-tt/types";
 
 export async function getSites(client: Client): Promise<MicrosoftGraph.Site[]> {
   const res = await client.api("/sites?search=*").get();
@@ -164,7 +164,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
 ): MicrosoftNode & { nodeType: T } {
   switch (nodeType) {
     case "folder": {
-      const item: MicrosoftGraph.DriveItem = itemRaw as any;
+      const item = itemRaw as MicrosoftGraph.DriveItem;
       return {
         nodeType,
         name: item.name ?? null,
@@ -173,7 +173,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       };
     }
     case "file": {
-      const item: MicrosoftGraph.DriveItem = itemRaw as any;
+      const item = itemRaw as MicrosoftGraph.DriveItem;
       return {
         nodeType,
         name: item.name ?? null,
@@ -181,14 +181,15 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         mimeType: item.file?.mimeType ?? null,
       };
     }
-    case "drive":
-      const item: MicrosoftGraph.Drive = itemRaw as any;
+    case "drive": {
+      const item = itemRaw as MicrosoftGraph.Drive;
       return {
         nodeType,
         name: item.name ?? null,
         itemAPIPath: getDriveAPIPath(item),
         mimeType: null,
       };
+    }
     case "site":
     case "team":
     case "channel":

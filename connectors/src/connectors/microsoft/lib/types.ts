@@ -1,5 +1,3 @@
-import { internalId } from "@connectors/connectors/microsoft/lib/graph_api";
-
 export const MICROSOFT_NODE_TYPES = [
   "sites-root",
   "teams-root",
@@ -25,5 +23,6 @@ export type MicrosoftNode = {
   nodeType: MicrosoftNodeType;
   name: string | null;
   itemAPIPath: string;
+  parentItemAPIPath?: string;
   mimeType: string | null;
 };

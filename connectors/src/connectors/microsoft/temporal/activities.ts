@@ -14,7 +14,7 @@ import {
   getSiteAPIPath,
   getSites,
   internalId,
-  typeAndPathFromInternalId,
+  itemToMicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
@@ -57,9 +57,18 @@ export async function getSiteNodesToSync(
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives, as MicrosoftNodeData
-  const rootFolderAndDriveNodes: MicrosoftNodeData[] = rootResources.filter(
-    (resource) =>
-      resource.nodeType === "folder" || resource.nodeType === "drive"
+  const rootFolderAndDriveNodes = await Promise.all(
+    rootResources
+      .filter(
+        (resource) =>
+          resource.nodeType === "folder" || resource.nodeType === "drive"
+      )
+      .map(async (resource) =>
+        itemToMicrosoftNode(
+          resource.nodeType,
+          await getItem(client, resource.itemAPIPath)
+        )
+      )
   );
 
   const rootSiteNodes: MicrosoftNodeData[] = rootResources.filter(
@@ -69,24 +78,16 @@ export async function getSiteNodesToSync(
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getSites(client);
     rootSiteNodes.push(
-      ...msSites.map(
-        (site): MicrosoftNodeData => ({
-          itemAPIPath: getSiteAPIPath(site),
-          nodeType: "site",
-        })
-      )
+      ...msSites.map((site) => itemToMicrosoftNode("site", site))
     );
   }
 
-  const siteDriveNodes: MicrosoftNodeData[] = (
+  const siteDriveNodes = (
     await concurrentExecutor(
       rootSiteNodes,
       async (site) => {
         const msDrives = await getDrives(client, internalId(site));
-        return msDrives.map((drive) => ({
-          itemAPIPath: getDriveAPIPath(drive),
-          nodeType: "drive" as const,
-        }));
+        return msDrives.map((drive) => itemToMicrosoftNode("drive", drive));
       },
       { concurrency: 5 }
     )
@@ -109,6 +110,7 @@ export async function getSiteNodesToSync(
     [] as MicrosoftNodeData[]
   );
 
+  const nodeResources = await batchGetOrCreateFromNodes(connectorId, allNodes);
   return allNodes.map((r) => internalId(r));
 }
 
