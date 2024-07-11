@@ -13,7 +13,6 @@ import {
   getSites,
   internalId,
   itemToMicrosoftNode,
-  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
