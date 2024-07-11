@@ -103,6 +103,9 @@ export { Avatar };
 import Spinner from "./components/Spinner";
 export { Spinner };
 
+import DropzoneOverlay from "./components/DropzoneOverlay";
+export { DropzoneOverlay };
+
 import CollapseButton from "./components/CollapseButton";
 export { CollapseButton };
 
