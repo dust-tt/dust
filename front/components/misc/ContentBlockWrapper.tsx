@@ -28,19 +28,19 @@ type ClipboardContent = {
   "text/html"?: string;
 };
 
-interface CodeBlockBannerProps {
+interface ContentBlockWrapperProps {
   children: React.ReactNode;
   className?: string;
-  content?: ClipboardContent;
+  content?: ClipboardContent | string;
   getContentToDownload?: GetContentToDownloadFunction;
 }
 
-export function CodeBlockBanner({
+export function ContentBlockWrapper({
   children,
   className,
   content,
   getContentToDownload,
-}: CodeBlockBannerProps) {
+}: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const handleCopyToClipboard = useCallback(() => {
@@ -48,8 +48,11 @@ export function CodeBlockBanner({
       return;
     }
 
+    const rawContent: ClipboardContent =
+      typeof content === "string" ? { "text/plain": content } : content;
+
     const data = new ClipboardItem(
-      Object.entries(content).reduce(
+      Object.entries(rawContent).reduce(
         (acc, [type, data]) => {
           acc[type] = new Blob([data], { type });
           return acc;

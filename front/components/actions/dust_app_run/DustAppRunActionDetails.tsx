@@ -6,8 +6,8 @@ import { useMemo } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import type { GetContentToDownloadFunction } from "@app/components/misc/CodeBlockBanner";
-import { CodeBlockBanner } from "@app/components/misc/CodeBlockBanner";
+import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
+import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 
 export function DustAppRunActionDetails({
   action,
@@ -75,7 +75,7 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
   }
 
   return (
-    <CodeBlockBanner
+    <ContentBlockWrapper
       content={stringifiedOutput}
       getContentToDownload={getContentToDownload}
     >
@@ -85,6 +85,6 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
       >
         {stringifiedOutput}
       </CodeBlock>
-    </CodeBlockBanner>
+    </ContentBlockWrapper>
   );
 }

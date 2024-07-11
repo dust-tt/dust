@@ -4,7 +4,7 @@ import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
@@ -30,8 +30,8 @@ import {
   MermaidGraph,
   useMermaidDisplay,
 } from "@app/components/assistant/RenderMermaid";
-import type { GetContentToDownloadFunction } from "@app/components/misc/CodeBlockBanner";
-import { CodeBlockBanner } from "@app/components/misc/CodeBlockBanner";
+import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
+import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { classNames } from "@app/lib/utils";
 
 const SyntaxHighlighter = dynamic(
@@ -368,12 +368,12 @@ function TableBlock({ children }: { children: React.ReactNode }) {
   }, [children]);
 
   return (
-    <CodeBlockBanner
+    <ContentBlockWrapper
       className="border border-structure-200 dark:border-structure-200-dark"
       content={tableData}
     >
       <table className="w-full table-auto">{children}</table>
-    </CodeBlockBanner>
+    </ContentBlockWrapper>
   );
 }
 
@@ -503,7 +503,7 @@ function PreBlock({
       )}
     >
       <div className="relative">
-        <CodeBlockBanner
+        <ContentBlockWrapper
           content={{
             "text/plain": text,
           }}
@@ -541,7 +541,7 @@ function PreBlock({
           <div className="overflow-auto pt-8 text-sm">
             {validChildrenContent ? children : fallbackData || children}
           </div>
-        </CodeBlockBanner>
+        </ContentBlockWrapper>
       </div>
     </pre>
   );

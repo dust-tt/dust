@@ -6,7 +6,7 @@ import { useCallback, useContext } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import { CodeBlockBanner } from "@app/components/misc/CodeBlockBanner";
+import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 export function TablesQueryActionDetails({
@@ -51,14 +51,14 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
   }
 
   return (
-    <CodeBlockBanner content={query}>
+    <ContentBlockWrapper content={query}>
       <CodeBlock
         className="language-sql max-h-60 overflow-y-auto"
         wrapLongLines={true}
       >
         {query}
       </CodeBlock>
-    </CodeBlockBanner>
+    </ContentBlockWrapper>
   );
 }
 
