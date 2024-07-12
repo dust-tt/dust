@@ -349,4 +349,41 @@
  *                   type: object
  *                   description: The trace
  *                   example: {}
+ *     Document:
+ *       type: object
+ *       properties:
+ *         data_source_id:
+ *           type: string
+ *         created:
+ *           type: number
+ *         document_id:
+ *           type: string
+ *         timestamp:
+ *           type: number
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *         parents:
+ *           type: array
+ *           items:
+ *             type: string
+ *         source_url:
+ *           type: string
+ *           nullable: true
+ *         hash:
+ *           type: string
+ *         text_size:
+ *           type: number
+ *         chunk_count:
+ *           type: number
+ *         chunks:
+ *           type: array
+ *           items:
+ *             type: object
+ *         text:
+ *           type: string
+ *         token_count:
+ *           type: number
+ *           nullable: true
  */
