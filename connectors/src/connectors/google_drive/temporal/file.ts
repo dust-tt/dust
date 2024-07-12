@@ -29,7 +29,7 @@ import {
   sectionLength,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { docx2text } from "@connectors/lib/docx2text";
+import { docx2text } from "@connectors/lib/docx2text.";
 import { dpdf2text } from "@connectors/lib/dpdf2text";
 import {
   GoogleDriveConfig,

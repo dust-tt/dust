@@ -2,9 +2,7 @@ import tracer from "dd-trace";
 import mammoth from "mammoth";
 import turndown from "turndown";
 
-import { getWorkerPool } from "@connectors/lib/workerpool";
-
-async function _docx2text(fileContent: Buffer, filename: string) {
+export async function docx2text(fileContent: Buffer, filename: string) {
   return tracer.trace(
     `gdrive`,
     {
@@ -24,8 +22,4 @@ async function _docx2text(fileContent: Buffer, filename: string) {
       return result;
     }
   );
-}
-
-export async function docx2text(fileContent: Buffer, filename: string) {
-  return getWorkerPool().exec(_docx2text, [fileContent, filename]);
 }
