@@ -206,10 +206,6 @@ impl Connection {
         self.access_token_expiry
     }
 
-    pub fn access_token_expiry_or_default(&self) -> Option<u64> {
-        self.access_token_expiry
-    }
-
     pub fn encrypted_authorization_code(&self) -> Option<&Vec<u8>> {
         self.encrypted_authorization_code.as_ref()
     }
