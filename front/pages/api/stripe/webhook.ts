@@ -5,6 +5,7 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
+import envConfig from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
@@ -695,7 +696,10 @@ async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
   }
   const dataSources = await getDataSources(auth);
   const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
-  const connectorsApi = new ConnectorsAPI(logger);
+  const connectorsApi = new ConnectorsAPI(
+    envConfig.getConnectorsAPIConfig(),
+    logger
+  );
   for (const connectorId of connectorIds) {
     const r = await connectorsApi.unpauseConnector(connectorId);
     if (r.isErr()) {

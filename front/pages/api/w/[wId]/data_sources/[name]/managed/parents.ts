@@ -5,6 +5,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -88,7 +89,10 @@ async function handler(
 
       const { internalIds } = bodyValidation.right;
 
-      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
       const connectorsRes = await connectorsAPI.getContentNodesParents({
         internalIds,
         connectorId: dataSource.connectorId,

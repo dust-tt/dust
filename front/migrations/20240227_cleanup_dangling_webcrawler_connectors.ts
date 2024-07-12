@@ -1,6 +1,7 @@
 import { ConnectorsAPI } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
+import config from "@app/lib/api/config";
 import { DataSource } from "@app/lib/models/data_source";
 import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
@@ -28,7 +29,10 @@ async function main() {
         connector
       );
       if (LIVE) {
-        const connectorsAPI = new ConnectorsAPI(logger);
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
         const deleteRes = await connectorsAPI.deleteConnector(
           connector.id.toString()
         );

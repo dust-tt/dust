@@ -9,6 +9,7 @@ import type { InferGetServerSidePropsType } from "next";
 
 import WebsiteConfiguration from "@app/components/data_source/WebsiteConfiguration";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
@@ -55,7 +56,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const [connectorRes, dataSourceUsage] = await Promise.all([
-    new ConnectorsAPI(logger).getConnector(dataSource.connectorId),
+    new ConnectorsAPI(config.getConnectorsAPIConfig(), logger).getConnector(
+      dataSource.connectorId
+    ),
     getDataSourceUsage({ auth, dataSource }),
   ]);
 

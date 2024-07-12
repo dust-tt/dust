@@ -4,6 +4,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -40,7 +41,10 @@ async function handler(
         });
       }
       const adminCommand = bodyValidation.right;
-      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
       const result = await connectorsAPI.admin(adminCommand);
       if (result.isErr()) {
         return apiError(req, res, {

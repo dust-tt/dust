@@ -11,6 +11,7 @@ import readline from "readline";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
@@ -25,8 +26,6 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-
-const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -112,10 +111,13 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
-        const connectorsApi = new ConnectorsAPI(logger);
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
         for (const connectorId of connectorIds) {
           console.log(`Pausing connectorId=${connectorId}`);
-          const res = await connectorsApi.pauseConnector(connectorId);
+          const res = await connectorsAPI.pauseConnector(connectorId);
           if (res.isErr()) {
             throw new Error(res.error.message);
           }
@@ -149,10 +151,13 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
-        const connectorsApi = new ConnectorsAPI(logger);
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
         for (const connectorId of connectorIds) {
           console.log(`Unpausing connectorId=${connectorId}`);
-          const res = await connectorsApi.unpauseConnector(connectorId);
+          const res = await connectorsAPI.unpauseConnector(connectorId);
           if (res.isErr()) {
             throw new Error(res.error.message);
           }
@@ -294,10 +299,10 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       if (dataSource.connectorId) {
         console.log(`Deleting connectorId=${dataSource.connectorId}}`);
-        const connDeleteRes = await new ConnectorsAPI(logger).deleteConnector(
-          dataSource.connectorId.toString(),
-          true
-        );
+        const connDeleteRes = await new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        ).deleteConnector(dataSource.connectorId.toString(), true);
         if (connDeleteRes.isErr()) {
           throw new Error(connDeleteRes.error.message);
         }
@@ -332,10 +337,10 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --dustAPIProjectId argument");
       }
 
-      const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
+      const storage = new Storage({ keyFilename: config.getServiceAccount() });
 
       const [files] = await storage
-        .bucket(DUST_DATA_SOURCES_BUCKET)
+        .bucket(config.getDustDataSourcesBucket())
         .getFiles({ prefix: `${args.dustAPIProjectId}` });
 
       console.log(`Chunking ${files.length} files...`);

@@ -7,6 +7,7 @@ import {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -131,7 +132,10 @@ async function handler(
         });
       }
 
-      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
 
       const updateRes = await connectorsAPI.updateConfiguration({
         connectorId: dataSource.connectorId.toString(),

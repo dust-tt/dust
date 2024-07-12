@@ -27,6 +27,9 @@ const config = {
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
     );
   },
+  getDustDataSourcesBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
+  },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
   },
@@ -47,6 +50,12 @@ const config = {
   getOAuthAPIConfig: (): { url: string } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
+    };
+  },
+  getConnectorsAPIConfig(): { url: string; secret: string } {
+    return {
+      url: EnvironmentConfig.getEnvVariable("CONNECTORS_API"),
+      secret: EnvironmentConfig.getEnvVariable("DUST_CONNECTORS_SECRET"),
     };
   },
   getOAuthGithubApp: (): string => {

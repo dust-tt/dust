@@ -12,6 +12,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 
+import config from "@app/lib/api/config";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
@@ -226,7 +227,10 @@ export async function deleteDataSource(
       });
     }
 
-    const connectorsAPI = new ConnectorsAPI(logger);
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
     const connDeleteRes = await connectorsAPI.deleteConnector(
       dataSource.connectorId.toString(),
       true

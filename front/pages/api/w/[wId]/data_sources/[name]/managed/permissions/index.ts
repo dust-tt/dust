@@ -10,6 +10,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -100,7 +101,10 @@ async function handler(
         res
       );
     case "POST":
-      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
       if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
@@ -255,7 +259,10 @@ export async function getManagedDataSourcePermissionsHandler(
     });
   }
 
-  const connectorsAPI = new ConnectorsAPI(logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
   const permissionsRes = await connectorsAPI.getConnectorPermissions({
     connectorId: dataSource.connectorId,
     parentId,

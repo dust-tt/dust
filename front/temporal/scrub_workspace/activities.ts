@@ -6,6 +6,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
+import config from "@app/lib/api/config";
 import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { unsafeGetUsersByModelId } from "@app/lib/api/user";
 import {
@@ -88,12 +89,15 @@ export async function pauseAllConnectors({
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const dataSources = await getDataSources(auth);
-  const connectorsApi = new ConnectorsAPI(logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
   for (const ds of dataSources) {
     if (!ds.connectorId) {
       continue;
     }
-    await connectorsApi.pauseConnector(ds.connectorId);
+    await connectorsAPI.pauseConnector(ds.connectorId);
   }
 }
 

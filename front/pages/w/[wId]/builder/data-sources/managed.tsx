@@ -30,6 +30,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -127,7 +128,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         );
       }
       try {
-        const connectorsAPI = new ConnectorsAPI(logger);
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
         const statusRes = await connectorsAPI.getConnector(mds.connectorId);
         if (statusRes.isErr()) {
           return {
