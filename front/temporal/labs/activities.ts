@@ -9,6 +9,8 @@ import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
+import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -16,6 +18,7 @@ import { sendEmail } from "@app/lib/email";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import {
@@ -132,13 +135,10 @@ export async function processTranscriptActivity(
     );
   }
 
-  const user = await User.findByPk(transcriptsConfiguration.userId);
+  const user = await UserResource.fetchByModelId(transcriptsConfiguration.userId);
+
   if (!user) {
-    mainLogger.error(
-      { fileId },
-      "[processTranscriptActivity] User not found. Stopping."
-    );
-    return;
+    throw new Error(`Could not find user for id ${transcriptsConfiguration.userId}.`);
   }
 
   const localLogger = mainLogger.child({
@@ -217,19 +217,6 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const prodCredentials = await prodAPICredentialsForOwner(
-    renderLightWorkspaceType({ workspace: owner }),
-    { useLocalInDev: true }
-  );
-  const dustAPI = new DustAPI(
-    config.getDustAPIConfig(),
-    prodCredentials,
-    localLogger,
-    {
-      useLocalInDev: true,
-    }
-  );
-
   const { agentConfigurationId } = transcriptsConfiguration;
   if (!agentConfigurationId) {
     localLogger.error(
@@ -239,12 +226,12 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-  if (agentConfigurationsRes.isErr()) {
-    return new Err(new Error(agentConfigurationsRes.error.message));
-  }
-
-  const agentConfigurations = agentConfigurationsRes.value;
+  const agentConfigurations = await getAgentConfigurations({
+    auth,
+    agentsGetView: "all",
+    variant: "light",
+    sort: undefined,
+  });
   const agent = agentConfigurations.find(
     (agent) => agent.sId === agentConfigurationId
   );
@@ -262,45 +249,30 @@ export async function processTranscriptActivity(
   if (isEmptyString(user.username)) {
     return new Err(new Error("username must be a non-empty string"));
   }
-  const convRes = await dustAPI.createConversation({
-    title: transcriptTitle,
-    visibility: "unlisted",
-    message: {
-      content: `:mention[${agent.name}]{sId=${agentConfigurationId}}`,
+
+  console.warn("CREATING CONVERSATION WITH MESSAGE")
+
+  const conversationRes = await createConversationWithMessage({
+    owner,
+    user: user.toJSON(),
+    messageData: {
+      input: transcriptContent,
       mentions: [{ configurationId: agentConfigurationId }],
-      context: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-        username: user.username,
-        fullName: user.name,
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-        origin: null,
-      },
+      contentFragments: [],
     },
-    contentFragment: {
-      title: transcriptTitle,
-      content: transcriptContent.toString(),
-      url: null,
-      contentType: "text/plain",
-      context: {
-        username: user.username,
-        fullName: user.name,
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-      },
-    },
-    blocking: true,
+    visibility: "workspace",
+    title: transcriptTitle,
   });
 
-  if (convRes.isErr()) {
+  if (conversationRes.isErr()) {
     localLogger.error(
-      { agentConfigurationId, error: convRes.error },
+      { agentConfigurationId, error: conversationRes.error },
       "[processTranscriptActivity] Error creating conversation."
     );
-    return new Err(new Error(convRes.error.message));
+    return new Err(new Error(conversationRes.error.message));
   }
 
-  const { conversation } = convRes.value;
+  const conversation = conversationRes.value;
   if (!conversation) {
     localLogger.error(
       {
