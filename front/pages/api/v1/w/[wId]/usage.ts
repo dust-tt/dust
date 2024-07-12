@@ -27,7 +27,7 @@ const GetWorkspaceUsageSchema = t.intersection([
  * /api/v1/w/{wId}/usage:
  *   get:
  *     summary: Get workspace usage data
- *     description: Get usage data for the workspace identified by {wId}.
+ *     description: Get usage data for the workspace identified by {wId} in CSV format.
  *     tags:
  *       - Workspace
  *     security:
@@ -55,11 +55,15 @@ const GetWorkspaceUsageSchema = t.intersection([
  *           format: date
  *     responses:
  *       200:
- *         description: The usage data
+ *         description: The usage data in CSV format
  *         content:
- *           application/json:
+ *           text/csv:
  *             schema:
- *               $ref: '#/components/schemas/Workspace'
+ *               type: string
+ *             example: |
+ *               createdAt,conversationInternalId,messageId,parentMessageId,messageType,userFullName,userEmail,assistantId,assistantName,actionType,source
+ *               YYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>
+ *               YYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>
  *       404:
  *         description: The workspace was not found
  *       405:

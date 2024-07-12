@@ -69,10 +69,10 @@ function extractUsageFromExecutions(
 
 /**
  * @swagger
- * /api/v1/w/{wId}/apps/{appId}/run:
+ * /api/v1/w/{wId}/apps/{aId}/run:
  *   post:
  *     summary: Create an app run
- *     description: Create a run for an app in the workspace identified by {wId}.
+ *     description: Create and execute a run for an app in the specified workspace.
  *     tags:
  *       - Apps
  *     security:
@@ -85,9 +85,9 @@ function extractUsageFromExecutions(
  *         schema:
  *           type: string
  *       - in: path
- *         name: appId
+ *         name: aId
  *         required: true
- *         description: ID of the app
+ *         description: Unique identifier of the app
  *         schema:
  *           type: string
  *     requestBody:
@@ -96,53 +96,71 @@ function extractUsageFromExecutions(
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - specification_hash
+ *               - config
+ *               - inputs
  *             properties:
  *               specification_hash:
  *                 type: string
- *                 description: The hash of the specification to use. If you change your app specifiction, make sure to update the hash. This guarantees that you won't break an existing API integration by iterating on your app design.
+ *                 description: Hash of the app specification. Ensures API compatibility across app iterations.
  *               config:
  *                 type: object
+ *                 description: Configuration for the app run
  *                 properties:
  *                   model:
  *                     type: object
- *                     description: Configuration for the model
+ *                     description: Model configuration
  *                     properties:
  *                       provider_id:
  *                         type: string
- *                         description: The ID of the model provider
+ *                         description: ID of the model provider
  *                       model_id:
  *                         type: string
- *                         description: The ID of the model
+ *                         description: ID of the model
  *                       use_cache:
  *                         type: boolean
- *                         description: Indicates if caching is used
+ *                         description: Whether to use caching
  *                       use_stream:
  *                         type: boolean
- *                         description: Indicates if streaming is used
+ *                         description: Whether to use streaming
  *               inputs:
  *                 type: array
- *                 description: The inputs of the app
+ *                 description: Array of input objects for the app
  *                 items:
  *                   type: object
- *                   description: An individual input for the app
  *                   additionalProperties: true
+ *               stream:
+ *                 type: boolean
+ *                 description: If true, the response will be streamed
+ *               blocking:
+ *                 type: boolean
+ *                 description: If true, the request will block until the run is complete
+ *               block_filter:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of block names to filter the response
  *     responses:
  *       200:
- *         description: App run
+ *         description: App run created and executed successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Workspace'
+ *               type: object
+ *               properties:
+ *                 run:
+ *                   $ref: '#/components/schemas/Run'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
- *       500:
- *         description: Internal Server Error.
  *       404:
  *         description: Workspace or app not found.
  *       405:
  *         description: Method not supported.
+ *       500:
+ *         description: Internal Server Error.
  */
 
 async function handler(
