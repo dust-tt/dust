@@ -222,7 +222,7 @@ export default function CreateAssistant({
                 },
                 temperature: agentConfiguration.model.temperature,
               },
-              maxToolsUsePerRun: null,
+              maxToolsUsePerRun: agentConfiguration.maxToolsUsePerRun ?? null,
               templateId: templateId,
             }
           : null

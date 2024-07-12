@@ -196,6 +196,7 @@ export interface TemplateAgentConfigurationType {
   actions: AgentActionConfigurationType[];
   instructions: string | null;
   isTemplate: true;
+  maxToolsUsePerRun?: number;
 }
 
 export const MAX_TOOLS_USE_PER_RUN_LIMIT = 8;
