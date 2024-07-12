@@ -3,6 +3,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
@@ -11,7 +12,6 @@ import { App, Clone, Dataset } from "@app/lib/models/apps";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import config from "@app/lib/api/config";
 
 export type PostAppResponseBody = {
   app: AppType;
