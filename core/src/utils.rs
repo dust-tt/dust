@@ -4,6 +4,7 @@ use axum::Json;
 use hyper::StatusCode;
 use serde::Serialize;
 use serde_json::Value;
+use sqids::Sqids;
 use std::io::Write;
 use tower_http::trace::MakeSpan;
 use uuid::Uuid;
@@ -163,4 +164,37 @@ impl<B> MakeSpan<B> for CoreRequestMakeSpan {
             request_span_id = new_id()[0..12].to_string(),
         )
     }
+}
+
+// sqids
+// Aligned with front. Main difference is that we don't have workspace ids in our core ids.
+const RESOURCE_S_ID_MIN_LENGTH: u8 = 10;
+const SHARD_KEY: u64 = 1;
+const REGION: u64 = 1;
+
+pub fn make_id(prefix: &str, id: u64) -> Result<String> {
+    let sqids = Sqids::builder()
+        .min_length(RESOURCE_S_ID_MIN_LENGTH)
+        .build()?;
+    let id = sqids.encode(&[REGION, SHARD_KEY, id])?;
+    Ok(format!("{}_{}", prefix, id))
+}
+
+pub fn parse_id(id: &str) -> Result<(String, u64)> {
+    let sqids = Sqids::builder()
+        .min_length(RESOURCE_S_ID_MIN_LENGTH)
+        .build()?;
+    let parts = id.split('_').collect::<Vec<&str>>();
+    if parts.len() != 2 {
+        return Err(anyhow::anyhow!("Invalid id format: {}", id));
+    }
+
+    let prefix = parts[0];
+    let decoded = sqids.decode(parts[1]);
+
+    if decoded.len() != 3 {
+        return Err(anyhow::anyhow!("Invalid id decoding failed: {}", id));
+    }
+
+    Ok((prefix.to_string(), decoded[2]))
 }

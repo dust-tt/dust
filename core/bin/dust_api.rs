@@ -176,7 +176,7 @@ impl APIState {
 /// Index
 
 async fn index() -> &'static str {
-    "Welcome to the Dust API!"
+    "dust_api server ready"
 }
 
 /// Create a new project (simply generates an id)
@@ -2471,8 +2471,8 @@ fn main() {
             databases_store,
             QdrantClients::build().await?,
         ));
-        let router = Router::new()
 
+        let router = Router::new()
         // Index
         .route("/", get(index))
         // Projects
@@ -2649,7 +2649,7 @@ fn main() {
             tx2.send(()).ok();
         });
 
-        info!(pid = std::process::id() as u64, "API server started");
+        info!(pid = std::process::id() as u64, "dust_api server started");
 
         let mut stream = signal(SignalKind::terminate()).unwrap();
         stream.recv().await;
@@ -2666,7 +2666,7 @@ fn main() {
         info!("[GRACEFUL] Awaiting stop loop...");
         state.stop_loop().await;
 
-        info!("[GRACEFUL] Exiting!");
+        info!("[GRACEFUL] Exiting");
 
         // sleep for 1 second to allow the logger to flush
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -2677,7 +2677,7 @@ fn main() {
     match r {
         Ok(_) => (),
         Err(e) => {
-            error!(error = %e, "API Server error");
+            error!(error = %e, "dust_api server error");
             std::process::exit(1);
         }
     }

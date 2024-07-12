@@ -5,6 +5,7 @@ psql "postgres://dev:dev@localhost:5432/" -c "CREATE DATABASE dust_api;";
 psql "postgres://dev:dev@localhost:5432/" -c "CREATE DATABASE dust_databases_store;";
 psql "postgres://dev:dev@localhost:5432/" -c "CREATE DATABASE dust_front;";
 psql "postgres://dev:dev@localhost:5432/" -c "CREATE DATABASE dust_connectors;";
+psql "postgres://dev:dev@localhost:5432/" -c "CREATE DATABASE dust_oauth;";
 
 ## Initilizing Qdrant collections
 cd core/

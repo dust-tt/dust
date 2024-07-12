@@ -80,3 +80,11 @@ pub mod databases_store {
 
 pub mod cached_request;
 pub mod consts;
+
+pub mod oauth {
+    pub mod connection;
+    pub mod store;
+    pub mod providers {
+        pub mod github;
+    }
+}
