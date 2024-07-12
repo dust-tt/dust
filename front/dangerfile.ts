@@ -5,7 +5,7 @@ const documentationAckLabel = "documentation-ack";
 
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
-}
+};
 
 function failMigrationAck() {
   fail(
@@ -24,6 +24,14 @@ function warnMigrationAck(migrationAckLabel: string) {
       migrationAckLabel +
       "` label. Don't forget to run the migration from prodbox."
   );
+}
+
+function checkMigrationLabel() {
+  if (!hasLabel(migrationAckLabel)) {
+    failMigrationAck();
+  } else {
+    warnMigrationAck(migrationAckLabel);
+  }
 }
 
 function checkDocumentationLabel() {
@@ -50,28 +58,6 @@ function warnDocumentationAck(documentationAckLabel: string) {
       "` label. \n" +
       "Don't forget to run `npm run docs` and use the `Deploy OpenAPI Docs` Github action to update https://docs.dust.tt/reference."
   );
-}
-
-function checkMigrationLabel() {
-  if (!hasLabel(migrationAckLabel)) {
-    failMigrationAck();
-  } else {
-    warnMigrationAck(migrationAckLabel);
-  }
-}
-
-function checkDeployPlanSection() {
-  const PRDescription = danger.github.pr.body;
-
-  const deployPlanSectionRegex =
-    /## Deploy Plan.*?\r\n([\s\S]*?)(?=<!--|\n##|$)/;
-
-  const match = PRDescription.match(deployPlanSectionRegex);
-  if (!match || match[1].trim().length < 20) {
-    fail(
-      "Please include a detailed Deploy Plan section in your PR description."
-    );
-  }
 }
 
 function checkModifiedFiles() {
