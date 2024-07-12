@@ -3,9 +3,29 @@ use crate::utils;
 use crate::utils::ParseError;
 use anyhow::Result;
 use async_trait::async_trait;
+use base64::{engine::general_purpose, Engine as _};
+use lazy_static::lazy_static;
+use ring::aead::NONCE_LEN;
+use ring::{
+    aead,
+    rand::{self, SecureRandom},
+};
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::str::FromStr;
+use std::{env, fmt};
+
+lazy_static! {
+    static ref ENCRYPTION_KEY: Result<aead::LessSafeKey, &'static str> = {
+        let encoded_key =
+            env::var("OAUTH_ENCRYPTION_KEY").map_err(|_| "OAUTH_ENCRYPTION_KEY: not set")?;
+        let key_bytes = general_purpose::STANDARD
+            .decode(&encoded_key)
+            .map_err(|_| "OAUTH_ENCRYPTION_KEY: base64 decoding failed")?;
+        let unbound_key = aead::UnboundKey::new(&aead::CHACHA20_POLY1305, &key_bytes)
+            .map_err(|_| "OAUTH_ENCRYPTION_KEY: invalid key length")?;
+        Ok(aead::LessSafeKey::new(unbound_key))
+    };
+}
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -99,11 +119,11 @@ pub struct Connection {
     provider: ConnectionProvider,
     status: ConnectionStatus,
     metadata: serde_json::Value,
-    authorization_code: Option<String>,
-    access_token: Option<String>,
     access_token_expiry: Option<u64>,
-    refresh_token: Option<String>,
-    raw_json: Option<serde_json::Value>,
+    encrypted_authorization_code: Option<Vec<u8>>,
+    encrypted_access_token: Option<Vec<u8>>,
+    encrypted_refresh_token: Option<Vec<u8>>,
+    encrypted_raw_json: Option<Vec<u8>>,
 }
 
 impl Connection {
@@ -113,11 +133,11 @@ impl Connection {
         provider: ConnectionProvider,
         status: ConnectionStatus,
         metadata: serde_json::Value,
-        authorization_code: Option<String>,
-        access_token: Option<String>,
         access_token_expiry: Option<u64>,
-        refresh_token: Option<String>,
-        raw_json: Option<serde_json::Value>,
+        encrypted_authorization_code: Option<Vec<u8>>,
+        encrypted_access_token: Option<Vec<u8>>,
+        encrypted_refresh_token: Option<Vec<u8>>,
+        encrypted_raw_json: Option<Vec<u8>>,
     ) -> Self {
         Connection {
             connection_id,
@@ -125,11 +145,11 @@ impl Connection {
             provider,
             status,
             metadata,
-            authorization_code,
-            access_token,
             access_token_expiry,
-            refresh_token,
-            raw_json,
+            encrypted_authorization_code,
+            encrypted_access_token,
+            encrypted_refresh_token,
+            encrypted_raw_json,
         }
     }
 
@@ -180,6 +200,96 @@ impl Connection {
 
     pub fn metadata(&self) -> &serde_json::Value {
         &self.metadata
+    }
+
+    pub fn access_token_expiry(&self) -> Option<u64> {
+        self.access_token_expiry
+    }
+
+    pub fn access_token_expiry_or_default(&self) -> Option<u64> {
+        self.access_token_expiry
+    }
+
+    pub fn encrypted_authorization_code(&self) -> Option<&Vec<u8>> {
+        self.encrypted_authorization_code.as_ref()
+    }
+
+    pub fn encrypted_access_token(&self) -> Option<&Vec<u8>> {
+        self.encrypted_access_token.as_ref()
+    }
+
+    pub fn encrypted_refresh_token(&self) -> Option<&Vec<u8>> {
+        self.encrypted_refresh_token.as_ref()
+    }
+
+    pub fn encrypted_raw_json(&self) -> Option<&Vec<u8>> {
+        self.encrypted_raw_json.as_ref()
+    }
+
+    fn seal_str(s: &str) -> Result<Vec<u8>> {
+        let key = ENCRYPTION_KEY.as_ref().map_err(|e| anyhow::anyhow!(e))?;
+        let rng = rand::SystemRandom::new();
+
+        let mut nonce_bytes = [0u8; NONCE_LEN];
+        rng.fill(&mut nonce_bytes)
+            .map_err(|_| anyhow::anyhow!("Nonce generation failed"))?;
+        let nonce = aead::Nonce::assume_unique_for_key(nonce_bytes);
+
+        let mut combined = nonce.as_ref().to_vec();
+
+        let mut in_out = s.as_bytes().to_vec();
+        let tag = key
+            .seal_in_place_separate_tag(nonce, aead::Aad::empty(), &mut in_out)
+            .map_err(|_| anyhow::anyhow!("Encryption failed"))?;
+
+        combined.append(&mut in_out);
+        combined.extend_from_slice(tag.as_ref());
+
+        Ok(combined)
+    }
+
+    fn unseal_str(encrypted_data: &[u8]) -> Result<String> {
+        let key = ENCRYPTION_KEY.as_ref().map_err(|e| anyhow::anyhow!(e))?;
+
+        let nonce_bytes = &encrypted_data[0..NONCE_LEN];
+        let ciphertext_and_tag = &encrypted_data[NONCE_LEN..];
+
+        let nonce = aead::Nonce::try_assume_unique_for_key(nonce_bytes)
+            .map_err(|_| anyhow::anyhow!("Invalid nonce"))?;
+        let mut in_out = ciphertext_and_tag.to_vec(); // Copy ciphertext to in_out for decryption
+
+        key.open_in_place(nonce, aead::Aad::empty(), &mut in_out)
+            .map_err(|_| anyhow::anyhow!("Decryption failed"))?;
+
+        Ok(String::from_utf8(in_out)?)
+    }
+
+    pub async fn update_secrets(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        access_token_expiry: Option<u64>,
+        authorization_code: &str,
+        access_token: &str,
+        refresh_token: Option<&str>,
+        raw_json: &serde_json::Value,
+    ) -> Result<()> {
+        self.access_token_expiry = access_token_expiry;
+        self.encrypted_authorization_code = Some(Connection::seal_str(authorization_code)?);
+        self.encrypted_access_token = Some(Connection::seal_str(access_token)?);
+        self.encrypted_refresh_token = match refresh_token {
+            Some(t) => Some(Connection::seal_str(t)?),
+            None => None,
+        };
+        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(raw_json)?)?);
+
+        store.update_connection_secrets(self).await
+    }
+
+    pub fn access_token(&self) -> Result<Option<String>> {
+        match &self.encrypted_access_token {
+            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
+            None => Ok(None),
+        }
     }
 
     pub async fn create(
