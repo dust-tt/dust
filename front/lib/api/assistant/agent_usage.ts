@@ -2,6 +2,7 @@ import type { AgentConfigurationType } from "@dust-tt/types";
 import type { RedisClientType } from "redis";
 import { literal, Op, Sequelize } from "sequelize";
 
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import {
   Conversation,
@@ -9,7 +10,6 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
-import { redisClient } from "@app/lib/redis";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
 // Ranking of agents is done over a 7 days period.
@@ -60,40 +60,34 @@ export async function getAgentsUsage({
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  try {
-    redis = providedRedis ?? (await redisClient());
-    const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
+  redis = providedRedis ?? (await getRedisClient());
+  const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
-    // agent mention count doesn't exist or wasn't set to expire
-    if (
-      agentMessageCountTTL === TTL_KEY_NOT_EXIST ||
-      agentMessageCountTTL === TTL_KEY_NOT_SET
-    ) {
-      await launchMentionsCountWorkflow({ workspaceId });
-      return [];
-      // agent mention count is stale
-    } else if (
-      agentMessageCountTTL <
-      MENTION_COUNT_TTL - MENTION_COUNT_UPDATE_PERIOD_SEC
-    ) {
-      await launchMentionsCountWorkflow({ workspaceId });
-    }
-
-    // Retrieve and parse agents usage
-    const agentsUsage = await redis.hGetAll(agentMessageCountKey);
-    return Object.entries(agentsUsage)
-      .map(([agentId, count]) => ({
-        agentId,
-        messageCount: parseInt(count),
-        timePeriodSec: rankingTimeframeSec,
-      }))
-      .sort((a, b) => b.messageCount - a.messageCount)
-      .slice(0, limit);
-  } finally {
-    if (redis && !providedRedis) {
-      await redis.quit();
-    }
+  // agent mention count doesn't exist or wasn't set to expire
+  if (
+    agentMessageCountTTL === TTL_KEY_NOT_EXIST ||
+    agentMessageCountTTL === TTL_KEY_NOT_SET
+  ) {
+    await launchMentionsCountWorkflow({ workspaceId });
+    return [];
+    // agent mention count is stale
+  } else if (
+    agentMessageCountTTL <
+    MENTION_COUNT_TTL - MENTION_COUNT_UPDATE_PERIOD_SEC
+  ) {
+    await launchMentionsCountWorkflow({ workspaceId });
   }
+
+  // Retrieve and parse agents usage
+  const agentsUsage = await redis.hGetAll(agentMessageCountKey);
+  return Object.entries(agentsUsage)
+    .map(([agentId, count]) => ({
+      agentId,
+      messageCount: parseInt(count),
+      timePeriodSec: rankingTimeframeSec,
+    }))
+    .sort((a, b) => b.messageCount - a.messageCount)
+    .slice(0, limit);
 }
 
 export async function getAgentUsage(
@@ -121,25 +115,19 @@ export async function getAgentUsage(
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  try {
-    redis = providedRedis ?? (await redisClient());
+  redis = providedRedis ?? (await getRedisClient());
 
-    const agentUsage = await redis.hGet(
-      agentMessageCountKey,
-      agentConfigurationId
-    );
-    return agentUsage
-      ? {
-          agentId: agentConfigurationId,
-          messageCount: parseInt(agentUsage, 10),
-          timePeriodSec: rankingTimeframeSec,
-        }
-      : null;
-  } finally {
-    if (redis && !providedRedis) {
-      await redis.quit();
-    }
-  }
+  const agentUsage = await redis.hGet(
+    agentMessageCountKey,
+    agentConfigurationId
+  );
+  return agentUsage
+    ? {
+        agentId: agentConfigurationId,
+        messageCount: parseInt(agentUsage, 10),
+        timePeriodSec: rankingTimeframeSec,
+      }
+    : null;
 }
 
 export async function agentMentionsCount(
@@ -227,18 +215,12 @@ export async function signalAgentUsage({
 }) {
   let redis: RedisClientType | null = null;
 
-  try {
-    redis = await redisClient();
-    const agentMessageCountKey = _getUsageKey(workspaceId);
-    const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
+  redis = await getRedisClient();
+  const agentMessageCountKey = _getUsageKey(workspaceId);
+  const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
-    if (agentMessageCountTTL !== TTL_KEY_NOT_EXIST) {
-      // We only want to increment if the counts have already been computed
-      await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
-    }
-  } finally {
-    if (redis) {
-      await redis.quit();
-    }
+  if (agentMessageCountTTL !== TTL_KEY_NOT_EXIST) {
+    // We only want to increment if the counts have already been computed
+    await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
   }
 }

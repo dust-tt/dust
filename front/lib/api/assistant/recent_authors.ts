@@ -6,12 +6,12 @@ import type {
 import { removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
+import { runOnRedis } from "@app/lib/api/redis";
 import { renderUserType } from "@app/lib/api/user";
 import { getGlobalAgentAuthorName } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
-import { safeRedisClient } from "@app/lib/redis";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
@@ -66,7 +66,8 @@ async function setAuthorIdsWithVersionInRedis(
     agentId,
     workspaceId,
   });
-  await safeRedisClient(async (redis) => {
+
+  await runOnRedis(async (redis) => {
     // Add <authorId:version> pairs to the sorted set, only if the version is greater than the one stored.
     await redis.zAdd(agentRecentAuthorIdsKey, authorIdsWithScore, { GT: true });
     // Set the expiry for the sorted set to manage its lifecycle.
@@ -149,7 +150,7 @@ export async function getAgentsRecentAuthors({
           agentId,
           workspaceId,
         });
-        let recentAuthorIds = await safeRedisClient(async (redis) =>
+        let recentAuthorIds = await runOnRedis(async (redis) =>
           redis.zRange(agentRecentAuthorIdsKey, 0, 2, { REV: true })
         );
         if (recentAuthorIds.length === 0) {

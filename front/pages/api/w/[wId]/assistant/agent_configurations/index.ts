@@ -27,9 +27,9 @@ import {
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
+import { runOnRedis } from "@app/lib/api/redis";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { safeRedisClient } from "@app/lib/redis";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 
@@ -107,7 +107,7 @@ async function handler(
         sort,
       });
       if (withUsage === "true") {
-        const mentionCounts = await safeRedisClient(async (redis) => {
+        const mentionCounts = await runOnRedis(async (redis) => {
           return getAgentsUsage({
             providedRedis: redis,
             workspaceId: owner.sId,
