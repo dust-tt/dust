@@ -12,35 +12,8 @@ export type WorkspaceFeatureFlagsResponseBody = {
 };
 
 /**
- * @swagger
- * /api/v1/w/{wId}/feature_flags:
- *   get:
- *     summary: List feature flags
- *     description: Get the feature flags for the workspace identified by {wId}.
- *     tags:
- *       - Workspace
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: Unique string identifier for the workspace
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Feature flags for the workspace
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 feature_flags:
- *                   type: array
- *                   items:
- *                     type: string
- *                     description: Feature flags enabled for the workspace
+ * @ignoreswagger
+ * This endpoint is not to be included in the public API docs.
  */
 
 async function handler(

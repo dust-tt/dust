@@ -81,6 +81,13 @@ export type UpsertDocumentResponseBody = {
  *     responses:
  *       200:
  *         description: The document
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document:
+ *                   $ref: '#/components/schemas/Document'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
@@ -136,6 +143,13 @@ export type UpsertDocumentResponseBody = {
  *     responses:
  *       200:
  *         description: The document
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document:
+ *                   $ref: '#/components/schemas/Document'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:

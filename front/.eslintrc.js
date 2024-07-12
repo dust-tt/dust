@@ -71,7 +71,8 @@ module.exports = {
           {
             contexts: [
               {
-                comment: "JsdocBlock:has(JsdocTag[tag=swagger])",
+                comment:
+                  "JsdocBlock:has(JsdocTag[tag=/^(swagger|ignoreswagger)$/])",
                 context: "any",
                 message:
                   "@swagger documentation is required on each public endpoint.",

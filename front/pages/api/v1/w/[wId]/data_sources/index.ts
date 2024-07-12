@@ -32,9 +32,12 @@ export type GetDataSourcesResponseBody = {
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Datasource'
+ *               type: object
+ *               properties:
+ *                 data_sources:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Datasource'
  *       404:
  *         description: The workspace was not found
  *       405:

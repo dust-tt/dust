@@ -51,9 +51,14 @@ export type GetDocumentsResponseBody = {
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Datasource'
+ *               type: object
+ *               properties:
+ *                 documents:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Document'
+ *                 total:
+ *                   type: integer
  *       404:
  *         description: The data source was not found
  *       405:

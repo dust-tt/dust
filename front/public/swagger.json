@@ -803,7 +803,19 @@
         ],
         "responses": {
           "200": {
-            "description": "The document"
+            "description": "The document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -886,7 +898,19 @@
         },
         "responses": {
           "200": {
-            "description": "The document"
+            "description": "The document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -1094,9 +1118,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Datasource"
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Document"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
                   }
                 }
               }
@@ -1926,64 +1958,6 @@
         }
       }
     },
-    "/api/v1/w/{wId}/data_sources/{name}/tokenize": {
-      "post": {
-        "summary": "Tokenize text",
-        "description": "Tokenize text for the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "description": "ID of the workspace",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "description": "Name of the data source",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "text": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The tokens"
-          },
-          "404": {
-            "description": "The data source was not found"
-          },
-          "405": {
-            "description": "Method not supported"
-          }
-        }
-      }
-    },
     "/api/v1/w/{wId}/data_sources": {
       "get": {
         "summary": "Get data sources",
@@ -2011,9 +1985,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Datasource"
+                  "type": "object",
+                  "properties": {
+                    "data_sources": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Datasource"
+                      }
+                    }
                   }
                 }
               }
@@ -2024,50 +2003,6 @@
           },
           "405": {
             "description": "Method not supported"
-          }
-        }
-      }
-    },
-    "/api/v1/w/{wId}/feature_flags": {
-      "get": {
-        "summary": "List feature flags",
-        "description": "Get the feature flags for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "description": "Unique string identifier for the workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Feature flags for the workspace",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "feature_flags": {
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "description": "Feature flags enabled for the workspace"
-                      }
-                    }
-                  }
-                }
-              }
-            }
           }
         }
       }
@@ -2175,47 +2110,6 @@
                   "type": "string"
                 },
                 "example": "createdAt,conversationInternalId,messageId,parentMessageId,messageType,userFullName,userEmail,assistantId,assistantName,actionType,source\nYYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>\nYYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>\n"
-              }
-            }
-          },
-          "404": {
-            "description": "The workspace was not found"
-          },
-          "405": {
-            "description": "Method not supported"
-          }
-        }
-      }
-    },
-    "/api/v1/w/{wId}/verified_domains": {
-      "get": {
-        "summary": "Get verified domains",
-        "description": "Get the verified domain for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "description": "Unique string identifier for the workspace",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The verified domain",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Workspace"
-                }
               }
             }
           },
@@ -2711,6 +2605,61 @@
                 }
               }
             }
+          }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "data_source_id": {
+            "type": "string"
+          },
+          "created": {
+            "type": "number"
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "hash": {
+            "type": "string"
+          },
+          "text_size": {
+            "type": "number"
+          },
+          "chunk_count": {
+            "type": "number"
+          },
+          "chunks": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "text": {
+            "type": "string"
+          },
+          "token_count": {
+            "type": "number",
+            "nullable": true
           }
         }
       }
