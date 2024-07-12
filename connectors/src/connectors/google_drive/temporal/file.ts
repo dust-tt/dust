@@ -281,10 +281,7 @@ export async function syncOneFile(
         ) {
           if (res.data instanceof ArrayBuffer) {
             try {
-              const extracted = await docx2text(
-                Buffer.from(res.data),
-                file.name
-              );
+              const extracted = await docx2text(Buffer.from(res.data));
 
               documentContent = {
                 prefix: null,
