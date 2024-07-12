@@ -22,7 +22,10 @@ type PostDatasourceTokenizeResponseBody = {
   tokens: CoreAPITokenType[];
 };
 
-// Not documented in Swagger
+/**
+ * @ignoreswagger
+ * This endpoint is not to be included in the public API docs.
+ */
 
 async function handler(
   req: NextApiRequest,

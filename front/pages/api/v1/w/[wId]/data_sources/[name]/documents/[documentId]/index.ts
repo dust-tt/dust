@@ -199,7 +199,6 @@ export type UpsertDocumentResponseBody = {
  *         description: Method not supported.
  */
 
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

@@ -10,33 +10,8 @@ export type ListMemberEmailsResponseBody = {
 };
 
 /**
- * @swagger
- * /api/v1/w/{wId}/verified_domains:
- *   get:
- *     summary: Get verified domains
- *     description: Get the verified domain for the workspace identified by {wId}.
- *     tags:
- *       - Workspace
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: Unique string identifier for the workspace
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: The verified domain
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Workspace'
- *       404:
- *         description: The workspace was not found
- *       405:
- *         description: Method not supported
+ * @ignoreswagger
+ * This endpoint is not to be included in the public API docs.
  */
 
 async function handler(
