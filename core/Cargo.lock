@@ -1162,6 +1162,7 @@ dependencies = [
  "rayon",
  "regex",
  "reqwest 0.12.5",
+ "ring 0.17.8",
  "rusqlite",
  "rustc-hash",
  "sentencepiece",

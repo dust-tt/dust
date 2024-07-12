@@ -20,6 +20,7 @@ pub trait OAuthStore {
         provider: ConnectionProvider,
         connection_id: &str,
     ) -> Result<Connection>;
+    async fn update_connection_secrets(&self, connection: &Connection) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
 }
@@ -117,9 +118,9 @@ impl OAuthStore for PostgresOAuthStore {
 
         let r = c
             .query_one(
-                "SELECT created, status, metadata,
-                        authorization_code, access_token, access_token_expiry,
-                        refresh_token, raw_json
+                "SELECT created, status, metadata, access_token_expiry,
+                        encrypted_authorization_code, encrypted_access_token,
+                        encrypted_refresh_token, encrypted_raw_json
                    FROM connections
                    WHERE id = $1 AND provider = $2 AND secret = $3",
                 &[&row_id, &provider.to_string(), &secret],
@@ -129,11 +130,11 @@ impl OAuthStore for PostgresOAuthStore {
         let created: i64 = r.get(0);
         let status: ConnectionStatus = ConnectionStatus::from_str(r.get(1))?;
         let metadata: serde_json::Value = r.get(2);
-        let authorization_code: Option<String> = r.get(3);
-        let access_token: Option<String> = r.get(4);
-        let access_token_expiry: Option<i64> = r.get(5);
-        let refresh_token: Option<String> = r.get(6);
-        let raw_json: Option<serde_json::Value> = r.get(7);
+        let access_token_expiry: Option<i64> = r.get(3);
+        let encrypted_authorization_code: Option<Vec<u8>> = r.get(4);
+        let encrypted_access_token: Option<Vec<u8>> = r.get(5);
+        let encrypted_refresh_token: Option<Vec<u8>> = r.get(6);
+        let encrypted_raw_json: Option<Vec<u8>> = r.get(7);
 
         Ok(Connection::new(
             connection_id.to_string(),
@@ -141,15 +142,51 @@ impl OAuthStore for PostgresOAuthStore {
             provider,
             status,
             metadata,
-            authorization_code,
-            access_token,
             match access_token_expiry {
                 Some(e) => Some(e as u64),
                 None => None,
             },
-            refresh_token,
-            raw_json,
+            encrypted_authorization_code,
+            encrypted_access_token,
+            encrypted_refresh_token,
+            encrypted_raw_json,
         ))
+    }
+
+    async fn update_connection_secrets(&self, connection: &Connection) -> Result<()> {
+        let (row_id, secret) =
+            Connection::row_id_and_secret_from_connection_id(&connection.connection_id())?;
+
+        let access_token_expiry = match connection.access_token_expiry() {
+            Some(e) => Some(e as i64),
+            None => None,
+        };
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        c.execute(
+            "UPDATE connections
+                SET access_token_expiry = $1,
+                    encrypted_authorization_code = $2,
+                    encrypted_access_token = $3,
+                    encrypted_refresh_token = $4,
+                    encrypted_raw_json = $5
+              WHERE id = $6 AND provider = $7 AND secret = $8",
+            &[
+                &access_token_expiry,
+                &connection.encrypted_authorization_code(),
+                &connection.encrypted_access_token(),
+                &connection.encrypted_refresh_token(),
+                &connection.encrypted_raw_json(),
+                &row_id,
+                &connection.provider().to_string(),
+                &secret,
+            ],
+        )
+        .await?;
+
+        Ok(())
     }
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send> {
@@ -159,17 +196,17 @@ impl OAuthStore for PostgresOAuthStore {
 
 pub const POSTGRES_TABLES: [&'static str; 1] = ["-- connections
     CREATE TABLE IF NOT EXISTS connections (
-       id                   BIGSERIAL PRIMARY KEY,
-       created              BIGINT NOT NULL,
-       provider             TEXT NOT NULL,
-       secret               TEXT NOT NULL,
-       status               TEXT NOT NULL,
-       metadata             JSONB,
-       authorization_code   TEXT,
-       access_token         TEXT,
-       access_token_expiry  BIGINT,
-       refresh_token        TEXT,
-       raw_json             JSONB
+       id                             BIGSERIAL PRIMARY KEY,
+       created                        BIGINT NOT NULL,
+       provider                       TEXT NOT NULL,
+       secret                         TEXT NOT NULL,
+       status                         TEXT NOT NULL,
+       metadata                       JSONB,
+       access_token_expiry            BIGINT,
+       encrypted_authorization_code   BYTEA,
+       encrypted_access_token         BYTEA,
+       encrypted_refresh_token        BYTEA,
+       encrypted_raw_json             BYTEA
     );"];
 
 pub const SQL_INDEXES: [&'static str; 0] = [];
