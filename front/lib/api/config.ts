@@ -61,6 +61,11 @@ const config = {
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");
   },
+  getCoreAPIConfig: (): { url: string } => {
+    return {
+      url: EnvironmentConfig.getEnvVariable("CORE_API"),
+    };
+  },
 };
 
 export default config;

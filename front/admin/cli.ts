@@ -307,7 +307,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
           throw new Error(connDeleteRes.error.message);
         }
       }
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const coreDeleteRes = await coreAPI.deleteDataSource({
         projectId: dataSource.dustAPIProjectId,
@@ -400,7 +400,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const getRes = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
