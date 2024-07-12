@@ -1,14 +1,14 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import {
-  assertNever,
-  isEmptyString,
-  minTranscriptsSize,
-} from "@dust-tt/types";
+import { assertNever, isEmptyString, minTranscriptsSize } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
-import { createConversation, getConversation, postNewContentFragment } from "@app/lib/api/assistant/conversation";
+import {
+  createConversation,
+  getConversation,
+  postNewContentFragment,
+} from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
@@ -268,12 +268,17 @@ export async function processTranscriptActivity(
     url: null,
     contentType: "text/plain",
     baseContext,
-  }
-  
-  const contentFragmentRes = await postNewContentFragment(auth, conversation, contentFragmentData, {
-    ...baseContext,
-    profilePictureUrl: contentFragmentData.baseContext.profilePictureUrl,
-  });
+  };
+
+  const contentFragmentRes = await postNewContentFragment(
+    auth,
+    conversation,
+    contentFragmentData,
+    {
+      ...baseContext,
+      profilePictureUrl: contentFragmentData.baseContext.profilePictureUrl,
+    }
+  );
 
   if (contentFragmentRes.isErr()) {
     localLogger.error(
@@ -309,7 +314,7 @@ export async function processTranscriptActivity(
     );
     return;
   }
-  
+
   const updated = await getConversation(auth, conversation.sId);
 
   if (!updated) {
@@ -320,7 +325,7 @@ export async function processTranscriptActivity(
       },
       "[processTranscriptActivity] Error getting conversation after creation. Stopping."
     );
-    return
+    return;
   }
 
   conversation = updated;
