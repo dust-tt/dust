@@ -44,6 +44,11 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("CUSTOMERIO_ENABLED") === "true"
     );
   },
+  getOAuthAPIConfig: (): { url: string } => {
+    return {
+      url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
+    };
+  },
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");
   },

@@ -134,7 +134,7 @@ export async function createConnectionAndGetRedirectURL(
   provider: OAuthProvider,
   useCase: OAuthUseCase
 ): Promise<Result<string, OAuthError>> {
-  const api = new OAuthAPI(logger);
+  const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   const cRes = await api.createConnection({
     provider,
@@ -189,7 +189,7 @@ export async function finalizeConnection(
     });
   }
 
-  const api = new OAuthAPI(logger);
+  const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   const cRes = await api.finalizeConnection({ provider, connectionId, code });
   logger.error(
