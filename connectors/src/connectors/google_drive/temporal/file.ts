@@ -362,8 +362,10 @@ export async function syncOneFile(
                 {
                   error: err,
                 },
-                "Error while upserting table"
+                "Error while upserting table from CSV file"
               );
+
+              return false;
             }
           } else {
             localLogger.error(
@@ -395,8 +397,8 @@ export async function syncOneFile(
       }
 
       let upsertTimestampMs: number | undefined = undefined;
-      // We only upsert the document if it's not a google drive spreadsheet
-      // nor a csv.
+      // We only upsert the document if it's not a Google Drive spreadsheet
+      // or a CSV file.
       if (!isGoogleDriveSpreadSheetFile(file) || file.mimeType === "text/csv") {
         const content = await renderDocumentTitleAndContent({
           dataSourceConfig,
