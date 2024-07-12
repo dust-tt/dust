@@ -6,7 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/node_types";
+import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -74,7 +74,7 @@ export class MicrosoftRootModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare itemApiPath: string;
+  declare itemAPIPath: string;
   declare nodeType: MicrosoftNodeType;
 }
 MicrosoftRootModel.init(
@@ -98,7 +98,7 @@ MicrosoftRootModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    itemApiPath: {
+    itemAPIPath: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -111,7 +111,7 @@ MicrosoftRootModel.init(
     sequelize: sequelizeConnection,
     modelName: "microsoft_roots",
     indexes: [
-      { fields: ["connectorId", "itemApiPath"], unique: true },
+      { fields: ["connectorId", "itemAPIPath"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
     ],
   }
@@ -213,7 +213,7 @@ export class MicrosoftDeltaModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare rootId: ForeignKey<MicrosoftRootModel["itemApiPath"]>;
+  declare rootId: ForeignKey<MicrosoftRootModel["itemAPIPath"]>;
   declare deltaToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }

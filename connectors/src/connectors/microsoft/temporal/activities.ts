@@ -4,16 +4,17 @@ import mammoth from "mammoth";
 import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
-import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
-  getDriveAPIPath,
   getDriveItemAPIPath,
   getDrives,
   getFilesAndFolders,
+  getItem,
   getSiteAPIPath,
   getSites,
-  microsoftInternalIdFromNodeData,
+  internalIdFromTypeAndPath,
+  itemToMicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -54,40 +55,39 @@ export async function getSiteNodesToSync(
     await MicrosoftRootResource.listRootsByConnectorId(connectorId);
 
   // get root folders and drives and drill down site-root and sites to their
-  // child drives, as MicrosoftNodeData
-  const rootFolderAndDriveNodes: MicrosoftNodeData[] = rootResources.filter(
-    (resource) =>
-      resource.nodeType === "folder" || resource.nodeType === "drive"
+  // child drives (converted to MicrosoftNode types)
+  const rootFolderAndDriveNodes = await Promise.all(
+    rootResources
+      .filter(
+        (resource) =>
+          resource.nodeType === "folder" || resource.nodeType === "drive"
+      )
+      .map(async (resource) =>
+        itemToMicrosoftNode(
+          resource.nodeType as "folder" | "drive",
+          await getItem(client, resource.itemAPIPath)
+        )
+      )
   );
 
-  const rootSiteNodes: MicrosoftNodeData[] = rootResources.filter(
-    (resource) => resource.nodeType === "site"
-  );
+  const rootSitePaths: string[] = rootResources
+    .filter((resource) => resource.nodeType === "site")
+    .map((resource) => resource.itemAPIPath);
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getSites(client);
-    rootSiteNodes.push(
-      ...msSites.map(
-        (site): MicrosoftNodeData => ({
-          itemApiPath: getSiteAPIPath(site),
-          nodeType: "site",
-        })
-      )
-    );
+    rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
   }
 
-  const siteDriveNodes: MicrosoftNodeData[] = (
+  const siteDriveNodes = (
     await concurrentExecutor(
-      rootSiteNodes,
-      async (site) => {
+      rootSitePaths,
+      async (sitePath) => {
         const msDrives = await getDrives(
           client,
-          microsoftInternalIdFromNodeData(site)
+          internalIdFromTypeAndPath({ nodeType: "site", itemAPIPath: sitePath })
         );
-        return msDrives.map((drive) => ({
-          itemApiPath: getDriveAPIPath(drive),
-          nodeType: "drive" as const,
-        }));
+        return msDrives.map((drive) => itemToMicrosoftNode("drive", drive));
       },
       { concurrency: 5 }
     )
@@ -96,26 +96,22 @@ export async function getSiteNodesToSync(
   // remove duplicates
   const allNodes = [...siteDriveNodes, ...rootFolderAndDriveNodes].reduce(
     (acc, current) => {
-      const x = acc.find(
-        (item) =>
-          item.nodeType === current.nodeType &&
-          item.itemApiPath === current.itemApiPath
-      );
+      const x = acc.find((item) => item.internalId === current.internalId);
       if (!x) {
         return acc.concat([current]);
       } else {
         return acc;
       }
     },
-    [] as MicrosoftNodeData[]
+    [] as MicrosoftNode[]
   );
 
-  return (
-    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
-      connectorId,
-      allNodes
-    )
-  ).map((r) => r.internalId);
+  const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
+    connectorId,
+    allNodes
+  );
+
+  return nodeResources.map((r) => r.internalId);
 }
 
 export async function markNodeAsVisited(
@@ -162,11 +158,13 @@ export async function syncFiles({
   );
 
   if (!parent) {
-    throw new Error(`Parent node not found: ${parentInternalId}`);
+    throw new Error(`Unexpected: parent node not found: ${parentInternalId}`);
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
-    throw new Error(`Parent node is not a folder or drive: ${parent.nodeType}`);
+    throw new Error(
+      `Unexpected: parent node is not a folder or drive: ${parent.nodeType}`
+    );
   }
 
   const providerConfig =
@@ -205,6 +203,7 @@ export async function syncFiles({
         dataSourceConfig,
         providerConfig,
         file: child,
+        parentInternalId,
         startSyncTs,
       });
     },
@@ -223,20 +222,22 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
-  const childFolderResources =
-    await MicrosoftNodeResource.batchGetOrCreateFromNodesData(
-      connectorId,
-      children
-        .filter((item) => item.folder)
-        .map((child) => ({
-          itemApiPath: getDriveItemAPIPath(child),
-          nodeType: child.folder ? "folder" : "file",
-        }))
-    );
+  const childResources = await MicrosoftNodeResource.batchUpdateOrCreate(
+    connectorId,
+    children
+      .filter((item) => item.folder)
+      .map(
+        (item): MicrosoftNode => ({
+          ...itemToMicrosoftNode("folder", item),
+          // add parent information to new node resources
+          parentInternalId,
+        })
+      )
+  );
 
   return {
     count,
-    childNodes: childFolderResources.map((r) => r.internalId),
+    childNodes: childResources.map((r) => r.internalId),
   };
 }
 
@@ -245,6 +246,7 @@ export async function syncOneFile({
   dataSourceConfig,
   providerConfig,
   file,
+  parentInternalId,
   startSyncTs,
   isBatchSync = false,
 }: {
@@ -252,6 +254,7 @@ export async function syncOneFile({
   dataSourceConfig: DataSourceConfig;
   providerConfig: MicrosoftConfigurationResource;
   file: microsoftgraph.DriveItem;
+  parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
 }) {
@@ -266,10 +269,8 @@ export async function syncOneFile({
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
-  const itemApiPath = getDriveItemAPIPath(file);
-
-  const documentId = microsoftInternalIdFromNodeData({
-    itemApiPath,
+  const documentId = internalIdFromTypeAndPath({
+    itemAPIPath: getDriveItemAPIPath(file),
     nodeType: "file",
   });
 
@@ -461,6 +462,7 @@ export async function syncOneFile({
     lastSeenTs: new Date(),
     nodeType: "file",
     name: file.name ?? "",
+    parentInternalId,
     mimeType: file.file.mimeType ?? "",
     lastUpsertedTs:
       isInSizeRange && upsertTimestampMs ? new Date(upsertTimestampMs) : null,

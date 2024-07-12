@@ -4,8 +4,8 @@ import {
   getDriveAPIPath,
   getDriveItemAPIPath,
   getSiteAPIPath,
-  microsoftInternalIdFromNodeData,
-  microsoftNodeDataFromInternalId,
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 
 export function getRootNodes(): ContentNode[] {
@@ -15,8 +15,8 @@ export function getRootNodes(): ContentNode[] {
 export function getSitesRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: "",
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: "",
       nodeType: "sites-root",
     }),
     parentInternalId: null,
@@ -33,8 +33,8 @@ export function getSitesRootAsContentNode(): ContentNode {
 export function getTeamsRootAsContentNode(): ContentNode {
   return {
     provider: "microsoft",
-    internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: "",
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: "",
       nodeType: "teams-root",
     }),
     parentInternalId: null,
@@ -50,8 +50,8 @@ export function getTeamsRootAsContentNode(): ContentNode {
 export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
   return {
     provider: "microsoft",
-    internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: `/teams/${team.id}`,
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: `/teams/${team.id}`,
       nodeType: "team",
     }),
     parentInternalId: null,
@@ -72,8 +72,8 @@ export function getSiteAsContentNode(site: microsoftgraph.Site): ContentNode {
   }
   return {
     provider: "microsoft",
-    internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: getSiteAPIPath(site),
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: getSiteAPIPath(site),
       nodeType: "site",
     }),
     parentInternalId: null,
@@ -95,15 +95,15 @@ export function getChannelAsContentNode(
     // Unexpected, unreachable
     throw new Error("Channel id is required");
   }
-  const { nodeType } = microsoftNodeDataFromInternalId(parentInternalId);
+  const { nodeType } = typeAndPathFromInternalId(parentInternalId);
   if (nodeType !== "team") {
     throw new Error(`Invalid parent nodeType: ${nodeType}`);
   }
 
   return {
     provider: "microsoft",
-    internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: `/teams/${parentInternalId}/channels/${channel.id}`,
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: `/teams/${parentInternalId}/channels/${channel.id}`,
       nodeType: "channel",
     }),
     parentInternalId,
@@ -127,8 +127,8 @@ export function getDriveAsContentNode(
   }
   return {
     provider: "microsoft",
-    internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: getDriveAPIPath(drive),
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: getDriveAPIPath(drive),
       nodeType: "drive",
     }),
     parentInternalId,
@@ -147,8 +147,8 @@ export function getFolderAsContentNode(
 ): ContentNode {
   return {
     provider: "microsoft",
-    internalId: microsoftInternalIdFromNodeData({
-      itemApiPath: getDriveItemAPIPath(folder),
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: getDriveItemAPIPath(folder),
       nodeType: "folder",
     }),
     parentInternalId,

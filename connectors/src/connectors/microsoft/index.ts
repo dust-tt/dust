@@ -25,8 +25,8 @@ import {
   getFolders,
   getSites,
   getTeams,
-  microsoftInternalIdFromNodeData,
-  microsoftNodeDataFromInternalId,
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
   launchMicrosoftFullSyncWorkflow,
@@ -174,16 +174,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const selectedResources = (
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
     ).map((r) =>
-      microsoftInternalIdFromNodeData({
+      internalIdFromTypeAndPath({
         nodeType: r.nodeType,
-        itemApiPath: r.itemApiPath,
+        itemAPIPath: r.itemAPIPath,
       })
     );
 
     if (!parentInternalId) {
       nodes.push(...getRootNodes());
     } else {
-      const { nodeType } = microsoftNodeDataFromInternalId(parentInternalId);
+      const { nodeType } = typeAndPathFromInternalId(parentInternalId);
 
       switch (nodeType) {
         case "sites-root":
@@ -251,8 +251,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     await MicrosoftRootResource.batchDelete({
       resourceIds: Object.entries(permissions).map((internalId) => {
-        const { itemApiPath } = microsoftNodeDataFromInternalId(internalId[0]);
-        return itemApiPath;
+        const { itemAPIPath } = typeAndPathFromInternalId(internalId[0]);
+        return itemAPIPath;
       }),
       connectorId: connector.id,
     });
@@ -263,7 +263,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         .map(([id]) => {
           return {
             connectorId: connector.id,
-            ...microsoftNodeDataFromInternalId(id),
+            ...typeAndPathFromInternalId(id),
           };
         })
     );

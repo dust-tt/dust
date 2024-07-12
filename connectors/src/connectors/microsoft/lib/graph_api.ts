@@ -1,8 +1,10 @@
+import { assertNever } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 
-import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/node_types";
-import { isValidNodeType } from "@connectors/connectors/microsoft/lib/node_types";
+import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
+import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import { isValidNodeType } from "@connectors/connectors/microsoft/lib/types";
 
 export async function getSites(client: Client): Promise<MicrosoftGraph.Site[]> {
   const res = await client.api("/sites?search=*").get();
@@ -13,8 +15,8 @@ export async function getDrives(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.Drive[]> {
-  const { nodeType, itemApiPath: parentResourcePath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+  const { nodeType, itemAPIPath: parentResourcePath } =
+    typeAndPathFromInternalId(parentInternalId);
 
   if (nodeType !== "site") {
     throw new Error(
@@ -33,8 +35,8 @@ export async function getFilesAndFolders(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.DriveItem[]> {
-  const { nodeType, itemApiPath: parentResourcePath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+  const { nodeType, itemAPIPath: parentResourcePath } =
+    typeAndPathFromInternalId(parentInternalId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
     throw new Error(
@@ -62,7 +64,8 @@ export async function getWorksheets(
   client: Client,
   internalId: string
 ): Promise<MicrosoftGraph.WorkbookWorksheet[]> {
-  const { nodeType, itemApiPath } = microsoftNodeDataFromInternalId(internalId);
+  const { nodeType, itemAPIPath: itemApiPath } =
+    typeAndPathFromInternalId(internalId);
 
   if (nodeType !== "file") {
     throw new Error(
@@ -78,7 +81,8 @@ export async function getWorksheetContent(
   client: Client,
   internalId: string
 ): Promise<MicrosoftGraph.WorkbookRange> {
-  const { nodeType, itemApiPath } = microsoftNodeDataFromInternalId(internalId);
+  const { nodeType, itemAPIPath: itemApiPath } =
+    typeAndPathFromInternalId(internalId);
 
   if (nodeType !== "worksheet") {
     throw new Error(
@@ -101,8 +105,8 @@ export async function getChannels(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.Channel[]> {
-  const { nodeType, itemApiPath: parentResourcePath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+  const { nodeType, itemAPIPath: parentResourcePath } =
+    typeAndPathFromInternalId(parentInternalId);
 
   if (nodeType !== "team") {
     throw new Error(
@@ -121,8 +125,8 @@ export async function getMessages(
   client: Client,
   parentInternalId: string
 ): Promise<MicrosoftGraph.ChatMessage[]> {
-  const { nodeType, itemApiPath: parentResourcePath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+  const { nodeType, itemAPIPath: parentResourcePath } =
+    typeAndPathFromInternalId(parentInternalId);
 
   if (nodeType !== "channel") {
     throw new Error(
@@ -138,29 +142,118 @@ export async function getItem(client: Client, itemApiPath: string) {
   return client.api(itemApiPath).get();
 }
 
-export type MicrosoftNodeData = {
-  nodeType: MicrosoftNodeType;
-  itemApiPath: string;
+type MicrosoftEntity = {
+  folder: MicrosoftGraph.DriveItem;
+  drive: MicrosoftGraph.Drive;
+  site: MicrosoftGraph.Site;
+  team: MicrosoftGraph.Team;
+  file: MicrosoftGraph.DriveItem;
+  page: MicrosoftGraph.DriveItem;
+  channel: MicrosoftGraph.Channel;
+  message: MicrosoftGraph.ChatMessage;
+  worksheet: MicrosoftGraph.WorkbookWorksheet;
 };
 
-export function microsoftInternalIdFromNodeData(nodeData: MicrosoftNodeData) {
+export type MicrosoftEntityMapping = {
+  [K in keyof MicrosoftEntity]: MicrosoftEntity[K];
+};
+
+/**
+ * Converts a Microsoft entity to a MicrosoftNode depending on the nodeType
+ * Note: parentItemAPIPath is not set in the returned object, the parent logic
+ * is not explicit in the Microsoft Graph API and is handled on our side
+ * @param nodeType
+ * @param itemRaw
+ */
+export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
+  nodeType: T,
+  itemRaw: MicrosoftEntityMapping[T]
+): MicrosoftNode {
+  switch (nodeType) {
+    case "folder": {
+      const item = itemRaw as MicrosoftGraph.DriveItem;
+      return {
+        nodeType,
+        name: item.name ?? null,
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: getDriveItemAPIPath(item),
+        }),
+        parentInternalId: null,
+        mimeType: null,
+      };
+    }
+    case "file": {
+      const item = itemRaw as MicrosoftGraph.DriveItem;
+      return {
+        nodeType,
+        name: item.name ?? null,
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: getDriveItemAPIPath(item),
+        }),
+        parentInternalId: null,
+        mimeType: item.file?.mimeType ?? null,
+      };
+    }
+    case "drive": {
+      const item = itemRaw as MicrosoftGraph.Drive;
+      return {
+        nodeType,
+        name: item.name ?? null,
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: getDriveAPIPath(item),
+        }),
+        parentInternalId: null,
+        mimeType: null,
+      };
+    }
+    case "site": {
+      const item = itemRaw as MicrosoftGraph.Site;
+      return {
+        nodeType,
+        name: item.name ?? null,
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: getSiteAPIPath(item),
+        }),
+        mimeType: null,
+        parentInternalId: null,
+      };
+    }
+    case "team":
+    case "channel":
+    case "message":
+    case "worksheet":
+    case "page":
+      throw new Error("Not implemented");
+    default:
+      assertNever(nodeType);
+  }
+}
+
+export function internalIdFromTypeAndPath({
+  nodeType,
+  itemAPIPath,
+}: {
+  nodeType: MicrosoftNodeType;
+  itemAPIPath: string;
+}): string {
   let stringId = "";
-  if (
-    nodeData.nodeType === "sites-root" ||
-    nodeData.nodeType === "teams-root"
-  ) {
-    stringId = nodeData.nodeType;
+  if (nodeType === "sites-root" || nodeType === "teams-root") {
+    stringId = nodeType;
   } else {
-    const { nodeType, itemApiPath } = nodeData;
-    stringId = `${nodeType}/${itemApiPath}`;
+    stringId = `${nodeType}/${itemAPIPath}`;
   }
   // encode to base64url so the internal id is URL-friendly
   return "microsoft-" + Buffer.from(stringId).toString("base64url");
 }
 
-export function microsoftNodeDataFromInternalId(
-  internalId: string
-): MicrosoftNodeData {
+export function typeAndPathFromInternalId(internalId: string): {
+  nodeType: MicrosoftNodeType;
+  itemAPIPath: string;
+} {
   if (!internalId.startsWith("microsoft-")) {
     throw new Error(`Invalid internal id: ${internalId}`);
   }
@@ -172,7 +265,7 @@ export function microsoftNodeDataFromInternalId(
   ).toString();
 
   if (decodedId === "sites-root" || decodedId === "teams-root") {
-    return { nodeType: decodedId, itemApiPath: "" };
+    return { nodeType: decodedId, itemAPIPath: "" };
   }
 
   const [nodeType, ...resourcePathArr] = decodedId.split("/");
@@ -182,7 +275,7 @@ export function microsoftNodeDataFromInternalId(
     );
   }
 
-  return { nodeType, itemApiPath: resourcePathArr.join("/") };
+  return { nodeType, itemAPIPath: resourcePathArr.join("/") };
 }
 
 export function getDriveItemAPIPath(item: MicrosoftGraph.DriveItem) {
@@ -199,8 +292,8 @@ export function getWorksheetAPIPath(
   item: MicrosoftGraph.WorkbookWorksheet,
   parentInternalId: string
 ) {
-  const { nodeType, itemApiPath: parentItemApiPath } =
-    microsoftNodeDataFromInternalId(parentInternalId);
+  const { nodeType, itemAPIPath: parentItemApiPath } =
+    typeAndPathFromInternalId(parentInternalId);
 
   if (nodeType !== "file") {
     throw new Error(`Invalid parent nodeType: ${nodeType}`);

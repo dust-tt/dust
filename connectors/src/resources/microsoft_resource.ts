@@ -2,8 +2,7 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import type { MicrosoftNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
-import { microsoftInternalIdFromNodeData } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MicrosoftConfigurationModel,
@@ -168,7 +167,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }) {
     return MicrosoftRootModel.destroy({
       where: {
-        itemApiPath: resourceIds,
+        itemAPIPath: resourceIds,
         connectorId,
       },
       transaction,
@@ -202,7 +201,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return {
       id: this.id,
       nodeType: this.nodeType,
-      itemApiPath: this.itemApiPath,
+      itemApiPath: this.itemAPIPath,
       connectorId: this.connectorId,
     };
   }
@@ -258,6 +257,17 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, blob.get());
   }
 
+  static async fetchByInternalIds(connectorId: ModelId, internalIds: string[]) {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId,
+        internalId: internalIds,
+      },
+    });
+
+    return blobs.map((blob) => new this(this.model, blob.get()));
+  }
+
   async fetchChildren() {
     const blobs = await this.model.findAll({
       where: {
@@ -304,70 +314,52 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new Ok(undefined);
   }
 
-  static async batchGetOrCreateFromNodesData(
+  static async batchUpdateOrCreate(
     connectorId: ModelId,
-    nodesData: MicrosoftNodeData[]
+    nodes: MicrosoftNode[]
   ): Promise<MicrosoftNodeResource[]> {
-    const internalIds = nodesData.map((root) =>
-      microsoftInternalIdFromNodeData(root)
-    );
+    const internalIds = nodes.map((n) => n.internalId);
 
-    const nodes = await MicrosoftNodeModel.findAll({
-      where: {
-        connectorId,
-        internalId: internalIds,
-      },
-    });
+    const existingNodeResources =
+      await MicrosoftNodeResource.fetchByInternalIds(connectorId, internalIds);
 
-    return concurrentExecutor(
-      nodesData,
-      async (root) => {
-        const internalId = microsoftInternalIdFromNodeData(root);
-        const node = nodes.find((node) => node.internalId === internalId);
-        if (node) {
-          return new this(this.model, node.get());
+    // update existing resources
+    await concurrentExecutor(
+      existingNodeResources,
+      async (resource) => {
+        const node = nodes.find(
+          (node) => node.internalId === resource.internalId
+        );
+        if (!node) {
+          throw new Error(
+            `Unreachable: node not found with internalId ${resource.internalId}`
+          );
         }
-        // Create a new node -- name and mimeType will be populated during the sync
-        const newNode = await MicrosoftNodeModel.create({
-          connectorId,
-          internalId,
-          nodeType: root.nodeType,
-          name: null,
-          parentInternalId: null,
-          mimeType: null,
-        });
-
-        return new this(this.model, newNode.get());
+        return resource.update(node);
       },
       { concurrency: 10 }
     );
-  }
 
-  static async getOrCreateFromRoot(rootResource: MicrosoftRootResource) {
-    const internalId = microsoftInternalIdFromNodeData(rootResource);
+    // create new resources
+    const inexistantNodes = nodes.filter(
+      (node) =>
+        !existingNodeResources.find(
+          (resource) => resource.internalId === node.internalId
+        )
+    );
 
-    const node = await MicrosoftNodeModel.findOne({
-      where: {
-        connectorId: rootResource.connectorId,
-        internalId,
-      },
-    });
+    const newNodeResources = await MicrosoftNodeResource.batchMakeNew(
+      inexistantNodes.map((node) => ({
+        connectorId,
+        internalId: node.internalId,
+        nodeType: node.nodeType,
+        name: node.name,
+        parentInternalId: node.parentInternalId,
+        mimeType: node.mimeType,
+      }))
+    );
 
-    if (node) {
-      return new this(this.model, node.get());
-    }
-
-    // Create a new node -- name and mimeType will be populated during the sync
-    const newNode = await MicrosoftNodeModel.create({
-      connectorId: rootResource.connectorId,
-      internalId,
-      nodeType: rootResource.nodeType,
-      name: null,
-      parentInternalId: null,
-      mimeType: null,
-    });
-
-    return new this(this.model, newNode.get());
+    return [...existingNodeResources, ...newNodeResources];
   }
 
   toJSON() {
