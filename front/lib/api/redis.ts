@@ -20,10 +20,10 @@ export async function getRedisClient(): Promise<RedisClientType> {
         max: 200,
       },
     });
-    client.on("error", (err) => logger.info("Redis Client Error", err));
-    client.on("ready", () => logger.info("Redis Client Ready"));
-    client.on("connect", () => logger.info("Redis Client Connected"));
-    client.on("end", () => logger.info("Redis Client End"));
+    client.on("error", (err) => logger.info({ err }, "Redis Client Error"));
+    client.on("ready", () => logger.info({}, "Redis Client Ready"));
+    client.on("connect", () => logger.info({}, "Redis Client Connected"));
+    client.on("end", () => logger.info({}, "Redis Client End"));
 
     await client.connect();
   }
