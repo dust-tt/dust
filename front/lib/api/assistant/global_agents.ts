@@ -34,13 +34,13 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
+import config from "@app/lib/api/config"
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 
-import config from "../config";
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {

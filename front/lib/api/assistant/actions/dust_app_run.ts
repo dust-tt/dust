@@ -19,6 +19,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { getApp } from "@app/lib/api/app";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import config from "@app/lib/api/config"
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -26,8 +27,6 @@ import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-
-import config from "../../config";
 
 interface DustAppRunActionBlob {
   id: ModelId; // AgentDustAppRun.
