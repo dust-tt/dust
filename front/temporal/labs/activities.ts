@@ -274,10 +274,7 @@ export async function processTranscriptActivity(
     auth,
     conversation,
     contentFragmentData,
-    {
-      ...baseContext,
-      profilePictureUrl: contentFragmentData.baseContext.profilePictureUrl,
-    }
+    baseContext
   );
 
   if (contentFragmentRes.isErr()) {
