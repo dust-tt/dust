@@ -50,6 +50,8 @@ const config = {
   getOAuthAPIConfig: (): { url: string } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
+    };
+  },
   getConnectorsAPIConfig(): { url: string; secret: string } {
     return {
       url: EnvironmentConfig.getEnvVariable("CONNECTORS_API"),
