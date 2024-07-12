@@ -17,6 +17,7 @@ export async function getRedisClient(): Promise<RedisClientType> {
       isolationPoolOptions: {
         // We support up to 200 concurrent connections for streaming.
         max: 200,
+        acquireTimeoutMillis: 10000, // 10 seconds
       },
     });
     client.on("error", (err) => logger.info("Redis Client Error", err));
