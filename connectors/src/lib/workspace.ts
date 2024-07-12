@@ -1,6 +1,7 @@
 import type { WhitelistableFeature } from "@dust-tt/types";
 import { cacheWithRedis, DustAPI } from "@dust-tt/types";
 
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -12,6 +13,7 @@ async function getEnabledFeatureFlags(
 
   // List the feature flags enabled for the workspace.
   const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
     {
       apiKey: ds.workspaceAPIKey,
       workspaceId: ds.workspaceId,

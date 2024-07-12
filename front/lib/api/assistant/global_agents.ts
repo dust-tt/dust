@@ -34,6 +34,7 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
+import config from "@app/lib/api/config";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -825,7 +826,7 @@ async function _getDustGlobalAgent(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
 
   const dsRes = await api.getDataSources(prodCredentials.workspaceId);
   if (dsRes.isErr()) {
@@ -932,7 +933,7 @@ export async function getGlobalAgent(
 
   if (preFetchedDataSources === null) {
     const prodCredentials = await prodAPICredentialsForOwner(owner);
-    const api = new DustAPI(prodCredentials, logger);
+    const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
 
     const dsRes = await api.getDataSources(prodCredentials.workspaceId);
     if (dsRes.isErr()) {
@@ -1072,7 +1073,7 @@ export async function getGlobalAgents(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
 
   const dsRes = await api.getDataSources(prodCredentials.workspaceId);
   if (dsRes.isErr()) {

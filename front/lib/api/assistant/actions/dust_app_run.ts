@@ -19,6 +19,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { getApp } from "@app/lib/api/app";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -302,9 +303,14 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
-    const api = new DustAPI(prodCredentials, logger, {
-      useLocalInDev: true,
-    });
+    const api = new DustAPI(
+      config.getDustAPIConfig(),
+      prodCredentials,
+      logger,
+      {
+        useLocalInDev: true,
+      }
+    );
 
     // As we run the app (using a system API key here), we do force using the workspace credentials so
     // that the app executes in the exact same conditions in which they were developed.

@@ -4,6 +4,7 @@ import { DustProdActionRegistry } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
+import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -85,7 +86,11 @@ export async function runActionStreamed(
   const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  const api = new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    prodCredentials,
+    logger
+  );
 
   const res = await api.runAppStreamed(action.app, config, inputs);
   if (res.isErr()) {
@@ -193,7 +198,11 @@ export async function runAction(
   const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  const api = new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    prodCredentials,
+    logger
+  );
 
   const res = await api.runApp(action.app, config, inputs);
   if (res.isErr()) {

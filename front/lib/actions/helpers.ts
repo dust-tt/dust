@@ -11,6 +11,7 @@ import {
   ActionResponseBaseSchema,
   isActionResponseBase,
 } from "@app/lib/actions/types";
+import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
@@ -51,7 +52,11 @@ export async function callAction<V extends t.Mixed>({
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const prodAPI = new DustAPI(prodCredentials, logger);
+  const prodAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    prodCredentials,
+    logger
+  );
 
   const r = await prodAPI.runApp(app, config, [input]);
 

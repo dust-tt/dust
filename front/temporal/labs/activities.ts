@@ -9,6 +9,7 @@ import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
+import config from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
@@ -220,9 +221,14 @@ export async function processTranscriptActivity(
     renderLightWorkspaceType({ workspace: owner }),
     { useLocalInDev: true }
   );
-  const dustAPI = new DustAPI(prodCredentials, localLogger, {
-    useLocalInDev: true,
-  });
+  const dustAPI = new DustAPI(
+    config.getDustAPIConfig(),
+    prodCredentials,
+    localLogger,
+    {
+      useLocalInDev: true,
+    }
+  );
 
   const { agentConfigurationId } = transcriptsConfiguration;
   if (!agentConfigurationId) {
