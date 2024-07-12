@@ -17,8 +17,6 @@ export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
   return OAUTH_PROVIDERS.includes(obj as OAuthProvider);
 }
 
-const { OAUTH_API = "http://127.0.0.1:3006" } = process.env;
-
 export type OAuthAPIError = {
   message: string;
   code: string;
@@ -47,13 +45,15 @@ export type OAuthConnectionType = {
 
 export class OAuthAPI {
   _logger: LoggerInterface;
+  _url: string;
 
-  constructor(logger: LoggerInterface) {
+  constructor(config: { url: string }, logger: LoggerInterface) {
+    this._url = config.url;
     this._logger = logger;
   }
 
   apiUrl() {
-    return OAUTH_API;
+    return this._url;
   }
 
   async createConnection({
@@ -63,7 +63,7 @@ export class OAuthAPI {
     provider: OAuthProvider;
     metadata: Record<string, unknown> | null;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
-    const response = await this._fetchWithError(`${OAUTH_API}/connections`, {
+    const response = await this._fetchWithError(`${this._url}/connections`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -86,7 +86,7 @@ export class OAuthAPI {
     code: string;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const response = await this._fetchWithError(
-      `${OAUTH_API}/connections/${connectionId}/finalize`,
+      `${this._url}/connections/${connectionId}/finalize`,
       {
         method: "POST",
         headers: {
