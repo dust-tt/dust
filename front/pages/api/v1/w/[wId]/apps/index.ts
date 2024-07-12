@@ -78,7 +78,6 @@ export type GetAppsResponseBody = {
  *         description: Internal Server Error.
  */
 
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>

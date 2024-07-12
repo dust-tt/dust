@@ -163,8 +163,6 @@ function extractUsageFromExecutions(
  *         description: Internal Server Error.
  */
 
-
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>
