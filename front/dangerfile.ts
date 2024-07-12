@@ -3,6 +3,10 @@ import { danger, fail, warn } from "danger";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
 
+const hasLabel = (label: string) => {
+  return danger.github.issue.labels.some((l) => l.name === label);
+}
+
 function failMigrationAck() {
   fail(
     "Files in `**/models/` have been modified. " +
@@ -23,11 +27,7 @@ function warnMigrationAck(migrationAckLabel: string) {
 }
 
 function checkDocumentationLabel() {
-  const hasDocumentationAckLabel = danger.github.issue.labels.some(
-    (label) => label.name === documentationAckLabel
-  );
-
-  if (!hasDocumentationAckLabel) {
+  if (!hasLabel(documentationAckLabel)) {
     failDocumentationAck();
   } else {
     warnDocumentationAck(documentationAckLabel);
@@ -53,11 +53,7 @@ function warnDocumentationAck(documentationAckLabel: string) {
 }
 
 function checkMigrationLabel() {
-  const hasMigrationAckLabel = danger.github.issue.labels.some(
-    (label) => label.name === migrationAckLabel
-  );
-
-  if (!hasMigrationAckLabel) {
+  if (!hasLabel(migrationAckLabel)) {
     failMigrationAck();
   } else {
     warnMigrationAck(migrationAckLabel);
