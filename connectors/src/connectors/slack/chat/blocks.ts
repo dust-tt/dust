@@ -85,7 +85,10 @@ function makeContextSectionBlocks(
     blocks.push(makeConversationLinkContextBlock(conversationUrl));
   }
 
-  return blocks.length ? [makeDividerBlock(), ...blocks] : [];
+  const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
+
+  // Slack limits the number of blocks to 10.
+  return resultBlocks.slice(0, 10);
 }
 
 export type SlackMessageUpdate =
