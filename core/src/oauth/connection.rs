@@ -256,7 +256,7 @@ impl Connection {
 
         let nonce = aead::Nonce::try_assume_unique_for_key(nonce_bytes)
             .map_err(|_| anyhow::anyhow!("Invalid nonce"))?;
-        let mut in_out = ciphertext_and_tag.to_vec(); // Copy ciphertext to in_out for decryption
+        let mut in_out = ciphertext_and_tag.to_vec();
 
         key.open_in_place(nonce, aead::Aad::empty(), &mut in_out)
             .map_err(|_| anyhow::anyhow!("Decryption failed"))?;
