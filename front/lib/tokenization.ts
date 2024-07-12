@@ -3,12 +3,14 @@ import { CoreAPI, Err, Ok, safeSubstring } from "@dust-tt/types";
 
 import logger from "@app/logger/logger";
 
+import config from "./api/config";
+
 export async function tokenCountForText(
   text: string,
   model: { providerId: string; modelId: string }
 ): Promise<Result<number, Error>> {
   try {
-    const coreAPI = new CoreAPI(logger);
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const res = await coreAPI.tokenize({
       text,
       providerId: model.providerId,
@@ -32,7 +34,7 @@ export async function tokenSplit(
   splitAt: number
 ): Promise<Result<string, Error>> {
   try {
-    const coreAPI = new CoreAPI(logger);
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const res = await coreAPI.tokenize({
       text,
       providerId: model.providerId,

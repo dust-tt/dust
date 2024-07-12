@@ -3,6 +3,7 @@ import { Storage } from "@google-cloud/storage";
 import { chunk } from "lodash";
 import { Op } from "sequelize";
 
+import config from "@app/lib/api/config";
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
@@ -390,7 +391,7 @@ export async function deleteAppsActivity({
 }: {
   workspaceId: string;
 }) {
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
@@ -446,7 +447,7 @@ export async function deleteRunOnDustAppsActivity({
 }: {
   workspaceId: string;
 }) {
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
   const workspace = auth.workspace();
 

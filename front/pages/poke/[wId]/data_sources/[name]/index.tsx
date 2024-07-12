@@ -80,7 +80,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDataSourceRes = await coreAPI.getDataSource({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.name,

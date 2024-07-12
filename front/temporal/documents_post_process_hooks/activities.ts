@@ -6,6 +6,7 @@ import type {
 } from "@dust-tt/types";
 import { CoreAPI, Err, Ok } from "@dust-tt/types";
 
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DocumentsPostProcessHookType } from "@app/lib/documents_post_process_hooks/hooks";
 import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/lib/documents_post_process_hooks/hooks";
@@ -142,7 +143,7 @@ async function getDataSourceDocument({
   if (!dataSource) {
     return new Err(new Error(`Could not find data source ${dataSourceName}`));
   }
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const docText = await coreAPI.getDataSourceDocument({
     projectId: dataSource?.dustAPIProjectId,
     dataSourceName: dataSourceName,

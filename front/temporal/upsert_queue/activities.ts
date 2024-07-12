@@ -3,6 +3,7 @@ import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator } from "@app/lib/auth";
@@ -78,7 +79,7 @@ export async function upsertDocumentActivity(
   // Dust managed credentials: all data sources.
   const credentials = dustManagedCredentials();
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const upsertTimestamp = Date.now();
 

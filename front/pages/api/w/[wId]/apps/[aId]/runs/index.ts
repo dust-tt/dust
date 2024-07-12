@@ -4,6 +4,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
@@ -45,7 +46,7 @@ async function handler(
     });
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   switch (req.method) {
     case "POST":

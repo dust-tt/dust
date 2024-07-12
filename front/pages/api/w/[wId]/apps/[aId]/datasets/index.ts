@@ -6,6 +6,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -145,7 +146,7 @@ async function handler(
             return obj;
           }, {});
       });
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const dataset = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,
         datasetId: bodyValidation.right.dataset.name,

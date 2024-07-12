@@ -9,6 +9,8 @@ import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 
+import config from "./api/config";
+
 export async function updateTrackedDocuments(
   dataSourceId: number,
   documentId: string,
@@ -167,7 +169,7 @@ export async function updateTrackedDocuments(
     },
   }));
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   if (hasExistingTrackedDocs && !hasRemainingTrackedDocs) {
     await coreAPI.updateDataSourceDocumentTags({
       projectId: dataSource.dustAPIProjectId,

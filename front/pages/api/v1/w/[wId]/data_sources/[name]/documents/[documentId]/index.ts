@@ -15,6 +15,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import apiConfig from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
@@ -242,7 +243,7 @@ async function handler(
     });
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   switch (req.method) {
     case "GET":
       const docRes = await coreAPI.getDataSourceDocument({

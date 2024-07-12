@@ -8,6 +8,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { JSONSchemaType } from "ajv";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
@@ -249,7 +250,7 @@ async function handler(
       }
       const query = queryRes.value;
 
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const data = await coreAPI.searchDataSource(
         dataSource.dustAPIProjectId,
         dataSource.name,

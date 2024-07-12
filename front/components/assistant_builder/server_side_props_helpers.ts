@@ -48,7 +48,7 @@ export async function buildInitialActions({
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   // Helper function to compute AssistantBuilderDataSourceConfigurations
   const renderDataSourcesConfigurations = async (

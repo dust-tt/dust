@@ -10,6 +10,7 @@ import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import { DateTime } from "luxon";
 
+import config from "@app/lib/api/config";
 import { guessDelimiter } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -66,7 +67,7 @@ export async function deleteTable({
   dataSourceName: string;
   tableId: string;
 }): Promise<Result<null, TableOperationError>> {
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const deleteRes = await coreAPI.deleteTable({
     projectId,
@@ -193,7 +194,7 @@ export async function upsertTableFromCsv({
     return new Err(errorDetails);
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tableRes = await coreAPI.upsertTable({
     projectId,
     dataSourceName,

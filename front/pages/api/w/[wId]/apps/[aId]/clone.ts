@@ -11,6 +11,7 @@ import { App, Clone, Dataset } from "@app/lib/models/apps";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import config from "@app/lib/api/config";
 
 export type PostAppResponseBody = {
   app: AppType;
@@ -77,7 +78,7 @@ async function handler(
         return;
       }
 
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const project = await coreAPI.cloneProject({
         projectId: app.dustAPIProjectId,
       });

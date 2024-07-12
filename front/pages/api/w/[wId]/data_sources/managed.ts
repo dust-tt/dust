@@ -275,7 +275,7 @@ async function handler(
           },
         });
       }
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const dustProject = await coreAPI.createProject();
       if (dustProject.isErr()) {

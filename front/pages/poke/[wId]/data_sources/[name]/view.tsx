@@ -4,6 +4,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
@@ -26,7 +27,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const document = await coreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,

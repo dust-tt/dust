@@ -2,6 +2,7 @@ import type { CoreAPITableSchema, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -142,7 +143,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,

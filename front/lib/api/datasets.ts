@@ -6,6 +6,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { Dataset } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
 
+import config from "./config";
+
 export async function getDatasets(
   auth: Authenticator,
   app: AppType
@@ -110,7 +112,7 @@ export async function getDatasetHash(
     return null;
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   // Translate latest if needed.
   if (hash == "latest") {
     const apiDatasets = await coreAPI.getDatasets({

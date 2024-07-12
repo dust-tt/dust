@@ -11,6 +11,7 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
@@ -44,7 +45,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const datasets = await coreAPI.getDatasets({
     projectId: app.dustAPIProjectId,
   });
