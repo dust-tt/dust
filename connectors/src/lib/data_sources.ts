@@ -19,6 +19,7 @@ import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
+import { apiConfig } from "@connectors/lib/api/config";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
 import { DustConnectorWorkflowError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
@@ -349,6 +350,7 @@ export async function renderPrefixSection({
 
 async function tokenize(text: string, ds: DataSourceConfig) {
   const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
     {
       apiKey: ds.workspaceAPIKey,
       workspaceId: ds.workspaceId,

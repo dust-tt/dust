@@ -6,6 +6,7 @@ import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -18,6 +19,7 @@ async function getActiveMemberEmails(
 
   // List the emails of all active members in the workspace.
   const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
     {
       apiKey: ds.workspaceAPIKey,
       workspaceId: ds.workspaceId,
@@ -55,6 +57,7 @@ async function getVerifiedDomainsForWorkspace(
   const ds = dataSourceConfigFromConnector(connector);
 
   const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
     {
       apiKey: ds.workspaceAPIKey,
       workspaceId: ds.workspaceId,

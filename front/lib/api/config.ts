@@ -47,24 +47,31 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("CUSTOMERIO_ENABLED") === "true"
     );
   },
-  getOAuthAPIConfig: (): { url: string } => {
+  getCoreAPIConfig: (): { url: string } => {
     return {
-      url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
+      url: EnvironmentConfig.getEnvVariable("CORE_API"),
     };
   },
-  getConnectorsAPIConfig(): { url: string; secret: string } {
+  getConnectorsAPIConfig: (): { url: string; secret: string } => {
     return {
       url: EnvironmentConfig.getEnvVariable("CONNECTORS_API"),
       secret: EnvironmentConfig.getEnvVariable("DUST_CONNECTORS_SECRET"),
     };
   },
+  getDustAPIConfig: (): { url: string; nodeEnv: string } => {
+    return {
+      // Dust production API URL is hardcoded for now.
+      url: "https://dust.tt",
+      nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
+    };
+  },
+  getOAuthAPIConfig: (): { url: string } => {
+    return {
+      url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
+    };
+  },
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");
-  },
-  getCoreAPIConfig: (): { url: string } => {
-    return {
-      url: EnvironmentConfig.getEnvVariable("CORE_API"),
-    };
   },
 };
 

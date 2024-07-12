@@ -27,6 +27,8 @@ import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_ap
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
+import config from "../../config";
+
 interface DustAppRunActionBlob {
   id: ModelId; // AgentDustAppRun.
   agentMessageId: ModelId;
@@ -302,9 +304,14 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
-    const api = new DustAPI(prodCredentials, logger, {
-      useLocalInDev: true,
-    });
+    const api = new DustAPI(
+      config.getDustAPIConfig(),
+      prodCredentials,
+      logger,
+      {
+        useLocalInDev: true,
+      }
+    );
 
     // As we run the app (using a system API key here), we do force using the workspace credentials so
     // that the app executes in the exact same conditions in which they were developed.

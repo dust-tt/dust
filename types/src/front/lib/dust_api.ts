@@ -29,8 +29,6 @@ import { UserMessageErrorEvent } from "./api/assistant/conversation";
 import { GenerationTokensEvent } from "./api/assistant/generation";
 import { APIError, isAPIError } from "./error";
 
-const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
-
 export type DustAppType = {
   workspaceId: string;
   appId: string;
@@ -305,6 +303,8 @@ export async function processStreamedRunResponse(
 }
 
 export class DustAPI {
+  _url: string;
+  _nodeEnv: string;
   _credentials: DustAPICredentials;
   _useLocalInDev: boolean;
   _logger: LoggerInterface;
@@ -314,6 +314,10 @@ export class DustAPI {
    * @param credentials DustAPICrededentials
    */
   constructor(
+    config: {
+      url: string;
+      nodeEnv: string;
+    },
     credentials: DustAPICredentials,
     logger: LoggerInterface,
     {
@@ -324,6 +328,8 @@ export class DustAPI {
       urlOverride?: string;
     } = { useLocalInDev: false }
   ) {
+    this._url = config.url;
+    this._nodeEnv = config.nodeEnv;
     this._credentials = credentials;
     this._logger = logger;
     this._useLocalInDev = useLocalInDev;
@@ -338,9 +344,9 @@ export class DustAPI {
     if (this._urlOverride) {
       return this._urlOverride;
     }
-    return this._useLocalInDev && NODE_ENV === "development"
+    return this._useLocalInDev && this._nodeEnv === "development"
       ? "http://localhost:3000"
-      : DUST_PROD_API;
+      : this._url;
   }
 
   /**

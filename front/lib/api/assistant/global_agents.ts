@@ -40,6 +40,8 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 
+import config from "../config";
+
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
   providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
@@ -825,7 +827,7 @@ async function _getDustGlobalAgent(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
 
   const dsRes = await api.getDataSources(prodCredentials.workspaceId);
   if (dsRes.isErr()) {
@@ -932,7 +934,7 @@ export async function getGlobalAgent(
 
   if (preFetchedDataSources === null) {
     const prodCredentials = await prodAPICredentialsForOwner(owner);
-    const api = new DustAPI(prodCredentials, logger);
+    const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
 
     const dsRes = await api.getDataSources(prodCredentials.workspaceId);
     if (dsRes.isErr()) {
@@ -1072,7 +1074,7 @@ export async function getGlobalAgents(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
 
   const dsRes = await api.getDataSources(prodCredentials.workspaceId);
   if (dsRes.isErr()) {

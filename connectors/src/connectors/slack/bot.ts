@@ -29,6 +29,7 @@ import {
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   SlackChannel,
@@ -245,6 +246,7 @@ async function botAnswerMessage(
   }
 
   const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
