@@ -8,6 +8,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import {
   getDataSource,
   updateDataSourceEditedBy,
@@ -80,7 +81,10 @@ async function handler(
         });
       }
 
-      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsConfig(),
+        logger
+      );
       const updateRes = await connectorsAPI.updateConnector({
         connectorId: dataSource.connectorId.toString(),
         connectionId: bodyValidation.right.connectionId,

@@ -25,6 +25,7 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -69,7 +70,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     )
     .map((ds) => ds.connectorId) as string[];
 
-  const connectorsAPI = new ConnectorsAPI(logger);
+  const connectorsAPI = new ConnectorsAPI(config.getConnectorsConfig(), logger);
 
   const connectorsRes = await connectorsAPI.getConnectors(
     "webcrawler",

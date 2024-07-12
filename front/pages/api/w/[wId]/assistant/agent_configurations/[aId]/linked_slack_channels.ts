@@ -6,6 +6,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
@@ -94,7 +95,10 @@ async function handler(
           },
         });
       }
-      const connectorsAPI = new ConnectorsAPI(logger);
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsConfig(),
+        logger
+      );
 
       const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
         connectorId: connectorId.toString(),

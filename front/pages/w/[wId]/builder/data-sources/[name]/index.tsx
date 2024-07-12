@@ -44,6 +44,7 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -113,7 +114,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   let connector: ConnectorType | null = null;
   if (dataSource.connectorId) {
-    const connectorsAPI = new ConnectorsAPI(logger);
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsConfig(),
+      logger
+    );
     const connectorRes = await connectorsAPI.getConnector(
       dataSource.connectorId
     );

@@ -12,11 +12,6 @@ import { ConnectorProvider } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 
-const {
-  CONNECTORS_API = "http://127.0.0.1:3002",
-  DUST_CONNECTORS_SECRET = "",
-} = process.env;
-
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
 const CONNECTORS_ERROR_TYPES = [
@@ -121,8 +116,16 @@ export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
 };
 
 export class ConnectorsAPI {
+  _url: string;
+  _secret: string;
   _logger: LoggerInterface;
-  constructor(logger: LoggerInterface) {
+
+  constructor(
+    config: { url: string; secret: string },
+    logger: LoggerInterface
+  ) {
+    this._url = config.url;
+    this._secret = config.secret;
     this._logger = logger;
   }
 
@@ -135,7 +138,7 @@ export class ConnectorsAPI {
     configuration: ConnectorConfiguration
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/create/${encodeURIComponent(provider)}`,
+      `${this._url}/connectors/create/${encodeURIComponent(provider)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -160,7 +163,7 @@ export class ConnectorsAPI {
     configuration: UpdateConnectorConfigurationType;
   }): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
+      `${this._url}/connectors/${encodeURIComponent(
         connectorId
       )}/configuration`,
       {
@@ -183,7 +186,7 @@ export class ConnectorsAPI {
     connectionId: string;
   }): Promise<ConnectorsAPIResponse<{ connectorId: string }>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/update/${encodeURIComponent(connectorId)}`,
+      `${this._url}/connectors/update/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -200,7 +203,7 @@ export class ConnectorsAPI {
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/stop/${encodeURIComponent(connectorId)}`,
+      `${this._url}/connectors/stop/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -214,7 +217,7 @@ export class ConnectorsAPI {
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/pause/${encodeURIComponent(connectorId)}`,
+      `${this._url}/connectors/pause/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -228,7 +231,7 @@ export class ConnectorsAPI {
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/unpause/${encodeURIComponent(connectorId)}`,
+      `${this._url}/connectors/unpause/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -242,7 +245,7 @@ export class ConnectorsAPI {
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/resume/${encodeURIComponent(connectorId)}`,
+      `${this._url}/connectors/resume/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -256,7 +259,7 @@ export class ConnectorsAPI {
     connectorId: string
   ): Promise<ConnectorsAPIResponse<{ workflowId: string }>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/sync/${encodeURIComponent(connectorId)}`,
+      `${this._url}/connectors/sync/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -271,7 +274,7 @@ export class ConnectorsAPI {
     force = false
   ): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/delete/${encodeURIComponent(
+      `${this._url}/connectors/delete/${encodeURIComponent(
         connectorId
       )}?force=${force ? "true" : "false"}`,
       {
@@ -294,7 +297,7 @@ export class ConnectorsAPI {
     filterPermission?: ConnectorPermission;
     viewType?: ContentNodesViewType;
   }): Promise<ConnectorsAPIResponse<{ resources: ContentNode[] }>> {
-    let url = `${CONNECTORS_API}/connectors/${encodeURIComponent(
+    let url = `${this._url}/connectors/${encodeURIComponent(
       connectorId
     )}/permissions?viewType=${viewType}`;
     if (parentId) {
@@ -323,9 +326,7 @@ export class ConnectorsAPI {
     }[];
   }): Promise<ConnectorsAPIResponse<void>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
-        connectorId
-      )}/permissions`,
+      `${this._url}/connectors/${encodeURIComponent(connectorId)}/permissions`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -345,7 +346,7 @@ export class ConnectorsAPI {
     connectorId: string
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(connectorId)}`,
+      `${this._url}/connectors/${encodeURIComponent(connectorId)}`,
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
@@ -363,7 +364,7 @@ export class ConnectorsAPI {
       return new Ok([]);
     }
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors?provider=${encodeURIComponent(
+      `${this._url}/connectors?provider=${encodeURIComponent(
         provider
       )}&${connectorIds
         .map((id) => `connector_id=${encodeURIComponent(id)}`)
@@ -383,7 +384,7 @@ export class ConnectorsAPI {
     configValue: string
   ): Promise<ConnectorsAPIResponse<void>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
+      `${this._url}/connectors/${encodeURIComponent(
         connectorId
       )}/config/${encodeURIComponent(configKey)}`,
       {
@@ -409,7 +410,7 @@ export class ConnectorsAPI {
     }>
   > {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
+      `${this._url}/connectors/${encodeURIComponent(
         connectorId
       )}/config/${encodeURIComponent(configKey)}`,
       {
@@ -436,7 +437,7 @@ export class ConnectorsAPI {
     }>
   > {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
+      `${this._url}/connectors/${encodeURIComponent(
         connectorId
       )}/content_nodes/parents`,
       {
@@ -465,7 +466,7 @@ export class ConnectorsAPI {
     }>
   > {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/${encodeURIComponent(
+      `${this._url}/connectors/${encodeURIComponent(
         connectorId
       )}/content_nodes`,
       {
@@ -491,7 +492,7 @@ export class ConnectorsAPI {
     agentConfigurationId: string;
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/slack/channels/linked_with_agent`,
+      `${this._url}/slack/channels/linked_with_agent`,
       {
         method: "PATCH",
         headers: this.getDefaultHeaders(),
@@ -520,7 +521,9 @@ export class ConnectorsAPI {
     }>
   > {
     const res = await this._fetchWithError(
-      `${CONNECTORS_API}/slack/channels/linked_with_agent?connector_id=${encodeURIComponent(
+      `${
+        this._url
+      }/slack/channels/linked_with_agent?connector_id=${encodeURIComponent(
         connectorId
       )}`,
       {
@@ -535,14 +538,11 @@ export class ConnectorsAPI {
   async admin(
     adminCommand: AdminCommandType
   ): Promise<ConnectorsAPIResponse<AdminResponseType>> {
-    const res = await this._fetchWithError(
-      `${CONNECTORS_API}/connectors/admin`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-        body: JSON.stringify(adminCommand),
-      }
-    );
+    const res = await this._fetchWithError(`${this._url}/connectors/admin`, {
+      method: "POST",
+      headers: this.getDefaultHeaders(),
+      body: JSON.stringify(adminCommand),
+    });
 
     return this._resultFromResponse(res);
   }
@@ -550,7 +550,7 @@ export class ConnectorsAPI {
   getDefaultHeaders() {
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${DUST_CONNECTORS_SECRET}`,
+      Authorization: `Bearer ${this._secret}`,
     };
   }
 

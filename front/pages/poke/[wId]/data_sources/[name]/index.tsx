@@ -27,6 +27,7 @@ import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -93,7 +94,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   let connector: ConnectorType | null = null;
   if (dataSource.connectorId) {
-    const connectorsAPI = new ConnectorsAPI(logger);
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsConfig(),
+      logger
+    );
     const connectorRes = await connectorsAPI.getConnector(
       dataSource.connectorId
     );
@@ -112,7 +116,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     autoReadChannelPattern: null,
   };
 
-  const connectorsAPI = new ConnectorsAPI(logger);
+  const connectorsAPI = new ConnectorsAPI(config.getConnectorsConfig(), logger);
   if (dataSource.connectorId) {
     switch (dataSource.connectorProvider) {
       case "slack":

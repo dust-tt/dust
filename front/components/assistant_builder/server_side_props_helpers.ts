@@ -35,6 +35,7 @@ import {
   getDefaultVisualizationActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
+import config from "@app/lib/api/config";
 import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";
 
@@ -79,7 +80,10 @@ export async function buildInitialActions({
                 isSelectAll: ds.isSelectAll,
               };
             }
-            const connectorsAPI = new ConnectorsAPI(logger);
+            const connectorsAPI = new ConnectorsAPI(
+              config.getConnectorsConfig(),
+              logger
+            );
             const response = await connectorsAPI.getContentNodes({
               connectorId: dataSource.connectorId,
               internalIds: ds.resources,
