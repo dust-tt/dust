@@ -12,6 +12,7 @@ export function getMimeTypesToDownload({
 }) {
   const mimeTypes = [
     "text/plain",
+    "text/csv",
     // docx files hosted on Gdrive
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",

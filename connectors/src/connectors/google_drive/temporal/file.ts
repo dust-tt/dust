@@ -1,4 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { slugify } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import tracer from "dd-trace";
 import fs from "fs/promises";
@@ -17,7 +18,10 @@ import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
+import {
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertTableFromCsv,
+} from "@connectors/lib/data_sources";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_LARGE_DOCUMENT_TXT_LEN,
@@ -104,7 +108,7 @@ export async function syncOneFile(
       if (!file.capabilities.canDownload) {
         localLogger.info(
           {},
-          `Google Drive document skipped because it cannot be downloaded`
+          "Google Drive document skipped because it cannot be downloaded"
         );
         return false;
       }
@@ -193,7 +197,7 @@ export async function syncOneFile(
           if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
             // This error happens when the file is too big to be downloaded.
             // We skip this file.
-            localLogger.info({}, `File too big to be downloaded. Skipping`);
+            localLogger.info({}, "File too big to be downloaded. Skipping");
             return false;
           }
           throw e;
@@ -212,7 +216,7 @@ export async function syncOneFile(
             // avoids operations on very long text files, that can cause
             // Buffer.toString to crash if the file is > 500MB
             if (res.data.byteLength > 4 * maxDocumentLen) {
-              localLogger.info({}, `File too big to be chunked. Skipping`);
+              localLogger.info({}, "File too big to be chunked. Skipping");
               return false;
             }
             documentContent = {
@@ -256,14 +260,14 @@ export async function syncOneFile(
               {
                 pagesCount: pages.length,
               },
-              `Successfully converted PDF to text`
+              "Successfully converted PDF to text"
             );
           } catch (err) {
             localLogger.warn(
               {
                 error: err,
               },
-              `Error while converting PDF to text`
+              "Error while converting PDF to text"
             );
             // we don't know what to do with PDF files that fails to be converted to text.
             // So we log the error and skip the file.
@@ -292,7 +296,7 @@ export async function syncOneFile(
                 {
                   error: err,
                 },
-                `Error while converting docx document to text`
+                "Error while converting docx document to text"
               );
               return false;
             }
@@ -319,10 +323,58 @@ export async function syncOneFile(
                 {
                   error: err,
                 },
-                `Error while converting pptx document to text`
+                "Error while converting pptx document to text"
               );
               return false;
             }
+          }
+        } else if (file.mimeType === "text/csv") {
+          if (res.data instanceof ArrayBuffer) {
+            // If data is > 4 times the limit, we skip the file since even if
+            // converted to utf-8 it will overcome the limit enforced below. This
+            // avoids operations on very long text files, that can cause
+            // Buffer.toString to crash if the file is > 500MB
+            if (res.data.byteLength > 4 * maxDocumentLen) {
+              localLogger.info({}, "File too big to be chunked. Skipping");
+              return false;
+            }
+            const tableCsv = Buffer.from(res.data).toString("utf-8").trim();
+            const tableId = file.id;
+            const tableName = slugify(file.name.substring(0, 32));
+            const tableDescription = `Structured data from Google Drive (${file.name})`;
+
+            try {
+              await upsertTableFromCsv({
+                dataSourceConfig,
+                tableId,
+                tableName,
+                tableDescription,
+                tableCsv,
+                loggerArgs: {
+                  connectorId,
+                  fileId: tableId,
+                  fileName: tableName,
+                },
+                truncate: true,
+              });
+            } catch (err) {
+              localLogger.warn(
+                {
+                  error: err,
+                },
+                "Error while upserting table from CSV file"
+              );
+
+              return false;
+            }
+          } else {
+            localLogger.error(
+              {
+                resDataTypeOf: typeof res.data,
+                type: "download",
+              },
+              "Unexpected GDrive export response type"
+            );
           }
         }
       } else if (isGoogleDriveSpreadSheetFile(file)) {
@@ -345,8 +397,9 @@ export async function syncOneFile(
       }
 
       let upsertTimestampMs: number | undefined = undefined;
-      // We only upsert the document if it's not a google drive spreadsheet.
-      if (!isGoogleDriveSpreadSheetFile(file)) {
+      // We only upsert the document if it's not a Google Drive spreadsheet
+      // or a CSV file.
+      if (!isGoogleDriveSpreadSheetFile(file) || file.mimeType === "text/csv") {
         const content = await renderDocumentTitleAndContent({
           dataSourceConfig,
           title: file.name,
@@ -408,7 +461,7 @@ export async function syncOneFile(
             {
               documentLen: documentLen,
             },
-            `Document is empty or too big to be upserted. Skipping`
+            "Document is empty or too big to be upserted. Skipping"
           );
         }
       }
