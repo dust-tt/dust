@@ -115,7 +115,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   let connector: ConnectorType | null = null;
   if (dataSource.connectorId) {
     const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsConfig(),
+      config.getConnectorsAPIConfig(),
       logger
     );
     const connectorRes = await connectorsAPI.getConnector(

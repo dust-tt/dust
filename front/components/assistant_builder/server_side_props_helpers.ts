@@ -81,7 +81,7 @@ export async function buildInitialActions({
               };
             }
             const connectorsAPI = new ConnectorsAPI(
-              config.getConnectorsConfig(),
+              config.getConnectorsAPIConfig(),
               logger
             );
             const response = await connectorsAPI.getContentNodes({

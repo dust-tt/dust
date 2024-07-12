@@ -89,7 +89,10 @@ export async function pauseAllConnectors({
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const dataSources = await getDataSources(auth);
-  const connectorsAPI = new ConnectorsAPI(config.getConnectorsConfig(), logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
   for (const ds of dataSources) {
     if (!ds.connectorId) {
       continue;

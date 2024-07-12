@@ -95,7 +95,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   let connector: ConnectorType | null = null;
   if (dataSource.connectorId) {
     const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsConfig(),
+      config.getConnectorsAPIConfig(),
       logger
     );
     const connectorRes = await connectorsAPI.getConnector(
@@ -116,7 +116,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     autoReadChannelPattern: null,
   };
 
-  const connectorsAPI = new ConnectorsAPI(config.getConnectorsConfig(), logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
   if (dataSource.connectorId) {
     switch (dataSource.connectorProvider) {
       case "slack":

@@ -30,7 +30,7 @@ async function main() {
       );
       if (LIVE) {
         const connectorsAPI = new ConnectorsAPI(
-          config.getConnectorsConfig(),
+          config.getConnectorsAPIConfig(),
           logger
         );
         const deleteRes = await connectorsAPI.deleteConnector(

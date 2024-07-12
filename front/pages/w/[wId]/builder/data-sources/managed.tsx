@@ -129,7 +129,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       }
       try {
         const connectorsAPI = new ConnectorsAPI(
-          config.getConnectorsConfig(),
+          config.getConnectorsAPIConfig(),
           logger
         );
         const statusRes = await connectorsAPI.getConnector(mds.connectorId);

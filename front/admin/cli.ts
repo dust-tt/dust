@@ -112,7 +112,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(
-          config.getConnectorsConfig(),
+          config.getConnectorsAPIConfig(),
           logger
         );
         for (const connectorId of connectorIds) {
@@ -152,7 +152,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(
-          config.getConnectorsConfig(),
+          config.getConnectorsAPIConfig(),
           logger
         );
         for (const connectorId of connectorIds) {
@@ -300,7 +300,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       if (dataSource.connectorId) {
         console.log(`Deleting connectorId=${dataSource.connectorId}}`);
         const connDeleteRes = await new ConnectorsAPI(
-          config.getConnectorsConfig(),
+          config.getConnectorsAPIConfig(),
           logger
         ).deleteConnector(dataSource.connectorId.toString(), true);
         if (connDeleteRes.isErr()) {

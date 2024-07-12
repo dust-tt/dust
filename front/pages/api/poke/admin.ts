@@ -42,7 +42,7 @@ async function handler(
       }
       const adminCommand = bodyValidation.right;
       const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsConfig(),
+        config.getConnectorsAPIConfig(),
         logger
       );
       const result = await connectorsAPI.admin(adminCommand);

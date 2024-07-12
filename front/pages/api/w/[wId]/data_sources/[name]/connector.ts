@@ -62,7 +62,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const connectorRes = await new ConnectorsAPI(
-        config.getConnectorsConfig(),
+        config.getConnectorsAPIConfig(),
         logger
       ).getConnector(connectorId);
       if (connectorRes.isErr()) {

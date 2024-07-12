@@ -102,7 +102,7 @@ async function handler(
       );
     case "POST":
       const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsConfig(),
+        config.getConnectorsAPIConfig(),
         logger
       );
       if (!auth.isAdmin()) {
@@ -259,7 +259,10 @@ export async function getManagedDataSourcePermissionsHandler(
     });
   }
 
-  const connectorsAPI = new ConnectorsAPI(config.getConnectorsConfig(), logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
   const permissionsRes = await connectorsAPI.getConnectorPermissions({
     connectorId: dataSource.connectorId,
     parentId,

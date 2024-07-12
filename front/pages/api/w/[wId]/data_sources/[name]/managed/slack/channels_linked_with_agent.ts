@@ -73,7 +73,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsConfig(),
+        config.getConnectorsAPIConfig(),
         logger
       );
       const linkedSlackChannelsRes =

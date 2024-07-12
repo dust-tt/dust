@@ -84,7 +84,7 @@ async function handler(
       }
 
       const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsConfig(),
+        config.getConnectorsAPIConfig(),
         logger
       );
 

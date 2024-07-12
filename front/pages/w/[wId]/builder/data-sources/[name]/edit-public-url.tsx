@@ -56,7 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const [connectorRes, dataSourceUsage] = await Promise.all([
-    new ConnectorsAPI(config.getConnectorsConfig(), logger).getConnector(
+    new ConnectorsAPI(config.getConnectorsAPIConfig(), logger).getConnector(
       dataSource.connectorId
     ),
     getDataSourceUsage({ auth, dataSource }),

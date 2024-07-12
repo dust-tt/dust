@@ -697,7 +697,7 @@ async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
   const dataSources = await getDataSources(auth);
   const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
   const connectorsApi = new ConnectorsAPI(
-    envConfig.getConnectorsConfig(),
+    envConfig.getConnectorsAPIConfig(),
     logger
   );
   for (const connectorId of connectorIds) {

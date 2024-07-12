@@ -90,7 +90,7 @@ async function handler(
       const { internalIds } = bodyValidation.right;
 
       const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsConfig(),
+        config.getConnectorsAPIConfig(),
         logger
       );
       const connectorsRes = await connectorsAPI.getContentNodesParents({

@@ -228,7 +228,7 @@ export async function deleteDataSource(
     }
 
     const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsConfig(),
+      config.getConnectorsAPIConfig(),
       logger
     );
     const connDeleteRes = await connectorsAPI.deleteConnector(

@@ -67,7 +67,10 @@ async function handler(
       },
     });
   }
-  const connectorsAPI = new ConnectorsAPI(config.getConnectorsConfig(), logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
 
   const configKey = req.query.key;
   if (!configKey || typeof configKey !== "string") {

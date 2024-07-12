@@ -70,7 +70,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     )
     .map((ds) => ds.connectorId) as string[];
 
-  const connectorsAPI = new ConnectorsAPI(config.getConnectorsConfig(), logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
 
   const connectorsRes = await connectorsAPI.getConnectors(
     "webcrawler",

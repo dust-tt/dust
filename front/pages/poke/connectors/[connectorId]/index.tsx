@@ -16,7 +16,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
     }
 
     const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsConfig(),
+      config.getConnectorsAPIConfig(),
       logger
     );
     const cRes = await connectorsAPI.getConnector(connectorId);
