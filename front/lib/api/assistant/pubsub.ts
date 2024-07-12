@@ -24,10 +24,11 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import type { RedisClientType } from "redis";
+import { commandOptions } from "redis";
 
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
-import { redisClient } from "@app/lib/redis";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 
@@ -151,7 +152,7 @@ async function handleUserMessageEvents(
     >
   > = new Promise((resolve) => {
     void wakeLock(async () => {
-      const redis = await redisClient();
+      const redis = await getRedisClient();
       let didResolve = false;
 
       let userMessage: UserMessageType | undefined = undefined;
@@ -270,7 +271,6 @@ async function handleUserMessageEvents(
           "Error Posting message"
         );
       } finally {
-        await redis.quit();
         if (!didResolve) {
           resolve(
             new Err({
@@ -302,7 +302,7 @@ export async function retryAgentMessageWithPubSub(
   const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
     (resolve) => {
       void wakeLock(async () => {
-        const redis = await redisClient();
+        const redis = await getRedisClient();
         let didResolve = false;
         try {
           for await (const event of retryAgentMessage(auth, {
@@ -378,7 +378,6 @@ export async function retryAgentMessageWithPubSub(
             "Error Posting message"
           );
         } finally {
-          await redis.quit();
           if (!didResolve) {
             resolve(
               new Err({
@@ -408,40 +407,39 @@ export async function* getConversationEvents(
   },
   void
 > {
-  const redis = await redisClient();
+  const redis = await getRedisClient();
   const pubsubChannel = getConversationChannelId(conversationId);
 
-  try {
-    while (true) {
-      const events = await redis.xRead(
-        { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-        { COUNT: 32, BLOCK: 60 * 1000 }
-      );
-      if (!events) {
-        return;
-      }
-      for (const event of events) {
-        for (const message of event.messages) {
-          const payloadStr = message.message["payload"];
-          const messageId = message.id;
-          const payload = JSON.parse(payloadStr);
-          lastEventId = messageId;
-          yield {
-            eventId: messageId,
-            data: payload,
-          };
-        }
+  while (true) {
+    // Use an isolated connection to avoid blocking the main connection.
+    const events = await redis.xRead(
+      commandOptions({ isolated: true }),
+      { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
+      { COUNT: 32, BLOCK: 60 * 1000 }
+    );
+    if (!events) {
+      return;
+    }
+
+    for (const event of events) {
+      for (const message of event.messages) {
+        const payloadStr = message.message["payload"];
+        const messageId = message.id;
+        const payload = JSON.parse(payloadStr);
+        lastEventId = messageId;
+        yield {
+          eventId: messageId,
+          data: payload,
+        };
       }
     }
-  } finally {
-    await redis.quit();
   }
 }
 
 export async function cancelMessageGenerationEvent(
   messageIds: string[]
 ): Promise<void> {
-  const redis = await redisClient();
+  const redis = await getRedisClient();
 
   try {
     const tasks = messageIds.map((messageId) => {
@@ -473,8 +471,6 @@ export async function cancelMessageGenerationEvent(
     await Promise.all(tasks);
   } catch (e) {
     logger.error({ error: e }, "Error cancelling message generation");
-  } finally {
-    await redis.quit();
   }
 }
 
@@ -494,38 +490,37 @@ export async function* getMessagesEvents(
   void
 > {
   const pubsubChannel = getMessageChannelId(messageId);
-  const redis = await redisClient();
+  const redis = await getRedisClient();
 
-  try {
-    while (true) {
-      const events = await redis.xRead(
-        { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-        { COUNT: 32, BLOCK: 60 * 1000 }
-      );
-      if (!events) {
-        return;
-      }
-      for (const event of events) {
-        for (const message of event.messages) {
-          const payloadStr = message.message["payload"];
-          const messageId = message.id;
-          const payload = JSON.parse(payloadStr);
-          lastEventId = messageId;
+  while (true) {
+    // Use an isolated connection to avoid blocking the main connection.
+    const events = await redis.xRead(
+      commandOptions({ isolated: true }),
+      { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
+      { COUNT: 32, BLOCK: 60 * 1000 }
+    );
+    if (!events) {
+      return;
+    }
 
-          // If the payload is an end-of-stream event, we stop the generator.
-          if (payload.type === "end-of-stream") {
-            return;
-          }
+    for (const event of events) {
+      for (const message of event.messages) {
+        const payloadStr = message.message["payload"];
+        const messageId = message.id;
+        const payload = JSON.parse(payloadStr);
+        lastEventId = messageId;
 
-          yield {
-            eventId: messageId,
-            data: payload,
-          };
+        // If the payload is an end-of-stream event, we stop the generator.
+        if (payload.type === "end-of-stream") {
+          return;
         }
+
+        yield {
+          eventId: messageId,
+          data: payload,
+        };
       }
     }
-  } finally {
-    await redis.quit();
   }
 }
 

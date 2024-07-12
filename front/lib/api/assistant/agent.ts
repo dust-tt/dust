@@ -43,9 +43,9 @@ import {
   renderConversationForModelMultiActions,
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -522,7 +522,7 @@ export async function* runMultiActionsAgent(
 
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
-  const redis = await redisClient();
+  const redis = await getRedisClient();
   let isGeneration = true;
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
@@ -531,34 +531,76 @@ export async function* runMultiActionsAgent(
   );
 
   let rawContent = "";
-  try {
-    const _checkCancellation = async () => {
-      try {
-        const cancelled = await redis.get(
-          `assistant:generation:cancelled:${agentMessage.sId}`
+
+  const _checkCancellation = async () => {
+    try {
+      const cancelled = await redis.get(
+        `assistant:generation:cancelled:${agentMessage.sId}`
+      );
+      if (cancelled === "1") {
+        shouldYieldCancel = true;
+        await redis.set(
+          `assistant:generation:cancelled:${agentMessage.sId}`,
+          0,
+          {
+            EX: 3600, // 1 hour
+          }
         );
-        if (cancelled === "1") {
-          shouldYieldCancel = true;
-          await redis.set(
-            `assistant:generation:cancelled:${agentMessage.sId}`,
-            0,
-            {
-              EX: 3600, // 1 hour
-            }
-          );
-        }
-      } catch (error) {
-        logger.error({ error }, "Error checking cancellation");
-        return false;
       }
-    };
+    } catch (error) {
+      logger.error({ error }, "Error checking cancellation");
+      return false;
+    }
+  };
 
-    for await (const event of eventStream) {
-      if (event.type === "function_call") {
-        isGeneration = false;
-      }
+  for await (const event of eventStream) {
+    if (event.type === "function_call") {
+      isGeneration = false;
+    }
 
-      if (event.type === "error") {
+    if (event.type === "error") {
+      yield* contentParser.flushTokens();
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "multi_actions_error",
+          message: `Error running assistant: ${event.content.message}`,
+        },
+      } satisfies AgentErrorEvent;
+      return;
+    }
+
+    const currentTimestamp = Date.now();
+    if (
+      currentTimestamp - lastCheckCancellation >=
+      CANCELLATION_CHECK_INTERVAL
+    ) {
+      void _checkCancellation(); // Trigger the async function without awaiting
+      lastCheckCancellation = currentTimestamp;
+    }
+
+    if (shouldYieldCancel) {
+      yield* contentParser.flushTokens();
+      yield {
+        type: "generation_cancel",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+      } satisfies GenerationCancelEvent;
+      return;
+    }
+
+    if (event.type === "tokens" && isGeneration) {
+      rawContent += event.content.tokens.text;
+      yield* contentParser.emitTokens(event.content.tokens.text);
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
         yield* contentParser.flushTokens();
         yield {
           type: "agent_error",
@@ -567,71 +609,26 @@ export async function* runMultiActionsAgent(
           messageId: agentMessage.sId,
           error: {
             code: "multi_actions_error",
-            message: `Error running assistant: ${event.content.message}`,
+            message: `Error running assistant: ${e.error}`,
           },
         } satisfies AgentErrorEvent;
         return;
       }
 
-      const currentTimestamp = Date.now();
-      if (
-        currentTimestamp - lastCheckCancellation >=
-        CANCELLATION_CHECK_INTERVAL
-      ) {
-        void _checkCancellation(); // Trigger the async function without awaiting
-        lastCheckCancellation = currentTimestamp;
-      }
-
-      if (shouldYieldCancel) {
+      if (event.content.block_name === "OUTPUT" && e.value) {
+        // Flush early as we know the generation is terminated here.
         yield* contentParser.flushTokens();
-        yield {
-          type: "generation_cancel",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-        } satisfies GenerationCancelEvent;
-        return;
-      }
 
-      if (event.type === "tokens" && isGeneration) {
-        rawContent += event.content.tokens.text;
-        yield* contentParser.emitTokens(event.content.tokens.text);
-      }
-
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (e.error) {
-          yield* contentParser.flushTokens();
-          yield {
-            type: "agent_error",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: "multi_actions_error",
-              message: `Error running assistant: ${e.error}`,
-            },
-          } satisfies AgentErrorEvent;
-          return;
+        const v = e.value as any;
+        if ("actions" in v) {
+          output.actions = v.actions;
         }
-
-        if (event.content.block_name === "OUTPUT" && e.value) {
-          // Flush early as we know the generation is terminated here.
-          yield* contentParser.flushTokens();
-
-          const v = e.value as any;
-          if ("actions" in v) {
-            output.actions = v.actions;
-          }
-          if ("generation" in v) {
-            output.generation = v.generation;
-          }
-          break;
+        if ("generation" in v) {
+          output.generation = v.generation;
         }
+        break;
       }
     }
-  } finally {
-    await redis.quit();
   }
 
   yield* contentParser.flushTokens();
