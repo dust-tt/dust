@@ -276,7 +276,7 @@ export async function upsertTableFromCsv({
   return tableRes;
 }
 
-async function rowsFromCsv(
+export async function rowsFromCsv(
   csv: string
 ): Promise<Result<CoreAPIRow[], CsvParsingError>> {
   const delimiter = await guessDelimiter(csv);
