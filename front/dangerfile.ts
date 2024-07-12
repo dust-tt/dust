@@ -34,6 +34,20 @@ function checkMigrationLabel() {
   }
 }
 
+function checkDeployPlanSection() {
+  const PRDescription = danger.github.pr.body;
+
+  const deployPlanSectionRegex =
+    /## Deploy Plan.*?\r\n([\s\S]*?)(?=<!--|\n##|$)/;
+
+  const match = PRDescription.match(deployPlanSectionRegex);
+  if (!match || match[1].trim().length < 20) {
+    fail(
+      "Please include a detailed Deploy Plan section in your PR description."
+    );
+  }
+}
+
 function checkDocumentationLabel() {
   if (!hasLabel(documentationAckLabel)) {
     failDocumentationAck();
