@@ -2,6 +2,7 @@ import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/models/apps";
@@ -48,7 +49,7 @@ async function handler(
         });
       }
 
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const p = await coreAPI.createProject();
       if (p.isErr()) {
         return apiError(req, res, {

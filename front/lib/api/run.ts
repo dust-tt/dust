@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import peg from "pegjs";
 
+import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
@@ -23,7 +24,7 @@ export async function getRun(
   config: RunConfig;
   run: RunType;
 } | null> {
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const r = await coreAPI.getRunStatus({
     projectId: app.dustAPIProjectId,
     runId: runId as string,

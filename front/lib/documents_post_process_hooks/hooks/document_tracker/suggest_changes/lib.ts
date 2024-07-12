@@ -3,6 +3,7 @@ import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 import showdown from "showdown";
 
+import config from "@app/lib/api/config";
 import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
@@ -206,7 +207,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
     .join("\n");
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tokensInDiff = await coreAPI.tokenize({
     text: diffText,
     providerId: "openai",

@@ -3,6 +3,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import apiConfig from "@app/lib/api/config";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -93,7 +94,7 @@ async function handler(
       },
     });
   }
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
 
   switch (req.method) {
     case "GET":

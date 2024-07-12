@@ -1,6 +1,7 @@
 import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
+import config from "@app/lib/api/config";
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
@@ -61,7 +62,7 @@ async function main() {
         `[DELETE] Data Source: ${dustAPIProjectId} ${ds.id} ${ds.name} ${dsData[0].internal_id}`
       );
       if (LIVE) {
-        const coreAPI = new CoreAPI(logger);
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const coreDeleteRes = await coreAPI.deleteDataSource({
           projectId: dustAPIProjectId,
           dataSourceName: ds.name,

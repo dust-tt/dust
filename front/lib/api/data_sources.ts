@@ -248,7 +248,7 @@ export async function deleteDataSource(
     }
   }
 
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDeleteRes = await coreAPI.deleteDataSource({
     projectId: dustAPIProjectId,
     dataSourceName: dataSource.name,

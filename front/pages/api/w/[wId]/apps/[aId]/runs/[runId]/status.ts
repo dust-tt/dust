@@ -3,6 +3,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -41,7 +42,7 @@ async function handler(
         return;
       }
 
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const run = await coreAPI.getRunStatus({
         projectId: app.dustAPIProjectId,
         runId: runId,

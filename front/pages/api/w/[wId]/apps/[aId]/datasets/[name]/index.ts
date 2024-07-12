@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -122,7 +123,7 @@ async function handler(
           }, {});
       });
 
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       // Register dataset with the Dust internal API.
       const d = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,

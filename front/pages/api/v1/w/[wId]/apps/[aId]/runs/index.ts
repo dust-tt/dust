@@ -17,6 +17,7 @@ import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { Provider } from "@app/lib/models/apps";
@@ -210,7 +211,7 @@ async function handler(
   // This variable is used in the context of the DustAppRun action to use the workspace credentials
   // instead of our managed credentials when running an app with a system API key.
   const useWorkspaceCredentials = !!req.query["use_workspace_credentials"];
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const runFlavor: RunFlavor = req.body.stream
     ? "streaming"
     : req.body.blocking

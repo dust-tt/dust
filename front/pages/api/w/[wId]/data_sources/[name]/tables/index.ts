@@ -2,6 +2,7 @@ import type { CoreAPITable, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -52,7 +53,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const tablesRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,

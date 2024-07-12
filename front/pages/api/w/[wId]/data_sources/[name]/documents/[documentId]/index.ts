@@ -13,6 +13,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import apiConfig from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -60,7 +61,7 @@ async function handler(
       },
     });
   }
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
 
   switch (req.method) {
     case "POST":

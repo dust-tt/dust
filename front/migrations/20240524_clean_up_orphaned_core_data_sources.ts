@@ -1,5 +1,6 @@
 import { CoreAPI } from "@dust-tt/types";
 
+import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import { makeScript } from "@app/scripts/helpers";
@@ -11,7 +12,7 @@ const ORPHANED_DATA_SOURCES: { project: string; data_source_id: string }[] = [
 makeScript({}, async ({ execute }) => {
   if (execute) {
     for (const { project, data_source_id } of ORPHANED_DATA_SOURCES) {
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const coreDeleteRes = await coreAPI.deleteDataSource({
         projectId: project,
         dataSourceName: data_source_id,

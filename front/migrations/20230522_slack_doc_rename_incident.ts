@@ -1,6 +1,7 @@
 import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
+import config from "@app/lib/api/config";
 import { DataSource } from "@app/lib/models/data_source";
 import logger from "@app/logger/logger";
 
@@ -25,7 +26,7 @@ async function main() {
           throw new Error("No connectorId found");
         }
 
-        const coreAPI = new CoreAPI(logger);
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const dds = await coreAPI.deleteDataSource({
           projectId: ds.dustAPIProjectId,
           dataSourceName: ds.name,

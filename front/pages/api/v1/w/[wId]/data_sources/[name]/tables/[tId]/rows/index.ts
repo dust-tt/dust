@@ -9,6 +9,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -235,7 +236,7 @@ async function handler(
       },
     });
   }
-  const coreAPI = new CoreAPI(logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   switch (req.method) {
     case "GET":
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;

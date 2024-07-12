@@ -2,6 +2,7 @@ import type { DocumentType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -58,7 +59,7 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
-      const coreAPI = new CoreAPI(logger);
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const documents = await coreAPI.getDataSourceDocuments({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
