@@ -197,15 +197,10 @@ async function handleUserMessageEvents(
             case "agent_generation_cancelled":
             case "agent_message_success": {
               const pubsubChannel = getMessageChannelId(event.messageId);
-              console.log(`Adding to ${pubsubChannel}, event ${event.type}`);
               await redis.xAdd(pubsubChannel, "*", {
                 payload: JSON.stringify(event),
               });
-              console.log(
-                `[DONE] Adding to ${pubsubChannel}, event ${event.type}`
-              );
               await redis.expire(pubsubChannel, 60 * 10);
-              console.log(`Expiring to ${pubsubChannel}, event ${event.type}`);
 
               if (
                 event.type === "agent_message_success" &&
@@ -420,7 +415,7 @@ export async function* getConversationEvents(
     const events = await redis.xRead(
       commandOptions({ isolated: true }),
       { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-      { COUNT: 32, BLOCK: 20 * 1000 }
+      { COUNT: 32, BLOCK: 60 * 1000 }
     );
     if (!events) {
       return;
@@ -507,8 +502,6 @@ export async function* getMessagesEvents(
     if (!events) {
       return;
     }
-
-    console.log(">> events", events);
 
     for (const event of events) {
       for (const message of event.messages) {
