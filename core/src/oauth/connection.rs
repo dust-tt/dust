@@ -15,15 +15,11 @@ use std::str::FromStr;
 use std::{env, fmt};
 
 lazy_static! {
-    static ref ENCRYPTION_KEY: Result<aead::LessSafeKey, &'static str> = {
-        let encoded_key =
-            env::var("OAUTH_ENCRYPTION_KEY").map_err(|_| "OAUTH_ENCRYPTION_KEY: not set")?;
-        let key_bytes = general_purpose::STANDARD
-            .decode(&encoded_key)
-            .map_err(|_| "OAUTH_ENCRYPTION_KEY: base64 decoding failed")?;
-        let unbound_key = aead::UnboundKey::new(&aead::CHACHA20_POLY1305, &key_bytes)
-            .map_err(|_| "OAUTH_ENCRYPTION_KEY: invalid key length")?;
-        Ok(aead::LessSafeKey::new(unbound_key))
+    static ref ENCRYPTION_KEY: aead::LessSafeKey = {
+        let encoded_key = env::var("OAUTH_ENCRYPTION_KEY").unwrap();
+        let key_bytes = general_purpose::STANDARD.decode(&encoded_key).unwrap();
+        let unbound_key = aead::UnboundKey::new(&aead::CHACHA20_POLY1305, &key_bytes).unwrap();
+        aead::LessSafeKey::new(unbound_key)
     };
 }
 
@@ -56,18 +52,18 @@ impl FromStr for ConnectionProvider {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
 pub struct FinalizeResult {
-    code: String,
-    access_token: String,
-    access_token_expiry: Option<u64>,
-    refresh_token: Option<String>,
-    raw_json: serde_json::Value,
+    pub code: String,
+    pub access_token: String,
+    pub access_token_expiry: Option<u64>,
+    pub refresh_token: Option<String>,
+    pub raw_json: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
 pub struct RefreshResult {
-    access_token: String,
-    access_token_expiry: Option<u64>,
-    refresh_token: Option<String>,
+    pub access_token: String,
+    pub access_token_expiry: Option<u64>,
+    pub refresh_token: Option<String>,
 }
 
 #[async_trait]
@@ -223,7 +219,7 @@ impl Connection {
     }
 
     fn seal_str(s: &str) -> Result<Vec<u8>> {
-        let key = ENCRYPTION_KEY.as_ref().map_err(|e| anyhow::anyhow!(e))?;
+        let key = &ENCRYPTION_KEY;
         let rng = rand::SystemRandom::new();
 
         let mut nonce_bytes = [0u8; NONCE_LEN];
@@ -245,7 +241,7 @@ impl Connection {
     }
 
     fn unseal_str(encrypted_data: &[u8]) -> Result<String> {
-        let key = ENCRYPTION_KEY.as_ref().map_err(|e| anyhow::anyhow!(e))?;
+        let key = &ENCRYPTION_KEY;
 
         let nonce_bytes = &encrypted_data[0..NONCE_LEN];
         let ciphertext_and_tag = &encrypted_data[NONCE_LEN..];
@@ -307,7 +303,7 @@ impl Connection {
             self.connection_id
         );
 
-        // let finalize = provider(self.provider).finalize(self, code).await?;
+        let finalize = provider(self.provider).finalize(self, code).await?;
 
         // TODO(spolu): implement store
 

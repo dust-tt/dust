@@ -100,7 +100,7 @@ async fn connections_finalize(
             Err(e) => error_response(
                 StatusCode::BAD_REQUEST,
                 "connection_finalization_failed",
-                "Requested to finalize connection failed",
+                "Failed to finalize connection",
                 Some(e),
             ),
             Ok(_) => (

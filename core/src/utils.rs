@@ -74,6 +74,13 @@ pub fn now() -> u64 {
         .as_millis() as u64
 }
 
+pub fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u64
+}
+
 pub fn info(msg: &str) {
     println!("{} {}", "[i]", msg);
 }
