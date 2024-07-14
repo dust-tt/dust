@@ -214,7 +214,7 @@ export async function syncFiles({
   // sync files
   const results = await concurrentExecutor(
     childrenToSync,
-    async (child) => {
+    async (child) =>
       await syncOneFile({
         connectorId,
         dataSourceConfig,
@@ -222,8 +222,7 @@ export async function syncFiles({
         file: child,
         parentInternalId,
         startSyncTs,
-      });
-    },
+      }),
     { concurrency: FILES_SYNC_CONCURRENCY }
   );
 
