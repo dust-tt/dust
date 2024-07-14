@@ -4,6 +4,7 @@ import { stringify } from "csv-stringify/sync";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  getAllPaginatedEntities,
   getDriveItemAPIPath,
   getWorksheetAPIPath,
   getWorksheetContent,
@@ -198,7 +199,9 @@ export async function syncSpreadSheet({
     nodeType: "file",
   });
 
-  const worksheets = await getWorksheets(client, documentId);
+  const worksheets = await getAllPaginatedEntities((nextLink) =>
+    getWorksheets(client, documentId, nextLink)
+  );
 
   const spreadsheet = await upsertSpreadsheetInDb(connector, documentId, file);
 

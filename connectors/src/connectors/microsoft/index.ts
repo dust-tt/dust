@@ -6,7 +6,7 @@ import type {
   NangoConnectionId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
@@ -20,9 +20,10 @@ import {
   getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
+  getAllPaginatedEntities,
   getChannels,
   getDrives,
-  getFolders,
+  getFilesAndFolders,
   getSites,
   getTeams,
   internalIdFromTypeAndPath,
@@ -186,38 +187,61 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       const { nodeType } = typeAndPathFromInternalId(parentInternalId);
 
       switch (nodeType) {
-        case "sites-root":
+        case "sites-root": {
+          const sites = await getAllPaginatedEntities((nextLink) =>
+            getSites(client, nextLink)
+          );
+          nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
+          break;
+        }
+        case "teams-root": {
+          const teams = await getAllPaginatedEntities((nextLink) =>
+            getTeams(client, nextLink)
+          );
+          nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
+          break;
+        }
+        case "team": {
+          const channels = await getAllPaginatedEntities((nextLink) =>
+            getChannels(client, parentInternalId, nextLink)
+          );
           nodes.push(
-            ...(await getSites(client)).map((n) => getSiteAsContentNode(n))
+            ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
           );
           break;
-        case "teams-root":
+        }
+        case "site": {
+          const drives = await getAllPaginatedEntities((nextLink) =>
+            getDrives(client, parentInternalId, nextLink)
+          );
           nodes.push(
-            ...(await getTeams(client)).map((n) => getTeamAsContentNode(n))
+            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
           );
           break;
-        case "team":
-          nodes.push(
-            ...(await getChannels(client, parentInternalId)).map((n) =>
-              getChannelAsContentNode(n, parentInternalId)
-            )
-          );
-          break;
-        case "site":
-          nodes.push(
-            ...(await getDrives(client, parentInternalId)).map((n) =>
-              getDriveAsContentNode(n, parentInternalId)
-            )
-          );
-          break;
+        }
         case "drive":
-        case "folder":
-          nodes.push(
-            ...(await getFolders(client, parentInternalId)).map((n) =>
-              getFolderAsContentNode(n, parentInternalId)
+        case "folder": {
+          const folders = (
+            await getAllPaginatedEntities((nextLink) =>
+              getFilesAndFolders(client, parentInternalId, nextLink)
             )
+          ).filter((n) => n.folder);
+          nodes.push(
+            ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
           );
           break;
+        }
+        case "channel":
+        case "file":
+        case "page":
+        case "message":
+        case "worksheet":
+          throw new Error(
+            `Unexpected node type ${nodeType} for retrievePermissions`
+          );
+        default: {
+          assertNever(nodeType);
+        }
       }
     }
 

@@ -5,6 +5,7 @@ import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  getAllPaginatedEntities,
   getDriveItemAPIPath,
   getDrives,
   getFilesAndFolders,
@@ -75,7 +76,9 @@ export async function getSiteNodesToSync(
     .map((resource) => resource.itemAPIPath);
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
-    const msSites = await getSites(client);
+    const msSites = await getAllPaginatedEntities((nextLink) =>
+      getSites(client, nextLink)
+    );
     rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
   }
 
@@ -83,9 +86,15 @@ export async function getSiteNodesToSync(
     await concurrentExecutor(
       rootSitePaths,
       async (sitePath) => {
-        const msDrives = await getDrives(
-          client,
-          internalIdFromTypeAndPath({ nodeType: "site", itemAPIPath: sitePath })
+        const msDrives = await getAllPaginatedEntities((nextLink) =>
+          getDrives(
+            client,
+            internalIdFromTypeAndPath({
+              nodeType: "site",
+              itemAPIPath: sitePath,
+            }),
+            nextLink
+          )
         );
         return msDrives.map((drive) => itemToMicrosoftNode("drive", drive));
       },
@@ -142,10 +151,12 @@ export async function syncFiles({
   connectorId,
   parentInternalId,
   startSyncTs,
+  nextPageLink,
 }: {
   connectorId: ModelId;
   parentInternalId: string;
   startSyncTs: number;
+  nextPageLink?: string;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -186,7 +197,13 @@ export async function syncFiles({
   const client = await getClient(connector.connectionId);
 
   // TODO(pr): handle pagination
-  const children = await getFilesAndFolders(client, parent.internalId);
+  const childrenResult = await getFilesAndFolders(
+    client,
+    parent.internalId,
+    nextPageLink
+  );
+
+  const children = childrenResult.results;
 
   const childrenToSync = children.filter(
     (item) =>
@@ -238,6 +255,7 @@ export async function syncFiles({
   return {
     count,
     childNodes: childResources.map((r) => r.internalId),
+    nextLink: childrenResult.nextLink,
   };
 }
 

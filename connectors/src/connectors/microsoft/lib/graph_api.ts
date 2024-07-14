@@ -6,15 +6,27 @@ import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/typ
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { isValidNodeType } from "@connectors/connectors/microsoft/lib/types";
 
-export async function getSites(client: Client): Promise<MicrosoftGraph.Site[]> {
-  const res = await client.api("/sites?search=*").get();
-  return res.value;
+export async function getSites(
+  client: Client,
+  nextLink?: string
+): Promise<{ results: MicrosoftGraph.Site[]; nextLink?: string }> {
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api("/sites?search=*").get();
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+  return { results: res.value };
 }
 
 export async function getDrives(
   client: Client,
-  parentInternalId: string
-): Promise<MicrosoftGraph.Drive[]> {
+  parentInternalId: string,
+  nextLink?: string
+): Promise<{ results: MicrosoftGraph.Drive[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -24,17 +36,25 @@ export async function getDrives(
     );
   }
 
-  const res = await client
-    .api(`${parentResourcePath}/drives`)
-    .select("id,name")
-    .get();
-  return res.value;
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api(`${parentResourcePath}/drives`).get();
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
 }
 
 export async function getFilesAndFolders(
   client: Client,
-  parentInternalId: string
-): Promise<MicrosoftGraph.DriveItem[]> {
+  parentInternalId: string,
+  nextLink?: string
+): Promise<{ results: MicrosoftGraph.DriveItem[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -48,22 +68,28 @@ export async function getFilesAndFolders(
       ? `${parentResourcePath}/root/children`
       : `${parentResourcePath}/children`;
 
-  const res = await client.api(endpoint).get();
-  return res.value;
-}
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api(endpoint).get();
 
-export async function getFolders(
-  client: Client,
-  parentInternalId: string
-): Promise<MicrosoftGraph.DriveItem[]> {
-  const res = await getFilesAndFolders(client, parentInternalId);
-  return res.filter((item) => item.folder);
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
 }
 
 export async function getWorksheets(
   client: Client,
-  internalId: string
-): Promise<MicrosoftGraph.WorkbookWorksheet[]> {
+  internalId: string,
+  nextLink?: string
+): Promise<{
+  results: MicrosoftGraph.WorkbookWorksheet[];
+  nextLink?: string;
+}> {
   const { nodeType, itemAPIPath: itemApiPath } =
     typeAndPathFromInternalId(internalId);
 
@@ -73,8 +99,18 @@ export async function getWorksheets(
     );
   }
 
-  const res = await client.api(`${itemApiPath}/workbook/worksheets`).get();
-  return res.value;
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api(`${itemApiPath}/workbook/worksheets`).get();
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
 }
 
 export async function getWorksheetContent(
@@ -93,18 +129,29 @@ export async function getWorksheetContent(
   return res;
 }
 
-export async function getTeams(client: Client): Promise<MicrosoftGraph.Team[]> {
-  const res = await client
-    .api("/me/joinedTeams")
-    .select("id,displayName")
-    .get();
-  return res.value;
+export async function getTeams(
+  client: Client,
+  nextLink?: string
+): Promise<{ results: MicrosoftGraph.Team[]; nextLink?: string }> {
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api("/me/joinedTeams").get();
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
 }
 
 export async function getChannels(
   client: Client,
-  parentInternalId: string
-): Promise<MicrosoftGraph.Channel[]> {
+  parentInternalId: string,
+  nextLink?: string
+): Promise<{ results: MicrosoftGraph.Channel[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -114,17 +161,25 @@ export async function getChannels(
     );
   }
 
-  const res = await client
-    .api(`${parentResourcePath}/channels`)
-    .select("id,displayName")
-    .get();
-  return res.value;
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api(`${parentResourcePath}/channels`).get();
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
 }
 
 export async function getMessages(
   client: Client,
-  parentInternalId: string
-): Promise<MicrosoftGraph.ChatMessage[]> {
+  parentInternalId: string,
+  nextLink?: string
+): Promise<{ results: MicrosoftGraph.ChatMessage[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -134,8 +189,38 @@ export async function getMessages(
     );
   }
 
-  const res = await client.api(`${parentResourcePath}/messages`).get();
-  return res.value;
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api(parentResourcePath).get();
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
+}
+/**
+ * Given a getter function with a single nextLink optional parameter, this function
+ * fetches all items by following nextLinks
+ */
+export async function getAllPaginatedEntities<T extends MicrosoftGraph.Entity>(
+  getEntitiesFn: (
+    nextLink?: string
+  ) => Promise<{ results: T[]; nextLink?: string }>
+): Promise<T[]> {
+  let nextLink: string | undefined = undefined;
+  let allItems: T[] = [];
+
+  do {
+    const { results, nextLink: newNextLink } = await getEntitiesFn(nextLink);
+    allItems = allItems.concat(results);
+    nextLink = newNextLink;
+  } while (nextLink);
+
+  return allItems;
 }
 
 export async function getItem(client: Client, itemApiPath: string) {
