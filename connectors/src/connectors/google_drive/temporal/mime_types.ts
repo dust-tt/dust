@@ -15,7 +15,8 @@ export function getMimeTypesToDownload({
     "text/csv",
     // docx files hosted on Gdrive
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    // Temporarily excluding pptx files for debugging purpose.
+    // "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
   if (pdfEnabled) {
     mimeTypes.push("application/pdf");
