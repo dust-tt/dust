@@ -5,6 +5,7 @@ import type {
   MentionType,
   Result,
   UserMessageWithRankType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
@@ -12,7 +13,6 @@ import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 /**
@@ -48,18 +48,18 @@ export function createPlaceholderUserMessage({
 }: {
   input: string;
   mentions: MentionType[];
-  user: UserResource;
+  user: UserType;
   lastMessageRank: number;
 }): UserMessageWithRankType {
   const createdAt = new Date().getTime();
-  const { email, fullName, image, username } = user.toJSON();
+  const { email, fullName, image, username } = user;
 
   return {
     id: -1,
     content: input,
     created: createdAt,
     mentions,
-    user: user.toJSON(),
+    user: user,
     visibility: "visible",
     type: "user_message",
     sId: `placeholder-${createdAt.toString()}`,
@@ -83,7 +83,7 @@ export async function submitMessage({
   messageData,
 }: {
   owner: WorkspaceType;
-  user: UserResource;
+  user: UserType;
   conversationId: string;
   messageData: {
     input: string;
@@ -111,7 +111,7 @@ export async function submitMessage({
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-                profilePictureUrl: user.imageUrl,
+                profilePictureUrl: user.image,
               },
             }),
           }
@@ -208,7 +208,7 @@ export async function createConversationWithMessage({
   title,
 }: {
   owner: WorkspaceType;
-  user: UserResource;
+  user: UserType;
   messageData: {
     input: string;
     mentions: MentionType[];
@@ -226,14 +226,14 @@ export async function createConversationWithMessage({
       content: input,
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        profilePictureUrl: user.imageUrl,
+        profilePictureUrl: user.image,
       },
       mentions,
     },
     contentFragments: contentFragments.map((cf) => ({
       title: cf.title,
       context: {
-        profilePictureUrl: user.imageUrl,
+        profilePictureUrl: user.image,
       },
       fileId: cf.fileId,
     })),

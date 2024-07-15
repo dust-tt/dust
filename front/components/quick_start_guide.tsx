@@ -7,10 +7,9 @@ import {
   RocketIcon,
 } from "@dust-tt/sparkle";
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useRef } from "react";
 
-import type { UserResource } from "@app/lib/resources/user_resource";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export function QuickStartGuide({
@@ -20,7 +19,7 @@ export function QuickStartGuide({
   onClose,
 }: {
   owner: WorkspaceType;
-  user: UserResource;
+  user: UserType;
   show: boolean;
   onClose: () => void;
 }) {

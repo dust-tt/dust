@@ -1,7 +1,6 @@
 import { removeNulls } from "@dust-tt/types";
 import * as _ from "lodash";
 
-import { renderUserType } from "@app/lib/api/user";
 import { subscriptionForWorkspaces } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -14,7 +13,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allUserModels = await User.findAll();
-  const users = allUserModels.map((u) => renderUserType(u));
+  const users = allUserModels.map((u) => u);
   const chunks = _.chunk(users, 16);
   const deletedWorkspaceSids = new Set<string>();
   for (const [i, c] of chunks.entries()) {
@@ -25,7 +24,7 @@ const backfillCustomerIo = async (execute: boolean) => {
     );
     const membershipsByUserId = _.groupBy(
       await MembershipResource.getLatestMemberships({
-        users: c,
+        users: c.map((u) => u.toJSON()),
       }),
       (m) => m.userId.toString()
     );
@@ -69,7 +68,7 @@ const backfillCustomerIo = async (execute: boolean) => {
         if (execute) {
           promises.push(
             CustomerioServerSideTracking.deleteUser({
-              user: u,
+              user: u.toJSON(),
             }).catch((err) => {
               logger.error(
                 { userId: u.sId, err },

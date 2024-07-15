@@ -4,16 +4,15 @@ import {
   DropdownMenu,
   LogoutIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
 
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-import type { UserResource } from "@app/lib/resources/user_resource";
 
 export function UserMenu({
   user,
   owner,
 }: {
-  user: UserResource;
+  user: UserType;
   owner: WorkspaceType;
 }) {
   const hasBetaAccess =
@@ -27,8 +26,8 @@ export function UserMenu({
         <Avatar
           size="md"
           visual={
-            user.imageUrl
-              ? user.imageUrl
+            user.image
+              ? user.image
               : "https://gravatar.com/avatar/anonymous?d=mp"
           }
           onClick={() => {

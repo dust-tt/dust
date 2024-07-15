@@ -1,4 +1,4 @@
-import type { UserMetadataType } from "@dust-tt/types";
+import type { UserMetadataType, UserType } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { User, UserMetadata } from "@app/lib/models/user";
@@ -53,7 +53,7 @@ export async function deleteUser(user: UserResource): Promise<void> {
  * @returns UserMetadataType | null
  */
 export async function getUserMetadata(
-  user: UserResource,
+  user: UserType,
   key: string
 ): Promise<UserMetadataType | null> {
   const metadata = await UserMetadata.findOne({
@@ -80,7 +80,7 @@ export async function getUserMetadata(
  * @returns UserMetadataType | null
  */
 export async function setUserMetadata(
-  user: UserResource,
+  user: UserType,
   update: UserMetadataType
 ): Promise<void> {
   const metadata = await UserMetadata.findOne({
@@ -101,28 +101,4 @@ export async function setUserMetadata(
 
   metadata.value = update.value;
   await metadata.save();
-}
-
-export async function updateUserFullName({
-  user,
-  firstName,
-  lastName,
-}: {
-  user: UserResource;
-  firstName: string;
-  lastName: string;
-}): Promise<boolean | null> {
-  const u = await UserResource.fetchByModelId(user.id);
-
-  if (!u) {
-    return null;
-  }
-
-  await u.update({
-    firstName,
-    lastName,
-    name: `${firstName} ${lastName}`,
-  });
-
-  return true;
 }

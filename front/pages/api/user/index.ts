@@ -7,10 +7,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { updateUserFullName } from "@app/lib/api/user";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -72,13 +72,23 @@ async function handler(
         });
       }
 
-      const result = await updateUserFullName({
-        user: user,
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-      });
+      const userRes = await UserResource.fetchByModelId(user.id);
+      if (!userRes) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "user_not_found",
+            message: "The user was not found.",
+          },
+        });
+      }
 
-      if (!result) {
+      try {
+        await userRes.update({
+          firstName: req.body.firstName,
+          lastName: req.body.lastName,
+        });
+      } catch (err) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

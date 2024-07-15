@@ -45,8 +45,8 @@ async function handler(
     });
   }
 
-  const user = await getUserForWorkspace(auth, { userId });
-  if (!user) {
+  const userRes = await getUserForWorkspace(auth, { userId });
+  if (!userRes) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -55,13 +55,14 @@ async function handler(
       },
     });
   }
+  const user = userRes.toJSON();
 
   switch (req.method) {
     case "POST":
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
         const revokeResult = await MembershipResource.revokeMembership({
-          user,
+          user: userRes,
           workspace: owner,
         });
         if (revokeResult.isErr()) {
@@ -96,7 +97,7 @@ async function handler(
           });
         }
         const updateRoleResult = await MembershipResource.updateMembershipRole({
-          user,
+          user: userRes,
           workspace: owner,
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.

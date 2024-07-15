@@ -4,7 +4,6 @@ import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
@@ -517,7 +516,7 @@ export async function deleteMembersActivity({
       if (user) {
         const membershipsOfUser = await MembershipResource.getLatestMemberships(
           {
-            users: [user.toJSON()],
+            users: [user],
             transaction: t,
           }
         );

@@ -161,7 +161,7 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
-    const [workspace, userRes] = await Promise.all([
+    const [workspace, user] = await Promise.all([
       (async () => {
         if (!wId) {
           return null;
@@ -183,7 +183,6 @@ export class Authenticator {
 
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
-    const user = userRes?.toJSON();
 
     if (workspace) {
       [subscription, flags] = await Promise.all([
@@ -378,11 +377,7 @@ export class Authenticator {
       throw new Error("Workspace not found.");
     }
 
-    const userRes = await UserResource.fetchByEmail(userEmail);
-    if (!userRes) {
-      return null;
-    }
-    const user = userRes.toJSON();
+    const user = await UserResource.fetchByEmail(userEmail);
     // If the user does not exist (e.g., whitelisted email addresses),
     // simply ignore and return null.
     if (!user) {
@@ -392,7 +387,7 @@ export class Authenticator {
     // Verify that the user has an active membership in the specified workspace.
     const activeMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user: userRes.toJSON(),
+        user,
         workspace: owner,
       });
     // If the user does not have an active membership in the workspace,
