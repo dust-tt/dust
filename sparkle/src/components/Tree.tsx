@@ -15,16 +15,24 @@ import { IconButton } from "./IconButton";
 
 export interface TreeProps {
   children?: React.ReactNode;
+  isBoxed?: boolean;
   isLoading?: boolean;
 }
 
-export function Tree({ children, isLoading }: TreeProps) {
+export function Tree({ children, isLoading, isBoxed = false }: TreeProps) {
   return isLoading ? (
     <div className="s-py-2 s-pl-4">
       <Spinner size="xs" variant="dark" />
     </div>
   ) : (
-    <div className="s-flex s-flex-col s-gap-1 s-overflow-hidden">
+    <div
+      className={classNames(
+        "s-flex s-flex-col s-gap-1 s-overflow-hidden",
+        isBoxed
+          ? "s- s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
+          : ""
+      )}
+    >
       {children}
     </div>
   );

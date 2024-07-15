@@ -25,7 +25,8 @@ export function Checkbox({
   const baseStyleClasses = {
     base: "s-border s-justify-center s-w-5 s-h-5 s-rounded-md s-flex s-items-center s-transition-colors s-duration-300 s-ease-out",
     idle: "s-bg-structure-50 s-border-element-600 s-cursor-pointer",
-    hover: "hover:s-border-action-500 hover:s-bg-action-200",
+    hover:
+      "hover:s-border-action-500 hover:s-bg-action-200 hover:s-text-white/100",
     disabled: "s-bg-structure-0 s-border-structure-300 s-cursor-default",
     dark: {
       base: "dark:s-bg-structure-50-dark dark:s-border-element-500-dark",
@@ -46,6 +47,7 @@ export function Checkbox({
 
   const combinedBaseClasses = classNames(
     baseStyleClasses.base,
+    checked || partialChecked ? "s-text-white" : "s-text-white/0",
     disabled ? baseStyleClasses.disabled : baseStyleClasses.idle,
     !disabled ? baseStyleClasses.hover : "",
     disabled ? baseStyleClasses.dark.disabled : baseStyleClasses.dark.base,
@@ -72,13 +74,11 @@ export function Checkbox({
         className="s-hidden"
         disabled={disabled}
       />
-      <div
-        className={classNames(combinedBaseClasses, "s-relative s-text-white")}
-      >
+      <div className={classNames(combinedBaseClasses, "s-relative")}>
         <div
           className={combinedCheckedIndicatorClasses}
           style={{ width: "14px", height: "14px", borderRadius: "3px" }}
-        ></div>
+        />
         {variant === "checkable" && (
           <div className="s-absolute">
             <Icon visual={partialChecked ? Dash : Check} size="xs" />
