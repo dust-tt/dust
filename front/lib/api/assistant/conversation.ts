@@ -76,6 +76,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -960,11 +961,7 @@ export async function* postUserMessage(
   async function logIfUserUnknown() {
     try {
       if (!user && context.email) {
-        const macthingUser = await User.findOne({
-          where: {
-            email: context.email,
-          },
-        });
+        const macthingUser = await UserResource.fetchByEmail(context.email);
 
         if (!macthingUser) {
           logger.warn(

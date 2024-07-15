@@ -31,7 +31,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { User } from "@app/lib/models/user";
+import type { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -41,6 +41,7 @@ import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 const {
@@ -104,7 +105,7 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string
   ): Promise<Authenticator> {
-    const [workspace, user] = await Promise.all([
+    const [workspace, userRes] = await Promise.all([
       (async () => {
         return Workspace.findOne({
           where: {
@@ -116,11 +117,7 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return User.findOne({
-            where: {
-              auth0Sub: session.user.sub,
-            },
-          });
+          return UserResource.fetchByAuth0Sub(session.user.sub);
         }
       })(),
     ]);
@@ -128,6 +125,7 @@ export class Authenticator {
     let role = "none" as RoleType;
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
+    const user = userRes?.toJSON();
 
     if (user && workspace) {
       [role, subscription, flags] = await Promise.all([
@@ -166,7 +164,7 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
-    const [workspace, user] = await Promise.all([
+    const [workspace, userRes] = await Promise.all([
       (async () => {
         if (!wId) {
           return null;
@@ -181,17 +179,14 @@ export class Authenticator {
         if (!session) {
           return null;
         } else {
-          return User.findOne({
-            where: {
-              auth0Sub: session.user.sub,
-            },
-          });
+          return UserResource.fetchByAuth0Sub(session.user.sub);
         }
       })(),
     ]);
 
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
+    const user = userRes?.toJSON();
 
     if (workspace) {
       [subscription, flags] = await Promise.all([
@@ -386,11 +381,11 @@ export class Authenticator {
       throw new Error("Workspace not found.");
     }
 
-    const user = await User.findOne({
-      where: {
-        email: userEmail,
-      },
-    });
+    const userRes = await UserResource.fetchByEmail(userEmail);
+    if (!userRes) {
+      return null;
+    }
+    const user = userRes.toJSON();
     // If the user does not exist (e.g., whitelisted email addresses),
     // simply ignore and return null.
     if (!user) {
@@ -400,7 +395,7 @@ export class Authenticator {
     // Verify that the user has an active membership in the specified workspace.
     const activeMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user: renderUserType(user),
+        user: userRes.toUserType(),
         workspace: owner,
       });
     // If the user does not have an active membership in the workspace,

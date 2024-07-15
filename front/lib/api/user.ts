@@ -2,6 +2,7 @@ import type { UserMetadataType, UserType } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { User, UserMetadata } from "@app/lib/models/user";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 import { MembershipResource } from "../resources/membership_resource";
 
@@ -33,19 +34,15 @@ export async function getUserForWorkspace(
     return null;
   }
 
-  const user = await User.findOne({
-    where: {
-      sId: userId,
-    },
-  });
+  const userRes = await UserResource.fetchByExternalId(userId);
 
-  if (!user) {
+  if (!userRes) {
     return null;
   }
 
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
-      user: renderUserType(user),
+      user: userRes.toUserType(),
       workspace: owner,
     });
 
@@ -53,7 +50,7 @@ export async function getUserForWorkspace(
     return null;
   }
 
-  return renderUserType(user);
+  return userRes.toUserType();
 }
 
 export async function deleteUser(user: UserType): Promise<void> {
@@ -130,20 +127,17 @@ export async function updateUserFullName({
   firstName: string;
   lastName: string;
 }): Promise<boolean | null> {
-  const u = await User.findOne({
-    where: {
-      id: user.id,
-    },
-  });
+  const u = await UserResource.fetchByModelId(user.id);
 
   if (!u) {
     return null;
   }
 
-  u.firstName = firstName;
-  u.lastName = lastName;
-  u.name = `${firstName} ${lastName}`;
-  await u.save();
+  await u.update({
+    firstName,
+    lastName,
+    name: `${firstName} ${lastName}`,
+  });
 
   return true;
 }
