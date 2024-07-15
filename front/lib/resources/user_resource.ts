@@ -73,13 +73,15 @@ export class UserResource extends BaseResource<User> {
 
   static async fetchByProvider(
     provider: UserProviderType,
-    providerId: string
+    providerId: string,
+    transaction?: Transaction
   ): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
         provider,
         providerId,
       },
+      transaction
     });
 
     return user ? new UserResource(User, user.get()) : null;
