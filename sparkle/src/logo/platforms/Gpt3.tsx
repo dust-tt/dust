@@ -9,7 +9,7 @@ const SvgGpt3 = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <g clipPath="url(#gpt3_svg__a)">
+    <g clipPath="url(#Gpt3_svg__a)">
       <path
         fill="#6DB9A6"
         d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4Z"
@@ -20,7 +20,7 @@ const SvgGpt3 = (props: SVGProps<SVGSVGElement>) => (
       />
     </g>
     <defs>
-      <clipPath id="gpt3_svg__a">
+      <clipPath id="Gpt3_svg__a">
         <path fill="#fff" d="M0 0h24v24H0z" />
       </clipPath>
     </defs>
