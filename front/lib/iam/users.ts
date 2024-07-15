@@ -19,8 +19,10 @@ async function fetchUserWithLegacyProvider(
   { provider, providerId }: LegacyProviderInfo,
   sub: string
 ) {
-
-  const user = await UserResource.fetchByProvider(provider, providerId.toString());
+  const user = await UserResource.fetchByProvider(
+    provider,
+    providerId.toString()
+  );
 
   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
   if (user) {
