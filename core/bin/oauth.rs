@@ -100,7 +100,7 @@ async fn connections_finalize(
             Err(e) => error_response(
                 StatusCode::BAD_REQUEST,
                 "connection_finalization_failed",
-                "Requested to finalize connection failed",
+                "Failed to finalize connection",
                 Some(e),
             ),
             Ok(_) => (
@@ -115,6 +115,55 @@ async fn connections_finalize(
                             "status": c.status(),
                             "metadata": c.metadata(),
                         },
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
+#[derive(Deserialize)]
+struct ConnectionAccessTokenPayload {
+    provider: ConnectionProvider,
+}
+
+async fn connections_access_token(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+    Json(payload): Json<ConnectionAccessTokenPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state
+        .store
+        .retrieve_connection(payload.provider, &connection_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            Some(e),
+        ),
+        Ok(mut c) => match c.access_token(state.clone().store.clone()).await {
+            Err(e) => error_response(
+                StatusCode::BAD_REQUEST,
+                "access_token_failed",
+                "Failed to get access token",
+                Some(e),
+            ),
+            Ok(access_token) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "connection": {
+                            "connection_id": c.connection_id(),
+                            "created": c.created(),
+                            "provider": c.provider(),
+                            "status": c.status(),
+                            "metadata": c.metadata(),
+                        },
+                        "access_token": access_token,
+                        "access_token_expiry": c.access_token_expiry(),
                     })),
                 }),
             ),
@@ -160,10 +209,10 @@ fn main() {
                 "/connections/:connection_id/finalize",
                 post(connections_finalize),
             )
-            // .route(
-            //     "/connections/:connection_id/access_token",
-            //     get(connections_access_token),
-            // )
+            .route(
+                "/connections/:connection_id/access_token",
+                post(connections_access_token),
+            )
             // Extensions
             .layer(
                 TraceLayer::new_for_http()
