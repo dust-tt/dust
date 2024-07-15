@@ -1,7 +1,8 @@
 use anyhow::Result;
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
-use sentencepiece::SentencePieceProcessor;
+use rayon::prelude::*;
+use sentencepiece::{SentencePieceError, SentencePieceProcessor};
 use std::sync::Arc;
 use tokio::task;
 
@@ -87,14 +88,29 @@ pub async fn decode_async(
     Ok(r)
 }
 
-pub async fn tokenize_async(
+// We use the Rayon thread pool to parallelize the tokenization of multiple texts (which is a CPU bound task)
+// Rayon is a better fit than Tokio spawn_blocking because it is optimized for CPU-bound tasks (Tokio's blocking pool has a large number
+// of threads, making it less efficient for CPU-bound tasks).
+// We still need to use spawn_blocking at the top level to avoid blocking the Tokio event loop.
+pub async fn batch_tokenize_async(
     ssp: Arc<RwLock<SentencePieceProcessor>>,
-    text: &str,
-) -> Result<Vec<(usize, String)>> {
-    let text = text.to_string();
-    let r = task::spawn_blocking(move || ssp.read().encode(&text)).await??;
+    texts: Vec<String>,
+) -> Result<Vec<Vec<(usize, String)>>> {
+    let r = tokio::task::spawn_blocking(move || {
+        texts
+            .par_iter()
+            .map(|text| {
+                let guard = ssp.read();
+                guard.encode(&text).map(|p| {
+                    p.into_iter()
+                        .map(|p| (p.id as usize, p.piece.clone()))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect::<Result<Vec<Vec<(usize, String)>>, SentencePieceError>>()
+            .map_err(|e| anyhow::anyhow!(e))
+    })
+    .await??;
 
-    Ok(r.into_iter()
-        .map(|p| (p.id as usize, p.piece))
-        .collect::<Vec<_>>())
+    Ok(r)
 }

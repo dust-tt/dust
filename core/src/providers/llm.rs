@@ -1,5 +1,6 @@
 use crate::cached_request::CachedRequest;
 use crate::project::Project;
+use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use crate::stores::store::Store;
@@ -12,8 +13,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, info};
-
-use super::chat_messages::{AssistantChatMessage, ChatMessage};
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -107,7 +106,7 @@ pub trait LLM {
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>>;
     async fn decode(&self, tokens: Vec<usize>) -> Result<String>;
-    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>>;
+    async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>>;
 
     async fn generate(
         &self,

@@ -1,3 +1,6 @@
+use crate::providers::chat_messages::{
+    AssistantChatMessage, ChatMessage, ContentBlock, MixedContent,
+};
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
@@ -6,9 +9,9 @@ use crate::providers::llm::{
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
-    cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
+    batch_tokenize_async, cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
 };
-use crate::providers::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
+use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
 use crate::utils;
 use crate::utils::ParseError;
@@ -31,8 +34,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-
-use super::chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock, MixedContent};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -1754,8 +1755,8 @@ impl LLM for OpenAILLM {
         decode_async(self.tokenizer(), tokens).await
     }
 
-    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
-        tokenize_async(self.tokenizer(), text).await
+    async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
+        batch_tokenize_async(self.tokenizer(), texts).await
     }
 
     async fn generate(
@@ -2193,8 +2194,8 @@ impl Embedder for OpenAIEmbedder {
         decode_async(self.tokenizer(), tokens).await
     }
 
-    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
-        tokenize_async(self.tokenizer(), text).await
+    async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
+        batch_tokenize_async(self.tokenizer(), texts).await
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {

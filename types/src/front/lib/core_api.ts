@@ -940,6 +940,32 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async tokenizeBatch({
+    texts,
+    modelId,
+    providerId,
+  }: {
+    texts: string[];
+    modelId: string;
+    providerId: string;
+  }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[][] }>> {
+    const credentials = dustManagedCredentials();
+    const response = await this._fetchWithError(`${this._url}/tokenize/batch`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        texts,
+        model_id: modelId,
+        provider_id: providerId,
+        credentials,
+      }),
+    });
+
+    return this._resultFromResponse(response);
+  }
+
   async dataSourceTokenize({
     text,
     projectId,

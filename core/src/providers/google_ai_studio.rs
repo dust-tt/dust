@@ -30,7 +30,7 @@ use super::{
     },
     provider::{Provider, ProviderID},
     tiktoken::tiktoken::{
-        cl100k_base_singleton, decode_async, encode_async, tokenize_async, CoreBPE,
+        batch_tokenize_async, cl100k_base_singleton, decode_async, encode_async, CoreBPE,
     },
 };
 
@@ -391,8 +391,8 @@ impl LLM for GoogleAiStudioLLM {
         decode_async(self.tokenizer(), tokens).await
     }
 
-    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
-        tokenize_async(self.tokenizer(), text).await
+    async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
+        batch_tokenize_async(self.tokenizer(), texts).await
     }
 
     async fn generate(
