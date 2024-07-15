@@ -5,7 +5,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
-use ring::aead::{CHACHA20_POLY1305, NONCE_LEN};
 use ring::{
     aead,
     rand::{self, SecureRandom},
@@ -252,7 +251,7 @@ impl Connection {
         let key = &ENCRYPTION_KEY;
         let rng = rand::SystemRandom::new();
 
-        let mut nonce_bytes = [0u8; NONCE_LEN];
+        let mut nonce_bytes = [0u8; aead::NONCE_LEN];
         rng.fill(&mut nonce_bytes)
             .map_err(|_| anyhow::anyhow!("Nonce generation failed"))?;
         let nonce = aead::Nonce::assume_unique_for_key(nonce_bytes);
@@ -273,8 +272,8 @@ impl Connection {
     fn unseal_str(encrypted_data: &[u8]) -> Result<String> {
         let key = &ENCRYPTION_KEY;
 
-        let nonce_bytes = &encrypted_data[0..NONCE_LEN];
-        let ciphertext_and_tag = &encrypted_data[NONCE_LEN..];
+        let nonce_bytes = &encrypted_data[0..aead::NONCE_LEN];
+        let ciphertext_and_tag = &encrypted_data[aead::NONCE_LEN..];
 
         let nonce = aead::Nonce::try_assume_unique_for_key(nonce_bytes)
             .map_err(|_| anyhow::anyhow!("Invalid nonce"))?;
@@ -284,7 +283,7 @@ impl Connection {
             .map_err(|_| anyhow::anyhow!("Decryption failed"))?;
 
         Ok(String::from_utf8(
-            in_out[0..(in_out.len() - CHACHA20_POLY1305.tag_len())].to_vec(),
+            in_out[0..(in_out.len() - aead::CHACHA20_POLY1305.tag_len())].to_vec(),
         )?)
     }
 
