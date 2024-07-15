@@ -304,7 +304,7 @@ export default function ActionsScreen({
                 />
                 <AdvancedSettings
                   maxStepsPerRun={builderState.maxStepsPerRun}
-                  setmaxStepsPerRun={(maxStepsPerRun) => {
+                  setMaxStepsPerRun={(maxStepsPerRun) => {
                     setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
@@ -801,10 +801,10 @@ function ActionEditor({
 
 function AdvancedSettings({
   maxStepsPerRun,
-  setmaxStepsPerRun,
+  setMaxStepsPerRun,
 }: {
   maxStepsPerRun: number | null;
-  setmaxStepsPerRun: (maxStepsPerRun: number | null) => void;
+  setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
 }) {
   return (
     <DropdownMenu>
@@ -833,7 +833,7 @@ function AdvancedSettings({
               name="maxStepsPerRun"
               onChange={(v) => {
                 if (!v || v === "") {
-                  setmaxStepsPerRun(null);
+                  setMaxStepsPerRun(null);
                   return;
                 }
                 const value = parseInt(v);
@@ -842,7 +842,7 @@ function AdvancedSettings({
                   value >= 0 &&
                   value <= MAX_STEPS_USE_PER_RUN_LIMIT
                 ) {
-                  setmaxStepsPerRun(value);
+                  setMaxStepsPerRun(value);
                 }
               }}
             />

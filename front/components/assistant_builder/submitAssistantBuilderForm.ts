@@ -190,6 +190,9 @@ export async function submitAssistantBuilderForm({
   const actionParams: ActionsType = builderState.actions.flatMap(map);
 
   const isLegacyAgent = isLegacyAssistantBuilderConfiguration(builderState);
+  const maxStepsPerRun = isLegacyAgent
+    ? undefined
+    : builderState.maxStepsPerRun ?? undefined;
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
     {
@@ -206,9 +209,9 @@ export async function submitAssistantBuilderForm({
           providerId: builderState.generationSettings.modelSettings.providerId,
           temperature: builderState.generationSettings.temperature,
         },
-        maxStepsPerRun: isLegacyAgent
-          ? undefined
-          : builderState.maxStepsPerRun ?? undefined,
+        maxStepsPerRun,
+        // TODO(@fontanierh): remove
+        maxToolsUsePerRun: maxStepsPerRun,
         templateId: builderState.templateId,
       },
     };
