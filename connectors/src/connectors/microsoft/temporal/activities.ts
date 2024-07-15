@@ -1,6 +1,7 @@
-import type { ModelId } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import axios from "axios";
 import mammoth from "mammoth";
+import type { Logger } from "pino";
 import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -29,6 +30,7 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -339,16 +341,17 @@ export async function syncOneFile({
     pdfEnabled: providerConfig.pdfEnabled || false,
   });
 
+  const mimeType = file.file.mimeType;
+  if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
+    localLogger.info("Type not supported, skipping file.");
+    return false;
+  }
+
   if (
-    file.file?.mimeType ===
+    mimeType ===
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   ) {
     return (await syncSpreadSheet({ connectorId, file })).isSupported;
-  }
-  if (!file.file?.mimeType || !mimeTypesToSync.includes(file.file.mimeType)) {
-    localLogger.info("Type not supported, skipping file.");
-
-    return false;
   }
 
   const maxDocumentLen = providerConfig.largeFilesEnabled
@@ -390,15 +393,23 @@ export async function syncOneFile({
     }
   }
 
-  const documentContent = await getDocumentContent();
+  let documentSection: CoreAPIDataSourceDocumentSection | null = null;
+  if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  ) {
+    const data = Buffer.from(downloadRes.data);
+    documentSection = await handlePptxFile(data, file.id, localLogger);
+  } else {
+    const documentContent = await getDocumentContent();
+    documentSection = {
+      prefix: null,
+      content: documentContent,
+      sections: [],
+    };
+  }
 
-  logger.info({ documentContent }, "Document content");
-
-  const documentSection = {
-    prefix: null,
-    content: documentContent,
-    sections: [],
-  };
+  logger.info({ documentSection }, "Document section");
 
   const updatedAt = file.lastModifiedDateTime
     ? new Date(file.lastModifiedDateTime)
@@ -492,4 +503,29 @@ export async function syncOneFile({
   }
 
   return isInSizeRange;
+}
+
+async function handlePptxFile(
+  data: ArrayBuffer,
+  fileId: string | undefined,
+  localLogger: Logger
+): Promise<CoreAPIDataSourceDocumentSection | null> {
+  try {
+    const converted = await PPTX2Text(Buffer.from(data), fileId);
+    return {
+      prefix: null,
+      content: null,
+      sections: converted.pages.map((page, i) => ({
+        prefix: `\n$Page: ${i + 1}/${converted.pages.length}\n`,
+        content: page.content,
+        sections: [],
+      })),
+    };
+  } catch (err) {
+    localLogger.warn(
+      { error: err },
+      "Error while converting pptx document to text"
+    );
+    return null;
+  }
 }
