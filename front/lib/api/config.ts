@@ -1,8 +1,8 @@
 import { EnvironmentConfig } from "@dust-tt/types";
 
 const config = {
-  getAppUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("URL");
+  getClientFacingUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
   },
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
@@ -26,6 +26,12 @@ const config = {
     return EnvironmentConfig.getEnvVariable(
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
     );
+  },
+  getStripeSecretKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_KEY");
+  },
+  getStripeSecretWebhookKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
   },
   getDustDataSourcesBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
@@ -70,8 +76,12 @@ const config = {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
     };
   },
+  // OAuth
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");
+  },
+  getOAuthNotionClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");
   },
 };
 

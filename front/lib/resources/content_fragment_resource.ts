@@ -240,7 +240,7 @@ export function fileAttachmentLocation({
     internalUrl: `https://storage.googleapis.com/${
       getPrivateUploadBucket().name
     }/${filePath}`,
-    downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
+    downloadUrl: `${appConfig.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment?format=${contentFormat}`,
   };
 }
 

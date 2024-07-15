@@ -74,7 +74,9 @@ export default handleAuth({
   logout: handleLogout((req) => {
     return {
       returnTo:
-        "query" in req ? (req.query.returnTo as string) : config.getAppUrl(),
+        "query" in req
+          ? (req.query.returnTo as string)
+          : config.getClientFacingUrl(),
     };
   }),
 });

@@ -11,11 +11,10 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
+import config from "@app/lib/api/config";
 import { getUserMetadata } from "@app/lib/api/user";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-
-const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
@@ -57,8 +56,8 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       defaultExpertise: expertise?.value || "",
       defaultAdminInterest: adminInterest?.value || "",
       conversationId,
-      baseUrl: URL,
-      gaTrackingId: GA_TRACKING_ID,
+      baseUrl: config.getClientFacingUrl(),
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });

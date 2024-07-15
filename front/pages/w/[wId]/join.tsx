@@ -4,14 +4,13 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
+import config from "@app/lib/api/config";
 import {
   getWorkspaceInfos,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
 import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-
-const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 /**
  * 3 ways to end up here:
@@ -124,8 +123,8 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
-      baseUrl: URL,
-      gaTrackingId: GA_TRACKING_ID,
+      baseUrl: config.getClientFacingUrl(),
+      gaTrackingId: config.getGaTrackingId(),
       invitationEmail,
       onboardingType,
       signUpCallbackUrl,

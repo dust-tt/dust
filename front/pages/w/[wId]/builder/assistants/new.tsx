@@ -127,7 +127,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       actions,
       agentConfiguration: configuration,
       flow,
-      baseUrl: config.getAppUrl(),
+      baseUrl: config.getClientFacingUrl(),
       templateId,
     },
   };

@@ -21,10 +21,9 @@ import type {
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-
-const { GA_TRACKING_ID = "", URL = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -89,7 +88,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       plan,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       dataSources: allDataSources,
       dustApps: allDustApps,
       actions: await buildInitialActions({
@@ -99,7 +98,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       }),
       agentConfiguration: configuration,
       flow,
-      baseUrl: URL,
+      baseUrl: config.getClientFacingUrl(),
     },
   };
 });

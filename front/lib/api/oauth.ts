@@ -78,11 +78,14 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: () => null,
   },
   notion: {
-    redirectUrl: () => {
-      return new Err({
-        code: "connection_not_implemented",
-        message: "Notion OAuth is not implemented",
-      });
+    redirectUrl: (connection) => {
+      return new Ok(
+        `https://api.notion.com/v1/oauth/authorize?owner=user` +
+          `response_type=code` +
+          `&client_id=${config.getOAuthNotionClientId()}` +
+          `&redirect_uri=${encodeURIComponent(config.getClientFacingUrl() + "/oauth/notion/finalize")}` +
+          `&state=${connection.connection_id}`
+      );
     },
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
