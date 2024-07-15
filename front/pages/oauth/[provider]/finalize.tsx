@@ -1,6 +1,6 @@
 import { isOAuthProvider } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { finalizeConnection } from "@app/lib/api/oauth";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -36,11 +36,18 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 export default function Finalize({
   connectionId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     // When the component mounts and connectionId is available, send a message `connection_finalized
     // `to the window that opened this one.
     if (connectionId) {
-      window.opener &&
+      if (!window.opener) {
+        setError(
+          "This URL was unexpectedly visited outside of the Dust Connections setup flow. " +
+            "Please close this window and try again from Dust."
+        );
+      } else {
         window.opener.postMessage(
           {
             type: "connection_finalized",
@@ -48,8 +55,9 @@ export default function Finalize({
           },
           window.location.origin
         );
+      }
     }
   }, [connectionId]);
 
-  return null; // Render nothing.
+  return error ? <p>{error}</p> : null; // Render nothing.
 }

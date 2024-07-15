@@ -300,8 +300,22 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         code: &str,
     ) -> Result<()> {
-        if self.status == ConnectionStatus::Finalized {
-            return Err(anyhow::anyhow!("Connection is already finalized"));
+        match self.status {
+            // Pending is the expected status for a new connection.
+            ConnectionStatus::Pending => (),
+            // We allow calling finalized twice with the same code (user messes up or refresh).
+            // Otherwise we error.
+            ConnectionStatus::Finalized => match self.unseal_authorization_code()? {
+                Some(c) => {
+                    // If it's finalized and the code matches, we return early.
+                    if c == code {
+                        return Ok(());
+                    }
+                    Err(anyhow::anyhow!("Connection is already finalized"))?
+                }
+                // If we have a finalized connection without `authorization_code` we 500.
+                None => unreachable!(),
+            },
         }
 
         let finalize = provider(self.provider).finalize(self, code).await?;
