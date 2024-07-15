@@ -2,7 +2,6 @@ import type { Result, UserProviderType, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import { renderUserType } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -21,7 +20,33 @@ export class UserResource extends BaseResource<User> {
     super(User, blob);
   }
 
-  static async findAllByUsername(username: string): Promise<UserResource[]> {
+  static async makeNew(
+    blob: Omit<
+      Attributes<User>,
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "isDustSuperUser"
+      | "providerId"
+      | "imageUrl"
+    > &
+      Partial<Pick<Attributes<User>, "providerId" | "imageUrl">>
+  ): Promise<UserResource> {
+    const user = await User.create(blob);
+    return new this(User, user.get());
+  }
+
+  static async fetchAllByModelIds(ids: number[]): Promise<UserResource[]> {
+    const users = await User.findAll({
+      where: {
+        id: ids,
+      },
+    });
+
+    return users.map((user) => new UserResource(User, user.get()));
+  }
+
+  static async fetchAllByUsername(username: string): Promise<UserResource[]> {
     const users = await User.findAll({
       where: {
         username,
@@ -31,41 +56,29 @@ export class UserResource extends BaseResource<User> {
     return users.map((user) => new UserResource(User, user.get()));
   }
 
-  static async fetchByExternalId(
-    sid: string,
-    transaction?: Transaction
-  ): Promise<UserResource | null> {
+  static async fetchByExternalId(userId: string): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
-        sId: sid,
+        sId: userId,
       },
-      transaction,
     });
     return user ? new UserResource(User, user.get()) : null;
   }
 
-  static async fetchByAuth0Sub(
-    sub: string,
-    transaction?: Transaction
-  ): Promise<UserResource | null> {
+  static async fetchByAuth0Sub(sub: string): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
         auth0Sub: sub,
       },
-      transaction,
     });
     return user ? new UserResource(User, user.get()) : null;
   }
 
-  static async fetchByEmail(
-    email: string,
-    transaction?: Transaction
-  ): Promise<UserResource | null> {
+  static async fetchByEmail(email: string): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
         email,
       },
-      transaction,
     });
 
     return user ? new UserResource(User, user.get()) : null;
@@ -73,15 +86,13 @@ export class UserResource extends BaseResource<User> {
 
   static async fetchByProvider(
     provider: UserProviderType,
-    providerId: string,
-    transaction?: Transaction
+    providerId: string
   ): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
         provider,
         providerId,
       },
-      transaction,
     });
 
     return user ? new UserResource(User, user.get()) : null;
@@ -115,7 +126,6 @@ export class UserResource extends BaseResource<User> {
       returning: true,
     });
 
-    // Update the resource to reflect the new status.
     Object.assign(this, affectedRows[0].get());
   }
 
@@ -137,11 +147,18 @@ export class UserResource extends BaseResource<User> {
     }
   }
 
-  toJSON(): User {
-    return this.model.build(this);
-  }
-
-  toUserType(): UserType {
-    return renderUserType(this.toJSON());
+  toJSON(): UserType {
+    return {
+      sId: this.sId,
+      id: this.id,
+      createdAt: this.createdAt.getTime(),
+      provider: this.provider,
+      username: this.username,
+      email: this.email,
+      firstName: this.firstName,
+      lastName: this.lastName,
+      fullName: this.firstName + (this.lastName ? ` ${this.lastName}` : ""),
+      image: this.imageUrl,
+    };
   }
 }

@@ -1,25 +1,10 @@
-import type { UserMetadataType, UserType } from "@dust-tt/types";
+import type { UserMetadataType } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { User, UserMetadata } from "@app/lib/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 import { MembershipResource } from "../resources/membership_resource";
-
-export function renderUserType(user: User): UserType {
-  return {
-    sId: user.sId,
-    id: user.id,
-    createdAt: user.createdAt.getTime(),
-    provider: user.provider,
-    username: user.username,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-    image: user.imageUrl,
-  };
-}
 
 /**
  * This function checks that the user had at least one membership in the past for this workspace
@@ -28,21 +13,21 @@ export function renderUserType(user: User): UserType {
 export async function getUserForWorkspace(
   auth: Authenticator,
   { userId }: { userId: string }
-): Promise<UserType | null> {
+): Promise<UserResource | null> {
   const owner = auth.workspace();
   if (!owner || !(auth.isAdmin() || auth.user()?.sId === userId)) {
     return null;
   }
 
-  const userRes = await UserResource.fetchByExternalId(userId);
+  const user = await UserResource.fetchByExternalId(userId);
 
-  if (!userRes) {
+  if (!user) {
     return null;
   }
 
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
-      user: userRes.toUserType(),
+      user,
       workspace: owner,
     });
 
@@ -50,10 +35,10 @@ export async function getUserForWorkspace(
     return null;
   }
 
-  return userRes.toUserType();
+  return user;
 }
 
-export async function deleteUser(user: UserType): Promise<void> {
+export async function deleteUser(user: UserResource): Promise<void> {
   await User.destroy({
     where: {
       id: user.id,
@@ -68,7 +53,7 @@ export async function deleteUser(user: UserType): Promise<void> {
  * @returns UserMetadataType | null
  */
 export async function getUserMetadata(
-  user: UserType,
+  user: UserResource,
   key: string
 ): Promise<UserMetadataType | null> {
   const metadata = await UserMetadata.findOne({
@@ -95,7 +80,7 @@ export async function getUserMetadata(
  * @returns UserMetadataType | null
  */
 export async function setUserMetadata(
-  user: UserType,
+  user: UserResource,
   update: UserMetadataType
 ): Promise<void> {
   const metadata = await UserMetadata.findOne({
@@ -123,7 +108,7 @@ export async function updateUserFullName({
   firstName,
   lastName,
 }: {
-  user: UserType;
+  user: UserResource;
   firstName: string;
   lastName: string;
 }): Promise<boolean | null> {
@@ -140,19 +125,4 @@ export async function updateUserFullName({
   });
 
   return true;
-}
-
-export async function unsafeGetUsersByModelId(
-  modelIds: number[]
-): Promise<UserType[]> {
-  if (modelIds.length === 0) {
-    return [];
-  }
-  const users = await User.findAll({
-    where: {
-      id: modelIds,
-    },
-  });
-
-  return users.map((u) => renderUserType(u));
 }

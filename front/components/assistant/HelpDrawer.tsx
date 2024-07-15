@@ -8,12 +8,7 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  MentionType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { AgentMention, MentionType, WorkspaceType } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -24,6 +19,7 @@ import { createConversationWithMessage } from "@app/components/assistant/convers
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type { UserResource } from "@app/lib/resources/user_resource";
 
 const topPicks = [
   {
@@ -79,7 +75,7 @@ export function HelpDrawer({
   onClose,
 }: {
   owner: WorkspaceType;
-  user: UserType;
+  user: UserResource;
   show: boolean;
   onClose: () => void;
 }) {

@@ -517,7 +517,7 @@ export async function deleteMembersActivity({
       if (user) {
         const membershipsOfUser = await MembershipResource.getLatestMemberships(
           {
-            users: [user.toUserType()],
+            users: [user.toJSON()],
             transaction: t,
           }
         );
@@ -534,7 +534,7 @@ export async function deleteMembersActivity({
             `[Workspace delete] Deleting Membership ${membership.id} and user ${user.id}`
           );
           // Delete the user's files
-          await FileResource.deleteAllForUser(user.toUserType(), t);
+          await FileResource.deleteAllForUser(user.toJSON(), t);
           await membership.delete(auth, t);
           await user.delete(auth, t);
         }

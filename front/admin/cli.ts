@@ -182,7 +182,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --username argument");
       }
 
-      const users = await UserResource.findAllByUsername(args.username);
+      const users = await UserResource.fetchAllByUsername(args.username);
 
       users.forEach((u) => {
         console.log(
@@ -208,7 +208,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  email: ${u.email}`);
 
       const memberships = await MembershipResource.getLatestMemberships({
-        users: [u.toUserType()],
+        users: [u],
       });
 
       const workspaces = await Workspace.findAll({
