@@ -373,6 +373,16 @@ export function getDriveItemAPIPath(item: MicrosoftGraph.DriveItem) {
   return `/drives/${parentReference.driveId}/items/${item.id}`;
 }
 
+export function getParentReferenceAPIPath(
+  parentReference: MicrosoftGraph.ItemReference
+) {
+  if (!parentReference.driveId) {
+    throw new Error("Unexpected: no drive id for item");
+  }
+
+  return `/drives/${parentReference.driveId}/items/${parentReference.id}`;
+}
+
 export function getWorksheetAPIPath(
   item: MicrosoftGraph.WorkbookWorksheet,
   parentInternalId: string
@@ -389,6 +399,24 @@ export function getWorksheetAPIPath(
 
 export function getDriveAPIPath(drive: MicrosoftGraph.Drive) {
   return `/drives/${drive.id}`;
+}
+
+export function getDriveAPIPathFromItem(item: MicrosoftGraph.DriveItem) {
+  if (!item.parentReference?.driveId) {
+    throw new Error("Unexpected: no drive id for item");
+  }
+
+  return `/drives/${item.parentReference.driveId}`;
+}
+
+export function getDriveItemAPIPathFromReference(
+  parentReference: MicrosoftGraph.ItemReference
+) {
+  if (!parentReference.driveId) {
+    throw new Error("Unexpected: no drive id for item");
+  }
+
+  return `/drives/${parentReference.driveId}/items/${parentReference.id}`;
 }
 
 export function getSiteAPIPath(site: MicrosoftGraph.Site) {

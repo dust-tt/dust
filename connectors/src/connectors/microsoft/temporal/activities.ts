@@ -7,7 +7,9 @@ import turndown from "turndown";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
+  getDriveAPIPathFromItem,
   getDriveItemAPIPath,
+  getDriveItemAPIPathFromReference,
   getDrives,
   getFilesAndFolders,
   getItem,
@@ -15,6 +17,7 @@ import {
   getSites,
   internalIdFromTypeAndPath,
   itemToMicrosoftNode,
+  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
@@ -40,6 +43,7 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { Client } from "@microsoft/microsoft-graph-client";
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -117,12 +121,82 @@ export async function getSiteNodesToSync(
     [] as MicrosoftNode[]
   );
 
+  // for all folders, check if a parent folder or drive is already in the list,
+  // in which case remove it this can happen because when a user selects a
+  // folder to sync, then a parent folder, both are storeed in Microsoft Roots
+  // table
+
+  // Keeping them both in the sync list can result in various kinds of issues,
+  // e.g. if a child folder is synced before the parent, then the child folder's
+  // files' parents array will be incomplete, thus the need to prune the list
+  const nodesToSync = allNodes.filter(
+    async (node) =>
+      !(
+        node.nodeType === "folder" &&
+        (await isParentAlreadyInNodes({
+          client,
+          nodes: allNodes,
+          folder: node,
+        }))
+      )
+  );
+
   const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
     connectorId,
-    allNodes
+    nodesToSync
   );
 
   return nodeResources.map((r) => r.internalId);
+}
+
+async function isParentAlreadyInNodes({
+  client,
+  nodes,
+  folder,
+}: {
+  client: Client;
+  nodes: MicrosoftNode[];
+  folder: MicrosoftNode;
+}) {
+  const { itemAPIPath } = typeAndPathFromInternalId(folder.internalId);
+  let driveItem: microsoftgraph.DriveItem = await getItem(client, itemAPIPath);
+
+  // check if the list already contains the drive of this folder
+  if (
+    nodes.some(
+      (node) =>
+        node.internalId ===
+        internalIdFromTypeAndPath({
+          nodeType: "drive",
+          itemAPIPath: getDriveAPIPathFromItem(driveItem),
+        })
+    )
+  ) {
+    return true;
+  }
+
+  // check if the list already contains any parent of this folder
+  while (!driveItem.root) {
+    if (!driveItem.parentReference) {
+      return false;
+    }
+
+    const parentAPIPath = getDriveItemAPIPathFromReference(
+      driveItem.parentReference
+    );
+
+    const parentInternalId = internalIdFromTypeAndPath({
+      nodeType: "folder",
+      itemAPIPath: parentAPIPath,
+    });
+
+    if (nodes.some((node) => node.internalId === parentInternalId)) {
+      return true;
+    }
+
+    driveItem = await getItem(client, parentAPIPath);
+  }
+  return false;
 }
 
 export async function markNodeAsVisited(
