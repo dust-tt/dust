@@ -32,9 +32,9 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
@@ -58,11 +58,7 @@ export async function batchRenderUserMessages(
       if (userIds.length === 0) {
         return [];
       }
-      return User.findAll({
-        where: {
-          id: userIds,
-        },
-      });
+      return UserResource.fetchAllByModelIds(userIds);
     })(),
   ]);
 

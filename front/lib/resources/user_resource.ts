@@ -139,16 +139,16 @@ export class UserResource extends BaseResource<User> {
   async delete(): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
-      where: {
-        id: this.id,
-      },
-    });
+        where: {
+          id: this.id,
+        },
+      });
 
-    return new Ok(undefined);
-  } catch (err) {
-    return new Err(err as Error);
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
   }
-}
 
   toJSON(): UserType {
     return {
