@@ -5,7 +5,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
-use ring::aead::NONCE_LEN;
+use ring::aead::quic::CHACHA20;
+use ring::aead::{CHACHA20_POLY1305, NONCE_LEN};
 use ring::{
     aead,
     rand::{self, SecureRandom},
@@ -64,6 +65,8 @@ pub struct RefreshResult {
     pub access_token: String,
     pub access_token_expiry: Option<u64>,
     pub refresh_token: Option<String>,
+    // The provider is in charge of update the raw_json.
+    pub raw_json: serde_json::Value,
 }
 
 #[async_trait]
@@ -206,16 +209,44 @@ impl Connection {
         self.encrypted_authorization_code.as_ref()
     }
 
+    pub fn unseal_authorization_code(&self) -> Result<Option<String>> {
+        match &self.encrypted_authorization_code {
+            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
+            None => Ok(None),
+        }
+    }
+
     pub fn encrypted_access_token(&self) -> Option<&Vec<u8>> {
         self.encrypted_access_token.as_ref()
+    }
+
+    pub fn unseal_access_token(&self) -> Result<Option<String>> {
+        match &self.encrypted_access_token {
+            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
+            None => Ok(None),
+        }
     }
 
     pub fn encrypted_refresh_token(&self) -> Option<&Vec<u8>> {
         self.encrypted_refresh_token.as_ref()
     }
 
+    pub fn unseal_refresh_token(&self) -> Result<Option<String>> {
+        match &self.encrypted_refresh_token {
+            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
+            None => Ok(None),
+        }
+    }
+
     pub fn encrypted_raw_json(&self) -> Option<&Vec<u8>> {
         self.encrypted_raw_json.as_ref()
+    }
+
+    pub fn unseal_raw_json(&self) -> Result<Option<serde_json::Value>> {
+        match &self.encrypted_raw_json {
+            Some(t) => Ok(Some(serde_json::from_str(&Connection::unseal_str(t)?)?)),
+            None => Ok(None),
+        }
     }
 
     fn seal_str(s: &str) -> Result<Vec<u8>> {
@@ -253,35 +284,36 @@ impl Connection {
         key.open_in_place(nonce, aead::Aad::empty(), &mut in_out)
             .map_err(|_| anyhow::anyhow!("Decryption failed"))?;
 
-        Ok(String::from_utf8(in_out)?)
+        Ok(String::from_utf8(
+            in_out[0..(in_out.len() - CHACHA20_POLY1305.tag_len())].to_vec(),
+        )?)
     }
 
-    pub async fn update_secrets(
+    pub async fn access_token(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
-        access_token_expiry: Option<u64>,
-        authorization_code: &str,
-        access_token: &str,
-        refresh_token: Option<&str>,
-        raw_json: &serde_json::Value,
-    ) -> Result<()> {
-        self.access_token_expiry = access_token_expiry;
-        self.encrypted_authorization_code = Some(Connection::seal_str(authorization_code)?);
-        self.encrypted_access_token = Some(Connection::seal_str(access_token)?);
-        self.encrypted_refresh_token = match refresh_token {
+    ) -> Result<String> {
+        let access_token = match &self.encrypted_access_token {
+            Some(t) => Connection::unseal_str(t)?,
+            None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
+        };
+
+        // For now always refresh while testing
+        // TODO(spolu): distributed locking and expiry logic
+        let refresh = provider(self.provider).refresh(self).await?;
+
+        self.access_token_expiry = refresh.access_token_expiry;
+        self.encrypted_access_token = Some(Connection::seal_str(&refresh.access_token)?);
+        self.encrypted_refresh_token = match &refresh.refresh_token {
             Some(t) => Some(Connection::seal_str(t)?),
             None => None,
         };
-        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(raw_json)?)?);
+        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
+            &refresh.raw_json,
+        )?)?);
+        store.update_connection_secrets(self).await?;
 
-        store.update_connection_secrets(self).await
-    }
-
-    pub fn access_token(&self) -> Result<Option<String>> {
-        match &self.encrypted_access_token {
-            Some(t) => Ok(Some(Connection::unseal_str(t)?)),
-            None => Ok(None),
-        }
+        Ok(refresh.access_token)
     }
 
     pub async fn create(
@@ -305,7 +337,20 @@ impl Connection {
 
         let finalize = provider(self.provider).finalize(self, code).await?;
 
-        // TODO(spolu): implement store
+        self.status = ConnectionStatus::Finalized;
+        store.update_connection_status(self).await?;
+
+        self.encrypted_authorization_code = Some(Connection::seal_str(&finalize.code)?);
+        self.access_token_expiry = finalize.access_token_expiry;
+        self.encrypted_access_token = Some(Connection::seal_str(&finalize.access_token)?);
+        self.encrypted_refresh_token = match &finalize.refresh_token {
+            Some(t) => Some(Connection::seal_str(t)?),
+            None => None,
+        };
+        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
+            &finalize.raw_json,
+        )?)?);
+        store.update_connection_secrets(self).await?;
 
         Ok(())
     }

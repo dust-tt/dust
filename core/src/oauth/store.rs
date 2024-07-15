@@ -21,6 +21,7 @@ pub trait OAuthStore {
         connection_id: &str,
     ) -> Result<Connection>;
     async fn update_connection_secrets(&self, connection: &Connection) -> Result<()>;
+    async fn update_connection_status(&self, connection: &Connection) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
 }
@@ -179,6 +180,29 @@ impl OAuthStore for PostgresOAuthStore {
                 &connection.encrypted_access_token(),
                 &connection.encrypted_refresh_token(),
                 &connection.encrypted_raw_json(),
+                &row_id,
+                &connection.provider().to_string(),
+                &secret,
+            ],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn update_connection_status(&self, connection: &Connection) -> Result<()> {
+        let (row_id, secret) =
+            Connection::row_id_and_secret_from_connection_id(&connection.connection_id())?;
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        c.execute(
+            "UPDATE connections
+                SET status = $1
+              WHERE id = $2 AND provider = $3 AND secret = $4",
+            &[
+                &connection.status().to_string(),
                 &row_id,
                 &connection.provider().to_string(),
                 &secret,

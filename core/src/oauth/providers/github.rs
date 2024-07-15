@@ -122,6 +122,20 @@ impl Provider for GithubConnectionProvider {
     }
 
     async fn refresh(&self, connection: &Connection) -> Result<RefreshResult> {
-        unimplemented!();
+        // `code` is the installation_id returned by Github.
+        let code = match connection.unseal_authorization_code()? {
+            Some(code) => code,
+            None => Err(anyhow!("Missing installation_id in connection"))?,
+        };
+
+        let (token, expiry, raw_json) = self.refresh_token(&code).await?;
+
+        Ok(RefreshResult {
+            access_token: token.to_string(),
+            access_token_expiry: Some(expiry),
+            refresh_token: None,
+            // Github raw_json is an updated version of the full object.
+            raw_json,
+        })
     }
 }
