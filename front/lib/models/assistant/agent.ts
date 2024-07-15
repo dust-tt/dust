@@ -50,7 +50,6 @@ export class AgentConfiguration extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare authorId: ForeignKey<User["id"]>;
 
-  declare maxToolsUsePerRun: number;
   declare maxStepsPerRun: number;
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
@@ -118,10 +117,6 @@ AgentConfiguration.init(
       type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 0.7,
-    },
-    maxToolsUsePerRun: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
     },
     maxStepsPerRun: {
       type: DataTypes.INTEGER,
