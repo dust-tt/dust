@@ -15,8 +15,12 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
 
-static REDIS_LOCK_TTL_SECONDS: u64 = 30;
-static ACCESS_TOKEN_EXPIRY_BUFFER_MILLIS: u64 = 1000 * 60 * 5;
+// We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
+// is the maximum time the lock will be held.
+static REDIS_LOCK_TTL_SECONDS: u64 = 15;
+// To ensure we don't write without holding the lock providers must comply to this timeout when
+// operating on tokens.
+pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
 
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
@@ -418,7 +422,7 @@ impl Connection {
 
         // If we refreshed while waiting for the lock return early.
         if let Some(expiry) = self.access_token_expiry {
-            if expiry > utils::now() + ACCESS_TOKEN_EXPIRY_BUFFER_MILLIS {
+            if expiry > utils::now() {
                 return Ok(access_token);
             }
         }
@@ -449,7 +453,7 @@ impl Connection {
         };
 
         if let Some(expiry) = self.access_token_expiry {
-            if expiry > utils::now() + ACCESS_TOKEN_EXPIRY_BUFFER_MILLIS {
+            if expiry > utils::now() {
                 return Ok(access_token);
             }
         }
