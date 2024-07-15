@@ -1,7 +1,7 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getAPIKey, getBearerToken } from "@app/lib/auth";
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -107,5 +107,76 @@ export function withSessionAuthenticationForWorkspace<T>(
       return handler(req, res, auth, session);
     },
     opts
+  );
+}
+
+export function withAuthenticationForPublicAssistantApi<T>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator
+  ) => Promise<void> | void,
+  opts: { isStreaming?: boolean } = {}
+) {
+  return withLogging(
+    async (
+      req: NextApiRequest,
+      res: NextApiResponse<WithAPIErrorResponse<T>>
+    ) => {
+      const { wId } = req.query;
+      if (typeof wId !== "string" || !wId) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_not_found",
+            message: "The workspace was not found.",
+          },
+        });
+      }
+
+      const bearerTokenRes = await getBearerToken(req);
+      if (bearerTokenRes.isErr() || !bearerTokenRes.value) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+      const bearerToken = bearerTokenRes.value;
+
+      // If the token starts with "sk-", we are trying to authenticate using the API key
+      // Otherwise, it is an Auth0 token
+      if (bearerToken.startsWith("sk-")) {
+        const apiKeyResult = await getAPIKey(req);
+        if (apiKeyResult.isOk()) {
+          const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+            apiKeyResult.value,
+            wId
+          );
+          if (auth && auth.isBuilder() && keyWorkspaceId === wId) {
+            return handler(req, res, auth);
+          }
+        }
+      } else {
+        const auth = await Authenticator.fromAuth0Token(bearerToken, wId);
+        if (auth.isBuilder()) {
+          return handler(req, res, auth);
+        }
+      }
+
+      // If both authentication methods fail, return an error
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message:
+            "The request does not have valid authentication credentials.",
+        },
+      });
+    },
+    opts.isStreaming
   );
 }
