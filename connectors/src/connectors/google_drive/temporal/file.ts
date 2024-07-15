@@ -1,7 +1,10 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { slugify } from "@dust-tt/types";
+import { uuid4 } from "@temporalio/workflow";
 import tracer from "dd-trace";
+import fs from "fs/promises";
 import type { OAuth2Client } from "googleapis-common";
+import os from "os";
 import type { CreationAttributes } from "sequelize";
 
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
@@ -27,7 +30,7 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { docx2text } from "@connectors/lib/docx2text.";
-import { extractTextFromPDF } from "@connectors/lib/dpdf2text";
+import { dpdf2text } from "@connectors/lib/dpdf2text";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -231,23 +234,23 @@ export async function syncOneFile(
             );
           }
         } else if (file.mimeType === "application/pdf") {
+          const pdf_path = os.tmpdir() + "/" + uuid4() + ".pdf";
           try {
-            if (!(res.data instanceof ArrayBuffer)) {
-              localLogger.error({}, "res.data is not an ArrayBuffer");
-              return false;
+            if (res.data instanceof ArrayBuffer) {
+              await fs.writeFile(pdf_path, Buffer.from(res.data), "binary");
             }
 
-            const pages = await extractTextFromPDF(Buffer.from(res.data));
+            const { pages } = await dpdf2text(pdf_path);
 
             documentContent =
               pages.length > 0
                 ? {
                     prefix: null,
                     content: null,
-                    sections: pages.map(({ pageNumber, text }) => ({
-                      // The prefix needs to implement its own formatting.
-                      prefix: `\n$pdfPage: ${pageNumber}/${pages.length}\n`,
-                      content: text,
+                    sections: pages.map((page, i) => ({
+                      // We prefix with `\n` because page splitting  in `dpdf2text` removes the `\f`.
+                      prefix: `\n$pdfPage: ${i + 1}/${pages.length}\n`,
+                      content: page,
                       sections: [],
                     })),
                   }
@@ -269,6 +272,8 @@ export async function syncOneFile(
             // we don't know what to do with PDF files that fails to be converted to text.
             // So we log the error and skip the file.
             return false;
+          } finally {
+            await fs.unlink(pdf_path);
           }
         } else if (
           file.mimeType ===
