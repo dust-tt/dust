@@ -1,4 +1,6 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
+import type { Client } from "@microsoft/microsoft-graph-client";
 import axios from "axios";
 import mammoth from "mammoth";
 import type { Logger } from "pino";
@@ -43,8 +45,6 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { Client } from "@microsoft/microsoft-graph-client";
-import { start } from "repl";
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -619,6 +619,7 @@ async function getParents({
  * fetches can be made a lot of times during a sync, cache for 10mins in a
  * per-sync basis (given by startSyncTs) */
 const getParentParentId = cacheWithRedis(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async (connectorId, parentInternalId, startSyncTs) => {
     const parent = await MicrosoftNodeResource.fetchByInternalId(
       connectorId,
