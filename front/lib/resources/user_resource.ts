@@ -1,8 +1,7 @@
 import type { Result, UserProviderType, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type { Attributes, ModelStatic } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -137,23 +136,19 @@ export class UserResource extends BaseResource<User> {
     Object.assign(this, affectedRows[0].get());
   }
 
-  async delete(
-    auth: Authenticator,
-    transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
+  async delete(): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
+      where: {
+        id: this.id,
+      },
+    });
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(err as Error);
   }
+}
 
   toJSON(): UserType {
     return {
