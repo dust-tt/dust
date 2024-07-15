@@ -80,10 +80,12 @@ export class OAuthAPI {
     provider,
     connectionId,
     code,
+    redirectUri,
   }: {
     provider: OAuthProvider;
     connectionId: string;
     code: string;
+    redirectUri: string;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const response = await this._fetchWithError(
       `${this._url}/connections/${connectionId}/finalize`,
@@ -95,6 +97,7 @@ export class OAuthAPI {
         body: JSON.stringify({
           provider,
           code,
+          redirectUri,
         }),
       }
     );

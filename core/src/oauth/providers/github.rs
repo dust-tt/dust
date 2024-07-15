@@ -126,7 +126,12 @@ impl Provider for GithubConnectionProvider {
         ConnectionProvider::Github
     }
 
-    async fn finalize(&self, _connection: &Connection, code: &str) -> Result<FinalizeResult> {
+    async fn finalize(
+        &self,
+        _connection: &Connection,
+        code: &str,
+        _redirect_uri: &str,
+    ) -> Result<FinalizeResult> {
         // `code` is the installation_id returned by Github.
         let (token, expiry, raw_json) = self.refresh_token(code).await?;
 

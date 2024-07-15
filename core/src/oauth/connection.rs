@@ -1,4 +1,7 @@
-use crate::oauth::{providers::github::GithubConnectionProvider, store::OAuthStore};
+use crate::oauth::{
+    providers::{github::GithubConnectionProvider, notion::NotionConnectionProvider},
+    store::OAuthStore,
+};
 use crate::utils;
 use crate::utils::ParseError;
 use anyhow::Result;
@@ -84,7 +87,12 @@ pub struct RefreshResult {
 pub trait Provider {
     fn id(&self) -> ConnectionProvider;
 
-    async fn finalize(&self, connection: &Connection, code: &str) -> Result<FinalizeResult>;
+    async fn finalize(
+        &self,
+        connection: &Connection,
+        code: &str,
+        redirect_uri: &str,
+    ) -> Result<FinalizeResult>;
     async fn refresh(&self, connection: &Connection) -> Result<RefreshResult>;
 }
 
@@ -94,7 +102,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => unimplemented!(),
         ConnectionProvider::Intercom => unimplemented!(),
-        ConnectionProvider::Notion => unimplemented!(),
+        ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => unimplemented!(),
     }
 }
@@ -141,8 +149,9 @@ pub struct Connection {
     provider: ConnectionProvider,
     status: ConnectionStatus,
     metadata: serde_json::Value,
-    access_token_expiry: Option<u64>,
+    redirect_uri: Option<String>,
     encrypted_authorization_code: Option<Vec<u8>>,
+    access_token_expiry: Option<u64>,
     encrypted_access_token: Option<Vec<u8>>,
     encrypted_refresh_token: Option<Vec<u8>>,
     encrypted_raw_json: Option<Vec<u8>>,
@@ -155,8 +164,9 @@ impl Connection {
         provider: ConnectionProvider,
         status: ConnectionStatus,
         metadata: serde_json::Value,
-        access_token_expiry: Option<u64>,
+        redirect_uri: Option<String>,
         encrypted_authorization_code: Option<Vec<u8>>,
+        access_token_expiry: Option<u64>,
         encrypted_access_token: Option<Vec<u8>>,
         encrypted_refresh_token: Option<Vec<u8>>,
         encrypted_raw_json: Option<Vec<u8>>,
@@ -167,8 +177,9 @@ impl Connection {
             provider,
             status,
             metadata,
-            access_token_expiry,
+            redirect_uri,
             encrypted_authorization_code,
+            access_token_expiry,
             encrypted_access_token,
             encrypted_refresh_token,
             encrypted_raw_json,
@@ -224,8 +235,8 @@ impl Connection {
         &self.metadata
     }
 
-    pub fn access_token_expiry(&self) -> Option<u64> {
-        self.access_token_expiry
+    pub fn redirect_uri(&self) -> Option<String> {
+        self.redirect_uri.clone()
     }
 
     pub fn encrypted_authorization_code(&self) -> Option<&Vec<u8>> {
@@ -237,6 +248,10 @@ impl Connection {
             Some(t) => Ok(Some(Connection::unseal_str(t)?)),
             None => Ok(None),
         }
+    }
+
+    pub fn access_token_expiry(&self) -> Option<u64> {
+        self.access_token_expiry
     }
 
     pub fn encrypted_access_token(&self) -> Option<&Vec<u8>> {
@@ -321,8 +336,9 @@ impl Connection {
         self.provider = connection.provider;
         self.status = connection.status;
         self.metadata = connection.metadata;
-        self.access_token_expiry = connection.access_token_expiry;
+        self.redirect_uri = connection.redirect_uri;
         self.encrypted_authorization_code = connection.encrypted_authorization_code;
+        self.access_token_expiry = connection.access_token_expiry;
         self.encrypted_access_token = connection.encrypted_access_token;
         self.encrypted_refresh_token = connection.encrypted_refresh_token;
         self.encrypted_raw_json = connection.encrypted_raw_json;
@@ -384,6 +400,7 @@ impl Connection {
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
         code: &str,
+        redirect_uri: &str,
     ) -> Result<()> {
         self.reload(store.clone()).await?;
 
@@ -391,11 +408,14 @@ impl Connection {
             return Ok(());
         }
 
-        let finalize = provider(self.provider).finalize(self, code).await?;
+        let finalize = provider(self.provider)
+            .finalize(self, code, redirect_uri)
+            .await?;
 
         self.status = ConnectionStatus::Finalized;
         store.update_connection_status(self).await?;
 
+        self.redirect_uri = Some(redirect_uri.to_string());
         self.encrypted_authorization_code = Some(Connection::seal_str(&finalize.code)?);
         self.access_token_expiry = finalize.access_token_expiry;
         self.encrypted_access_token = Some(Connection::seal_str(&finalize.access_token)?);
@@ -415,6 +435,7 @@ impl Connection {
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
         code: &str,
+        redirect_uri: &str,
     ) -> Result<()> {
         if self.is_already_finalized(code)? {
             return Ok(());
@@ -428,7 +449,7 @@ impl Connection {
                 Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
             )
             .await?;
-        let res = self.finalize_locked(store, code).await;
+        let res = self.finalize_locked(store, code, redirect_uri).await;
         rl.unlock(&lock).await;
 
         res

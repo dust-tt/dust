@@ -1,7 +1,7 @@
 import { isOAuthProvider } from "@dust-tt/types";
 
 import {
-  createConnectionAndGetRedirectURL,
+  createConnectionAndGetSetupUrl,
   isOAuthUseCase,
 } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -28,17 +28,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       };
     }
 
-    // Optionally retrieve connectionId to update an existing connection.
-    // const connectionId = (context.query.connectionId as string) || null;
-
-    const urlRes = await createConnectionAndGetRedirectURL(
+    const urlRes = await createConnectionAndGetSetupUrl(
       auth,
       provider,
       useCase
     );
 
     if (!urlRes.isOk()) {
-      console.log("urlRes.error", urlRes.error);
       return {
         notFound: true,
       };
