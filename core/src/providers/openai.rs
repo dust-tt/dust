@@ -1,3 +1,6 @@
+use crate::providers::chat_messages::{
+    AssistantChatMessage, ChatMessage, ContentBlock, MixedContent,
+};
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
@@ -6,7 +9,7 @@ use crate::providers::llm::{
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
-    cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
+    batch_tokenize_async, cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
@@ -31,9 +34,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-
-use super::chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock, MixedContent};
-use super::tiktoken::tiktoken::batch_tokenize_async;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
