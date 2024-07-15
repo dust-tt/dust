@@ -1,51 +1,58 @@
-import { spawn } from "child_process";
-import tracer from "dd-trace";
+import { join } from "path";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { Readable } from "stream";
 
-export async function dpdf2text(
-  pdfPath: string
-): Promise<{ pages: string[]; content: string }> {
-  return tracer.trace(
-    `dpdf2text`,
-    {
-      resource: `dpdf2text`,
-    },
-    async (span) => {
-      span?.setTag("pdfPath", pdfPath);
-      const argsPerPage: string[] = ["-layout", "-enc", "UTF-8", pdfPath, "-"];
+interface PDFPage {
+  pageNumber: number;
+  text: string;
+}
 
-      const content = await new Promise<string>((resolve, reject) => {
-        const child = spawn("pdftotext", argsPerPage);
+async function createPdfTextStream(buffer: Buffer) {
+  const loadingTask = getDocument({
+    data: new Uint8Array(buffer),
+    standardFontDataUrl: join(
+      __dirname,
+      "../../node_modules/pdfjs-dist/standard_fonts/"
+    ),
+  });
+  const pdf = await loadingTask.promise;
 
-        let capturedStdoutPerPage = "";
-        let capturedStderrPerPage = "";
-
-        child.stdout.on("data", (data) => {
-          capturedStdoutPerPage += data;
-        });
-        child.stderr.on("data", (data) => {
-          capturedStderrPerPage += data;
-        });
-
-        child.on("close", (code) => {
-          if (code === 0) {
-            resolve(capturedStdoutPerPage);
-          } else {
-            reject(new Error(capturedStderrPerPage));
+  return new Readable({
+    objectMode: true, // Enables stream to handle objects instead of only Buffers or strings.
+    async read() {
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        const strings = content.items.map((item: unknown) => {
+          if (
+            item &&
+            typeof item === "object" &&
+            "str" in item &&
+            typeof item.str === "string"
+          ) {
+            return item.str;
           }
         });
-      });
 
-      // This assumes \f is not used in the PDF content. Checking popper source code (from which
-      // pdftotext is derived), it seems that \f is considered to separate pages.
-      // To mititage any major risk, we filter out empty pages which may be caused by extraneous \f.
-      // From various tests on different PDFs this seems to work well. If we have a really problematic
-      // PDF we can expect that upsert will fail because some chunks sections will have less content
-      // than their prefix.
-      const pages = content
-        .split("\f")
-        .filter((page) => page.trim().length > 0);
+        const pageBlob: PDFPage = {
+          pageNumber: pageNum,
+          text: strings.join(" "),
+        };
 
-      return { pages, content };
-    }
-  );
+        this.push(pageBlob);
+      }
+      this.push(null);
+    },
+  });
+}
+
+export async function extractTextFromPDF(buffer: Buffer): Promise<PDFPage[]> {
+  const pdfTextStream = await createPdfTextStream(buffer);
+
+  const pages: PDFPage[] = [];
+  for await (const page of pdfTextStream) {
+    pages.push(page);
+  }
+
+  return pages;
 }
