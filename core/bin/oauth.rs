@@ -43,13 +43,30 @@ async fn index() -> &'static str {
 struct ConnectionCreatePayload {
     provider: ConnectionProvider,
     metadata: serde_json::Value,
+    // Optionally present secret fields (migration case).
+    access_token_expiry: Option<u64>,
+    authorization_code: Option<String>,
+    access_token: Option<String>,
+    refresh_token: Option<String>,
+    raw_json: Option<serde_json::Value>,
 }
 
 async fn connections_create(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<ConnectionCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match Connection::create(state.store.clone(), payload.provider, payload.metadata).await {
+    match Connection::create(
+        state.store.clone(),
+        payload.provider,
+        payload.metadata,
+        payload.access_token_expiry,
+        payload.authorization_code,
+        payload.access_token,
+        payload.refresh_token,
+        payload.raw_json,
+    )
+    .await
+    {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",

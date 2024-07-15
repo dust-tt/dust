@@ -322,8 +322,42 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        // Optional migration of secret fields.
+        access_token_expiry: Option<u64>,
+        authorization_code: Option<String>,
+        access_token: Option<String>,
+        refresh_token: Option<String>,
+        raw_json: Option<serde_json::Value>,
     ) -> Result<Self> {
-        store.create_connection(provider, metadata).await
+        let mut c = store.create_connection(provider, metadata).await?;
+
+        let mut need_update = false;
+        if let Some(expiry) = access_token_expiry {
+            c.access_token_expiry = Some(expiry);
+            need_update = true;
+        }
+        if let Some(code) = authorization_code {
+            c.encrypted_authorization_code = Some(Connection::seal_str(&code)?);
+            need_update = true;
+        }
+        if let Some(token) = access_token {
+            c.encrypted_access_token = Some(Connection::seal_str(&token)?);
+            need_update = true;
+        }
+        if let Some(token) = refresh_token {
+            c.encrypted_refresh_token = Some(Connection::seal_str(&token)?);
+            need_update = true;
+        }
+        if let Some(json) = raw_json {
+            c.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(&json)?)?);
+            need_update = true;
+        }
+
+        if need_update {
+            store.update_connection_secrets(&c).await?;
+        }
+
+        Ok(c)
     }
 
     fn is_already_finalized(&self, code: &str) -> Result<bool> {
