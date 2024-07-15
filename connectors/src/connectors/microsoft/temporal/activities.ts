@@ -44,6 +44,7 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { Client } from "@microsoft/microsoft-graph-client";
+import { start } from "repl";
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -531,9 +532,12 @@ export async function syncOneFile({
 
   const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
   if (isInSizeRange) {
-    // TODO(pr): add getParents implementation
-    const parents = [];
-    parents.push(documentId);
+    const parents = await getParents({
+      connectorId,
+      internalId: documentId,
+      parentInternalId,
+      startSyncTs,
+    });
     parents.reverse();
 
     await upsertToDatasource({
@@ -578,6 +582,58 @@ export async function syncOneFile({
 
   return isInSizeRange;
 }
+
+async function getParents({
+  connectorId,
+  internalId,
+  parentInternalId,
+  startSyncTs,
+}: {
+  connectorId: ModelId;
+  internalId: string;
+  parentInternalId: string | null;
+  startSyncTs: number;
+}): Promise<string[]> {
+  if (!parentInternalId) {
+    return [internalId];
+  }
+
+  const parentParentInternalId = await getParentParentId(
+    connectorId,
+    parentInternalId,
+    startSyncTs
+  );
+
+  return [
+    internalId,
+    ...(await getParents({
+      connectorId,
+      internalId: parentInternalId,
+      parentInternalId: parentParentInternalId,
+      startSyncTs,
+    })),
+  ];
+}
+
+/* Fetching parent's parent id queries the db for a resource; since those
+ * fetches can be made a lot of times during a sync, cache for 10mins in a
+ * per-sync basis (given by startSyncTs) */
+const getParentParentId = cacheWithRedis(
+  async (connectorId, parentInternalId, startSyncTs) => {
+    const parent = await MicrosoftNodeResource.fetchByInternalId(
+      connectorId,
+      parentInternalId
+    );
+    if (!parent) {
+      throw new Error(`Parent node not found: ${parentInternalId}`);
+    }
+
+    return parent.parentInternalId;
+  },
+  (connectorId, parentInternalId, startSyncTs) =>
+    `microsoft-${connectorId}-parent-${parentInternalId}-syncms-${startSyncTs}`,
+  10 * 60 * 1000
+);
 
 async function handlePptxFile(
   data: ArrayBuffer,
