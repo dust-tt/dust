@@ -148,6 +148,60 @@ export class Authenticator {
     });
   }
 
+
+  /**
+ * Get an Authenticator for the target workspace associated with the specified user.
+ *
+ * @param uId string user id
+ * @param wId string target workspace id
+ * @returns Promise<Authenticator>
+ */
+static async fromUserIdAndWorkspaceId(
+  uId: number,
+  wId: string
+): Promise<Authenticator> {
+  const [workspace, user] = await Promise.all([
+    Workspace.findOne({
+      where: {
+        sId: wId,
+      },
+    }),
+    User.findOne({
+      where: {
+        id: uId,
+      },
+    }),
+  ]);
+
+  let role: RoleType = "none";
+  let subscription: SubscriptionType | null = null;
+  let flags: WhitelistableFeature[] = [];
+
+  if (user && workspace) {
+    [role, subscription, flags] = await Promise.all([
+      MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: renderUserType(user),
+        workspace: renderLightWorkspaceType({ workspace }),
+      }).then((m) => m?.role ?? "none"),
+      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      FeatureFlag.findAll({
+        where: {
+          workspaceId: workspace.id,
+        },
+      }).then((flags) => flags.map((flag) => flag.name)),
+    ]);
+  }
+
+  return new Authenticator({
+    workspace,
+    user,
+    role,
+    subscription,
+    flags,
+  });
+}
+
+
   /**
    * Get a an Authenticator for the target workspace and the authentified Super User user from the
    * Auth0 session.

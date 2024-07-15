@@ -4,6 +4,7 @@ import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   createConversation,
   getConversation,
@@ -13,7 +14,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { unsafeGetUserByModelId } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import mainLogger from "@app/logger/logger";
@@ -123,14 +123,6 @@ export async function processTranscriptActivity(
     );
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
-
-  if (!auth.workspace()) {
-    throw new Error(
-      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
-    );
-  }
-
   const user = await unsafeGetUserByModelId(transcriptsConfiguration.userId);
 
   if (!user) {
@@ -138,6 +130,8 @@ export async function processTranscriptActivity(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
   }
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(user.id, workspace.sId);
 
   const localLogger = mainLogger.child({
     userId: user.id,
@@ -225,13 +219,7 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const agent = await AgentConfiguration.findOne({
-    where: {
-      workspaceId: owner.id,
-      sId: agentConfigurationId,
-      status: "active",
-    },
-  });
+  const agent = await getAgentConfiguration(auth, agentConfigurationId);
 
   if (!agent) {
     localLogger.error(
