@@ -31,7 +31,7 @@ import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
-import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
+import { tokenCountForTexts, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
 /**
@@ -206,29 +206,32 @@ export async function renderConversationForModelMultiActions({
   }
 
   // Compute in parallel the token count for each message and the prompt.
-  const [messagesCountRes, promptCountRes] = await Promise.all([
-    Promise.all(
-      messages.map((m) => {
+  const res = await tokenCountForTexts(
+    [
+      prompt,
+      ...messages.map((m) => {
         let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
         if ("function_calls" in m) {
           text += m.function_calls
             .map((f) => `${f.name} ${f.arguments}`)
             .join(" ");
         }
-        return tokenCountForText(text, model);
-      })
-    ),
-    tokenCountForText(prompt, model),
-  ]);
+        return text;
+      }),
+    ],
+    model
+  );
 
-  if (promptCountRes.isErr()) {
-    return new Err(promptCountRes.error);
+  if (res.isErr()) {
+    return new Err(res.error);
   }
+
+  const [promptCount, ...messagesCount] = res.value;
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
   // approximations, 64 tokens seems small enough and ample enough.
   const tokensMargin = 64;
-  let tokensUsed = promptCountRes.value + tokensMargin;
+  let tokensUsed = promptCount + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected: ModelMessageTypeMultiActions[] = [];
@@ -237,11 +240,7 @@ export async function renderConversationForModelMultiActions({
 
   // Selection loop.
   for (let i = messages.length - 1; i >= 0; i--) {
-    const r = messagesCountRes[i];
-    if (r.isErr()) {
-      return new Err(r.error);
-    }
-    const c = r.value;
+    const c = messagesCount[i];
 
     const currentMessage = messages[i];
 
@@ -334,11 +333,8 @@ export async function renderConversationForModelMultiActions({
     // Most model providers don't support starting by a function result or assistant message.
     ["assistant", "function"].includes(selected[0].role)
   ) {
-    const tokenCountRes = messagesCountRes[messages.length - selected.length];
-    if (tokenCountRes.isErr()) {
-      return new Err(tokenCountRes.error);
-    }
-    tokensUsed -= tokenCountRes.value;
+    const tokenCount = messagesCount[messages.length - selected.length];
+    tokensUsed -= tokenCount;
     selected.shift();
   }
 
@@ -347,7 +343,7 @@ export async function renderConversationForModelMultiActions({
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
       messageCount: messages.length,
-      promptToken: promptCountRes.value,
+      promptToken: promptCount,
       tokensUsed,
       messageSelected: selected.length,
       elapsed: Date.now() - now,

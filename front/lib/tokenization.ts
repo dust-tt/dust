@@ -5,14 +5,14 @@ import logger from "@app/logger/logger";
 
 import config from "./api/config";
 
-export async function tokenCountForText(
-  text: string,
+export async function tokenCountForTexts(
+  texts: string[],
   model: { providerId: string; modelId: string }
-): Promise<Result<number, Error>> {
+): Promise<Result<Array<number>, Error>> {
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const res = await coreAPI.tokenize({
-      text,
+    const res = await coreAPI.tokenizeBatch({
+      texts,
       providerId: model.providerId,
       modelId: model.modelId,
     });
@@ -22,7 +22,7 @@ export async function tokenCountForText(
       );
     }
 
-    return new Ok(res.value.tokens.length);
+    return new Ok(res.value.tokens.map((t) => t.length));
   } catch (err) {
     return new Err(new Error(`Error tokenizing model message: ${err}`));
   }
