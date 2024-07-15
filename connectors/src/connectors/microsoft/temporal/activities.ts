@@ -215,7 +215,7 @@ export async function syncFiles({
   const results = await concurrentExecutor(
     childrenToSync,
     async (child) =>
-      await syncOneFile({
+      syncOneFile({
         connectorId,
         dataSourceConfig,
         providerConfig,
@@ -343,7 +343,7 @@ export async function syncOneFile({
     file.file?.mimeType ===
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   ) {
-    return syncSpreadSheet({ connectorId, file });
+    return (await syncSpreadSheet({ connectorId, file })).isSupported;
   }
   if (!file.file?.mimeType || !mimeTypesToSync.includes(file.file.mimeType)) {
     localLogger.info("Type not supported, skipping file.");
