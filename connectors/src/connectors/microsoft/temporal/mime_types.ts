@@ -3,7 +3,7 @@ export function getMimeTypesToSync({ pdfEnabled }: { pdfEnabled: boolean }) {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     // TODO(pr): support those
     // "text/plain",
-    // "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
   if (pdfEnabled) {
     // TODO(pr): support it
