@@ -99,7 +99,7 @@ async function handler(
       const created = await createMessageReaction(auth, {
         messageId,
         conversation,
-        user: user,
+        user,
         context: {
           username: user.username,
           fullName: user.fullName,
@@ -123,7 +123,7 @@ async function handler(
       const deleted = await deleteMessageReaction(auth, {
         messageId,
         conversation,
-        user: user,
+        user,
         context: {
           username: user.username,
           fullName: user.fullName,

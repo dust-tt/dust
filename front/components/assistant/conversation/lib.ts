@@ -59,7 +59,7 @@ export function createPlaceholderUserMessage({
     content: input,
     created: createdAt,
     mentions,
-    user: user,
+    user,
     visibility: "visible",
     type: "user_message",
     sId: `placeholder-${createdAt.toString()}`,
