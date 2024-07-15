@@ -326,29 +326,37 @@ impl Connection {
         store.create_connection(provider, metadata).await
     }
 
-    async fn locked_finalize(
-        &mut self,
-        store: Box<dyn OAuthStore + Sync + Send>,
-        code: &str,
-    ) -> Result<()> {
-        self.reload(store.clone()).await?;
-
+    fn is_already_finalized(&self, code: &str) -> Result<bool> {
         match self.status {
             // Pending is the expected status for a new connection.
-            ConnectionStatus::Pending => (),
+            ConnectionStatus::Pending => Ok(false),
             // We allow calling finalized twice with the same code (user messes up or refresh).
             // Otherwise we error.
             ConnectionStatus::Finalized => match self.unseal_authorization_code()? {
                 Some(c) => {
                     // If it's finalized and the code matches, we return early.
                     if c == code {
-                        return Ok(());
+                        return Ok(true);
                     }
                     Err(anyhow::anyhow!("Connection is already finalized"))?
                 }
-                // If we have a finalized connection without `authorization_code` we 500.
-                None => unreachable!(),
+                // If we have a finalized connection without `authorization_code`, we error.
+                None => Err(anyhow::anyhow!(
+                    "Unexpected connection without `authorization_code`"
+                ))?,
             },
+        }
+    }
+
+    async fn finalize_locked(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        code: &str,
+    ) -> Result<()> {
+        self.reload(store.clone()).await?;
+
+        if self.is_already_finalized(code)? {
+            return Ok(());
         }
 
         let finalize = provider(self.provider).finalize(self, code).await?;
@@ -376,23 +384,8 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         code: &str,
     ) -> Result<()> {
-        // If we finalized while waiting for the lock return early.
-        match self.status {
-            // Pending is the expected status for a new connection.
-            ConnectionStatus::Pending => (),
-            // We allow calling finalized twice with the same code (user messes up or refresh).
-            // Otherwise we error.
-            ConnectionStatus::Finalized => match self.unseal_authorization_code()? {
-                Some(c) => {
-                    // If it's finalized and the code matches, we return early.
-                    if c == code {
-                        return Ok(());
-                    }
-                    Err(anyhow::anyhow!("Connection is already finalized"))?
-                }
-                // If we have a finalized connection without `authorization_code` we 500.
-                None => unreachable!(),
-            },
+        if self.is_already_finalized(code)? {
+            return Ok(());
         }
 
         let rl = LockManager::new(vec![REDIS_URI.clone()]);
@@ -403,28 +396,42 @@ impl Connection {
                 Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
             )
             .await?;
-        let res = self.locked_finalize(store, code).await;
+        let res = self.finalize_locked(store, code).await;
         rl.unlock(&lock).await;
 
         res
     }
 
-    async fn locked_access_token(
-        &mut self,
-        store: Box<dyn OAuthStore + Sync + Send>,
-    ) -> Result<String> {
-        self.reload(store.clone()).await?;
-
+    fn valid_access_token(&self) -> Result<Option<String>> {
         let access_token = match &self.encrypted_access_token {
             Some(t) => Connection::unseal_str(t)?,
             None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
         };
 
-        // If we refreshed while waiting for the lock return early.
-        if let Some(expiry) = self.access_token_expiry {
-            if expiry > utils::now() {
-                return Ok(access_token);
+        match self.access_token_expiry {
+            Some(expiry) => {
+                if expiry < utils::now() {
+                    // Non-expired access_token.
+                    Ok(Some(access_token))
+                } else {
+                    // Access token expired.
+                    Ok(None)
+                }
             }
+            // Access token with no expiry.
+            None => Ok(Some(access_token)),
+        }
+    }
+
+    async fn access_token_locked(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+    ) -> Result<String> {
+        self.reload(store.clone()).await?;
+
+        // If we refreshed while waiting for the lock return early.
+        if let Some(access_token) = self.valid_access_token()? {
+            return Ok(access_token);
         }
 
         let refresh = provider(self.provider).refresh(self).await?;
@@ -447,15 +454,8 @@ impl Connection {
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
     ) -> Result<String> {
-        let access_token = match &self.encrypted_access_token {
-            Some(t) => Connection::unseal_str(t)?,
-            None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
-        };
-
-        if let Some(expiry) = self.access_token_expiry {
-            if expiry > utils::now() {
-                return Ok(access_token);
-            }
+        if let Some(access_token) = self.valid_access_token()? {
+            return Ok(access_token);
         }
 
         let rl = LockManager::new(vec![REDIS_URI.clone()]);
@@ -466,7 +466,7 @@ impl Connection {
                 Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
             )
             .await?;
-        let res = self.locked_access_token(store).await;
+        let res = self.access_token_locked(store).await;
         rl.unlock(&lock).await;
 
         res
