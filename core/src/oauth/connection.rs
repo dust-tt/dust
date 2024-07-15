@@ -67,6 +67,7 @@ impl FromStr for ConnectionProvider {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
 pub struct FinalizeResult {
+    pub redirect_uri: String,
     pub code: String,
     pub access_token: String,
     pub access_token_expiry: Option<u64>,
@@ -415,7 +416,7 @@ impl Connection {
         self.status = ConnectionStatus::Finalized;
         store.update_connection_status(self).await?;
 
-        self.redirect_uri = Some(redirect_uri.to_string());
+        self.redirect_uri = Some(finalize.redirect_uri);
         self.encrypted_authorization_code = Some(Connection::seal_str(&finalize.code)?);
         self.access_token_expiry = finalize.access_token_expiry;
         self.encrypted_access_token = Some(Connection::seal_str(&finalize.access_token)?);

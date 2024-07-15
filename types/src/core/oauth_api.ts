@@ -97,7 +97,7 @@ export class OAuthAPI {
         body: JSON.stringify({
           provider,
           code,
-          redirectUri,
+          redirect_uri: redirectUri,
         }),
       }
     );

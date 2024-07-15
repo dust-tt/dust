@@ -130,13 +130,14 @@ impl Provider for GithubConnectionProvider {
         &self,
         _connection: &Connection,
         code: &str,
-        _redirect_uri: &str,
+        redirect_uri: &str,
     ) -> Result<FinalizeResult> {
         // `code` is the installation_id returned by Github.
         let (token, expiry, raw_json) = self.refresh_token(code).await?;
 
         // We store the installation_id as `code` which will be used to refresh tokens.
         Ok(FinalizeResult {
+            redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: token.to_string(),
             access_token_expiry: Some(expiry),

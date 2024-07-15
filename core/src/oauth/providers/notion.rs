@@ -28,7 +28,7 @@ impl NotionConnectionProvider {
         NotionConnectionProvider {}
     }
 
-    fn bearer(&self) -> String {
+    fn basic_auth(&self) -> String {
         general_purpose::STANDARD.encode(&format!(
             "{}:{}",
             *OAUTH_NOTION_CLIENT_ID, *OAUTH_NOTION_CLIENT_SECRET
@@ -54,11 +54,13 @@ impl Provider for NotionConnectionProvider {
             "redirect_uri": redirect_uri,
         });
 
+        println!("Notion finalize body: {}", body);
+
         let req = reqwest::Client::new()
             .post("https://api.notion.com/v1/oauth/token")
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", self.bearer()))
+            .header("Authorization", format!("Basic {}", self.basic_auth()))
             .json(&body);
 
         let now = utils::now_secs();
@@ -72,7 +74,7 @@ impl Provider for NotionConnectionProvider {
         if !res.status().is_success() {
             Err(anyhow!(
                 "Error generating access token with Notion: status={}",
-                res.status().as_u16()
+                res.status().as_u16(),
             ))?;
         }
 
@@ -99,6 +101,7 @@ impl Provider for NotionConnectionProvider {
         };
 
         Ok(FinalizeResult {
+            redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
             access_token_expiry: None,
