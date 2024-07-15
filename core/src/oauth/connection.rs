@@ -9,9 +9,18 @@ use ring::{
     aead,
     rand::{self, SecureRandom},
 };
+use rslock::LockManager;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use std::time::Duration;
 use std::{env, fmt};
+
+static REDIS_LOCK_TTL_SECONDS: u64 = 30;
+static ACCESS_TOKEN_EXPIRY_BUFFER_MILLIS: u64 = 1000 * 60 * 5;
+
+lazy_static! {
+    static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
+}
 
 lazy_static! {
     static ref ENCRYPTION_KEY: aead::LessSafeKey = {
@@ -287,6 +296,24 @@ impl Connection {
         )?)
     }
 
+    async fn reload(&mut self, store: Box<dyn OAuthStore + Sync + Send>) -> Result<()> {
+        let connection = store
+            .retrieve_connection(self.provider, &self.connection_id)
+            .await?;
+
+        self.created = connection.created;
+        self.provider = connection.provider;
+        self.status = connection.status;
+        self.metadata = connection.metadata;
+        self.access_token_expiry = connection.access_token_expiry;
+        self.encrypted_authorization_code = connection.encrypted_authorization_code;
+        self.encrypted_access_token = connection.encrypted_access_token;
+        self.encrypted_refresh_token = connection.encrypted_refresh_token;
+        self.encrypted_raw_json = connection.encrypted_raw_json;
+
+        Ok(())
+    }
+
     pub async fn create(
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: ConnectionProvider,
@@ -295,11 +322,13 @@ impl Connection {
         store.create_connection(provider, metadata).await
     }
 
-    pub async fn finalize(
+    async fn locked_finalize(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
         code: &str,
     ) -> Result<()> {
+        self.reload(store.clone()).await?;
+
         match self.status {
             // Pending is the expected status for a new connection.
             ConnectionStatus::Pending => (),
@@ -338,17 +367,62 @@ impl Connection {
         Ok(())
     }
 
-    pub async fn access_token(
+    pub async fn finalize(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        code: &str,
+    ) -> Result<()> {
+        // If we finalized while waiting for the lock return early.
+        match self.status {
+            // Pending is the expected status for a new connection.
+            ConnectionStatus::Pending => (),
+            // We allow calling finalized twice with the same code (user messes up or refresh).
+            // Otherwise we error.
+            ConnectionStatus::Finalized => match self.unseal_authorization_code()? {
+                Some(c) => {
+                    // If it's finalized and the code matches, we return early.
+                    if c == code {
+                        return Ok(());
+                    }
+                    Err(anyhow::anyhow!("Connection is already finalized"))?
+                }
+                // If we have a finalized connection without `authorization_code` we 500.
+                None => unreachable!(),
+            },
+        }
+
+        let rl = LockManager::new(vec![REDIS_URI.clone()]);
+
+        let lock = rl
+            .acquire_no_guard(
+                format!("oauth:{}", self.connection_id()).as_bytes(),
+                Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
+            )
+            .await?;
+        let res = self.locked_finalize(store, code).await;
+        rl.unlock(&lock).await;
+
+        res
+    }
+
+    async fn locked_access_token(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
     ) -> Result<String> {
-        // let access_token = match &self.encrypted_access_token {
-        //     Some(t) => Connection::unseal_str(t)?,
-        //     None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
-        // };
+        self.reload(store.clone()).await?;
 
-        // For now always refresh while testing
-        // TODO(spolu): distributed locking and expiry logic
+        let access_token = match &self.encrypted_access_token {
+            Some(t) => Connection::unseal_str(t)?,
+            None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
+        };
+
+        // If we refreshed while waiting for the lock return early.
+        if let Some(expiry) = self.access_token_expiry {
+            if expiry > utils::now() + ACCESS_TOKEN_EXPIRY_BUFFER_MILLIS {
+                return Ok(access_token);
+            }
+        }
+
         let refresh = provider(self.provider).refresh(self).await?;
 
         self.access_token_expiry = refresh.access_token_expiry;
@@ -363,5 +437,34 @@ impl Connection {
         store.update_connection_secrets(self).await?;
 
         Ok(refresh.access_token)
+    }
+
+    pub async fn access_token(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+    ) -> Result<String> {
+        let access_token = match &self.encrypted_access_token {
+            Some(t) => Connection::unseal_str(t)?,
+            None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
+        };
+
+        if let Some(expiry) = self.access_token_expiry {
+            if expiry > utils::now() + ACCESS_TOKEN_EXPIRY_BUFFER_MILLIS {
+                return Ok(access_token);
+            }
+        }
+
+        let rl = LockManager::new(vec![REDIS_URI.clone()]);
+
+        let lock = rl
+            .acquire_no_guard(
+                format!("oauth:{}", self.connection_id()).as_bytes(),
+                Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
+            )
+            .await?;
+        let res = self.locked_access_token(store).await;
+        rl.unlock(&lock).await;
+
+        res
     }
 }
