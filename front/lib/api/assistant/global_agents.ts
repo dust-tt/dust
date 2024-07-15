@@ -138,7 +138,7 @@ async function _getHelperGlobalAgent(
         description: null,
       },
     ],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -168,7 +168,7 @@ async function _getGPT35TurboGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -198,7 +198,7 @@ async function _getGPT4GlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -228,7 +228,7 @@ async function _getClaudeInstantGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -265,7 +265,7 @@ async function _getClaude2GlobalAgent({
     },
 
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -296,7 +296,7 @@ async function _getClaude3HaikuGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -332,7 +332,7 @@ async function _getClaude3OpusGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -369,7 +369,7 @@ async function _getClaude3GlobalAgent({
     },
 
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -405,7 +405,7 @@ async function _getMistralLargeGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -441,7 +441,7 @@ async function _getMistralMediumGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -471,7 +471,7 @@ async function _getMistralSmallGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -506,7 +506,7 @@ async function _getGeminiProGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 0,
+    maxStepsPerRun: 0,
     templateId: null,
   };
 }
@@ -576,7 +576,7 @@ async function _getManagedDataSourceAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 0,
+      maxStepsPerRun: 0,
       templateId: null,
     };
   }
@@ -601,7 +601,7 @@ async function _getManagedDataSourceAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 0,
+      maxStepsPerRun: 0,
       templateId: null,
     };
   }
@@ -639,7 +639,7 @@ async function _getManagedDataSourceAgent(
         description: `The user's ${connectorProvider} data source.`,
       },
     ],
-    maxToolsUsePerRun: 1,
+    maxStepsPerRun: 1,
     templateId: null,
   };
 }
@@ -819,7 +819,7 @@ async function _getDustGlobalAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 0,
+      maxStepsPerRun: 0,
       templateId: null,
     };
   }
@@ -852,7 +852,7 @@ async function _getDustGlobalAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 0,
+      maxStepsPerRun: 0,
       templateId: null,
     };
   }
@@ -907,7 +907,7 @@ async function _getDustGlobalAgent(
         description: null,
       },
     ],
-    maxToolsUsePerRun: 3,
+    maxStepsPerRun: 3,
     templateId: null,
   };
 }

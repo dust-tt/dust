@@ -2322,7 +2322,7 @@
           "actions": {
             "type": "array"
           },
-          "maxToolsUsePerRun": {
+          "maxStepsPerRun": {
             "type": "integer"
           },
           "templateId": {

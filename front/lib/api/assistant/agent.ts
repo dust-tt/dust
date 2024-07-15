@@ -116,13 +116,13 @@ export async function* runMultiActionsAgentLoop(
   const now = Date.now();
 
   const isLegacyAgent = isLegacyAgentConfiguration(configuration);
-  const maxToolsUsePerRun = isLegacyAgent ? 1 : configuration.maxToolsUsePerRun;
+  const maxStepsPerRun = isLegacyAgent ? 1 : configuration.maxStepsPerRun;
 
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
 
   let processedContent = "";
-  for (let i = 0; i < maxToolsUsePerRun + 1; i++) {
+  for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
@@ -131,7 +131,7 @@ export async function* runMultiActionsAgentLoop(
 
     localLogger.info("Starting multi-action loop iteration");
 
-    const isLastGenerationIteration = i === maxToolsUsePerRun;
+    const isLastGenerationIteration = i === maxStepsPerRun;
 
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.

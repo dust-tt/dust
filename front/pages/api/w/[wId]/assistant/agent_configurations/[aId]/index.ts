@@ -97,35 +97,33 @@ async function handler(
         });
       }
 
-      const maxToolsUsePerRun =
-        bodyValidation.right.assistant.maxToolsUsePerRun;
+      const maxStepsPerRun = bodyValidation.right.assistant.maxStepsPerRun;
 
       const isLegacyConfiguration =
         bodyValidation.right.assistant.actions.length === 1 &&
         !bodyValidation.right.assistant.actions[0].description;
 
-      if (isLegacyConfiguration && maxToolsUsePerRun !== undefined) {
+      if (isLegacyConfiguration && maxStepsPerRun !== undefined) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "app_auth_error",
-            message:
-              "maxToolsUsePerRun is only supported in multi-actions mode.",
+            message: "maxStepsPerRun is only supported in multi-actions mode.",
           },
         });
       }
-      if (!isLegacyConfiguration && maxToolsUsePerRun === undefined) {
+      if (!isLegacyConfiguration && maxStepsPerRun === undefined) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "app_auth_error",
-            message: "maxToolsUsePerRun is required in multi-actions mode.",
+            message: "maxStepsPerRun is required in multi-actions mode.",
           },
         });
       }
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
+        assistant: { ...bodyValidation.right.assistant, maxStepsPerRun },
         agentConfigurationId: req.query.aId as string,
       });
 

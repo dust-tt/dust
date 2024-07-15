@@ -175,7 +175,7 @@ export type LightAgentConfigurationType = {
   lastAuthors?: AgentRecentAuthors;
   usage?: AgentUsageType;
 
-  maxToolsUsePerRun: number;
+  maxStepsPerRun: number;
 
   templateId: string | null;
 };
@@ -196,7 +196,7 @@ export interface TemplateAgentConfigurationType {
   actions: AgentActionConfigurationType[];
   instructions: string | null;
   isTemplate: true;
-  maxToolsUsePerRun?: number;
+  maxStepsPerRun?: number;
 }
 
-export const MAX_TOOLS_USE_PER_RUN_LIMIT = 8;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 8;

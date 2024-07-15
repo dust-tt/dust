@@ -22,7 +22,7 @@ import {
   assertNever,
   Err,
   isTimeFrame,
-  MAX_TOOLS_USE_PER_RUN_LIMIT,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
 } from "@dust-tt/types";
 import * as _ from "lodash";
@@ -719,7 +719,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       status: agent.status,
       actions,
       versionAuthorId: agent.authorId,
-      maxToolsUsePerRun: agent.maxToolsUsePerRun,
+      maxStepsPerRun: agent.maxToolsUsePerRun,
       templateId: template?.sId ?? null,
     };
 
@@ -911,7 +911,7 @@ export async function createAgentConfiguration(
     name,
     description,
     instructions,
-    maxToolsUsePerRun,
+    maxStepsPerRun,
     pictureUrl,
     status,
     scope,
@@ -922,7 +922,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    maxToolsUsePerRun: number;
+    maxStepsPerRun: number;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -941,11 +941,8 @@ export async function createAgentConfiguration(
     throw new Error("Unexpected `auth` without `user`.");
   }
 
-  if (
-    maxToolsUsePerRun < 0 ||
-    maxToolsUsePerRun > MAX_TOOLS_USE_PER_RUN_LIMIT
-  ) {
-    return new Err(new Error("maxToolsUsePerRun must be between 0 and 8."));
+  if (maxStepsPerRun < 0 || maxStepsPerRun > MAX_STEPS_USE_PER_RUN_LIMIT) {
+    return new Err(new Error("maxStepsPerRun must be between 0 and 8."));
   }
 
   const isValidPictureUrl =
@@ -1037,7 +1034,8 @@ export async function createAgentConfiguration(
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
-            maxToolsUsePerRun,
+            maxToolsUsePerRun: maxStepsPerRun,
+            maxStepsPerRun,
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,
@@ -1071,7 +1069,7 @@ export async function createAgentConfiguration(
       },
       pictureUrl: agent.pictureUrl,
       status: agent.status,
-      maxToolsUsePerRun: agent.maxToolsUsePerRun,
+      maxStepsPerRun: agent.maxToolsUsePerRun,
       templateId: template?.sId ?? null,
     };
 

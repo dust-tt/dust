@@ -206,9 +206,9 @@ export async function submitAssistantBuilderForm({
           providerId: builderState.generationSettings.modelSettings.providerId,
           temperature: builderState.generationSettings.temperature,
         },
-        maxToolsUsePerRun: isLegacyAgent
+        maxStepsPerRun: isLegacyAgent
           ? undefined
-          : builderState.maxToolsUsePerRun ?? undefined,
+          : builderState.maxStepsPerRun ?? undefined,
         templateId: builderState.templateId,
       },
     };

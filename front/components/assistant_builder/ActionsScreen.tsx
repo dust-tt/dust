@@ -15,7 +15,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { assertNever, MAX_TOOLS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
+import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -303,12 +303,12 @@ export default function ActionsScreen({
                   }}
                 />
                 <AdvancedSettings
-                  maxToolsUsePerRun={builderState.maxToolsUsePerRun}
-                  setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
+                  maxStepsPerRun={builderState.maxStepsPerRun}
+                  setmaxStepsPerRun={(maxStepsPerRun) => {
                     setEdited(true);
                     setBuilderState((state) => ({
                       ...state,
-                      maxToolsUsePerRun,
+                      maxStepsPerRun,
                     }));
                   }}
                 />
@@ -800,11 +800,11 @@ function ActionEditor({
 }
 
 function AdvancedSettings({
-  maxToolsUsePerRun,
-  setMaxToolsUsePerRun,
+  maxStepsPerRun,
+  setmaxStepsPerRun,
 }: {
-  maxToolsUsePerRun: number | null;
-  setMaxToolsUsePerRun: (maxToolsUsePerRun: number | null) => void;
+  maxStepsPerRun: number | null;
+  setmaxStepsPerRun: (maxStepsPerRun: number | null) => void;
 }) {
   return (
     <DropdownMenu>
@@ -821,28 +821,28 @@ function AdvancedSettings({
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
               <div className="w-full grow text-sm font-bold text-element-800">
-                Max tools per run
+                Max steps per run
               </div>
               <div className="w-full grow text-sm text-element-600">
-                up to {MAX_TOOLS_USE_PER_RUN_LIMIT}
+                up to {MAX_STEPS_USE_PER_RUN_LIMIT}
               </div>
             </div>
             <Input
-              value={maxToolsUsePerRun?.toString() ?? ""}
+              value={maxStepsPerRun?.toString() ?? ""}
               placeholder=""
-              name="maxToolsUsePerRun"
+              name="maxStepsPerRun"
               onChange={(v) => {
                 if (!v || v === "") {
-                  setMaxToolsUsePerRun(null);
+                  setmaxStepsPerRun(null);
                   return;
                 }
                 const value = parseInt(v);
                 if (
                   !isNaN(value) &&
                   value >= 0 &&
-                  value <= MAX_TOOLS_USE_PER_RUN_LIMIT
+                  value <= MAX_STEPS_USE_PER_RUN_LIMIT
                 ) {
-                  setMaxToolsUsePerRun(value);
+                  setmaxStepsPerRun(value);
                 }
               }}
             />

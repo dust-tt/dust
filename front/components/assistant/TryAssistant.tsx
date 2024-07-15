@@ -92,7 +92,7 @@ export function usePreviewAssistant({
         scope: "private",
         generationSettings: builderState.generationSettings,
         actions: builderState.actions,
-        maxToolsUsePerRun: builderState.maxToolsUsePerRun,
+        maxStepsPerRun: builderState.maxStepsPerRun,
         templateId: builderState.templateId,
       },
       agentConfigurationId: null,
@@ -129,7 +129,7 @@ export function usePreviewAssistant({
     builderState.avatarUrl,
     builderState.generationSettings,
     builderState.actions,
-    builderState.maxToolsUsePerRun,
+    builderState.maxStepsPerRun,
     builderState.templateId,
     sendNotification,
   ]);
