@@ -57,6 +57,8 @@ export async function fullSyncSitesWorkflow({
     nodeIdsToSync = await getSiteNodesToSync(connectorId);
   }
 
+  let nextPageLink: string | undefined = undefined;
+
   while (nodeIdsToSync.length > 0) {
     const nodeId = nodeIdsToSync.pop();
 
@@ -64,17 +66,25 @@ export async function fullSyncSitesWorkflow({
       throw new Error("Unreachable: node is undefined");
     }
 
-    const res = await syncFiles({
-      connectorId,
-      parentInternalId: nodeId,
-      startSyncTs,
-    });
-    totalCount += res.count;
-    nodeIdsToSync = nodeIdsToSync.concat(res.childNodes);
+    do {
+      const res = await syncFiles({
+        connectorId,
+        parentInternalId: nodeId,
+        startSyncTs,
+        nextPageLink,
+      });
+      totalCount += res.count;
+      nodeIdsToSync = nodeIdsToSync.concat(res.childNodes);
+      nextPageLink = res.nextLink;
 
-    await reportInitialSyncProgress(connectorId, `Synced ${totalCount} files`);
-    // TODO(pr): add pagination support
+      await reportInitialSyncProgress(
+        connectorId,
+        `Synced ${totalCount} files`
+      );
+    } while (nextPageLink);
+
     await markNodeAsVisited(connectorId, nodeId);
+
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof fullSyncSitesWorkflow>({
         connectorId,
