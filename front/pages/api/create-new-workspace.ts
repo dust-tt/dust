@@ -5,6 +5,7 @@ import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import { createAndLogMembership } from "@app/pages/api/login";
 
@@ -51,8 +52,20 @@ async function handler(
   }
 
   const workspace = await createWorkspace(session);
+  const userRes = await UserResource.fetchByModelId(user.id);
+
+  if (!userRes) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "The user was not found.",
+      },
+    });
+  }
+
   await createAndLogMembership({
-    user,
+    user: userRes,
     workspace,
     role: "admin",
   });

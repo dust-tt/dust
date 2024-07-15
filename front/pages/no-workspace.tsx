@@ -15,6 +15,7 @@ import {
 } from "@app/lib/iam/session";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
@@ -44,8 +45,18 @@ async function fetchRevokedWorkspace(
 ): Promise<Workspace | null> {
   // TODO(@fontanierh): this doesn't look very solid as it will start to behave
   // weirdly if a user has multiple revoked memberships.
+  const userRes = await UserResource.fetchByModelId(user.id);
+
+  if (!userRes) {
+    logger.error(
+      { userId: user.id, panic: true },
+      "Unreachable: user not found."
+    );
+    throw new Error("User not found.");
+  }
+
   const memberships = await MembershipResource.getLatestMemberships({
-    users: [user],
+    users: [userRes],
   });
 
   if (!memberships.length) {

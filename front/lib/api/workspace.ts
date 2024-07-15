@@ -10,9 +10,9 @@ import type {
 } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function getWorkspaceInfos(
@@ -144,11 +144,9 @@ export async function getMembers(
         roles,
       });
 
-  const users = await User.findAll({
-    where: {
-      id: memberships.map((m) => m.userId),
-    },
-  });
+  const users = await UserResource.fetchAllByModelIds(
+    memberships.map((m) => m.userId)
+  );
 
   return users.map((u) => {
     const m = memberships.find((m) => m.userId === u.id);
