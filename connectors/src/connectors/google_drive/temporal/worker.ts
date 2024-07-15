@@ -19,6 +19,7 @@ export async function runGoogleWorkers() {
     workflowsPath: require.resolve("./workflows"),
     activities: { ...activities, ...sync_status },
     taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
+    stickyQueueScheduleToStartTimeout: "1m",
     maxConcurrentActivityTaskExecutions: 10,
     connection,
     reuseV8Context: true,
