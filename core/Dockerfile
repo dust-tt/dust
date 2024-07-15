@@ -1,6 +1,6 @@
 FROM rust:1.79.0 as core
 
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop cmake
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop cmake heaptrack
 
 WORKDIR /app
 
