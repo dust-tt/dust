@@ -81,7 +81,7 @@ export class UserResource extends BaseResource<User> {
         provider,
         providerId,
       },
-      transaction
+      transaction,
     });
 
     return user ? new UserResource(User, user.get()) : null;
