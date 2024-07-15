@@ -136,6 +136,16 @@ export async function processTranscriptActivity(
     workspace.sId
   );
 
+  if (!auth.workspace()) {
+    throw new Error(
+      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
+    );
+  }
+
+  if (!auth.user() || !auth.isUser()) {
+    throw new Error(`Could not find user for id ${transcriptsConfiguration.userId}.`);
+  }
+
   const localLogger = mainLogger.child({
     userId: user.id,
     fileId,
