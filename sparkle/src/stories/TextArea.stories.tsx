@@ -12,7 +12,7 @@ export default meta;
 
 export const TextAreaExample = () => {
   const [textValues, setTextValues] = useState([
-    "Normal",
+    "",
     "Error with label",
     "Error no label",
     "",

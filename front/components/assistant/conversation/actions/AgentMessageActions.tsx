@@ -91,7 +91,7 @@ function ActionDetails({
   ) : (
     <Button
       size={size === "normal" ? "sm" : "xs"}
-      label="Inspect the tools used"
+      label="Tools inspection"
       icon={EyeIcon}
       variant="tertiary"
       onClick={onClick}
