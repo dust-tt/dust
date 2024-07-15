@@ -54,8 +54,6 @@ impl Provider for NotionConnectionProvider {
             "redirect_uri": redirect_uri,
         });
 
-        println!("Notion finalize body: {}", body);
-
         let req = reqwest::Client::new()
             .post("https://api.notion.com/v1/oauth/token")
             .header("Accept", "application/json")
