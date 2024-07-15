@@ -97,10 +97,7 @@ async function handler(
         });
       }
 
-      // TODO(@fontanierh): remove
-      const maxStepsPerRun =
-        bodyValidation.right.assistant.maxStepsPerRun ??
-        bodyValidation.right.assistant.maxToolsUsePerRun;
+      const maxStepsPerRun = bodyValidation.right.assistant.maxStepsPerRun;
 
       const isLegacyConfiguration =
         bodyValidation.right.assistant.actions.length === 1 &&

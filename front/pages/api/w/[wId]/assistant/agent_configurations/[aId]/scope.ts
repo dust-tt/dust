@@ -117,8 +117,6 @@ async function handler(
         auth,
         assistant: {
           ...assistant,
-          // TODO(@fontanierh): remove
-          maxToolsUsePerRun: assistant.maxStepsPerRun,
           scope: bodyValidation.right.scope,
           status: assistant.status as AgentStatus,
           templateId: assistant.templateId,

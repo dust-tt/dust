@@ -719,7 +719,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       status: agent.status,
       actions,
       versionAuthorId: agent.authorId,
-      maxStepsPerRun: agent.maxToolsUsePerRun,
+      maxStepsPerRun: agent.maxStepsPerRun,
       templateId: template?.sId ?? null,
     };
 
@@ -1034,7 +1034,6 @@ export async function createAgentConfiguration(
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
-            maxToolsUsePerRun: maxStepsPerRun,
             maxStepsPerRun,
             pictureUrl,
             workspaceId: owner.id,
@@ -1069,7 +1068,7 @@ export async function createAgentConfiguration(
       },
       pictureUrl: agent.pictureUrl,
       status: agent.status,
-      maxStepsPerRun: agent.maxToolsUsePerRun,
+      maxStepsPerRun: agent.maxStepsPerRun,
       templateId: template?.sId ?? null,
     };
 

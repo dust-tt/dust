@@ -210,8 +210,6 @@ export async function submitAssistantBuilderForm({
           temperature: builderState.generationSettings.temperature,
         },
         maxStepsPerRun,
-        // TODO(@fontanierh): remove
-        maxToolsUsePerRun: maxStepsPerRun,
         templateId: builderState.templateId,
       },
     };

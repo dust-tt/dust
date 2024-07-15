@@ -189,10 +189,7 @@ async function handler(
         });
       }
 
-      const maxStepsPerRun =
-        bodyValidation.right.assistant.maxStepsPerRun ??
-        // TODO(@fontanierh): remove
-        bodyValidation.right.assistant.maxToolsUsePerRun;
+      const maxStepsPerRun = bodyValidation.right.assistant.maxStepsPerRun;
 
       const isLegacyConfiguration =
         bodyValidation.right.assistant.actions.length === 1 &&
