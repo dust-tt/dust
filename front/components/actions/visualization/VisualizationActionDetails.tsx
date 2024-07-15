@@ -18,6 +18,7 @@ export function VisualizationActionDetails({
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-normal text-slate-500">
+            <div>arico</div>
             <ReadOnlyTextArea content={action.generation ?? ""} />
           </div>
         </div>

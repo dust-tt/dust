@@ -46,6 +46,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import VisualizationIframe from "@app/components/assistant/conversation/actions/VisualizationIframe";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -536,21 +537,35 @@ export function AgentMessage({
         {/* This is where we will we plug Aric's work to render the graph in an iframe. */}
         {streamedVisualizations.map(({ actionId, visualization }) => {
           return (
-            <div key={actionId}>
-              <div className="flex flex-row gap-2">
-                <Icon size="sm" visual={BracesIcon} />
-                <div className="font-semibold">Visualization</div>
+            <>
+              <div key={actionId}>
+                <div className="flex flex-row gap-2">
+                  <Icon size="sm" visual={BracesIcon} />
+                  <div className="font-semibold">Visualization</div>
+                </div>
+                <div>
+                  <RenderMessageMarkdown
+                    content={"```js" + visualization + "\n```"}
+                    isStreaming={true}
+                  />
+                </div>
               </div>
-              <div>
-                <RenderMessageMarkdown
-                  content={"```js" + visualization + "\n```"}
-                  isStreaming={true}
-                />
-              </div>
-            </div>
+            </>
           );
         })}
-
+        <>
+          {agentMessage.actions
+            .filter((a) => isVisualizationActionType(a))
+            .map((a) => {
+              console.log("a.generation", a.generation);
+              return (
+                <>
+                  <div>iframe</div>
+                  <VisualizationIframe key={a.id} code={a.generation || ""} />
+                </>
+              );
+            })}
+        </>
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
