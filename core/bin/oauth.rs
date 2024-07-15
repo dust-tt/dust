@@ -7,7 +7,7 @@ use axum::{
 };
 use dust::{
     oauth::{
-        connection::{Connection, ConnectionProvider},
+        connection::{Connection, ConnectionProvider, MigratedCredentials},
         store,
     },
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
@@ -43,13 +43,22 @@ async fn index() -> &'static str {
 struct ConnectionCreatePayload {
     provider: ConnectionProvider,
     metadata: serde_json::Value,
+    // Optionally present secret fields (migration case).
+    migrated_credentials: Option<MigratedCredentials>,
 }
 
 async fn connections_create(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<ConnectionCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match Connection::create(state.store.clone(), payload.provider, payload.metadata).await {
+    match Connection::create(
+        state.store.clone(),
+        payload.provider,
+        payload.metadata,
+        payload.migrated_credentials,
+    )
+    .await
+    {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",

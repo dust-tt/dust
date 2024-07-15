@@ -153,7 +153,7 @@ impl Provider for GithubConnectionProvider {
             access_token: token.to_string(),
             access_token_expiry: Some(expiry),
             refresh_token: None,
-            // Github raw_json is an updated version of the full object.
+            // `raw_json` at refresh is an updated version of the full object.
             raw_json,
         })
     }

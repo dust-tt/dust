@@ -122,6 +122,18 @@ impl FromStr for ConnectionStatus {
     }
 }
 
+// Structure exceptionally used to migrate existing credentials at connection creation. The minimal
+// set of required information is the `access_token` and the `raw_json`. The `access_token_expiry`
+// is also "required in pinciple" but technically can be null for non-expiring acces tokens.
+#[derive(Deserialize)]
+pub struct MigratedCredentials {
+    access_token_expiry: Option<u64>,
+    authorization_code: Option<String>,
+    access_token: String,
+    refresh_token: Option<String>,
+    raw_json: serde_json::Value,
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct Connection {
     connection_id: String,
@@ -322,8 +334,28 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        migrated_credentials: Option<MigratedCredentials>,
     ) -> Result<Self> {
-        store.create_connection(provider, metadata).await
+        let mut c = store.create_connection(provider, metadata).await?;
+
+        if let Some(creds) = migrated_credentials {
+            c.access_token_expiry = creds.access_token_expiry;
+            c.encrypted_access_token = Some(Connection::seal_str(&creds.access_token)?);
+            c.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
+                &creds.raw_json,
+            )?)?);
+
+            if let Some(code) = creds.authorization_code {
+                c.encrypted_authorization_code = Some(Connection::seal_str(&code)?);
+            }
+            if let Some(token) = creds.refresh_token {
+                c.encrypted_refresh_token = Some(Connection::seal_str(&token)?);
+            }
+
+            store.update_connection_secrets(&c).await?;
+        }
+
+        Ok(c)
     }
 
     fn is_already_finalized(&self, code: &str) -> Result<bool> {
