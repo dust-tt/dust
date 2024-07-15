@@ -90,11 +90,20 @@ impl GithubConnectionProvider {
 
         let raw_json: serde_json::Value = serde_json::from_slice(c)?;
 
-        let token = raw_json["token"].as_str().unwrap();
+        let token = match raw_json["token"].as_str() {
+            Some(token) => token,
+            None => Err(anyhow!("Missing `token` in response from Github"))?,
+        };
         // expires_at has the format "2024-07-13T17:07:43Z"
-        let expires_at = raw_json["expires_at"].as_str().unwrap();
+        let expires_at = match raw_json["expires_at"].as_str() {
+            Some(expires_at) => expires_at,
+            None => Err(anyhow!("Missing `expires_at` in response from Github"))?,
+        };
 
-        let date: DateTime<Utc> = expires_at.parse().unwrap();
+        let date: DateTime<Utc> = match expires_at.parse() {
+            Ok(date) => date,
+            Err(_) => Err(anyhow!("Invalid `expires_at` in response from Github"))?,
+        };
         let expiry = date.timestamp_millis();
 
         Ok((token.to_string(), expiry as u64, raw_json))

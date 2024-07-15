@@ -5,7 +5,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
-use ring::aead::quic::CHACHA20;
 use ring::aead::{CHACHA20_POLY1305, NONCE_LEN};
 use ring::{
     aead,
@@ -293,10 +292,10 @@ impl Connection {
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
     ) -> Result<String> {
-        let access_token = match &self.encrypted_access_token {
-            Some(t) => Connection::unseal_str(t)?,
-            None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
-        };
+        // let access_token = match &self.encrypted_access_token {
+        //     Some(t) => Connection::unseal_str(t)?,
+        //     None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
+        // };
 
         // For now always refresh while testing
         // TODO(spolu): distributed locking and expiry logic
