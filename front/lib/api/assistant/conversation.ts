@@ -751,10 +751,10 @@ export async function* postUserMessage(
         type: "user_message",
         visibility: "visible",
         version: 0,
-        user: user,
-        mentions: mentions,
+        user,
+        mentions,
         content,
-        context: context,
+        context,
         rank: m.rank,
       };
 
@@ -1210,7 +1210,7 @@ export async function* editUserMessage(
         type: "user_message",
         visibility: m.visibility,
         version: m.version,
-        user: user,
+        user,
         mentions,
         content,
         context: message.context,
