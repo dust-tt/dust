@@ -13,10 +13,8 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
@@ -25,6 +23,7 @@ import {
 } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
@@ -183,11 +182,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --username argument");
       }
 
-      const users = await User.findAll({
-        where: {
-          username: args.username,
-        },
-      });
+      const users = await UserResource.findAllByUsername(args.username);
 
       users.forEach((u) => {
         console.log(
@@ -201,12 +196,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --userId argument");
       }
 
-      const u = await User.findOne({
-        where: {
-          id: args.userId,
-        },
-      });
-
+      const u = await UserResource.fetchByModelId(args.userId);
       if (!u) {
         throw new Error(`User not found: userId='${args.userId}'`);
       }
@@ -218,7 +208,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  email: ${u.email}`);
 
       const memberships = await MembershipResource.getLatestMemberships({
-        users: [renderUserType(u)],
+        users: [u.toUserType()],
       });
 
       const workspaces = await Workspace.findAll({

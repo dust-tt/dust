@@ -6,6 +6,7 @@ import { renderUserType } from "@app/lib/api/user";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 
@@ -18,29 +19,21 @@ async function fetchUserWithLegacyProvider(
   { provider, providerId }: LegacyProviderInfo,
   sub: string
 ) {
-  const user = await User.findOne({
-    where: {
-      provider,
-      providerId: providerId.toString(),
-    },
-  });
+
+  const user = await UserResource.fetchByProvider(provider, providerId.toString());
 
   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
   if (user) {
     await user.update({ auth0Sub: sub });
   }
 
-  return user;
+  return user?.toJSON();
 }
 
 async function fetchUserWithAuth0Sub(sub: string) {
-  const userWithAuth0 = await User.findOne({
-    where: {
-      auth0Sub: sub,
-    },
-  });
+  const userWithAuth0 = await UserResource.fetchByAuth0Sub(sub);
 
-  return userWithAuth0;
+  return userWithAuth0?.toJSON();
 }
 
 function mapAuth0ProviderToLegacy(session: Session): LegacyProviderInfo | null {
