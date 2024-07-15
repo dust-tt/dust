@@ -5,6 +5,7 @@ import { promisify } from "util";
 const readFileAsync = promisify(fs.readFile);
 
 import type {
+  AgentActionConfigurationType,
   AgentConfigurationType,
   AgentModelConfigurationType,
   ConnectorProvider,
@@ -858,6 +859,69 @@ async function _getDustGlobalAgent(
     };
   }
 
+  const actions: AgentActionConfigurationType[] = [
+    {
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
+      type: "retrieval_configuration",
+      query: "auto",
+      relativeTimeFrame: "auto",
+      topK: "auto",
+      dataSources: dataSources.map((ds) => ({
+        dataSourceId: ds.name,
+        workspaceId: prodCredentials.workspaceId,
+        filter: { parents: null },
+      })),
+      name: "search_all_data_sources",
+      description: `The user's entire workspace data sources`,
+    },
+  ];
+
+  if (owner.flags.includes("dust_splitted_ds_flag")) {
+    // Note: if we want to ungate this, we should make sure to provide a better design in the Assitant detail modal.
+    dataSources.forEach((ds) => {
+      if (ds.connectorProvider && ds.connectorProvider !== "webcrawler") {
+        actions.push({
+          id: -1,
+          sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action-" + ds.name,
+          type: "retrieval_configuration",
+          query: "auto",
+          relativeTimeFrame: "auto",
+          topK: "auto",
+          dataSources: [
+            {
+              dataSourceId: ds.name,
+              workspaceId: prodCredentials.workspaceId,
+              filter: { parents: null },
+            },
+          ],
+          name: "search_" + ds.name,
+          description: `The user's ${ds.connectorProvider} data source.`,
+        });
+      }
+    });
+  }
+
+  actions.push({
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DUST + "-websearch-action",
+    type: "websearch_configuration",
+    name: DEFAULT_WEBSEARCH_ACTION_NAME,
+    description: null,
+  });
+  actions.push({
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DUST + "-browse-action",
+    type: "browse_configuration",
+    name: DEFAULT_BROWSE_ACTION_NAME,
+    description: null,
+  });
+
+  // Fix the action ids.
+  actions.forEach((action, i) => {
+    action.id = -i;
+  });
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.DUST,
@@ -877,37 +941,7 @@ async function _getDustGlobalAgent(
     scope: "global",
     userListStatus: "in-list",
     model,
-    actions: [
-      {
-        id: -1,
-        sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
-        type: "retrieval_configuration",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        topK: "auto",
-        dataSources: dataSources.map((ds) => ({
-          dataSourceId: ds.name,
-          workspaceId: prodCredentials.workspaceId,
-          filter: { tags: null, parents: null },
-        })),
-        name: DEFAULT_RETRIEVAL_ACTION_NAME,
-        description: `The user's entire workspace data sources`,
-      },
-      {
-        id: -2,
-        sId: GLOBAL_AGENTS_SID.DUST + "-websearch-action",
-        type: "websearch_configuration",
-        name: DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: null,
-      },
-      {
-        id: -3,
-        sId: GLOBAL_AGENTS_SID.DUST + "-browse-action",
-        type: "browse_configuration",
-        name: DEFAULT_BROWSE_ACTION_NAME,
-        description: null,
-      },
-    ],
+    actions,
     maxStepsPerRun: 3,
     templateId: null,
   };
