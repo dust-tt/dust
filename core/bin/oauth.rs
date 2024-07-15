@@ -7,7 +7,7 @@ use axum::{
 };
 use dust::{
     oauth::{
-        connection::{Connection, ConnectionProvider},
+        connection::{Connection, ConnectionProvider, MigratedCredentials},
         store,
     },
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
@@ -44,11 +44,7 @@ struct ConnectionCreatePayload {
     provider: ConnectionProvider,
     metadata: serde_json::Value,
     // Optionally present secret fields (migration case).
-    access_token_expiry: Option<u64>,
-    authorization_code: Option<String>,
-    access_token: Option<String>,
-    refresh_token: Option<String>,
-    raw_json: Option<serde_json::Value>,
+    migrated_credentials: Option<MigratedCredentials>,
 }
 
 async fn connections_create(
@@ -59,11 +55,7 @@ async fn connections_create(
         state.store.clone(),
         payload.provider,
         payload.metadata,
-        payload.access_token_expiry,
-        payload.authorization_code,
-        payload.access_token,
-        payload.refresh_token,
-        payload.raw_json,
+        payload.migrated_credentials,
     )
     .await
     {
