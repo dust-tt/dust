@@ -326,6 +326,15 @@ pub struct Chunk {
 /// considered a parent, and has a proper external “repo id”, which is stored at
 /// 2nd place in the array
 ///
+/// Additional note: in cases where selection of elements to sync is done on
+/// Dust side and not on provider's side, we need to be able to list all the
+/// children of a resource given its id (this is the case for google drive and
+/// microsoft for instance). While google drive's API and ids allows it, this is
+/// not the case for Microsoft. Therefore, for microsoft, instead of using the
+/// provider id directly, we compute our own document id containing all
+/// information for the querying the document using Microsoft's API. More details
+/// [here](https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4)
+///
 /// Parents array
 /// -------------
 /// At index 0 is the string id of the document itself, then at index 1 its
