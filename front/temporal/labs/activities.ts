@@ -131,7 +131,10 @@ export async function processTranscriptActivity(
     );
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(user.id, workspace.sId);
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.id,
+    workspace.sId
+  );
 
   const localLogger = mainLogger.child({
     userId: user.id,
