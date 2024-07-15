@@ -198,7 +198,9 @@ export function RemoveAssistantFromWorkspaceDialog({
             model: agentConfiguration.model,
             actions: detailedConfiguration.actions,
             templateId: agentConfiguration.templateId,
-            maxToolsUsePerRun: agentConfiguration.maxToolsUsePerRun,
+            maxStepsPerRun: agentConfiguration.maxStepsPerRun,
+            // TODO(@fontanierh): remove
+            maxToolsUsePerRun: agentConfiguration.maxStepsPerRun,
           },
         };
 

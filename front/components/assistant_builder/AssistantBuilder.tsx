@@ -112,9 +112,9 @@ export default function AssistantBuilder({
             ...getDefaultAssistantState().generationSettings,
           },
           actions: initialBuilderState.actions,
-          maxToolsUsePerRun:
-            initialBuilderState.maxToolsUsePerRun ??
-            getDefaultAssistantState().maxToolsUsePerRun,
+          maxStepsPerRun:
+            initialBuilderState.maxStepsPerRun ??
+            getDefaultAssistantState().maxStepsPerRun,
           templateId: initialBuilderState.templateId,
         }
       : {

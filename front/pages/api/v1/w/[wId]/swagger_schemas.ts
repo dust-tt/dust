@@ -146,7 +146,7 @@
  *               type: number
  *         actions:
  *           type: array
- *         maxToolsUsePerRun:
+ *         maxStepsPerRun:
  *           type: integer
  *         templateId:
  *           type: string

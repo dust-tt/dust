@@ -189,35 +189,36 @@ async function handler(
         });
       }
 
-      const maxToolsUsePerRun =
+      const maxStepsPerRun =
+        bodyValidation.right.assistant.maxStepsPerRun ??
+        // TODO(@fontanierh): remove
         bodyValidation.right.assistant.maxToolsUsePerRun;
 
       const isLegacyConfiguration =
         bodyValidation.right.assistant.actions.length === 1 &&
         !bodyValidation.right.assistant.actions[0].description;
 
-      if (isLegacyConfiguration && maxToolsUsePerRun !== undefined) {
+      if (isLegacyConfiguration && maxStepsPerRun !== undefined) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "app_auth_error",
-            message:
-              "maxToolsUsePerRun is only supported in multi-actions mode.",
+            message: "maxStepsPerRun is only supported in multi-actions mode.",
           },
         });
       }
-      if (!isLegacyConfiguration && maxToolsUsePerRun === undefined) {
+      if (!isLegacyConfiguration && maxStepsPerRun === undefined) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "app_auth_error",
-            message: "maxToolsUsePerRun is required in multi-actions mode.",
+            message: "maxStepsPerRun is required in multi-actions mode.",
           },
         });
       }
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
+        assistant: { ...bodyValidation.right.assistant, maxStepsPerRun },
       });
 
       if (agentConfigurationRes.isErr()) {
@@ -267,7 +268,7 @@ export async function createOrUpgradeAgentConfiguration({
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
-  const maxToolsUsePerRun = assistant.maxToolsUsePerRun ?? actions.length;
+  const maxStepsPerRun = assistant.maxStepsPerRun ?? actions.length;
 
   // Tools mode:
   // Enforce that every action has a name and a description and that every name is unique.
@@ -309,7 +310,7 @@ export async function createOrUpgradeAgentConfiguration({
     name: assistant.name,
     description: assistant.description,
     instructions: assistant.instructions ?? null,
-    maxToolsUsePerRun,
+    maxStepsPerRun,
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,
     scope: assistant.scope,

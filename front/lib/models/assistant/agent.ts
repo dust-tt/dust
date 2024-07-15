@@ -51,6 +51,7 @@ export class AgentConfiguration extends Model<
   declare authorId: ForeignKey<User["id"]>;
 
   declare maxToolsUsePerRun: number;
+  declare maxStepsPerRun: number;
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
@@ -121,6 +122,10 @@ AgentConfiguration.init(
     maxToolsUsePerRun: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    maxStepsPerRun: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     pictureUrl: {
       type: DataTypes.TEXT,
