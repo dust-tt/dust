@@ -1,8 +1,4 @@
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  UserType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType, MembershipRoleType } from "@dust-tt/types";
 import { rateLimiter } from "@dust-tt/types";
 import * as _ from "lodash";
 
@@ -11,13 +7,14 @@ import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 
 export class CustomerioServerSideTracking {
-  static trackSignup({ user }: { user: UserType }) {
+  static trackSignup({ user }: { user: UserResource }) {
     return CustomerioServerSideTracking._identifyUser({ user });
   }
 
@@ -46,7 +43,7 @@ export class CustomerioServerSideTracking {
     role,
     startAt,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
@@ -73,7 +70,7 @@ export class CustomerioServerSideTracking {
     startAt,
     endAt,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
@@ -101,7 +98,7 @@ export class CustomerioServerSideTracking {
     previousRole,
     role,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     previousRole: MembershipRoleType;
     role: MembershipRoleType;
@@ -129,7 +126,7 @@ export class CustomerioServerSideTracking {
     });
   }
 
-  static async backfillUser({ user }: { user: UserType }) {
+  static async backfillUser({ user }: { user: UserResource }) {
     const userMemberships = await MembershipResource.getLatestMemberships({
       users: [user],
     });
@@ -242,7 +239,7 @@ export class CustomerioServerSideTracking {
     user,
     workspaces,
   }: {
-    user: UserType;
+    user: UserResource;
     workspaces?: Array<{
       sId: string;
       startAt?: Date;
@@ -304,7 +301,7 @@ export class CustomerioServerSideTracking {
     }
   }
 
-  static async deleteUser({ user }: { user: UserType }) {
+  static async deleteUser({ user }: { user: UserResource }) {
     if (!config.getCustomerIoEnabled()) {
       return;
     }
@@ -361,7 +358,7 @@ export class CustomerioServerSideTracking {
     eventName,
     eventAttributes,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace?: LightWorkspaceType;
     eventName: string;
     eventAttributes?: Record<string, any>;

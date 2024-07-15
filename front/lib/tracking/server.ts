@@ -14,6 +14,7 @@ import * as _ from "lodash";
 import { subscriptionForWorkspaces } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
@@ -279,7 +280,7 @@ export class ServerSideTracking {
     role,
     startAt,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
@@ -306,7 +307,7 @@ export class ServerSideTracking {
     startAt,
     endAt,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
@@ -334,7 +335,7 @@ export class ServerSideTracking {
     previousRole,
     role,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     previousRole: MembershipRoleType;
     role: MembershipRoleType;

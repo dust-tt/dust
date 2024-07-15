@@ -1,7 +1,6 @@
 import type {
   ActiveRoleType,
   Result,
-  UserType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -31,6 +30,7 @@ import {
 import type { MembershipInvitation } from "@app/lib/models/workspace";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -39,7 +39,7 @@ import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
 // it does not already exist and mark the invitation as consumed.
 async function handleMembershipInvite(
-  user: UserType,
+  user: UserResource,
   membershipInvite: MembershipInvitation
 ): Promise<
   Result<
@@ -133,7 +133,7 @@ function canJoinTargetWorkspace(
 }
 
 async function handleEnterpriseSignUpFlow(
-  user: UserType,
+  user: UserResource,
   enterpriseConnectionWorkspaceId: string
 ): Promise<{
   flow: "unauthorized" | null;
@@ -196,7 +196,7 @@ async function handleEnterpriseSignUpFlow(
 // The user will join this workspace if it exists; otherwise, a new workspace is created.
 async function handleRegularSignupFlow(
   session: SessionWithUser,
-  user: UserType,
+  user: UserResource,
   targetWorkspaceId?: string
 ): Promise<
   Result<
@@ -444,7 +444,7 @@ export async function createAndLogMembership({
   workspace,
   role,
 }: {
-  user: UserType;
+  user: UserResource;
   workspace: Workspace;
   role: ActiveRoleType;
 }) {
