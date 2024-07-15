@@ -24,7 +24,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::chat_messages::{AssistantChatMessage, ChatMessage, ContentBlock, MixedContent};
 use super::llm::{ChatFunction, ChatFunctionCall};
-use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
+use super::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -1524,8 +1524,8 @@ impl LLM for AnthropicLLM {
         decode_async(anthropic_base_singleton(), tokens).await
     }
 
-    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
-        tokenize_async(anthropic_base_singleton(), text).await
+    async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
+        batch_tokenize_async(anthropic_base_singleton(), texts).await
     }
 
     async fn chat(
@@ -1692,8 +1692,8 @@ impl Embedder for AnthropicEmbedder {
         decode_async(anthropic_base_singleton(), tokens).await
     }
 
-    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
-        tokenize_async(anthropic_base_singleton(), text).await
+    async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
+        batch_tokenize_async(anthropic_base_singleton(), texts).await
     }
 
     async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {

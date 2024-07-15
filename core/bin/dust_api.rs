@@ -1179,22 +1179,30 @@ async fn data_sources_tokenize(
                 let embedder_config = ds.embedder_config().clone();
                 let embedder =
                     provider(embedder_config.provider_id).embedder(embedder_config.model_id);
-                match embedder.tokenize(&payload.text).await {
+                match embedder.tokenize(vec![payload.text]).await {
                     Err(e) => error_response(
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "internal_server_error",
                         "Failed to tokenize text",
                         Some(e),
                     ),
-                    Ok(tokens) => (
-                        StatusCode::OK,
-                        Json(APIResponse {
-                            error: None,
-                            response: Some(json!({
-                                "tokens": tokens,
-                            })),
-                        }),
-                    ),
+                    Ok(mut res) => match res.pop() {
+                        None => error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to tokenize text",
+                            None,
+                        ),
+                        Some(tokens) => (
+                            StatusCode::OK,
+                            Json(APIResponse {
+                                error: None,
+                                response: Some(json!({
+                                    "tokens": tokens,
+                                })),
+                            }),
+                        ),
+                    },
                 }
             }
         },
@@ -2407,22 +2415,30 @@ async fn tokenize(Json(payload): Json<TokenizePayload>) -> (StatusCode, Json<API
         None => (),
     }
 
-    match llm.tokenize(&payload.text).await {
+    match llm.tokenize(vec![payload.text]).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to tokenize text",
             Some(e),
         ),
-        Ok(tokens) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "tokens": tokens,
-                })),
-            }),
-        ),
+        Ok(mut res) => match res.pop() {
+            None => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to tokenize text",
+                None,
+            ),
+            Some(tokens) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "tokens": tokens,
+                    })),
+                }),
+            ),
+        },
     }
 }
 

@@ -7,6 +7,7 @@ use base64::{engine::general_purpose, Engine as _};
 use fancy_regex::Regex;
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use rustc_hash::FxHashMap as HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -146,9 +147,25 @@ pub async fn encode_async(bpe: Arc<RwLock<CoreBPE>>, text: &str) -> Result<Vec<u
     Ok(r)
 }
 
-pub async fn tokenize_async(bpe: Arc<RwLock<CoreBPE>>, text: &str) -> Result<Vec<(usize, String)>> {
-    let text = text.to_string();
-    let r = task::spawn_blocking(move || bpe.read().tokenize(&text)).await?;
+// We use the Rayon thread pool to parallelize the tokenization of multiple texts (which is a CPU bound task)
+// Rayon is a better fit than Tokio spawn_blocking because it is optimized for CPU-bound tasks (Tokio's blocking pool has a large number
+// of threads, making it less efficient for CPU-bound tasks).
+// We still need to use spawn_blocking at the top level to avoid blocking the Tokio event loop.
+pub async fn batch_tokenize_async(
+    bpe: Arc<RwLock<CoreBPE>>,
+    texts: Vec<String>,
+) -> Result<Vec<Vec<(usize, String)>>> {
+    let r = tokio::task::spawn_blocking(move || {
+        texts
+            .par_iter()
+            .map(|text| {
+                let guard = bpe.read();
+                guard.tokenize(text)
+            })
+            .collect::<Vec<Vec<(usize, String)>>>()
+    })
+    .await?;
+
     Ok(r)
 }
 
@@ -800,12 +817,12 @@ impl CoreBPE {
 mod tests {
     use rustc_hash::FxHashMap as HashMap;
 
+    use crate::providers::tiktoken::tiktoken::batch_tokenize_async;
     use crate::providers::tiktoken::tiktoken::byte_pair_split;
     use crate::providers::tiktoken::tiktoken::cl100k_base;
     use crate::providers::tiktoken::tiktoken::p50k_base;
     use crate::providers::tiktoken::tiktoken::p50k_base_singleton;
     use crate::providers::tiktoken::tiktoken::r50k_base;
-    use crate::providers::tiktoken::tiktoken::tokenize_async;
 
     #[test]
     fn very_simple_test() {
@@ -888,8 +905,8 @@ mod tests {
     async fn tokenize_test() {
         async fn run_tokenize_test(soupinou: &str, expected_soupinou: Vec<(usize, String)>) {
             let bpe = p50k_base_singleton();
-            let res = tokenize_async(bpe, soupinou).await;
-            assert_eq!(res.unwrap(), expected_soupinou);
+            let res = batch_tokenize_async(bpe, vec![soupinou.to_string()]).await;
+            assert_eq!(res.unwrap(), vec![expected_soupinou]);
         }
 
         let regular = "Un petit Soupinou".to_string();
