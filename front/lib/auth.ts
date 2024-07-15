@@ -151,8 +151,8 @@ export class Authenticator {
   /**
    * Get an Authenticator for the target workspace associated with the specified user.
    *
-   * @param uId string user id
-   * @param wId string target workspace id
+   * @param uId number user id
+   * @param wId string target workspace sid
    * @returns Promise<Authenticator>
    */
   static async fromUserIdAndWorkspaceId(
