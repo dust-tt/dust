@@ -3,6 +3,7 @@ import type { SubscriptionType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
@@ -13,8 +14,6 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
-
-import config from "../api/config";
 
 export function getProPlanStripeProductId() {
   return isDevelopment() ? "prod_OwKvN4XrUwFw5a" : "prod_OwALjyfxfi2mln";
