@@ -287,6 +287,43 @@ impl Connection {
         )?)
     }
 
+    pub async fn create(
+        store: Box<dyn OAuthStore + Sync + Send>,
+        provider: ConnectionProvider,
+        metadata: serde_json::Value,
+    ) -> Result<Self> {
+        store.create_connection(provider, metadata).await
+    }
+
+    pub async fn finalize(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        code: &str,
+    ) -> Result<()> {
+        if self.status == ConnectionStatus::Finalized {
+            return Err(anyhow::anyhow!("Connection is already finalized"));
+        }
+
+        let finalize = provider(self.provider).finalize(self, code).await?;
+
+        self.status = ConnectionStatus::Finalized;
+        store.update_connection_status(self).await?;
+
+        self.encrypted_authorization_code = Some(Connection::seal_str(&finalize.code)?);
+        self.access_token_expiry = finalize.access_token_expiry;
+        self.encrypted_access_token = Some(Connection::seal_str(&finalize.access_token)?);
+        self.encrypted_refresh_token = match &finalize.refresh_token {
+            Some(t) => Some(Connection::seal_str(t)?),
+            None => None,
+        };
+        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
+            &finalize.raw_json,
+        )?)?);
+        store.update_connection_secrets(self).await?;
+
+        Ok(())
+    }
+
     pub async fn access_token(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
@@ -312,44 +349,5 @@ impl Connection {
         store.update_connection_secrets(self).await?;
 
         Ok(refresh.access_token)
-    }
-
-    pub async fn create(
-        store: Box<dyn OAuthStore + Sync + Send>,
-        provider: ConnectionProvider,
-        metadata: serde_json::Value,
-    ) -> Result<Self> {
-        store.create_connection(provider, metadata).await
-    }
-
-    pub async fn finalize(
-        &mut self,
-        store: Box<dyn OAuthStore + Sync + Send>,
-        code: &str,
-    ) -> Result<()> {
-        println!(
-            "Finalize for {}/{}",
-            serde_json::to_string(&self.provider)?,
-            self.connection_id
-        );
-
-        let finalize = provider(self.provider).finalize(self, code).await?;
-
-        self.status = ConnectionStatus::Finalized;
-        store.update_connection_status(self).await?;
-
-        self.encrypted_authorization_code = Some(Connection::seal_str(&finalize.code)?);
-        self.access_token_expiry = finalize.access_token_expiry;
-        self.encrypted_access_token = Some(Connection::seal_str(&finalize.access_token)?);
-        self.encrypted_refresh_token = match &finalize.refresh_token {
-            Some(t) => Some(Connection::seal_str(t)?),
-            None => None,
-        };
-        self.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
-            &finalize.raw_json,
-        )?)?);
-        store.update_connection_secrets(self).await?;
-
-        Ok(())
     }
 }
