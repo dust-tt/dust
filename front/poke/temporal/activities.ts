@@ -535,7 +535,7 @@ export async function deleteMembersActivity({
           // Delete the user's files
           await FileResource.deleteAllForUser(user.toJSON(), t);
           await membership.delete(auth, t);
-          await user.delete(auth, t);
+          await user.delete();
         }
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
