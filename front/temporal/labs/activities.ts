@@ -10,11 +10,10 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { renderUserType } from "@app/lib/api/user";
+import { unsafeGetUserByModelId } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import mainLogger from "@app/logger/logger";
@@ -132,15 +131,13 @@ export async function processTranscriptActivity(
     );
   }
 
-  const userRes = await User.findByPk(transcriptsConfiguration.userId);
-  if (!userRes) {
-    mainLogger.error(
-      { fileId },
-      "[processTranscriptActivity] User not found. Stopping."
+  const user = await unsafeGetUserByModelId(transcriptsConfiguration.userId);
+
+  if (!user) {
+    throw new Error(
+      `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
-    return;
   }
-  const user = renderUserType(userRes);
 
   const localLogger = mainLogger.child({
     userId: user.id,
@@ -256,9 +253,9 @@ export async function processTranscriptActivity(
   const baseContext = {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
     username: user.username,
-    fullName: userRes.name,
+    fullName: user.fullName,
     email: user.email,
-    profilePictureUrl: userRes.imageUrl,
+    profilePictureUrl: user.image,
     origin: null,
   };
 
