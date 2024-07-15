@@ -19,10 +19,12 @@ export function getProPlanStripeProductId() {
   return isDevelopment() ? "prod_OwKvN4XrUwFw5a" : "prod_OwALjyfxfi2mln";
 }
 
-const stripe = new Stripe(config.getStripeSecretKey(), {
-  apiVersion: "2023-10-16",
-  typescript: true,
-});
+export const getStripeClient = () => {
+  return new Stripe(config.getStripeSecretKey(), {
+    apiVersion: "2023-10-16",
+    typescript: true,
+  });
+};
 
 /**
  * Calls the Stripe API to get the price ID for a given product ID.
@@ -33,6 +35,7 @@ async function getDefautPriceFromMetadata(
   productId: string,
   key: string
 ): Promise<string | null> {
+  const stripe = getStripeClient();
   const prices = await stripe.prices.list({ product: productId, active: true });
   for (const price of prices.data) {
     if (
@@ -61,6 +64,8 @@ export const createProPlanCheckoutSession = async ({
   auth: Authenticator;
   billingPeriod: BillingPeriod;
 }): Promise<string | null> => {
+  const stripe = getStripeClient();
+
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("No workspace found");
@@ -170,6 +175,8 @@ export const createCustomerPortalSession = async ({
   owner: WorkspaceType;
   subscription: SubscriptionType;
 }): Promise<string | null> => {
+  const stripe = getStripeClient();
+
   if (!subscription.stripeSubscriptionId) {
     throw new Error(
       `No stripeSubscriptionId ID found for the workspace: ${owner.sId}`
@@ -208,6 +215,7 @@ export const createCustomerPortalSession = async ({
 export const getProduct = async (
   productId: string
 ): Promise<Stripe.Product> => {
+  const stripe = getStripeClient();
   const product = await stripe.products.retrieve(productId);
   return product;
 };
@@ -218,6 +226,7 @@ export const getProduct = async (
 export const getStripeSubscription = async (
   stripeSubscriptionId: string
 ): Promise<Stripe.Subscription | null> => {
+  const stripe = getStripeClient();
   try {
     return await stripe.subscriptions.retrieve(stripeSubscriptionId);
   } catch (error) {
@@ -234,6 +243,7 @@ export const updateStripeQuantityForSubscriptionItem = async (
   subscriptionItem: Stripe.SubscriptionItem,
   quantity: number
 ): Promise<void> => {
+  const stripe = getStripeClient();
   const currentQuantity = subscriptionItem.quantity;
 
   if (currentQuantity === quantity) {
@@ -256,6 +266,7 @@ export async function updateStripeActiveUsersForSubscriptionItem(
   subscriptionItem: Stripe.SubscriptionItem,
   quantity: number
 ) {
+  const stripe = getStripeClient();
   await stripe.subscriptionItems.createUsageRecord(subscriptionItem.id, {
     // We do not send a timestamp, because we want to use the current time.
     // We use action = "set" to override the previous usage (as opposed to "increment")
@@ -274,6 +285,7 @@ export async function skipSubscriptionFreeTrial({
 }: {
   stripeSubscriptionId: string;
 }) {
+  const stripe = getStripeClient();
   return stripe.subscriptions.update(stripeSubscriptionId, {
     trial_end: "now",
   });
@@ -288,6 +300,7 @@ export async function cancelSubscriptionImmediately({
 }: {
   stripeSubscriptionId: string;
 }) {
+  const stripe = getStripeClient();
   await stripe.subscriptions.update(stripeSubscriptionId, {
     cancel_at_period_end: false,
   });

@@ -2,7 +2,7 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever, ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { promisify } from "util";
 
 import apiConfig from "@app/lib/api/config";
@@ -19,6 +19,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
+  getStripeClient,
 } from "@app/lib/plans/stripe";
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -48,10 +49,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetResponseBody>>
 ): Promise<void> {
-  const stripe = new Stripe(apiConfig.getStripeSecretKey(), {
-    apiVersion: "2023-10-16",
-    typescript: true,
-  });
+  const stripe = getStripeClient();
 
   switch (req.method) {
     case "GET":
