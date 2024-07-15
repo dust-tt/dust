@@ -9,9 +9,8 @@ import { ConversationContainer } from "@app/components/assistant/conversation/Co
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-
-const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
@@ -51,8 +50,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       user,
       owner,
       subscription,
-      baseUrl: URL,
-      gaTrackingId: GA_TRACKING_ID,
+      baseUrl: config.getClientFacingUrl(),
+      gaTrackingId: config.getGaTrackingId(),
       conversationId: getValidConversationId(cId),
     },
   };

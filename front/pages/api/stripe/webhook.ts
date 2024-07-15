@@ -33,8 +33,6 @@ import {
   terminateScheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/client";
 
-const { STRIPE_SECRET_KEY = "", STRIPE_SECRET_WEBHOOK_KEY = "" } = process.env;
-
 export type GetResponseBody = {
   success: boolean;
   message?: string;
@@ -50,7 +48,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetResponseBody>>
 ): Promise<void> {
-  const stripe = new Stripe(STRIPE_SECRET_KEY, {
+  const stripe = new Stripe(apiConfig.getStripeSecretKey(), {
     apiVersion: "2023-10-16",
     typescript: true,
   });
@@ -77,7 +75,7 @@ async function handler(
         event = stripe.webhooks.constructEvent(
           rawBody,
           sig,
-          STRIPE_SECRET_WEBHOOK_KEY
+          apiConfig.getStripeSecretWebhookKey()
         );
       } catch (error) {
         logger.error({ error }, "Error constructing Stripe event in Webhook.");

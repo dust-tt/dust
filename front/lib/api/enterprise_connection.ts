@@ -24,7 +24,7 @@ function makeEnterpriseConnectionName(workspaceId: string) {
 }
 
 export function makeEnterpriseConnectionInitiateLoginUrl(workspaceId: string) {
-  return `${config.getAppUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
+  return `${config.getClientFacingUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
     workspaceId
   )}`;
 }

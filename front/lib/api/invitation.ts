@@ -152,7 +152,7 @@ export function getMembershipInvitationUrlForToken(
   owner: LightWorkspaceType,
   invitationToken: string
 ) {
-  return `${config.getAppUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
+  return `${config.getClientFacingUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
 }
 
 export async function sendWorkspaceInvitationEmail(

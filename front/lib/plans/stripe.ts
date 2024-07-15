@@ -3,6 +3,7 @@ import type { SubscriptionType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
@@ -14,13 +15,11 @@ import {
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
 
-const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
-
 export function getProPlanStripeProductId() {
   return isDevelopment() ? "prod_OwKvN4XrUwFw5a" : "prod_OwALjyfxfi2mln";
 }
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
+const stripe = new Stripe(config.getStripeSecretKey(), {
   apiVersion: "2023-10-16",
   typescript: true,
 });
@@ -144,8 +143,8 @@ export const createProPlanCheckoutSession = async ({
     tax_id_collection: {
       enabled: true,
     },
-    success_url: `${URL}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
-    cancel_url: `${URL}/w/${owner.sId}/subscription?type=cancelled`,
+    success_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
+    cancel_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription?type=cancelled`,
     consent_collection: {
       terms_of_service: "required",
     },
@@ -197,7 +196,7 @@ export const createCustomerPortalSession = async ({
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: stripeCustomerId,
-    return_url: `${URL}/w/${owner.sId}/subscription`,
+    return_url: `${config.getClientFacingUrl()}/w/${owner.sId}/subscription`,
   });
 
   return portalSession.url;

@@ -204,7 +204,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Unexpected unauthenticated call to `getPublicUrl`");
     }
 
-    return `${config.getAppUrl()}/api/w/${owner.sId}/files/${this.sId}`;
+    return `${config.getClientFacingUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
