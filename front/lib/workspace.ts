@@ -4,9 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { User } from "@app/lib/models/user";
 import type { Workspace } from "@app/lib/models/workspace";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 export function renderLightWorkspaceType({
@@ -29,6 +27,6 @@ export function renderLightWorkspaceType({
 
 // TODO: This belong to the WorkspaceResource.
 export async function getWorkspaceFirstAdmin(workspace: Workspace) {
-  const userRes =  await UserResource.getWorkspaceFirstAdmin(workspace.id);
+  const userRes = await UserResource.getWorkspaceFirstAdmin(workspace.id);
   return userRes?.toJSON();
 }
