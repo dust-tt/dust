@@ -124,7 +124,7 @@ AgentVisualizationAction.init(
       allowNull: false,
     },
     generation: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     functionCallId: {
