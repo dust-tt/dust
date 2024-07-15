@@ -73,7 +73,7 @@ export class UserResource extends BaseResource<User> {
 
   static async fetchByProvider(
     provider: UserProviderType,
-    providerId: string,
+    providerId: string
   ): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
@@ -101,10 +101,9 @@ export class UserResource extends BaseResource<User> {
       ],
       order: [["createdAt", "ASC"]],
     });
-  
+
     return user ? new UserResource(User, user.get()) : null;
   }
-  
 
   async update(blob: Partial<Attributes<User>>): Promise<void> {
     const [, affectedRows] = await this.model.update(blob, {
