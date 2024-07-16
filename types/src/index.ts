@@ -77,6 +77,7 @@ export * from "./shared/model_id";
 export * from "./shared/nango_errors";
 export * from "./shared/rate_limiter";
 export * from "./shared/result";
+export * from "./shared/text_extraction";
 export * from "./shared/typescipt_utils";
 export * from "./shared/user_operation";
 export * from "./shared/utils/assert_never";
