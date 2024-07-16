@@ -2,7 +2,7 @@ apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
 metadata:
   name: apache-tika-hpa
-  namespace: apache-tika-namespace
+  namespace: apache-tika
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
