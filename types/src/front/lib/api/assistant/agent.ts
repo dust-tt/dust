@@ -97,7 +97,7 @@ export type AgentMessageSuccessEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
-  runId: string;
+  runIds: string[];
 };
 
 export type AgentActionsEvent = {
