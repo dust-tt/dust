@@ -8,4 +8,7 @@ export const apiConfig = {
       nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
     };
   },
+  getTextExtractionUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
+  },
 };
