@@ -11,9 +11,20 @@ function apply_deployment {
     # Get the current image if it exists
     CURRENT_IMAGE=$(kubectl get deployment $DEPLOYMENT_NAME -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
 
+    # Get the current number of replicas if it exists
+    CURRENT_REPLICAS=$(kubectl get deployment $DEPLOYMENT_NAME -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
+
     if [ -n "$CURRENT_IMAGE" ]; then
-        # If CURRENT_IMAGE is not empty, replace the image in the YAML file with the actual image and apply it
-        yq e ".spec.template.spec.containers[].image = \"$CURRENT_IMAGE\"" $YAML_FILE | kubectl apply -f -
+         # If CURRENT_IMAGE is not empty, replace the image in the YAML file with the actual image
+        UPDATED_YAML=$(yq e ".spec.template.spec.containers[].image = \"$CURRENT_IMAGE\"" $YAML_FILE)
+
+        # If CURRENT_REPLICAS is set, update the replicas in the YAML
+        if [ -n "$CURRENT_REPLICAS" ]; then
+            UPDATED_YAML=$(echo "$UPDATED_YAML" | yq e ".spec.replicas = $CURRENT_REPLICAS" -)
+        fi
+
+        # Apply the updated YAML
+        echo "$UPDATED_YAML" | kubectl apply -f -
     else
         # If CURRENT_IMAGE is empty, apply the original YAML
         kubectl apply -f $YAML_FILE

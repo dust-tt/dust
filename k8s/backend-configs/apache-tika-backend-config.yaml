@@ -3,4 +3,4 @@ kind: BackendConfig
 metadata:
   name: apache-tika-backendconfig
 spec:
-  timeoutSec: 300
+  timeoutSec: 120

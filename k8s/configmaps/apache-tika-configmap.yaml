@@ -5,7 +5,6 @@ metadata:
 data:
   DD_ENV: "prod"
   DD_SERVICE: "apache-tika"
-  NODE_OPTIONS: "-r dd-trace/init --max-old-space-size=6000"
   DD_LOGS_INJECTION: "true"
   DD_RUNTIME_METRICS_ENABLED: "true"
   NODE_ENV: "production"
