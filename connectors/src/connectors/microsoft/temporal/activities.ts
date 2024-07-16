@@ -1,7 +1,7 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
-import type { Client } from "@microsoft/microsoft-graph-client";
 import { slugify } from "@dust-tt/types";
+import type { Client } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import axios from "axios";
 import mammoth from "mammoth";
