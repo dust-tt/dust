@@ -15,7 +15,7 @@ export function MembersList({
   users: UserTypeWithWorkspaces[];
   currentUserId: number;
   isMembersLoading: boolean;
-  onClickEvent?: (role: UserTypeWithWorkspaces) => void;
+  onClickEvent: (role: UserTypeWithWorkspaces) => void;
   searchText?: string;
 }) {
   const filteredUsers = users
@@ -41,7 +41,7 @@ export function MembersList({
             key={`member-${user.id}`}
             className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
             onClick={async () => {
-              if (currentUserId === user.id || !onClickEvent) {
+              if (currentUserId === user.id) {
                 return;
               }
               onClickEvent(user);
@@ -73,7 +73,7 @@ export function MembersList({
                 visual={ChevronRightIcon}
                 className={classNames(
                   "text-element-600",
-                  user.id === currentUserId || !onClickEvent ? "invisible" : ""
+                  user.id === currentUserId ? "invisible" : ""
                 )}
               />
             </div>

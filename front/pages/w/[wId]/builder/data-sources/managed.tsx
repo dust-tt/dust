@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BookOpenIcon,
   Button,
   Chip,
@@ -29,7 +30,6 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
-import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -544,11 +544,44 @@ export default function DataSourcesView({
               title="Administrators"
               description={`${owner.name} has the following administrators:`}
             />
-            <MembersList
-              users={admins}
-              currentUserId={user.id}
-              isMembersLoading={isAdminsLoading}
-            />
+            {isAdminsLoading ? (
+              <div className="flex animate-pulse items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+                <div className="hidden sm:block">
+                  <Avatar size="xs" />
+                </div>
+                <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                  <div className="font-medium text-element-900">Loading...</div>
+                  <div className="grow font-normal text-element-700"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="s-w-full">
+                {admins.map((admin) => {
+                  return (
+                    <div
+                      key={`member-${admin.id}`}
+                      className="flex items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs sm:text-sm"
+                    >
+                      <div className="hidden sm:block">
+                        <Avatar
+                          visual={admin.image}
+                          name={admin.fullName}
+                          size="sm"
+                        />
+                      </div>
+                      <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                        <div className="font-medium text-element-900">
+                          {admin.fullName}
+                        </div>
+                        <div className="grow font-normal text-element-700">
+                          {admin.email}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </Modal>
       )}
