@@ -88,8 +88,7 @@ export async function batchRenderUserMessages(
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            fullName:
-              user.getFullName(),
+            fullName: user.getFullName(),
             provider: user.provider,
             image: user.imageUrl,
           }

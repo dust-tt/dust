@@ -66,9 +66,9 @@ export class UserResource extends BaseResource<User> {
       where: {
         email,
       },
-    })
+    });
 
-    return users.map((user) => new UserResource(User, user.get()))
+    return users.map((user) => new UserResource(User, user.get()));
   }
 
   static async fetchById(userId: string): Promise<UserResource | null> {
