@@ -47,6 +47,7 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FILES_SYNC_CONCURRENCY = 10;
+const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
 
 export async function getSiteNodesToSync(
   connectorId: ModelId
@@ -123,8 +124,8 @@ export async function getSiteNodesToSync(
   );
 
   // for all folders, check if a parent folder or drive is already in the list,
-  // in which case remove it this can happen because when a user selects a
-  // folder to sync, then a parent folder, both are storeed in Microsoft Roots
+  // in which case remove it. This can happen because when a user selects a
+  // folder to sync, then a parent folder, both are stored in Microsoft Roots
   // table
 
   // Keeping them both in the sync list can result in various kinds of issues,
@@ -637,7 +638,7 @@ const getParentParentId = cacheWithRedis(
   },
   (connectorId, parentInternalId, startSyncTs) =>
     `microsoft-${connectorId}-parent-${parentInternalId}-syncms-${startSyncTs}`,
-  10 * 60 * 1000
+  PARENT_SYNC_CACHE_TTL_MS
 );
 
 async function handlePptxFile(
