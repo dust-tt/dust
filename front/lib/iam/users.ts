@@ -1,5 +1,5 @@
 import type { Session } from "@auth0/nextjs-auth0";
-import type { UserProviderType, UserType } from "@dust-tt/types";
+import type { UserProviderType } from "@dust-tt/types";
 import { sanitizeString } from "@dust-tt/types";
 
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
@@ -25,7 +25,7 @@ async function fetchUserWithLegacyProvider(
 
   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
   if (user) {
-    await user.update({ auth0Sub: sub });
+    await user.updateAuth0Sub(sub);
   }
 
   return user;
@@ -95,29 +95,39 @@ export async function createOrUpdateUser(
   const user = await fetchUserFromSession(session);
 
   if (user) {
-    const newUser = {} as Partial<UserType>;
+    const updateArgs = {
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    };
     // We only update the user's email if the email is verified.
     if (externalUser.email_verified) {
-      newUser.email = externalUser.email;
+      updateArgs.email = externalUser.email;
     }
 
     // Update the user object from the updated session information.
-    newUser.username = externalUser.nickname;
+    updateArgs.username = externalUser.nickname;
 
     if (!user.firstName && !user.lastName) {
       if (externalUser.given_name && externalUser.family_name) {
-        newUser.firstName = externalUser.given_name;
-        newUser.lastName = externalUser.family_name;
+        updateArgs.firstName = externalUser.given_name;
+        updateArgs.lastName = externalUser.family_name;
       } else {
         const { firstName, lastName } = guessFirstAndLastNameFromFullName(
           externalUser.name
         );
-        newUser.firstName = firstName;
-        newUser.lastName = lastName;
+        updateArgs.firstName = firstName;
+        updateArgs.lastName = lastName;
       }
     }
 
-    await user.update({ ...newUser, createdAt: user.createdAt });
+    await user.updateUserInfo(
+      updateArgs.username,
+      updateArgs.firstName,
+      updateArgs.lastName,
+      updateArgs.email
+    );
 
     return { user, created: false };
   } else {
