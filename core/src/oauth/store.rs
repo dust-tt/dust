@@ -104,6 +104,7 @@ impl OAuthStore for PostgresOAuthStore {
             None,
             None,
             None,
+            None,
         ))
     }
 
@@ -119,8 +120,9 @@ impl OAuthStore for PostgresOAuthStore {
 
         let r = c
             .query_one(
-                "SELECT created, status, metadata, access_token_expiry,
-                        encrypted_authorization_code, encrypted_access_token,
+                "SELECT created, status, metadata,
+                        redirect_uri, encrypted_authorization_code,
+                        access_token_expiry, encrypted_access_token,
                         encrypted_refresh_token, encrypted_raw_json
                    FROM connections
                    WHERE id = $1 AND provider = $2 AND secret = $3",
@@ -131,11 +133,12 @@ impl OAuthStore for PostgresOAuthStore {
         let created: i64 = r.get(0);
         let status: ConnectionStatus = ConnectionStatus::from_str(r.get(1))?;
         let metadata: serde_json::Value = r.get(2);
-        let access_token_expiry: Option<i64> = r.get(3);
+        let redirect_uri: Option<String> = r.get(3);
         let encrypted_authorization_code: Option<Vec<u8>> = r.get(4);
-        let encrypted_access_token: Option<Vec<u8>> = r.get(5);
-        let encrypted_refresh_token: Option<Vec<u8>> = r.get(6);
-        let encrypted_raw_json: Option<Vec<u8>> = r.get(7);
+        let access_token_expiry: Option<i64> = r.get(5);
+        let encrypted_access_token: Option<Vec<u8>> = r.get(6);
+        let encrypted_refresh_token: Option<Vec<u8>> = r.get(7);
+        let encrypted_raw_json: Option<Vec<u8>> = r.get(8);
 
         Ok(Connection::new(
             connection_id.to_string(),
@@ -143,11 +146,12 @@ impl OAuthStore for PostgresOAuthStore {
             provider,
             status,
             metadata,
+            redirect_uri,
+            encrypted_authorization_code,
             match access_token_expiry {
                 Some(e) => Some(e as u64),
                 None => None,
             },
-            encrypted_authorization_code,
             encrypted_access_token,
             encrypted_refresh_token,
             encrypted_raw_json,
@@ -168,15 +172,17 @@ impl OAuthStore for PostgresOAuthStore {
 
         c.execute(
             "UPDATE connections
-                SET access_token_expiry = $1,
+                SET redirect_uri = $1,
                     encrypted_authorization_code = $2,
-                    encrypted_access_token = $3,
-                    encrypted_refresh_token = $4,
-                    encrypted_raw_json = $5
-              WHERE id = $6 AND provider = $7 AND secret = $8",
+                    access_token_expiry = $3,
+                    encrypted_access_token = $4,
+                    encrypted_refresh_token = $5,
+                    encrypted_raw_json = $6
+              WHERE id = $7 AND provider = $8 AND secret = $9",
             &[
-                &access_token_expiry,
+                &connection.redirect_uri(),
                 &connection.encrypted_authorization_code(),
+                &access_token_expiry,
                 &connection.encrypted_access_token(),
                 &connection.encrypted_refresh_token(),
                 &connection.encrypted_raw_json(),
@@ -227,6 +233,7 @@ pub const POSTGRES_TABLES: [&'static str; 1] = ["-- connections
        status                         TEXT NOT NULL,
        metadata                       JSONB,
        access_token_expiry            BIGINT,
+       redirect_uri                   TEXT,
        encrypted_authorization_code   BYTEA,
        encrypted_access_token         BYTEA,
        encrypted_refresh_token        BYTEA,

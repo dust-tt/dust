@@ -86,5 +86,6 @@ pub mod oauth {
     pub mod store;
     pub mod providers {
         pub mod github;
+        pub mod notion;
     }
 }

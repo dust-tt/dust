@@ -87,6 +87,7 @@ async fn connections_create(
 struct ConnectionFinalizePayload {
     provider: ConnectionProvider,
     code: String,
+    redirect_uri: String,
 }
 
 async fn connections_finalize(
@@ -105,7 +106,14 @@ async fn connections_finalize(
             "Requested connection was not found",
             Some(e),
         ),
-        Ok(mut c) => match c.finalize(state.clone().store.clone(), &payload.code).await {
+        Ok(mut c) => match c
+            .finalize(
+                state.clone().store.clone(),
+                &payload.code,
+                &payload.redirect_uri,
+            )
+            .await
+        {
             Err(e) => error_response(
                 StatusCode::BAD_REQUEST,
                 "connection_finalization_failed",

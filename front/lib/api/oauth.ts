@@ -36,22 +36,24 @@ function getStringFromQuery(query: ParsedUrlQuery, key: string): string | null {
   return value;
 }
 
+function finalizeUriForProvider(provider: OAuthProvider): string {
+  return config.getClientFacingUrl() + `/oauth/${provider}/finalize`;
+}
+
 const PROVIDER_STRATEGIES: Record<
   OAuthProvider,
   {
-    redirectUrl: (
-      connection: OAuthConnectionType
-    ) => Result<string, OAuthError>;
+    setupUri: (connection: OAuthConnectionType) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
   }
 > = {
   github: {
-    redirectUrl: (connection) => {
+    setupUri: (connection) => {
       // Only the `installations/new` URL supports state passing.
-      return new Ok(
+      return (
         `https://github.com/apps/${config.getOAuthGithubApp()}/installations/new` +
-          `?state=${connection.connection_id}`
+        `?state=${connection.connection_id}`
       );
     },
     // {
@@ -68,71 +70,64 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    redirectUrl: () => {
-      return new Err({
-        code: "connection_not_implemented",
-        message: "Google Drive OAuth is not implemented",
-      });
+    setupUri: () => {
+      throw new Error("Google Drive OAuth is not implemented");
     },
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
   },
   notion: {
-    redirectUrl: (connection) => {
-      return new Ok(
+    setupUri: (connection) => {
+      return (
         `https://api.notion.com/v1/oauth/authorize?owner=user` +
-          `response_type=code` +
-          `&client_id=${config.getOAuthNotionClientId()}` +
-          `&redirect_uri=${encodeURIComponent(config.getClientFacingUrl() + "/oauth/notion/finalize")}` +
-          `&state=${connection.connection_id}`
+        `&response_type=code` +
+        `&client_id=${config.getOAuthNotionClientId()}` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("notion"))}`
       );
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    // {
+    //   code: '03...',
+    //   state: 'con_...-...',
+    // }
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
   slack: {
-    redirectUrl: () => {
-      return new Err({
-        code: "connection_not_implemented",
-        message: "Slack OAuth is not implemented",
-      });
+    setupUri: () => {
+      throw new Error("Slack OAuth is not implemented");
     },
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
   },
   confluence: {
-    redirectUrl: () => {
-      return new Err({
-        code: "connection_not_implemented",
-        message: "Confluence OAuth is not implemented",
-      });
+    setupUri: () => {
+      throw new Error("Slack OAuth is not implemented");
     },
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
   },
   intercom: {
-    redirectUrl: () => {
-      return new Err({
-        code: "connection_not_implemented",
-        message: "Intercom OAuth is not implemented",
-      });
+    setupUri: () => {
+      throw new Error("Slack OAuth is not implemented");
     },
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
   },
   microsoft: {
-    redirectUrl: () => {
-      return new Err({
-        code: "connection_not_implemented",
-        message: "Microsoft OAuth is not implemented",
-      });
+    setupUri: () => {
+      throw new Error("Slack OAuth is not implemented");
     },
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
   },
 };
 
-export async function createConnectionAndGetRedirectURL(
+export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
   useCase: OAuthUseCase
@@ -158,7 +153,7 @@ export async function createConnectionAndGetRedirectURL(
 
   const connection = cRes.value.connection;
 
-  return PROVIDER_STRATEGIES[provider].redirectUrl(connection);
+  return new Ok(PROVIDER_STRATEGIES[provider].setupUri(connection));
 }
 
 export async function finalizeConnection(
@@ -194,7 +189,12 @@ export async function finalizeConnection(
 
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
-  const cRes = await api.finalizeConnection({ provider, connectionId, code });
+  const cRes = await api.finalizeConnection({
+    provider,
+    connectionId,
+    code,
+    redirectUri: finalizeUriForProvider(provider),
+  });
   logger.error(
     {
       provider,
