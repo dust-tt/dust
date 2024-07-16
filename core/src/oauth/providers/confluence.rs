@@ -28,6 +28,7 @@ impl ConfluenceConnectionProvider {
     }
 }
 
+/// Confluence documentation: https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/
 #[async_trait]
 impl Provider for ConfluenceConnectionProvider {
     fn id(&self) -> ConnectionProvider {
@@ -88,6 +89,9 @@ impl Provider for ConfluenceConnectionProvider {
         })
     }
 
+    /// Note: Confluence hard expires refresh_tokens after 360 days.
+    ///       Confluence expires access_tokens after 1 hour.
+    ///       Confluence expires refresh_tokens after 30 days of inactivity.
     async fn refresh(&self, connection: &Connection) -> Result<RefreshResult> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
