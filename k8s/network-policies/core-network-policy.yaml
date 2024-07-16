@@ -1,11 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: oauth-network-policy
+  name: core-network-policy
 spec:
   podSelector:
     matchLabels:
-      app: oauth
+      app: core
   policyTypes:
     - Ingress
   ingress:
@@ -15,7 +15,7 @@ spec:
               app: front
         - podSelector:
             matchLabels:
-              app: connectors
+              app: front-worker
       ports:
         - protocol: TCP
-          port: 3006
+          port: 3001
