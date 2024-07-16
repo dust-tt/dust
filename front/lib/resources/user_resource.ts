@@ -68,7 +68,7 @@ export class UserResource extends BaseResource<User> {
     }).then((users) => users.map((user) => new UserResource(User, user.get())));
   }
 
-  static async fetchByExternalId(userId: string): Promise<UserResource | null> {
+  static async fetchById(userId: string): Promise<UserResource | null> {
     const user = await User.findOne({
       where: {
         sId: userId,
