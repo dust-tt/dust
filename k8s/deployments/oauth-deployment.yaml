@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: oauth
+  template:
+    metadata:
+      labels:
+        app: oauth
+        name: oauth-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "oauth","service": "oauth","tags": ["env:prod"]}]'
+    spec:
+      terminationGracePeriodSeconds: 180
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/core-image:latest
+          command: ["cargo", "run", "--release", "--bin", "oauth"]
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3006
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3006
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+          envFrom:
+            - configMapRef:
+                name: oauth-config
+            - secretRef:
+                name: oauth-secrets
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
