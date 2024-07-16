@@ -122,7 +122,7 @@ export async function createOrUpdateUser(
       }
     }
 
-    await user.updateUserInfo(
+    await user.updateInfo(
       updateArgs.username,
       updateArgs.firstName,
       updateArgs.lastName,

@@ -84,10 +84,7 @@ async function handler(
       }
 
       try {
-        await userRes.update({
-          firstName: req.body.firstName,
-          lastName: req.body.lastName,
-        });
+        await userRes.updateName(req.body.firstName, req.body.lastName);
       } catch (err) {
         return apiError(req, res, {
           status_code: 400,
