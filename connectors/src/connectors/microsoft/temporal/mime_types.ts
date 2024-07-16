@@ -8,8 +8,7 @@ export function getMimeTypesToSync({ pdfEnabled }: { pdfEnabled: boolean }) {
     "application/vnd.ms-excel", // Microsoft type for "text/csv"
   ];
   if (pdfEnabled) {
-    // TODO(pr): support it
-    // mimeTypes.push("application/pdf");
+    mimeTypes.push("application/pdf");
   }
 
   return mimeTypes;

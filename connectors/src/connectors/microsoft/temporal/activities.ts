@@ -1,4 +1,10 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  ModelId} from "@dust-tt/types";
+import {
+  isTextExtractionSupportedContentType,
+  TextExtraction,
+} from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import { slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
@@ -26,6 +32,7 @@ import {
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -51,6 +58,12 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const pagePrefixesPerMimeType: Record<string, string> = {
+  "application/pdf": "$pdfPage",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "$slideNumber",
+};
 
 export async function getSiteNodesToSync(
   connectorId: ModelId
@@ -519,6 +532,9 @@ export async function syncOneFile({
         );
       }
     }
+  } else if (mimeType === "application/pdf") {
+    const data = Buffer.from(downloadRes.data);
+    documentSection = await handleTextExtraction(data, localLogger, file);
   } else {
     const documentContent = await getDocumentContent();
     documentSection = {
@@ -747,4 +763,53 @@ async function handleCsvFile(
     return false;
   }
   return true;
+}
+
+async function handleTextExtraction(
+  data: ArrayBuffer,
+  localLogger: Logger,
+  file: DriveItem
+): Promise<CoreAPIDataSourceDocumentSection | null> {
+  const mimeType = file.file?.mimeType;
+
+  if (!mimeType || !isTextExtractionSupportedContentType(mimeType)) {
+    localLogger.warn(
+      {
+        error: "Unexpected mimeType",
+        mimeType: mimeType,
+      },
+      "Unexpected mimeType"
+    );
+    return null;
+  }
+  const pageRes = await new TextExtraction(
+    apiConfig.getTextExtractionUrl()
+  ).fromBuffer(Buffer.from(data), mimeType);
+  if (pageRes.isErr()) {
+    localLogger.warn(
+      {
+        error: pageRes.error,
+        mimeType: mimeType,
+      },
+      "Error while converting file to text"
+    );
+    // We don't know what to do with files that fails to be converted to text.
+    // So we log the error and skip the file.
+    return null;
+  }
+  const pages = pageRes.value;
+  const prefix = pagePrefixesPerMimeType[mimeType];
+  return pages.length > 0
+    ? {
+        prefix: null,
+        content: null,
+        sections: pages.map((page) => ({
+          prefix: prefix
+            ? `\n${prefix}: ${page.pageNumber}/${pages.length}\n`
+            : null,
+          content: page.content,
+          sections: [],
+        })),
+      }
+    : null;
 }
