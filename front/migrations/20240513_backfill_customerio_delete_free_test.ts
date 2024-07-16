@@ -6,6 +6,7 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -66,9 +67,17 @@ const backfillCustomerIo = async (execute: boolean) => {
         );
 
         if (execute) {
+          const userRes = await UserResource.fetchByModelId(u.id);
+          if (!userRes) {
+            logger.error(
+              { userId: u.sId },
+              "Failed to fetch userResource, skipping"
+            );
+            continue;
+          }
           promises.push(
             CustomerioServerSideTracking.deleteUser({
-              user: u.toJSON(),
+              user: userRes.toJSON(),
             }).catch((err) => {
               logger.error(
                 { userId: u.sId, err },

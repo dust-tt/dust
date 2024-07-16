@@ -282,7 +282,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     void ServerSideTracking.trackCreateMembership({
-      user,
+      user: user.toJSON(),
       workspace,
       role: newMembership.role,
       startAt: newMembership.startAt,
@@ -329,7 +329,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     void ServerSideTracking.trackRevokeMembership({
-      user,
+      user: user.toJSON(),
       workspace,
       role: membership.role,
       startAt: membership.startAt,
@@ -397,7 +397,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     void ServerSideTracking.trackUpdateMembershipRole({
-      user,
+      user: user.toJSON(),
       workspace,
       previousRole: membership.role,
       role: newRole,

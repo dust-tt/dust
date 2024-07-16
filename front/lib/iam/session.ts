@@ -48,16 +48,7 @@ export async function getUserFromSession(
   await maybeUpdateFromExternalUser(user, session.user);
 
   return {
-    sId: user.sId,
-    id: user.id,
-    createdAt: user.createdAt.getTime(),
-    provider: user.provider,
-    username: user.username,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.getFullName(),
-    image: user.imageUrl,
+    ...user.toJSON(),
     workspaces: workspaces.map((w) => {
       const m = memberships.find((m) => m.workspaceId === w.id);
       let role = "none" as RoleType;

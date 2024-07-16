@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 
 import { User } from "@app/lib/models/user";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
@@ -19,26 +20,41 @@ const backfillCustomerIo = async (execute: boolean) => {
     if (execute) {
       await Promise.all(
         c.map((u) =>
-          Promise.all([
-            CustomerioServerSideTracking.backfillUser({
-              user: u.toJSON(),
-            }).catch((err) => {
+          (async () => {
+            try {
+              const user = await UserResource.fetchByModelId(u.id);
+              if (!user) {
+                logger.error(
+                  { userId: u.sId },
+                  "Failed to fetch userResource, skipping"
+                );
+                return;
+              }
+              return await Promise.all([
+                CustomerioServerSideTracking.backfillUser({
+                  user: user.toJSON(),
+                }).catch((err) => {
+                  logger.error(
+                    { userId: user.sId, err },
+                    "Failed to backfill user on Customer.io"
+                  );
+                }),
+                AmplitudeServerSideTracking._identifyUser({
+                  user: {
+                    ...user.toJSON(),
+                    fullName: `${user.firstName} ${user.lastName}`,
+                    image: user.imageUrl,
+                    createdAt: user.createdAt.getTime(),
+                  },
+                }),
+              ]);
+            } catch (err) {
               logger.error(
                 { userId: u.sId, err },
-                "Failed to backfill user on Customer.io"
+                "Failed to fetch userResource"
               );
-            }),
-            // NOTE: this is unrelated to customerio, but leveraging this backfill
-            // to also identify all users on Amplitude.
-            AmplitudeServerSideTracking._identifyUser({
-              user: {
-                ...u.toJSON(),
-                fullName: `${u.firstName} ${u.lastName}`,
-                image: u.imageUrl,
-                createdAt: u.createdAt.getTime(),
-              },
-            }),
-          ])
+            }
+          })()
         )
       );
     }

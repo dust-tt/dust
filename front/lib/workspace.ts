@@ -1,6 +1,7 @@
 import type {
   LightWorkspaceType,
   RoleType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 
@@ -26,7 +27,9 @@ export function renderLightWorkspaceType({
 }
 
 // TODO: This belong to the WorkspaceResource.
-export async function getWorkspaceFirstAdmin(workspace: Workspace) {
+export async function getWorkspaceFirstAdmin(
+  workspace: Workspace
+): Promise<UserType | undefined> {
   const user = await UserResource.getWorkspaceFirstAdmin(workspace.id);
-  return user;
+  return user?.toJSON();
 }

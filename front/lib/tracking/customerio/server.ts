@@ -1,4 +1,8 @@
-import type { LightWorkspaceType, MembershipRoleType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  UserType,
+} from "@dust-tt/types";
 import { rateLimiter } from "@dust-tt/types";
 import * as _ from "lodash";
 
@@ -7,14 +11,14 @@ import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 
 export class CustomerioServerSideTracking {
-  static trackSignup({ user }: { user: UserResource }) {
+  static trackSignup({ user }: { user: UserType }) {
     return CustomerioServerSideTracking._identifyUser({ user });
   }
 
@@ -43,7 +47,7 @@ export class CustomerioServerSideTracking {
     role,
     startAt,
   }: {
-    user: UserResource;
+    user: UserType;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
@@ -70,7 +74,7 @@ export class CustomerioServerSideTracking {
     startAt,
     endAt,
   }: {
-    user: UserResource;
+    user: UserType;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt: Date;
@@ -98,7 +102,7 @@ export class CustomerioServerSideTracking {
     previousRole,
     role,
   }: {
-    user: UserResource;
+    user: UserType;
     workspace: LightWorkspaceType;
     previousRole: MembershipRoleType;
     role: MembershipRoleType;
@@ -126,9 +130,19 @@ export class CustomerioServerSideTracking {
     });
   }
 
-  static async backfillUser({ user }: { user: UserResource }) {
+  static async backfillUser({ user }: { user: UserType }) {
+    const userRes = await UserResource.fetchById(user.sId);
+
+    if (!userRes) {
+      logger.error(
+        { userId: user.sId },
+        "Failed to backfill user on Customer.io"
+      );
+      return;
+    }
+
     const userMemberships = await MembershipResource.getLatestMemberships({
-      users: [user],
+      users: [userRes],
     });
 
     const workspaces = _.keyBy(
@@ -239,7 +253,7 @@ export class CustomerioServerSideTracking {
     user,
     workspaces,
   }: {
-    user: UserResource;
+    user: UserType;
     workspaces?: Array<{
       sId: string;
       startAt?: Date;
@@ -257,7 +271,13 @@ export class CustomerioServerSideTracking {
       },
       type: "person",
       action: "identify",
-      attributes: user.toCIOPayload(),
+      attributes: {
+        email: user.email,
+        first_name: user.firstName,
+        last_name: user.lastName,
+        created_at: Math.floor(user.createdAt / 1000),
+        sid: user.sId,
+      },
     };
 
     if (workspaces) {
@@ -295,7 +315,7 @@ export class CustomerioServerSideTracking {
     }
   }
 
-  static async deleteUser({ user }: { user: UserResource }) {
+  static async deleteUser({ user }: { user: UserType }) {
     if (!config.getCustomerIoEnabled()) {
       return;
     }
@@ -352,7 +372,7 @@ export class CustomerioServerSideTracking {
     eventName,
     eventAttributes,
   }: {
-    user: UserResource;
+    user: UserType;
     workspace?: LightWorkspaceType;
     eventName: string;
     eventAttributes?: Record<string, any>;
