@@ -85,7 +85,9 @@ pub mod oauth {
     pub mod connection;
     pub mod store;
     pub mod providers {
+        pub mod confluence;
         pub mod github;
         pub mod notion;
+        pub mod utils;
     }
 }
