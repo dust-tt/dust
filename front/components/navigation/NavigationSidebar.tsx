@@ -183,7 +183,7 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
       <div className="font-normal">
         Connections will be deleted and members will be revoked. Details{" "}
         <Link
-          href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
+          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
           target="_blank"
           className="underline"
         >
@@ -208,7 +208,7 @@ function SubscriptionPastDueBanner() {
         After 3 attempts, your workspace will be downgraded to the free plan.
         Connections will be deleted and members will be revoked. Details{" "}
         <Link
-          href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
+          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
           target="_blank"
           className="underline"
         >

@@ -296,10 +296,7 @@ export default function ActionsScreen({
                   variant="secondary"
                   icon={BookOpenIcon}
                   onClick={() => {
-                    window.open(
-                      "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
-                      "_blank"
-                    );
+                    window.open("https://docs.dust.tt/docs/tools", "_blank");
                   }}
                 />
                 <AdvancedSettings
