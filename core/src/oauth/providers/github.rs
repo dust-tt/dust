@@ -1,20 +1,16 @@
 use crate::{
-    oauth::connection::{
-        Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult,
-        PROVIDER_TIMEOUT_SECONDS,
+    oauth::{
+        connection::{Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult},
+        providers::utils::execute_request,
     },
     utils,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use hyper::body::Buf;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::io::prelude::*;
-use std::time::Duration;
-use tokio::time::timeout;
 
 lazy_static! {
     static ref OAUTH_GITHUB_APP_CLIENT_ID: String =
@@ -68,37 +64,7 @@ impl GithubConnectionProvider {
             .header("User-Agent", "dust/oauth")
             .header("X-GitHub-Api-Version", "2022-11-28");
 
-        let now = utils::now_secs();
-
-        let res = match timeout(Duration::new(PROVIDER_TIMEOUT_SECONDS, 0), req.send()).await {
-            Ok(Ok(res)) => res,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout sending request to Github"))?,
-        };
-
-        if !res.status().is_success() {
-            Err(anyhow!(
-                "Error generating access token with Github: status={}",
-                res.status().as_u16()
-            ))?;
-        }
-
-        let body = match timeout(
-            Duration::new(PROVIDER_TIMEOUT_SECONDS - (utils::now_secs() - now), 0),
-            res.bytes(),
-        )
-        .await
-        {
-            Ok(Ok(body)) => body,
-            Ok(Err(e)) => Err(e)?,
-            Err(_) => Err(anyhow!("Timeout reading response from Github"))?,
-        };
-
-        let mut b: Vec<u8> = vec![];
-        body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
-
-        let raw_json: serde_json::Value = serde_json::from_slice(c)?;
+        let raw_json = execute_request(ConnectionProvider::Github, req).await?;
 
         let token = match raw_json["token"].as_str() {
             Some(token) => token,

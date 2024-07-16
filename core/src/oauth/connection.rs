@@ -18,6 +18,8 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
 
+use super::providers::confluence::ConfluenceConnectionProvider;
+
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
 static REDIS_LOCK_TTL_SECONDS: u64 = 15;
@@ -99,7 +101,7 @@ pub trait Provider {
 
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
-        ConnectionProvider::Confluence => unimplemented!(),
+        ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => unimplemented!(),
         ConnectionProvider::Intercom => unimplemented!(),

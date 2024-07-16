@@ -105,11 +105,40 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: () => null,
   },
   confluence: {
-    setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+    setupUri: (connection) => {
+      const scopes = [
+        "read:confluence-space.summary",
+        "read:confluence-content.all",
+        "read:confluence-user",
+        "search:confluence",
+        "read:space:confluence",
+        "read:page:confluence",
+        "read:confluence-props",
+        "read:confluence-content.summary",
+        "report:personal-data",
+        "read:me",
+        "read:label:confluence",
+        "offline_access",
+      ];
+      return (
+        `https://auth.atlassian.com/authorize?audience=api.atlassian.com` +
+        `&client_id=${config.getOAuthConfluenceClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("confluence"))}` +
+        `&state=${connection.connection_id}` +
+        `&response_type=code&prompt=consent`
+      );
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    // {
+    //   code: 'ey...',
+    //   state: 'con_...-...',
+    // }
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
   intercom: {
     setupUri: () => {
