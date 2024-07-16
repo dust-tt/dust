@@ -19,6 +19,19 @@ interface PageContent {
   content: string;
 }
 
+interface ContentTypeConfig {
+  [key: string]: { handler: string; pageSelector: string };
+}
+
+const contentTypeConfig: ContentTypeConfig = {
+  "application/pdf": { handler: "html", pageSelector: ".page" },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+    handler: "html",
+    pageSelector: ".slide-content",
+  },
+};
+const DEFAULT_HANDLER = "text";
+
 export class TextExtraction {
   constructor(readonly url: string) {}
 
@@ -43,7 +56,10 @@ export class TextExtraction {
     // Determine the handler type based on the content type.
     // The HTML handler preserves the structural information of the document
     // like page structure, etc. The text handler does not.
-    const handlerType = contentType === "application/pdf" ? "html" : "text";
+    const handlerType =
+      contentType in contentTypeConfig
+        ? contentTypeConfig[contentType].handler
+        : DEFAULT_HANDLER;
 
     try {
       const response = await fetch(`${this.url}/tika/${handlerType}`, {
@@ -79,21 +95,37 @@ export class TextExtraction {
   private processResponse(response: TikaResponse): PageContent[] {
     const contentType = response["Content-Type"];
 
-    switch (contentType) {
-      case "application/pdf":
-        return this.processPdfResponse(response);
-
-      default:
-        return this.processDefaultResponse(response);
+    const pageSelector = contentTypeConfig[contentType]?.pageSelector;
+    if (pageSelector) {
+      return this.processContentBySelector(response, pageSelector);
     }
+
+    return this.processDefaultResponse(response);
   }
 
-  // Process PDF response.
-  private processPdfResponse(response: TikaResponse): PageContent[] {
+  // Generic function to process response using a page selector.
+  private processContentBySelector(
+    response: TikaResponse,
+    contentSelector: string
+  ): PageContent[] {
+    const html = response["X-TIKA:content"];
+    const $ = cheerio.load(html);
+    const contentDivs = $(contentSelector);
+
+    return contentDivs
+      .map((index, div) => ({
+        pageNumber: index + 1,
+        content: $(div).text()?.trim() || "",
+      }))
+      .get();
+  }
+
+  // Process Presentation response.
+  private processPresentationResponse(response: TikaResponse): PageContent[] {
     const html = response["X-TIKA:content"];
 
     const $ = cheerio.load(html);
-    const slideContentDivs = $(".page");
+    const slideContentDivs = $(".slide-content");
 
     return slideContentDivs
       .map((index, div) => ({
