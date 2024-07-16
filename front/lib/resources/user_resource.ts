@@ -155,6 +155,10 @@ export class UserResource extends BaseResource<User> {
     }
   }
 
+  getFullName(): string {
+    return [this.firstName, this.lastName].filter(Boolean).join(" ");
+  }
+
   toCIOPayload(): CIOUserType {
     return {
       email: this.email,
@@ -175,7 +179,7 @@ export class UserResource extends BaseResource<User> {
       email: this.email,
       firstName: this.firstName,
       lastName: this.lastName,
-      fullName: this.firstName + (this.lastName ? ` ${this.lastName}` : ""),
+      fullName: this.getFullName(),
       image: this.imageUrl,
     };
   }
