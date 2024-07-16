@@ -16,7 +16,6 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
-  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -81,7 +80,6 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 ];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -100,12 +98,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
   githubAppUrl: string;
 }>(async (context, auth) => {
-  const user = auth.user();
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
 
-  if (!user || !owner || !plan || !subscription) {
+  if (!owner || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -237,7 +234,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      user,
       owner,
       subscription,
       readOnly,
@@ -386,7 +382,6 @@ function ConfirmationModal({
 }
 
 export default function DataSourcesView({
-  user,
   owner,
   subscription,
   readOnly,

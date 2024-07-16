@@ -20,7 +20,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      if (req.query.role && req.query.role === "admin") {
+      if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
         const members = await getMembers(auth, { roles: ["admin"] });
         res.status(200).json({ members });
         return;
