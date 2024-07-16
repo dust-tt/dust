@@ -164,16 +164,7 @@ export async function getMembers(
     }
 
     return {
-      sId: u.sId,
-      id: u.id,
-      createdAt: u.createdAt.getTime(),
-      provider: u.provider,
-      username: u.username,
-      email: u.email,
-      fullName: u.firstName + (u.lastName ? ` ${u.lastName}` : ""),
-      firstName: u.firstName,
-      lastName: u.lastName,
-      image: u.imageUrl,
+      ...u.toJSON(),
       workspaces: [{ ...owner, role, flags: null }],
     };
   });

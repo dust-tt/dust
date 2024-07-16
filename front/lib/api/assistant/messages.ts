@@ -80,18 +80,7 @@ export async function batchRenderUserMessages(
       version: message.version,
       created: message.createdAt.getTime(),
       user: user
-        ? {
-            sId: user.sId,
-            id: user.id,
-            createdAt: user.createdAt.getTime(),
-            username: user.username,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            fullName: user.getFullName(),
-            provider: user.provider,
-            image: user.imageUrl,
-          }
+        ? user.toJSON()
         : null,
       mentions: messageMentions.map((m) => {
         if (m.agentConfigurationId) {
