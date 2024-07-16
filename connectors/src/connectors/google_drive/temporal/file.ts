@@ -1,10 +1,7 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { slugify } from "@dust-tt/types";
-import { uuid4 } from "@temporalio/workflow";
+import { slugify, TextExtraction } from "@dust-tt/types";
 import tracer from "dd-trace";
-import fs from "fs/promises";
 import type { OAuth2Client } from "googleapis-common";
-import os from "os";
 import type { CreationAttributes } from "sequelize";
 
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
@@ -18,6 +15,7 @@ import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { apiConfig } from "@connectors/lib/api/config";
 import {
   MAX_FILE_SIZE_TO_DOWNLOAD,
   upsertTableFromCsv,
@@ -30,7 +28,6 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import { docx2text } from "@connectors/lib/docx2text.";
-import { dpdf2text } from "@connectors/lib/dpdf2text";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -234,47 +231,49 @@ export async function syncOneFile(
             );
           }
         } else if (file.mimeType === "application/pdf") {
-          const pdf_path = os.tmpdir() + "/" + uuid4() + ".pdf";
-          try {
-            if (res.data instanceof ArrayBuffer) {
-              await fs.writeFile(pdf_path, Buffer.from(res.data), "binary");
-            }
+          if (!(res.data instanceof ArrayBuffer)) {
+            localLogger.error("PDF file download failed.");
 
-            const { pages } = await dpdf2text(pdf_path);
+            return false;
+          }
 
-            documentContent =
-              pages.length > 0
-                ? {
-                    prefix: null,
-                    content: null,
-                    sections: pages.map((page, i) => ({
-                      // We prefix with `\n` because page splitting  in `dpdf2text` removes the `\f`.
-                      prefix: `\n$pdfPage: ${i + 1}/${pages.length}\n`,
-                      content: page,
-                      sections: [],
-                    })),
-                  }
-                : null;
-
-            localLogger.info(
-              {
-                pagesCount: pages.length,
-              },
-              "Successfully converted PDF to text"
-            );
-          } catch (err) {
+          const pageRes = await new TextExtraction(
+            apiConfig.getTextExtractionUrl()
+          ).fromBuffer(Buffer.from(res.data), file.mimeType);
+          if (pageRes.isErr()) {
             localLogger.warn(
               {
-                error: err,
+                error: pageRes.error,
               },
               "Error while converting PDF to text"
             );
+
             // we don't know what to do with PDF files that fails to be converted to text.
             // So we log the error and skip the file.
             return false;
-          } finally {
-            await fs.unlink(pdf_path);
           }
+
+          const pages = pageRes.value;
+
+          documentContent =
+            pages.length > 0
+              ? {
+                  prefix: null,
+                  content: null,
+                  sections: pages.map((page) => ({
+                    prefix: `\n$pdfPage: ${page.pageNumber}/${pages.length}\n`,
+                    content: page.content,
+                    sections: [],
+                  })),
+                }
+              : null;
+
+          localLogger.info(
+            {
+              pagesCount: pages.length,
+            },
+            "Successfully converted PDF to text"
+          );
         } else if (
           file.mimeType ===
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
