@@ -1,4 +1,6 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
+import type { Client } from "@microsoft/microsoft-graph-client";
 import axios from "axios";
 import mammoth from "mammoth";
 import type { Logger } from "pino";
@@ -7,7 +9,9 @@ import turndown from "turndown";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
+  getDriveAPIPathFromItem,
   getDriveItemAPIPath,
+  getDriveItemAPIPathFromReference,
   getDrives,
   getFilesAndFolders,
   getItem,
@@ -15,6 +19,7 @@ import {
   getSites,
   internalIdFromTypeAndPath,
   itemToMicrosoftNode,
+  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
@@ -42,6 +47,7 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FILES_SYNC_CONCURRENCY = 10;
+const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
 
 export async function getSiteNodesToSync(
   connectorId: ModelId
@@ -117,12 +123,86 @@ export async function getSiteNodesToSync(
     [] as MicrosoftNode[]
   );
 
+  // for all folders, check if a parent folder or drive is already in the list,
+  // in which case remove it. This can happen because when a user selects a
+  // folder to sync, then a parent folder, both are stored in Microsoft Roots
+  // table
+
+  // Keeping them both in the sync list can result in various kinds of issues,
+  // e.g. if a child folder is synced before the parent, then the child folder's
+  // files' parents array will be incomplete, thus the need to prune the list
+  const nodesToSync = [];
+  for (const node of allNodes) {
+    if (
+      !(
+        node.nodeType === "folder" &&
+        (await isParentAlreadyInNodes({
+          client,
+          nodes: allNodes,
+          folder: node,
+        }))
+      )
+    ) {
+      nodesToSync.push(node);
+    }
+  }
+
   const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
     connectorId,
-    allNodes
+    nodesToSync
   );
 
   return nodeResources.map((r) => r.internalId);
+}
+
+async function isParentAlreadyInNodes({
+  client,
+  nodes,
+  folder,
+}: {
+  client: Client;
+  nodes: MicrosoftNode[];
+  folder: MicrosoftNode;
+}) {
+  const { itemAPIPath } = typeAndPathFromInternalId(folder.internalId);
+  let driveItem: microsoftgraph.DriveItem = await getItem(client, itemAPIPath);
+
+  // check if the list already contains the drive of this folder
+  if (
+    nodes.some(
+      (node) =>
+        node.internalId ===
+        internalIdFromTypeAndPath({
+          nodeType: "drive",
+          itemAPIPath: getDriveAPIPathFromItem(driveItem),
+        })
+    )
+  ) {
+    return true;
+  }
+
+  // check if the list already contains any parent of this folder
+  while (!driveItem.root) {
+    if (!driveItem.parentReference) {
+      return false;
+    }
+
+    const parentAPIPath = getDriveItemAPIPathFromReference(
+      driveItem.parentReference
+    );
+
+    const parentInternalId = internalIdFromTypeAndPath({
+      nodeType: "folder",
+      itemAPIPath: parentAPIPath,
+    });
+
+    if (nodes.some((node) => node.internalId === parentInternalId)) {
+      return true;
+    }
+
+    driveItem = await getItem(client, parentAPIPath);
+  }
+  return false;
 }
 
 export async function markNodeAsVisited(
@@ -457,9 +537,12 @@ export async function syncOneFile({
 
   const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
   if (isInSizeRange) {
-    // TODO(pr): add getParents implementation
-    const parents = [];
-    parents.push(documentId);
+    const parents = await getParents({
+      connectorId,
+      internalId: documentId,
+      parentInternalId,
+      startSyncTs,
+    });
     parents.reverse();
 
     await upsertToDatasource({
@@ -504,6 +587,59 @@ export async function syncOneFile({
 
   return isInSizeRange;
 }
+
+async function getParents({
+  connectorId,
+  internalId,
+  parentInternalId,
+  startSyncTs,
+}: {
+  connectorId: ModelId;
+  internalId: string;
+  parentInternalId: string | null;
+  startSyncTs: number;
+}): Promise<string[]> {
+  if (!parentInternalId) {
+    return [internalId];
+  }
+
+  const parentParentInternalId = await getParentParentId(
+    connectorId,
+    parentInternalId,
+    startSyncTs
+  );
+
+  return [
+    internalId,
+    ...(await getParents({
+      connectorId,
+      internalId: parentInternalId,
+      parentInternalId: parentParentInternalId,
+      startSyncTs,
+    })),
+  ];
+}
+
+/* Fetching parent's parent id queries the db for a resource; since those
+ * fetches can be made a lot of times during a sync, cache for 10mins in a
+ * per-sync basis (given by startSyncTs) */
+const getParentParentId = cacheWithRedis(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async (connectorId, parentInternalId, startSyncTs) => {
+    const parent = await MicrosoftNodeResource.fetchByInternalId(
+      connectorId,
+      parentInternalId
+    );
+    if (!parent) {
+      throw new Error(`Parent node not found: ${parentInternalId}`);
+    }
+
+    return parent.parentInternalId;
+  },
+  (connectorId, parentInternalId, startSyncTs) =>
+    `microsoft-${connectorId}-parent-${parentInternalId}-syncms-${startSyncTs}`,
+  PARENT_SYNC_CACHE_TTL_MS
+);
 
 async function handlePptxFile(
   data: ArrayBuffer,
