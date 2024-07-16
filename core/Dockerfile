@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN cargo build --release --bin dust-api --bin sqlite-worker --bin oauth
+RUN cargo build --release --bin dust-api --bin sqlite-worker
 
 EXPOSE 3001
 

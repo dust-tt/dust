@@ -19,7 +19,7 @@ spec:
       terminationGracePeriodSeconds: 180
       containers:
         - name: web
-          image: gcr.io/or1g1n-186209/core-image:latest
+          image: gcr.io/or1g1n-186209/oauth-image:latest
           command: ["cargo", "run", "--release", "--bin", "oauth"]
           imagePullPolicy: Always
           ports:

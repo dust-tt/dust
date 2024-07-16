@@ -43,12 +43,12 @@ jobs:
       - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh core ./Dockerfile ./core/
+          ./k8s/cloud-build.sh oauth ./oauth.Dockerfile ./core/
 
       - name: Deploy the image on Kubernetes
         run: |
           chmod +x ./k8s/deploy-image.sh
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/core-image:${{ steps.short_sha.outputs.short_sha }} oauth-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/oauth-image:${{ steps.short_sha.outputs.short_sha }} oauth-deployment
 
       - name: Wait for rollout to complete
         run: |
