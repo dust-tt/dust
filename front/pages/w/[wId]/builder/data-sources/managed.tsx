@@ -6,6 +6,7 @@ import {
   Cog6ToothIcon,
   ContentMessage,
   ContextItem,
+  Hoverable,
   InformationCircleIcon,
   Modal,
   Page,
@@ -14,6 +15,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
+  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -27,6 +29,7 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -36,6 +39,7 @@ import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useAdmins } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
@@ -77,6 +81,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 ];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
@@ -95,11 +100,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
   githubAppUrl: string;
 }>(async (context, auth) => {
+  const user = auth.user();
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
 
-  if (!owner || !plan || !subscription) {
+  if (!user || !owner || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -231,6 +237,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      user,
       owner,
       subscription,
       readOnly,
@@ -379,6 +386,7 @@ function ConfirmationModal({
 }
 
 export default function DataSourcesView({
+  user,
   owner,
   subscription,
   readOnly,
@@ -403,6 +411,9 @@ export default function DataSourcesView({
     useState<ConnectorProvider | null>(null);
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
+
+  const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const { admins, isAdminsLoading } = useAdmins(owner);
 
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
@@ -520,6 +531,27 @@ export default function DataSourcesView({
         current: "data_sources_managed",
       })}
     >
+      {!isAdmin && (
+        <Modal
+          isOpen={showAdminsModal}
+          title="Administrators"
+          onClose={() => setShowAdminsModal(false)}
+          hasChanged={false}
+          variant="side-sm"
+        >
+          <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
+            <Page.SectionHeader
+              title="Administrators"
+              description={`${owner.name} has the following administrators:`}
+            />
+            <MembersList
+              users={admins}
+              currentUserId={user.id}
+              isMembersLoading={isAdminsLoading}
+            />
+          </div>
+        </Modal>
+      )}
       {showConfirmConnection && (
         <ConfirmationModal
           dataSource={showConfirmConnection}
@@ -539,9 +571,16 @@ export default function DataSourcesView({
           icon={CloudArrowLeftRightIcon}
           description="Manage connections to your products and the real-time data feeds Dust has access to."
         />
-        {owner.role !== "admin" && (
-          <ContentMessage title="Roles">
-            Only Admins can activate and manage Connections.
+        {!isAdmin && (
+          <ContentMessage title="How are connections managed?">
+            <b>Workspace administrators</b> control access to connections for
+            all members.{" "}
+            <Hoverable
+              variant="primary"
+              onClick={() => setShowAdminsModal(true)}
+            >
+              View the list of administrators here.
+            </Hoverable>
           </ContentMessage>
         )}
         <ContextItem.List>

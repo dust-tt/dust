@@ -18,19 +18,25 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetMembersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can see memberships or modify it.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
+      if (req.query.role && req.query.role === "admin") {
+        const members = await getMembers(auth, { roles: ["admin"] });
+        res.status(200).json({ members });
+        return;
+      }
+
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `admins` for the current workspace can see memberships or modify it.",
+          },
+        });
+      }
+
       const members = await getMembers(auth);
 
       res.status(200).json({ members });
