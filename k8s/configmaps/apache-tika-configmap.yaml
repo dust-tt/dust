@@ -9,3 +9,4 @@ data:
   DD_LOGS_INJECTION: "true"
   DD_RUNTIME_METRICS_ENABLED: "true"
   NODE_ENV: "production"
+  JAVA_OPTS: "-Xms2g -Xmx3g -XX:MaxMetaspaceSize=256m"

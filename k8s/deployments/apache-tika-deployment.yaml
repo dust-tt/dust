@@ -29,6 +29,3 @@ spec:
             limits:
               cpu: 2000m
               memory: 4Gi
-          env:
-            - name: JAVA_OPTS
-              value: "-Xms1g -Xmx2g -XX:MaxMetaspaceSize=256m"
