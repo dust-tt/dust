@@ -163,7 +163,7 @@ async function cleanupCustomerio(auth: Authenticator) {
 
   // Fetch all the users in the workspace.
   const userIds = workspaceMemberships.map((m) => m.userId);
-  const users = await UserResource.fetchAllByModelIds(userIds);
+  const users = await UserResource.listByModelIds(userIds);
 
   // For each user, fetch all their memberships.
   const allMembershipsByUserId = _.groupBy(

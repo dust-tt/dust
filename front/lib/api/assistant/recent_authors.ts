@@ -171,7 +171,7 @@ export async function getAgentsRecentAuthors({
   );
 
   const authorByUserId: Record<number, UserType> = (
-    await UserResource.fetchAllByModelIds(
+    await UserResource.listByModelIds(
       removeNulls(
         Array.from(new Set(Object.values(recentAuthorsIdsByAgentId).flat()))
       )

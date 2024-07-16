@@ -63,7 +63,7 @@ const backfillCustomerIo = async (execute: boolean) => {
       workspace: renderLightWorkspaceType({ workspace }),
     });
     const userIds = workspaceMemberships.map((m) => m.userId);
-    const users = await UserResource.fetchAllByModelIds(userIds);
+    const users = await UserResource.listByModelIds(userIds);
 
     logger.info(
       { workspaceId: workspace.sId, usersCount: users.length },
