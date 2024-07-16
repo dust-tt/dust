@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth-service
+  annotations:
+    cloud.google.com/backend-config: '{"default": "oauth-backendconfig"}'
+spec:
+  selector:
+    app: oauth
+    name: oauth-pod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3006
+  type: ClusterIP

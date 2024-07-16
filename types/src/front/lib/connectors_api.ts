@@ -86,8 +86,14 @@ export type ContentNodeType = "file" | "folder" | "database" | "channel";
  * provided id when possible (e.g. Notion page id, Github repository id,
  * etc...). When not possible, such as for Github issues whose id is not
  * workspace-unique, a custom function to create a unique id is created, and
- * used both in the parents field management code and the connectors node
- * code.
+ * used both in the parents field management code and the connectors node code.
+ *
+ * A specific situation for the Microsoft connector leads us to not use the
+ * externally provided id (although it exists and is unique), but to compute our
+ * own. This is because the Microsoft API does not allow to query a document or
+ * list its children using its id alone. We compute an internal id that contains all
+ * information. More details here:
+ * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export type ContentNode = {
   provider: ConnectorProvider;

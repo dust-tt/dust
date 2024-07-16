@@ -57,6 +57,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-specific-configma
 kubectl apply -f "$(dirname "$0")/configmaps/alerting-temporal-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-sqlite-worker-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/oauth-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/prodbox-configmap.yaml"
 
 echo "-----------------------------------"
@@ -68,6 +69,7 @@ kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/connectors-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/metabase-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/core-backend-config.yaml"
+kubectl apply -f "$(dirname "$0")/backend-configs/oauth-backend-config.yaml"
 
 echo "-----------------------------------"
 echo "Applying managed certificates"
@@ -102,6 +104,7 @@ apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
 apply_deployment core-deployment
 apply_deployment core-sqlite-worker-deployment
+apply_deployment oauth-deployment
 apply_deployment prodbox-deployment
 
 echo "-----------------------------------"
@@ -116,6 +119,7 @@ kubectl apply -f "$(dirname "$0")/services/connectors-worker-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-sqlite-worker-headless-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/oauth-service.yaml"
 
 
 echo "-----------------------------------"
@@ -124,3 +128,8 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/ingress.yaml"
 
+echo "-----------------------------------"
+echo "Applying network policies"
+echo "-----------------------------------"
+
+kubectl apply -f "$(dirname "$0")/network-policies/oauth-network-policy.yaml"

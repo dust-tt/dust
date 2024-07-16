@@ -234,7 +234,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         messageId: agentMessage.sId,
         error: {
           code: "tables_query_error",
-          message: `Error running TablesQuery app: model context too small.`,
+          message:
+            "The model's context size is too small to be used with TablesQuery.",
         },
       };
       return;
