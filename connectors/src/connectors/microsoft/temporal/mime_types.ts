@@ -4,6 +4,7 @@ export function getMimeTypesToSync({ pdfEnabled }: { pdfEnabled: boolean }) {
     // TODO(pr): support those
     // "text/plain",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.ms-excel", // equivalent to "text/csv"
   ];
   if (pdfEnabled) {
     // TODO(pr): support it

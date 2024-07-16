@@ -1,6 +1,8 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
+import { slugify } from "@dust-tt/types";
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import axios from "axios";
 import mammoth from "mammoth";
 import type { Logger } from "pino";
@@ -32,6 +34,7 @@ import {
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
+  upsertTableFromCsv,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
@@ -332,7 +335,6 @@ export async function syncFiles({
         })
       )
   );
-
   return {
     count,
     childNodes: childResources.map((r) => r.internalId),
@@ -363,7 +365,6 @@ export async function syncOneFile({
     internalId: file.id,
     name: file.name,
   });
-
   if (!file.file) {
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
@@ -473,13 +474,33 @@ export async function syncOneFile({
     }
   }
 
-  let documentSection: CoreAPIDataSourceDocumentSection | null = null;
+  let documentSection: CoreAPIDataSourceDocumentSection | null;
   if (
     mimeType ===
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
   ) {
     const data = Buffer.from(downloadRes.data);
-    documentSection = await handlePptxFile(data, file.id, localLogger);
+    documentSection = await handlePptxFile(
+      data,
+      file.id,
+      localLogger,
+      maxDocumentLen
+    );
+  } else if (mimeType === "application/vnd.ms-excel") {
+    const data = Buffer.from(downloadRes.data);
+    const isSuccessfull = await handleCsvFile(
+      dataSourceConfig,
+      data,
+      file,
+      localLogger,
+      maxDocumentLen,
+      connectorId
+    );
+    if (isSuccessfull) {
+      documentSection = null;
+    } else {
+      return false;
+    }
   } else {
     const documentContent = await getDocumentContent();
     documentSection = {
@@ -644,8 +665,13 @@ const getParentParentId = cacheWithRedis(
 async function handlePptxFile(
   data: ArrayBuffer,
   fileId: string | undefined,
-  localLogger: Logger
+  localLogger: Logger,
+  maxDocumentLen: number
 ): Promise<CoreAPIDataSourceDocumentSection | null> {
+  if (data.byteLength > 4 * maxDocumentLen) {
+    localLogger.info({}, "File too big to be chunked. Skipping");
+    return null;
+  }
   try {
     const converted = await PPTX2Text(Buffer.from(data), fileId);
     return {
@@ -664,4 +690,43 @@ async function handlePptxFile(
     );
     return null;
   }
+}
+
+async function handleCsvFile(
+  dataSourceConfig: DataSourceConfig,
+  data: ArrayBuffer,
+  file: DriveItem,
+  localLogger: Logger,
+  maxDocumentLen: number,
+  connectorId: ModelId
+): Promise<boolean> {
+  if (data.byteLength > 4 * maxDocumentLen) {
+    localLogger.info({}, "File too big to be chunked. Skipping");
+    return false;
+  }
+  const fileName = file.name ?? "";
+
+  const tableCsv = Buffer.from(data).toString("utf-8").trim();
+  const tableId = file.id ?? "";
+  const tableName = slugify(fileName.substring(0, 32));
+  const tableDescription = `Structured data from Microsoft (${fileName})`;
+  try {
+    await upsertTableFromCsv({
+      dataSourceConfig,
+      tableId,
+      tableName,
+      tableDescription,
+      tableCsv,
+      loggerArgs: {
+        connectorId,
+        fileId: tableId,
+        fileName: tableName,
+      },
+      truncate: true,
+    });
+  } catch (err) {
+    localLogger.warn({ error: err }, "Error while upserting table");
+    return false;
+  }
+  return true;
 }
