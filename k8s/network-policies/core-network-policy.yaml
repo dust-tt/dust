@@ -16,6 +16,9 @@ spec:
         - podSelector:
             matchLabels:
               app: front-worker
+        - podSelector:
+            matchLabels:
+              app: front-edge
       ports:
         - protocol: TCP
           port: 3001
