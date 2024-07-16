@@ -129,6 +129,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         webhooksEnabledAt: null,
       });
 
+      await terminateAllWorkflowsForConnectorId(this.connectorId);
+
       return new Ok(undefined);
     } catch (err) {
       return new Err(err as Error);
