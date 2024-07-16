@@ -1,11 +1,9 @@
 import type {
-  AgentActionsEvent,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationSuccessEvent,
   AgentMessageErrorEvent,
   AgentMessageNewEvent,
   AgentMessageSuccessEvent,
@@ -1680,11 +1678,9 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
-    | AgentActionsEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
-    | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent,
     void
@@ -1700,7 +1696,6 @@ async function* streamRunAgentEvents(
   | AgentMessageSuccessEvent,
   void
 > {
-  const runIds = [];
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1726,18 +1721,11 @@ async function* streamRunAgentEvents(
       case "agent_action_success":
         yield event;
         break;
-      case "agent_actions":
-        runIds.push(event.runId);
-        break;
-      case "agent_generation_success":
-        // Store message in database.
-        runIds.push(event.runId);
-        await agentMessageRow.update({
-          runIds,
-        });
-        break;
-
       case "agent_message_success":
+        // Store message in database.
+        await agentMessageRow.update({
+          runIds: event.runIds,
+        });
         // Update status in database.
         await agentMessageRow.update({
           status: "succeeded",

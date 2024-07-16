@@ -61,7 +61,6 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -105,7 +104,6 @@ export async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -151,6 +149,8 @@ export async function* runMultiActionsAgentLoop(
       isLegacyAgent,
     });
 
+    const runIds = [];
+
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
@@ -164,6 +164,7 @@ export async function* runMultiActionsAgentLoop(
           yield event;
           return;
         case "agent_actions":
+          runIds.push(event.runId);
           localLogger.info(
             {
               elapsed: Date.now() - now,
@@ -175,8 +176,6 @@ export async function* runMultiActionsAgentLoop(
           // which is very high. Over that the latency will just be too high. This is a guardrail
           // against the model outputing something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
-
-          yield event;
 
           const eventStreamGenerators = event.actions.map(
             ({ action, inputs, functionCallId, specification }, index) => {
@@ -265,12 +264,16 @@ export async function* runMultiActionsAgentLoop(
           }
           agentMessage.content = processedContent;
           agentMessage.status = "succeeded";
+
+          runIds.push(event.runId);
+
           yield {
             type: "agent_message_success",
             created: Date.now(),
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             message: agentMessage,
+            runIds: runIds,
           } satisfies AgentMessageSuccessEvent;
           return;
 
