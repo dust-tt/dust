@@ -68,7 +68,32 @@ export function AssistantBrowserContainer({
       </div>
       <AssistantBrowser
         owner={owner}
-        agents={agentConfigurations}
+        agents={[
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+          ...agentConfigurations,
+        ]}
         loadingStatus={isLoading ? "loading" : "finished"}
         handleAssistantClick={handleAssistantClick}
         mutateAgentConfigurations={mutateAgentConfigurations}

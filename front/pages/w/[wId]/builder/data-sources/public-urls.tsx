@@ -148,97 +148,101 @@ export default function DataSourcesView({
         current: "data_sources_url",
       })}
     >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Websites"
-          icon={GlobeAltIcon}
-          description="Manage public URLs as data sources for the workspace."
-        />
-
-        {dataSources.length > 0 ? (
-          <div className="relative">
-            <Page.SectionHeader
-              title=""
-              description=""
-              action={
-                !readOnly
-                  ? {
-                      label: "Add a public URL",
-                      variant: "primary",
-                      icon: PlusIcon,
-                      onClick: handleCreateDataSource,
-
-                      disabled: isSubmittingCreateDataSource,
-                    }
-                  : undefined
-              }
-            />
-            <Popup
-              show={showDatasourceLimitPopup}
-              chipLabel={`${plan.name} plan`}
-              description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade your plan for unlimited datasources.`}
-              buttonLabel="Check Dust plans"
-              buttonClick={() => {
-                void router.push(`/w/${owner.sId}/subscription`);
-              }}
-              onClose={() => {
-                setShowDatasourceLimitPopup(false);
-              }}
-              className="absolute bottom-8 right-0"
-            />
-          </div>
-        ) : (
-          <EmptyCallToAction
-            label="Create a new Public URL"
-            onClick={handleCreateDataSource}
-            icon={PlusIcon}
+      <div className="pt-8">
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header
+            title="Websites"
+            icon={GlobeAltIcon}
+            description="Manage public URLs as data sources for the workspace."
           />
-        )}
-        <ContextItem.List>
-          {dataSources.map((ds) => (
-            <ContextItem
-              key={ds.name}
-              title={
-                ds.name.length > 60 ? ds.name.substring(0, 60) + "..." : ds.name
-              }
-              visual={
-                <ContextItem.Visual
-                  visual={({ className }) =>
-                    FolderOpenIcon({
-                      className: className + " text-element-600",
-                    })
-                  }
-                />
-              }
-              onClick={() => {
-                void router.push(
-                  `/w/${
-                    owner.sId
-                  }/builder/data-sources/${encodeURIComponent(ds.name)}`
-                );
-              }}
-              subElement={
-                <>
-                  Added by: {ds.editedByUser?.fullName}
-                  <span className="h-3 w-0.5 bg-element-500" />
-                  <div className="flex items-center gap-1">
-                    Used by: {dataSourcesUsage[ds.id] ?? 0}
-                    <Icon visual={RobotIcon} size="xs" />
-                  </div>
-                </>
-              }
-            >
-              <div className="py-2">
-                <ConnectorSyncingChip
-                  initialState={ds.connector}
-                  workspaceId={ds.connector.workspaceId}
-                  dataSourceName={ds.connector.dataSourceName}
-                />
-              </div>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
-      </Page.Vertical>
+
+          {dataSources.length > 0 ? (
+            <div className="relative">
+              <Page.SectionHeader
+                title=""
+                description=""
+                action={
+                  !readOnly
+                    ? {
+                        label: "Add a public URL",
+                        variant: "primary",
+                        icon: PlusIcon,
+                        onClick: handleCreateDataSource,
+
+                        disabled: isSubmittingCreateDataSource,
+                      }
+                    : undefined
+                }
+              />
+              <Popup
+                show={showDatasourceLimitPopup}
+                chipLabel={`${plan.name} plan`}
+                description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade your plan for unlimited datasources.`}
+                buttonLabel="Check Dust plans"
+                buttonClick={() => {
+                  void router.push(`/w/${owner.sId}/subscription`);
+                }}
+                onClose={() => {
+                  setShowDatasourceLimitPopup(false);
+                }}
+                className="absolute bottom-8 right-0"
+              />
+            </div>
+          ) : (
+            <EmptyCallToAction
+              label="Create a new Public URL"
+              onClick={handleCreateDataSource}
+              icon={PlusIcon}
+            />
+          )}
+          <ContextItem.List>
+            {dataSources.map((ds) => (
+              <ContextItem
+                key={ds.name}
+                title={
+                  ds.name.length > 60
+                    ? ds.name.substring(0, 60) + "..."
+                    : ds.name
+                }
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      FolderOpenIcon({
+                        className: className + " text-element-600",
+                      })
+                    }
+                  />
+                }
+                onClick={() => {
+                  void router.push(
+                    `/w/${
+                      owner.sId
+                    }/builder/data-sources/${encodeURIComponent(ds.name)}`
+                  );
+                }}
+                subElement={
+                  <>
+                    Added by: {ds.editedByUser?.fullName}
+                    <span className="h-3 w-0.5 bg-element-500" />
+                    <div className="flex items-center gap-1">
+                      Used by: {dataSourcesUsage[ds.id] ?? 0}
+                      <Icon visual={RobotIcon} size="xs" />
+                    </div>
+                  </>
+                }
+              >
+                <div className="py-2">
+                  <ConnectorSyncingChip
+                    initialState={ds.connector}
+                    workspaceId={ds.connector.workspaceId}
+                    dataSourceName={ds.connector.dataSourceName}
+                  />
+                </div>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
+        </Page.Vertical>
+      </div>
     </AppLayout>
   );
 }

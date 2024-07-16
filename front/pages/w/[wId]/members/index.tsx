@@ -128,80 +128,82 @@ export default function WorkspaceAdmin({
       gaTrackingId={gaTrackingId}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Member Management"
-          icon={UsersIcon}
-          description="Invite and remove members, manage their rights."
-        />
-        <DomainAutoJoinModal
-          domainAutoJoinEnabled={domainAutoJoinEnabled}
-          isOpen={isActivateAutoJoinOpened}
-          onClose={() => {
-            setIsActivateAutoJoinOpened(false);
-          }}
-          domain={domain}
-          owner={owner}
-        />
-        {workspaceVerifiedDomain && (
-          <Page.Vertical gap="sm">
-            <Page.H variant="h5">Auto-join Workspace</Page.H>
-            <Page.P variant="secondary">
-              Allow all your team members to access your Dust company Workspace
-              when they authenticate with a{" "}
-              <span className="font-bold">"@{domain}"</span> Google accounts.
-            </Page.P>
-            <div className="flex flex-col items-start gap-3">
-              {domainAutoJoinEnabled ? (
-                <Button
-                  label="De-activate Auto-join"
-                  size="sm"
-                  variant="secondaryWarning"
-                  disabled={!domainAutoJoinEnabled}
-                  onClick={() => {
-                    if (!isUpgraded(plan)) {
-                      setShowNoInviteLinkPopup(true);
-                    } else {
-                      setIsActivateAutoJoinOpened(true);
-                    }
+      <div className="pt-8">
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header
+            title="Member Management"
+            icon={UsersIcon}
+            description="Invite and remove members, manage their rights."
+          />
+          <DomainAutoJoinModal
+            domainAutoJoinEnabled={domainAutoJoinEnabled}
+            isOpen={isActivateAutoJoinOpened}
+            onClose={() => {
+              setIsActivateAutoJoinOpened(false);
+            }}
+            domain={domain}
+            owner={owner}
+          />
+          {workspaceVerifiedDomain && (
+            <Page.Vertical gap="sm">
+              <Page.H variant="h5">Auto-join Workspace</Page.H>
+              <Page.P variant="secondary">
+                Allow all your team members to access your Dust company
+                Workspace when they authenticate with a{" "}
+                <span className="font-bold">"@{domain}"</span> Google accounts.
+              </Page.P>
+              <div className="flex flex-col items-start gap-3">
+                {domainAutoJoinEnabled ? (
+                  <Button
+                    label="De-activate Auto-join"
+                    size="sm"
+                    variant="secondaryWarning"
+                    disabled={!domainAutoJoinEnabled}
+                    onClick={() => {
+                      if (!isUpgraded(plan)) {
+                        setShowNoInviteLinkPopup(true);
+                      } else {
+                        setIsActivateAutoJoinOpened(true);
+                      }
+                    }}
+                  />
+                ) : (
+                  <Button
+                    label="Activate Auto-join"
+                    size="sm"
+                    variant="primary"
+                    disabled={domainAutoJoinEnabled}
+                    onClick={() => {
+                      if (!isUpgraded(plan)) {
+                        setShowNoInviteLinkPopup(true);
+                      } else {
+                        setIsActivateAutoJoinOpened(true);
+                      }
+                    }}
+                  />
+                )}
+                <Popup
+                  show={showNoInviteLinkPopup}
+                  chipLabel="Free plan"
+                  description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
+                  buttonLabel="Check Dust plans"
+                  buttonClick={() => {
+                    void router.push(`/w/${owner.sId}/subscription`);
                   }}
+                  className="absolute bottom-8 right-0"
+                  onClose={() => setShowNoInviteLinkPopup(false)}
                 />
-              ) : (
-                <Button
-                  label="Activate Auto-join"
-                  size="sm"
-                  variant="primary"
-                  disabled={domainAutoJoinEnabled}
-                  onClick={() => {
-                    if (!isUpgraded(plan)) {
-                      setShowNoInviteLinkPopup(true);
-                    } else {
-                      setIsActivateAutoJoinOpened(true);
-                    }
-                  }}
-                />
-              )}
-              <Popup
-                show={showNoInviteLinkPopup}
-                chipLabel="Free plan"
-                description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteLinkPopup(false)}
-              />
-            </div>
-          </Page.Vertical>
-        )}
-        <EnterpriseConnectionDetails
-          owner={owner}
-          plan={plan}
-          strategyDetails={enterpriseConnectionStrategyDetails}
-        />
-        <MemberList perSeatPricing={perSeatPricing} />
-      </Page.Vertical>
+              </div>
+            </Page.Vertical>
+          )}
+          <EnterpriseConnectionDetails
+            owner={owner}
+            plan={plan}
+            strategyDetails={enterpriseConnectionStrategyDetails}
+          />
+          <MemberList perSeatPricing={perSeatPricing} />
+        </Page.Vertical>
+      </div>
     </AppLayout>
   );
 
