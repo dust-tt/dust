@@ -269,7 +269,7 @@ export async function syncOneFile(
 
           const pages = pageRes.value;
 
-          const prefix = pagePrefixesPerMimeType[file.mimeType] || "";
+          const prefix = pagePrefixesPerMimeType[file.mimeType] ?? null;
 
           documentContent =
             pages.length > 0
