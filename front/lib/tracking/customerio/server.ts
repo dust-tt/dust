@@ -257,13 +257,7 @@ export class CustomerioServerSideTracking {
       },
       type: "person",
       action: "identify",
-      attributes: {
-        email: user.email,
-        first_name: user.firstName,
-        last_name: user.lastName,
-        created_at: Math.floor(user.createdAt.getTime() / 1000),
-        sid: user.sId,
-      },
+      attributes: user.toCIOPayload(),
     };
 
     if (workspaces) {

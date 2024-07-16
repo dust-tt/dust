@@ -1,4 +1,9 @@
-import type { Result, UserProviderType, UserType } from "@dust-tt/types";
+import type {
+  CIOUserType,
+  Result,
+  UserProviderType,
+  UserType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic } from "sequelize";
 
@@ -148,6 +153,16 @@ export class UserResource extends BaseResource<User> {
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  toCIOPayload(): CIOUserType {
+    return {
+      email: this.email,
+      first_name: this.firstName,
+      last_name: this.lastName,
+      created_at: Math.floor(this.createdAt.getTime() / 1000),
+      sid: this.sId,
+    };
   }
 
   toJSON(): UserType {
