@@ -19,7 +19,17 @@ export const HoverableExample = () => {
             alert("Clicked!");
           }}
         >
-          You can hover me.
+          I am invisible but you can hover me.
+        </Hoverable>
+      </div>
+      <div>
+        <Hoverable
+          variant="primary"
+          onClick={() => {
+            alert("Soupinou!");
+          }}
+        >
+          I am primary, you can hover me.
         </Hoverable>
       </div>
     </div>
