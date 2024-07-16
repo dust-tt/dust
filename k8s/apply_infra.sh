@@ -15,7 +15,7 @@ function apply_deployment {
     CURRENT_REPLICAS=$(kubectl get deployment $DEPLOYMENT_NAME -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
 
     # Check if an HPA exists for the deployment
-    HPA_EXISTS=$(kubectl get hpa $DEPLOYMENT_NAME -o name 2>/dev/null || false)
+    HPA_EXISTS=$(kubectl get hpa $DEPLOYMENT_NAME -o name 2>/dev/null || true)
 
     if [ -n "$CURRENT_IMAGE" ]; then
          # If CURRENT_IMAGE is not empty, replace the image in the YAML file with the actual image
