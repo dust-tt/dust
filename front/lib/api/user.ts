@@ -19,7 +19,7 @@ export async function getUserForWorkspace(
     return null;
   }
 
-  const user = await UserResource.fetchByExternalId(userId);
+  const user = await UserResource.fetchById(userId);
 
   if (!user) {
     return null;
