@@ -246,8 +246,10 @@ async function handleCsvFile(
     localLogger.warn({ error: err }, "Error while upserting table");
     return null;
   }
-
-  return null;
+  // if successfully return an "empty" CoreAPIDataSourceDocumentSection
+  // to distinguish between failed and successful table upsert, the
+  // csv won't be upserted as a document
+  return { prefix: null, content: null, sections: [] };
 }
 
 export async function syncOneFile(
