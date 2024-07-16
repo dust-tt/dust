@@ -83,14 +83,17 @@ async function handler(
         });
       }
 
-      try {
-        await userRes.updateName(req.body.firstName, req.body.lastName);
-      } catch (err) {
+      const result = await userRes.updateName(
+        req.body.firstName,
+        req.body.lastName
+      );
+
+      if (result.isErr()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Couldn't update the user.",
+            message: "Failed to update user name.",
           },
         });
       }

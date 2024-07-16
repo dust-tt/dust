@@ -73,7 +73,9 @@ export class UserResource extends BaseResource<User> {
   static async fetchNonNullableByModelId(
     id: ModelId | string
   ): Promise<UserResource> {
-    const user = await User.findByPk(typeof id === "string" ? parseInt(id, 10) : id);
+    const user = await User.findByPk(
+      typeof id === "string" ? parseInt(id, 10) : id
+    );
     if (!user) {
       throw new Error(`User with ID ${id} not found`);
     }
@@ -156,19 +158,28 @@ export class UserResource extends BaseResource<User> {
     );
   }
 
-  async updateName(firstName: string, lastName: string | null): Promise<void> {
-    await this.model.update(
-      {
-        firstName,
-        lastName,
-      },
-      {
-        where: {
-          id: this.id,
+  async updateName(
+    firstName: string,
+    lastName: string | null
+  ): Promise<Result<undefined, Error>> {
+    try {
+      await this.model.update(
+        {
+          firstName,
+          lastName,
         },
-        returning: true,
-      }
-    );
+        {
+          where: {
+            id: this.id,
+          },
+          returning: true,
+        }
+      );
+
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
   }
 
   async updateInfo(

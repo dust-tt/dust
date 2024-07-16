@@ -226,7 +226,7 @@ async function cleanupCustomerio(auth: Authenticator) {
         );
 
         return CustomerioServerSideTracking.deleteUser({
-          user: u,
+          user: u.toJSON(),
         }).catch((err) => {
           logger.error(
             { userId: u.sId, err },

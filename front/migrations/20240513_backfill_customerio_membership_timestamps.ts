@@ -76,7 +76,9 @@ const backfillCustomerIo = async (execute: boolean) => {
         "Backfilling user..."
       );
       if (execute) {
-        await CustomerioServerSideTracking.backfillUser({ user: user.toJSON() });
+        await CustomerioServerSideTracking.backfillUser({
+          user: user.toJSON(),
+        });
       }
     }
   }
