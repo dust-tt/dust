@@ -2,6 +2,7 @@ import type { LightWorkspaceType, ModelId } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
+import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import {
@@ -10,6 +11,8 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
+import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
@@ -53,6 +56,15 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
     where: { agentMessageId: agentMessageIds },
   });
   await AgentProcessAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+  await AgentWebsearchAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+  await AgentBrowseAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+  await AgentVisualizationAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }
