@@ -11,11 +11,11 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { unsafeGetUserByModelId } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
 import {
   retrieveGongTranscriptContent,
@@ -123,7 +123,9 @@ export async function processTranscriptActivity(
     );
   }
 
-  const user = await unsafeGetUserByModelId(transcriptsConfiguration.userId);
+  const user = await UserResource.fetchByModelId(
+    transcriptsConfiguration.userId
+  );
 
   if (!user) {
     throw new Error(
@@ -132,7 +134,7 @@ export async function processTranscriptActivity(
   }
 
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.id,
+    user.sId,
     workspace.sId
   );
 
@@ -143,7 +145,9 @@ export async function processTranscriptActivity(
   }
 
   if (!auth.user() || !auth.isUser()) {
-    throw new Error(`Could not find user for id ${transcriptsConfiguration.userId}.`);
+    throw new Error(
+      `Could not find user for id ${transcriptsConfiguration.userId}.`
+    );
   }
 
   const localLogger = mainLogger.child({

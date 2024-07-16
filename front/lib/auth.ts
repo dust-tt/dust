@@ -150,13 +150,14 @@ export class Authenticator {
 
   /**
    * Get an Authenticator for the target workspace associated with the specified user.
+   * To be used only in context where you can't get an authenticator object from a secured key (session or API Key)
    *
    * @param uId number user id
    * @param wId string target workspace sid
    * @returns Promise<Authenticator>
    */
   static async fromUserIdAndWorkspaceId(
-    uId: number,
+    uId: string,
     wId: string
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
@@ -165,11 +166,7 @@ export class Authenticator {
           sId: wId,
         },
       }),
-      User.findOne({
-        where: {
-          id: uId,
-        },
-      }),
+      UserResource.fetchById(uId),
     ]);
 
     let role: RoleType = "none";
@@ -179,7 +176,7 @@ export class Authenticator {
     if (user && workspace) {
       [role, subscription, flags] = await Promise.all([
         MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user: renderUserType(user),
+          user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
