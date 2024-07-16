@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/types";
 import { CoreAPI, Err, Ok, safeSubstring } from "@dust-tt/types";
+import _ from "lodash";
 
 import logger from "@app/logger/logger";
 
@@ -9,20 +10,33 @@ export async function tokenCountForTexts(
   texts: string[],
   model: { providerId: string; modelId: string }
 ): Promise<Result<Array<number>, Error>> {
+  const BATCHES_COUNT = 3;
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const res = await coreAPI.tokenizeBatch({
-      texts,
-      providerId: model.providerId,
-      modelId: model.modelId,
-    });
-    if (res.isErr()) {
-      return new Err(
-        new Error(`Error tokenizing model message: ${res.error.message}`)
-      );
+    const batches = _.chunk(texts, Math.ceil(texts.length / BATCHES_COUNT));
+    const batchResults = await Promise.all(
+      batches.map((batch) =>
+        coreAPI.tokenizeBatch({
+          texts: batch,
+          providerId: model.providerId,
+          modelId: model.modelId,
+        })
+      )
+    );
+
+    const counts: number[] = [];
+    for (const res of batchResults) {
+      if (res.isErr()) {
+        return new Err(
+          new Error(`Error tokenizing model message: ${res.error.message}`)
+        );
+      }
+      for (const tokens of res.value.tokens) {
+        counts.push(tokens.length);
+      }
     }
 
-    return new Ok(res.value.tokens.map((t) => t.length));
+    return new Ok(counts);
   } catch (err) {
     return new Err(new Error(`Error tokenizing model message: ${err}`));
   }
