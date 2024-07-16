@@ -154,4 +154,5 @@ echo "-----------------------------------"
 echo "Applying network policies"
 echo "-----------------------------------"
 
+kubectl apply -f "$(dirname "$0")/network-policies/core-network-policy.yaml"
 kubectl apply -f "$(dirname "$0")/network-policies/oauth-network-policy.yaml"
