@@ -318,33 +318,6 @@ export async function syncOneFile(
               return false;
             }
           }
-        } else if (
-          file.mimeType ===
-          "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        ) {
-          if (res.data instanceof ArrayBuffer) {
-            try {
-              const converted = await PPTX2Text(Buffer.from(res.data), file.id);
-
-              documentContent = {
-                prefix: null,
-                content: null,
-                sections: converted.pages.map((page, i) => ({
-                  prefix: `\n$Page: ${i + 1}/${converted.pages.length}\n`,
-                  content: page.content,
-                  sections: [],
-                })),
-              };
-            } catch (err) {
-              localLogger.warn(
-                {
-                  error: err,
-                },
-                "Error while converting pptx document to text"
-              );
-              return false;
-            }
-          }
         } else if (file.mimeType === "text/csv") {
           if (res.data instanceof ArrayBuffer) {
             // If data is > 4 times the limit, we skip the file since even if
