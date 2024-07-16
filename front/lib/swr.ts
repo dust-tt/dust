@@ -317,6 +317,21 @@ export function useMembers(owner: WorkspaceType) {
   };
 }
 
+export function useAdmins(owner: WorkspaceType) {
+  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/members?role=admin`,
+    membersFetcher
+  );
+
+  return {
+    admins: useMemo(() => (data ? data.members : []), [data]),
+    isAdminsLoading: !error && !data,
+    iAdminsError: error,
+    mutateMembers: mutate,
+  };
+}
+
 export function useWorkspaceInvitations(owner: WorkspaceType) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;

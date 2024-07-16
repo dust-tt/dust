@@ -1,4 +1,5 @@
 import {
+  Avatar,
   BookOpenIcon,
   Button,
   Chip,
@@ -6,6 +7,7 @@ import {
   Cog6ToothIcon,
   ContentMessage,
   ContextItem,
+  Hoverable,
   InformationCircleIcon,
   Modal,
   Page,
@@ -36,6 +38,7 @@ import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useAdmins } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
@@ -404,6 +407,9 @@ export default function DataSourcesView({
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
 
+  const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const { admins, isAdminsLoading } = useAdmins(owner);
+
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -520,6 +526,60 @@ export default function DataSourcesView({
         current: "data_sources_managed",
       })}
     >
+      {!isAdmin && (
+        <Modal
+          isOpen={showAdminsModal}
+          title="Administrators"
+          onClose={() => setShowAdminsModal(false)}
+          hasChanged={false}
+          variant="side-sm"
+        >
+          <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
+            <Page.SectionHeader
+              title="Administrators"
+              description={`${owner.name} has the following administrators:`}
+            />
+            {isAdminsLoading ? (
+              <div className="flex animate-pulse items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+                <div className="hidden sm:block">
+                  <Avatar size="xs" />
+                </div>
+                <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                  <div className="font-medium text-element-900">Loading...</div>
+                  <div className="grow font-normal text-element-700"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="s-w-full">
+                {admins.map((admin) => {
+                  return (
+                    <div
+                      key={`member-${admin.id}`}
+                      className="flex items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs sm:text-sm"
+                    >
+                      <div className="hidden sm:block">
+                        <Avatar
+                          visual={admin.image}
+                          name={admin.fullName}
+                          size="sm"
+                        />
+                      </div>
+                      <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                        <div className="font-medium text-element-900">
+                          {admin.fullName}
+                        </div>
+                        <div className="grow font-normal text-element-700">
+                          {admin.email}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
       {showConfirmConnection && (
         <ConfirmationModal
           dataSource={showConfirmConnection}
@@ -539,9 +599,16 @@ export default function DataSourcesView({
           icon={CloudArrowLeftRightIcon}
           description="Manage connections to your products and the real-time data feeds Dust has access to."
         />
-        {owner.role !== "admin" && (
-          <ContentMessage title="Roles">
-            Only Admins can activate and manage Connections.
+        {!isAdmin && (
+          <ContentMessage title="How are connections managed?">
+            <b>Workspace administrators</b> control access to connections for
+            all members.{" "}
+            <Hoverable
+              variant="primary"
+              onClick={() => setShowAdminsModal(true)}
+            >
+              View the list of administrators here.
+            </Hoverable>
           </ContentMessage>
         )}
         <ContextItem.List>
