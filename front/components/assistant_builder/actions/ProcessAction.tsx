@@ -408,10 +408,7 @@ export function ActionProcess({
         feature in the{" "}
         <Hoverable
           onClick={() => {
-            window.open(
-              "https://dust-tt.notion.site/Process-Data-on-Dust-424a836b881e4664aa6077a344a55b0c",
-              "_blank"
-            );
+            window.open("https://docs.dust.tt/docs/extract-data", "_blank");
           }}
           className="cursor-pointer font-bold text-action-500"
         >

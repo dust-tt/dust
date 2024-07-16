@@ -255,7 +255,7 @@ function CreateOktaEnterpriseConnectionModal({
           Discover how to set up Okta SSO – Read Our{" "}
           <a
             className="font-bold underline decoration-2"
-            href="https://dust-tt.notion.site/Enable-Single-Sign-On-5df17bd3566848d69834fc0fa4fc2643"
+            href="https://docs.dust.tt/docs/single-sign-on-sso"
             target="_blank"
           >
             Documentation

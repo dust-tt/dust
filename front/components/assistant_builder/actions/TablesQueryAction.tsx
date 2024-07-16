@@ -73,10 +73,7 @@ export function ActionTablesQuery({
         more about this feature in the{" "}
         <Hoverable
           onClick={() => {
-            window.open(
-              "https://dust-tt.notion.site/Table-queries-on-Dust-2f8c6ea53518464b8b7780d55ac7057d",
-              "_blank"
-            );
+            window.open("https://docs.dust.tt/docs/table-queries", "_blank");
           }}
           className="cursor-pointer font-bold text-action-500"
         >
