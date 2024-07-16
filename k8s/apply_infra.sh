@@ -14,13 +14,18 @@ function apply_deployment {
     # Get the current number of replicas if it exists
     CURRENT_REPLICAS=$(kubectl get deployment $DEPLOYMENT_NAME -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
 
+    # Check if an HPA exists for the deployment
+    HPA_EXISTS=$(kubectl get hpa $DEPLOYMENT_NAME -o name 2>/dev/null || false)
+
     if [ -n "$CURRENT_IMAGE" ]; then
          # If CURRENT_IMAGE is not empty, replace the image in the YAML file with the actual image
         UPDATED_YAML=$(yq e ".spec.template.spec.containers[].image = \"$CURRENT_IMAGE\"" $YAML_FILE)
 
-        # If CURRENT_REPLICAS is set, update the replicas in the YAML
-        if [ -n "$CURRENT_REPLICAS" ]; then
-            UPDATED_YAML=$(echo "$UPDATED_YAML" | yq e ".spec.replicas = $CURRENT_REPLICAS" -)
+       # If the HPA exists, update the replicas in the YAML
+        if [ -n "$HPA_EXISTS" ]; then
+            if [ -n "$CURRENT_REPLICAS" ]; then
+                UPDATED_YAML=$(echo "$UPDATED_YAML" | yq e ".spec.replicas = $CURRENT_REPLICAS" -)
+            fi
         fi
 
         # Apply the updated YAML
@@ -97,6 +102,12 @@ echo "Applying frontend configs"
 echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/frontend-configs/dust-frontend-config.yaml"
+
+echo "-----------------------------------"
+echo "Applying HPAs"
+echo "-----------------------------------"
+
+kubectl apply -f "$(dirname "$0")/hpas/apache-tika-hpa.yaml"
 
 echo "-----------------------------------"
 echo "Applying deployments"
