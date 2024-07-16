@@ -271,6 +271,7 @@ export async function* runMultiActionsAgentLoop(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             message: agentMessage,
+            runId: event.runId,
           } satisfies AgentMessageSuccessEvent;
           return;
 

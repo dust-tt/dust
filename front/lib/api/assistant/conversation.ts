@@ -5,7 +5,6 @@ import type {
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationSuccessEvent,
   AgentMessageErrorEvent,
   AgentMessageNewEvent,
   AgentMessageSuccessEvent,
@@ -1684,7 +1683,6 @@ async function* streamRunAgentEvents(
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
-    | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent,
     void
@@ -1729,15 +1727,12 @@ async function* streamRunAgentEvents(
       case "agent_actions":
         runIds.push(event.runId);
         break;
-      case "agent_generation_success":
+      case "agent_message_success":
         // Store message in database.
         runIds.push(event.runId);
         await agentMessageRow.update({
           runIds,
         });
-        break;
-
-      case "agent_message_success":
         // Update status in database.
         await agentMessageRow.update({
           status: "succeeded",

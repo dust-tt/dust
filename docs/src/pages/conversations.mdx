@@ -254,18 +254,6 @@ The `generation_tokens` event is sent when tokens are streamed as the the assist
 }
 ```
 
-The `agent_generation_success` event is sent once the generation has completed.
-
-```
-{
-  type: "agent_generation_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  text: string;
-}
-```
-
 ### Other events
 
 The `agent_message_success` event is sent once the message is fully completed and successful.
