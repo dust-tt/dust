@@ -104,12 +104,6 @@ echo "-----------------------------------"
 kubectl apply -f "$(dirname "$0")/frontend-configs/dust-frontend-config.yaml"
 
 echo "-----------------------------------"
-echo "Applying HPAs"
-echo "-----------------------------------"
-
-kubectl apply -f "$(dirname "$0")/hpas/apache-tika-hpa.yaml"
-
-echo "-----------------------------------"
 echo "Applying deployments"
 echo "-----------------------------------"
 
@@ -128,6 +122,12 @@ apply_deployment core-deployment
 apply_deployment core-sqlite-worker-deployment
 apply_deployment oauth-deployment
 apply_deployment prodbox-deployment
+
+echo "-----------------------------------"
+echo "Applying HPAs"
+echo "-----------------------------------"
+
+kubectl apply -f "$(dirname "$0")/hpas/apache-tika-hpa.yaml"
 
 echo "-----------------------------------"
 echo "Applying services"
