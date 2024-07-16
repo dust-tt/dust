@@ -217,9 +217,7 @@ fn main() {
 
         let state = Arc::new(OAuthState::new(store));
 
-        let app = Router::new()
-            // Index
-            .route("/", get(index))
+        let router = Router::new()
             // Connections
             .route("/connections", post(connections_create))
             .route(
@@ -237,6 +235,10 @@ fn main() {
                     .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
             )
             .with_state(state.clone());
+
+        let health_check_router = Router::new().route("/", get(index));
+
+        let app = Router::new().merge(router).merge(health_check_router);
 
         let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
         let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();

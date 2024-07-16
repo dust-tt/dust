@@ -2539,8 +2539,6 @@ fn main() {
         ));
 
         let router = Router::new()
-        // Index
-        .route("/", get(index))
         // Projects
         .route("/projects", post(projects_create))
         .route("/projects/:project_id", delete(projects_delete))
@@ -2687,11 +2685,12 @@ fn main() {
         .with_state(state.clone());
 
         // In a separate router, to avoid noisy tracing.
-        let sqlite_heartbeat_router = Router::new()
+        let untraced_router = Router::new()
+            .route("/", get(index))
             .route("/sqlite_workers", post(sqlite_workers_heartbeat))
             .with_state(state.clone());
 
-        let app = Router::new().merge(router).merge(sqlite_heartbeat_router);
+        let app = Router::new().merge(router).merge(untraced_router);
 
         // Start the APIState run loop.
         let runloop_state = state.clone();
