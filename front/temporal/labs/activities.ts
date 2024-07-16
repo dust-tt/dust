@@ -258,9 +258,9 @@ export async function processTranscriptActivity(
   const baseContext = {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
     username: user.username,
-    fullName: user.fullName,
+    fullName: user.getFullName(),
     email: user.email,
-    profilePictureUrl: user.image,
+    profilePictureUrl: user.imageUrl,
     origin: null,
   };
 
