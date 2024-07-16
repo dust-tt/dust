@@ -11,9 +11,25 @@ function apply_deployment {
     # Get the current image if it exists
     CURRENT_IMAGE=$(kubectl get deployment $DEPLOYMENT_NAME -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
 
+    # Get the current number of replicas if it exists
+    CURRENT_REPLICAS=$(kubectl get deployment $DEPLOYMENT_NAME -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
+
+    # Check if an HPA exists for the deployment
+    HPA_EXISTS=$(kubectl get hpa $DEPLOYMENT_NAME -o name 2>/dev/null || false)
+
     if [ -n "$CURRENT_IMAGE" ]; then
-        # If CURRENT_IMAGE is not empty, replace the image in the YAML file with the actual image and apply it
-        yq e ".spec.template.spec.containers[].image = \"$CURRENT_IMAGE\"" $YAML_FILE | kubectl apply -f -
+         # If CURRENT_IMAGE is not empty, replace the image in the YAML file with the actual image
+        UPDATED_YAML=$(yq e ".spec.template.spec.containers[].image = \"$CURRENT_IMAGE\"" $YAML_FILE)
+
+       # If the HPA exists, update the replicas in the YAML
+        if [ -n "$HPA_EXISTS" ]; then
+            if [ -n "$CURRENT_REPLICAS" ]; then
+                UPDATED_YAML=$(echo "$UPDATED_YAML" | yq e ".spec.replicas = $CURRENT_REPLICAS" -)
+            fi
+        fi
+
+        # Apply the updated YAML
+        echo "$UPDATED_YAML" | kubectl apply -f -
     else
         # If CURRENT_IMAGE is empty, apply the original YAML
         kubectl apply -f $YAML_FILE
@@ -47,6 +63,7 @@ echo "-----------------------------------"
 echo "Applying configmaps"
 echo "-----------------------------------"
 
+kubectl apply -f "$(dirname "$0")/configmaps/apache-tika-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
@@ -63,6 +80,7 @@ echo "-----------------------------------"
 echo "Applying backend configs"
 echo "-----------------------------------"
 
+kubectl apply -f "$(dirname "$0")/backend-configs/apache-tika-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/connectors-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/metabase-backend-config.yaml"
@@ -89,6 +107,7 @@ echo "-----------------------------------"
 echo "Applying deployments"
 echo "-----------------------------------"
 
+apply_deployment apache-tika-deployment
 apply_deployment front-deployment
 apply_deployment front-worker-deployment
 apply_deployment front-edge-deployment
@@ -104,11 +123,17 @@ apply_deployment core-sqlite-worker-deployment
 apply_deployment oauth-deployment
 apply_deployment prodbox-deployment
 
+echo "-----------------------------------"
+echo "Applying HPAs"
+echo "-----------------------------------"
+
+kubectl apply -f "$(dirname "$0")/hpas/apache-tika-hpa.yaml"
 
 echo "-----------------------------------"
 echo "Applying services"
 echo "-----------------------------------"
 
+kubectl apply -f "$(dirname "$0")/services/apache-tika-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-edge-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-service.yaml"
