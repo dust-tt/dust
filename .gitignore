@@ -8,3 +8,4 @@ test.ts
 qdrant_storage
 .*.swp
 .rgignore
+core-api-keys.json
