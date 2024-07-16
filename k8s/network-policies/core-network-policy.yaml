@@ -19,6 +19,9 @@ spec:
         - podSelector:
             matchLabels:
               app: front-edge
+        - podSelector:
+            matchLabels:
+              app: core-sqlite-worker
       ports:
         - protocol: TCP
           port: 3001

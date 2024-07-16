@@ -156,3 +156,4 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/network-policies/core-network-policy.yaml"
 kubectl apply -f "$(dirname "$0")/network-policies/oauth-network-policy.yaml"
+kubectl apply -f "$(dirname "$0")/network-policies/core-sqlite-worker-network-policy.yaml"

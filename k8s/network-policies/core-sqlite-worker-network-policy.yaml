@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oauth-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: core-sqlite-worker
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: core
+      ports:
+        - protocol: TCP
+          port: 3005
