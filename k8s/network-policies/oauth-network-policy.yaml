@@ -15,4 +15,4 @@ spec:
               app: core
       ports:
         - protocol: TCP
-          port: 80
+          port: 3006
