@@ -89,7 +89,7 @@ export async function batchRenderUserMessages(
             firstName: user.firstName,
             lastName: user.lastName,
             fullName:
-              user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
+              user.getFullName(),
             provider: user.provider,
             image: user.imageUrl,
           }

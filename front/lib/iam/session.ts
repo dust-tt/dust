@@ -56,7 +56,7 @@ export async function getUserFromSession(
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
-    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
+    fullName: user.getFullName(),
     image: user.imageUrl,
     workspaces: workspaces.map((w) => {
       const m = memberships.find((m) => m.workspaceId === w.id);
