@@ -15,6 +15,9 @@ spec:
               app: front
         - podSelector:
             matchLabels:
+              app: front-edge
+        - podSelector:
+            matchLabels:
               app: connectors
       ports:
         - protocol: TCP
