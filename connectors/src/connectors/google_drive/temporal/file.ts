@@ -32,15 +32,14 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
 } from "@connectors/lib/models/google_drive";
-import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 const pagePrefixesPerMimeType: Record<string, string> = {
-  "application/pdf": "$pdfPage:",
+  "application/pdf": "$pdfPage",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    "$slideNumber:",
+    "$slideNumber",
 };
 
 export async function syncOneFile(
