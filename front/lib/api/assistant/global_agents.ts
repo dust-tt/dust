@@ -5,6 +5,7 @@ import { promisify } from "util";
 const readFileAsync = promisify(fs.readFile);
 
 import type {
+  AgentActionConfigurationType,
   AgentConfigurationType,
   AgentModelConfigurationType,
   ConnectorProvider,
@@ -858,6 +859,84 @@ async function _getDustGlobalAgent(
     };
   }
 
+  let instructions = `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
+# When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
+1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
+3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
+4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.`;
+
+  const actions: AgentActionConfigurationType[] = [
+    {
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
+      type: "retrieval_configuration",
+      query: "auto",
+      relativeTimeFrame: "auto",
+      topK: "auto",
+      dataSources: dataSources.map((ds) => ({
+        dataSourceId: ds.name,
+        workspaceId: prodCredentials.workspaceId,
+        filter: { parents: null },
+      })),
+      name: "search_all_data_sources",
+      description: `The user's entire workspace data sources`,
+    },
+  ];
+
+  if (owner.flags.includes("dust_splitted_ds_flag")) {
+    // Note: if we want to ungate this, we should make sure to provide a better design in the Assitant detail modal.
+    // The instructions have been edited only to add "Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source."
+    instructions = `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
+    # When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
+    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+    2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
+    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
+    4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.`;
+
+    dataSources.forEach((ds) => {
+      if (ds.connectorProvider && ds.connectorProvider !== "webcrawler") {
+        actions.push({
+          id: -1,
+          sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action-" + ds.name,
+          type: "retrieval_configuration",
+          query: "auto",
+          relativeTimeFrame: "auto",
+          topK: "auto",
+          dataSources: [
+            {
+              dataSourceId: ds.name,
+              workspaceId: prodCredentials.workspaceId,
+              filter: { parents: null },
+            },
+          ],
+          name: "search_" + ds.name,
+          description: `The user's ${ds.connectorProvider} data source.`,
+        });
+      }
+    });
+  }
+
+  actions.push({
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DUST + "-websearch-action",
+    type: "websearch_configuration",
+    name: DEFAULT_WEBSEARCH_ACTION_NAME,
+    description: null,
+  });
+  actions.push({
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DUST + "-browse-action",
+    type: "browse_configuration",
+    name: DEFAULT_BROWSE_ACTION_NAME,
+    description: null,
+  });
+
+  // Fix the action ids.
+  actions.forEach((action, i) => {
+    action.id = -i;
+  });
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.DUST,
@@ -866,48 +945,13 @@ async function _getDustGlobalAgent(
     versionAuthorId: null,
     name,
     description,
-    instructions: `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
-# When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
-1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
-3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
-4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.`,
+    instructions,
     pictureUrl,
     status: "active",
     scope: "global",
     userListStatus: "in-list",
     model,
-    actions: [
-      {
-        id: -1,
-        sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
-        type: "retrieval_configuration",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        topK: "auto",
-        dataSources: dataSources.map((ds) => ({
-          dataSourceId: ds.name,
-          workspaceId: prodCredentials.workspaceId,
-          filter: { tags: null, parents: null },
-        })),
-        name: DEFAULT_RETRIEVAL_ACTION_NAME,
-        description: `The user's entire workspace data sources`,
-      },
-      {
-        id: -2,
-        sId: GLOBAL_AGENTS_SID.DUST + "-websearch-action",
-        type: "websearch_configuration",
-        name: DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: null,
-      },
-      {
-        id: -3,
-        sId: GLOBAL_AGENTS_SID.DUST + "-browse-action",
-        type: "browse_configuration",
-        name: DEFAULT_BROWSE_ACTION_NAME,
-        description: null,
-      },
-    ],
+    actions,
     maxStepsPerRun: 3,
     templateId: null,
   };
