@@ -130,8 +130,9 @@ export async function getSiteNodesToSync(
   // Keeping them both in the sync list can result in various kinds of issues,
   // e.g. if a child folder is synced before the parent, then the child folder's
   // files' parents array will be incomplete, thus the need to prune the list
-  const nodesToSync = allNodes.filter(
-    async (node) =>
+  const nodesToSync = [];
+  for (const node of allNodes) {
+    if (
       !(
         node.nodeType === "folder" &&
         (await isParentAlreadyInNodes({
@@ -140,7 +141,10 @@ export async function getSiteNodesToSync(
           folder: node,
         }))
       )
-  );
+    ) {
+      nodesToSync.push(node);
+    }
+  }
 
   const nodeResources = await MicrosoftNodeResource.batchUpdateOrCreate(
     connectorId,
