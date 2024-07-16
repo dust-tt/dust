@@ -85,3 +85,4 @@ sqids = "0.4.1"
 ring = "0.17.8"
 jsonwebtoken = "9.3.0"
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
+once_cell = "1.19.0"

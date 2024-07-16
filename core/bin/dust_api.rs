@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use axum::{
     extract::{DefaultBodyLimit, Path, Query, State},
     http::header::HeaderMap,
+    middleware::from_fn,
     response::{
         sse::{Event, KeepAlive, Sse},
         Json,
@@ -10,6 +11,7 @@ use axum::{
     Router,
 };
 use dust::{
+    api_keys::validate_api_key,
     app,
     blocks::block::BlockType,
     data_sources::{
@@ -2682,15 +2684,20 @@ fn main() {
                 .make_span_with(CoreRequestMakeSpan::new())
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
+        .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 
-        // In a separate router, to avoid noisy tracing.
-        let untraced_router = Router::new()
-            .route("/", get(index))
+        let sqlite_heartbeat_router = Router::new()
             .route("/sqlite_workers", post(sqlite_workers_heartbeat))
+            .layer(from_fn(validate_api_key))
             .with_state(state.clone());
 
-        let app = Router::new().merge(router).merge(untraced_router);
+        let health_check_router = Router::new().route("/", get(index));
+
+        let app = Router::new()
+            .merge(router)
+            .merge(sqlite_heartbeat_router)
+            .merge(health_check_router);
 
         // Start the APIState run loop.
         let runloop_state = state.clone();

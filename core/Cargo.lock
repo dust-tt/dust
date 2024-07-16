@@ -1169,6 +1169,7 @@ dependencies = [
  "itertools 0.10.5",
  "jsonwebtoken 9.3.0",
  "lazy_static",
+ "once_cell",
  "parking_lot",
  "pest",
  "pest_derive",
