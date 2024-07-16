@@ -133,13 +133,34 @@ export class UserResource extends BaseResource<User> {
     return user ? new UserResource(User, user.get()) : null;
   }
 
-  async update(blob: Partial<Attributes<User>>): Promise<void> {
-    const [, affectedRows] = await this.model.update(blob, {
-      where: {
-        id: this.id,
+  async updateAuth0Sub(sub: string): Promise<void> {
+    await this.model.update(
+      {
+        auth0Sub: sub,
       },
-      returning: true,
-    });
+      {
+        where: {
+          id: this.id,
+        },
+      }
+    );
+  }
+
+  async updateUserInfo(
+    username: string,
+    firstName: string,
+    lastName: string | null,
+    email: string
+  ): Promise<void> {
+    const [, affectedRows] = await this.model.update(
+      { username, firstName, lastName, email },
+      {
+        where: {
+          id: this.id,
+        },
+        returning: true,
+      }
+    );
 
     Object.assign(this, affectedRows[0].get());
   }
