@@ -3,6 +3,7 @@ export function getMimeTypesToSync({ pdfEnabled }: { pdfEnabled: boolean }) {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     // TODO(pr): support those
     // "text/plain",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "application/vnd.ms-excel", // Microsoft type for "text/csv"
   ];

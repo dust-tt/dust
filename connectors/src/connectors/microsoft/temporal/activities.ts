@@ -474,7 +474,7 @@ export async function syncOneFile({
     }
   }
 
-  let documentSection: CoreAPIDataSourceDocumentSection | null;
+  let documentSection: CoreAPIDataSourceDocumentSection | null = null;
   if (
     mimeType ===
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -500,6 +500,24 @@ export async function syncOneFile({
       documentSection = null;
     } else {
       return false;
+    }
+  } else if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ) {
+    const res = await syncSpreadSheet({
+      connectorId,
+      file,
+    });
+    if (!res.isSupported) {
+      return false;
+    } else {
+      if (res.skipReason) {
+        localLogger.info(
+          {},
+          `Microsoft Spreadsheet document skipped with skip reason ${res.skipReason}`
+        );
+      }
     }
   } else {
     const documentContent = await getDocumentContent();
