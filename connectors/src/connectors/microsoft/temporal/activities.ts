@@ -488,7 +488,7 @@ export async function syncOneFile({
     );
   } else if (mimeType === "application/vnd.ms-excel") {
     const data = Buffer.from(downloadRes.data);
-    const isSuccessfull = await handleCsvFile(
+    const isSuccessful = await handleCsvFile(
       dataSourceConfig,
       data,
       file,
@@ -496,7 +496,7 @@ export async function syncOneFile({
       maxDocumentLen,
       connectorId
     );
-    if (isSuccessfull) {
+    if (isSuccessful) {
       documentSection = null;
     } else {
       return false;
