@@ -47,6 +47,7 @@ echo "-----------------------------------"
 echo "Applying configmaps"
 echo "-----------------------------------"
 
+kubectl apply -f "$(dirname "$0")/configmaps/apache-tika-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
@@ -62,6 +63,7 @@ echo "-----------------------------------"
 echo "Applying backend configs"
 echo "-----------------------------------"
 
+kubectl apply -f "$(dirname "$0")/backend-configs/apache-tika-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/front-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/connectors-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/metabase-backend-config.yaml"
@@ -87,6 +89,7 @@ echo "-----------------------------------"
 echo "Applying deployments"
 echo "-----------------------------------"
 
+apply_deployment apache-tika-deployment
 apply_deployment front-deployment
 apply_deployment front-worker-deployment
 apply_deployment front-edge-deployment
@@ -101,11 +104,11 @@ apply_deployment core-deployment
 apply_deployment core-sqlite-worker-deployment
 apply_deployment prodbox-deployment
 
-
 echo "-----------------------------------"
 echo "Applying services"
 echo "-----------------------------------"
 
+kubectl apply -f "$(dirname "$0")/services/apache-tika-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-edge-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-service.yaml"

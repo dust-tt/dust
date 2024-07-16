@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apache-tika-deployment
+  namespace: apache-tika
+  annotations:
+    admission.datadoghq.com/enabled: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apache-tika
+  template:
+    metadata:
+      labels:
+        app: apache-tika
+      annotations:
+        ad.datadoghq.com/apache-tika.logs: '[{"source": "apache-tika","service": "apache-tika","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: apache-tika
+          image: apache/tika:2.9.2.1
+          ports:
+            - containerPort: 9998
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 4Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          env:
+            - name: JAVA_OPTS
+              value: "-Xms1g -Xmx2g -XX:MaxMetaspaceSize=256m"
