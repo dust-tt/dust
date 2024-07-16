@@ -32,10 +32,15 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
 } from "@connectors/lib/models/google_drive";
-import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+
+const pagePrefixesPerMimeType: Record<string, string> = {
+  "application/pdf": "$pdfPage",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "$slideNumber",
+};
 
 export async function syncOneFile(
   connectorId: ModelId,
@@ -230,9 +235,17 @@ export async function syncOneFile(
               "Unexpected GDrive export response type"
             );
           }
-        } else if (file.mimeType === "application/pdf") {
+        } else if (
+          [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          ].includes(file.mimeType)
+        ) {
           if (!(res.data instanceof ArrayBuffer)) {
-            localLogger.error("PDF file download failed.");
+            localLogger.error(
+              { mimeType: file.mimeType },
+              "File download failed."
+            );
 
             return false;
           }
@@ -244,16 +257,19 @@ export async function syncOneFile(
             localLogger.warn(
               {
                 error: pageRes.error,
+                mimeType: file.mimeType,
               },
-              "Error while converting PDF to text"
+              "Error while converting file to text"
             );
 
-            // we don't know what to do with PDF files that fails to be converted to text.
+            // We don't know what to do with files that fails to be converted to text.
             // So we log the error and skip the file.
             return false;
           }
 
           const pages = pageRes.value;
+
+          const prefix = pagePrefixesPerMimeType[file.mimeType] || "";
 
           documentContent =
             pages.length > 0
@@ -261,7 +277,7 @@ export async function syncOneFile(
                   prefix: null,
                   content: null,
                   sections: pages.map((page) => ({
-                    prefix: `\n$pdfPage: ${page.pageNumber}/${pages.length}\n`,
+                    prefix: `\n${prefix}: ${page.pageNumber}/${pages.length}\n`,
                     content: page.content,
                     sections: [],
                   })),
@@ -270,9 +286,10 @@ export async function syncOneFile(
 
           localLogger.info(
             {
+              mimeType: file.mimeType,
               pagesCount: pages.length,
             },
-            "Successfully converted PDF to text"
+            "Successfully converted file to text"
           );
         } else if (
           file.mimeType ===
@@ -296,33 +313,6 @@ export async function syncOneFile(
                   error: err,
                 },
                 "Error while converting docx document to text"
-              );
-              return false;
-            }
-          }
-        } else if (
-          file.mimeType ===
-          "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        ) {
-          if (res.data instanceof ArrayBuffer) {
-            try {
-              const converted = await PPTX2Text(Buffer.from(res.data), file.id);
-
-              documentContent = {
-                prefix: null,
-                content: null,
-                sections: converted.pages.map((page, i) => ({
-                  prefix: `\n$Page: ${i + 1}/${converted.pages.length}\n`,
-                  content: page.content,
-                  sections: [],
-                })),
-              };
-            } catch (err) {
-              localLogger.warn(
-                {
-                  error: err,
-                },
-                "Error while converting pptx document to text"
               );
               return false;
             }
