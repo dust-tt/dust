@@ -72,16 +72,7 @@ async function handler(
         });
       }
 
-      const userRes = await UserResource.fetchByModelId(user.id);
-      if (!userRes) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "user_not_found",
-            message: "The user was not found.",
-          },
-        });
-      }
+      const userRes = await UserResource.fetchNonNullableByModelId(user.id);
 
       const result = await userRes.updateName(
         req.body.firstName,
