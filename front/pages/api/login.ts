@@ -10,7 +10,6 @@ import {
   getMembershipInvitationToken,
   getMembershipInvitationUrlForToken,
 } from "@app/lib/api/invitation";
-import { deleteUser } from "@app/lib/api/user";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
@@ -400,7 +399,7 @@ async function handler(
 
       // Delete newly created user if SSO is mandatory.
       if (userCreated) {
-        await deleteUser(user);
+        await user.delete();
       }
 
       res.redirect(

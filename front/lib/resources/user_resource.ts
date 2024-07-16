@@ -1,5 +1,6 @@
 import type {
   CIOUserType,
+  ModelId,
   Result,
   UserProviderType,
   UserType,
@@ -40,7 +41,7 @@ export class UserResource extends BaseResource<User> {
     return new this(User, user.get());
   }
 
-  static async listByModelIds(ids: number[]): Promise<UserResource[]> {
+  static async listByModelIds(ids: ModelId[]): Promise<UserResource[]> {
     const users = await User.findAll({
       where: {
         id: ids,
@@ -60,12 +61,14 @@ export class UserResource extends BaseResource<User> {
     return users.map((user) => new UserResource(User, user.get()));
   }
 
-  static listByEmail(email: string): Promise<UserResource[]> {
-    return User.findAll({
+  static async listByEmail(email: string): Promise<UserResource[]> {
+    const users = await User.findAll({
       where: {
         email,
       },
-    }).then((users) => users.map((user) => new UserResource(User, user.get())));
+    })
+
+    return users.map((user) => new UserResource(User, user.get()))
   }
 
   static async fetchById(userId: string): Promise<UserResource | null> {

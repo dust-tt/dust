@@ -38,14 +38,6 @@ export async function getUserForWorkspace(
   return user;
 }
 
-export async function deleteUser(user: UserResource): Promise<void> {
-  await User.destroy({
-    where: {
-      id: user.id,
-    },
-  });
-}
-
 /**
  * Server-side interface to get user metadata.
  * @param user UserType the user to get metadata for.
