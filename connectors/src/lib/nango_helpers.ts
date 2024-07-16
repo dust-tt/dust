@@ -119,6 +119,6 @@ export async function getConnectionFromNango({
       "Error while getting connection from Nango"
     );
 
-    throw new Error("Error while getting connection from Nango");
+    throw error;
   }
 }
