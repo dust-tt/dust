@@ -244,7 +244,7 @@ export async function syncOneFile(
           if (!(res.data instanceof ArrayBuffer)) {
             localLogger.error(
               { mimeType: file.mimeType },
-              "file download failed."
+              "File download failed."
             );
 
             return false;
@@ -262,7 +262,7 @@ export async function syncOneFile(
               "Error while converting file to text"
             );
 
-            // we don't know what to do with files that fails to be converted to text.
+            // We don't know what to do with files that fails to be converted to text.
             // So we log the error and skip the file.
             return false;
           }
