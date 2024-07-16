@@ -63,6 +63,7 @@ export async function getFilesAndFolders(
       `Invalid node type: ${nodeType} for getFilesAndFolders, expected drive or folder`
     );
   }
+
   const endpoint =
     nodeType === "drive"
       ? `${parentResourcePath}/root/children`
@@ -76,6 +77,45 @@ export async function getFilesAndFolders(
     return {
       results: res.value,
       nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
+}
+
+export async function getDriveOrItemDelta(
+  client: Client,
+  parentInternalId: string,
+  nextLink?: string
+) {
+  const { nodeType, itemAPIPath } = typeAndPathFromInternalId(parentInternalId);
+
+  if (nodeType !== "drive" && nodeType !== "folder") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getFilesAndFolders, expected drive or folder`
+    );
+  }
+
+  const deltaPath =
+    nodeType === "folder"
+      ? itemAPIPath + "/delta"
+      : itemAPIPath + "/root/delta";
+
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api(deltaPath).get();
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  if ("@odata.deltaLink" in res) {
+    return {
+      results: res.value,
+      deltaLink: res["@odata.deltaLink"],
     };
   }
 
