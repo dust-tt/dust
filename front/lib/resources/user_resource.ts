@@ -146,7 +146,22 @@ export class UserResource extends BaseResource<User> {
     );
   }
 
-  async updateUserInfo(
+  async updateName(firstName: string, lastName: string | null): Promise<void> {
+    await this.model.update(
+      {
+        firstName,
+        lastName,
+      },
+      {
+        where: {
+          id: this.id,
+        },
+        returning: true,
+      }
+    );
+  }
+
+  async updateInfo(
     username: string,
     firstName: string,
     lastName: string | null,
