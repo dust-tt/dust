@@ -27,7 +27,6 @@ import {
   sectionLength,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { docx2text } from "@connectors/lib/docx2text.";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -239,6 +238,7 @@ export async function syncOneFile(
           [
             "application/pdf",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           ].includes(file.mimeType)
         ) {
           if (!(res.data instanceof ArrayBuffer)) {
@@ -269,7 +269,7 @@ export async function syncOneFile(
 
           const pages = pageRes.value;
 
-          const prefix = pagePrefixesPerMimeType[file.mimeType] || "";
+          const prefix = pagePrefixesPerMimeType[file.mimeType];
 
           documentContent =
             pages.length > 0
@@ -277,7 +277,9 @@ export async function syncOneFile(
                   prefix: null,
                   content: null,
                   sections: pages.map((page) => ({
-                    prefix: `\n${prefix}: ${page.pageNumber}/${pages.length}\n`,
+                    prefix: prefix
+                      ? `\n${prefix}: ${page.pageNumber}/${pages.length}\n`
+                      : null,
                     content: page.content,
                     sections: [],
                   })),
@@ -291,32 +293,6 @@ export async function syncOneFile(
             },
             "Successfully converted file to text"
           );
-        } else if (
-          file.mimeType ===
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ) {
-          if (res.data instanceof ArrayBuffer) {
-            try {
-              const extracted = await docx2text(
-                Buffer.from(res.data),
-                file.name
-              );
-
-              documentContent = {
-                prefix: null,
-                content: extracted.trim(),
-                sections: [],
-              };
-            } catch (err) {
-              localLogger.warn(
-                {
-                  error: err,
-                },
-                "Error while converting docx document to text"
-              );
-              return false;
-            }
-          }
         } else if (file.mimeType === "text/csv") {
           if (res.data instanceof ArrayBuffer) {
             // If data is > 4 times the limit, we skip the file since even if
