@@ -120,21 +120,6 @@ export class TextExtraction {
       .get();
   }
 
-  // Process Presentation response.
-  private processPresentationResponse(response: TikaResponse): PageContent[] {
-    const html = response["X-TIKA:content"];
-
-    const $ = cheerio.load(html);
-    const slideContentDivs = $(".slide-content");
-
-    return slideContentDivs
-      .map((index, div) => ({
-        pageNumber: index + 1,
-        content: $(div).text()?.trim() || "",
-      }))
-      .get();
-  }
-
   // Process default response.
   private processDefaultResponse(response: TikaResponse): PageContent[] {
     const content = response["X-TIKA:content"];
