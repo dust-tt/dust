@@ -52,17 +52,7 @@ async function handler(
   }
 
   const workspace = await createWorkspace(session);
-  const userRes = await UserResource.fetchByModelId(user.id);
-
-  if (!userRes) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "The user was not found.",
-      },
-    });
-  }
+  const userRes = await UserResource.fetchNonNullableByModelId(user.id);
 
   await createAndLogMembership({
     user: userRes,

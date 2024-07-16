@@ -1,5 +1,4 @@
 import type {
-  CIOUserType,
   ModelId,
   Result,
   UserProviderType,
@@ -69,6 +68,17 @@ export class UserResource extends BaseResource<User> {
     });
 
     return users.map((user) => new UserResource(User, user.get()));
+  }
+
+  static async fetchNonNullableByModelId(
+    id: ModelId | string
+  ): Promise<UserResource> {
+    const user = await User.findByPk(typeof id === "string" ? parseInt(id, 10) : id);
+    if (!user) {
+      throw new Error(`User with ID ${id} not found`);
+    }
+
+    return new UserResource(User, user.get());
   }
 
   static async fetchById(userId: string): Promise<UserResource | null> {
@@ -196,16 +206,6 @@ export class UserResource extends BaseResource<User> {
 
   getFullName(): string {
     return [this.firstName, this.lastName].filter(Boolean).join(" ");
-  }
-
-  toCIOPayload(): CIOUserType {
-    return {
-      email: this.email,
-      first_name: this.firstName,
-      last_name: this.lastName,
-      created_at: Math.floor(this.createdAt.getTime() / 1000),
-      sid: this.sId,
-    };
   }
 
   toJSON(): UserType {
