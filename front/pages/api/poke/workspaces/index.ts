@@ -127,7 +127,7 @@ async function handler(
         let isSearchByEmail = false;
         if (isEmailValid(search)) {
           // We can have 2 users with the same email if a Google user and a Github user have the same email.
-          const users = await UserResource.fetchAllByEmail(search);
+          const users = await UserResource.listByEmail(search);
           if (users.length) {
             const memberships = await MembershipResource.getLatestMemberships({
               users,

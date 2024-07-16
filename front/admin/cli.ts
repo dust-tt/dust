@@ -182,7 +182,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --username argument");
       }
 
-      const users = await UserResource.fetchAllByUsername(args.username);
+      const users = await UserResource.listByUsername(args.username);
 
       users.forEach((u) => {
         console.log(

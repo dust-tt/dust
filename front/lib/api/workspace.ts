@@ -144,7 +144,7 @@ export async function getMembers(
         roles,
       });
 
-  const users = await UserResource.fetchAllByModelIds(
+  const users = await UserResource.listByModelIds(
     memberships.map((m) => m.userId)
   );
 
