@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const activeEventSources = new Map<string, EventSource>();
 
 export function useEventSource(
   buildURL: (lastMessage: string | null) => string | null,
   onEventCallback: (event: string) => void,
   { isReadyToConsumeStream }: { isReadyToConsumeStream: boolean } = {
     isReadyToConsumeStream: true,
-  }
+  },
+  uniqueId: string
 ) {
   // State used to re-connect to the events stream; this is a hack to re-trigger
   // the useEffect that set-up the EventSource to the streaming endpoint.
@@ -14,18 +17,34 @@ export function useEventSource(
   const errorCount = useRef(0);
   const [isError, setIsError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    if (!isReadyToConsumeStream) {
-      return;
-    }
-
+  const es = useMemo(() => {
     const url = buildURL(lastEvent.current);
     if (!url) {
+      return null;
+    }
+
+    const activeEventSourceForUniqueId = activeEventSources.get(uniqueId);
+
+    if (
+      !activeEventSourceForUniqueId ||
+      activeEventSourceForUniqueId.readyState === EventSource.CLOSED
+    ) {
+      console.log(">> creating new event source", uniqueId);
+      const newEventSource = new EventSource(url);
+      activeEventSources.set(uniqueId, newEventSource);
+      return newEventSource;
+    } else {
+      console.log(">> getting active event source", uniqueId);
+      return activeEventSourceForUniqueId;
+    }
+  }, [buildURL, uniqueId]); // Dependency on uniqueId only
+
+  useEffect(() => {
+    if (!isReadyToConsumeStream || !es) {
       return;
     }
-    let reconnectTimeout: NodeJS.Timeout | null = null;
 
-    const es = new EventSource(url);
+    let reconnectTimeout: NodeJS.Timeout | null = null;
 
     es.onopen = () => {
       errorCount.current = 0;
@@ -61,7 +80,7 @@ export function useEventSource(
       }
       es.close();
     };
-  }, [buildURL, onEventCallback, reconnectCounter, isReadyToConsumeStream]);
+  }, [buildURL, onEventCallback, reconnectCounter, isReadyToConsumeStream, es]);
 
   return { isError };
 }
