@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use axum::{
     extract::{DefaultBodyLimit, Path, Query, State},
     http::header::HeaderMap,
-    middleware::from_fn,
+    // middleware::from_fn,
     response::{
         sse::{Event, KeepAlive, Sse},
         Json,
@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use dust::{
-    api_keys::validate_api_key,
+    // api_keys::validate_api_key,
     app,
     blocks::block::BlockType,
     data_sources::{
@@ -2689,7 +2689,7 @@ fn main() {
 
         let sqlite_heartbeat_router = Router::new()
             .route("/sqlite_workers", post(sqlite_workers_heartbeat))
-            .layer(from_fn(validate_api_key))
+            // .layer(from_fn(validate_api_key))
             .with_state(state.clone());
 
         let health_check_router = Router::new().route("/", get(index));

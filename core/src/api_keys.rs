@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 use serde::Deserialize;
 use std::{collections::HashMap, env, sync::Arc};
 use tokio::{fs, sync::OnceCell};
-use tracing::error;
+use tracing::{error, warn};
 
 lazy_static! {
     static ref DISABLE_API_KEY_CHECK: bool = env::var("DISABLE_API_KEY_CHECK")
@@ -31,8 +31,13 @@ async fn init_api_keys() -> Result<ApiKeyMap> {
         Err(_) => "[]".to_string(),
     };
 
-    let api_keys: Vec<ApiKeyEntry> = serde_json::from_str(&api_keys_json)
-        .map_err(|e| anyhow!("Failed to parse API keys JSON: {}", e))?;
+    let api_keys: Vec<ApiKeyEntry> = match serde_json::from_str(&api_keys_json) {
+        Ok(keys) => keys,
+        Err(e) => {
+            warn!("Failed to parse API keys: {}", e);
+            return Err(anyhow!("Failed to parse API keys"));
+        }
+    };
 
     let mut map = HashMap::new();
     for entry in api_keys {
