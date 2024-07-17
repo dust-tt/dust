@@ -86,7 +86,8 @@ export async function getFilesAndFolders(
 export async function getDriveOrItemDelta(
   client: Client,
   parentInternalId: string,
-  nextLink?: string
+  nextLink?: string,
+  dateToken?: string
 ) {
   const { nodeType, itemAPIPath } = typeAndPathFromInternalId(parentInternalId);
 
@@ -97,13 +98,16 @@ export async function getDriveOrItemDelta(
   }
 
   const deltaPath =
-    nodeType === "folder"
+    (nodeType === "folder"
       ? itemAPIPath + "/delta"
-      : itemAPIPath + "/root/delta";
+      : itemAPIPath + "/root/delta") + (dateToken ? `?token=${dateToken}` : "");
 
   const res = nextLink
     ? await client.api(nextLink).get()
-    : await client.api(deltaPath).get();
+    : await client
+        .api(deltaPath)
+        .header("Prefer", "odata.track-changes, deltaExcludeParent=true")
+        .get();
 
   if ("@odata.nextLink" in res) {
     return {
