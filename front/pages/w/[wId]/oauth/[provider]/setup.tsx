@@ -1,9 +1,6 @@
-import { isOAuthProvider } from "@dust-tt/types";
+import { isOAuthProvider, isOAuthUseCase } from "@dust-tt/types";
 
-import {
-  createConnectionAndGetSetupUrl,
-  isOAuthUseCase,
-} from "@app/lib/api/oauth";
+import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<object>(
