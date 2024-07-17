@@ -1,4 +1,5 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId} from "@dust-tt/types";
+import { parseAndStringifyCsv } from "@dust-tt/types";
 import {
   isTextExtractionSupportedContentType,
   slugify,
@@ -241,14 +242,14 @@ async function handleCsvFile(
   const tableId = file.id;
   const tableName = slugify(file.name.substring(0, 32));
   const tableDescription = `Structured data from Google Drive (${file.name})`;
-
+  const stringifiedContent = await parseAndStringifyCsv(tableCsv);
   try {
     await upsertTableFromCsv({
       dataSourceConfig,
       tableId,
       tableName,
       tableDescription,
-      tableCsv,
+      tableCsv: stringifiedContent,
       loggerArgs: {
         connectorId,
         fileId: tableId,
