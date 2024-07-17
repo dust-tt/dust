@@ -1,6 +1,4 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  ModelId} from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import {
   isTextExtractionSupportedContentType,
   TextExtraction,
@@ -61,8 +59,6 @@ const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const pagePrefixesPerMimeType: Record<string, string> = {
   "application/pdf": "$pdfPage",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    "$slideNumber",
 };
 
 export async function getSiteNodesToSync(
@@ -786,7 +782,7 @@ async function handleTextExtraction(
     apiConfig.getTextExtractionUrl()
   ).fromBuffer(Buffer.from(data), mimeType);
   if (pageRes.isErr()) {
-    localLogger.warn(
+    localLogger.error(
       {
         error: pageRes.error,
         mimeType: mimeType,
