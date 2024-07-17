@@ -96,6 +96,7 @@ export async function createOrUpdateUser(
 
   if (user) {
     const updateArgs: { [key: string]: string } = {};
+
     // We only update the user's email if the email is verified.
     if (externalUser.email_verified) {
       updateArgs.email = externalUser.email;
@@ -117,18 +118,19 @@ export async function createOrUpdateUser(
       }
     }
 
-    if (
-      user.username !== updateArgs.username ||
-      user.firstName !== updateArgs.firstName ||
-      user.lastName !== updateArgs.lastName ||
-      user.email !== updateArgs.email
-    ) {
-      await user.updateInfo(
-        updateArgs.username,
-        updateArgs.firstName,
-        updateArgs.lastName,
-        updateArgs.email
+    if (Object.keys(updateArgs).length > 0) {
+      const needsUpdate = Object.entries(updateArgs).some(
+        ([key, value]) => user[key as keyof typeof user] !== value
       );
+
+      if (needsUpdate) {
+        await user.updateInfo(
+          updateArgs.username || user.name,
+          updateArgs.firstName || user.firstName,
+          updateArgs.lastName || user.lastName,
+          updateArgs.email || user.email
+        );
+      }
     }
 
     return { user, created: false };
