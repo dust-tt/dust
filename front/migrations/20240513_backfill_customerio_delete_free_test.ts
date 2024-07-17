@@ -67,8 +67,8 @@ const backfillCustomerIo = async (execute: boolean) => {
         );
 
         if (execute) {
-          const userRes = await UserResource.fetchByModelId(u.id);
-          if (!userRes) {
+          const user = await UserResource.fetchByModelId(u.id);
+          if (!user) {
             logger.error(
               { userId: u.sId },
               "Failed to fetch userResource, skipping"
@@ -77,7 +77,7 @@ const backfillCustomerIo = async (execute: boolean) => {
           }
           promises.push(
             CustomerioServerSideTracking.deleteUser({
-              user: userRes.toJSON(),
+              user: user.toJSON(),
             }).catch((err) => {
               logger.error(
                 { userId: u.sId, err },

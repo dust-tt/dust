@@ -131,9 +131,9 @@ export class CustomerioServerSideTracking {
   }
 
   static async backfillUser({ user }: { user: UserType }) {
-    const userRes = await UserResource.fetchById(user.sId);
+    const u = await UserResource.fetchById(user.sId);
 
-    if (!userRes) {
+    if (!u) {
       logger.error(
         { userId: user.sId },
         "Failed to backfill user on Customer.io"
@@ -142,7 +142,7 @@ export class CustomerioServerSideTracking {
     }
 
     const userMemberships = await MembershipResource.getLatestMemberships({
-      users: [userRes],
+      users: [u],
     });
 
     const workspaces = _.keyBy(
