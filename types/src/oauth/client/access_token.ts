@@ -18,7 +18,7 @@ export async function getOAuthConnectionAccessToken({
   provider,
   connectionId,
 }: {
-  config: { url: string };
+  config: { url: string; apiKey: string | null };
   logger: LoggerInterface;
   provider: OAuthProvider;
   connectionId: string;

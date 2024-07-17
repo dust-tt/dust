@@ -23,10 +23,15 @@ export type OAuthAPIResponse<T> = Result<T, OAuthAPIError>;
 export class OAuthAPI {
   _logger: LoggerInterface;
   _url: string;
+  _apiKey: string | null;
 
-  constructor(config: { url: string }, logger: LoggerInterface) {
+  constructor(
+    config: { url: string; apiKey: string | null },
+    logger: LoggerInterface
+  ) {
     this._url = config.url;
     this._logger = logger;
+    this._apiKey = config.apiKey;
   }
 
   apiUrl() {
@@ -114,8 +119,15 @@ export class OAuthAPI {
     init?: RequestInit
   ): Promise<Result<{ response: Response; duration: number }, OAuthAPIError>> {
     const now = Date.now();
+    const params = { ...init };
+    if (this._apiKey) {
+      params.headers = {
+        ...params.headers,
+        Authorization: `Bearer ${this._apiKey}`,
+      };
+    }
     try {
-      const res = await fetch(url, init);
+      const res = await fetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;

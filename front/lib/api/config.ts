@@ -72,9 +72,10 @@ const config = {
       nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
     };
   },
-  getOAuthAPIConfig: (): { url: string } => {
+  getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
+      apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
   // OAuth
