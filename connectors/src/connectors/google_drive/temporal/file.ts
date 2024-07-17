@@ -237,7 +237,6 @@ async function handleCsvFile(
     localLogger.info({}, "File too big to be chunked. Skipping");
     return null;
   }
-  console.log(">>>>>>>>>>>>> CSV GDRIVE >>>>>>>>>>>>>>");
   const tableCsv = Buffer.from(data).toString("utf-8").trim();
   const tableId = file.id;
   const tableName = slugify(file.name.substring(0, 32));

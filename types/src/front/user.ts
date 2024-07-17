@@ -4,9 +4,9 @@ import {
   EmbeddingProviderIdType,
   ModelProviderIdType,
 } from "../front/lib/assistant";
+import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
-import { WhitelistableFeature } from "./feature_flags";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 

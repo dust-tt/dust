@@ -16,7 +16,6 @@ export async function getMimeTypesToDownload({
 }) {
   const mimeTypes = [
     "text/plain",
-    // "text/csv",
     // docx files hosted on Gdrive
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     // Temporarily excluding pptx files for debugging purpose.
@@ -27,7 +26,7 @@ export async function getMimeTypesToDownload({
   }
   const csvEnabled = await isCsvEnabled(connector);
   if (csvEnabled) {
-    mimeTypes.push("application/vnd.ms-excel"); // Microsoft type for "text/csv"
+    mimeTypes.push("text/csv");
   }
 
   return mimeTypes;
