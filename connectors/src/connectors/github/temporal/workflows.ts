@@ -57,7 +57,7 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 export async function githubFullSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   connectorId: ModelId,
   // Used to re-trigger a code-only full-sync after code syncing is enabled/disabled.
   syncCodeOnly: boolean,
@@ -67,7 +67,7 @@ export async function githubFullSyncWorkflow(
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     syncCodeOnly: syncCodeOnly.toString(),
   };
 
@@ -78,7 +78,7 @@ export async function githubFullSyncWorkflow(
 
   for (;;) {
     const resultsPage = await githubGetReposResultPageActivity(
-      githubInstallationId,
+      connectionId,
       pageNumber,
       loggerArgs
     );
@@ -101,7 +101,7 @@ export async function githubFullSyncWorkflow(
               {
                 dataSourceConfig,
                 connectorId,
-                githubInstallationId,
+                connectionId,
                 repoName: repo.name,
                 repoId: repo.id,
                 repoLogin: repo.login,
@@ -125,7 +125,7 @@ export async function githubFullSyncWorkflow(
 
 export async function githubReposSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   orgLogin: string,
   repos: { name: string; id: number }[],
   connectorId: ModelId
@@ -147,7 +147,7 @@ export async function githubReposSyncWorkflow(
             {
               dataSourceConfig,
               connectorId,
-              githubInstallationId,
+              connectionId,
               repoName: repo.name,
               repoId: repo.id,
               repoLogin: orgLogin,
@@ -168,14 +168,14 @@ export async function githubReposSyncWorkflow(
 
 export async function githubRepoIssuesSyncWorkflow({
   dataSourceConfig,
-  githubInstallationId,
+  connectionId,
   repoName,
   repoId,
   repoLogin,
   pageNumber,
 }: {
   dataSourceConfig: DataSourceConfig;
-  githubInstallationId: string;
+  connectionId: string;
   repoName: string;
   repoId: number;
   repoLogin: string;
@@ -184,7 +184,7 @@ export async function githubRepoIssuesSyncWorkflow({
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     repoName,
     repoLogin,
   };
@@ -195,7 +195,7 @@ export async function githubRepoIssuesSyncWorkflow({
   const promises: Promise<void>[] = [];
 
   const resultsPage = await githubGetRepoIssuesResultPageActivity(
-    githubInstallationId,
+    connectionId,
     repoName,
     repoLogin,
     pageNumber,
@@ -210,7 +210,7 @@ export async function githubRepoIssuesSyncWorkflow({
     promises.push(
       queue.add(() =>
         githubUpsertIssueActivity(
-          githubInstallationId,
+          connectionId,
           repoName,
           repoId,
           repoLogin,
@@ -230,14 +230,14 @@ export async function githubRepoIssuesSyncWorkflow({
 
 export async function githubRepoDiscussionsSyncWorkflow({
   dataSourceConfig,
-  githubInstallationId,
+  connectionId,
   repoName,
   repoId,
   repoLogin,
   nextCursor,
 }: {
   dataSourceConfig: DataSourceConfig;
-  githubInstallationId: string;
+  connectionId: string;
   repoName: string;
   repoId: number;
   repoLogin: string;
@@ -246,7 +246,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     repoName,
     repoLogin,
   };
@@ -258,7 +258,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
 
   const { cursor, discussionNumbers } =
     await githubGetRepoDiscussionsResultPageActivity(
-      githubInstallationId,
+      connectionId,
       repoName,
       repoLogin,
       nextCursor,
@@ -269,7 +269,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
     promises.push(
       queue.add(() =>
         githubUpsertDiscussionActivity(
-          githubInstallationId,
+          connectionId,
           repoName,
           repoId,
           repoLogin,
@@ -290,7 +290,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
 export async function githubRepoSyncWorkflow({
   dataSourceConfig,
   connectorId,
-  githubInstallationId,
+  connectionId,
   repoName,
   repoId,
   repoLogin,
@@ -300,7 +300,7 @@ export async function githubRepoSyncWorkflow({
 }: {
   dataSourceConfig: DataSourceConfig;
   connectorId: ModelId;
-  githubInstallationId: string;
+  connectionId: string;
   repoName: string;
   repoId: number;
   repoLogin: string;
@@ -311,7 +311,7 @@ export async function githubRepoSyncWorkflow({
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     repoName,
     repoLogin,
     syncCodeOnly: syncCodeOnly ? "true" : "false",
@@ -334,7 +334,7 @@ export async function githubRepoSyncWorkflow({
         args: [
           {
             dataSourceConfig,
-            githubInstallationId,
+            connectionId,
             repoName,
             repoId,
             repoLogin,
@@ -368,7 +368,7 @@ export async function githubRepoSyncWorkflow({
         args: [
           {
             dataSourceConfig,
-            githubInstallationId,
+            connectionId,
             repoName,
             repoId,
             repoLogin,
@@ -389,7 +389,7 @@ export async function githubRepoSyncWorkflow({
   // Start code syncing activity.
   await githubCodeSyncActivity({
     dataSourceConfig,
-    installationId: githubInstallationId,
+    connectionId,
     repoLogin,
     repoName,
     repoId,
@@ -401,7 +401,7 @@ export async function githubRepoSyncWorkflow({
 
 export async function githubCodeSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   repoName: string,
   repoId: number,
   repoLogin: string
@@ -409,7 +409,7 @@ export async function githubCodeSyncWorkflow(
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     repoName,
     repoLogin,
   };
@@ -434,7 +434,7 @@ export async function githubCodeSyncWorkflow(
     }
     await githubCodeSyncActivity({
       dataSourceConfig,
-      installationId: githubInstallationId,
+      connectionId,
       repoLogin,
       repoName,
       repoId,
@@ -447,7 +447,7 @@ export async function githubCodeSyncWorkflow(
 
 export async function githubIssueSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   repoName: string,
   repoId: number,
   repoLogin: string,
@@ -456,7 +456,7 @@ export async function githubIssueSyncWorkflow(
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     repoName,
     repoLogin,
     issueNumber,
@@ -477,7 +477,7 @@ export async function githubIssueSyncWorkflow(
       continue;
     }
     await githubUpsertIssueActivity(
-      githubInstallationId,
+      connectionId,
       repoName,
       repoId,
       repoLogin,
@@ -491,7 +491,7 @@ export async function githubIssueSyncWorkflow(
 
 export async function githubDiscussionSyncWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   repoName: string,
   repoId: number,
   repoLogin: string,
@@ -500,7 +500,7 @@ export async function githubDiscussionSyncWorkflow(
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     repoName,
     repoLogin,
     discussionNumber,
@@ -521,7 +521,7 @@ export async function githubDiscussionSyncWorkflow(
       continue;
     }
     await githubUpsertDiscussionActivity(
-      githubInstallationId,
+      connectionId,
       repoName,
       repoId,
       repoLogin,
@@ -537,20 +537,20 @@ export async function githubDiscussionSyncWorkflow(
 
 export async function githubIssueGarbageCollectWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   repoId: string,
   issueNumber: number
 ) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     issueNumber,
   };
 
   await githubIssueGarbageCollectActivity(
     dataSourceConfig,
-    githubInstallationId,
+    connectionId,
     repoId,
     issueNumber,
     loggerArgs
@@ -560,20 +560,20 @@ export async function githubIssueGarbageCollectWorkflow(
 
 export async function githubDiscussionGarbageCollectWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   repoId: string,
   discussionNumber: number
 ) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
     discussionNumber,
   };
 
   await githubDiscussionGarbageCollectActivity(
     dataSourceConfig,
-    githubInstallationId,
+    connectionId,
     repoId,
     discussionNumber,
     loggerArgs
@@ -583,18 +583,18 @@ export async function githubDiscussionGarbageCollectWorkflow(
 
 export async function githubRepoGarbageCollectWorkflow(
   dataSourceConfig: DataSourceConfig,
-  githubInstallationId: string,
+  connectionId: string,
   repoId: string
 ) {
   const loggerArgs = {
     dataSourceName: dataSourceConfig.dataSourceName,
     workspaceId: dataSourceConfig.workspaceId,
-    githubInstallationId,
+    connectionId,
   };
 
   await githubRepoGarbageCollectActivity(
     dataSourceConfig,
-    githubInstallationId,
+    connectionId,
     repoId,
     loggerArgs
   );

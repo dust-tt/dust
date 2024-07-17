@@ -94,27 +94,29 @@ export async function getGithubAppPrivateKey(): Promise<string> {
   return privateKey;
 }
 
-export async function validateInstallationId(
-  installationId: string
-): Promise<boolean> {
-  const octokit = await getOctokit(installationId);
+export async function installationIdFromConnectionId(
+  connectionId: string
+): Promise<string | null> {
+  // TODO(spolu): GITHUB_MIGRATION dual mode will pull the refresh token to get the installation id
+  // from the scrubbed_raw_json.
+  const octokit = await getOctokit(connectionId);
 
   try {
     await octokit.rest.apps.getAuthenticated();
   } catch (e) {
     logger.error({ error: e }, "Error validating github installation id");
-    return false;
+    return null;
   }
 
-  return true;
+  return connectionId;
 }
 
 export async function getReposPage(
-  installationId: string,
+  connectionId: string,
   page: number
 ): Promise<Result<GithubRepo[], ExternalOauthTokenError>> {
   try {
-    const octokit = await getOctokit(installationId);
+    const octokit = await getOctokit(connectionId);
 
     return new Ok(
       (
@@ -145,10 +147,10 @@ export async function getReposPage(
 }
 
 export async function getRepo(
-  installationId: string,
+  connectionId: string,
   repoId: number
 ): Promise<GithubRepo> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
 
   const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
     repo_id: repoId,
@@ -170,12 +172,12 @@ export async function getRepo(
 }
 
 export async function getRepoIssuesPage(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
 
   const issues = (
     await octokit.rest.issues.listForRepo({
@@ -206,13 +208,13 @@ export async function getRepoIssuesPage(
 }
 
 export async function getIssue(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   issueNumber: number,
   loggerArgs: Record<string, string | number>
 ): Promise<GithubIssue | null> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
 
   try {
     const issue = (
@@ -256,13 +258,13 @@ export async function getIssue(
 }
 
 export async function getIssueCommentsPage(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   issueNumber: number,
   page: number
 ): Promise<GithubIssueComment[]> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
 
   const comments = (
     await octokit.rest.issues.listComments({
@@ -290,12 +292,12 @@ export async function getIssueCommentsPage(
 }
 
 export async function getRepoDiscussionsPage(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; discussions: DiscussionNode[] }> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
   const d = await octokit.graphql(
     `
       query getDiscussions($owner: String!, $repo: String!, $cursor: String) {
@@ -356,13 +358,13 @@ export async function getRepoDiscussionsPage(
 }
 
 export async function getDiscussionCommentsPage(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   discussionNumber: number,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; comments: DiscussionCommentNode[] }> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
   const d = await octokit.graphql(
     `
     query getDiscussionComments(
@@ -429,11 +431,11 @@ export async function getDiscussionCommentsPage(
 }
 
 export async function getDiscussionCommentRepliesPage(
-  installationId: string,
+  connectionId: string,
   nodeID: string,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; comments: DiscussionCommentNode[] }> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
 
   const d = await octokit.graphql(
     `
@@ -466,7 +468,7 @@ export async function getDiscussionCommentRepliesPage(
     }
     `,
     {
-      nodeID,
+      nodeID: nodeID,
       cursor,
     }
   );
@@ -497,12 +499,12 @@ export async function getDiscussionCommentRepliesPage(
 }
 
 export async function getDiscussion(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   discussionNumber: number
 ): Promise<DiscussionNode> {
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
 
   const d = await octokit.graphql(
     `
@@ -553,7 +555,7 @@ export async function getDiscussion(
   return payload.repository.discussion;
 }
 
-export async function getOctokit(installationId: string): Promise<Octokit> {
+export async function getOctokit(connectionId: string): Promise<Octokit> {
   if (!GITHUB_APP_ID) {
     throw new Error("GITHUB_APP_ID not set");
   }
@@ -564,7 +566,7 @@ export async function getOctokit(installationId: string): Promise<Octokit> {
     auth: {
       appId: GITHUB_APP_ID,
       privateKey: privateKey,
-      installationId: installationId,
+      installationId: connectionId,
     },
   });
 }
@@ -650,20 +652,20 @@ async function* getFiles(dir: string): AsyncGenerator<string> {
 // information. The root of the directory is considered the null parent (and will have to be
 // stitched by the activity).
 export async function processRepository({
-  installationId,
+  connectionId,
   repoLogin,
   repoName,
   repoId,
   loggerArgs,
 }: {
-  installationId: string;
+  connectionId: string;
   repoLogin: string;
   repoName: string;
   repoId: number;
   loggerArgs: Record<string, string | number>;
 }) {
   const localLogger = logger.child(loggerArgs);
-  const octokit = await getOctokit(installationId);
+  const octokit = await getOctokit(connectionId);
 
   const { data } = await octokit.rest.repos.get({
     owner: repoLogin,

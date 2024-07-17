@@ -110,6 +110,7 @@ const _webhookGithubAPIHandler = async (
 
   const installationId = payload.installation.id.toString();
 
+  // TODO(spolu): GITHUB_MIGRATION find by ConnectorState.installationId
   const connectors = await ConnectorResource.listByType("github", {
     connectionId: installationId,
   });

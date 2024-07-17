@@ -2,7 +2,11 @@ import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import {
+  GithubCodeDirectory,
+  GithubCodeFile,
+  GithubCodeRepository,
   GithubConnectorState,
+  GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
 import type {
@@ -33,6 +37,30 @@ export class GithubConnectorStrategy
 
   async delete(connector: ConnectorResource, transaction: Transaction) {
     await GithubIssue.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await GithubDiscussion.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await GithubCodeRepository.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await GithubCodeFile.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await GithubCodeDirectory.destroy({
       where: {
         connectorId: connector.id,
       },

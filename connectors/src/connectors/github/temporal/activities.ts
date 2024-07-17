@@ -47,7 +47,7 @@ const logger = mainLogger.child({
 });
 
 export async function githubGetReposResultPageActivity(
-  githubInstallationId: string,
+  connectionId: string,
   pageNumber: number, // 1-indexed
   loggerArgs: Record<string, string | number>
 ): Promise<{ name: string; id: number; login: string }[]> {
@@ -61,7 +61,7 @@ export async function githubGetReposResultPageActivity(
   }
 
   localLogger.info("Fetching GitHub repos result page.");
-  const pageRes = await getReposPage(githubInstallationId, pageNumber);
+  const pageRes = await getReposPage(connectionId, pageNumber);
   if (pageRes.isErr()) {
     throw pageRes.error;
   }
@@ -74,7 +74,7 @@ export async function githubGetReposResultPageActivity(
 }
 
 export async function githubGetRepoIssuesResultPageActivity(
-  githubInstallationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   pageNumber: number, // 1-indexed
@@ -91,7 +91,7 @@ export async function githubGetRepoIssuesResultPageActivity(
 
   localLogger.info("Fetching GitHub repo issues result page.");
   const page = await getRepoIssuesPage(
-    githubInstallationId,
+    connectionId,
     repoName,
     login,
     pageNumber
@@ -102,7 +102,7 @@ export async function githubGetRepoIssuesResultPageActivity(
 
 async function renderIssue(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
+  connectionId: string,
   repoName: string,
   repoId: number,
   login: string,
@@ -119,7 +119,7 @@ async function renderIssue(
   });
 
   const issue = await getIssue(
-    installationId,
+    connectionId,
     repoName,
     login,
     issueNumber,
@@ -151,7 +151,7 @@ async function renderIssue(
     let comments = undefined;
     try {
       comments = await getIssueCommentsPage(
-        installationId,
+        connectionId,
         repoName,
         login,
         issueNumber,
@@ -207,7 +207,7 @@ async function renderIssue(
 }
 
 export async function githubUpsertIssueActivity(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   repoId: number,
   login: string,
@@ -225,7 +225,7 @@ export async function githubUpsertIssueActivity(
 
   const renderedIssueResult = await renderIssue(
     dataSourceConfig,
-    installationId,
+    connectionId,
     repoName,
     repoId,
     login,
@@ -281,10 +281,10 @@ export async function githubUpsertIssueActivity(
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
     dataSourceConfig,
-    { connectionId: installationId }
+    { connectionId }
   );
   if (!connector) {
-    throw new Error(`Connector not found (installationId: ${installationId})`);
+    throw new Error(`Connector not found (connectionId: ${connectionId})`);
   }
 
   localLogger.info("Upserting GitHub issue in DB.");
@@ -297,7 +297,7 @@ export async function githubUpsertIssueActivity(
 
 async function renderDiscussion(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   discussionNumber: number,
@@ -309,7 +309,7 @@ async function renderDiscussion(
   });
 
   const discussion = await getDiscussion(
-    installationId,
+    connectionId,
     repoName,
     login,
     discussionNumber
@@ -338,7 +338,7 @@ async function renderDiscussion(
     cursorLogger.info("Fetching GitHub discussion comments page.");
 
     const { cursor, comments } = await getDiscussionCommentsPage(
-      installationId,
+      connectionId,
       repoName,
       login,
       discussionNumber,
@@ -376,7 +376,7 @@ async function renderDiscussion(
 
         const { cursor: childCursor, comments: childComments } =
           await getDiscussionCommentRepliesPage(
-            installationId,
+            connectionId,
             comment.id,
             nextChildCursor
           );
@@ -416,7 +416,7 @@ async function renderDiscussion(
 }
 
 export async function githubUpsertDiscussionActivity(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   repoId: number,
   login: string,
@@ -434,7 +434,7 @@ export async function githubUpsertDiscussionActivity(
 
   const { discussion, content: renderedDiscussion } = await renderDiscussion(
     dataSourceConfig,
-    installationId,
+    connectionId,
     repoName,
     login,
     discussionNumber,
@@ -474,7 +474,7 @@ export async function githubUpsertDiscussionActivity(
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
     dataSourceConfig,
-    { connectionId: installationId }
+    { connectionId }
   );
   if (!connector) {
     throw new Error("Connector not found");
@@ -489,7 +489,7 @@ export async function githubUpsertDiscussionActivity(
 }
 
 export async function githubGetRepoDiscussionsResultPageActivity(
-  installationId: string,
+  connectionId: string,
   repoName: string,
   login: string,
   cursor: string | null,
@@ -503,7 +503,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
   localLogger.info("Fetching GitHub discussions result page.");
 
   const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
-    installationId,
+    connectionId,
     repoName,
     login,
     cursor
@@ -546,14 +546,14 @@ export async function githubSaveSuccessSyncActivity(
 
 export async function githubIssueGarbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
+  connectionId: string,
   repoId: string,
   issueNumber: number,
   loggerArgs: Record<string, string | number>
 ) {
   await deleteIssue(
     dataSourceConfig,
-    installationId,
+    connectionId,
     repoId,
     issueNumber,
     loggerArgs
@@ -562,14 +562,14 @@ export async function githubIssueGarbageCollectActivity(
 
 export async function githubDiscussionGarbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
+  connectionId: string,
   repoId: string,
   discussionNumber: number,
   loggerArgs: Record<string, string | number>
 ) {
   await deleteDiscussion(
     dataSourceConfig,
-    installationId,
+    connectionId,
     repoId,
     discussionNumber,
     loggerArgs
@@ -578,13 +578,13 @@ export async function githubDiscussionGarbageCollectActivity(
 
 export async function githubRepoGarbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
+  connectionId: string,
   repoId: string,
   loggerArgs: Record<string, string | number>
 ) {
   const connector = await ConnectorResource.findByDataSourceAndConnection(
     dataSourceConfig,
-    { connectionId: installationId }
+    { connectionId }
   );
 
   if (!connector) {
@@ -606,7 +606,7 @@ export async function githubRepoGarbageCollectActivity(
       queue.add(() =>
         deleteIssue(
           dataSourceConfig,
-          installationId,
+          connectionId,
           repoId,
           issue.issueNumber,
           loggerArgs
@@ -627,7 +627,7 @@ export async function githubRepoGarbageCollectActivity(
       queue.add(() =>
         deleteDiscussion(
           dataSourceConfig,
-          installationId,
+          connectionId,
           repoId,
           discussion.discussionNumber,
           loggerArgs
@@ -657,7 +657,7 @@ export async function githubRepoGarbageCollectActivity(
 
 async function deleteIssue(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
+  connectionId: string,
   repoId: string,
   issueNumber: number,
   loggerArgs: Record<string, string | number>
@@ -666,10 +666,10 @@ async function deleteIssue(
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
     dataSourceConfig,
-    { connectionId: installationId }
+    { connectionId }
   );
   if (!connector) {
-    throw new Error(`Connector not found (installationId: ${installationId})`);
+    throw new Error(`Connector not found (connectionId: ${connectionId})`);
   }
 
   const issueInDb = await GithubIssue.findOne({
@@ -707,7 +707,7 @@ async function deleteIssue(
 
 async function deleteDiscussion(
   dataSourceConfig: DataSourceConfig,
-  installationId: string,
+  connectionId: string,
   repoId: string,
   discussionNumber: number,
   loggerArgs: Record<string, string | number>
@@ -716,10 +716,10 @@ async function deleteDiscussion(
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
     dataSourceConfig,
-    { connectionId: installationId }
+    { connectionId }
   );
   if (!connector) {
-    throw new Error(`Connector not found (installationId: ${installationId})`);
+    throw new Error(`Connector not found (connectionId: ${connectionId})`);
   }
 
   const discussionInDb = await GithubDiscussion.findOne({
@@ -862,7 +862,7 @@ async function garbageCollectCodeSync(
 
 export async function githubCodeSyncActivity({
   dataSourceConfig,
-  installationId,
+  connectionId,
   repoLogin,
   repoName,
   repoId,
@@ -871,7 +871,7 @@ export async function githubCodeSyncActivity({
   forceResync = false,
 }: {
   dataSourceConfig: DataSourceConfig;
-  installationId: string;
+  connectionId: string;
   repoLogin: string;
   repoName: string;
   repoId: number;
@@ -884,10 +884,10 @@ export async function githubCodeSyncActivity({
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
     dataSourceConfig,
-    { connectionId: installationId }
+    { connectionId }
   );
   if (!connector) {
-    throw new Error(`Connector not found (installationId: ${installationId})`);
+    throw new Error(`Connector not found (connectionId: ${connectionId})`);
   }
 
   const connectorState = await GithubConnectorState.findOne({
@@ -960,7 +960,7 @@ export async function githubCodeSyncActivity({
 
   Context.current().heartbeat();
   const repoRes = await processRepository({
-    installationId,
+    connectionId,
     repoLogin,
     repoName,
     repoId,
