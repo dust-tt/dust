@@ -7,6 +7,7 @@ use serde_json::Value;
 use sqids::Sqids;
 use std::{io::Write, sync::Arc};
 use tower_http::trace::MakeSpan;
+use tracing::error;
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -129,7 +130,12 @@ pub fn error_response(
     message: &str,
     e: Option<anyhow::Error>,
 ) -> (StatusCode, Json<APIResponse>) {
-    error(&format!("{}: {}\nError: {:?}", code, message, e));
+    error!(
+        code = code,
+        message = message,
+        error = ?e,
+        "API error"
+    );
     (
         status,
         Json(APIResponse {
