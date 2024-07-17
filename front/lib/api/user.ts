@@ -106,10 +106,14 @@ export async function fetchRevokedWorkspace(
 ): Promise<Workspace | null> {
   // TODO(@fontanierh): this doesn't look very solid as it will start to behave
   // weirdly if a user has multiple revoked memberships.
-  const userRes = await UserResource.fetchNonNullableByModelId(user.id);
+  const u = await UserResource.fetchByModelId(user.id);
+
+  if (!u) {
+    return null;
+  }
 
   const memberships = await MembershipResource.getLatestMemberships({
-    users: [userRes],
+    users: [u],
   });
 
   if (!memberships.length) {
