@@ -7,7 +7,7 @@ use axum::{
 };
 use dust::{
     oauth::{
-        connection::{Connection, ConnectionProvider, MigratedCredentials},
+        connection::{self, Connection, ConnectionProvider, MigratedCredentials},
         store,
     },
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
@@ -115,10 +115,15 @@ async fn connections_finalize(
             .await
         {
             Err(e) => error_response(
-                StatusCode::BAD_REQUEST,
-                "connection_finalization_failed",
-                "Failed to finalize connection",
-                Some(e),
+                match e.code {
+                    connection::ConnectionErrorCode::ConnectionAlreadyFinalizedError => {
+                        StatusCode::BAD_REQUEST
+                    }
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                },
+                &e.code.to_string(),
+                &e.message,
+                None,
             ),
             Ok(_) => (
                 StatusCode::OK,
@@ -162,10 +167,15 @@ async fn connections_access_token(
         ),
         Ok(mut c) => match c.access_token(state.clone().store.clone()).await {
             Err(e) => error_response(
-                StatusCode::BAD_REQUEST,
-                "access_token_failed",
-                "Failed to get access token",
-                Some(e),
+                match e.code {
+                    connection::ConnectionErrorCode::ConnectionNotFinalizedError => {
+                        StatusCode::BAD_REQUEST
+                    }
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                },
+                &e.code.to_string(),
+                &e.message,
+                None,
             ),
             Ok(access_token) => (
                 StatusCode::OK,

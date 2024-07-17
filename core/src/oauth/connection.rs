@@ -17,8 +17,44 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
+use tracing::error;
 
 use super::providers::confluence::ConfluenceConnectionProvider;
+
+// Define the ErrorKind enum with serde attributes for serialization
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConnectionErrorCode {
+    // Finalize
+    ConnectionAlreadyFinalizedError,
+    ProviderFinalizationError,
+    // Refresh Access Token
+    ConnectionNotFinalizedError,
+    ProviderAccessTokenRefreshError,
+    // Internal Errors
+    InternalError,
+}
+
+impl fmt::Display for ConnectionErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
+}
+
+// Custom error type
+#[derive(Debug)]
+pub struct ConnectionError {
+    pub code: ConnectionErrorCode,
+    pub message: String,
+}
+
+impl fmt::Display for ConnectionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{}] {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for ConnectionError {}
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -377,25 +413,39 @@ impl Connection {
         Ok(c)
     }
 
-    fn is_already_finalized(&self, code: &str) -> Result<bool> {
+    fn is_already_finalized(&self, code: &str) -> Result<bool, ConnectionError> {
         match self.status {
             // Pending is the expected status for a new connection.
             ConnectionStatus::Pending => Ok(false),
             // We allow calling finalized twice with the same code (user messes up or refresh).
             // Otherwise we error.
-            ConnectionStatus::Finalized => match self.unseal_authorization_code()? {
-                Some(c) => {
-                    // If it's finalized and the code matches, we return early.
-                    if c == code {
-                        return Ok(true);
+            ConnectionStatus::Finalized => {
+                match self.unseal_authorization_code().map_err(|e| {
+                    error!("Failed to unseal authorization_code: error={:?}", e);
+                    ConnectionError {
+                        code: ConnectionErrorCode::InternalError,
+                        message: "Failed to unseal authorization_code".to_string(),
                     }
-                    Err(anyhow::anyhow!("Connection is already finalized"))?
+                })? {
+                    Some(c) => {
+                        // If it's finalized and the code matches, we return early.
+                        if c == code {
+                            return Ok(true);
+                        }
+                        Err(ConnectionError {
+                            code: ConnectionErrorCode::ConnectionAlreadyFinalizedError,
+                            message: "Connection is already finalized with a different code"
+                                .to_string(),
+                        })?
+                    }
+                    // If we have a finalized connection without `authorization_code`, we error.
+                    None => Err(ConnectionError {
+                        code: ConnectionErrorCode::InternalError,
+                        message: "Unexpected finalized connection without authorization_code"
+                            .to_string(),
+                    })?,
                 }
-                // If we have a finalized connection without `authorization_code`, we error.
-                None => Err(anyhow::anyhow!(
-                    "Unexpected connection without `authorization_code`"
-                ))?,
-            },
+            }
         }
     }
 
@@ -439,7 +489,7 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<()> {
+    ) -> Result<(), ConnectionError> {
         if self.is_already_finalized(code)? {
             return Ok(());
         }
@@ -451,17 +501,46 @@ impl Connection {
                 format!("oauth:{}", self.connection_id()).as_bytes(),
                 Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
             )
-            .await?;
+            .await
+            .map_err(|e| {
+                error!(error = ?e, "Failed to acquire lock");
+                ConnectionError {
+                    code: ConnectionErrorCode::InternalError,
+                    message: "Failed to acquire lock".to_string(),
+                }
+            })?;
         let res = self.finalize_locked(store, code, redirect_uri).await;
         rl.unlock(&lock).await;
 
-        res
+        match res {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!(
+                    error = ?e,
+                    provider = ?self.provider,
+                    "Failed to finalize connection",
+                );
+                Err(ConnectionError {
+                    code: ConnectionErrorCode::ProviderFinalizationError,
+                    message: "Failed to finalize connection with provider".to_string(),
+                })
+            }
+        }
     }
 
-    fn valid_access_token(&self) -> Result<Option<String>> {
+    fn valid_access_token(&self) -> Result<Option<String>, ConnectionError> {
         let access_token = match &self.encrypted_access_token {
-            Some(t) => Connection::unseal_str(t)?,
-            None => Err(anyhow::anyhow!("Missing access_token in connection"))?,
+            Some(t) => Connection::unseal_str(t).map_err(|e| {
+                error!(error = ?e, "Failed to unseal access_token");
+                ConnectionError {
+                    code: ConnectionErrorCode::InternalError,
+                    message: "Failed to unseal access_token".to_string(),
+                }
+            })?,
+            None => Err(ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Missing access_token in connection".to_string(),
+            })?,
         };
 
         match self.access_token_expiry {
@@ -509,7 +588,13 @@ impl Connection {
     pub async fn access_token(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
-    ) -> Result<String> {
+    ) -> Result<String, ConnectionError> {
+        if self.status != ConnectionStatus::Finalized {
+            return Err(ConnectionError {
+                code: ConnectionErrorCode::ConnectionNotFinalizedError,
+                message: "Connection is not finalized".to_string(),
+            });
+        }
         if let Some(access_token) = self.valid_access_token()? {
             return Ok(access_token);
         }
@@ -521,10 +606,31 @@ impl Connection {
                 format!("oauth:{}", self.connection_id()).as_bytes(),
                 Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
             )
-            .await?;
+            .await
+            .map_err(|e| {
+                error!(error = ?e, "Failed to acquire lock");
+                ConnectionError {
+                    code: ConnectionErrorCode::InternalError,
+                    message: "Failed to acquire lock".to_string(),
+                }
+            })?;
+
         let res = self.access_token_locked(store).await;
         rl.unlock(&lock).await;
 
-        res
+        match res {
+            Ok(t) => Ok(t),
+            Err(e) => {
+                error!(
+                    error = ?e,
+                    provider = ?self.provider,
+                    "Failed to refresh access token",
+                );
+                Err(ConnectionError {
+                    code: ConnectionErrorCode::ProviderFinalizationError,
+                    message: "Failed to refresh access token with provider".to_string(),
+                })
+            }
+        }
     }
 }
