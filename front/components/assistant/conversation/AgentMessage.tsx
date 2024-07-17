@@ -277,7 +277,11 @@ export function AgentMessage({
     }
   }, []);
 
-  useEventSource(buildEventSourceURL, onEventCallback);
+  useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    `message-${message.sId}`
+  );
 
   const agentMessageToRender = ((): AgentMessageType => {
     switch (message.status) {

@@ -17,12 +17,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useInView } from "react-intersection-observer";
 
-import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/messages/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import {
+  getUpdatedMessagesFromEvent,
+  getUpdatedParticipantsFromEvent,
+} from "@app/lib/client/conversation/event_handlers";
 import {
   useConversation,
   useConversationMessages,
@@ -39,22 +42,6 @@ export type MessageWithContentFragmentsType =
   | (UserMessageType & {
       contenFragments?: ContentFragmentType[];
     });
-
-function shouldProcessStreamEvent(
-  messages: FetchConversationMessagesResponse[] | undefined,
-  event:
-    | UserMessageNewEvent
-    | AgentMessageNewEvent
-    | AgentGenerationCancelledEvent
-): boolean {
-  const isMessageAlreadyInPages = messages?.some((messages) => {
-    return messages.messages.some(
-      (message) => "sId" in message && message.sId === event.messageId
-    );
-  });
-
-  return !isMessageAlreadyInPages;
-}
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -280,36 +267,20 @@ const ConversationViewer = React.forwardRef<
         switch (event.type) {
           case "user_message_new":
           case "agent_message_new":
-            if (shouldProcessStreamEvent(messages, event)) {
-              // Temporarily add agent message using event payload until revalidation.
-              void mutateMessages(async (currentMessagePages) => {
-                if (!currentMessagePages) {
-                  return undefined;
-                }
+            // Temporarily add agent message using event payload until revalidation.
+            void mutateMessages(async (currentMessagePages) => {
+              return getUpdatedMessagesFromEvent(currentMessagePages, event);
+            });
 
-                const { rank } = event.message;
-
-                // We only support adding at the end of the first page.
-                const [firstPage] = currentMessagePages;
-                const firstPageLastMessage = firstPage.messages.at(-1);
-                if (firstPageLastMessage && firstPageLastMessage.rank < rank) {
-                  return updateMessagePagesWithOptimisticData(
-                    currentMessagePages,
-                    event.message
-                  );
-                }
-
-                return currentMessagePages;
-              });
-              void mutateConversationParticipants();
-            }
+            void mutateConversationParticipants(async (participants) => {
+              return getUpdatedParticipantsFromEvent(participants, event);
+            });
             break;
 
           case "agent_generation_cancelled":
-            if (shouldProcessStreamEvent(messages, event)) {
-              void mutateMessages();
-            }
+            void mutateMessages();
             break;
+
           case "conversation_title": {
             void mutateConversation();
             void mutateConversations(); // to refresh the list of convos in the sidebar
@@ -325,17 +296,23 @@ const ConversationViewer = React.forwardRef<
     [
       mutateConversation,
       mutateConversations,
-      messages,
       mutateMessages,
       mutateConversationParticipants,
     ]
   );
 
-  useEventSource(buildEventSourceURL, onEventCallback, {
-    // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
-    isReadyToConsumeStream:
-      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
-  });
+  useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    `conversation-${conversationId}`,
+    {
+      // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
+      isReadyToConsumeStream:
+        !isConversationLoading &&
+        !isLoadingInitialData &&
+        messages.length !== 0,
+    }
+  );
   const eventIds = useRef<string[]>([]);
 
   const typedGroupedMessages = useMemo(
