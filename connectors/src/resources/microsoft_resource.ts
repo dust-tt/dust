@@ -133,11 +133,17 @@ export interface MicrosoftRootResource
 export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   static model: ModelStatic<MicrosoftRootModel> = MicrosoftRootModel;
 
+  private delta: MicrosoftDeltaModel | null = null;
+
   constructor(
     model: ModelStatic<MicrosoftRootModel>,
     blob: Attributes<MicrosoftRootModel>
   ) {
     super(MicrosoftRootModel, blob);
+  }
+
+  get deltaLink() {
+    return this.delta?.deltaLink;
   }
 
   async postFetchHook(): Promise<void> {
@@ -197,19 +203,26 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return new Ok(undefined);
   }
 
-  async fetchByItemAPIPath() {
+  static async fetchByItemAPIPath(connectorId: ModelId, itemAPIPath: string) {
     const blob = await this.model.findOne({
       where: {
-        itemAPIPath: this.itemAPIPath,
-        connectorId: this.connectorId,
+        connectorId,
+        itemAPIPath,
       },
-      include: [{ model: MicrosoftDeltaModel, as: "delta" }],
+      include: [
+        {
+          model: MicrosoftDeltaModel,
+          as: "delta",
+        },
+      ],
     });
+
     if (!blob) {
       return null;
     }
-
-    return new MicrosoftRootResource(this.model, blob.get());
+    const resource = new this(this.model, blob.get());
+    resource.delta = blob.delta;
+    return resource;
   }
 
   async updateDeltaLink(deltaLink: string) {

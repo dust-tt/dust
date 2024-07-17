@@ -3,6 +3,7 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
@@ -76,6 +77,7 @@ export class MicrosoftRootModel extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare itemAPIPath: string;
   declare nodeType: MicrosoftNodeType;
+  declare delta: NonAttribute<MicrosoftDeltaModel>;
 }
 MicrosoftRootModel.init(
   {
