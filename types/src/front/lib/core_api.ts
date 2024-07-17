@@ -143,17 +143,18 @@ export type CoreAPIQueryResult = {
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
-  private readonly _apiKey: string | null;
+  _apiKey: string | null;
 
   constructor(
     config: {
       url: string;
+      apiKey: string | null;
     },
     logger: LoggerInterface
   ) {
     this._url = config.url;
     this._logger = logger;
-    this._apiKey = process.env.CORE_API_KEY || null;
+    this._apiKey = config.apiKey;
   }
 
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
