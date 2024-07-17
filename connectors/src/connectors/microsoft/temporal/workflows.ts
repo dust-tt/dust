@@ -9,11 +9,10 @@ import {
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
-const { getSiteNodesToSync, syncFiles, markNodeAsVisited } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "20 minutes",
-});
+const { getSiteNodesToSync, syncFiles, markNodeAsVisited, syncDeltaForNode } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "20 minutes",
+  });
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   typeof sync_status
@@ -98,10 +97,30 @@ export async function fullSyncSitesWorkflow({
   await syncSucceeded(connectorId);
 }
 
+export async function incrementalSyncWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const nodeIdsToSync = await getSiteNodesToSync(connectorId);
+  const startSyncTs = new Date().getTime();
+  for (const nodeId of nodeIdsToSync) {
+    await syncDeltaForNode({
+      connectorId,
+      nodeId,
+      startSyncTs,
+    });
+  }
+}
+
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-${connectorId}`;
 }
 
 export function microsoftFullSyncSitesWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-sites-${connectorId}`;
+}
+
+export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
+  return `microsoft-incrementalSync-${connectorId}`;
 }

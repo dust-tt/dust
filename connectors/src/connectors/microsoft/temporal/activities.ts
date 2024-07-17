@@ -648,6 +648,56 @@ export async function syncOneFile({
   return isInSizeRange;
 }
 
+export async function syncDeltaForNode({
+  connectorId,
+  nodeId,
+  startSyncTs,
+}: {
+  connectorId: ModelId;
+  nodeId: string;
+  startSyncTs: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const node = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    nodeId
+  );
+
+  if (!node) {
+    throw new Error(`Node ${nodeId} not found`);
+  }
+
+  if (node.nodeType !== "drive" && node.nodeType !== "folder") {
+    throw new Error(`Node ${nodeId} is not a drive or folder`);
+  }
+
+  const client = await getClient(connector.connectionId);
+
+  const nodeDelta = 
+
+  const delta = await getDriveOrItemDelta(
+    client,
+    nodeId,
+    node.itemAPIPath,
+    startSyncTs
+  );
+
+  if (delta) {
+    await syncFiles({
+      connectorId,
+      parentInternalId: nodeId,
+      startSyncTs,
+      nextPageLink: delta.nextLink,
+    });
+  }
+
+  return delta;
+}
+
 async function getParents({
   connectorId,
   internalId,
