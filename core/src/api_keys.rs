@@ -4,13 +4,17 @@ use axum::middleware::Next;
 use axum::response::Response;
 use axum::Extension;
 use http::StatusCode;
+use lazy_static::lazy_static;
 use serde::Deserialize;
 use std::{collections::HashMap, env, sync::Arc};
 use tokio::{fs, sync::OnceCell};
 use tracing::{error, info};
 
-// TODO(@fontanierh): Switch this to true once we have API keys configured.
-static ENFORCE_API_KEY_REQUIRED: bool = false;
+lazy_static! {
+    static ref DISABLE_API_KEY_CHECK: bool = env::var("DISABLE_API_KEY_CHECK")
+        .map(|s| s == "true")
+        .unwrap_or(false);
+}
 
 type ApiKeyMap = Arc<HashMap<String, Vec<String>>>;
 static API_KEYS: OnceCell<ApiKeyMap> = OnceCell::const_new();
@@ -24,9 +28,11 @@ struct ApiKeyEntry {
 async fn init_api_keys() -> Result<ApiKeyMap> {
     let api_keys_path =
         env::var("API_KEYS_PATH").map_err(|_| anyhow!("API_KEYS_PATH must be set"))?;
+
     let api_keys_json = fs::read_to_string(api_keys_path)
         .await
-        .map_err(|e| anyhow!("Failed to read API keys file: {}", e))?;
+        .unwrap_or("[]".to_string());
+
     let api_keys: Vec<ApiKeyEntry> = serde_json::from_str(&api_keys_json)
         .map_err(|e| anyhow!("Failed to parse API keys JSON: {}", e))?;
 
@@ -73,7 +79,7 @@ pub async fn validate_api_key(
         }
     }
 
-    if ENFORCE_API_KEY_REQUIRED {
+    if !*DISABLE_API_KEY_CHECK {
         Err(StatusCode::UNAUTHORIZED)
     } else {
         info!("API key not validated, but not required");
