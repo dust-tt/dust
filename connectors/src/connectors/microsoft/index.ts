@@ -181,67 +181,73 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       })
     );
 
+    // at the time, we only sync sharepoint sites and drives, not team channels
+    // work on teams has been started here and in graph_api.ts but is not yet
+    // user facing
     if (!parentInternalId) {
-      nodes.push(...getRootNodes());
-    } else {
-      const { nodeType } = typeAndPathFromInternalId(parentInternalId);
+      parentInternalId = internalIdFromTypeAndPath({
+        nodeType: "sites-root",
+        itemAPIPath: "",
+      });
+    }
 
-      switch (nodeType) {
-        case "sites-root": {
-          const sites = await getAllPaginatedEntities((nextLink) =>
-            getSites(client, nextLink)
-          );
-          nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
-          break;
-        }
-        case "teams-root": {
-          const teams = await getAllPaginatedEntities((nextLink) =>
-            getTeams(client, nextLink)
-          );
-          nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
-          break;
-        }
-        case "team": {
-          const channels = await getAllPaginatedEntities((nextLink) =>
-            getChannels(client, parentInternalId, nextLink)
-          );
-          nodes.push(
-            ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
-          );
-          break;
-        }
-        case "site": {
-          const drives = await getAllPaginatedEntities((nextLink) =>
-            getDrives(client, parentInternalId, nextLink)
-          );
-          nodes.push(
-            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
-          );
-          break;
-        }
-        case "drive":
-        case "folder": {
-          const folders = (
-            await getAllPaginatedEntities((nextLink) =>
-              getFilesAndFolders(client, parentInternalId, nextLink)
-            )
-          ).filter((n) => n.folder);
-          nodes.push(
-            ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
-          );
-          break;
-        }
-        case "channel":
-        case "file":
-        case "page":
-        case "message":
-        case "worksheet":
-          throw new Error(
-            `Unexpected node type ${nodeType} for retrievePermissions`
-          );
-        default: {
-          assertNever(nodeType);
-        }
+    const { nodeType } = typeAndPathFromInternalId(parentInternalId);
+
+    switch (nodeType) {
+      case "sites-root": {
+        const sites = await getAllPaginatedEntities((nextLink) =>
+          getSites(client, nextLink)
+        );
+        nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
+        break;
+      }
+      case "teams-root": {
+        const teams = await getAllPaginatedEntities((nextLink) =>
+          getTeams(client, nextLink)
+        );
+        nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
+        break;
+      }
+      case "team": {
+        const channels = await getAllPaginatedEntities((nextLink) =>
+          getChannels(client, parentInternalId, nextLink)
+        );
+        nodes.push(
+          ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
+        );
+        break;
+      }
+      case "site": {
+        const drives = await getAllPaginatedEntities((nextLink) =>
+          getDrives(client, parentInternalId, nextLink)
+        );
+        nodes.push(
+          ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
+        );
+        break;
+      }
+      case "drive":
+      case "folder": {
+        const folders = (
+          await getAllPaginatedEntities((nextLink) =>
+            getFilesAndFolders(client, parentInternalId, nextLink)
+          )
+        ).filter((n) => n.folder);
+        nodes.push(
+          ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
+        );
+        break;
+      }
+      case "channel":
+      case "file":
+      case "page":
+      case "message":
+      case "worksheet":
+        throw new Error(
+          `Unexpected node type ${nodeType} for retrievePermissions`
+        );
+      default: {
+        assertNever(nodeType);
       }
     }
 
