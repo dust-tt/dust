@@ -607,7 +607,7 @@ export const SelectDataSourceExample = () => {
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
                     <span className="s-text-sm s-text-element-700">
-                      Connected by: Stanislas Polu
+                      Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
                     <Button
@@ -628,7 +628,7 @@ export const SelectDataSourceExample = () => {
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
                     <span className="s-text-sm s-text-element-700">
-                      Connected by: Stanislas Polu
+                      Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
                     <Button
@@ -650,7 +650,7 @@ export const SelectDataSourceExample = () => {
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
                     <span className="s-text-sm s-text-element-700">
-                      Connected by: Stanislas Polu
+                      Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
                     <Button
@@ -680,7 +680,7 @@ export const SelectDataSourceExample = () => {
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
                     <span className="s-text-sm s-text-element-700">
-                      Connected by: Stanislas Polu
+                      Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
                     <Button
