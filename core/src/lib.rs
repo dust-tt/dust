@@ -92,4 +92,4 @@ pub mod oauth {
     }
 }
 
-// pub mod api_keys;
+pub mod api_keys;
