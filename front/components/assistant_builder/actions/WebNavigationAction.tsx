@@ -1,12 +1,12 @@
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 
-export function isActionWebsearchValid(
+export function hasErrorActionWebNavigation(
   action: AssistantBuilderActionConfiguration
-) {
-  return (
-    action.type === "WEB_NAVIGATION" &&
+): string | null {
+  return action.type === "WEB_NAVIGATION" &&
     Object.keys(action.configuration).length === 0
-  );
+    ? null
+    : "Invalid configuration.";
 }
 
 export function ActionWebNavigation() {

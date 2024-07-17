@@ -16,8 +16,10 @@ import {
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
-) {
-  return action.type === "DUST_APP_RUN" && !!action.configuration.app;
+): string | null {
+  return action.type === "DUST_APP_RUN" && !!action.configuration.app
+    ? null
+    : "Please select a Dust App.";
 }
 
 export function ActionDustAppRun({

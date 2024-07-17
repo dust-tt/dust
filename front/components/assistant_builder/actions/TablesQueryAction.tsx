@@ -10,13 +10,13 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 
-export function isActionTablesQueryValid(
+export function hasErrorActionTablesQuery(
   action: AssistantBuilderActionConfiguration
-) {
-  return (
-    action.type === "TABLES_QUERY" &&
+): string | null {
+  return action.type === "TABLES_QUERY" &&
     Object.keys(action.configuration).length > 0
-  );
+    ? null
+    : "Please select one table.";
 }
 
 export function ActionTablesQuery({

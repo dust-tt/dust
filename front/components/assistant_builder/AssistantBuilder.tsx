@@ -28,7 +28,7 @@ import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
 import ActionsScreen, {
-  isActionValid,
+  hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
@@ -260,7 +260,7 @@ export default function AssistantBuilder({
       setInstructionsError(null);
     }
 
-    if (!builderState.actions.every((a) => isActionValid(a))) {
+    if (!builderState.actions.every((a) => hasActionError(a) === null)) {
       valid = false;
     }
 
