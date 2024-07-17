@@ -104,7 +104,7 @@ export default function NewApp({
       gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({ owner, current: "developers" })}
     >
-      <div className="flex flex-col">
+      <div className="flex flex-col pt-8">
         <Page.SectionHeader
           title="Create a new App"
           description="An app consists of its specification (defining chained interactions with models and external services), datasets to run the app or few-shot prompt models. Everything is automatically versioned and stored."

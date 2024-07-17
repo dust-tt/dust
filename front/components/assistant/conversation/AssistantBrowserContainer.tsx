@@ -26,30 +26,8 @@ export function AssistantBrowserContainer({
     });
 
   const handleAssistantClick = useCallback(
-    // On click, scroll to the input bar and set the selected assistant.
     async (agent: LightAgentConfigurationType) => {
-      const scrollContainerElement = document.getElementById(
-        "assistant-input-header"
-      );
-
-      if (!scrollContainerElement) {
-        console.log("Unexpected: scrollContainerElement not found");
-        return;
-      }
-      const scrollDistance = scrollContainerElement.getBoundingClientRect().top;
-
-      // If the input bar is already in view, set the mention directly. We leave
-      // a little margin, -2 instead of 0, since the autoscroll below can
-      // sometimes scroll a bit over 0, to -0.3 or -0.5, in which case if there
-      // is a clic on a visible assistant we still want this condition to
-      // trigger.
-      if (scrollDistance > -2) {
-        return onAgentConfigurationClick(agent.sId);
-      }
-
-      // Otherwise, scroll to the input bar and set the ref (mention will be set via intersection observer).
-      scrollContainerElement.scrollIntoView({ behavior: "smooth" });
-
+      onAgentConfigurationClick(agent.sId);
       setAssistantToMention(agent);
     },
     [setAssistantToMention, onAgentConfigurationClick]
@@ -68,32 +46,7 @@ export function AssistantBrowserContainer({
       </div>
       <AssistantBrowser
         owner={owner}
-        agents={[
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-          ...agentConfigurations,
-        ]}
+        agents={agentConfigurations}
         loadingStatus={isLoading ? "loading" : "finished"}
         handleAssistantClick={handleAssistantClick}
         mutateAgentConfigurations={mutateAgentConfigurations}

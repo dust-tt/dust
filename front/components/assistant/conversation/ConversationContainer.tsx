@@ -209,32 +209,6 @@ export function ConversationContainer({
     )
   );
 
-  useEffect(() => {
-    const scrollContainerElement = document.getElementById(
-      "assistant-input-header"
-    );
-
-    if (scrollContainerElement) {
-      const observer = new IntersectionObserver(
-        () => {
-          if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current.sId);
-            assistantToMention.current = null;
-          }
-        },
-        { threshold: 0.8 }
-      );
-      observer.observe(scrollContainerElement);
-    }
-    const handleRouteChange = (url: string) => {
-      if (url.endsWith("/new")) {
-        setSelectedAssistant(null);
-        assistantToMention.current = null;
-      }
-    };
-    router.events.on("routeChangeComplete", handleRouteChange);
-  }, [setAnimate, setInputbarMention, router, setSelectedAssistant]);
-
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
