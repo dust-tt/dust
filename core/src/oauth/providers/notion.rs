@@ -74,4 +74,15 @@ impl Provider for NotionConnectionProvider {
     async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult> {
         Err(anyhow!("Notion access tokens do not expire"))?
     }
+
+    fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
+        let raw_json = match raw_json.clone() {
+            serde_json::Value::Object(mut map) => {
+                map.remove("access_token");
+                serde_json::Value::Object(map)
+            }
+            _ => Err(anyhow!("Invalid raw_json, not an object"))?,
+        };
+        Ok(raw_json)
+    }
 }

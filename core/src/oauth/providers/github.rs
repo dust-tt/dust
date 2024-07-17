@@ -129,4 +129,15 @@ impl Provider for GithubConnectionProvider {
             raw_json,
         })
     }
+
+    fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
+        let raw_json = match raw_json.clone() {
+            serde_json::Value::Object(mut map) => {
+                map.remove("token");
+                serde_json::Value::Object(map)
+            }
+            _ => Err(anyhow!("Invalid raw_json, not an object"))?,
+        };
+        Ok(raw_json)
+    }
 }

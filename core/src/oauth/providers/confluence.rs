@@ -143,4 +143,16 @@ impl Provider for ConfluenceConnectionProvider {
             raw_json,
         })
     }
+
+    fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
+        let raw_json = match raw_json.clone() {
+            serde_json::Value::Object(mut map) => {
+                map.remove("access_token");
+                map.remove("refresh_token");
+                serde_json::Value::Object(map)
+            }
+            _ => Err(anyhow!("Invalid raw_json, not an object"))?,
+        };
+        Ok(raw_json)
+    }
 }
