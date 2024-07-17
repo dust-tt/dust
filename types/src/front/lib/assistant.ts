@@ -90,6 +90,7 @@ export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
+export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
@@ -106,6 +107,7 @@ export const MODEL_IDS = [
   MISTRAL_LARGE_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
+  MISTRAL_CODESTRAL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
 ] as const;
@@ -353,6 +355,21 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
 };
 
+export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
+  modelId: MISTRAL_CODESTRAL_MODEL_ID,
+  displayName: "Mistral Codestral",
+  contextSize: 32_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
+  largeModel: false,
+  description:
+    "Mistral's `codestral` model, specifically designed and optimized for code generation tasks.",
+  shortDescription: "Mistral's code model.",
+  isLegacy: false,
+  supportsVision: false,
+};
+
 export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_1_5_PRO_LATEST_MODEL_ID,
@@ -395,6 +412,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  MISTRAL_CODESTRAL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GEMINI_FLASH_DEFAULT_MODEL_CONFIG,
 ];
