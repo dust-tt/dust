@@ -73,6 +73,12 @@ export function useEventSource(
   const lastEvent = useRef<string | null>(null);
   const reconnectAttempts = useRef(0);
 
+  // We use a counter to trigger reconnects when the counter changes.
+  const [reconnectCounter, setReconnectCounter] = useState(0); // Use a counter
+
+  // Store the reconnect timeout reference to clear it when needed.
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Use the stable event source manager to ensure consistent EventSource management
   // across renders and component lifecycles.
   const sourceManager = stableEventSourceManager;
@@ -95,15 +101,23 @@ export function useEventSource(
 
     source.onopen = () => {
       console.log("EventSource connection opened", uniqueId);
+
+      // If connected, reset the reconnect attempts and clear the reconnect timeout.
       reconnectAttempts.current = 0;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
 
     source.onmessage = (event: MessageEvent<string>) => {
       if (event.data === "done") {
         source.close();
-        setTimeout(connect, RECONNECT_DELAY);
+
+        // Reconnect to the stream right away.
+        setReconnectCounter((c) => c + 1);
         return;
       }
+
       onEventCallback(event.data);
       lastEvent.current = event.data;
     };
@@ -111,13 +125,18 @@ export function useEventSource(
     source.onerror = (event: Event) => {
       console.error("EventSource error", event);
       source.close();
+
       reconnectAttempts.current++;
 
       console.error(
         `Connection error. Attempting to reconnect in ${RECONNECT_DELAY}ms`
       );
 
-      setTimeout(connect, RECONNECT_DELAY);
+      // Set timeout to reconnect after a delay.
+      reconnectTimeoutRef.current = setTimeout(() => {
+        setReconnectCounter((c) => c + 1);
+      }, RECONNECT_DELAY);
+
       setIsError(new Error("Connection error. Attempting to reconnect."));
     };
 
@@ -130,14 +149,21 @@ export function useEventSource(
     }
 
     connect();
-  }, [isReadyToConsumeStream, connect]);
 
-  // Cleanup the EventSource connection when the component unmounts.
-  useEffect(() => {
     return () => {
       sourceManager.remove(uniqueId);
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
-  }, [uniqueId, sourceManager]);
+  }, [
+    isReadyToConsumeStream,
+    connect,
+    reconnectCounter,
+    sourceManager,
+    uniqueId,
+  ]);
 
   return { isError };
 }

@@ -41,14 +41,7 @@ import {
 } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
@@ -120,7 +113,7 @@ export function AgentMessage({
     { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
   >([]);
 
-  const shouldStream = useMemo(() => {
+  const shouldStream = (() => {
     if (message.status !== "created") {
       return false;
     }
@@ -135,7 +128,7 @@ export function AgentMessage({
       default:
         assertNever(streamedAgentMessage.status);
     }
-  }, [message.status, streamedAgentMessage.status]);
+  })();
 
   const [lastTokenClassification, setLastTokenClassification] = useState<
     null | "tokens" | "chain_of_thought"
@@ -143,9 +136,6 @@ export function AgentMessage({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      if (!shouldStream) {
-        return null;
-      }
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
@@ -158,7 +148,7 @@ export function AgentMessage({
 
       return url;
     },
-    [conversationId, message.sId, owner.sId, shouldStream]
+    [conversationId, message.sId, owner.sId]
   );
 
   const onEventCallback = useCallback((eventStr: string) => {
@@ -280,7 +270,8 @@ export function AgentMessage({
   useEventSource(
     buildEventSourceURL,
     onEventCallback,
-    `message-${message.sId}`
+    `message-${message.sId}`,
+    { isReadyToConsumeStream: shouldStream }
   );
 
   const agentMessageToRender = ((): AgentMessageType => {
