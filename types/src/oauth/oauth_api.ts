@@ -92,6 +92,7 @@ export class OAuthAPI {
       connection: OAuthConnectionType;
       access_token: string;
       access_token_expiry: number;
+      scrubbed_raw_json: unknown;
     }>
   > {
     const response = await this._fetchWithError(

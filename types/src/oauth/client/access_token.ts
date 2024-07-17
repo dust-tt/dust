@@ -9,6 +9,7 @@ const CACHE = new Map<
     connection: OAuthConnectionType;
     access_token: string;
     access_token_expiry: number;
+    scrubbed_raw_json: unknown;
   }
 >();
 
@@ -28,6 +29,7 @@ export async function getOAuthConnectionAccessToken({
       connection: OAuthConnectionType;
       access_token: string;
       access_token_expiry: number;
+      scrubbed_raw_json: unknown;
     },
     OAuthAPIError
   >
