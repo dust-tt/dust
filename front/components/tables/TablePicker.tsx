@@ -44,8 +44,8 @@ export default function TablePicker({
       ? tables.filter((t) =>
           t.name.toLowerCase().includes(searchFilter.toLowerCase())
         )
-      : tables.slice(0, 20);
-    setFilteredTables(newTables);
+      : tables;
+    setFilteredTables(newTables.slice(0, 30));
   }, [tables, searchFilter]);
 
   return (
