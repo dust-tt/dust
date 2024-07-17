@@ -55,7 +55,11 @@ pub enum ConnectionErrorCode {
 
 impl fmt::Display for ConnectionErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(&self).unwrap().trim_matches('"')
+        )
     }
 }
 
@@ -87,17 +91,11 @@ pub enum ConnectionProvider {
 
 impl fmt::Display for ConnectionProvider {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
-    }
-}
-
-impl FromStr for ConnectionProvider {
-    type Err = ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match serde_json::from_str(s) {
-            Ok(v) => Ok(v),
-            Err(_) => Err(ParseError::new()),
-        }
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(&self).unwrap().trim_matches('"')
+        )
     }
 }
 
@@ -159,14 +157,18 @@ pub enum ConnectionStatus {
 
 impl fmt::Display for ConnectionStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(&self).unwrap().trim_matches('"')
+        )
     }
 }
 
 impl FromStr for ConnectionStatus {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match serde_json::from_str(s) {
+        match serde_json::from_str(&format!("\"{}\"", s)) {
             Ok(v) => Ok(v),
             Err(_) => Err(ParseError::new()),
         }
