@@ -1,4 +1,4 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId} from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { parseAndStringifyCsv } from "@dust-tt/types";
 import {
   isTextExtractionSupportedContentType,
