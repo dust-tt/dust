@@ -1,3 +1,6 @@
+use crate::oauth::providers::{
+    confluence::ConfluenceConnectionProvider, google_drive::GoogleDriveConnectionProvider,
+};
 use crate::oauth::{
     providers::{github::GithubConnectionProvider, notion::NotionConnectionProvider},
     store::OAuthStore,
@@ -18,10 +21,6 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
 use tracing::error;
-
-use super::providers::{
-    confluence::ConfluenceConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-};
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
