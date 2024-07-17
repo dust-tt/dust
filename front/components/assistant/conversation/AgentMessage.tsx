@@ -1,6 +1,5 @@
 import {
   ArrowPathIcon,
-  BracesIcon,
   Button,
   Chip,
   Citation,
@@ -22,7 +21,6 @@ import type {
   LightAgentConfigurationType,
   RetrievalActionType,
   UserType,
-  VisualizationActionType,
   WebsearchActionType,
   WebsearchResultType,
   WorkspaceType,
@@ -39,6 +37,7 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
+import assert from "assert";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -46,6 +45,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import VisualizationActionRenderer from "@app/components/assistant/conversation/actions/VisualizationActionRenderer";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -88,19 +88,9 @@ export function AgentMessage({
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
-  const defaultVisualizations: VisualizationActionType[] =
-    message.actions.filter((a): a is VisualizationActionType =>
-      isVisualizationActionType(a)
-    ) as VisualizationActionType[];
-
   const [streamedVisualizations, setStreamedVisualizations] = useState<
     { actionId: number; visualization: string }[]
-  >(
-    defaultVisualizations.map((v) => ({
-      actionId: v.id,
-      visualization: v.generation ?? "",
-    }))
-  );
+  >([]);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -167,6 +157,7 @@ export function AgentMessage({
       m: AgentMessageType,
       action: AgentActionType
     ): AgentMessageType => {
+      console.log("updateMessageWithAction", m, action);
       return {
         ...m,
         actions: m.actions
@@ -178,6 +169,7 @@ export function AgentMessage({
     const event = eventPayload.data;
     switch (event.type) {
       case "agent_action_success":
+        console.log("agent_action_success", event);
         setStreamedAgentMessage((m) => {
           return { ...updateMessageWithAction(m, event.action) };
         });
@@ -191,6 +183,7 @@ export function AgentMessage({
       case "websearch_params":
       case "browse_params":
       case "visualization_params":
+        console.log("got viz param");
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -213,6 +206,7 @@ export function AgentMessage({
             ...event.message,
           };
         });
+        setStreamedVisualizations([]);
         break;
       }
 
@@ -535,24 +529,27 @@ export function AgentMessage({
           </div>
         ) : null}
 
-        {/* This is where we will we plug Aric's work to render the graph in an iframe. */}
-        {streamedVisualizations.map(({ actionId, visualization }) => {
-          return (
-            <div key={actionId}>
-              <div className="flex flex-row gap-2">
-                <Icon size="sm" visual={BracesIcon} />
-                <div className="font-semibold">Visualization</div>
-              </div>
-              <div>
-                <RenderMessageMarkdown
-                  content={"```js" + visualization + "\n```"}
-                  isStreaming={true}
+        <>
+          {agentMessage.actions
+            .filter((a) => isVisualizationActionType(a))
+            .map((a, i) => {
+              const streamingViz = streamedVisualizations.find(
+                (sv) => sv.actionId === a.id
+              );
+              assert(isVisualizationActionType(a));
+              return (
+                <VisualizationActionRenderer
+                  onRetry={() => retryHandler(agentMessage)}
+                  owner={owner}
+                  action={a}
+                  conversationId={conversationId}
+                  key={i}
+                  isStreaming={!!streamingViz}
+                  streamedCode={streamingViz?.visualization || null}
                 />
-              </div>
-            </div>
-          );
-        })}
-
+              );
+            })}
+        </>
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&

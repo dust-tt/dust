@@ -25,3 +25,36 @@ export interface VisualizationActionType extends BaseAction {
 export const VisualizationActionOutputSchema = t.type({
   generation: t.string,
 });
+
+function visualizationExtractCodeNonStreaming(code: string) {
+  const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*<\/visualization>/;
+  let extractedCode: string | null = null;
+  const match = code.match(regex);
+  if (match && match[1]) {
+    extractedCode = match[1];
+  }
+  if (!extractedCode) {
+    return null;
+  }
+  return extractedCode;
+}
+
+function visualizationExtractCodeStreaming(code: string) {
+  const regex = /<visualization[^>]*>(.*)/;
+  let extractedCode: string | null = null;
+  const match = code.match(regex);
+  if (match && match[0]) {
+    extractedCode = match[0];
+  }
+  if (!extractedCode) {
+    return null;
+  }
+  return extractedCode;
+}
+
+export function visualizationExtractCode(code: string) {
+  return (
+    visualizationExtractCodeNonStreaming(code) ||
+    visualizationExtractCodeStreaming(code)
+  );
+}

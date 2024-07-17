@@ -45,6 +45,7 @@ export async function renderConversationForModelMultiActions({
   allowedTokenCount,
   excludeActions,
   excludeImages,
+  excludeContentFragments,
 }: {
   conversation: ConversationType;
   model: ModelConfigurationType;
@@ -52,6 +53,7 @@ export async function renderConversationForModelMultiActions({
   allowedTokenCount: number;
   excludeActions?: boolean;
   excludeImages?: boolean;
+  excludeContentFragments?: boolean;
 }): Promise<
   Result<
     {
@@ -198,8 +200,9 @@ export async function renderConversationForModelMultiActions({
       if (res.isErr()) {
         return new Err(res.error);
       }
-
-      messages.push(res.value);
+      if (!excludeContentFragments) {
+        messages.push(res.value);
+      }
     } else {
       assertNever(m);
     }
@@ -346,6 +349,7 @@ export async function renderConversationForModelMultiActions({
       promptToken: promptCount,
       tokensUsed,
       messageSelected: selected.length,
+      messages: JSON.stringify(selected, null, 2),
       elapsed: Date.now() - now,
     },
     "[ASSISTANT_TRACE] renderConversationForModelMultiActions"
@@ -449,7 +453,7 @@ export async function constructPromptMultiActions(
     (action) => isVisualizationConfiguration(action)
   );
   if (needVisualizationMetaPrompt) {
-    additionalInstructions += `If mermaid is asked for a graph you can proceed. Otherwise to generate graphs only call the visualization tool. It takes care of writing and rendering the graph above your message.\n`;
+    additionalInstructions += `If mermaid is asked for a graph you can proceed. Otherwise to generate graphs only call the visualization tool. It takes care of writing and rendering the graph above your message.\nNever repeat the generated code to the user.\nIf asked to manipulate CSV files, you can use the tool to generate the code and then use the code in the tool to manipulate the CSV file.\n`;
   }
 
   const providerMetaPrompt = model.metaPrompt;

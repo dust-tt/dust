@@ -81,7 +81,7 @@ async function handler(
             },
           });
         });
-
+        res.setHeader("Content-Type", file.contentType);
         readStream.pipe(res);
         return;
       }
