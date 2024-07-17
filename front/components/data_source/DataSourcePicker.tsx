@@ -69,7 +69,7 @@ export default function DataSourcePicker({
       ? dataSources.filter((t) =>
           t.name.toLowerCase().includes(searchFilter.toLowerCase())
         )
-      : dataSources;
+      : dataSources.slice(0, 20);
     setFilteredDataSources(newDataSources);
   }, [dataSources, searchFilter]);
 
