@@ -128,12 +128,16 @@ export class TextExtraction {
         {
           onopentag(name, attribs) {
             // Check if the current tag is the page selector.
+            // If it is, we are inside a page.
+            // This assumes that we don't have nested pages.
             if (name === "div" && attribs.class === contentSelector) {
               insidePage = true;
               pageNumber++;
               currentPageContent = "";
               pageDepth = 1;
             } else if (insidePage) {
+              // If we are inside a page, increment the page depth to handle nested divs.
+              // This is required to know when we are done with the page.
               pageDepth++;
             }
           },
@@ -144,9 +148,10 @@ export class TextExtraction {
             }
           },
           onclosetag() {
-            // If we are inside a page and the page depth is 0, we are done with the page.
+            // If we are inside a page, decrement the page depth.
             if (insidePage) {
               pageDepth--;
+              // If the page depth is 0, we are done with the page.
               if (pageDepth === 0) {
                 insidePage = false;
                 if (currentPageContent.trim()) {
