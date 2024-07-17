@@ -2679,7 +2679,7 @@ fn main() {
 
         // Extensions
         .layer(DefaultBodyLimit::disable())
-        .layer(from_fn(validate_api_key))
+        // .layer(from_fn(validate_api_key))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(CoreRequestMakeSpan::new())
