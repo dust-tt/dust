@@ -73,7 +73,7 @@ const PROVIDER_STRATEGIES: Record<
         client_id: config.getOAuthGoogleDriveClientId(),
         state: connection.connection_id,
         redirect_uri: finalizeUriForProvider("google_drive"),
-        scopes: scopes.join(" "),
+        scope: scopes.join(" "),
         access_type: "offline",
         prompt: "consent",
       });
