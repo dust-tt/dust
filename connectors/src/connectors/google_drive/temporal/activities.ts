@@ -164,8 +164,9 @@ export async function syncFiles(
     `[SyncFiles] Start sync.`
   );
 
-  const mimeTypesToSync = getMimeTypesToSync({
+  const mimeTypesToSync = await getMimeTypesToSync({
     pdfEnabled: config?.pdfEnabled || false,
+    connector,
   });
   const authCredentials = await getAuthObject(connector.connectionId);
   const driveFolder = await getGoogleDriveObject(
@@ -348,8 +349,9 @@ export async function incrementalSync(
         connectorId: connectorId,
       },
     });
-    const mimeTypesToSync = getMimeTypesToSync({
+    const mimeTypesToSync = await getMimeTypesToSync({
       pdfEnabled: config?.pdfEnabled || false,
+      connector,
     });
 
     const selectedFoldersIds = await getFoldersToSync(connectorId);
