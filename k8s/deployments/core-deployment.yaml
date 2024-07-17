@@ -47,7 +47,7 @@ spec:
               mountPath: /etc/service-accounts
           
           volumeMounts:
-            - name: api-key-volume
+            - name: api-keys-volume
               mountPath: /etc/api-keys
 
           resources:
