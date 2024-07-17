@@ -46,6 +46,10 @@ services:
     image: redis
     ports:
       - 6379:6379
+  apache-tika:
+    image: apache/tika:2.9.2.1
+    ports:
+      - "9998:9998"
 
 volumes:
   pgsql:
