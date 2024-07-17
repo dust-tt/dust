@@ -195,6 +195,7 @@ const InputBarContainer = ({
           onClick={async () => {
             const jsonContent = editorService.getTextAndMentions();
             onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
+              // TODO: When we submit the message, we must reset the sticky mention properly.
               editorService.clearEditor();
               resetEditorContainerSize();
             });

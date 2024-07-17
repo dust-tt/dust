@@ -1,131 +1,65 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const activeEventSources = new Map<string, EventSource>();
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_DELAY = 5000; // 5 seconds
 
-// export function useEventSource(
-//   buildURL: (lastMessage: string | null) => string | null,
-//   onEventCallback: (event: string) => void,
-//   { isReadyToConsumeStream }: { isReadyToConsumeStream: boolean } = {
-//     isReadyToConsumeStream: true,
-//   },
-//   uniqueId: string
-// ) {
-//   // State used to re-connect to the events stream; this is a hack to re-trigger
-//   // the useEffect that set-up the EventSource to the streaming endpoint.
-//   const [reconnectCounter, setReconnectCounter] = useState(0);
-//   const lastEvent = useRef<string | null>(null);
-//   const errorCount = useRef(0);
-//   const [isError, setIsError] = useState<Error | null>(null);
+/**
+ * Stable EventSource Manager
+ *
+ * This singleton object manages EventSource instances across the entire application.
+ * It provides methods to create, retrieve, and remove EventSource connections,
+ * ensuring that each unique connection is properly managed and can be accessed
+ * or closed as needed.
+ *
+ * Key features:
+ * - Maintains a single source of truth for all EventSource instances.
+ * - Prevents duplicate EventSource creations for the same unique identifier.
+ * - Allows for centralized management of EventSource lifecycle.
+ * - Improves performance by reusing existing connections when possible.
+ *
+ * Usage:
+ * - Create a new EventSource: stableEventSourceManager.create(url, uniqueId)
+ * - Retrieve an existing EventSource: stableEventSourceManager.get(uniqueId)
+ * - Close and remove an EventSource: stableEventSourceManager.remove(uniqueId)
+ *
+ * This manager is designed to be used in conjunction with the useEventSource hook
+ * to provide stable and efficient EventSource handling across React component lifecycles.
+ */
+const stableEventSourceManager = {
+  // Map to store active EventSource instances, keyed by unique identifiers
+  sources: new Map<string, EventSource>(),
 
-//   const es = useMemo(() => {
-//     const url = buildURL(lastEvent.current);
-//     if (!url) {
-//       return null;
-//     }
-
-//     const activeEventSourceForUniqueId = activeEventSources.get(uniqueId);
-
-//     if (
-//       !activeEventSourceForUniqueId ||
-//       activeEventSourceForUniqueId.readyState === EventSource.CLOSED
-//     ) {
-//       console.log(">> creating new event source", uniqueId);
-//       const newEventSource = new EventSource(url);
-//       activeEventSources.set(uniqueId, newEventSource);
-//       return newEventSource;
-//     } else {
-//       console.log(">> getting active event source", uniqueId);
-//       return activeEventSourceForUniqueId;
-//     }
-//   }, [buildURL, uniqueId, reconnectCounter]); // Dependency on uniqueId only
-
-//   useEffect(() => {
-//     if (!isReadyToConsumeStream || !es) {
-//       return;
-//     }
-
-//     let reconnectTimeout: NodeJS.Timeout | null = null;
-
-//     es.onopen = () => {
-//       errorCount.current = 0;
-//     };
-
-//     es.onmessage = (event: MessageEvent<string>) => {
-//       if (event.data === "done") {
-//         console.log("useEventSource.onmessage() done");
-//         setReconnectCounter((c) => c + 1);
-//         es.close();
-//         return;
-//       }
-//       onEventCallback(event.data);
-//       lastEvent.current = event.data;
-//     };
-
-//     es.onerror = (event) => {
-//       console.error("useEventSource.onerror()", event);
-//       errorCount.current += 1;
-//       if (errorCount.current >= 3) {
-//         console.log("too many errors, not reconnecting..");
-//         setIsError(new Error("Too many errors, closing connection."));
-//         es.close();
-//         return;
-//       }
-//       reconnectTimeout = setTimeout(() => {
-//         setReconnectCounter((c) => c + 1);
-//       }, 1000);
-//     };
-
-//     return () => {
-//       if (reconnectTimeout) {
-//         clearTimeout(reconnectTimeout);
-//       }
-//     };
-//   }, [buildURL, onEventCallback, reconnectCounter, isReadyToConsumeStream, es]);
-
-//   // Cleanup function to remove the EventSource when the component unmounts
-//   useEffect(() => {
-//     return () => {
-//       if (uniqueId.startsWith("message-")) {
-//         return;
-//       }
-
-//       console.log(">> cleaning up event source", uniqueId);
-//       const activeEventSource = activeEventSources.get(uniqueId);
-//       if (activeEventSource) {
-//         activeEventSource.close();
-//         activeEventSources.delete(uniqueId);
-//       }
-//     };
-//   }, [uniqueId]);
-
-//   return { isError };
-// }
-
-const useEventSourceManager = () => {
-  const sources = useRef(new Map<string, EventSource>());
-
-  const create = useCallback((url: string, uniqueId: string) => {
+  /**
+   * Creates a new EventSource instance and stores it in the sources map.
+   * @param url The URL to connect the EventSource to
+   * @param uniqueId A unique identifier for this EventSource instance
+   * @returns The newly created EventSource instance
+   */
+  create(url: string, uniqueId: string) {
     const newSource = new EventSource(url);
-    sources.current.set(uniqueId, newSource);
+    this.sources.set(uniqueId, newSource);
     return newSource;
-  }, []);
+  },
 
-  const get = useCallback(
-    (uniqueId: string) => sources.current.get(uniqueId),
-    []
-  );
+  /**
+   * Retrieves an existing EventSource instance by its unique identifier.
+   * @param uniqueId The unique identifier of the EventSource to retrieve
+   * @returns The EventSource instance if found, undefined otherwise
+   */
+  get(uniqueId: string) {
+    return this.sources.get(uniqueId);
+  },
 
-  const remove = useCallback((uniqueId: string) => {
-    const source = sources.current.get(uniqueId);
+  /**
+   * Closes and removes an EventSource instance from the sources map.
+   * @param uniqueId The unique identifier of the EventSource to remove
+   */
+  remove(uniqueId: string) {
+    const source = this.sources.get(uniqueId);
     if (source) {
       source.close();
-      sources.current.delete(uniqueId);
+      this.sources.delete(uniqueId);
     }
-  }, []);
-
-  return { create, get, remove };
+  },
 };
 
 export function useEventSource(
@@ -137,11 +71,18 @@ export function useEventSource(
   const [isError, setIsError] = useState<Error | null>(null);
   const lastEvent = useRef<string | null>(null);
   const reconnectAttempts = useRef(0);
-  const sourceManager = useEventSourceManager();
+
+  // Use the stable event source manager to ensure consistent EventSource management
+  // across renders and component lifecycles.
+  const sourceManager = stableEventSourceManager;
 
   const connect = useCallback(() => {
     const url = buildURL(lastEvent.current);
     if (!url) {
+      // If the url is empty, it means streaming is done.
+      // Close any previous connection for this uniqueId and remove it from the manager.
+      sourceManager.remove(uniqueId);
+
       return null;
     }
 
@@ -151,7 +92,7 @@ export function useEventSource(
     }
 
     source.onopen = () => {
-      console.log("EventSource connection opened (1)", uniqueId);
+      console.log("EventSource connection opened", uniqueId);
       reconnectAttempts.current = 0;
     };
 
@@ -190,9 +131,15 @@ export function useEventSource(
     // No cleanup function needed here
   }, [isReadyToConsumeStream, connect]);
 
-  // useEffect(() => {
-  //   return () => sourceManager.remove(uniqueId);
-  // }, [uniqueId, sourceManager]);
+  useEffect(() => {
+    uniqueId.startsWith("conversation-") &&
+      console.log("[EVENTSOURCE] Mounting", uniqueId);
+    return () => {
+      uniqueId.startsWith("conversation-") &&
+        console.log("[EVENTSOURCE] Unmounting", uniqueId);
+      sourceManager.remove(uniqueId);
+    };
+  }, [uniqueId, sourceManager]);
 
   return { isError };
 }

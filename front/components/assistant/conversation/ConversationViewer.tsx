@@ -40,21 +40,21 @@ export type MessageWithContentFragmentsType =
       contenFragments?: ContentFragmentType[];
     });
 
-function shouldProcessStreamEvent(
-  messages: FetchConversationMessagesResponse[] | undefined,
-  event:
-    | UserMessageNewEvent
-    | AgentMessageNewEvent
-    | AgentGenerationCancelledEvent
-): boolean {
-  const isMessageAlreadyInPages = messages?.some((messages) => {
-    return messages.messages.some(
-      (message) => "sId" in message && message.sId === event.messageId
-    );
-  });
+// function shouldProcessStreamEvent(
+//   messages: FetchConversationMessagesResponse[] | undefined,
+//   event:
+//     | UserMessageNewEvent
+//     | AgentMessageNewEvent
+//     | AgentGenerationCancelledEvent
+// ): boolean {
+//   const isMessageAlreadyInPages = messages?.some((messages) => {
+//     return messages.messages.some(
+//       (message) => "sId" in message && message.sId === event.messageId
+//     );
+//   });
 
-  return !isMessageAlreadyInPages;
-}
+//   return !isMessageAlreadyInPages;
+// }
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -123,6 +123,123 @@ const ConversationViewer = React.forwardRef<
     conversationId,
     workspaceId: owner.sId,
   });
+
+  // Hooks related to message streaming.
+
+  const buildEventSourceURL = useCallback(
+    (lastEvent: string | null) => {
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
+      let lastEventId = "";
+      if (lastEvent) {
+        const eventPayload: {
+          eventId: string;
+        } = JSON.parse(lastEvent);
+        lastEventId = eventPayload.eventId;
+      }
+      const url = esURL + "?lastEventId=" + lastEventId;
+
+      return url;
+    },
+    [conversationId, owner.sId]
+  );
+
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data:
+          | UserMessageNewEvent
+          | AgentMessageNewEvent
+          | AgentGenerationCancelledEvent
+          | ConversationTitleEvent;
+      } = JSON.parse(eventStr);
+
+      const event = eventPayload.data;
+
+      if (!eventIds.current.includes(eventPayload.eventId)) {
+        eventIds.current.push(eventPayload.eventId);
+        switch (event.type) {
+          case "user_message_new":
+          case "agent_message_new":
+            // Temporarily add agent message using event payload until revalidation.
+            void mutateMessages(async (currentMessagePages) => {
+              if (!currentMessagePages) {
+                return undefined;
+              }
+
+              // Check if the message already exists in the cache.
+              const isMessageAlreadyInCache = currentMessagePages.some((page) =>
+                page.messages.some(
+                  (message) => message.sId === event.message.sId
+                )
+              );
+
+              if (isMessageAlreadyInCache) {
+                console.log(">> message already in the cache, dropping.");
+                return currentMessagePages;
+              }
+
+              const { rank } = event.message;
+
+              // We only support adding at the end of the first page.
+              const [firstPage] = currentMessagePages;
+              const firstPageLastMessage = firstPage.messages.at(-1);
+              if (firstPageLastMessage && firstPageLastMessage.rank < rank) {
+                return updateMessagePagesWithOptimisticData(
+                  currentMessagePages,
+                  event.message
+                );
+              }
+
+              return currentMessagePages;
+            });
+            // TODO:
+            // void mutateConversationParticipants();
+            break;
+
+          case "agent_generation_cancelled":
+            // TODO: Prevent handling event if the message is already in the cache.
+            void mutateMessages();
+            break;
+          case "conversation_title": {
+            void mutateConversation();
+            void mutateConversations(); // to refresh the list of convos in the sidebar
+            break;
+          }
+          default:
+            ((t: never) => {
+              console.error("Unknown event type", t);
+            })(event);
+        }
+      }
+    },
+    [
+      mutateConversation,
+      mutateConversations,
+      mutateMessages,
+      mutateConversationParticipants,
+    ]
+  );
+
+  useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    {
+      // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
+      isReadyToConsumeStream: true,
+    },
+    `conversation-${conversationId}`
+  );
+
+  useEffect(() => {
+    console.log("ConversationViewer mounted");
+    return () => console.log("ConversationViewer unmounted");
+  }, []);
+
+  useEffect(() => {
+    console.log("EventSource effect running");
+    return () => console.log("EventSource effect cleanup");
+  }, [buildEventSourceURL, onEventCallback, conversationId]);
 
   const { hasMore, latestPage, oldestPage } = useMemo(() => {
     return {
@@ -243,99 +360,10 @@ const ConversationViewer = React.forwardRef<
     setSize,
   ]);
 
-  // Hooks related to message streaming.
+  useEffect(() => {
+    console.log("NEW EFFECT");
+  }, [owner.sId, conversationId, onEventCallback, buildEventSourceURL]);
 
-  const buildEventSourceURL = useCallback(
-    (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: {
-          eventId: string;
-        } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
-      }
-      const url = esURL + "?lastEventId=" + lastEventId;
-
-      return url;
-    },
-    [conversationId, owner.sId]
-  );
-
-  const onEventCallback = useCallback(
-    (eventStr: string) => {
-      const eventPayload: {
-        eventId: string;
-        data:
-          | UserMessageNewEvent
-          | AgentMessageNewEvent
-          | AgentGenerationCancelledEvent
-          | ConversationTitleEvent;
-      } = JSON.parse(eventStr);
-
-      const event = eventPayload.data;
-
-      if (!eventIds.current.includes(eventPayload.eventId)) {
-        eventIds.current.push(eventPayload.eventId);
-        switch (event.type) {
-          case "user_message_new":
-          case "agent_message_new":
-            if (shouldProcessStreamEvent(messages, event)) {
-              // Temporarily add agent message using event payload until revalidation.
-              void mutateMessages(async (currentMessagePages) => {
-                if (!currentMessagePages) {
-                  return undefined;
-                }
-
-                const { rank } = event.message;
-
-                // We only support adding at the end of the first page.
-                const [firstPage] = currentMessagePages;
-                const firstPageLastMessage = firstPage.messages.at(-1);
-                if (firstPageLastMessage && firstPageLastMessage.rank < rank) {
-                  return updateMessagePagesWithOptimisticData(
-                    currentMessagePages,
-                    event.message
-                  );
-                }
-
-                return currentMessagePages;
-              });
-              void mutateConversationParticipants();
-            }
-            break;
-
-          case "agent_generation_cancelled":
-            if (shouldProcessStreamEvent(messages, event)) {
-              void mutateMessages();
-            }
-            break;
-          case "conversation_title": {
-            void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar
-            break;
-          }
-          default:
-            ((t: never) => {
-              console.error("Unknown event type", t);
-            })(event);
-        }
-      }
-    },
-    [
-      mutateConversation,
-      mutateConversations,
-      messages,
-      mutateMessages,
-      mutateConversationParticipants,
-    ]
-  );
-
-  useEventSource(buildEventSourceURL, onEventCallback, {
-    // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
-    isReadyToConsumeStream:
-      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
-  });
   const eventIds = useRef<string[]>([]);
 
   const typedGroupedMessages = useMemo(

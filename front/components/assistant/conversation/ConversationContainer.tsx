@@ -11,7 +11,7 @@ import type {
 } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import { cloneDeep } from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 import { useRouter } from "next/router";
 import {
   Fragment,
@@ -57,8 +57,8 @@ export function ConversationContainer({
 }: ConversationContainerProps) {
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
-  const [planLimitReached, setPlanLimitReached] = useState(false);
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+  // const [planLimitReached, setPlanLimitReached] = useState(false);
+  // const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
@@ -75,19 +75,23 @@ export function ConversationContainer({
     limit: 50,
   });
 
-  const setInputbarMention = useCallback(
-    (agentId: string) => {
-      setSelectedAssistant({ configurationId: agentId });
-      setAnimate(true);
-    },
-    [setAnimate, setSelectedAssistant]
-  );
+  // useEffect(() => {
+  //   console.log("[RENDER] stickyMentions has changed", stickyMentions);
+  // }, [stickyMentions]);
 
-  useEffect(() => {
-    if (agentIdToMention) {
-      setInputbarMention(agentIdToMention);
-    }
-  }, [agentIdToMention, setInputbarMention]);
+  // const setInputbarMention = useCallback(
+  //   (agentId: string) => {
+  //     setSelectedAssistant({ configurationId: agentId });
+  //     setAnimate(true);
+  //   },
+  //   [setAnimate, setSelectedAssistant]
+  // );
+
+  // useEffect(() => {
+  //   if (agentIdToMention) {
+  //     setInputbarMention(agentIdToMention);
+  //   }
+  // }, [agentIdToMention, setInputbarMention]);
 
   useEffect(() => {
     if (animate) {
@@ -121,17 +125,21 @@ export function ConversationContainer({
           });
 
           // Replace placeholder message with API response.
-          if (result.isOk()) {
-            const { message } = result.value;
+          // if (result.isOk()) {
+          //   const { message } = result.value;
 
-            return updateMessagePagesWithOptimisticData(
-              currentMessagePages,
-              message
-            );
+          //   return updateMessagePagesWithOptimisticData(
+          //     currentMessagePages,
+          //     message
+          //   );
+          // }
+
+          if (result.isOk()) {
+            return currentMessagePages;
           }
 
           if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
+            // setPlanLimitReached(true);
           } else {
             sendNotification({
               title: result.error.title,
@@ -172,76 +180,88 @@ export function ConversationContainer({
     }
   };
 
-  const { submit: handleMessageSubmit } = useSubmitFunction(
-    useCallback(
-      async (
-        input: string,
-        mentions: MentionType[],
-        contentFragments: UploadedContentFragment[]
-      ) => {
-        const conversationRes = await createConversationWithMessage({
-          owner,
-          user,
-          messageData: {
-            input,
-            mentions,
-            contentFragments,
-          },
-        });
-        if (conversationRes.isErr()) {
-          if (conversationRes.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: conversationRes.error.title,
-              description: conversationRes.error.message,
-              type: "error",
-            });
-          }
-        } else {
-          // We start the push before creating the message to optimize for instantaneity as well.
-          setActiveConversationId(conversationRes.value.sId);
-          void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
-            undefined,
-            { shallow: true }
-          );
-        }
-      },
-      [owner, user, sendNotification, setActiveConversationId, router]
-    )
-  );
+  // const { submit: handleMessageSubmit } = useSubmitFunction(
+  //   useCallback(
+  //     async (
+  //       input: string,
+  //       mentions: MentionType[],
+  //       contentFragments: UploadedContentFragment[]
+  //     ) => {
+  //       const conversationRes = await createConversationWithMessage({
+  //         owner,
+  //         user,
+  //         messageData: {
+  //           input,
+  //           mentions,
+  //           contentFragments,
+  //         },
+  //       });
+  //       if (conversationRes.isErr()) {
+  //         if (conversationRes.error.type === "plan_limit_reached_error") {
+  //           // setPlanLimitReached(true);
+  //         } else {
+  //           sendNotification({
+  //             title: conversationRes.error.title,
+  //             description: conversationRes.error.message,
+  //             type: "error",
+  //           });
+  //         }
+  //       } else {
+  //         // We start the push before creating the message to optimize for instantaneity as well.
+  //         setActiveConversationId(conversationRes.value.sId);
+  //         void router.push(
+  //           `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
+  //           undefined,
+  //           { shallow: true }
+  //         );
+  //       }
+  //     },
+  //     [owner, user, sendNotification, setActiveConversationId, router]
+  //   )
+  // );
 
-  useEffect(() => {
-    const scrollContainerElement = document.getElementById(
-      "assistant-input-header"
-    );
+  // useEffect(() => {
+  //   console.log("[RENDER] Something has changed for handleMessageSubmit");
+  // }, [owner, user, sendNotification, setActiveConversationId, router]);
 
-    if (scrollContainerElement) {
-      const observer = new IntersectionObserver(
-        () => {
-          if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current.sId);
-            assistantToMention.current = null;
-          }
-        },
-        { threshold: 0.8 }
-      );
-      observer.observe(scrollContainerElement);
-    }
-  }, [setAnimate, setInputbarMention]);
+  // useEffect(() => {
+  //   console.log("[RENDER] Something has changed for handleSubmit");
+  // }, [activeConversationId, mutateMessages, owner, sendNotification, user]);
 
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
-  }, [user]);
+  // useEffect(() => {
+  //   const scrollContainerElement = document.getElementById(
+  //     "assistant-input-header"
+  //   );
 
-  const onStickyMentionsChange = useCallback(
-    (mentions: AgentMention[]) => {
-      setStickyMentions(mentions);
-    },
-    [setStickyMentions]
-  );
+  //   if (scrollContainerElement) {
+  //     const observer = new IntersectionObserver(
+  //       () => {
+  //         if (assistantToMention.current) {
+  //           setInputbarMention(assistantToMention.current.sId);
+  //           assistantToMention.current = null;
+  //         }
+  //       },
+  //       { threshold: 0.8 }
+  //     );
+  //     observer.observe(scrollContainerElement);
+  //   }
+  // }, [setAnimate, setInputbarMention]);
+
+  // const [greeting, setGreeting] = useState<string>("");
+  // useEffect(() => {
+  //   setGreeting(getRandomGreetingForName(user.firstName));
+  // }, [user]);
+
+  // const onStickyMentionsChange = useCallback((mentions: AgentMention[]) => {
+  //   console.log(">> onStickyMentionsChange", mentions);
+  //   setStickyMentions((prevMentions) => {
+  //     if (isEqual(prevMentions, mentions)) {
+  //       return prevMentions;
+  //     }
+
+  //     return mentions;
+  //   });
+  // }, []);
 
   return (
     <DropzoneContainer
@@ -263,8 +283,7 @@ export function ConversationContainer({
             owner={owner}
             user={user}
             conversationId={activeConversationId}
-            // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
-            onStickyMentionsChange={onStickyMentionsChange}
+            // onStickyMentionsChange={onStickyMentionsChange}
           />
         ) : (
           <div></div>
@@ -285,15 +304,15 @@ export function ConversationContainer({
           id="assistant-input-header"
           className="mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2"
         >
-          <Page.SectionHeader title={greeting} />
+          {/* <Page.SectionHeader title={greeting} /> */}
           <Page.SectionHeader title="Start a conversation" />
         </div>
       </Transition>
 
       <FixedAssistantInputBar
         owner={owner}
-        onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
-        stickyMentions={stickyMentions}
+        onSubmit={activeConversationId ? handleSubmit : () => {}}
+        // stickyMentions={stickyMentions}
         conversationId={activeConversationId}
       />
 
@@ -308,7 +327,8 @@ export function ConversationContainer({
         className={"flex w-full justify-center"}
       >
         <AssistantBrowserContainer
-          onAgentConfigurationClick={setInputbarMention}
+          // onAgentConfigurationClick={setInputbarMention}
+          onAgentConfigurationClick={() => {}}
           setAssistantToMention={(assistant) => {
             assistantToMention.current = assistant;
           }}
@@ -320,13 +340,13 @@ export function ConversationContainer({
         <HelpAndQuickGuideWrapper owner={owner} user={user} />
       )}
 
-      <ReachedLimitPopup
+      {/* <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
         subscription={subscription}
         owner={owner}
         code="message_limit"
-      />
+      /> */}
     </DropzoneContainer>
   );
 }
