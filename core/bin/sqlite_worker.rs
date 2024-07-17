@@ -142,12 +142,18 @@ impl WorkerState {
             Err(_) => Err(anyhow!("CORE_API not set."))?,
         };
 
+        let core_api_key = match std::env::var("CORE_API_KEY") {
+            Ok(api_key) => api_key,
+            Err(_) => Err(anyhow!("CORE_API_KEY not set."))?,
+        };
+
         let res = reqwest::Client::new()
             .request(
                 Method::from_bytes(method.as_bytes())?,
                 format!("{}/sqlite_workers", core_api),
             )
             .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", core_api_key))
             .json(&json!({
                 "url": worker_url,
             }))
