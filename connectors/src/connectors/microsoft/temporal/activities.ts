@@ -8,6 +8,7 @@ import { cacheWithRedis } from "@dust-tt/types";
 import { slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
+import { heartbeat } from "@temporalio/activity";
 import axios from "axios";
 import mammoth from "mammoth";
 import type { Logger } from "pino";
@@ -16,22 +17,27 @@ import turndown from "turndown";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
+  getDeltaResults,
   getDriveInternalIdFromItem,
   getDriveItemInternalId,
   getDrives,
   getFilesAndFolders,
+  getFullDeltaResults,
   getItem,
+  getParentReferenceInternalId,
   getSiteAPIPath,
   getSites,
   internalIdFromTypeAndPath,
   itemToMicrosoftNode,
   typeAndPathFromInternalId,
-  getFullDeltaResults,
-  getParentReferenceInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
-import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
+import {
+  deleteAllSheets,
+  isMicrosoftSpreadsheet,
+  syncSpreadSheet,
+} from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -56,9 +62,6 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { heartbeat } from "@temporalio/activity";
-import { drive } from "googleapis/build/src/apis/drive";
-import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -171,6 +174,34 @@ export async function getSiteNodesToSync(
   );
 
   return nodeResources.map((r) => r.internalId);
+}
+
+export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const client = await getClient(connector.connectionId);
+
+  for (const nodeId of nodeIds) {
+    const node = await MicrosoftNodeResource.fetchByInternalId(
+      connectorId,
+      nodeId
+    );
+
+    if (!node) {
+      throw new Error(`Node ${nodeId} not found`);
+    }
+    const { deltaLink } = await getDeltaResults({
+      client,
+      parentInternalId: nodeId,
+      token: "latest",
+    });
+
+    await node.updateDeltaLink(deltaLink);
+  }
 }
 
 async function isParentAlreadyInNodes({
@@ -666,25 +697,27 @@ export async function syncDeltaForNode({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const { itemAPIPath, nodeType } = typeAndPathFromInternalId(nodeId);
+  const { nodeType } = typeAndPathFromInternalId(nodeId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
     throw new Error(`Node ${nodeId} is not a drive or folder`);
   }
 
-  const node = await MicrosoftRootResource.fetchByItemAPIPath(
+  const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
-    itemAPIPath
+    nodeId
   );
 
   if (!node) {
-    throw new Error(`Root resource ${itemAPIPath} not found`);
+    throw new Error(`Root node resource ${nodeId} not found`);
   }
 
   const client = await getClient(connector.connectionId);
 
   if (!node.deltaLink) {
-    throw new Error(`Delta link not found for root resource ${node.toJSON()}`);
+    throw new Error(
+      `Delta link not found for root node resource ${node.toJSON()}`
+    );
   }
 
   // Goes through pagination to return all delta results. This is because delta
@@ -716,7 +749,7 @@ export async function syncDeltaForNode({
 
     if (driveItem.file) {
       if (driveItem.deleted) {
-        await deleteFile({ connectorId, internalId });
+        await deleteFile({ connectorId, internalId, dataSourceConfig });
       } else {
         await syncOneFile({
           connectorId,
@@ -940,6 +973,42 @@ async function handleTextExtraction(
     : null;
 }
 
+async function deleteFolder({
+  connectorId,
+  internalId,
+}: {
+  connectorId: number;
+  internalId: string;
+}) {
+  logger.info(
+    {
+      internalId,
+      connectorId,
+    },
+    `Deleting Microsoft folder.`
+  );
+
+  const folder = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    internalId
+  );
+
+  const { itemAPIPath } = typeAndPathFromInternalId(internalId);
+
+  const root = await MicrosoftRootResource.fetchByItemAPIPath(
+    connectorId,
+    itemAPIPath
+  );
+
+  if (root) {
+    await root.delete();
+  }
+
+  if (folder) {
+    await folder.delete();
+  }
+}
+
 async function deleteFile({
   connectorId,
   dataSourceConfig,
@@ -949,23 +1018,21 @@ async function deleteFile({
   dataSourceConfig: DataSourceConfig;
   internalId: string;
 }) {
-  logger.info(
-    {
-      internalId,
-      connectorId,
-    },
-    `Deleting Microsoft file.`
-  );
-
   const file = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     internalId
   );
 
+  if (!file) {
+    return;
+  }
+
+  logger.info({ file }, `Deleting Microsoft file.`);
+
   if (isMicrosoftSpreadsheet(file)) {
-    return await deleteSpreadsheet({});
+    await deleteAllSheets(dataSourceConfig, file);
   } else {
     await deleteFromDataSource(dataSourceConfig, internalId);
-    return await file?.delete();
   }
+  return file.delete();
 }

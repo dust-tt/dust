@@ -83,12 +83,18 @@ export async function getFilesAndFolders(
   return { results: res.value };
 }
 
-export async function getDeltaResults(
-  client: Client,
-  parentInternalId: string,
-  nextLink?: string,
-  dateToken?: string
-) {
+export async function getDeltaResults({
+  client,
+  parentInternalId,
+  nextLink,
+  token,
+}: {
+  client: Client;
+  parentInternalId: string;
+} & (
+  | { nextLink: string; token?: never }
+  | { nextLink?: never; token: string }
+)) {
   const { nodeType, itemAPIPath } = typeAndPathFromInternalId(parentInternalId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
@@ -97,10 +103,14 @@ export async function getDeltaResults(
     );
   }
 
+  if (nextLink && token) {
+    throw new Error("nextLink and token cannot be used together");
+  }
+
   const deltaPath =
     (nodeType === "folder"
       ? itemAPIPath + "/delta"
-      : itemAPIPath + "/root/delta") + (dateToken ? `?token=${dateToken}` : "");
+      : itemAPIPath + "/root/delta") + (token ? `?token=${token}` : "");
 
   const res = nextLink
     ? await client.api(nextLink).get()
@@ -145,7 +155,7 @@ export async function getFullDeltaResults(
       results,
       nextLink: newNextLink,
       deltaLink: finalDeltaLink,
-    } = await getDeltaResults(client, parentInternalId, nextLink);
+    } = await getDeltaResults({ client, parentInternalId, nextLink });
     allItems = allItems.concat(results);
     nextLink = newNextLink;
     deltaLink = finalDeltaLink;
@@ -292,11 +302,7 @@ export async function getAllPaginatedEntities<T extends MicrosoftGraph.Entity>(
   let allItems: T[] = [];
 
   do {
-    const {
-      results,
-      nextLink: newNextLink,
-      ...rest
-    } = await getEntitiesFn(nextLink);
+    const { results, nextLink: newNextLink } = await getEntitiesFn(nextLink);
     allItems = allItems.concat(results);
     nextLink = newNextLink;
   } while (nextLink);

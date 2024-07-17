@@ -9,11 +9,10 @@ import {
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
-const { getSiteNodesToSync, syncFiles, markNodeAsVisited } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "30 minutes",
-});
+const { getSiteNodesToSync, syncFiles, markNodeAsVisited, populateDeltas } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "30 minutes",
+  });
 
 const { syncDeltaForNode } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
@@ -61,6 +60,8 @@ export async function fullSyncSitesWorkflow({
   if (nodeIdsToSync === undefined) {
     nodeIdsToSync = await getSiteNodesToSync(connectorId);
   }
+
+  await populateDeltas(connectorId, nodeIdsToSync);
 
   let nextPageLink: string | undefined = undefined;
 

@@ -77,7 +77,6 @@ export class MicrosoftRootModel extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare itemAPIPath: string;
   declare nodeType: MicrosoftNodeType;
-  declare delta: NonAttribute<MicrosoftDeltaModel>;
 }
 MicrosoftRootModel.init(
   {
@@ -137,6 +136,7 @@ export class MicrosoftNodeModel extends Model<
   declare name: string | null;
   declare mimeType: string | null;
   declare parentInternalId: string | null;
+  declare delta: NonAttribute<MicrosoftDeltaModel>;
 }
 
 MicrosoftNodeModel.init(
@@ -215,7 +215,7 @@ export class MicrosoftDeltaModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare rootId: ForeignKey<MicrosoftRootModel["itemAPIPath"]>;
+  declare nodeId: ForeignKey<MicrosoftNodeModel["internalId"]>;
   declare deltaLink: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -240,7 +240,7 @@ MicrosoftDeltaModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    rootId: {
+    nodeId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -252,8 +252,8 @@ MicrosoftDeltaModel.init(
   {
     sequelize: sequelizeConnection,
     modelName: "microsoft_deltas",
-    indexes: [{ fields: ["connectorId", "rootId"], unique: true }],
+    indexes: [{ fields: ["connectorId", "nodeId"], unique: true }],
   }
 );
 ConnectorModel.hasMany(MicrosoftDeltaModel);
-MicrosoftRootModel.hasOne(MicrosoftDeltaModel);
+MicrosoftNodeModel.hasOne(MicrosoftDeltaModel);

@@ -133,17 +133,11 @@ export interface MicrosoftRootResource
 export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   static model: ModelStatic<MicrosoftRootModel> = MicrosoftRootModel;
 
-  private delta: MicrosoftDeltaModel | null = null;
-
   constructor(
     model: ModelStatic<MicrosoftRootModel>,
     blob: Attributes<MicrosoftRootModel>
   ) {
     super(MicrosoftRootModel, blob);
-  }
-
-  get deltaLink() {
-    return this.delta?.deltaLink;
   }
 
   async postFetchHook(): Promise<void> {
@@ -209,28 +203,12 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
         connectorId,
         itemAPIPath,
       },
-      include: [
-        {
-          model: MicrosoftDeltaModel,
-          as: "delta",
-        },
-      ],
     });
 
     if (!blob) {
       return null;
     }
-    const resource = new this(this.model, blob.get());
-    resource.delta = blob.delta;
-    return resource;
-  }
-
-  async updateDeltaLink(deltaLink: string) {
-    await MicrosoftDeltaModel.upsert({
-      connectorId: this.connectorId,
-      rootId: this.itemAPIPath,
-      deltaLink,
-    });
+    return new this(this.model, blob.get());
   }
 
   toJSON() {
@@ -250,6 +228,8 @@ export interface MicrosoftNodeResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   static model: ModelStatic<MicrosoftNodeModel> = MicrosoftNodeModel;
+
+  private delta: MicrosoftDeltaModel | null = null;
 
   constructor(
     model: ModelStatic<MicrosoftNodeModel>,
@@ -285,12 +265,20 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
         connectorId,
         internalId,
       },
+      include: [
+        {
+          model: MicrosoftDeltaModel,
+          as: "delta",
+        },
+      ],
     });
     if (!blob) {
       return null;
     }
 
-    return new this(this.model, blob.get());
+    const resource = new this(this.model, blob.get());
+    resource.delta = blob.delta;
+    return resource;
   }
 
   static async fetchByInternalIds(connectorId: ModelId, internalIds: string[]) {
@@ -319,6 +307,18 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       (blob) =>
         new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get())
     );
+  }
+
+  get deltaLink() {
+    return this.delta?.deltaLink;
+  }
+
+  async updateDeltaLink(deltaLink: string) {
+    await MicrosoftDeltaModel.upsert({
+      connectorId: this.connectorId,
+      nodeId: this.internalId,
+      deltaLink,
+    });
   }
 
   static async batchDelete({

@@ -6,16 +6,17 @@ import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
   getDriveItemInternalId,
-  getWorksheetInternalId,
   getWorksheetContent,
+  getWorksheetInternalId,
   getWorksheets,
-  internalIdFromTypeAndPath,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertTableFromCsv } from "@connectors/lib/data_sources";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
@@ -236,4 +237,34 @@ export async function syncSpreadSheet({
   }
 
   return { isSupported: true };
+}
+
+export function isMicrosoftSpreadsheet(file: MicrosoftNodeResource): boolean {
+  return (
+    file.mimeType ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    file.mimeType === "application/vnd.ms-excel"
+  );
+}
+
+export async function deleteAllSheets(
+  dataSourceConfig: DataSourceConfig,
+  spreadsheet: MicrosoftNodeResource
+) {
+  await concurrentExecutor(
+    await spreadsheet.fetchChildren(),
+    async (sheet) => {
+      await deleteTable({
+        dataSourceConfig,
+        tableId: sheet.internalId,
+        loggerArgs: {
+          connectorId: spreadsheet.connectorId,
+          sheetId: sheet.internalId,
+          spreadsheetId: spreadsheet.internalId,
+        },
+      });
+      await sheet.delete();
+    },
+    { concurrency: 5 }
+  );
 }
