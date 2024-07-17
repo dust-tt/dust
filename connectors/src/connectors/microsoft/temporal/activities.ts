@@ -17,7 +17,7 @@ import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
   getDriveAPIPathFromItem,
-  getDriveItemAPIPath,
+  getDriveItemInternalId,
   getDriveItemAPIPathFromReference,
   getDeltaResults,
   getDrives,
@@ -29,6 +29,7 @@ import {
   itemToMicrosoftNode,
   typeAndPathFromInternalId,
   getFullDeltaResults,
+  getParentReferenceInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
@@ -56,6 +57,8 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { heartbeat } from "@temporalio/activity";
+import { drive } from "googleapis/build/src/apis/drive";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -388,10 +391,7 @@ export async function syncOneFile({
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
-  const documentId = internalIdFromTypeAndPath({
-    itemAPIPath: getDriveItemAPIPath(file),
-    nodeType: "file",
-  });
+  const documentId = getDriveItemInternalId(file);
 
   const fileResource = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -664,6 +664,15 @@ export async function syncDeltaForNode({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const providerConfig =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+
+  if (!providerConfig) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
   const { itemAPIPath, nodeType } = typeAndPathFromInternalId(nodeId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
@@ -685,7 +694,75 @@ export async function syncDeltaForNode({
     throw new Error(`Delta link not found for root resource ${node.toJSON()}`);
   }
 
-  const deltaList = await getFullDeltaResults(client, nodeId, node.deltaLink);
+  // Goes through pagination to return all delta results. This is because delta
+  // list can include same item more than once and api recommendation is to
+  // ignore all but the last one.
+  //
+
+  // although the list might be long, this should not be an issue since in case
+  // of activity retry, files already synced won't be synced again thanks to the
+  // lastSeenTs check VS startSyncTs
+  //
+  // If it ever becomes an issue, redis-caching the list and having activities
+  // grabbing pages of it can be implemented
+  const { results, deltaLink } = await getFullDeltaResults(
+    client,
+    nodeId,
+    node.deltaLink
+  );
+  const uniqueDriveItemList = removeDuplicateItems(results);
+
+  for (const driveItem of uniqueDriveItemList) {
+    heartbeat();
+
+    if (!driveItem.parentReference) {
+      throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
+    }
+
+    if (driveItem.file) {
+      if (driveItem.deleted) {
+      } else {
+        await syncOneFile({
+          connectorId,
+          dataSourceConfig,
+          providerConfig,
+          file: driveItem,
+          parentInternalId: getParentReferenceInternalId(
+            driveItem.parentReference
+          ),
+          startSyncTs,
+        });
+      }
+    } else if (driveItem.folder) {
+      // TODO
+    } else {
+      throw new Error(`Unexpected: driveItem is neither file nor folder`);
+    }
+  }
+
+  await node.updateDeltaLink(deltaLink);
+}
+
+/**
+ *  As per recommendation, remove all but the last occurences of the same
+ *  driveItem in the list
+ */
+function removeDuplicateItems(deltaList: microsoftgraph.DriveItem[]) {
+  const uniqueDeltas = new Set<string>();
+  const resultList = [];
+  for (const driveItem of deltaList.reverse()) {
+    if (!driveItem.id) {
+      throw new Error(`DriveItem id is missing: ${driveItem}`);
+    }
+
+    if (uniqueDeltas.has(driveItem.id)) {
+      continue;
+    }
+    uniqueDeltas.add(driveItem.id);
+    resultList.push(driveItem);
+  }
+
+  return resultList;
 }
 
 async function getParents({

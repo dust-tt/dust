@@ -5,7 +5,7 @@ import { stringify } from "csv-stringify/sync";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
-  getDriveItemAPIPath,
+  getDriveItemInternalId,
   getWorksheetAPIPath,
   getWorksheetContent,
   getWorksheets,
@@ -192,12 +192,7 @@ export async function syncSpreadSheet({
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
-  const itemApiPath = getDriveItemAPIPath(file);
-
-  const documentId = internalIdFromTypeAndPath({
-    itemAPIPath: itemApiPath,
-    nodeType: "file",
-  });
+  const documentId = getDriveItemInternalId(file);
 
   const worksheets = await getAllPaginatedEntities((nextLink) =>
     getWorksheets(client, documentId, nextLink)

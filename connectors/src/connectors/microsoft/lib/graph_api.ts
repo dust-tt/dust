@@ -341,10 +341,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalIdFromTypeAndPath({
-          nodeType,
-          itemAPIPath: getDriveItemAPIPath(item),
-        }),
+        internalId: getDriveItemInternalId(item),
         parentInternalId: null,
         mimeType: null,
       };
@@ -354,10 +351,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalIdFromTypeAndPath({
-          nodeType,
-          itemAPIPath: getDriveItemAPIPath(item),
-        }),
+        internalId: getDriveItemInternalId(item),
         parentInternalId: null,
         mimeType: item.file?.mimeType ?? null,
       };
@@ -444,24 +438,43 @@ export function typeAndPathFromInternalId(internalId: string): {
   return { nodeType, itemAPIPath: resourcePathArr.join("/") };
 }
 
-export function getDriveItemAPIPath(item: MicrosoftGraph.DriveItem) {
+export function getDriveItemInternalId(item: MicrosoftGraph.DriveItem) {
   const { parentReference } = item;
 
   if (!parentReference?.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
 
-  return `/drives/${parentReference.driveId}/items/${item.id}`;
+  const nodeType = item.folder ? "folder" : item.file ? "file" : null;
+
+  if (!nodeType) {
+    throw new Error("Unexpected: item is neither folder nor file");
+  }
+
+  return internalIdFromTypeAndPath({
+    nodeType,
+    itemAPIPath: `/drives/${parentReference.driveId}/items/${item.id}`,
+  });
 }
 
-export function getParentReferenceAPIPath(
+export function getParentReferenceInternalId(
   parentReference: MicrosoftGraph.ItemReference
 ) {
   if (!parentReference.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
 
-  return `/drives/${parentReference.driveId}/items/${parentReference.id}`;
+  if (parentReference.path && !parentReference.path.endsWith("root:")) {
+    return internalIdFromTypeAndPath({
+      nodeType: "folder",
+      itemAPIPath: `/drives/${parentReference.driveId}/items/${parentReference.id}`,
+    });
+  }
+
+  return internalIdFromTypeAndPath({
+    nodeType: "drive",
+    itemAPIPath: `/drives/${parentReference.driveId}`,
+  });
 }
 
 export function getWorksheetAPIPath(

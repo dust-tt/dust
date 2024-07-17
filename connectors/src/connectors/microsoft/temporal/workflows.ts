@@ -9,10 +9,16 @@ import {
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
-const { getSiteNodesToSync, syncFiles, markNodeAsVisited, syncDeltaForNode } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "20 minutes",
-  });
+const { getSiteNodesToSync, syncFiles, markNodeAsVisited } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "30 minutes",
+});
+
+const { syncDeltaForNode } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "120 minutes",
+  heartbeatTimeout: "5 minutes",
+});
 
 const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
   typeof sync_status
