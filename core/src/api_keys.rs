@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::Response;
+use axum::Extension;
 use http::StatusCode;
 use serde::Deserialize;
 use std::{collections::HashMap, env, sync::Arc};
@@ -50,7 +51,7 @@ async fn get_api_keys() -> Result<ApiKeyMap> {
 }
 
 pub async fn validate_api_key(
-    req: Request<axum::body::Body>,
+    mut req: Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
     let api_keys = get_api_keys().await.map_err(|e| {
@@ -64,7 +65,8 @@ pub async fn validate_api_key(
             let provided_key = &auth_header[7..];
             for (client_name, keys) in api_keys.iter() {
                 if keys.contains(&provided_key.to_string()) {
-                    info!("API key validated for client '{}'", client_name);
+                    req.extensions_mut()
+                        .insert(Extension(Arc::new(client_name.clone())));
                     return Ok(next.run(req).await);
                 }
             }

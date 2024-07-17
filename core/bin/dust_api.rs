@@ -2679,12 +2679,12 @@ fn main() {
 
         // Extensions
         .layer(DefaultBodyLimit::disable())
+        .layer(from_fn(validate_api_key))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(CoreRequestMakeSpan::new())
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
-        .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 
         let sqlite_heartbeat_router = Router::new()
