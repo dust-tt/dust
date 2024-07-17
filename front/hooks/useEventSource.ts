@@ -73,7 +73,7 @@ export function useEventSource(
   const reconnectAttempts = useRef(0);
 
   // We use a counter to trigger reconnects when the counter changes.
-  const [reconnectCounter, setReconnectCounter] = useState(0); // Use a counter
+  const [reconnectCounter, setReconnectCounter] = useState(0);
 
   // Store the reconnect timeout reference to clear it when needed.
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
