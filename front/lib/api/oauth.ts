@@ -6,6 +6,7 @@ import type {
 import type { OAuthProvider, OAuthUseCase } from "@dust-tt/types";
 import { Err, OAuthAPI, Ok } from "@dust-tt/types";
 import type { ParsedUrlQuery } from "querystring";
+import querystring from "querystring";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -62,11 +63,28 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    setupUri: () => {
-      throw new Error("Google Drive OAuth is not implemented");
+    setupUri: (connection) => {
+      const scopes = [
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
+      ];
+      const qs = querystring.stringify({
+        response_type: "code",
+        client_id: config.getOAuthGoogleDriveClientId(),
+        state: connection.connection_id,
+        redirect_uri: finalizeUriForProvider("google_drive"),
+        scope: scopes.join(" "),
+        access_type: "offline",
+        prompt: "consent",
+      });
+      return `https://accounts.google.com/o/oauth2/auth?${qs}`;
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
   notion: {
     setupUri: (connection) => {

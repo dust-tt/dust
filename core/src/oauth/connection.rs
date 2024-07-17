@@ -1,3 +1,6 @@
+use crate::oauth::providers::{
+    confluence::ConfluenceConnectionProvider, google_drive::GoogleDriveConnectionProvider,
+};
 use crate::oauth::{
     providers::{github::GithubConnectionProvider, notion::NotionConnectionProvider},
     store::OAuthStore,
@@ -18,8 +21,6 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
 use tracing::error;
-
-use super::providers::confluence::ConfluenceConnectionProvider;
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -142,7 +143,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
-        ConnectionProvider::GoogleDrive => unimplemented!(),
+        ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
         ConnectionProvider::Intercom => unimplemented!(),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => unimplemented!(),
