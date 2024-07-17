@@ -399,7 +399,7 @@ async function handler(
 
       // Delete newly created user if SSO is mandatory.
       if (userCreated) {
-        await user.delete();
+        await user.unsafeDelete();
       }
 
       res.redirect(
