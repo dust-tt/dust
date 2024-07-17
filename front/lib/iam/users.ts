@@ -95,12 +95,7 @@ export async function createOrUpdateUser(
   const user = await fetchUserFromSession(session);
 
   if (user) {
-    const updateArgs = {
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-    };
+    const updateArgs: { [key: string]: string } = {};
     // We only update the user's email if the email is verified.
     if (externalUser.email_verified) {
       updateArgs.email = externalUser.email;
@@ -118,16 +113,23 @@ export async function createOrUpdateUser(
           externalUser.name
         );
         updateArgs.firstName = firstName;
-        updateArgs.lastName = lastName;
+        updateArgs.lastName = lastName || "";
       }
     }
 
-    await user.updateInfo(
-      updateArgs.username,
-      updateArgs.firstName,
-      updateArgs.lastName,
-      updateArgs.email
-    );
+    if (
+      user.username !== updateArgs.username ||
+      user.firstName !== updateArgs.firstName ||
+      user.lastName !== updateArgs.lastName ||
+      user.email !== updateArgs.email
+    ) {
+      await user.updateInfo(
+        updateArgs.username,
+        updateArgs.firstName,
+        updateArgs.lastName,
+        updateArgs.email
+      );
+    }
 
     return { user, created: false };
   } else {

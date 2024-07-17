@@ -84,10 +84,7 @@ async function handler(
         });
       }
 
-      const result = await u.updateName(
-        req.body.firstName,
-        req.body.lastName
-      );
+      const result = await u.updateName(req.body.firstName, req.body.lastName);
 
       if (result.isErr()) {
         return apiError(req, res, {
