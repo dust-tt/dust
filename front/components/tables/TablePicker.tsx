@@ -96,7 +96,7 @@ export default function TablePicker({
               >
                 <Input
                   name="search"
-                  placeholder="Search tables"
+                  placeholder="Search"
                   value={searchFilter}
                   onChange={(value) => setSearchFilter(value)}
                   className="w-48"
