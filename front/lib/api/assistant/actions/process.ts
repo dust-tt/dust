@@ -266,8 +266,8 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       actionConfiguration.tagsFilter.in &&
       actionConfiguration.tagsFilter.in.length > 0
     ) {
-      // Note: empty array in tags/parents.in means "no document match" since no documents has any
-      // tags/parents that is in the empty array.
+      // Note: we explicitely ignore if `tagsFilter.in` is empty as there is no use-case for no
+      // retrieval at all.
       if (!config.DATASOURCE.filter.tags) {
         config.DATASOURCE.filter.tags = {};
       }
