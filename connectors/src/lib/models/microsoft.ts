@@ -214,7 +214,7 @@ export class MicrosoftDeltaModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare rootId: ForeignKey<MicrosoftRootModel["itemAPIPath"]>;
-  declare deltaToken: string;
+  declare deltaLink: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 MicrosoftDeltaModel.init(
@@ -242,7 +242,7 @@ MicrosoftDeltaModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    deltaToken: {
+    deltaLink: {
       type: DataTypes.STRING,
       allowNull: false,
     },

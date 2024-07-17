@@ -197,6 +197,29 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return new Ok(undefined);
   }
 
+  async fetchByItemAPIPath() {
+    const blob = await this.model.findOne({
+      where: {
+        itemAPIPath: this.itemAPIPath,
+        connectorId: this.connectorId,
+      },
+      include: [{ model: MicrosoftDeltaModel, as: "delta" }],
+    });
+    if (!blob) {
+      return null;
+    }
+
+    return new MicrosoftRootResource(this.model, blob.get());
+  }
+
+  async updateDeltaLink(deltaLink: string) {
+    await MicrosoftDeltaModel.upsert({
+      connectorId: this.connectorId,
+      rootId: this.itemAPIPath,
+      deltaLink,
+    });
+  }
+
   toJSON() {
     return {
       id: this.id,
