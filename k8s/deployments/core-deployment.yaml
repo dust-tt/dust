@@ -45,6 +45,8 @@ spec:
           volumeMounts:
             - name: service-account-volume
               mountPath: /etc/service-accounts
+            - name: api-keys-volume
+              mountPath: /etc/api-keys
 
           resources:
             requests:
@@ -58,3 +60,7 @@ spec:
         - name: service-account-volume
           secret:
             secretName: gcp-service-account-secret
+
+        - name: api-keys-volume
+          secret:
+            secretName: core-api-keys-secret

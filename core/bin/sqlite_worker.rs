@@ -12,6 +12,7 @@ use dust::{
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
 };
 use hyper::StatusCode;
+use lazy_static::lazy_static;
 use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
@@ -32,6 +33,21 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
+
+lazy_static! {
+    static ref WORKER_URL: String = match std::env::var("IS_LOCAL_DEV") {
+        Ok(_) => "http://localhost:3005".to_string(),
+        _ => {
+            let port = std::env::var("POD_PORT").unwrap();
+            let ip = std::env::var("POD_IP").unwrap();
+            format!("http://{}:{}", ip, port)
+        }
+    };
+    static ref CORE_API: String = std::env::var("CORE_API").unwrap();
+    static ref CORE_API_KEY: String = std::env::var("CORE_API_KEY").unwrap();
+    static ref DATABASES_STORE_DATABASE_URI: String =
+        std::env::var("DATABASES_STORE_DATABASE_URI").unwrap();
+}
 
 // Duration after which a database is considered inactive and can be removed from the registry.
 const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 60); // 5 minutes
@@ -121,35 +137,15 @@ impl WorkerState {
     }
 
     async fn _core_request(&self, method: &str) -> Result<()> {
-        let worker_url = match std::env::var("IS_LOCAL_DEV") {
-            Ok(_) => "http://localhost:3005".to_string(),
-            _ => {
-                let port = match std::env::var("POD_PORT") {
-                    Ok(port) => port,
-                    Err(_) => Err(anyhow!("PORT not set."))?,
-                };
-                let ip = match std::env::var("POD_IP") {
-                    Ok(ip) => ip,
-                    Err(_) => Err(anyhow!("IP not set."))?,
-                };
-
-                format!("http://{}:{}", ip, port)
-            }
-        };
-
-        let core_api = match std::env::var("CORE_API") {
-            Ok(core_url) => core_url,
-            Err(_) => Err(anyhow!("CORE_API not set."))?,
-        };
-
         let res = reqwest::Client::new()
             .request(
                 Method::from_bytes(method.as_bytes())?,
-                format!("{}/sqlite_workers", core_api),
+                format!("{}/sqlite_workers", *CORE_API),
             )
             .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", *CORE_API_KEY))
             .json(&json!({
-                "url": worker_url,
+                "url": *WORKER_URL,
             }))
             .send()
             .await?;
@@ -292,15 +288,10 @@ fn main() {
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
-        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
-            match std::env::var("DATABASES_STORE_DATABASE_URI") {
-                Ok(db_uri) => {
-                    let s = databases_store::store::PostgresDatabasesStore::new(&db_uri).await?;
-                    s.init().await?;
-                    Box::new(s)
-                }
-                Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
-            };
+        let s = databases_store::store::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
+            .await?;
+        s.init().await?;
+        let databases_store = Box::new(s);
 
         let state = Arc::new(WorkerState::new(databases_store));
 

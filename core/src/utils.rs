@@ -1,11 +1,11 @@
 use anyhow::Result;
 use async_std::path::PathBuf;
-use axum::Json;
+use axum::{Extension, Json};
 use hyper::StatusCode;
 use serde::Serialize;
 use serde_json::Value;
 use sqids::Sqids;
-use std::io::Write;
+use std::{io::Write, sync::Arc};
 use tower_http::trace::MakeSpan;
 use uuid::Uuid;
 
@@ -169,6 +169,10 @@ impl<B> MakeSpan<B> for CoreRequestMakeSpan {
             method = %request.method(),
             uri = %request.uri(),
             request_span_id = new_id()[0..12].to_string(),
+            dust_client_name = request.extensions()
+            .get::<Extension<Arc<String>>>()
+            .map(|ext| ext.as_ref().as_str())
+            .unwrap_or("unknown")
         )
     }
 }

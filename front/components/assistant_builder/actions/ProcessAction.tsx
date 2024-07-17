@@ -507,9 +507,12 @@ export function ActionProcess({
 
                         return {
                           ...previousAction,
-                          tagsFilter: {
-                            in: tags,
-                          },
+                          tagsFilter:
+                            tags.length > 0
+                              ? {
+                                  in: tags,
+                                }
+                              : null,
                         };
                       });
                     }}

@@ -53,9 +53,10 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("CUSTOMERIO_ENABLED") === "true"
     );
   },
-  getCoreAPIConfig: (): { url: string } => {
+  getCoreAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("CORE_API"),
+      apiKey: EnvironmentConfig.getOptionalEnvVariable("CORE_API_KEY") ?? null,
     };
   },
   getConnectorsAPIConfig: (): { url: string; secret: string } => {

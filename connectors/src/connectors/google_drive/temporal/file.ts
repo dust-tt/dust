@@ -1,5 +1,9 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { slugify, TextExtraction } from "@dust-tt/types";
+import {
+  isTextExtractionSupportedContentType,
+  slugify,
+  TextExtraction,
+} from "@dust-tt/types";
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
@@ -138,24 +142,19 @@ async function handleFileExport(
     return null;
   }
 
-  switch (file.mimeType) {
-    case "text/plain":
-      return handleTextFile(res.data, maxDocumentLen);
-    case "application/pdf":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-      return handleTextExtraction(res.data, localLogger, file);
-    case "text/csv":
-      return handleCsvFile(
-        res.data,
-        file,
-        maxDocumentLen,
-        localLogger,
-        dataSourceConfig,
-        connectorId
-      );
-    default:
-      return null;
+  if (file.mimeType === "text/plain") {
+    return handleTextFile(res.data, maxDocumentLen);
+  } else if (file.mimeType === "text/csv") {
+    return handleCsvFile(
+      res.data,
+      file,
+      maxDocumentLen,
+      localLogger,
+      dataSourceConfig,
+      connectorId
+    );
+  } else {
+    return handleTextExtraction(res.data, localLogger, file);
   }
 }
 
@@ -178,9 +177,14 @@ async function handleTextExtraction(
   localLogger: Logger,
   file: GoogleDriveObjectType
 ): Promise<CoreAPIDataSourceDocumentSection | null> {
+  if (!isTextExtractionSupportedContentType(file.mimeType)) {
+    return null;
+  }
+
   const pageRes = await new TextExtraction(
     apiConfig.getTextExtractionUrl()
   ).fromBuffer(Buffer.from(data), file.mimeType);
+
   if (pageRes.isErr()) {
     localLogger.warn(
       {
@@ -193,8 +197,18 @@ async function handleTextExtraction(
     // So we log the error and skip the file.
     return null;
   }
+
   const pages = pageRes.value;
   const prefix = pagePrefixesPerMimeType[file.mimeType];
+
+  localLogger.info(
+    {
+      mimeType: file.mimeType,
+      pagesCount: pages.length,
+    },
+    "Successfully converted file to text"
+  );
+
   return pages.length > 0
     ? {
         prefix: null,

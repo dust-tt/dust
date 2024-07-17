@@ -143,16 +143,20 @@ export type CoreAPIQueryResult = {
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
+  _apiKey: string | null;
 
   constructor(
     config: {
       url: string;
+      apiKey: string | null;
     },
     logger: LoggerInterface
   ) {
     this._url = config.url;
     this._logger = logger;
+    this._apiKey = config.apiKey;
   }
+
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
     const response = await this._fetchWithError(`${this._url}/projects`, {
       method: "POST",
@@ -1252,7 +1256,14 @@ export class CoreAPI {
   ): Promise<Result<{ response: Response; duration: number }, CoreAPIError>> {
     const now = Date.now();
     try {
-      const res = await fetch(url, init);
+      const params = { ...init };
+      if (this._apiKey) {
+        params.headers = {
+          ...params.headers,
+          Authorization: `Bearer ${this._apiKey}`,
+        };
+      }
+      const res = await fetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
