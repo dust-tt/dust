@@ -1,6 +1,11 @@
 import { EnvironmentConfig } from "@dust-tt/types";
 
 export const apiConfig = {
+  getOAuthAPIConfig: (): { url: string } => {
+    return {
+      url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
+    };
+  },
   getDustAPIConfig: (): { url: string; nodeEnv: string } => {
     return {
       // Dust production API URL is hardcoded for now.

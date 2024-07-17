@@ -21,6 +21,26 @@ use tracing::error;
 
 use super::providers::confluence::ConfluenceConnectionProvider;
 
+// We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
+// is the maximum time the lock will be held.
+static REDIS_LOCK_TTL_SECONDS: u64 = 15;
+// To ensure we don't write without holding the lock providers must comply to this timeout when
+// operating on tokens.
+pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
+
+lazy_static! {
+    static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
+}
+
+lazy_static! {
+    static ref ENCRYPTION_KEY: aead::LessSafeKey = {
+        let encoded_key = env::var("OAUTH_ENCRYPTION_KEY").unwrap();
+        let key_bytes = general_purpose::STANDARD.decode(&encoded_key).unwrap();
+        let unbound_key = aead::UnboundKey::new(&aead::CHACHA20_POLY1305, &key_bytes).unwrap();
+        aead::LessSafeKey::new(unbound_key)
+    };
+}
+
 // Define the ErrorKind enum with serde attributes for serialization
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -55,26 +75,6 @@ impl fmt::Display for ConnectionError {
 }
 
 impl std::error::Error for ConnectionError {}
-
-// We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
-// is the maximum time the lock will be held.
-static REDIS_LOCK_TTL_SECONDS: u64 = 15;
-// To ensure we don't write without holding the lock providers must comply to this timeout when
-// operating on tokens.
-pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
-
-lazy_static! {
-    static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
-}
-
-lazy_static! {
-    static ref ENCRYPTION_KEY: aead::LessSafeKey = {
-        let encoded_key = env::var("OAUTH_ENCRYPTION_KEY").unwrap();
-        let key_bytes = general_purpose::STANDARD.decode(&encoded_key).unwrap();
-        let unbound_key = aead::UnboundKey::new(&aead::CHACHA20_POLY1305, &key_bytes).unwrap();
-        aead::LessSafeKey::new(unbound_key)
-    };
-}
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -132,7 +132,13 @@ pub trait Provider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult>;
+
     async fn refresh(&self, connection: &Connection) -> Result<RefreshResult>;
+
+    // This method scrubs raw_json to remove information that should not exfill `oauth`, in
+    // particular the `refresh_token`. By convetion the `access_token` should be scrubbed as well
+    // to prevent users from relying in the raw_json to access it.
+    fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value>;
 }
 
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
@@ -558,15 +564,22 @@ impl Connection {
         }
     }
 
+    fn scrubbed_raw_json(&self) -> Result<Option<serde_json::Value>> {
+        match self.unseal_raw_json()? {
+            Some(raw_json) => Ok(Some(provider(self.provider).scrubbed_raw_json(&raw_json)?)),
+            None => Ok(None),
+        }
+    }
+
     async fn access_token_locked(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
-    ) -> Result<String> {
+    ) -> Result<(String, Option<serde_json::Value>)> {
         self.reload(store.clone()).await?;
 
         // If we refreshed while waiting for the lock return early.
         if let Some(access_token) = self.valid_access_token()? {
-            return Ok(access_token);
+            return Ok((access_token, self.scrubbed_raw_json()?));
         }
 
         let refresh = provider(self.provider).refresh(self).await?;
@@ -582,13 +595,13 @@ impl Connection {
         )?)?);
         store.update_connection_secrets(self).await?;
 
-        Ok(refresh.access_token)
+        Ok((refresh.access_token, self.scrubbed_raw_json()?))
     }
 
     pub async fn access_token(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
-    ) -> Result<String, ConnectionError> {
+    ) -> Result<(String, Option<serde_json::Value>), ConnectionError> {
         if self.status != ConnectionStatus::Finalized {
             return Err(ConnectionError {
                 code: ConnectionErrorCode::ConnectionNotFinalizedError,
@@ -596,7 +609,16 @@ impl Connection {
             });
         }
         if let Some(access_token) = self.valid_access_token()? {
-            return Ok(access_token);
+            return Ok((
+                access_token,
+                self.scrubbed_raw_json().map_err(|e| {
+                    error!(error = ?e, "Failed to retrieve and scrub raw_json");
+                    ConnectionError {
+                        code: ConnectionErrorCode::InternalError,
+                        message: "Failed to retrieve and scrub raw_json".to_string(),
+                    }
+                })?,
+            ));
         }
 
         let rl = LockManager::new(vec![REDIS_URI.clone()]);

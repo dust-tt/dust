@@ -177,7 +177,7 @@ async fn connections_access_token(
                 &e.message,
                 None,
             ),
-            Ok(access_token) => (
+            Ok((access_token, scrubbed_raw_json)) => (
                 StatusCode::OK,
                 Json(APIResponse {
                     error: None,
@@ -191,6 +191,7 @@ async fn connections_access_token(
                         },
                         "access_token": access_token,
                         "access_token_expiry": c.access_token_expiry(),
+                        "scrubbed_raw_json": scrubbed_raw_json,
                     })),
                 }),
             ),
