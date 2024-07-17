@@ -82,6 +82,11 @@ impl GithubConnectionProvider {
         };
         let expiry = date.timestamp_millis();
 
+        // We store the installation_id on the raw_json as this is convenient to have it accessible
+        // through the scrubbed_raw_json.
+        let mut raw_json = raw_json.clone();
+        raw_json["installation_id"] = serde_json::Value::String(code.to_string());
+
         Ok((token.to_string(), expiry as u64, raw_json))
     }
 }
