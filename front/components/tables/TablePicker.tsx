@@ -1,7 +1,9 @@
+import { Input } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { CoreAPITable } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { useEffect, useState } from "react";
 
 import { useTables } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -33,6 +35,18 @@ export default function TablePicker({
   const currentTable = currentTableId
     ? tables.find((t) => t.table_id === currentTableId)
     : null;
+
+  const [searchFilter, setSearchFilter] = useState("");
+  const [filteredTables, setFilteredTables] = useState(tables);
+
+  useEffect(() => {
+    const newTables = searchFilter
+      ? tables.filter((t) =>
+          t.name.toLowerCase().includes(searchFilter.toLowerCase())
+        )
+      : tables.slice(0, 20);
+    setFilteredTables(newTables);
+  }, [tables, searchFilter]);
 
   return (
     <div className="flex items-center">
@@ -80,8 +94,15 @@ export default function TablePicker({
                   currentTable ? "-left-4" : "left-1"
                 )}
               >
+                <Input
+                  name="search"
+                  placeholder="Search"
+                  value={searchFilter}
+                  onChange={(value) => setSearchFilter(value)}
+                  className="w-48"
+                />
                 <div className="py-1">
-                  {(tables || []).map((t) => {
+                  {(filteredTables || []).map((t) => {
                     return (
                       <Menu.Item key={t.table_id}>
                         {({ active }) => (
@@ -92,7 +113,10 @@ export default function TablePicker({
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"
                             )}
-                            onClick={() => onTableUpdate(t)}
+                            onClick={() => {
+                              onTableUpdate(t);
+                              setSearchFilter("");
+                            }}
                           >
                             {t.name}
                           </span>
@@ -100,6 +124,11 @@ export default function TablePicker({
                       </Menu.Item>
                     );
                   })}
+                  {filteredTables.length === 0 && (
+                    <span className="block px-4 py-2 text-sm text-gray-700">
+                      No tables found
+                    </span>
+                  )}
                 </div>
               </Menu.Items>
             ) : null}

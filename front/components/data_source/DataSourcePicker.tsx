@@ -1,3 +1,4 @@
+import { Input } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
@@ -37,6 +38,9 @@ export default function DataSourcePicker({
   const { dataSources, isDataSourcesLoading, isDataSourcesError } =
     useDataSources(owner, { disabled: readOnly });
 
+  const [searchFilter, setSearchFilter] = useState("");
+  const [filteredDataSources, setFilteredDataSources] = useState(dataSources);
+
   useEffect(() => {
     if (!isDataSourcesLoading && !isDataSourcesError && !readOnly) {
       if (!dataSources.find((ds) => ds.name === name)) {
@@ -59,6 +63,15 @@ export default function DataSourcePicker({
       setName(null);
     }
   }, [currentDataSources]);
+
+  useEffect(() => {
+    const newDataSources = searchFilter
+      ? dataSources.filter((t) =>
+          t.name.toLowerCase().includes(searchFilter.toLowerCase())
+        )
+      : dataSources.slice(0, 20);
+    setFilteredDataSources(newDataSources);
+  }, [dataSources, searchFilter]);
 
   return (
     <div className="flex items-center">
@@ -117,8 +130,15 @@ export default function DataSourcePicker({
                   name && name.length > 0 ? "-left-4" : "left-1"
                 )}
               >
+                <Input
+                  name="search"
+                  placeholder="Search"
+                  value={searchFilter}
+                  onChange={(value) => setSearchFilter(value)}
+                  className="w-48"
+                />
                 <div className="py-1">
-                  {(dataSources || []).map((ds) => {
+                  {(filteredDataSources || []).map((ds) => {
                     return (
                       <Menu.Item key={ds.name}>
                         {({ active }) => (
@@ -129,14 +149,15 @@ export default function DataSourcePicker({
                                 : "text-gray-700",
                               "block cursor-pointer px-4 py-2 text-sm"
                             )}
-                            onClick={() =>
+                            onClick={() => {
                               onDataSourcesUpdate([
                                 {
                                   workspace_id: owner.sId,
                                   data_source_id: ds.name,
                                 },
-                              ])
-                            }
+                              ]);
+                              setSearchFilter("");
+                            }}
                           >
                             {ds.name}
                           </span>
@@ -144,6 +165,11 @@ export default function DataSourcePicker({
                       </Menu.Item>
                     );
                   })}
+                  {filteredDataSources.length === 0 && (
+                    <span className="block px-4 py-2 text-sm text-gray-700">
+                      No datasources found
+                    </span>
+                  )}
                 </div>
               </Menu.Items>
             ) : null}
