@@ -20,9 +20,22 @@ interface PageContent {
   content: string;
 }
 
-interface ContentTypeConfig {
-  [key: string]: { handler: string; pageSelector: string };
-}
+// All those content types are supported by the Tika server.
+// Before adding a new content type, make sure to test it.
+const supportedContentTypes = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+] as const;
+
+type SupportedContentTypes = (typeof supportedContentTypes)[number];
+
+type ContentTypeConfig = {
+  [key in SupportedContentTypes]?: {
+    handler: "html" | "text";
+    pageSelector?: string;
+  };
+};
 
 const contentTypeConfig: ContentTypeConfig = {
   "application/pdf": { handler: "html", pageSelector: "page" },
@@ -39,7 +52,7 @@ export class TextExtraction {
   // Method to extract text from a buffer.
   async fromBuffer(
     fileBuffer: Buffer,
-    contentType: string
+    contentType: SupportedContentTypes
   ): Promise<Result<PageContent[], Error>> {
     const response = await this.queryTika(fileBuffer, contentType);
     if (response.isErr()) {
@@ -52,15 +65,13 @@ export class TextExtraction {
   // Query the Tika server and return the response data.
   private async queryTika(
     fileBuffer: Buffer,
-    contentType: string
+    contentType: SupportedContentTypes
   ): Promise<Result<TikaResponse, Error>> {
     // Determine the handler type based on the content type.
     // The HTML handler preserves the structural information of the document
     // like page structure, etc. The text handler does not.
     const handlerType =
-      contentType in contentTypeConfig
-        ? contentTypeConfig[contentType].handler
-        : DEFAULT_HANDLER;
+      contentTypeConfig[contentType]?.handler ?? DEFAULT_HANDLER;
 
     try {
       const response = await fetch(`${this.url}/tika/${handlerType}`, {
@@ -98,7 +109,8 @@ export class TextExtraction {
   ): Promise<Result<PageContent[], Error>> {
     const contentType = response["Content-Type"];
 
-    const pageSelector = contentTypeConfig[contentType]?.pageSelector;
+    const pageSelector =
+      contentTypeConfig[contentType as SupportedContentTypes]?.pageSelector;
     if (pageSelector) {
       return this.processContentBySelector(response, pageSelector);
     }
@@ -197,4 +209,10 @@ export class TextExtraction {
       new Ok([{ pageNumber: 1, content: content.trim() }])
     );
   }
+}
+
+export function isTextExtractionSupportedContentType(
+  contentType: string
+): contentType is SupportedContentTypes {
+  return supportedContentTypes.includes(contentType as SupportedContentTypes);
 }
