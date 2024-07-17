@@ -1,7 +1,8 @@
-import * as cheerio from "cheerio";
 import { isLeft } from "fp-ts/Either";
+import { Parser } from "htmlparser2";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import { Readable } from "stream";
 
 import { Err, Ok, Result } from "./result";
 
@@ -24,10 +25,10 @@ interface ContentTypeConfig {
 }
 
 const contentTypeConfig: ContentTypeConfig = {
-  "application/pdf": { handler: "html", pageSelector: ".page" },
+  "application/pdf": { handler: "html", pageSelector: "page" },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     handler: "html",
-    pageSelector: ".slide-content",
+    pageSelector: "slide-content",
   },
 };
 const DEFAULT_HANDLER = "text";
@@ -45,7 +46,7 @@ export class TextExtraction {
       return response;
     }
 
-    return new Ok(this.processResponse(response.value));
+    return this.processResponse(response.value);
   }
 
   // Query the Tika server and return the response data.
@@ -92,7 +93,9 @@ export class TextExtraction {
   }
 
   // Process the Tika response and return an array of PageContent.
-  private processResponse(response: TikaResponse): PageContent[] {
+  private processResponse(
+    response: TikaResponse
+  ): Promise<Result<PageContent[], Error>> {
     const contentType = response["Content-Type"];
 
     const pageSelector = contentTypeConfig[contentType]?.pageSelector;
@@ -107,24 +110,86 @@ export class TextExtraction {
   private processContentBySelector(
     response: TikaResponse,
     contentSelector: string
-  ): PageContent[] {
+  ): Promise<Result<PageContent[], Error>> {
     const html = response["X-TIKA:content"];
-    const $ = cheerio.load(html);
-    const contentDivs = $(contentSelector);
 
-    return contentDivs
-      .map((index, div) => ({
-        pageNumber: index + 1,
-        content: $(div).text()?.trim() || "",
-      }))
-      .get();
+    const stream = Readable.from(html);
+
+    // This logic extract the content of the page based on the selector.
+    // We use a streaming parser to avoid loading the entire content in memory.
+    return new Promise<Result<PageContent[], Error>>((resolve) => {
+      const contentDivs: PageContent[] = [];
+      let currentPageContent = "";
+      let insidePage = false;
+      let pageNumber = 0;
+      let pageDepth = 0;
+
+      const parser = new Parser(
+        {
+          onopentag(name, attribs) {
+            // Check if the current tag is the page selector.
+            if (name === "div" && attribs.class === contentSelector) {
+              insidePage = true;
+              pageNumber++;
+              currentPageContent = "";
+              pageDepth = 1;
+            } else if (insidePage) {
+              pageDepth++;
+            }
+          },
+          ontext(text) {
+            // If we are inside a page, append the text to the current page content.
+            if (insidePage) {
+              currentPageContent += text.trim() + " ";
+            }
+          },
+          onclosetag() {
+            // If we are inside a page and the page depth is 0, we are done with the page.
+            if (insidePage) {
+              pageDepth--;
+              if (pageDepth === 0) {
+                insidePage = false;
+                if (currentPageContent.trim()) {
+                  contentDivs.push({
+                    pageNumber: pageNumber,
+                    content: currentPageContent.trim(),
+                  });
+                }
+                currentPageContent = "";
+              }
+            }
+          },
+          onerror(err) {
+            return resolve(new Err(err));
+          },
+        },
+        { decodeEntities: true }
+      );
+
+      stream.on("data", (chunk: Buffer) => {
+        parser.write(chunk.toString());
+      });
+
+      stream.on("end", () => {
+        parser.end();
+        return resolve(new Ok(contentDivs));
+      });
+
+      stream.on("error", (err) => {
+        return resolve(new Err(err));
+      });
+    });
   }
 
   // Process default response.
-  private processDefaultResponse(response: TikaResponse): PageContent[] {
+  private processDefaultResponse(
+    response: TikaResponse
+  ): Promise<Result<PageContent[], Error>> {
     const content = response["X-TIKA:content"];
 
     // Treat the entire content as a single page.
-    return [{ pageNumber: 1, content: content.trim() }];
+    return Promise.resolve(
+      new Ok([{ pageNumber: 1, content: content.trim() }])
+    );
   }
 }
