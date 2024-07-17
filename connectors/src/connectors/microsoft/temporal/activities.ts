@@ -19,6 +19,7 @@ import {
   getDriveAPIPathFromItem,
   getDriveItemAPIPath,
   getDriveItemAPIPathFromReference,
+  getDeltaResults,
   getDrives,
   getFilesAndFolders,
   getItem,
@@ -27,6 +28,7 @@ import {
   internalIdFromTypeAndPath,
   itemToMicrosoftNode,
   typeAndPathFromInternalId,
+  getFullDeltaResults,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
@@ -662,40 +664,28 @@ export async function syncDeltaForNode({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const node = await MicrosoftNodeResource.fetchByInternalId(
+  const { itemAPIPath, nodeType } = typeAndPathFromInternalId(nodeId);
+
+  if (nodeType !== "drive" && nodeType !== "folder") {
+    throw new Error(`Node ${nodeId} is not a drive or folder`);
+  }
+
+  const node = await MicrosoftRootResource.fetchByItemAPIPath(
     connectorId,
-    nodeId
+    itemAPIPath
   );
 
   if (!node) {
-    throw new Error(`Node ${nodeId} not found`);
-  }
-
-  if (node.nodeType !== "drive" && node.nodeType !== "folder") {
-    throw new Error(`Node ${nodeId} is not a drive or folder`);
+    throw new Error(`Root resource ${itemAPIPath} not found`);
   }
 
   const client = await getClient(connector.connectionId);
 
-  const nodeDelta = 
-
-  const delta = await getDriveOrItemDelta(
-    client,
-    nodeId,
-    node.itemAPIPath,
-    startSyncTs
-  );
-
-  if (delta) {
-    await syncFiles({
-      connectorId,
-      parentInternalId: nodeId,
-      startSyncTs,
-      nextPageLink: delta.nextLink,
-    });
+  if (!node.deltaLink) {
+    throw new Error(`Delta link not found for root resource ${node.toJSON()}`);
   }
 
-  return delta;
+  const deltaList = await getFullDeltaResults(client, nodeId, node.deltaLink);
 }
 
 async function getParents({

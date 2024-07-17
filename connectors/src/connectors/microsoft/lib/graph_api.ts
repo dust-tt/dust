@@ -83,7 +83,7 @@ export async function getFilesAndFolders(
   return { results: res.value };
 }
 
-export async function getDriveOrItemDelta(
+export async function getDeltaResults(
   client: Client,
   parentInternalId: string,
   nextLink?: string,
@@ -124,6 +124,38 @@ export async function getDriveOrItemDelta(
   }
 
   return { results: res.value };
+}
+
+/**
+ * Similar to getDeltaResults but goes through pagination (returning results and
+ * the deltalink)
+ * @param client
+ */
+export async function getFullDeltaResults(
+  client: Client,
+  parentInternalId: string,
+  initialDeltaLink: string
+): Promise<{ results: microsoftgraph.DriveItem[]; deltaLink: string }> {
+  let nextLink: string | undefined = initialDeltaLink;
+  let allItems: microsoftgraph.DriveItem[] = [];
+  let deltaLink: string | undefined = undefined;
+
+  do {
+    const {
+      results,
+      nextLink: newNextLink,
+      deltaLink: finalDeltaLink,
+    } = await getDeltaResults(client, parentInternalId, nextLink);
+    allItems = allItems.concat(results);
+    nextLink = newNextLink;
+    deltaLink = finalDeltaLink;
+  } while (nextLink);
+
+  if (!deltaLink) {
+    throw new Error("Delta link not found");
+  }
+
+  return { results: allItems, deltaLink };
 }
 
 export async function getWorksheets(
@@ -246,6 +278,7 @@ export async function getMessages(
 
   return { results: res.value };
 }
+
 /**
  * Given a getter function with a single nextLink optional parameter, this function
  * fetches all items by following nextLinks
@@ -259,7 +292,11 @@ export async function getAllPaginatedEntities<T extends MicrosoftGraph.Entity>(
   let allItems: T[] = [];
 
   do {
-    const { results, nextLink: newNextLink } = await getEntitiesFn(nextLink);
+    const {
+      results,
+      nextLink: newNextLink,
+      ...rest
+    } = await getEntitiesFn(nextLink);
     allItems = allItems.concat(results);
     nextLink = newNextLink;
   } while (nextLink);
