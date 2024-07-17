@@ -180,7 +180,7 @@ async function handleTextExtraction(
   file: GoogleDriveObjectType
 ): Promise<CoreAPIDataSourceDocumentSection | null> {
   const mimeType = file.mimeType;
-  if (!isTextExtractionSupportedContentType(mimeType)){
+  if (!isTextExtractionSupportedContentType(mimeType)) {
     localLogger.warn(
       {
         error: "Unexpected mimeType",
