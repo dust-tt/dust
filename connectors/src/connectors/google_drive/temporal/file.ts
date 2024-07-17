@@ -42,7 +42,7 @@ const pagePrefixesPerMimeType: Record<string, string> = {
     "$slideNumber",
 };
 
-async function handleGoogleDocExport(
+async function handleGoogleDriveExport(
   oauth2client: OAuth2Client,
   file: GoogleDriveObjectType,
   localLogger: Logger
@@ -98,7 +98,7 @@ async function handleGoogleDocExport(
   }
 }
 
-async function handleFileDownload(
+async function handleFileExport(
   oauth2client: OAuth2Client,
   file: GoogleDriveObjectType,
   maxDocumentLen: number,
@@ -332,13 +332,13 @@ export async function syncOneFile(
       let skipReason: string | undefined;
 
       if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
-        documentContent = await handleGoogleDocExport(
+        documentContent = await handleGoogleDriveExport(
           oauth2client,
           file,
           localLogger
         );
       } else if (mimeTypesToDownload.includes(file.mimeType)) {
-        documentContent = await handleFileDownload(
+        documentContent = await handleFileExport(
           oauth2client,
           file,
           maxDocumentLen,
