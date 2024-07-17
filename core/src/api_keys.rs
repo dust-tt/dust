@@ -67,8 +67,7 @@ pub async fn validate_api_key(
 
     if let Some(auth_header) = req.headers().get("Authorization") {
         let auth_header = auth_header.to_str().map_err(|_| StatusCode::UNAUTHORIZED)?;
-        if auth_header.starts_with("Bearer ") {
-            let provided_key = &auth_header[7..];
+        if let Some(provided_key) = auth_header.strip_prefix("Bearer ") {
             for (client_name, keys) in api_keys.iter() {
                 if keys.contains(&provided_key.to_string()) {
                     req.extensions_mut()
