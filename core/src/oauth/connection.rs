@@ -20,6 +20,35 @@ use std::{env, fmt};
 
 use super::providers::confluence::ConfluenceConnectionProvider;
 
+// Define the ErrorKind enum with serde attributes for serialization
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConnectionErrorCode {
+    ConnectionAlreadyFinalized,
+    InternalError,
+}
+
+impl fmt::Display for ConnectionErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
+}
+
+// Custom error type
+#[derive(Debug)]
+pub struct ConnectionError {
+    pub code: ConnectionErrorCode,
+    pub message: String,
+}
+
+impl fmt::Display for ConnectionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{}] {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for ConnectionError {}
+
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
 static REDIS_LOCK_TTL_SECONDS: u64 = 15;
@@ -95,8 +124,8 @@ pub trait Provider {
         connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult>;
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult>;
+    ) -> Result<FinalizeResult, ConnectionError>;
+    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ConnectionError>;
 }
 
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
@@ -377,19 +406,26 @@ impl Connection {
         Ok(c)
     }
 
-    fn is_already_finalized(&self, code: &str) -> Result<bool> {
+    fn is_already_finalized(&self, code: &str) -> Result<bool, ConnectionError> {
         match self.status {
             // Pending is the expected status for a new connection.
             ConnectionStatus::Pending => Ok(false),
             // We allow calling finalized twice with the same code (user messes up or refresh).
             // Otherwise we error.
-            ConnectionStatus::Finalized => match self.unseal_authorization_code()? {
+            ConnectionStatus::Finalized => match self.unseal_authorization_code().map_err(ConnectionError{
+                code: ConnectionErrorCode::InternalError,
+
+            })? {
                 Some(c) => {
                     // If it's finalized and the code matches, we return early.
                     if c == code {
                         return Ok(true);
                     }
-                    Err(anyhow::anyhow!("Connection is already finalized"))?
+                    Err(ConnectionError {
+                        code: ConnectionErrorCode::ConnectionAlreadyFinalized,
+                        message: "Connection is already finalized with a different code"
+                            .to_string(),
+                    })?
                 }
                 // If we have a finalized connection without `authorization_code`, we error.
                 None => Err(anyhow::anyhow!(
@@ -439,7 +475,7 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<()> {
+    ) -> Result<(), ConnectionError> {
         if self.is_already_finalized(code)? {
             return Ok(());
         }
