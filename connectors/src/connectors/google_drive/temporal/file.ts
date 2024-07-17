@@ -1,4 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { isTextExtractionSupportedContentType } from "@dust-tt/types";
 import { slugify, TextExtraction } from "@dust-tt/types";
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
@@ -178,9 +179,20 @@ async function handleTextExtraction(
   localLogger: Logger,
   file: GoogleDriveObjectType
 ): Promise<CoreAPIDataSourceDocumentSection | null> {
+  const mimeType = file.mimeType;
+  if (!isTextExtractionSupportedContentType(mimeType)){
+    localLogger.warn(
+      {
+        error: "Unexpected mimeType",
+        mimeType: mimeType,
+      },
+      "Unexpected mimeType"
+    );
+    return null;
+  }
   const pageRes = await new TextExtraction(
     apiConfig.getTextExtractionUrl()
-  ).fromBuffer(Buffer.from(data), file.mimeType);
+  ).fromBuffer(Buffer.from(data), mimeType);
   if (pageRes.isErr()) {
     localLogger.warn(
       {
