@@ -299,10 +299,13 @@ export async function syncFiles({
 
   const children = childrenResult.results;
 
+  const mimeTypesToSync = await getMimeTypesToSync({
+    pdfEnabled: providerConfig.pdfEnabled || false,
+    connector,
+  });
   const childrenToSync = children.filter(
     (item) =>
-      item.file?.mimeType &&
-      getMimeTypesToSync(providerConfig).includes(item.file.mimeType)
+      item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
   );
 
   // sync files
@@ -368,6 +371,10 @@ export async function syncOneFile({
   startSyncTs: number;
   isBatchSync?: boolean;
 }) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
   const localLogger = logger.child({
     provider: "microsoft",
     connectorId,
@@ -427,8 +434,9 @@ export async function syncOneFile({
     return false;
   }
 
-  const mimeTypesToSync = getMimeTypesToSync({
+  const mimeTypesToSync = await getMimeTypesToSync({
     pdfEnabled: providerConfig.pdfEnabled || false,
+    connector,
   });
 
   const mimeType = file.file.mimeType;

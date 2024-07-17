@@ -16,10 +16,10 @@ import { DataSourceType } from "../../front/data_source";
 import { CoreAPITokenType } from "../../front/lib/core_api";
 import { RunType } from "../../front/run";
 import { WorkspaceDomain } from "../../front/workspace";
+import { WhitelistableFeature } from "../../shared/feature_flags";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 import { ContentFragmentType } from "../content_fragment";
-import { WhitelistableFeature } from "../feature_flags";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,

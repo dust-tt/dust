@@ -37,6 +37,7 @@ import {
 } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
@@ -236,7 +237,6 @@ async function handleCsvFile(
     localLogger.info({}, "File too big to be chunked. Skipping");
     return null;
   }
-
   const tableCsv = Buffer.from(data).toString("utf-8").trim();
   const tableId = file.id;
   const tableName = slugify(file.name.substring(0, 32));
@@ -284,6 +284,10 @@ export async function syncOneFile(
       span?.setTag("fileId", file.id);
       span?.setTag("workspaceId", dataSourceConfig.workspaceId);
 
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
       const config = await GoogleDriveConfig.findOne({
         where: {
           connectorId,
@@ -293,8 +297,9 @@ export async function syncOneFile(
         ? MAX_LARGE_DOCUMENT_TXT_LEN
         : MAX_DOCUMENT_TXT_LEN;
 
-      const mimeTypesToDownload = getMimeTypesToDownload({
+      const mimeTypesToDownload = await getMimeTypesToDownload({
         pdfEnabled: config?.pdfEnabled || false,
+        connector,
       });
 
       const documentId = getDocumentId(file.id);
