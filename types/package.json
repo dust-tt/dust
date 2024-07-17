@@ -27,11 +27,11 @@
   },
   "dependencies": {
     "@notionhq/client": "^2.2.4",
-    "cheerio": "^1.0.0-rc.12",
     "dts-cli": "^2.0.5",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eventsource-parser": "^1.1.1",
     "hot-shots": "^10.0.0",
+    "htmlparser2": "^9.1.0",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
     "io-ts-types": "^0.5.19",
