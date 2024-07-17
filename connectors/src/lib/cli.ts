@@ -223,9 +223,7 @@ export const github = async ({
       }
       logger.info("[Admin] Resyncing repo " + args.owner + "/" + args.repo);
 
-      const installationId = connector.connectionId;
-
-      const octokit = await getOctokit(installationId);
+      const octokit = await getOctokit(connector.connectionId);
 
       const { data } = await octokit.rest.repos.get({
         owner: args.owner,

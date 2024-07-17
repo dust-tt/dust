@@ -6,7 +6,7 @@ import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
 import {
   getRepo,
   getReposPage,
-  validateInstallationId,
+  installationIdFromConnectionId,
 } from "@connectors/connectors/github/lib/github_api";
 import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
 import { matchGithubInternalIdType } from "@connectors/connectors/github/lib/utils";
@@ -26,8 +26,6 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-type GithubInstallationId = string;
-
 const logger = mainLogger.child({ provider: "github" });
 
 export class GithubConnectorManager extends BaseConnectorManager<null> {
@@ -36,23 +34,24 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     dataSourceConfig: DataSourceConfig;
-    connectionId: GithubInstallationId;
+    connectionId: string;
   }): Promise<Result<string, Error>> {
-    const githubInstallationId = connectionId;
-
-    if (!(await validateInstallationId(githubInstallationId))) {
-      return new Err(new Error("Github installation id is invalid"));
+    const installationId = await installationIdFromConnectionId(connectionId);
+    if (!installationId) {
+      return new Err(new Error("Github: received connectionId is invalid"));
     }
+
     try {
       const githubConfigurationBlob = {
         webhooksEnabledAt: new Date(),
         codeSyncEnabled: false,
+        installationId,
       };
 
       const connector = await ConnectorResource.makeNew(
         "github",
         {
-          connectionId: githubInstallationId,
+          connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
@@ -86,6 +85,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       });
     }
 
+    // TOOD(spolu): GITHUB_MIGRATION we will have to retrieve installationId from connector state
+    // for existing and pull from octokit the new one for comparison.
     if (connectionId) {
       const oldGithubInstallationId = c.connectionId;
       const newGithubInstallationId = connectionId;
@@ -228,7 +229,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const githubInstallationId = c.connectionId;
+    const connectionId = c.connectionId;
 
     if (!parentInternalId) {
       // No parentInternalId: we return the repositories.
@@ -236,7 +237,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       let nodes: ContentNode[] = [];
       let pageNumber = 1; // 1-indexed
       for (;;) {
-        const pageRes = await getReposPage(githubInstallationId, pageNumber);
+        const pageRes = await getReposPage(connectionId, pageNumber);
 
         if (pageRes.isErr()) {
           return new Err(pageRes.error);
@@ -361,7 +362,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
                 order: [["updatedAt", "DESC"]],
               });
             })(),
-            getRepo(githubInstallationId, repoId),
+            getRepo(connectionId, repoId),
             (async () => {
               return GithubCodeRepository.findOne({
                 where: {
@@ -436,7 +437,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const githubInstallationId = c.connectionId;
+    const connectionId = c.connectionId;
     const allReposIdsToFetch: Set<number> = new Set();
     const nodes: ContentNode[] = [];
 
@@ -488,7 +489,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     await concurrentExecutor(
       uniqueRepoIdsArray,
       async (repoId) => {
-        const repoData = await getRepo(githubInstallationId, repoId);
+        const repoData = await getRepo(connectionId, repoId);
         uniqueRepos[repoId] = repoData;
       },
       { concurrency: 8 }
