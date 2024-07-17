@@ -30,9 +30,6 @@ pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
 
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
-}
-
-lazy_static! {
     static ref ENCRYPTION_KEY: aead::LessSafeKey = {
         let encoded_key = env::var("OAUTH_ENCRYPTION_KEY").unwrap();
         let key_bytes = general_purpose::STANDARD.decode(&encoded_key).unwrap();
