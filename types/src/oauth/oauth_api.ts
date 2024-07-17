@@ -1,21 +1,6 @@
+import { OAuthConnectionType, OAuthProvider } from "../oauth/lib";
 import { LoggerInterface } from "../shared/logger";
 import { Err, Ok, Result } from "../shared/result";
-
-export const OAUTH_PROVIDERS = [
-  "confluence",
-  "github",
-  "google_drive",
-  "intercom",
-  "notion",
-  "slack",
-  "microsoft",
-] as const;
-
-export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
-
-export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
-  return OAUTH_PROVIDERS.includes(obj as OAuthProvider);
-}
 
 export type OAuthAPIError = {
   message: string;
@@ -34,14 +19,6 @@ export function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
 }
 
 export type OAuthAPIResponse<T> = Result<T, OAuthAPIError>;
-
-export type OAuthConnectionType = {
-  connection_id: string;
-  created: number;
-  provider: OAuthProvider;
-  status: "pending" | "finalized";
-  secret: string;
-};
 
 export class OAuthAPI {
   _logger: LoggerInterface;
@@ -98,6 +75,34 @@ export class OAuthAPI {
           provider,
           code,
           redirect_uri: redirectUri,
+        }),
+      }
+    );
+    return this._resultFromResponse(response);
+  }
+
+  async getAccessToken({
+    provider,
+    connectionId,
+  }: {
+    provider: OAuthProvider;
+    connectionId: string;
+  }): Promise<
+    OAuthAPIResponse<{
+      connection: OAuthConnectionType;
+      access_token: string;
+      access_token_expiry: number;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/connections/${connectionId}/access_token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider,
         }),
       }
     );

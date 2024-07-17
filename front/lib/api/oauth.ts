@@ -3,21 +3,13 @@ import type {
   OAuthConnectionType,
   Result,
 } from "@dust-tt/types";
-import type { OAuthProvider } from "@dust-tt/types";
+import type { OAuthProvider, OAuthUseCase } from "@dust-tt/types";
 import { Err, OAuthAPI, Ok } from "@dust-tt/types";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-
-export const OAUTH_USE_CASES = ["connection"] as const;
-
-export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
-
-export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
-  return OAUTH_USE_CASES.includes(obj as OAuthUseCase);
-}
 
 export type OAuthError = {
   code:

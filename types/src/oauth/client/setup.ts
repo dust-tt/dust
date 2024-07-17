@@ -1,19 +1,24 @@
-import type { OAuthProvider, WorkspaceType } from "@dust-tt/types";
+import { WorkspaceType } from "../../front/user";
+import {
+  isOAuthConnectionType,
+  OAuthConnectionType,
+  OAuthProvider,
+  OAuthUseCase,
+} from "../../oauth/lib";
+import { Err, Ok, Result } from "../../shared/result";
 
-import type { OAuthUseCase } from "@app/lib/api/oauth";
-
-export async function auth({
+export async function setupOAuthConnection({
+  dustClientFacingUrl,
   owner,
   provider,
   useCase,
-  dustClientFacingUrl,
 }: {
+  dustClientFacingUrl: string;
   owner: WorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-  dustClientFacingUrl: string;
-}): Promise<string> {
-  return new Promise((resolve, reject) => {
+}): Promise<Result<OAuthConnectionType, Error>> {
+  return new Promise((resolve) => {
     const oauthPopup = window.open(
       `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/redirect?useCase=${useCase}`
     );
@@ -26,7 +31,16 @@ export async function auth({
 
       if (event.data.type === "connection_finalized") {
         authComplete = true;
-        resolve(event.data.connectionId);
+        const connection = event.data.connection;
+        if (isOAuthConnectionType(connection)) {
+          resolve(new Ok(connection));
+        } else {
+          resolve(
+            new Err(
+              new Error("Invalid connection data received from auth window")
+            )
+          );
+        }
         window.removeEventListener("message", popupMessageEventListener);
         oauthPopup?.close();
       }
@@ -40,7 +54,9 @@ export async function auth({
         clearInterval(checkPopupStatus);
         setTimeout(() => {
           if (!authComplete) {
-            reject(new Error("User closed the window before auth completed"));
+            resolve(
+              new Err(new Error("User closed the window before auth completed"))
+            );
           }
         }, 100);
       }
