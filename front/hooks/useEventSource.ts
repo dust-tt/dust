@@ -56,7 +56,6 @@ const stableEventSourceManager = {
   remove(uniqueId: string) {
     const source = this.sources.get(uniqueId);
     if (source) {
-      console.log("Closing EventSource connection", uniqueId);
       source.close();
       this.sources.delete(uniqueId);
     }
@@ -100,8 +99,6 @@ export function useEventSource(
     }
 
     source.onopen = () => {
-      console.log("EventSource connection opened", uniqueId);
-
       // If connected, reset the reconnect attempts and clear the reconnect timeout.
       reconnectAttempts.current = 0;
       if (reconnectTimeoutRef.current) {
@@ -128,6 +125,15 @@ export function useEventSource(
 
       reconnectAttempts.current++;
 
+      if (reconnectAttempts.current >= 10) {
+        console.log(
+          "Too many errors, not reconnecting. Please refresh the page."
+        );
+        setIsError(new Error("Too many errors, closing connection."));
+
+        return;
+      }
+
       console.error(
         `Connection error. Attempting to reconnect in ${RECONNECT_DELAY}ms`
       );
@@ -136,8 +142,6 @@ export function useEventSource(
       reconnectTimeoutRef.current = setTimeout(() => {
         setReconnectCounter((c) => c + 1);
       }, RECONNECT_DELAY);
-
-      setIsError(new Error("Connection error. Attempting to reconnect."));
     };
 
     return source;
