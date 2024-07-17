@@ -1,5 +1,9 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { slugify, TextExtraction } from "@dust-tt/types";
+import {
+  isTextExtractionSupportedContentType,
+  slugify,
+  TextExtraction,
+} from "@dust-tt/types";
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
@@ -234,13 +238,7 @@ export async function syncOneFile(
               "Unexpected GDrive export response type"
             );
           }
-        } else if (
-          [
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          ].includes(file.mimeType)
-        ) {
+        } else if (isTextExtractionSupportedContentType(file.mimeType)) {
           if (!(res.data instanceof ArrayBuffer)) {
             localLogger.error(
               { mimeType: file.mimeType },
