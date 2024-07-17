@@ -15,7 +15,6 @@ import {
   getChannelAsContentNode,
   getDriveAsContentNode,
   getFolderAsContentNode,
-  getRootNodes,
   getSiteAsContentNode,
   getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
