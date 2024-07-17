@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 use serde::Deserialize;
 use std::{collections::HashMap, env, sync::Arc};
 use tokio::{fs, sync::OnceCell};
-use tracing::{error, info};
+use tracing::error;
 
 lazy_static! {
     static ref DISABLE_API_KEY_CHECK: bool = env::var("DISABLE_API_KEY_CHECK")
@@ -26,12 +26,10 @@ struct ApiKeyEntry {
 }
 
 async fn init_api_keys() -> Result<ApiKeyMap> {
-    let api_keys_path =
-        env::var("API_KEYS_PATH").map_err(|_| anyhow!("API_KEYS_PATH must be set"))?;
-
-    let api_keys_json = fs::read_to_string(api_keys_path)
-        .await
-        .unwrap_or("[]".to_string());
+    let api_keys_json = match env::var("API_KEYS") {
+        Ok(path) => fs::read_to_string(path).await.unwrap_or("[]".to_string()),
+        Err(_) => "[]".to_string(),
+    };
 
     let api_keys: Vec<ApiKeyEntry> = serde_json::from_str(&api_keys_json)
         .map_err(|e| anyhow!("Failed to parse API keys JSON: {}", e))?;
@@ -81,7 +79,6 @@ pub async fn validate_api_key(
     if !*DISABLE_API_KEY_CHECK {
         Err(StatusCode::UNAUTHORIZED)
     } else {
-        info!("API key not validated, but not required");
         Ok(next.run(req).await)
     }
 }
