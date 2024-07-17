@@ -21,29 +21,29 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import {
   ActionDustAppRun,
-  isActionDustAppRunValid,
+  isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
   ActionProcess,
-  isActionProcessValid,
+  hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
-  isActionRetrievalExhaustiveValid,
-  isActionRetrievalSearchValid,
+  hasErrorActionRetrievalExhaustive,
+  hasErrorActionRetrievalSearch,
 } from "@app/components/assistant_builder/actions/RetrievalAction";
 import {
   ActionTablesQuery,
-  isActionTablesQueryValid,
+  hasErrorActionTablesQuery,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import {
   ActionVisualization,
-  isActionVisualizationValid,
+  hasErrorActionVisualization,
 } from "@app/components/assistant_builder/actions/VisualizationAction";
 import {
   ActionWebNavigation,
-  isActionWebsearchValid as isActionWebNavigationValid,
+  hasErrorActionWebNavigation,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
@@ -85,24 +85,24 @@ function ActionModeSection({
   return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 
-export function isActionValid(
+export function hasActionError(
   action: AssistantBuilderActionConfiguration
-): boolean {
+): string | null {
   switch (action.type) {
     case "RETRIEVAL_SEARCH":
-      return isActionRetrievalSearchValid(action);
+      return hasErrorActionRetrievalSearch(action);
     case "RETRIEVAL_EXHAUSTIVE":
-      return isActionRetrievalExhaustiveValid(action);
+      return hasErrorActionRetrievalExhaustive(action);
     case "PROCESS":
-      return isActionProcessValid(action);
+      return hasErrorActionProcess(action);
     case "DUST_APP_RUN":
-      return isActionDustAppRunValid(action);
+      return hasErrorActionDustAppRun(action);
     case "TABLES_QUERY":
-      return isActionTablesQueryValid(action);
+      return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
-      return isActionWebNavigationValid(action);
+      return hasErrorActionWebNavigation(action);
     case "VISUALIZATION":
-      return isActionVisualizationValid(action);
+      return hasErrorActionVisualization(action);
     default:
       assertNever(action);
   }
@@ -388,6 +388,16 @@ function NewActionModal({
   const [newAction, setNewAction] =
     useState<AssistantBuilderActionConfiguration | null>(null);
 
+  const [showInvalidActionError, setShowInvalidActionError] = useState<
+    string | null
+  >(null);
+  const [showInvalidActionNameError, setShowInvalidActionNameError] = useState<
+    string | null
+  >(null);
+  const [showInvalidActionDescError, setShowInvalidActionDescError] = useState<
+    string | null
+  >(null);
+
   useEffect(() => {
     if (initialAction && !newAction) {
       setNewAction(initialAction);
@@ -406,6 +416,9 @@ function NewActionModal({
     onClose();
     setTimeout(() => {
       setNewAction(null);
+      setShowInvalidActionNameError(null);
+      setShowInvalidActionDescError(null);
+      setShowInvalidActionError(null);
     }, 500);
   };
 
@@ -416,16 +429,31 @@ function NewActionModal({
       hasChanged={true}
       variant="side-md"
       title=" "
-      onSave={
-        newAction && titleValid && descriptionValid && isActionValid(newAction)
-          ? () => {
-              newAction.name = newAction.name.trim();
-              newAction.description = newAction.description.trim();
-              onSave(newAction);
-              onCloseLocal();
-            }
-          : undefined
-      }
+      onSave={() => {
+        if (
+          newAction &&
+          titleValid &&
+          descriptionValid &&
+          !hasActionError(newAction)
+        ) {
+          newAction.name = newAction.name.trim();
+          newAction.description = newAction.description.trim();
+          onSave(newAction);
+          onCloseLocal();
+        } else {
+          if (!titleValid) {
+            setShowInvalidActionNameError(
+              "This name is already used for another tool. Please use a different name."
+            );
+          }
+          if (!descriptionValid) {
+            setShowInvalidActionDescError("Description cannot be empty.");
+          }
+          if (newAction) {
+            setShowInvalidActionError(hasActionError(newAction));
+          }
+        }
+      }}
     >
       <div className="w-full pt-8">
         <div className="flex flex-col gap-4">
@@ -436,7 +464,7 @@ function NewActionModal({
                 actionName,
                 actionDescription,
                 getNewActionConfig,
-              }) =>
+              }) => {
                 setNewAction({
                   ...newAction,
                   configuration: getNewActionConfig(
@@ -444,15 +472,19 @@ function NewActionModal({
                   ) as any,
                   description: actionDescription,
                   name: actionName,
-                })
-              }
+                });
+                setShowInvalidActionError(null);
+              }}
               owner={owner}
               setEdited={setEdited}
               dataSources={dataSources}
               dustApps={dustApps}
               builderState={builderState}
-              titleValid={titleValid}
-              descriptionValid={descriptionValid}
+              showInvalidActionNameError={showInvalidActionNameError}
+              showInvalidActionDescError={showInvalidActionDescError}
+              showInvalidActionError={showInvalidActionError}
+              setShowInvalidActionNameError={setShowInvalidActionNameError}
+              setShowInvalidActionDescError={setShowInvalidActionDescError}
             />
           )}
         </div>
@@ -531,7 +563,6 @@ function ActionConfigEditor({
   setEdited,
   description,
   onDescriptionChange,
-  isDescriptionValid,
 }: {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfiguration;
@@ -548,7 +579,6 @@ function ActionConfigEditor({
   setEdited: (edited: boolean) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
-  isDescriptionValid: boolean;
 }) {
   switch (action.type) {
     case "DUST_APP_RUN":
@@ -613,7 +643,6 @@ function ActionConfigEditor({
           setEdited={setEdited}
           description={description}
           onDescriptionChange={onDescriptionChange}
-          isDescriptionValid={isDescriptionValid}
         />
       );
     case "TABLES_QUERY":
@@ -644,8 +673,11 @@ function ActionConfigEditor({
 
 function ActionEditor({
   action,
-  titleValid,
-  descriptionValid,
+  showInvalidActionNameError,
+  showInvalidActionDescError,
+  showInvalidActionError,
+  setShowInvalidActionNameError,
+  setShowInvalidActionDescError,
   updateAction,
   owner,
   setEdited,
@@ -654,8 +686,11 @@ function ActionEditor({
   builderState,
 }: {
   action: AssistantBuilderActionConfiguration;
-  titleValid: boolean;
-  descriptionValid: boolean;
+  showInvalidActionNameError: string | null;
+  showInvalidActionDescError: string | null;
+  showInvalidActionError: string | null;
+  setShowInvalidActionNameError: (error: string | null) => void;
+  setShowInvalidActionDescError: (error: string | null) => void;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
@@ -722,12 +757,9 @@ function ActionEditor({
                           actionDescription: action.description,
                           getNewActionConfig: (old) => old,
                         });
+                        setShowInvalidActionNameError(null);
                       }}
-                      error={
-                        !titleValid
-                          ? "This name is already used for another tool. Please use a different name."
-                          : null
-                      }
+                      error={showInvalidActionNameError}
                       className="text-sm"
                     />
                   </div>
@@ -735,6 +767,13 @@ function ActionEditor({
               </DropdownMenu>
             )}
           </div>
+
+          {showInvalidActionNameError && (
+            <div className="text-sm text-warning-500">
+              {showInvalidActionNameError}
+            </div>
+          )}
+
           <ActionConfigEditor
             owner={owner}
             action={action}
@@ -750,9 +789,14 @@ function ActionEditor({
                 actionDescription: v,
                 getNewActionConfig: (old) => old,
               });
+              setShowInvalidActionDescError(null);
             }}
-            isDescriptionValid={descriptionValid}
           />
+          {showInvalidActionError && (
+            <div className="text-sm text-warning-500">
+              {showInvalidActionError}
+            </div>
+          )}
         </>
       </ActionModeSection>
       {shouldDisplayDescription && (
@@ -785,9 +829,10 @@ function ActionEditor({
                   actionDescription: v,
                   getNewActionConfig: (old) => old,
                 });
+                setShowInvalidActionDescError(null);
               }
             }}
-            error={!descriptionValid ? "Description cannot be empty." : null}
+            error={showInvalidActionDescError}
             showErrorLabel={true}
           />
         </div>

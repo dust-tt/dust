@@ -40,15 +40,15 @@ const deleteDataSource = ({
   });
 };
 
-export function isActionRetrievalSearchValid(
+export function hasErrorActionRetrievalSearch(
   action: AssistantBuilderActionConfiguration
-) {
-  return (
-    Object.keys(
-      action.type === "RETRIEVAL_SEARCH" &&
-        action.configuration.dataSourceConfigurations
-    ).length > 0
-  );
+): string | null {
+  return Object.keys(
+    action.type === "RETRIEVAL_SEARCH" &&
+      action.configuration.dataSourceConfigurations
+  ).length > 0
+    ? null
+    : "Please select at least one data source.";
 }
 
 export function ActionRetrievalSearch({
@@ -114,14 +114,14 @@ export function ActionRetrievalSearch({
   );
 }
 
-export function isActionRetrievalExhaustiveValid(
+export function hasErrorActionRetrievalExhaustive(
   action: AssistantBuilderActionConfiguration
-) {
-  return (
-    action.type === "RETRIEVAL_EXHAUSTIVE" &&
+): string | null {
+  return action.type === "RETRIEVAL_EXHAUSTIVE" &&
     Object.keys(action.configuration.dataSourceConfigurations).length > 0 &&
     !!action.configuration.timeFrame.value
-  );
+    ? null
+    : "Please select at least one data source and set a timeframe";
 }
 
 export function ActionRetrievalExhaustive({

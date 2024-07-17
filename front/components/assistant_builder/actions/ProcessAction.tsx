@@ -32,48 +32,50 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { classNames } from "@app/lib/utils";
 
-export function isActionProcessValid(
+export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration
-) {
+): string | null {
+  const errorMessage =
+    "You must select at least one data source and generate a schema will all fields set.";
   if (action.type !== "PROCESS") {
-    return false;
+    return "Invalid action type.";
   }
   if (action.configuration.schema.length === 0) {
-    return false;
+    return errorMessage;
   }
   for (const prop of action.configuration.schema) {
     if (!prop.name) {
-      return false;
+      return errorMessage;
     }
     if (!prop.description) {
-      return false;
+      return errorMessage;
     }
     if (
       action.configuration.schema.filter((p) => p.name === prop.name).length > 1
     ) {
-      return false;
+      return errorMessage;
     }
   }
   if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
-    return false;
+    return errorMessage;
   }
   if (!action.configuration.timeFrame.value) {
-    return false;
+    return errorMessage;
   }
   if (
     action.configuration.tagsFilter &&
     action.configuration.tagsFilter.in.some((tag) => tag === "")
   ) {
-    return false;
+    return errorMessage;
   }
   if (
     action.configuration.tagsFilter &&
     action.configuration.tagsFilter.in.length !==
       new Set(action.configuration.tagsFilter.in).size
   ) {
-    return false;
+    return errorMessage;
   }
-  return true;
+  return null;
 }
 
 function PropertiesFields({
@@ -265,7 +267,6 @@ export function ActionProcess({
   dataSources,
   description,
   onDescriptionChange,
-  isDescriptionValid,
 }: {
   owner: WorkspaceType;
   instructions: string | null;
@@ -281,12 +282,10 @@ export function ActionProcess({
   | {
       description: string;
       onDescriptionChange: (description: string) => void;
-      isDescriptionValid: boolean;
     }
   | {
       description?: undefined;
       onDescriptionChange?: undefined;
-      isDescriptionValid?: undefined;
     }
 )) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -541,7 +540,6 @@ export function ActionProcess({
             placeholder={"Extract the list of…"}
             value={description}
             onChange={onDescriptionChange}
-            error={!isDescriptionValid ? "Description cannot be empty" : null}
           />
         </div>
       )}

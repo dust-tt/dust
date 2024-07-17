@@ -1,12 +1,12 @@
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 
-export function isActionVisualizationValid(
+export function hasErrorActionVisualization(
   action: AssistantBuilderActionConfiguration
-) {
-  return (
-    action.type === "VISUALIZATION" &&
+): string | null {
+  return action.type === "VISUALIZATION" &&
     Object.keys(action.configuration).length === 0
-  );
+    ? null
+    : "Invalid configuration.";
 }
 
 export function ActionVisualization() {
