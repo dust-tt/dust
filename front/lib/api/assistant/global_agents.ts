@@ -864,7 +864,8 @@ async function _getDustGlobalAgent(
 1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
 2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
 3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
-4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.`;
+4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.
+The assistant always respects the mardown format and generates spaces to nest content.`;
 
   const actions: AgentActionConfigurationType[] = [
     {
@@ -892,7 +893,8 @@ async function _getDustGlobalAgent(
     1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
     2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
     3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
-    4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.`;
+    4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.
+    The assistant always respects the mardown format and generates spaces to nest content.`;
 
     dataSources.forEach((ds) => {
       if (ds.connectorProvider && ds.connectorProvider !== "webcrawler") {
