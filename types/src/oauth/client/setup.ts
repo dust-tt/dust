@@ -20,7 +20,7 @@ export async function setupOAuthConnection({
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
     const oauthPopup = window.open(
-      `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/redirect?useCase=${useCase}`
+      `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`
     );
     let authComplete = false;
 
@@ -32,6 +32,7 @@ export async function setupOAuthConnection({
       if (event.data.type === "connection_finalized") {
         authComplete = true;
         const connection = event.data.connection;
+        console.log("Received connection", connection);
         if (isOAuthConnectionType(connection)) {
           resolve(new Ok(connection));
         } else {

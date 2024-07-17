@@ -21,7 +21,11 @@ import type {
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
-import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
+import {
+  connectorIsUsingNango,
+  ConnectorsAPI,
+  setupOAuthConnection,
+} from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -97,6 +101,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     microsoftConnectorId: string;
   };
   githubAppUrl: string;
+  dustClientFacingUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -251,6 +256,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
+      dustClientFacingUrl: config.getClientFacingUrl(),
     },
   };
 });
@@ -391,6 +397,7 @@ export default function DataSourcesView({
   gaTrackingId,
   nangoConfig,
   githubAppUrl,
+  dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -440,8 +447,22 @@ export default function DataSourcesView({
           throw err;
         }
       } else if (provider === "github") {
-        const installationId = await githubAuth(githubAppUrl);
-        connectionId = installationId;
+        const cRes = await setupOAuthConnection({
+          dustClientFacingUrl,
+          owner,
+          provider,
+          useCase: "connection",
+        });
+        if (!cRes.isOk()) {
+          console.log(
+            `Failed to setup oAuth connection for ${provider}: ${cRes.error}`
+          );
+          throw cRes.error;
+        }
+
+        connectionId = cRes.value.connection_id;
+        // const installationId = await githubAuth(githubAppUrl);
+        // connectionId = installationId;
       } else {
         throw new Error(`Unknown provider ${provider}`);
       }

@@ -85,7 +85,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       });
     }
 
-    // TOOD(spolu): GITHUB_MIGRATION we will have to retrieve installationId from connector state
+    // TODO(spolu): GITHUB_MIGRATION we will have to retrieve installationId from connector state
     // for existing and pull from oauth scrubbed_raw_json to get the new installationId.
     if (connectionId) {
       const oldGithubInstallationId = c.connectionId;
