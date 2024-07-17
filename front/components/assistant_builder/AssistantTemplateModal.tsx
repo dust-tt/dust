@@ -54,7 +54,7 @@ export function AssistantTemplateModal({
       <Page variant="modal">
         <div className="flex flex-col gap-5 pb-6">
           <div className="flex max-h-32 max-w-lg flex-row gap-3">
-            <Avatar size="lg" isRounded visual={pictureUrl} />
+            <Avatar size="lg" visual={pictureUrl} />
             <div className="flex flex-col gap-1">
               <span className="text-bold text-lg font-medium text-element-900">
                 @{handle}

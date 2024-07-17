@@ -187,7 +187,6 @@ export default function EditDustAssistant({
                   <Avatar
                     visual="https://dust.tt/static/systemavatar/dust_avatar_full.png"
                     size="xs"
-                    isRounded={false}
                   />
                 }
                 action={
