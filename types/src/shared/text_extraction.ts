@@ -73,7 +73,7 @@ export class TextExtraction {
       });
 
       if (!response.ok) {
-        return new Err(new Error(`HTTP error! status: ${response.status}`));
+        return new Err(new Error(`HTTP error status: ${response.status}`));
       }
 
       const data = await response.json();
