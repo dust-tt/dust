@@ -35,6 +35,9 @@ spec:
                 name: front-edge-config
             - secretRef:
                 name: front-secrets
+            - secretRef:
+                name: front-edge-secrets
+
           env:
             # we override --max-old-space-size for edge as pods
             # don't have the same memory limits as the regular front pods

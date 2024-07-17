@@ -27,6 +27,9 @@ spec:
                 name: front-worker-config
             - secretRef:
                 name: front-secrets
+            - secretRef:
+                name: front-worker-secrets
+
           env:
             - name: DD_AGENT_HOST
               valueFrom:
