@@ -16,10 +16,8 @@ import turndown from "turndown";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
-  getDriveAPIPathFromItem,
+  getDriveInternalIdFromItem,
   getDriveItemInternalId,
-  getDriveItemAPIPathFromReference,
-  getDeltaResults,
   getDrives,
   getFilesAndFolders,
   getItem,
@@ -38,6 +36,7 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
+  deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
@@ -59,6 +58,7 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { heartbeat } from "@temporalio/activity";
 import { drive } from "googleapis/build/src/apis/drive";
+import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -188,12 +188,7 @@ async function isParentAlreadyInNodes({
   // check if the list already contains the drive of this folder
   if (
     nodes.some(
-      (node) =>
-        node.internalId ===
-        internalIdFromTypeAndPath({
-          nodeType: "drive",
-          itemAPIPath: getDriveAPIPathFromItem(driveItem),
-        })
+      (node) => node.internalId === getDriveInternalIdFromItem(driveItem)
     )
   ) {
     return true;
@@ -205,14 +200,12 @@ async function isParentAlreadyInNodes({
       return false;
     }
 
-    const parentAPIPath = getDriveItemAPIPathFromReference(
+    const parentInternalId = getParentReferenceInternalId(
       driveItem.parentReference
     );
 
-    const parentInternalId = internalIdFromTypeAndPath({
-      nodeType: "folder",
-      itemAPIPath: parentAPIPath,
-    });
+    const { itemAPIPath: parentAPIPath } =
+      typeAndPathFromInternalId(parentInternalId);
 
     if (nodes.some((node) => node.internalId === parentInternalId)) {
       return true;
@@ -719,8 +712,11 @@ export async function syncDeltaForNode({
       throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
     }
 
+    const internalId = getDriveItemInternalId(driveItem);
+
     if (driveItem.file) {
       if (driveItem.deleted) {
+        await deleteFile({ connectorId, internalId });
       } else {
         await syncOneFile({
           connectorId,
@@ -734,7 +730,14 @@ export async function syncDeltaForNode({
         });
       }
     } else if (driveItem.folder) {
-      // TODO
+      if (driveItem.deleted) {
+        await deleteFolder({ connectorId, internalId });
+      } else {
+        await MicrosoftNodeResource.updateOrCreate(
+          connectorId,
+          itemToMicrosoftNode("folder", driveItem)
+        );
+      }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
     }
@@ -935,4 +938,34 @@ async function handleTextExtraction(
         })),
       }
     : null;
+}
+
+async function deleteFile({
+  connectorId,
+  dataSourceConfig,
+  internalId,
+}: {
+  connectorId: number;
+  dataSourceConfig: DataSourceConfig;
+  internalId: string;
+}) {
+  logger.info(
+    {
+      internalId,
+      connectorId,
+    },
+    `Deleting Microsoft file.`
+  );
+
+  const file = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    internalId
+  );
+
+  if (isMicrosoftSpreadsheet(file)) {
+    return await deleteSpreadsheet({});
+  } else {
+    await deleteFromDataSource(dataSourceConfig, internalId);
+    return await file?.delete();
+  }
 }

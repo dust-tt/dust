@@ -6,7 +6,7 @@ import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
   getDriveItemInternalId,
-  getWorksheetAPIPath,
+  getWorksheetInternalId,
   getWorksheetContent,
   getWorksheets,
   internalIdFromTypeAndPath,
@@ -206,10 +206,7 @@ export async function syncSpreadSheet({
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheets) {
     if (worksheet.id) {
-      const internalWorkSheetId = internalIdFromTypeAndPath({
-        nodeType: "worksheet",
-        itemAPIPath: getWorksheetAPIPath(worksheet, documentId),
-      });
+      const internalWorkSheetId = getWorksheetInternalId(worksheet, documentId);
       const isImported = await processSheet(
         client,
         connector,

@@ -350,6 +350,21 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new Ok(undefined);
   }
 
+  static async updateOrCreate(
+    connectorId: ModelId,
+    node: MicrosoftNode
+  ): Promise<MicrosoftNodeResource> {
+    const res = await this.batchUpdateOrCreate(connectorId, [node]);
+
+    if (res.length !== 1 || !res[0]) {
+      throw new Error(
+        "Unreachable: batchUpdateOrCreate returned 0 or more than 1 resources"
+      );
+    }
+
+    return res[0];
+  }
+
   static async batchUpdateOrCreate(
     connectorId: ModelId,
     nodes: MicrosoftNode[]

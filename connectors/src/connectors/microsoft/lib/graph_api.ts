@@ -342,7 +342,9 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         nodeType,
         name: item.name ?? null,
         internalId: getDriveItemInternalId(item),
-        parentInternalId: null,
+        parentInternalId: item.parentReference
+          ? getParentReferenceInternalId(item.parentReference)
+          : null,
         mimeType: null,
       };
     }
@@ -352,7 +354,9 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         nodeType,
         name: item.name ?? null,
         internalId: getDriveItemInternalId(item),
-        parentInternalId: null,
+        parentInternalId: item.parentReference
+          ? getParentReferenceInternalId(item.parentReference)
+          : null,
         mimeType: item.file?.mimeType ?? null,
       };
     }
@@ -361,10 +365,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalIdFromTypeAndPath({
-          nodeType,
-          itemAPIPath: getDriveAPIPath(item),
-        }),
+        internalId: getDriveInternalId(item),
         parentInternalId: null,
         mimeType: null,
       };
@@ -477,7 +478,7 @@ export function getParentReferenceInternalId(
   });
 }
 
-export function getWorksheetAPIPath(
+export function getWorksheetInternalId(
   item: MicrosoftGraph.WorkbookWorksheet,
   parentInternalId: string
 ) {
@@ -488,29 +489,28 @@ export function getWorksheetAPIPath(
     throw new Error(`Invalid parent nodeType: ${nodeType}`);
   }
 
-  return `${parentItemApiPath}/workbook/worksheets/${item.id}`;
+  return internalIdFromTypeAndPath({
+    itemAPIPath: `${parentItemApiPath}/workbook/worksheets/${item.id}`,
+    nodeType: "worksheet",
+  });
 }
 
-export function getDriveAPIPath(drive: MicrosoftGraph.Drive) {
-  return `/drives/${drive.id}`;
+export function getDriveInternalId(drive: MicrosoftGraph.Drive) {
+  return internalIdFromTypeAndPath({
+    nodeType: "drive",
+    itemAPIPath: `/drives/${drive.id}`,
+  });
 }
 
-export function getDriveAPIPathFromItem(item: MicrosoftGraph.DriveItem) {
+export function getDriveInternalIdFromItem(item: MicrosoftGraph.DriveItem) {
   if (!item.parentReference?.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
 
-  return `/drives/${item.parentReference.driveId}`;
-}
-
-export function getDriveItemAPIPathFromReference(
-  parentReference: MicrosoftGraph.ItemReference
-) {
-  if (!parentReference.driveId) {
-    throw new Error("Unexpected: no drive id for item");
-  }
-
-  return `/drives/${parentReference.driveId}/items/${parentReference.id}`;
+  return internalIdFromTypeAndPath({
+    nodeType: "drive",
+    itemAPIPath: `/drives/${item.parentReference.driveId}`,
+  });
 }
 
 export function getSiteAPIPath(site: MicrosoftGraph.Site) {

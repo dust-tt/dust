@@ -1,7 +1,7 @@
 import type { ContentNode } from "@dust-tt/types";
 
 import {
-  getDriveAPIPath,
+  getDriveInternalId,
   getDriveItemInternalId,
   getSiteAPIPath,
   internalIdFromTypeAndPath,
@@ -127,10 +127,7 @@ export function getDriveAsContentNode(
   }
   return {
     provider: "microsoft",
-    internalId: internalIdFromTypeAndPath({
-      itemAPIPath: getDriveAPIPath(drive),
-      nodeType: "drive",
-    }),
+    internalId: getDriveInternalId(drive),
     parentInternalId,
     type: "folder",
     title: drive.name || "unnamed",
