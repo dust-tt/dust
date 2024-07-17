@@ -265,7 +265,7 @@ export function ActionProcess({
   dataSources,
   description,
   onDescriptionChange,
-  isDescriptionValid,
+  showEmptyDescriptionError,
 }: {
   owner: WorkspaceType;
   instructions: string | null;
@@ -281,12 +281,12 @@ export function ActionProcess({
   | {
       description: string;
       onDescriptionChange: (description: string) => void;
-      isDescriptionValid: boolean;
+      showEmptyDescriptionError: boolean;
     }
   | {
       description?: undefined;
       onDescriptionChange?: undefined;
-      isDescriptionValid?: undefined;
+      showEmptyDescriptionError?: undefined;
     }
 )) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -541,7 +541,9 @@ export function ActionProcess({
             placeholder={"Extract the list of…"}
             value={description}
             onChange={onDescriptionChange}
-            error={!isDescriptionValid ? "Description cannot be empty" : null}
+            error={
+              showEmptyDescriptionError ? "Description cannot be empty." : null
+            }
           />
         </div>
       )}

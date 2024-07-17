@@ -388,6 +388,9 @@ function NewActionModal({
   const [newAction, setNewAction] =
     useState<AssistantBuilderActionConfiguration | null>(null);
 
+  const [showEmptyDescriptionError, setShowEmptyDescriptionError] =
+    useState(false);
+
   useEffect(() => {
     if (initialAction && !newAction) {
       setNewAction(initialAction);
@@ -406,6 +409,7 @@ function NewActionModal({
     onClose();
     setTimeout(() => {
       setNewAction(null);
+      setShowEmptyDescriptionError(false);
     }, 500);
   };
 
@@ -424,7 +428,9 @@ function NewActionModal({
               onSave(newAction);
               onCloseLocal();
             }
-          : undefined
+          : () => {
+              setShowEmptyDescriptionError(!descriptionValid);
+            }
       }
     >
       <div className="w-full pt-8">
@@ -452,7 +458,7 @@ function NewActionModal({
               dustApps={dustApps}
               builderState={builderState}
               titleValid={titleValid}
-              descriptionValid={descriptionValid}
+              showEmptyDescriptionError={showEmptyDescriptionError}
             />
           )}
         </div>
@@ -531,7 +537,7 @@ function ActionConfigEditor({
   setEdited,
   description,
   onDescriptionChange,
-  isDescriptionValid,
+  showEmptyDescriptionError,
 }: {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfiguration;
@@ -548,7 +554,7 @@ function ActionConfigEditor({
   setEdited: (edited: boolean) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
-  isDescriptionValid: boolean;
+  showEmptyDescriptionError: boolean;
 }) {
   switch (action.type) {
     case "DUST_APP_RUN":
@@ -613,7 +619,7 @@ function ActionConfigEditor({
           setEdited={setEdited}
           description={description}
           onDescriptionChange={onDescriptionChange}
-          isDescriptionValid={isDescriptionValid}
+          showEmptyDescriptionError={showEmptyDescriptionError}
         />
       );
     case "TABLES_QUERY":
@@ -645,7 +651,7 @@ function ActionConfigEditor({
 function ActionEditor({
   action,
   titleValid,
-  descriptionValid,
+  showEmptyDescriptionError,
   updateAction,
   owner,
   setEdited,
@@ -655,7 +661,7 @@ function ActionEditor({
 }: {
   action: AssistantBuilderActionConfiguration;
   titleValid: boolean;
-  descriptionValid: boolean;
+  showEmptyDescriptionError: boolean;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
@@ -751,7 +757,7 @@ function ActionEditor({
                 getNewActionConfig: (old) => old,
               });
             }}
-            isDescriptionValid={descriptionValid}
+            showEmptyDescriptionError={showEmptyDescriptionError}
           />
         </>
       </ActionModeSection>
@@ -787,7 +793,9 @@ function ActionEditor({
                 });
               }
             }}
-            error={!descriptionValid ? "Description cannot be empty." : null}
+            error={
+              showEmptyDescriptionError ? "Description cannot be empty." : null
+            }
             showErrorLabel={true}
           />
         </div>
