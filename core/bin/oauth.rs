@@ -1,11 +1,13 @@
 use anyhow::anyhow;
 use axum::{
     extract::{Path, State},
+    middleware::from_fn,
     response::Json,
     routing::{get, post},
     Router,
 };
 use dust::{
+    api_keys::validate_api_key,
     oauth::{
         connection::{self, Connection, ConnectionProvider, MigratedCredentials},
         store,
@@ -245,6 +247,7 @@ fn main() {
                     .make_span_with(CoreRequestMakeSpan::new())
                     .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
             )
+            .layer(from_fn(validate_api_key))
             .with_state(state.clone());
 
         let health_check_router = Router::new().route("/", get(index));

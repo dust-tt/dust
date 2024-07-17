@@ -9,3 +9,4 @@ qdrant_storage
 .*.swp
 .rgignore
 core-api-keys.json
+oauth-api-keys.json
