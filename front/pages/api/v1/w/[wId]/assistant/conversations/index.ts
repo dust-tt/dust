@@ -59,7 +59,7 @@ export type PostConversationsResponseBody = {
  *               blocking:
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
- *                 default: false
+ *                 default: true
  *                 example: true
  *               title:
  *                 type: string
@@ -72,8 +72,8 @@ export type PostConversationsResponseBody = {
  *                 enum:
  *                   - workspace
  *                   - unlisted
- *                 default: public
- *                 example: private
+ *                 default: unlisted
+ *                 example: unlisted
  *     responses:
  *       200:
  *         description: Conversation created successfully.
