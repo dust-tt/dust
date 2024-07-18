@@ -718,7 +718,7 @@ export async function syncDeltaForNode({
 
   if (!node.deltaLink) {
     throw new Error(
-      `Delta link not found for root node resource ${node.toJSON()}`
+      `Delta link not found for root node resource ${JSON.stringify(node.toJSON())}`
     );
   }
 

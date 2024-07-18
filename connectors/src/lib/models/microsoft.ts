@@ -197,17 +197,17 @@ MicrosoftNodeModel.init(
     sequelize: sequelizeConnection,
     modelName: "microsoft_nodes",
     indexes: [
-      { fields: ["connectorId", "internalId"], unique: true },
+      { fields: ["internalId", "connectorId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
-      { fields: ["connectorId", "parentInternalId"], concurrently: true },
+      { fields: ["parentInternalId", "connectorId"], concurrently: true },
     ],
   }
 );
 ConnectorModel.hasMany(MicrosoftNodeModel);
 
-// Delta token are used for creating a diff from the last calls.
+// Delta links are used for creating a diff from the last calls.
 // On every delta call, we store the new delta token to be used in the next call
-// For each configured root node, we store a delta token.
+// For each configured root node, we store a delta link.
 export class MicrosoftDeltaModel extends Model<
   InferAttributes<MicrosoftDeltaModel>,
   InferCreationAttributes<MicrosoftDeltaModel>
@@ -215,7 +215,7 @@ export class MicrosoftDeltaModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare nodeId: ForeignKey<MicrosoftNodeModel["internalId"]>;
+  declare nodeId: ForeignKey<MicrosoftNodeModel["id"]>;
   declare deltaLink: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -241,7 +241,7 @@ MicrosoftDeltaModel.init(
       allowNull: false,
     },
     nodeId: {
-      type: DataTypes.STRING,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     deltaLink: {
@@ -256,7 +256,13 @@ MicrosoftDeltaModel.init(
   }
 );
 ConnectorModel.hasMany(MicrosoftDeltaModel);
-MicrosoftNodeModel.belongsTo(MicrosoftDeltaModel, {
+
+MicrosoftDeltaModel.belongsTo(MicrosoftNodeModel, {
+  foreignKey: "nodeId",
+  as: "node",
+});
+
+MicrosoftNodeModel.hasOne(MicrosoftDeltaModel, {
   foreignKey: "nodeId",
   as: "delta",
 });
