@@ -21,6 +21,7 @@ import {
   getDriveInternalIdFromItem,
   getDriveItemInternalId,
   getDrives,
+  getFileDownloadURL,
   getFilesAndFolders,
   getFullDeltaResults,
   getItem,
@@ -444,16 +445,14 @@ export async function syncOneFile({
   const url =
     "@microsoft.graph.downloadUrl" in file
       ? file["@microsoft.graph.downloadUrl"]
-      : null;
+      : await getFileDownloadURL(
+          await getClient(connector.connectionId),
+          documentId
+        );
 
   if (!url) {
     localLogger.error("Unexpected missing download URL");
     throw new Error("Unexpected missing download URL");
-  }
-
-  if (!url) {
-    localLogger.info("No download URL found");
-    return false;
   }
 
   // If the file is too big to be downloaded, we skip it.

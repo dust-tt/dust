@@ -314,6 +314,18 @@ export async function getItem(client: Client, itemApiPath: string) {
   return client.api(itemApiPath).get();
 }
 
+export async function getFileDownloadURL(client: Client, internalId: string) {
+  const { nodeType, itemAPIPath } = typeAndPathFromInternalId(internalId);
+
+  if (nodeType !== "file") {
+    throw new Error(`Invalid node type: ${nodeType} for getFileDownloadURL`);
+  }
+
+  const res = await client.api(`${itemAPIPath}`).get();
+
+  return res["@microsoft.graph.downloadUrl"];
+}
+
 type MicrosoftEntity = {
   folder: MicrosoftGraph.DriveItem;
   drive: MicrosoftGraph.Drive;
