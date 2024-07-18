@@ -771,8 +771,10 @@ async function _getDustGlobalAgent(
   auth: Authenticator,
   {
     settings,
+    dataSources,
   }: {
     settings: GlobalAgentSettings | null;
+    dataSources: DataSourceType[];
   }
 ): Promise<AgentConfigurationType | null> {
   const owner = auth.workspace();
@@ -827,16 +829,8 @@ async function _getDustGlobalAgent(
   }
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
 
-  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-  if (dsRes.isErr()) {
-    return null;
-  }
-
-  const dataSources = dsRes.value.filter(
-    (d) => d.assistantDefaultSelected === true
-  );
+  dataSources = dataSources.filter((d) => d.assistantDefaultSelected === true);
 
   if (dataSources.length === 0) {
     return {
@@ -1071,7 +1065,10 @@ export async function getGlobalAgent(
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
-      agentConfiguration = await _getDustGlobalAgent(auth, { settings });
+      agentConfiguration = await _getDustGlobalAgent(auth, {
+        settings,
+        dataSources: preFetchedDataSources,
+      });
       break;
     default:
       return null;
