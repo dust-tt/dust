@@ -58,3 +58,7 @@ spec:
         - name: api-keys-volume
           secret:
             secretName: oauth-api-keys-secret
+
+        - name: private-key-volume
+          secret:
+            secretName: github-app-private-key
