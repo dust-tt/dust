@@ -256,4 +256,7 @@ MicrosoftDeltaModel.init(
   }
 );
 ConnectorModel.hasMany(MicrosoftDeltaModel);
-MicrosoftNodeModel.hasOne(MicrosoftDeltaModel);
+MicrosoftNodeModel.belongsTo(MicrosoftDeltaModel, {
+  foreignKey: "nodeId",
+  as: "delta",
+});
