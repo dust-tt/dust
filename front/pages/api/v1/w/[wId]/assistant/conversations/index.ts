@@ -58,7 +58,7 @@ export type PostConversationsResponseBody = {
  *                 $ref: '#/components/schemas/ContentFragment'
  *               blocking:
  *                 type: boolean
- *                 description: Whether to wait for the agent to generate the initial message
+ *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
  *                 default: false
  *                 example: true
  *               title:
@@ -68,10 +68,9 @@ export type PostConversationsResponseBody = {
  *                 example: My conversation
  *               visibility:
  *                 type: string
- *                 description: The visibility of the conversation
+ *                 description: The visibility of the conversation (The API only accepts `unlisted`)
  *                 enum:
- *                   - public
- *                   - private
+ *                   - workspace
  *                   - unlisted
  *                 default: public
  *                 example: private
