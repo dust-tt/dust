@@ -211,6 +211,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return {
       id: this.id.toString(),
       type: this.type,
+      connectionId: this.connectionId,
       workspaceId: this.workspaceId,
       dataSourceName: this.dataSourceName,
       lastSyncStatus: this.lastSyncStatus,

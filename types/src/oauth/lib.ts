@@ -25,9 +25,9 @@ export function isOAuthProvider(obj: unknown): obj is OAuthProvider {
 export type OAuthConnectionType = {
   connection_id: string;
   created: number;
+  metdata: Record<string, unknown>;
   provider: OAuthProvider;
   status: "pending" | "finalized";
-  secret: string;
 };
 
 export function isOAuthConnectionType(
@@ -38,7 +38,6 @@ export function isOAuthConnectionType(
     typeof connection.connection_id === "string" &&
     typeof connection.created === "number" &&
     isOAuthProvider(connection.provider) &&
-    (connection.status === "pending" || connection.status === "finalized") &&
-    typeof connection.secret === "string"
+    (connection.status === "pending" || connection.status === "finalized")
   );
 }

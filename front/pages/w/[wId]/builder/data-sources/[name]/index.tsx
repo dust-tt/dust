@@ -29,8 +29,7 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
-import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
-import Nango from "@nangohq/frontend";
+import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -48,15 +47,15 @@ import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { tableKey } from "@app/lib/client/tables_query";
-import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig, useDocuments, useTables } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+
+import { setupConnection } from "../managed";
 
 const {
   GA_TRACKING_ID = "",
@@ -90,6 +89,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     microsoftConnectorId: string;
   };
   githubAppUrl: string;
+  dustClientFacingUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -155,6 +155,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
+      dustClientFacingUrl: config.getClientFacingUrl(),
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -1027,6 +1028,7 @@ function ManagedDataSourceView({
   connector,
   nangoConfig,
   githubAppUrl,
+  dustClientFacingUrl,
   plan,
 }: {
   owner: WorkspaceType;
@@ -1045,6 +1047,7 @@ function ManagedDataSourceView({
     microsoftConnectorId: string;
   };
   githubAppUrl: string;
+  dustClientFacingUrl: string;
   plan: PlanType;
 }) {
   const router = useRouter();
@@ -1076,71 +1079,6 @@ function ManagedDataSourceView({
         .catch(console.error);
     }
   }, [dataSource.name, owner.sId, router]);
-
-  const handleUpdatePermissions = async () => {
-    if (!connector) {
-      console.error("No connector");
-      return;
-    }
-    const provider = connector.type;
-
-    if (connectorIsUsingNango(provider)) {
-      const nangoConnectorId = {
-        confluence: nangoConfig.confluenceConnectorId,
-        google_drive: nangoConfig.googleDriveConnectorId,
-        intercom: nangoConfig.intercomConnectorId,
-        notion: nangoConfig.notionConnectorId,
-        slack: nangoConfig.slackConnectorId,
-        microsoft: nangoConfig.microsoftConnectorId,
-      }[provider];
-
-      const nango = new Nango({ publicKey: nangoConfig.publicKey });
-
-      const newConnectionId = buildConnectionId(owner.sId, provider);
-      try {
-        await nango.auth(nangoConnectorId, newConnectionId);
-      } catch (err) {
-        console.error(`Failed to enable connection for ${provider}`, err);
-        throw err;
-      }
-
-      const updateRes = await updateConnectorConnectionId(
-        newConnectionId,
-        provider
-      );
-      if (updateRes.error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update the permissions of the Data Source",
-          description: updateRes.error,
-        });
-      }
-    } else if (provider === "github") {
-      const installationId = await githubAuth(githubAppUrl).catch((e) => {
-        console.error(e);
-      });
-
-      if (!installationId) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update the Github permissions",
-          description: "Please contact-us at team@dust.tt",
-        });
-      } else {
-        const updateRes = await updateConnectorConnectionId(
-          installationId,
-          provider
-        );
-        if (updateRes.error) {
-          sendNotification({
-            type: "error",
-            title: "Failed to update the permissions of the Data Source",
-            description: updateRes.error,
-          });
-        }
-      }
-    }
-  };
 
   const updateConnectorConnectionId = async (
     newConnectionId: string,
@@ -1176,6 +1114,42 @@ function ManagedDataSourceView({
       success: false,
       error: `Failed to update the permissions of the Data Source: (contact team@dust.tt for assistance)`,
     };
+  };
+
+  const handleUpdatePermissions = async () => {
+    if (!connector) {
+      console.error("No connector");
+      return;
+    }
+    const provider = connector.type;
+
+    const connectionIdRes = await setupConnection({
+      dustClientFacingUrl,
+      nangoConfig,
+      githubAppUrl,
+      owner,
+      provider,
+    });
+    if (connectionIdRes.isErr()) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: connectionIdRes.error.message,
+      });
+      return;
+    }
+
+    const updateRes = await updateConnectorConnectionId(
+      connectionIdRes.value,
+      provider
+    );
+    if (updateRes.error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: updateRes.error,
+      });
+    }
   };
 
   const {
@@ -1406,6 +1380,7 @@ export default function DataSourceView({
   standardView,
   nangoConfig,
   githubAppUrl,
+  dustClientFacingUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -1454,6 +1429,7 @@ export default function DataSourceView({
             connector,
             nangoConfig,
             githubAppUrl,
+            dustClientFacingUrl,
             plan,
           }}
         />

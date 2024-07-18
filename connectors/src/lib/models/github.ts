@@ -57,7 +57,10 @@ GithubConnectorState.init(
   {
     sequelize: sequelizeConnection,
     modelName: "github_connector_states",
-    indexes: [{ fields: ["connectorId"], unique: true }],
+    indexes: [
+      { fields: ["connectorId"], unique: true },
+      { fields: ["installationId"] },
+    ],
   }
 );
 ConnectorModel.hasOne(GithubConnectorState);

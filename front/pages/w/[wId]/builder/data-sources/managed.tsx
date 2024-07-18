@@ -16,12 +16,20 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
+  Result,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
-import { connectorIsUsingNango, ConnectorsAPI } from "@dust-tt/types";
+import {
+  connectorIsUsingNango,
+  ConnectorsAPI,
+  Err,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
+} from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -79,6 +87,89 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "intercom",
 ];
 
+export async function setupConnection({
+  dustClientFacingUrl,
+  nangoConfig,
+  githubAppUrl,
+  owner,
+  provider,
+}: {
+  dustClientFacingUrl: string;
+  nangoConfig: {
+    publicKey: string;
+    confluenceConnectorId: string;
+    slackConnectorId: string;
+    notionConnectorId: string;
+    googleDriveConnectorId: string;
+    intercomConnectorId: string;
+    microsoftConnectorId: string;
+  };
+  githubAppUrl: string;
+  owner: WorkspaceType;
+  provider: ConnectorProvider;
+}): Promise<Result<string, Error>> {
+  let connectionId: string;
+
+  if (
+    isOAuthProvider(provider) &&
+    // Behind flag oauth-ready providers
+    owner.flags.includes("test_oauth_setup") &&
+    ["github"].includes(provider)
+  ) {
+    // OAuth flow
+    const cRes = await setupOAuthConnection({
+      dustClientFacingUrl,
+      owner,
+      provider,
+      useCase: "connection",
+    });
+    if (!cRes.isOk()) {
+      return cRes;
+    }
+    connectionId = cRes.value.connection_id;
+  } else if (connectorIsUsingNango(provider)) {
+    // Nango flow
+    const nangoConnectorId = {
+      confluence: nangoConfig.confluenceConnectorId,
+      slack: nangoConfig.slackConnectorId,
+      notion: nangoConfig.notionConnectorId,
+      google_drive: nangoConfig.googleDriveConnectorId,
+      intercom: nangoConfig.intercomConnectorId,
+      microsoft: nangoConfig.microsoftConnectorId,
+    }[provider];
+    const nango = new Nango({ publicKey: nangoConfig.publicKey });
+    const newConnectionId = buildConnectionId(owner.sId, provider);
+
+    try {
+      const {
+        connectionId: nangoConnectionId,
+      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+        nangoConnectorId,
+        newConnectionId
+      );
+      connectionId = nangoConnectionId;
+    } catch (err) {
+      return new Err(
+        new Error(`Failed to enable connection for ${provider}: ${err}`)
+      );
+    }
+  } else if (provider === "github") {
+    // Github legacy flow
+    try {
+      const installationId = await githubAuth(githubAppUrl);
+      connectionId = installationId;
+    } catch (err) {
+      return new Err(
+        new Error(`Failed to enable connection for ${provider}: ${err}`)
+      );
+    }
+  } else {
+    return new Err(new Error(`Unknown provider ${provider}`));
+  }
+
+  return new Ok(connectionId);
+}
+
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -97,6 +188,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     microsoftConnectorId: string;
   };
   githubAppUrl: string;
+  dustClientFacingUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -251,6 +343,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
+      dustClientFacingUrl: config.getClientFacingUrl(),
     },
   };
 });
@@ -391,6 +484,7 @@ export default function DataSourcesView({
   gaTrackingId,
   nangoConfig,
   githubAppUrl,
+  dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -415,35 +509,15 @@ export default function DataSourcesView({
     suffix: string | null
   ) => {
     try {
-      let connectionId: string;
-      if (connectorIsUsingNango(provider)) {
-        // nango-based connectors
-        const nangoConnectorId = {
-          confluence: nangoConfig.confluenceConnectorId,
-          slack: nangoConfig.slackConnectorId,
-          notion: nangoConfig.notionConnectorId,
-          google_drive: nangoConfig.googleDriveConnectorId,
-          intercom: nangoConfig.intercomConnectorId,
-          microsoft: nangoConfig.microsoftConnectorId,
-        }[provider];
-        const nango = new Nango({ publicKey: nangoConfig.publicKey });
-        const newConnectionId = buildConnectionId(owner.sId, provider);
-
-        try {
-          const {
-            connectionId: nangoConnectionId,
-          }: { providerConfigKey: string; connectionId: string } =
-            await nango.auth(nangoConnectorId, newConnectionId);
-          connectionId = nangoConnectionId;
-        } catch (err) {
-          console.error(`Failed to enable connection for ${provider}`, err);
-          throw err;
-        }
-      } else if (provider === "github") {
-        const installationId = await githubAuth(githubAppUrl);
-        connectionId = installationId;
-      } else {
-        throw new Error(`Unknown provider ${provider}`);
+      const connectionIdRes = await setupConnection({
+        dustClientFacingUrl,
+        nangoConfig,
+        githubAppUrl,
+        owner,
+        provider,
+      });
+      if (connectionIdRes.isErr()) {
+        throw connectionIdRes.error;
       }
 
       setShowConfirmConnection(null);
@@ -462,7 +536,7 @@ export default function DataSourcesView({
           },
           body: JSON.stringify({
             provider,
-            connectionId,
+            connectionId: connectionIdRes.value,
             name: undefined,
             configuration: null,
           } satisfies PostManagedDataSourceRequestBody),

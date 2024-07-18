@@ -45,6 +45,8 @@ spec:
           volumeMounts:
             - name: api-keys-volume
               mountPath: /etc/api-keys
+            - name: private-key-volume
+              mountPath: /etc/private-keys
 
           resources:
             requests:
@@ -57,4 +59,8 @@ spec:
       volumes:
         - name: api-keys-volume
           secret:
-            secretName: core-api-keys-secret
+            secretName: oauth-api-keys-secret
+
+        - name: private-key-volume
+          secret:
+            secretName: github-app-private-key

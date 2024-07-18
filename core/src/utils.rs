@@ -131,8 +131,8 @@ pub fn error_response(
     e: Option<anyhow::Error>,
 ) -> (StatusCode, Json<APIResponse>) {
     error!(
-        code = code,
-        message = message,
+        error_code = code,
+        error_message = message,
         error = ?e,
         "API error"
     );
