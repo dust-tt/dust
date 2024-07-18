@@ -88,7 +88,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
           <p className="text-sm font-normal italic text-slate-300">
             Not seeing it?
             <br />
-            Check you spam folder.
+            Check your spam folder.
           </p>
 
           <Button
