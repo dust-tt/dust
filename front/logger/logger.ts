@@ -13,6 +13,15 @@ const defaultPinoOptions: LoggerOptions = {
       return { level };
     },
   },
+  redact: [
+    // Redact Axios config.
+    "*.*.config.headers.Authorization",
+    "*.config.headers.Authorization",
+    "*.*.response.config.headers.Authorization",
+    "*.response.config.headers.Authorization",
+    // Redact Undici config.
+    "headers.authorization",
+  ],
   level: LOG_LEVEL,
 };
 
