@@ -14,8 +14,8 @@ import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
 import {
   getChannelAsContentNode,
   getDriveAsContentNode,
-  getFileAsContentNode,
   getFolderAsContentNode,
+  getMicrosoftNodeAsContentNode,
   getSiteAsContentNode,
   getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
@@ -33,6 +33,7 @@ import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
+import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
@@ -169,6 +170,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    if (filterPermission === "read") {
+      const nodes = await retrieveChildrenNodes(
+        connector,
+        parentInternalId,
+        false
+      );
+      return nodes;
+    }
     const client = await getClient(connector.connectionId);
     const nodes = [];
 
@@ -231,14 +240,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
           getFilesAndFolders(client, parentInternalId, nextLink)
         );
-        const files =
-          filterPermission === "read"
-            ? filesAndFolders.filter((n) => !n.folder)
-            : [];
         const folders = filesAndFolders.filter((n) => n.folder);
         nodes.push(
-          ...folders.map((n) => getFolderAsContentNode(n, parentInternalId)),
-          ...files.map((n) => getFileAsContentNode(n, parentInternalId))
+          ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
         );
         break;
       }
@@ -503,4 +507,23 @@ export async function getClient(connectionId: NangoConnectionId) {
   return Client.init({
     authProvider: (done) => done(null, msAccessToken),
   });
+}
+
+async function retrieveChildrenNodes(
+  connector: ConnectorResource,
+  parentInternalId: string | null,
+  expandWorksheet: boolean
+) {
+  const childrenNodes = await MicrosoftNodeModel.findAll({
+    where: {
+      connectorId: connector.id,
+      parentInternalId: parentInternalId,
+    },
+    raw: true,
+  });
+  return new Ok(
+    childrenNodes.map((node) =>
+      getMicrosoftNodeAsContentNode(node, expandWorksheet)
+    )
+  );
 }

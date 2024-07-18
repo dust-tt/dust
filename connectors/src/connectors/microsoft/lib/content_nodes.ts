@@ -1,4 +1,4 @@
-import type { ContentNode } from "@dust-tt/types";
+import type { ContentNode, ContentNodeType } from "@dust-tt/types";
 
 import {
   getDriveInternalId,
@@ -7,6 +7,7 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 
 export function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode(), getTeamsRootAsContentNode()];
@@ -173,6 +174,41 @@ export function getFileAsContentNode(
     dustDocumentId: null,
     lastUpdatedAt: null,
     expandable: false,
+    permission: "none",
+  };
+}
+
+export function getMicrosoftNodeAsContentNode(
+  node: MicrosoftNodeModel,
+  expandWorksheet: boolean
+): ContentNode {
+  // When table picking we want spreadsheets to expand to select the different
+  // sheets. While extracting data we want to treat them as regular files.
+  const isExpandable =
+    !node.mimeType ||
+    (node.mimeType ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
+      expandWorksheet);
+  let type: ContentNodeType;
+  if (["drive", "folder"].includes(node.nodeType)) {
+    type = "folder";
+  } else if (node.nodeType === "worksheet") {
+    type = expandWorksheet ? "database" : "file";
+  } else if (node.nodeType === "file") {
+    type = node.nodeType;
+  } else {
+    throw new Error(`Unsupported nodeType ${node.nodeType}.`);
+  }
+  return {
+    provider: "microsoft",
+    internalId: node.internalId,
+    parentInternalId: node.parentInternalId,
+    type,
+    title: node.name || "unnamed",
+    sourceUrl: "",
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+    expandable: isExpandable,
     permission: "none",
   };
 }
