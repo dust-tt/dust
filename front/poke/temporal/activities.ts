@@ -4,7 +4,6 @@ import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
@@ -51,6 +50,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -512,17 +512,11 @@ export async function deleteMembersActivity({
     });
 
     for (const membership of memberships) {
-      const user = await User.findOne({
-        where: {
-          id: membership.userId,
-        },
-        transaction: t,
-      });
-
+      const user = await UserResource.fetchByModelId(membership.userId, t);
       if (user) {
         const membershipsOfUser = await MembershipResource.getLatestMemberships(
           {
-            users: [renderUserType(user)],
+            users: [user],
             transaction: t,
           }
         );
@@ -539,9 +533,9 @@ export async function deleteMembersActivity({
             `[Workspace delete] Deleting Membership ${membership.id} and user ${user.id}`
           );
           // Delete the user's files
-          await FileResource.deleteAllForUser(renderUserType(user), t);
+          await FileResource.deleteAllForUser(user.toJSON(), t);
           await membership.delete(auth, t);
-          await user.destroy({ transaction: t });
+          await user.delete(auth, t);
         }
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);

@@ -1,11 +1,11 @@
 import type { Session } from "@auth0/nextjs-auth0";
-import type { UserProviderType, UserType } from "@dust-tt/types";
+import type { UserProviderType } from "@dust-tt/types";
 import { sanitizeString } from "@dust-tt/types";
 
-import { renderUserType } from "@app/lib/api/user";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 
@@ -18,27 +18,21 @@ async function fetchUserWithLegacyProvider(
   { provider, providerId }: LegacyProviderInfo,
   sub: string
 ) {
-  const user = await User.findOne({
-    where: {
-      provider,
-      providerId: providerId.toString(),
-    },
-  });
+  const user = await UserResource.fetchByProvider(
+    provider,
+    providerId.toString()
+  );
 
   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
   if (user) {
-    await user.update({ auth0Sub: sub });
+    await user.updateAuth0Sub(sub);
   }
 
   return user;
 }
 
 async function fetchUserWithAuth0Sub(sub: string) {
-  const userWithAuth0 = await User.findOne({
-    where: {
-      auth0Sub: sub,
-    },
-  });
+  const userWithAuth0 = await UserResource.fetchByAuth0Sub(sub);
 
   return userWithAuth0;
 }
@@ -76,7 +70,7 @@ export async function fetchUserFromSession(session: SessionWithUser) {
 }
 
 export async function maybeUpdateFromExternalUser(
-  user: User,
+  user: UserResource,
   externalUser: ExternalUser
 ) {
   if (externalUser.picture && externalUser.picture !== user.imageUrl) {
@@ -95,46 +89,60 @@ export async function maybeUpdateFromExternalUser(
 
 export async function createOrUpdateUser(
   session: SessionWithUser
-): Promise<{ user: UserType; created: boolean }> {
+): Promise<{ user: UserResource; created: boolean }> {
   const { user: externalUser } = session;
 
   const user = await fetchUserFromSession(session);
 
   if (user) {
+    const updateArgs: { [key: string]: string } = {};
+
     // We only update the user's email if the email is verified.
     if (externalUser.email_verified) {
-      user.email = externalUser.email;
+      updateArgs.email = externalUser.email;
     }
 
     // Update the user object from the updated session information.
-    user.username = externalUser.nickname;
-    user.name = externalUser.name;
+    updateArgs.username = externalUser.nickname;
 
     if (!user.firstName && !user.lastName) {
       if (externalUser.given_name && externalUser.family_name) {
-        user.firstName = externalUser.given_name;
-        user.lastName = externalUser.family_name;
+        updateArgs.firstName = externalUser.given_name;
+        updateArgs.lastName = externalUser.family_name;
       } else {
         const { firstName, lastName } = guessFirstAndLastNameFromFullName(
           externalUser.name
         );
-        user.firstName = firstName;
-        user.lastName = lastName;
+        updateArgs.firstName = firstName;
+        updateArgs.lastName = lastName || "";
       }
     }
 
-    await user.save();
+    if (Object.keys(updateArgs).length > 0) {
+      const needsUpdate = Object.entries(updateArgs).some(
+        ([key, value]) => user[key as keyof typeof user] !== value
+      );
 
-    return { user: renderUserType(user), created: false };
+      if (needsUpdate) {
+        await user.updateInfo(
+          updateArgs.username || user.name,
+          updateArgs.firstName || user.firstName,
+          updateArgs.lastName || user.lastName,
+          updateArgs.email || user.email
+        );
+      }
+    }
+
+    return { user, created: false };
   } else {
     const { firstName, lastName } = guessFirstAndLastNameFromFullName(
       externalUser.name
     );
 
-    const u = await User.create({
+    const u = await UserResource.makeNew({
       sId: generateLegacyModelSId(),
       auth0Sub: externalUser.sub,
-      provider: mapAuth0ProviderToLegacy(session)?.provider,
+      provider: mapAuth0ProviderToLegacy(session)?.provider ?? null,
       username: externalUser.nickname,
       email: sanitizeString(externalUser.email),
       name: externalUser.name,
@@ -157,6 +165,6 @@ export async function createOrUpdateUser(
       },
     });
 
-    return { user: renderUserType(u), created: true };
+    return { user: u, created: true };
   }
 }

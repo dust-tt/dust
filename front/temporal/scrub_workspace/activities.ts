@@ -8,7 +8,6 @@ import {
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
-import { unsafeGetUsersByModelId } from "@app/lib/api/user";
 import {
   getMembers,
   unsafeGetWorkspacesByModelId,
@@ -22,6 +21,7 @@ import {
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -163,7 +163,7 @@ async function cleanupCustomerio(auth: Authenticator) {
 
   // Fetch all the users in the workspace.
   const userIds = workspaceMemberships.map((m) => m.userId);
-  const users = await unsafeGetUsersByModelId(userIds);
+  const users = await UserResource.listByModelIds(userIds);
 
   // For each user, fetch all their memberships.
   const allMembershipsByUserId = _.groupBy(
@@ -226,7 +226,7 @@ async function cleanupCustomerio(auth: Authenticator) {
         );
 
         return CustomerioServerSideTracking.deleteUser({
-          user: u,
+          user: u.toJSON(),
         }).catch((err) => {
           logger.error(
             { userId: u.sId, err },

@@ -139,7 +139,7 @@ async function handler(
       }
 
       const member = {
-        ...user,
+        ...user.toJSON(),
         workspaces: [w],
       };
 

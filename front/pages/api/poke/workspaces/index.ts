@@ -3,14 +3,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
-import { renderUserType } from "@app/lib/api/user";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError } from "@app/logger/withlogging";
 
@@ -128,14 +127,10 @@ async function handler(
         let isSearchByEmail = false;
         if (isEmailValid(search)) {
           // We can have 2 users with the same email if a Google user and a Github user have the same email.
-          const users = await User.findAll({
-            where: {
-              email: search,
-            },
-          });
+          const users = await UserResource.listByEmail(search);
           if (users.length) {
             const memberships = await MembershipResource.getLatestMemberships({
-              users: users.map((u) => renderUserType(u)),
+              users,
             });
             if (memberships.length) {
               conditions.push({

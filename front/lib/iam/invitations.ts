@@ -2,7 +2,6 @@ import type {
   LightWorkspaceType,
   MembershipInvitationType,
   Result,
-  UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
@@ -10,6 +9,7 @@ import { verify } from "jsonwebtoken";
 import config from "@app/lib/api/config";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
@@ -109,7 +109,7 @@ export async function getPendingMembershipInvitationWithWorkspaceForEmail(
 
 export async function markInvitationAsConsumed(
   membershipInvite: MembershipInvitation,
-  user: UserType
+  user: UserResource
 ) {
   membershipInvite.status = "consumed";
   membershipInvite.invitedUserId = user.id;

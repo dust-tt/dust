@@ -11,6 +11,7 @@ import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
@@ -130,8 +131,18 @@ export class CustomerioServerSideTracking {
   }
 
   static async backfillUser({ user }: { user: UserType }) {
+    const u = await UserResource.fetchById(user.sId);
+
+    if (!u) {
+      logger.error(
+        { userId: user.sId },
+        "Failed to backfill user on Customer.io"
+      );
+      return;
+    }
+
     const userMemberships = await MembershipResource.getLatestMemberships({
-      users: [user],
+      users: [u],
     });
 
     const workspaces = _.keyBy(

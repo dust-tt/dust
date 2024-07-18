@@ -9,12 +9,12 @@ import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
+import { fetchRevokedWorkspace } from "@app/lib/api/user";
 import {
   getUserFromSession,
   withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
@@ -36,27 +36,6 @@ async function fetchWorkspaceDetails(
   });
 
   return workspaceWithVerifiedDomain;
-}
-
-// Fetch workspace details for users whose membership has been revoked.
-async function fetchRevokedWorkspace(
-  user: UserTypeWithWorkspaces
-): Promise<Workspace | null> {
-  // TODO(@fontanierh): this doesn't look very solid as it will start to behave
-  // weirdly if a user has multiple revoked memberships.
-  const memberships = await MembershipResource.getLatestMemberships({
-    users: [user],
-  });
-
-  if (!memberships.length) {
-    const message = "Unreachable: user has no memberships.";
-    logger.error({ userId: user.id, panic: true }, message);
-    throw new Error(message);
-  }
-
-  const revokedWorkspaceId = memberships[0].workspaceId;
-
-  return Workspace.findByPk(revokedWorkspaceId);
 }
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -101,15 +80,16 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     }
   } else if (flow === "revoked") {
     status = "revoked";
-    workspace = await fetchRevokedWorkspace(user);
+    const res = await fetchRevokedWorkspace(user);
 
-    if (!workspace) {
+    if (res.isErr()) {
       logger.error(
         { flow, userId: user.id, panic: true },
         "Unreachable: workspace not found."
       );
       throw new Error("Workspace not found.");
     }
+    workspace = res.value;
   } else {
     throw new Error("No workspace found.");
   }

@@ -1,12 +1,12 @@
 import type {
   LightWorkspaceType,
   RoleType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { User } from "@app/lib/models/user";
 import type { Workspace } from "@app/lib/models/workspace";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 export function renderLightWorkspaceType({
   workspace,
@@ -27,18 +27,9 @@ export function renderLightWorkspaceType({
 }
 
 // TODO: This belong to the WorkspaceResource.
-export async function getWorkspaceFirstAdmin(workspace: Workspace) {
-  return User.findOne({
-    include: [
-      {
-        model: MembershipModel,
-        where: {
-          role: "admin",
-          workspaceId: workspace.id,
-        },
-        required: true,
-      },
-    ],
-    order: [["createdAt", "ASC"]],
-  });
+export async function getWorkspaceFirstAdmin(
+  workspace: Workspace
+): Promise<UserType | undefined> {
+  const user = await UserResource.getWorkspaceFirstAdmin(workspace.id);
+  return user?.toJSON();
 }

@@ -7,11 +7,10 @@ import { removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { runOnRedis } from "@app/lib/api/redis";
-import { renderUserType } from "@app/lib/api/user";
 import { getGlobalAgentAuthorName } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { User } from "@app/lib/models/user";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
@@ -172,15 +171,13 @@ export async function getAgentsRecentAuthors({
   );
 
   const authorByUserId: Record<number, UserType> = (
-    await User.findAll({
-      where: {
-        id: removeNulls(
-          Array.from(new Set(Object.values(recentAuthorsIdsByAgentId).flat()))
-        ),
-      },
-    })
+    await UserResource.listByModelIds(
+      removeNulls(
+        Array.from(new Set(Object.values(recentAuthorsIdsByAgentId).flat()))
+      )
+    )
   ).reduce<Record<number, UserType>>((acc, user) => {
-    acc[user.id] = renderUserType(user);
+    acc[user.id] = user.toJSON();
     return acc;
   }, {});
 

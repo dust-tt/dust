@@ -3,7 +3,6 @@ import type {
   MembershipRoleType,
   RequireAtLeastOne,
   Result,
-  UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -19,11 +18,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
-  users: UserType[];
+  users: UserResource[];
   workspace: LightWorkspaceType;
 }> & {
   roles?: MembershipRoleType[];
@@ -146,7 +146,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     transaction,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<MembershipResource | null> {
@@ -180,7 +180,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     transaction,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<MembershipResource | null> {
@@ -246,7 +246,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     startAt = new Date(),
     transaction,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     startAt?: Date;
@@ -282,7 +282,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     void ServerSideTracking.trackCreateMembership({
-      user,
+      user: user.toJSON(),
       workspace,
       role: newMembership.role,
       startAt: newMembership.startAt,
@@ -297,7 +297,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     endAt = new Date(),
     transaction,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     endAt?: Date;
     transaction?: Transaction;
@@ -329,7 +329,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     void ServerSideTracking.trackRevokeMembership({
-      user,
+      user: user.toJSON(),
       workspace,
       role: membership.role,
       startAt: membership.startAt,
@@ -346,7 +346,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated = false,
     transaction,
   }: {
-    user: UserType;
+    user: UserResource;
     workspace: LightWorkspaceType;
     newRole: Exclude<MembershipRoleType, "revoked">;
     // If true, allow updating the role of a terminated membership (which will also un-terminate it).
@@ -397,7 +397,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     void ServerSideTracking.trackUpdateMembershipRole({
-      user,
+      user: user.toJSON(),
       workspace,
       previousRole: membership.role,
       role: newRole,

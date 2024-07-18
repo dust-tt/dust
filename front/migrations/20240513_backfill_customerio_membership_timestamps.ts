@@ -1,7 +1,6 @@
 import { removeNulls } from "@dust-tt/types";
 import * as _ from "lodash";
 
-import { unsafeGetUsersByModelId } from "@app/lib/api/user";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import {
@@ -9,6 +8,7 @@ import {
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -63,7 +63,7 @@ const backfillCustomerIo = async (execute: boolean) => {
       workspace: renderLightWorkspaceType({ workspace }),
     });
     const userIds = workspaceMemberships.map((m) => m.userId);
-    const users = await unsafeGetUsersByModelId(userIds);
+    const users = await UserResource.listByModelIds(userIds);
 
     logger.info(
       { workspaceId: workspace.sId, usersCount: users.length },
@@ -76,7 +76,9 @@ const backfillCustomerIo = async (execute: boolean) => {
         "Backfilling user..."
       );
       if (execute) {
-        await CustomerioServerSideTracking.backfillUser({ user });
+        await CustomerioServerSideTracking.backfillUser({
+          user: user.toJSON(),
+        });
       }
     }
   }

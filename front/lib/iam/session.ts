@@ -6,7 +6,6 @@ import type {
 } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
-import { renderUserType } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -38,7 +37,7 @@ export async function getUserFromSession(
   }
 
   const memberships = await MembershipResource.getActiveMemberships({
-    users: [renderUserType(user)],
+    users: [user],
   });
   const workspaces = await Workspace.findAll({
     where: {
@@ -49,16 +48,7 @@ export async function getUserFromSession(
   await maybeUpdateFromExternalUser(user, session.user);
 
   return {
-    sId: user.sId,
-    id: user.id,
-    createdAt: user.createdAt.getTime(),
-    provider: user.provider,
-    username: user.username,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-    image: user.imageUrl,
+    ...user.toJSON(),
     workspaces: workspaces.map((w) => {
       const m = memberships.find((m) => m.workspaceId === w.id);
       let role = "none" as RoleType;

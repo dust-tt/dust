@@ -32,9 +32,9 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
@@ -58,11 +58,7 @@ export async function batchRenderUserMessages(
       if (userIds.length === 0) {
         return [];
       }
-      return User.findAll({
-        where: {
-          id: userIds,
-        },
-      });
+      return UserResource.listByModelIds(userIds);
     })(),
   ]);
 
@@ -83,21 +79,7 @@ export async function batchRenderUserMessages(
       visibility: message.visibility,
       version: message.version,
       created: message.createdAt.getTime(),
-      user: user
-        ? {
-            sId: user.sId,
-            id: user.id,
-            createdAt: user.createdAt.getTime(),
-            username: user.username,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            fullName:
-              user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-            provider: user.provider,
-            image: user.imageUrl,
-          }
-        : null,
+      user: user ? user.toJSON() : null,
       mentions: messageMentions.map((m) => {
         if (m.agentConfigurationId) {
           return {

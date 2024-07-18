@@ -1,24 +1,18 @@
-import type { UserMetadataType, UserType } from "@dust-tt/types";
+import type {
+  Result,
+  UserMetadataType,
+  UserType,
+  UserTypeWithWorkspaces,
+} from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { User, UserMetadata } from "@app/lib/models/user";
+import { UserMetadata } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
+import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 
 import { MembershipResource } from "../resources/membership_resource";
-
-export function renderUserType(user: User): UserType {
-  return {
-    sId: user.sId,
-    id: user.id,
-    createdAt: user.createdAt.getTime(),
-    provider: user.provider,
-    username: user.username,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-    image: user.imageUrl,
-  };
-}
 
 /**
  * This function checks that the user had at least one membership in the past for this workspace
@@ -27,17 +21,13 @@ export function renderUserType(user: User): UserType {
 export async function getUserForWorkspace(
   auth: Authenticator,
   { userId }: { userId: string }
-): Promise<UserType | null> {
+): Promise<UserResource | null> {
   const owner = auth.workspace();
   if (!owner || !(auth.isAdmin() || auth.user()?.sId === userId)) {
     return null;
   }
 
-  const user = await User.findOne({
-    where: {
-      sId: userId,
-    },
-  });
+  const user = await UserResource.fetchById(userId);
 
   if (!user) {
     return null;
@@ -45,7 +35,7 @@ export async function getUserForWorkspace(
 
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
-      user: renderUserType(user),
+      user,
       workspace: owner,
     });
 
@@ -53,15 +43,7 @@ export async function getUserForWorkspace(
     return null;
   }
 
-  return renderUserType(user);
-}
-
-export async function deleteUser(user: UserType): Promise<void> {
-  await User.destroy({
-    where: {
-      id: user.id,
-    },
-  });
+  return user;
 }
 
 /**
@@ -121,44 +103,37 @@ export async function setUserMetadata(
   await metadata.save();
 }
 
-export async function updateUserFullName({
-  user,
-  firstName,
-  lastName,
-}: {
-  user: UserType;
-  firstName: string;
-  lastName: string;
-}): Promise<boolean | null> {
-  const u = await User.findOne({
-    where: {
-      id: user.id,
-    },
-  });
+export async function fetchRevokedWorkspace(
+  user: UserTypeWithWorkspaces
+): Promise<Result<Workspace, Error>> {
+  // TODO(@fontanierh): this doesn't look very solid as it will start to behave
+  // weirdly if a user has multiple revoked memberships.
+  const u = await UserResource.fetchByModelId(user.id);
 
   if (!u) {
-    return null;
+    const message = "Unreachable: user not found.";
+    logger.error({ userId: user.id }, message);
+    return new Err(new Error(message));
   }
 
-  u.firstName = firstName;
-  u.lastName = lastName;
-  u.name = `${firstName} ${lastName}`;
-  await u.save();
-
-  return true;
-}
-
-export async function unsafeGetUsersByModelId(
-  modelIds: number[]
-): Promise<UserType[]> {
-  if (modelIds.length === 0) {
-    return [];
-  }
-  const users = await User.findAll({
-    where: {
-      id: modelIds,
-    },
+  const memberships = await MembershipResource.getLatestMemberships({
+    users: [u],
   });
 
-  return users.map((u) => renderUserType(u));
+  if (!memberships.length) {
+    const message = "Unreachable: user has no memberships.";
+    logger.error({ userId: user.id }, message);
+    return new Err(new Error(message));
+  }
+
+  const revokedWorkspaceId = memberships[0].workspaceId;
+  const workspace = await Workspace.findByPk(revokedWorkspaceId);
+
+  if (!workspace) {
+    const message = "Unreachable: workspace not found.";
+    logger.error({ userId: user.id, workspaceId: revokedWorkspaceId }, message);
+    return new Err(new Error(message));
+  }
+
+  return new Ok(workspace);
 }
