@@ -113,7 +113,7 @@ export async function setupConnection({
   if (
     isOAuthProvider(provider) &&
     // Behind flag oauth-ready providers
-    owner.flags.includes("test_oauth_setup") &&
+    // owner.flags.includes("test_oauth_setup") &&
     ["github"].includes(provider)
   ) {
     // OAuth flow
