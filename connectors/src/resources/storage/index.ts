@@ -6,6 +6,12 @@ import { dbConfig } from "@connectors/resources/storage/config";
 
 const acquireAttempts = new WeakMap();
 
+const { DB_LOGGING_ENABLED = false } = process.env;
+
+function sequelizeLogger(message: string) {
+  console.log(message.replace("Executing (default): ", ""));
+}
+
 export const sequelizeConnection = new Sequelize(
   dbConfig.getRequiredDatabaseURI(),
   {
@@ -13,7 +19,7 @@ export const sequelizeConnection = new Sequelize(
       // Default is 5.
       max: isDevelopment() ? 5 : 10,
     },
-    logging: false,
+    logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {
       beforePoolAcquire: (options) => {
         acquireAttempts.set(options, Date.now());
