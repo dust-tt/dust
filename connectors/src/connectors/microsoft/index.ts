@@ -174,7 +174,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       const nodes = await retrieveChildrenNodes(
         connector,
         parentInternalId,
-        false,
+        false
       );
       return nodes;
     }
