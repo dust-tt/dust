@@ -174,7 +174,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       const nodes = await retrieveChildrenNodes(
         connector,
         parentInternalId,
-        false
+        false,
+        true
       );
       return nodes;
     }
@@ -509,18 +510,19 @@ export async function getClient(connectionId: NangoConnectionId) {
   });
 }
 
-async function retrieveChildrenNodes(
+export async function retrieveChildrenNodes(
   connector: ConnectorResource,
   parentInternalId: string | null,
   expandWorksheet: boolean
-) {
+): Promise<Result<ContentNode[], Error>> {
   const childrenNodes = await MicrosoftNodeModel.findAll({
     where: {
       connectorId: connector.id,
-      parentInternalId: parentInternalId,
+      parentInternalId,
     },
     raw: true,
   });
+
   return new Ok(
     childrenNodes.map((node) =>
       getMicrosoftNodeAsContentNode(node, expandWorksheet)
