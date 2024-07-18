@@ -223,7 +223,7 @@ async fn fetch_image_base64(image_url: &str) -> Result<(String, AnthropicImageCo
     ))
 }
 
-async fn fetch_image_base64_and_substitute(
+async fn fetch_and_encode_images(
     messages: Vec<ChatMessage>,
 ) -> Result<HashMap<String, AnthropicImageContent>, anyhow::Error> {
     let futures = messages
@@ -1668,7 +1668,7 @@ impl LLM for AnthropicLLM {
             None => None,
         };
 
-        let base64_map = fetch_image_base64_and_substitute(messages.clone()).await?;
+        let base64_map = fetch_and_encode_images(messages.clone()).await?;
         let mut messages = messages
             .iter()
             .skip(match system.as_ref() {
