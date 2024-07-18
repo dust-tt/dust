@@ -168,7 +168,7 @@ impl fmt::Display for ConnectionStatus {
 impl FromStr for ConnectionStatus {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match serde_json::from_str(&format!("{}\"", s)) {
+        match serde_json::from_str(&format!("\"{}\"", s)) {
             Ok(v) => Ok(v),
             Err(_) => Err(ParseError::new()),
         }
