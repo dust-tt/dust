@@ -155,3 +155,24 @@ export function getFolderAsContentNode(
     permission: "none",
   };
 }
+
+export function getFileAsContentNode(
+  file: microsoftgraph.DriveItem,
+  parentInternalId: string
+): ContentNode {
+  return {
+    provider: "microsoft",
+    internalId: internalIdFromTypeAndPath({
+      itemAPIPath: getDriveItemAPIPath(file),
+      nodeType: "folder",
+    }),
+    parentInternalId,
+    type: "file",
+    title: file.name || "unnamed",
+    sourceUrl: "",
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+    expandable: false,
+    permission: "none",
+  };
+}

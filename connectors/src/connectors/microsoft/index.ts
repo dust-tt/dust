@@ -14,6 +14,7 @@ import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
 import {
   getChannelAsContentNode,
   getDriveAsContentNode,
+  getFileAsContentNode,
   getFolderAsContentNode,
   getSiteAsContentNode,
   getTeamAsContentNode,
@@ -227,13 +228,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
       case "drive":
       case "folder": {
-        const folders = (
-          await getAllPaginatedEntities((nextLink) =>
-            getFilesAndFolders(client, parentInternalId, nextLink)
-          )
-        ).filter((n) => n.folder);
+        const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
+          getFilesAndFolders(client, parentInternalId, nextLink)
+        );
+        const files =
+          filterPermission === "read"
+            ? filesAndFolders.filter((n) => !n.folder)
+            : [];
+        const folders = filesAndFolders.filter((n) => n.folder);
         nodes.push(
-          ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
+          ...folders.map((n) => getFolderAsContentNode(n, parentInternalId)),
+          ...files.map((n) => getFileAsContentNode(n, parentInternalId))
         );
         break;
       }
@@ -250,12 +255,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    const nodesWithPermissions = nodes.map((res) => ({
-      ...res,
-      permission: (selectedResources.includes(res.internalId)
-        ? "read"
-        : "none") as ConnectorPermission,
-    }));
+    const nodesWithPermissions = nodes.map((res) => {
+      return {
+        ...res,
+        permission: (selectedResources.includes(res.internalId) ||
+        (res.parentInternalId &&
+          selectedResources.includes(res.parentInternalId))
+          ? "read"
+          : "none") as ConnectorPermission,
+      };
+    });
 
     if (filterPermission) {
       return new Ok(
