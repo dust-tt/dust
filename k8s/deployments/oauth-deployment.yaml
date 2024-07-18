@@ -45,6 +45,8 @@ spec:
           volumeMounts:
             - name: api-keys-volume
               mountPath: /etc/api-keys
+            - name: private-key-volume
+              mountPath: /etc/private-keys
 
           resources:
             requests:
