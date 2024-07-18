@@ -576,7 +576,7 @@ impl Connection {
 
         match self.access_token_expiry {
             Some(expiry) => {
-                if expiry < utils::now() {
+                if expiry > utils::now() {
                     // Non-expired access_token.
                     Ok(Some(access_token))
                 } else {
