@@ -19,6 +19,9 @@ spec:
         - podSelector:
             matchLabels:
               app: connectors
+        - podSelector:
+            matchLabels:
+              app: connectors-worker
       ports:
         - protocol: TCP
           port: 3006
