@@ -80,6 +80,7 @@
     "io-ts-types": "^0.5.19",
     "jsonwebtoken": "^9.0.0",
     "jszip": "^3.10.1",
+    "jwks-rsa": "^3.1.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.363.0",
     "luxon": "^3.4.4",

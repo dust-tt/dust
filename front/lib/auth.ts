@@ -27,6 +27,7 @@ import type {
 } from "next";
 
 import { renderUserType } from "@app/lib/api/user";
+import { verifyAuth0Token } from "@app/lib/auth0Token";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -287,6 +288,68 @@ export class Authenticator {
   }
 
   /**
+   * Get an Authenticator from an auth0 token a given workspace.
+   * This is to be used from the extension, calling our public API.
+   * @param key The Auth0 token
+   * @param wId string the target workspaceId
+   * @returns an Authenticator for wId and the key's own workspaceId
+   */
+  static async fromAuth0Token(
+    token: string,
+    wId: string
+  ): Promise<Authenticator> {
+    const decoded = await verifyAuth0Token(token);
+
+    const [workspace, user] = await Promise.all([
+      (async () => {
+        return Workspace.findOne({
+          where: {
+            sId: wId,
+          },
+        });
+      })(),
+      (async () => {
+        if (!decoded || !decoded.sub || typeof decoded.sub !== "string") {
+          return null;
+        } else {
+          return User.findOne({
+            where: {
+              auth0Sub: decoded.sub,
+            },
+          });
+        }
+      })(),
+    ]);
+
+    let role = "none" as RoleType;
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (user && workspace) {
+      [role, subscription, flags] = await Promise.all([
+        MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: renderUserType(user),
+          workspace: renderLightWorkspaceType({ workspace }),
+        }).then((m) => m?.role ?? "none"),
+        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        FeatureFlag.findAll({
+          where: {
+            workspaceId: workspace.id,
+          },
+        }).then((flags) => flags.map((flag) => flag.name)),
+      ]);
+    }
+
+    return new Authenticator({
+      workspace,
+      user,
+      role,
+      subscription,
+      flags,
+    });
+  }
+
+  /**
    * Creates an Authenticator for a given workspace (with role `builder`). Used for internal calls
    * to the Dust API or other functions, when the system is calling something for the workspace.
    * @param workspaceId string
@@ -536,13 +599,13 @@ export async function getSession(
 }
 
 /**
- * Retrieves the API Key from the request.
- * @param req NextApiRequest request object
- * @returns Result<Key, APIErrorWithStatusCode>
+ * Gets the Bearer token from the request.
+ * @param req
+ * @returns
  */
-export async function getAPIKey(
+export async function getBearerToken(
   req: NextApiRequest
-): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
+): Promise<Result<string, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
     return new Err({
       status_code: 401,
@@ -553,8 +616,36 @@ export async function getAPIKey(
     });
   }
 
-  const parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse || !parse[1] || !parse[1].startsWith("sk-")) {
+  const parse = req.headers.authorization.match(/^Bearer\s+(.+)$/i);
+
+  if (!parse || !parse[1]) {
+    return new Err({
+      status_code: 401,
+      api_error: {
+        type: "malformed_authorization_header_error",
+        message: "Missing Authorization header",
+      },
+    });
+  }
+
+  return new Ok(parse[1]);
+}
+
+/**
+ * Retrieves the API Key from the request.
+ * @param req NextApiRequest request object
+ * @returns Result<Key, APIErrorWithStatusCode>
+ */
+export async function getAPIKey(
+  req: NextApiRequest
+): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
+  const token = await getBearerToken(req);
+
+  if (token.isErr()) {
+    return new Err(token.error);
+  }
+
+  if (!token.value.startsWith("sk-")) {
     return new Err({
       status_code: 401,
       api_error: {
@@ -564,7 +655,7 @@ export async function getAPIKey(
     });
   }
 
-  const key = await KeyResource.fetchBySecret(parse[1]);
+  const key = await KeyResource.fetchBySecret(token.value);
 
   if (!key || !key.isActive) {
     return new Err({
