@@ -24,6 +24,7 @@ import type { ConnectorType } from "@dust-tt/types";
 import {
   connectorIsUsingNango,
   ConnectorsAPI,
+  isOAuthProvider,
   setupOAuthConnection,
 } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
@@ -423,8 +424,29 @@ export default function DataSourcesView({
   ) => {
     try {
       let connectionId: string;
-      if (connectorIsUsingNango(provider)) {
-        // nango-based connectors
+
+      if (
+        isOAuthProvider(provider) &&
+        // Behind flag oauth-ready providers
+        owner.flags.includes("test_oauth_setup") &&
+        ["github"].includes(provider)
+      ) {
+        // OAuth flow
+        const cRes = await setupOAuthConnection({
+          dustClientFacingUrl,
+          owner,
+          provider,
+          useCase: "connection",
+        });
+        if (!cRes.isOk()) {
+          console.log(
+            `Failed to setup oAuth connection for ${provider}: ${cRes.error}`
+          );
+          throw cRes.error;
+        }
+        connectionId = cRes.value.connection_id;
+      } else if (connectorIsUsingNango(provider)) {
+        // Nango flow
         const nangoConnectorId = {
           confluence: nangoConfig.confluenceConnectorId,
           slack: nangoConfig.slackConnectorId,
@@ -447,22 +469,9 @@ export default function DataSourcesView({
           throw err;
         }
       } else if (provider === "github") {
-        const cRes = await setupOAuthConnection({
-          dustClientFacingUrl,
-          owner,
-          provider,
-          useCase: "connection",
-        });
-        if (!cRes.isOk()) {
-          console.log(
-            `Failed to setup oAuth connection for ${provider}: ${cRes.error}`
-          );
-          throw cRes.error;
-        }
-
-        connectionId = cRes.value.connection_id;
-        // const installationId = await githubAuth(githubAppUrl);
-        // connectionId = installationId;
+        // Github legacy flow
+        const installationId = await githubAuth(githubAppUrl);
+        connectionId = installationId;
       } else {
         throw new Error(`Unknown provider ${provider}`);
       }
