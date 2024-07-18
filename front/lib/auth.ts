@@ -42,13 +42,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-const {
-  DUST_DEVELOPMENT_WORKSPACE_ID,
-  DUST_DEVELOPMENT_SYSTEM_API_KEY,
-  NODE_ENV,
-  DUST_PROD_API = "https://dust.tt",
-  ACTIVATE_ALL_FEATURES_DEV = false,
-} = process.env;
+import config from "./api/config";
+const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
@@ -708,24 +703,14 @@ export async function prodAPICredentialsForOwner(
     useLocalInDev: boolean;
   } = { useLocalInDev: false }
 ): Promise<DustAPICredentials> {
-  if (!NODE_ENV) {
-    throw new Error("NODE_ENV is not defined");
-  }
-
   if (
-    NODE_ENV === "development" &&
-    !DUST_PROD_API.startsWith("http://localhost") &&
+    isDevelopment() &&
+    !config.getDustProdAPI().startsWith("http://localhost") &&
     !useLocalInDev
   ) {
-    if (!DUST_DEVELOPMENT_SYSTEM_API_KEY) {
-      throw new Error("DUST_DEVELOPMENT_SYSTEM_API_KEY is not defined");
-    }
-    if (!DUST_DEVELOPMENT_WORKSPACE_ID) {
-      throw new Error("DUST_DEVELOPMENT_WORKSPACE_ID is not defined");
-    }
     return {
-      apiKey: DUST_DEVELOPMENT_SYSTEM_API_KEY,
-      workspaceId: DUST_DEVELOPMENT_WORKSPACE_ID,
+      apiKey: config.getDustDevelopmentSystemAPIKey(),
+      workspaceId: config.getDustDevelopmentWorkspaceId(),
     };
   }
 

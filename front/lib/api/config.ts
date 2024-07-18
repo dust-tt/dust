@@ -53,6 +53,16 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("CUSTOMERIO_ENABLED") === "true"
     );
   },
+  // Used for communication of front to (itself in prod) for dust-apps execution.
+  getDustProdAPI: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_PROD_API");
+  },
+  getDustDevelopmentSystemAPIKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DEVELOPMENT_SYSTEM_API_KEY");
+  },
+  getDustDevelopmentWorkspaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DEVELOPMENT_WORKSPACE_ID");
+  },
   getCoreAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("CORE_API"),
