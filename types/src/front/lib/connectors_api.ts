@@ -48,6 +48,7 @@ export type ConnectorType = {
   type: ConnectorProvider;
   workspaceId: string;
   dataSourceName: string;
+  connectionId: string;
 
   lastSyncStatus?: ConnectorSyncStatus;
   lastSyncStartTime?: number;
