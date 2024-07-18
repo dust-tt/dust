@@ -80,14 +80,16 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     }
   } else if (flow === "revoked") {
     status = "revoked";
-    workspace = await fetchRevokedWorkspace(user);
+    const res = await fetchRevokedWorkspace(user);
 
-    if (!workspace) {
+    if (res.isErr()) {
       logger.error(
         { flow, userId: user.id, panic: true },
         "Unreachable: workspace not found."
       );
       throw new Error("Workspace not found.");
+    } else {
+      workspace = res.value;
     }
   } else {
     throw new Error("No workspace found.");
