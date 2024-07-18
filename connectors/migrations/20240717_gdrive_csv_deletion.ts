@@ -11,9 +11,16 @@ export async function main(): Promise<void> {
     });
     console.log(`Retrieved ${csvGoogleFiles.length} files from DB.`);
 
-    await Promise.all(csvGoogleFiles.map((file) => deleteFile(file)));
+    const batchSize = 10;
+    for (let i = 0; i < csvGoogleFiles.length; i += batchSize) {
+      const batch = csvGoogleFiles.slice(i, i + batchSize);
+      await Promise.all(batch.map((file) => deleteFile(file)));
+      console.log(`Deleted batch of ${batch.length} CSV file(s).`);
+    }
 
-    console.log("Successfully deleted all CSV files.");
+    console.log(
+      `Successfully deleted all ${csvGoogleFiles.length} CSV file(s).`
+    );
   } catch (error) {
     console.error("Error deleting CSV files:", error);
   }
