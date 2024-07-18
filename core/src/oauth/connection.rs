@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
-use tracing::error;
+use tracing::{error, info};
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -427,7 +427,7 @@ impl Connection {
             // Otherwise we error.
             ConnectionStatus::Finalized => {
                 match self.unseal_authorization_code().map_err(|e| {
-                    error!("Failed to unseal authorization_code: error={:?}", e);
+                    error!(error = ?e, "Failed to unseal authorization_code");
                     ConnectionError {
                         code: ConnectionErrorCode::InternalError,
                         message: "Failed to unseal authorization_code".to_string(),
@@ -464,8 +464,12 @@ impl Connection {
         self.reload(store.clone()).await?;
 
         if self.is_already_finalized(code)? {
+            info!("Connection already finalized with code");
             return Ok(());
         }
+        info!("Finalizing connection with provider");
+
+        let now = utils::now();
 
         let finalize = provider(self.provider)
             .finalize(self, code, redirect_uri)
@@ -487,6 +491,14 @@ impl Connection {
         )?)?);
         store.update_connection_secrets(self).await?;
 
+        info!(
+            connection_id = self.connection_id(),
+            provider = self.provider.to_string(),
+            access_token_expiry = self.access_token_expiry,
+            provider_finalize_duration = utils::now() - now,
+            "Successful connection finalization"
+        );
+
         Ok(())
     }
 
@@ -500,6 +512,13 @@ impl Connection {
             return Ok(());
         }
 
+        info!(
+            connection_id = self.connection_id(),
+            provider = self.provider.to_string(),
+            "Finalizing connection",
+        );
+
+        let now = utils::now();
         let rl = LockManager::new(vec![REDIS_URI.clone()]);
 
         let lock = rl
@@ -515,7 +534,13 @@ impl Connection {
                     message: "Failed to acquire lock".to_string(),
                 }
             })?;
+        info!(
+            lock_acquisition_duration = utils::now() - now,
+            "Lock acquired"
+        );
+
         let res = self.finalize_locked(store, code, redirect_uri).await;
+
         rl.unlock(&lock).await;
 
         match res {
@@ -551,7 +576,7 @@ impl Connection {
 
         match self.access_token_expiry {
             Some(expiry) => {
-                if expiry < utils::now() {
+                if expiry > utils::now() {
                     // Non-expired access_token.
                     Ok(Some(access_token))
                 } else {
@@ -579,8 +604,15 @@ impl Connection {
 
         // If we refreshed while waiting for the lock return early.
         if let Some(access_token) = self.valid_access_token()? {
+            info!(
+                access_token_expiry = self.access_token_expiry,
+                "Found refreshed access token after lock acquisition",
+            );
             return Ok((access_token, self.scrubbed_raw_json()?));
         }
+        info!("Refreshing access token with provider");
+
+        let now = utils::now();
 
         let refresh = provider(self.provider).refresh(self).await?;
 
@@ -594,6 +626,14 @@ impl Connection {
             &refresh.raw_json,
         )?)?);
         store.update_connection_secrets(self).await?;
+
+        info!(
+            connection_id = self.connection_id(),
+            provider = self.provider.to_string(),
+            access_token_expiry = self.access_token_expiry,
+            provider_refresh_duration = utils::now() - now,
+            "Successful access token refresh"
+        );
 
         Ok((refresh.access_token, self.scrubbed_raw_json()?))
     }
@@ -621,6 +661,14 @@ impl Connection {
             ));
         }
 
+        info!(
+            connection_id = self.connection_id(),
+            provider = self.provider.to_string(),
+            access_token_expiry = self.access_token_expiry,
+            "Refreshing access token",
+        );
+
+        let now = utils::now();
         let rl = LockManager::new(vec![REDIS_URI.clone()]);
 
         let lock = rl
@@ -636,8 +684,13 @@ impl Connection {
                     message: "Failed to acquire lock".to_string(),
                 }
             })?;
+        info!(
+            lock_acquisition_duration = utils::now() - now,
+            "Lock acquired"
+        );
 
         let res = self.access_token_locked(store).await;
+
         rl.unlock(&lock).await;
 
         match res {

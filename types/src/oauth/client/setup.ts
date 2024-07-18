@@ -20,7 +20,7 @@ export async function setupOAuthConnection({
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
     const oauthPopup = window.open(
-      `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/redirect?useCase=${useCase}`
+      `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`
     );
     let authComplete = false;
 

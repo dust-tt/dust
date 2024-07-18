@@ -278,8 +278,12 @@ const DataSourcePage = ({
         <Page.Vertical align="stretch">
           <div className="flex flex-row gap-2">
             <Page.SectionHeader title={`${dataSource.name}`} />
+          </div>
+
+          <div className="flex flex-row gap-2 text-sm font-bold text-action-500">
+            <Link href={`/poke/${owner.sId}`}>&laquo; workspace</Link>
             <div
-              className="cursor-pointer text-sm text-action-500"
+              className="cursor-pointer"
               onClick={() => {
                 if (
                   window.confirm(
@@ -292,12 +296,8 @@ const DataSourcePage = ({
                 }
               }}
             >
-              search
+              🔒search
             </div>
-          </div>
-
-          <div className="text-sm font-bold text-action-500">
-            <Link href={`/poke/${owner.sId}`}>&laquo; workspace</Link>
           </div>
 
           <ViewDataSourceTable

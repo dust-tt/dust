@@ -41,7 +41,7 @@ export function ViewDataSourceTable({
         onClose={() => setShowRawObjectsModal(false)}
         show={showRawObjectsModal}
       />
-      <div className="flex flex-col space-y-8 pt-4">
+      <div className="flex flex-col space-y-8">
         <div className="flex justify-between gap-3">
           <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
             <div className="flex items-center justify-between gap-3">

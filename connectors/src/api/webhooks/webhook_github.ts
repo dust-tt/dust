@@ -1,9 +1,8 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import type { ModelId, WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { Op } from "sequelize";
 
 import {
   GithubWebhookPayloadSchema,
@@ -110,37 +109,38 @@ const _webhookGithubAPIHandler = async (
 
   const installationId = payload.installation.id.toString();
 
-  // TODO(spolu): GITHUB_MIGRATION find by ConnectorState.installationId
-  const connectors = await ConnectorResource.listByType("github", {
-    connectionId: installationId,
+  const githubConnectorStates = await GithubConnectorState.findAll({
+    where: {
+      installationId,
+    },
   });
 
-  if (!connectors.length) {
-    logger.error(
-      {
-        installationId,
-      },
-      "No GitHub connectors found for installation."
-    );
-    // return 200 to avoid github retrying
-    return res.status(200);
-  }
-
-  const githubConnectorStates = (
-    await GithubConnectorState.findAll({
-      where: {
-        connectorId: {
-          [Op.in]: connectors.map((c) => c.id),
-        },
-      },
-    })
+  const connectors = (
+    await ConnectorResource.fetchByIds(
+      "github",
+      githubConnectorStates.map((s) => s.connectorId)
+    )
   ).reduce(
-    (acc, curr) => Object.assign(acc, { [curr.connectorId]: curr }),
-    {} as Record<string, GithubConnectorState>
+    (acc, curr) => Object.assign(acc, { [curr.id]: curr }),
+    {} as Record<ModelId, ConnectorResource>
   );
 
   const enabledConnectors: ConnectorResource[] = [];
-  for (const connector of connectors) {
+
+  for (const connectorState of githubConnectorStates) {
+    const connector = connectors[connectorState.connectorId];
+
+    if (!connector) {
+      logger.error(
+        {
+          connectorId: connectorState.connectorId,
+          installationId,
+        },
+        "Connector unexpectedly not found"
+      );
+      continue;
+    }
+
     if (connector.isPaused()) {
       logger.info(
         {
@@ -151,18 +151,7 @@ const _webhookGithubAPIHandler = async (
       );
       continue;
     }
-    const connectorState = githubConnectorStates[connector.id];
-    if (!connectorState) {
-      logger.error(
-        {
-          connectorId: connector.id,
-          installationId,
-        },
-        "Connector state not found"
-      );
-      // return 200 to avoid github retrying
-      continue;
-    }
+
     if (
       !connectorState.webhooksEnabledAt ||
       connectorState.webhooksEnabledAt.getTime() > Date.now()

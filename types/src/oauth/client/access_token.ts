@@ -36,7 +36,7 @@ export async function getOAuthConnectionAccessToken({
 > {
   const cached = CACHE.get(connectionId);
 
-  if (cached && cached.access_token_expiry < Date.now()) {
+  if (cached && cached.access_token_expiry > Date.now()) {
     return new Ok(cached);
   }
 
