@@ -275,7 +275,6 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     if (!blob) {
       return null;
     }
-    console.log(blob, blob.delta);
     const resource = new this(this.model, blob.get());
     resource.delta = blob.delta;
     return resource;
