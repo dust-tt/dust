@@ -53,6 +53,13 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("CUSTOMERIO_ENABLED") === "true"
     );
   },
+  // Used for communication of front to (itself in prod) for dust-apps execution.
+  getDustDevelopmentSystemAPIKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DEVELOPMENT_SYSTEM_API_KEY");
+  },
+  getDustDevelopmentWorkspaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DEVELOPMENT_WORKSPACE_ID");
+  },
   getCoreAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("CORE_API"),
@@ -68,7 +75,9 @@ const config = {
   getDustAPIConfig: (): { url: string; nodeEnv: string } => {
     return {
       // Dust production API URL is hardcoded for now.
-      url: "https://dust.tt",
+      url:
+        EnvironmentConfig.getOptionalEnvVariable("DUST_PROD_API") ??
+        "https://dust.tt",
       nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
     };
   },

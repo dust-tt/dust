@@ -23,6 +23,7 @@ import {
   getSmallWhitelistedModel,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
+  isDevelopment,
   isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
@@ -42,6 +43,8 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 
+import { getDataSources } from "../data_sources";
+
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
   providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
@@ -51,29 +54,62 @@ const dummyModelConfiguration = {
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
-  private staticPrompt: string | null = null;
+  private staticPrompt: string | null;
 
-  public static getInstance(): HelperAssistantPrompt {
-    if (!HelperAssistantPrompt.instance) {
-      HelperAssistantPrompt.instance = new HelperAssistantPrompt();
-    }
-    return HelperAssistantPrompt.instance;
+  constructor(staticPrompt: string | null) {
+    this.staticPrompt = staticPrompt;
   }
 
-  public async getStaticPrompt(): Promise<string | null> {
-    if (this.staticPrompt === null) {
+  public static async getInstance(): Promise<HelperAssistantPrompt> {
+    if (!HelperAssistantPrompt.instance) {
+      let staticPrompt: string | null = null;
       try {
         const filePath = path.join(
           process.cwd(),
           "prompt/global_agent_helper_prompt.md"
         );
-        this.staticPrompt = await readFileAsync(filePath, "utf-8");
+        staticPrompt = await readFileAsync(filePath, "utf-8");
       } catch (err) {
         logger.error("Error reading prompt file for @help agent:", err);
-        return null;
       }
+      HelperAssistantPrompt.instance = new HelperAssistantPrompt(staticPrompt);
     }
+    return HelperAssistantPrompt.instance;
+  }
+
+  public getStaticPrompt(): string | null {
     return this.staticPrompt;
+  }
+}
+
+async function getDataSourcesAndWorkspaceIdForGlobalAgents(
+  auth: Authenticator
+): Promise<{
+  dataSources: DataSourceType[];
+  workspaceId: string;
+}> {
+  const owner = auth.getNonNullableWorkspace();
+
+  if (isDevelopment()) {
+    const prodCredentials = await prodAPICredentialsForOwner(owner);
+    const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
+
+    const dsRes = await api.getDataSources(prodCredentials.workspaceId);
+    if (dsRes.isErr()) {
+      throw new Error("Failed to retrieve data sources.");
+    }
+    return {
+      dataSources: dsRes.value,
+      // We use prodCredentials to make sure we are using the right workspaceId. In development
+      // this is the production Dust use case, in production we use the current workspace.
+      workspaceId: prodCredentials.workspaceId,
+    };
+  } else {
+    const dataSources = await getDataSources(auth);
+    return {
+      dataSources,
+      workspaceId: owner.sId,
+    };
   }
 }
 
@@ -84,9 +120,13 @@ class HelperAssistantPrompt {
  * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assitsant.ts)
  * - Add a case in getGlobalAgent with associated function.
  */
-async function _getHelperGlobalAgent(
-  auth: Authenticator
-): Promise<AgentConfigurationType> {
+function _getHelperGlobalAgent({
+  auth,
+  helperPromptInstance,
+}: {
+  auth: Authenticator;
+  helperPromptInstance: HelperAssistantPrompt;
+}): AgentConfigurationType {
   let prompt = "";
 
   const user = auth.user();
@@ -95,16 +135,13 @@ async function _getHelperGlobalAgent(
     prompt = `The user you're interacting with is granted with the role ${role}. Their name is ${user.fullName}. `;
   }
 
-  const helperAssistantPromptInstance = HelperAssistantPrompt.getInstance();
-  const staticPrompt = await helperAssistantPromptInstance.getStaticPrompt();
+  const staticPrompt = helperPromptInstance.getStaticPrompt();
 
   if (staticPrompt) {
     prompt = prompt + staticPrompt;
   }
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
+
   const modelConfiguration = auth.isUpgraded()
     ? getLargeWhitelistedModel(owner)
     : getSmallWhitelistedModel(owner);
@@ -145,11 +182,11 @@ async function _getHelperGlobalAgent(
   };
 }
 
-async function _getGPT35TurboGlobalAgent({
+function _getGPT35TurboGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   const status = settings ? settings.status : "active";
   return {
     id: -1,
@@ -175,11 +212,11 @@ async function _getGPT35TurboGlobalAgent({
   };
 }
 
-async function _getGPT4GlobalAgent({
+function _getGPT4GlobalAgent({
   auth,
 }: {
   auth: Authenticator;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
   return {
     id: -1,
@@ -205,11 +242,11 @@ async function _getGPT4GlobalAgent({
   };
 }
 
-async function _getClaudeInstantGlobalAgent({
+function _getClaudeInstantGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
@@ -235,13 +272,13 @@ async function _getClaudeInstantGlobalAgent({
   };
 }
 
-async function _getClaude2GlobalAgent({
+function _getClaude2GlobalAgent({
   auth,
   settings,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -272,11 +309,11 @@ async function _getClaude2GlobalAgent({
   };
 }
 
-async function _getClaude3HaikuGlobalAgent({
+function _getClaude3HaikuGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
 
   return {
@@ -303,13 +340,13 @@ async function _getClaude3HaikuGlobalAgent({
   };
 }
 
-async function _getClaude3OpusGlobalAgent({
+function _getClaude3OpusGlobalAgent({
   auth,
   settings,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -339,13 +376,13 @@ async function _getClaude3OpusGlobalAgent({
   };
 }
 
-async function _getClaude3GlobalAgent({
+function _getClaude3GlobalAgent({
   auth,
   settings,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -376,13 +413,13 @@ async function _getClaude3GlobalAgent({
   };
 }
 
-async function _getMistralLargeGlobalAgent({
+function _getMistralLargeGlobalAgent({
   auth,
   settings,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -412,13 +449,13 @@ async function _getMistralLargeGlobalAgent({
   };
 }
 
-async function _getMistralMediumGlobalAgent({
+function _getMistralMediumGlobalAgent({
   auth,
   settings,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -448,11 +485,11 @@ async function _getMistralMediumGlobalAgent({
   };
 }
 
-async function _getMistralSmallGlobalAgent({
+function _getMistralSmallGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
@@ -478,13 +515,13 @@ async function _getMistralSmallGlobalAgent({
   };
 }
 
-async function _getGeminiProGlobalAgent({
+function _getGeminiProGlobalAgent({
   auth,
   settings,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -517,7 +554,7 @@ async function _getGeminiProGlobalAgent({
 const BREVITY_PROMPT =
   "When replying to the user, go straight to the point. Answer with precision and brevity.";
 
-async function _getManagedDataSourceAgent(
+function _getManagedDataSourceAgent(
   auth: Authenticator,
   {
     settings,
@@ -527,7 +564,7 @@ async function _getManagedDataSourceAgent(
     description,
     instructions,
     pictureUrl,
-    dataSources,
+    preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
     connectorProvider: ConnectorProvider;
@@ -536,15 +573,13 @@ async function _getManagedDataSourceAgent(
     description: string;
     instructions: string | null;
     pictureUrl: string;
-    dataSources: DataSourceType[];
+    preFetchedDataSources: {
+      dataSources: DataSourceType[];
+      workspaceId: string;
+    };
   }
-): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
+): AgentConfigurationType | null {
+  const owner = auth.getNonNullableWorkspace();
 
   const modelConfiguration = auth.isUpgraded()
     ? getLargeWhitelistedModel(owner)
@@ -584,7 +619,7 @@ async function _getManagedDataSourceAgent(
   }
 
   // Check if there's a data source for this agent
-  const filteredDataSources = dataSources.filter(
+  const filteredDataSources = preFetchedDataSources.dataSources.filter(
     (d) => d.connectorProvider === connectorProvider
   );
   if (filteredDataSources.length === 0) {
@@ -632,9 +667,7 @@ async function _getManagedDataSourceAgent(
         topK: "auto",
         dataSources: filteredDataSources.map((ds) => ({
           dataSourceId: ds.name,
-          // We use prodCredentials to make sure we are using the right workspaceId. In development
-          // this is the production Dust use case, in production this is the auth's workspace.
-          workspaceId: prodCredentials.workspaceId,
+          workspaceId: preFetchedDataSources.workspaceId,
           filter: { tags: null, parents: null },
         })),
         name: DEFAULT_RETRIEVAL_ACTION_NAME,
@@ -646,16 +679,19 @@ async function _getManagedDataSourceAgent(
   };
 }
 
-async function _getGoogleDriveGlobalAgent(
+function _getGoogleDriveGlobalAgent(
   auth: Authenticator,
   {
     settings,
-    dataSources,
+    preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    dataSources: DataSourceType[];
+    preFetchedDataSources: {
+      dataSources: DataSourceType[];
+      workspaceId: string;
+    };
   }
-): Promise<AgentConfigurationType | null> {
+): AgentConfigurationType | null {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "google_drive",
@@ -666,18 +702,21 @@ async function _getGoogleDriveGlobalAgent(
     instructions:
       "Assist the user based on the retrieved data from their Google Drives." +
       `\n${BREVITY_PROMPT}`,
-    dataSources,
+    preFetchedDataSources,
   });
 }
 
-async function _getSlackGlobalAgent(
+function _getSlackGlobalAgent(
   auth: Authenticator,
   {
     settings,
-    dataSources,
+    preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    dataSources: DataSourceType[];
+    preFetchedDataSources: {
+      dataSources: DataSourceType[];
+      workspaceId: string;
+    };
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -690,18 +729,21 @@ async function _getSlackGlobalAgent(
     instructions:
       "Assist the user based on the retrieved data from their Slack channels." +
       `\n${BREVITY_PROMPT}`,
-    dataSources,
+    preFetchedDataSources,
   });
 }
 
-async function _getGithubGlobalAgent(
+function _getGithubGlobalAgent(
   auth: Authenticator,
   {
     settings,
-    dataSources,
+    preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    dataSources: DataSourceType[];
+    preFetchedDataSources: {
+      dataSources: DataSourceType[];
+      workspaceId: string;
+    };
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -715,20 +757,23 @@ async function _getGithubGlobalAgent(
     instructions:
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
       `\n${BREVITY_PROMPT}`,
-    dataSources,
+    preFetchedDataSources,
   });
 }
 
-async function _getNotionGlobalAgent(
+function _getNotionGlobalAgent(
   auth: Authenticator,
   {
     settings,
-    dataSources,
+    preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    dataSources: DataSourceType[];
+    preFetchedDataSources: {
+      dataSources: DataSourceType[];
+      workspaceId: string;
+    };
   }
-): Promise<AgentConfigurationType | null> {
+) {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "notion",
@@ -739,20 +784,23 @@ async function _getNotionGlobalAgent(
     instructions:
       "Assist the user based on the retrieved data from their Notion Spaces." +
       `\n${BREVITY_PROMPT}`,
-    dataSources,
+    preFetchedDataSources,
   });
 }
 
-async function _getIntercomGlobalAgent(
+function _getIntercomGlobalAgent(
   auth: Authenticator,
   {
     settings,
-    dataSources,
+    preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    dataSources: DataSourceType[];
+    preFetchedDataSources: {
+      dataSources: DataSourceType[];
+      workspaceId: string;
+    };
   }
-): Promise<AgentConfigurationType | null> {
+) {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "intercom",
@@ -763,24 +811,24 @@ async function _getIntercomGlobalAgent(
     instructions:
       "Assist the user based on the retrieved data from their Intercom Workspace." +
       `\n${BREVITY_PROMPT}`,
-    dataSources,
+    preFetchedDataSources,
   });
 }
 
-async function _getDustGlobalAgent(
+function _getDustGlobalAgent(
   auth: Authenticator,
   {
     settings,
-    dataSources,
+    preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    dataSources: DataSourceType[];
+    preFetchedDataSources: {
+      dataSources: DataSourceType[];
+      workspaceId: string;
+    };
   }
-): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+): AgentConfigurationType | null {
+  const owner = auth.getNonNullableWorkspace();
 
   const name = "dust";
   const description = "An assistant with context on your company data.";
@@ -828,9 +876,9 @@ async function _getDustGlobalAgent(
     };
   }
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-
-  dataSources = dataSources.filter((d) => d.assistantDefaultSelected === true);
+  const dataSources = preFetchedDataSources.dataSources.filter(
+    (d) => d.assistantDefaultSelected === true
+  );
 
   if (dataSources.length === 0) {
     return {
@@ -871,7 +919,7 @@ The assistant always respects the mardown format and generates spaces to nest co
       topK: "auto",
       dataSources: dataSources.map((ds) => ({
         dataSourceId: ds.name,
-        workspaceId: prodCredentials.workspaceId,
+        workspaceId: preFetchedDataSources.workspaceId,
         filter: { parents: null },
       })),
       name: "search_all_data_sources",
@@ -902,7 +950,7 @@ The assistant always respects the mardown format and generates spaces to nest co
           dataSources: [
             {
               dataSourceId: ds.name,
-              workspaceId: prodCredentials.workspaceId,
+              workspaceId: preFetchedDataSources.workspaceId,
               filter: { parents: null },
             },
           ],
@@ -953,121 +1001,105 @@ The assistant always respects the mardown format and generates spaces to nest co
   };
 }
 
-/**
- * Exported functions
- */
-
-export function isGlobalAgentId(sId: string): boolean {
-  return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
-}
-
-export async function getGlobalAgent(
+function getGlobalAgent(
   auth: Authenticator,
   sId: string | number,
-  preFetchedDataSources: DataSourceType[] | null
-): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Cannot find Global Agent Configuration: no workspace.");
-  }
+  preFetchedDataSources: {
+    dataSources: DataSourceType[];
+    workspaceId: string;
+  },
+  helperPromptInstance: HelperAssistantPrompt,
+  globaAgentSettings: GlobalAgentSettings[]
+): AgentConfigurationType | null {
+  const settings =
+    globaAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
-  if (preFetchedDataSources === null) {
-    const prodCredentials = await prodAPICredentialsForOwner(owner);
-    const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
-
-    const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-    if (dsRes.isErr()) {
-      return null;
-    }
-    preFetchedDataSources = dsRes.value;
-  }
-
-  const settings = await GlobalAgentSettings.findOne({
-    where: { workspaceId: owner.id, agentId: sId },
-  });
   let agentConfiguration: AgentConfigurationType | null = null;
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
-      agentConfiguration = await _getHelperGlobalAgent(auth);
+      agentConfiguration = _getHelperGlobalAgent({
+        auth,
+        helperPromptInstance,
+      });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      agentConfiguration = await _getGPT35TurboGlobalAgent({ settings });
+      agentConfiguration = _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = await _getGPT4GlobalAgent({ auth });
+      agentConfiguration = _getGPT4GlobalAgent({ auth });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      agentConfiguration = await _getClaudeInstantGlobalAgent({ settings });
+      agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
-      agentConfiguration = await _getClaude3OpusGlobalAgent({ auth, settings });
+      agentConfiguration = _getClaude3OpusGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
-      agentConfiguration = await _getClaude3GlobalAgent({
+      agentConfiguration = _getClaude3GlobalAgent({
         auth,
         settings,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
-      agentConfiguration = await _getClaude3HaikuGlobalAgent({
+      agentConfiguration = _getClaude3HaikuGlobalAgent({
         settings,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
-      agentConfiguration = await _getClaude2GlobalAgent({ auth, settings });
+      agentConfiguration = _getClaude2GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
-      agentConfiguration = await _getMistralLargeGlobalAgent({
+      agentConfiguration = _getMistralLargeGlobalAgent({
         settings,
         auth,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
-      agentConfiguration = await _getMistralMediumGlobalAgent({
+      agentConfiguration = _getMistralMediumGlobalAgent({
         settings,
         auth,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
-      agentConfiguration = await _getMistralSmallGlobalAgent({ settings });
+      agentConfiguration = _getMistralSmallGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
-      agentConfiguration = await _getGeminiProGlobalAgent({ auth, settings });
+      agentConfiguration = _getGeminiProGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
-      agentConfiguration = await _getSlackGlobalAgent(auth, {
+      agentConfiguration = _getSlackGlobalAgent(auth, {
         settings,
-        dataSources: preFetchedDataSources,
+        preFetchedDataSources,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
-      agentConfiguration = await _getGoogleDriveGlobalAgent(auth, {
+      agentConfiguration = _getGoogleDriveGlobalAgent(auth, {
         settings,
-        dataSources: preFetchedDataSources,
+        preFetchedDataSources,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
-      agentConfiguration = await _getNotionGlobalAgent(auth, {
+      agentConfiguration = _getNotionGlobalAgent(auth, {
         settings,
-        dataSources: preFetchedDataSources,
+        preFetchedDataSources,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
-      agentConfiguration = await _getGithubGlobalAgent(auth, {
+      agentConfiguration = _getGithubGlobalAgent(auth, {
         settings,
-        dataSources: preFetchedDataSources,
+        preFetchedDataSources,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
-      agentConfiguration = await _getIntercomGlobalAgent(auth, {
+      agentConfiguration = _getIntercomGlobalAgent(auth, {
         settings,
-        dataSources: preFetchedDataSources,
+        preFetchedDataSources,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
-      agentConfiguration = await _getDustGlobalAgent(auth, {
+      agentConfiguration = _getDustGlobalAgent(auth, {
         settings,
-        dataSources: preFetchedDataSources,
+        preFetchedDataSources,
       });
       break;
     default:
@@ -1075,6 +1107,14 @@ export async function getGlobalAgent(
   }
 
   return agentConfiguration;
+}
+
+/**
+ * Exported functions
+ */
+
+export function isGlobalAgentId(sId: string): boolean {
+  return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
 }
 
 // This is the list of global agents that we want to support in past conversations but we don't want
@@ -1105,24 +1145,21 @@ export async function getGlobalAgents(
     return [];
   }
 
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Cannot find Global Agent Configuration: no workspace.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const plan = auth.plan();
   if (!plan) {
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
-
-  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-  if (dsRes.isErr()) {
-    throw new Error("Failed to retrieve data sources.");
-  }
-  const preFetchedDataSources = dsRes.value;
+  const [preFetchedDataSources, globaAgentSettings, helperPromptInstance] =
+    await Promise.all([
+      getDataSourcesAndWorkspaceIdForGlobalAgents(auth),
+      GlobalAgentSettings.findAll({
+        where: { workspaceId: owner.id },
+      }),
+      HelperAssistantPrompt.getInstance(),
+    ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
@@ -1135,9 +1172,13 @@ export async function getGlobalAgents(
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
-  const agentCandidates = await Promise.all(
-    agentsIdsToFetch.map((sId) =>
-      getGlobalAgent(auth, sId, preFetchedDataSources)
+  const agentCandidates = agentsIdsToFetch.map((sId) =>
+    getGlobalAgent(
+      auth,
+      sId,
+      preFetchedDataSources,
+      helperPromptInstance,
+      globaAgentSettings
     )
   );
 
@@ -1166,10 +1207,7 @@ export async function upsertGlobalAgentSettings(
     status: GlobalAgentStatus;
   }
 ): Promise<boolean> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   if (!isGlobalAgentId(agentId)) {
     throw new Error("Global Agent not found: invalid agentId.");
