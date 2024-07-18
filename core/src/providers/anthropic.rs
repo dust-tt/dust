@@ -260,17 +260,17 @@ async fn fetch_and_encode_images(
     Ok(base64_pairs)
 }
 
-struct ChatMessageConversionInput {
-    chat_message: ChatMessage,
-    base64_map: HashMap<String, AnthropicImageContent>,
+struct ChatMessageConversionInput<'a> {
+    chat_message: &'a ChatMessage,
+    base64_map: &'a HashMap<String, AnthropicImageContent>,
 }
 
-impl TryFrom<&ChatMessageConversionInput> for AnthropicChatMessage {
+impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(input: &ChatMessageConversionInput) -> Result<Self, Self::Error> {
-        let cm = input.chat_message.clone();
-        let base64_map = input.base64_map.clone();
+        let cm = input.chat_message;
+        let base64_map = input.base64_map;
 
         match cm {
             ChatMessage::Assistant(assistant_msg) => {
@@ -1677,8 +1677,8 @@ impl LLM for AnthropicLLM {
             })
             .map(|cm| {
                 let conversion_input = ChatMessageConversionInput {
-                    chat_message: cm.clone(),
-                    base64_map: base64_map.clone(),
+                    chat_message: &cm,
+                    base64_map: &base64_map,
                 };
 
                 AnthropicChatMessage::try_from(&conversion_input)
