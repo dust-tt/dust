@@ -706,7 +706,7 @@ export async function prodAPICredentialsForOwner(
 ): Promise<DustAPICredentials> {
   if (
     isDevelopment() &&
-    !config.getDustProdAPI().startsWith("http://localhost") &&
+    !config.getDustAPIConfig().url.startsWith("http://localhost") &&
     !useLocalInDev
   ) {
     return {
