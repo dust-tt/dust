@@ -752,7 +752,17 @@ export async function syncDeltaForNode({
 
     if (driveItem.file) {
       if (driveItem.deleted) {
-        await deleteFile({ connectorId, internalId, dataSourceConfig });
+        // if file was just moved from a toplevel folder to another, it's marked
+        // as deleted but we don't want to delete it
+        // internally means "in the same Drive" here
+        if (
+          !(await isFileInternallyMoved({
+            toplevelNode: node,
+            fileInternalId: internalId,
+          }))
+        ) {
+          await deleteFile({ connectorId, internalId, dataSourceConfig });
+        }
       } else {
         await syncOneFile({
           connectorId,
@@ -1040,4 +1050,37 @@ async function deleteFile({
     await deleteFromDataSource(dataSourceConfig, internalId);
   }
   return file.delete();
+}
+
+/**
+ * This function checks whether a file marked as deleted from a toplevel folder
+ * is actually just moved to another toplevel folder in the same drive (in which
+ * case we should not delete it)
+ *
+ * Note: this concerns toplevel folders, not drives; it's fine to delete files
+ * that move from a drive to another because they change id
+ */
+async function isFileInternallyMoved({
+  toplevelNode,
+  fileInternalId,
+}: {
+  toplevelNode: MicrosoftNodeResource;
+  fileInternalId: string;
+}) {
+  // check the node is a toplevel folder, not a drive
+  if (toplevelNode.nodeType !== "folder") {
+    throw new Error(
+      `Unexpected: toplevel node is not a folder: ${toplevelNode.nodeType}`
+    );
+  }
+  // check that the file's parents array does not contain the toplevel folder, in
+  // which case it's a file movement; otherwise it's a file deletion
+  return !(
+    await getParents({
+      connectorId: toplevelNode.connectorId,
+      internalId: fileInternalId,
+      parentInternalId: toplevelNode.internalId,
+      startSyncTs: new Date().getTime(),
+    })
+  ).includes(toplevelNode.internalId);
 }
