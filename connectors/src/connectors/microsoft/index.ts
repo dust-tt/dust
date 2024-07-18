@@ -175,7 +175,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         connector,
         parentInternalId,
         false,
-        true
       );
       return nodes;
     }
