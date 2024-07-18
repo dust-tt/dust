@@ -224,13 +224,8 @@ export class UserResource extends BaseResource<User> {
     }
   }
 
-  getAttribute(attribute: string): any {
-    switch (attribute) {
-      case "fullName":
-        return [this.firstName, this.lastName].filter(Boolean).join(" ");
-      default:
-        return "";
-    }
+  fullName(): string {
+    return [this.firstName, this.lastName].filter(Boolean).join(" ");
   }
 
   toJSON(): UserType {
@@ -243,7 +238,7 @@ export class UserResource extends BaseResource<User> {
       email: this.email,
       firstName: this.firstName,
       lastName: this.lastName,
-      fullName: this.getAttribute("fullName"),
+      fullName: this.fullName(),
       image: this.imageUrl,
     };
   }
