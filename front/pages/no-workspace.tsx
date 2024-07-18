@@ -88,9 +88,8 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
         "Unreachable: workspace not found."
       );
       throw new Error("Workspace not found.");
-    } else {
-      workspace = res.value;
     }
+    workspace = res.value;
   } else {
     throw new Error("No workspace found.");
   }
