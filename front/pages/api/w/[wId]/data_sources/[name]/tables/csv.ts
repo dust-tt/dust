@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
-import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
+import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
@@ -155,18 +155,6 @@ export async function handlePostTableCsvUpsertRequest(
   const tableId = bodyValidation.right.tableId ?? generateLegacyModelSId();
 
   if (async) {
-    // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
-    if (csvRowsRes?.isErr()) {
-      return apiError(req, res, {
-        api_error: {
-          type: "invalid_request_error",
-          message: `Failed to parse CSV: ${csvRowsRes.error.message}`,
-        },
-        status_code: 400,
-      });
-    }
-
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: owner.sId,
