@@ -100,6 +100,9 @@ const config = {
   getOAuthGoogleDriveClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GOOGLE_DRIVE_CLIENT_ID");
   },
+  getOAuthSlackClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_CLIENT_ID");
+  },
 };
 
 export default config;

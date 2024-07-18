@@ -108,11 +108,33 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   slack: {
-    setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+    setupUri: (connection) => {
+      const scopes = [
+        "channels:history",
+        "channels:join",
+        "channels:read",
+        "im:history",
+        "users:read",
+        "users:read.email",
+        "team:read",
+        "chat:write",
+        "app_mentions:read",
+        "reactions:read",
+      ];
+      return (
+        `https://slack.com/oauth/v2/authorize?` +
+        `client_id=${config.getOAuthSlackClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("slack"))}` +
+        `&state=${connection.connection_id}`
+      );
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
   confluence: {
     setupUri: (connection) => {
