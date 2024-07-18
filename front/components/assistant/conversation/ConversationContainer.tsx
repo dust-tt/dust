@@ -1,17 +1,14 @@
 import { Page } from "@dust-tt/sparkle";
 import type {
   AgentMention,
-  AgentMessageWithRankType,
   LightAgentConfigurationType,
   MentionType,
   SubscriptionType,
-  UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import { cloneDeep } from "lodash";
 import { useRouter } from "next/router";
 import {
   Fragment,
@@ -35,7 +32,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useConversationMessages } from "@app/lib/swr";
@@ -329,30 +326,4 @@ export function ConversationContainer({
       />
     </DropzoneContainer>
   );
-}
-
-/**
- * If no message pages exist, create a single page with the optimistic message.
- * If message pages exist, add the optimistic message to the first page, since
- * the message pages array is not yet reversed.
- */
-export function updateMessagePagesWithOptimisticData(
-  currentMessagePages: FetchConversationMessagesResponse[] | undefined,
-  messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
-): FetchConversationMessagesResponse[] {
-  if (!currentMessagePages || currentMessagePages.length === 0) {
-    return [
-      {
-        messages: [messageOrPlaceholder],
-        hasMore: false,
-        lastValue: null,
-      },
-    ];
-  }
-
-  // We need to deep clone here, since SWR relies on the reference.
-  const updatedMessages = cloneDeep(currentMessagePages);
-  updatedMessages.at(0)?.messages.push(messageOrPlaceholder);
-
-  return updatedMessages;
 }

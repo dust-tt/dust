@@ -136,9 +136,6 @@ export function AgentMessage({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      if (!shouldStream) {
-        return null;
-      }
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
@@ -151,7 +148,7 @@ export function AgentMessage({
 
       return url;
     },
-    [conversationId, message.sId, owner.sId, shouldStream]
+    [conversationId, message.sId, owner.sId]
   );
 
   const onEventCallback = useCallback((eventStr: string) => {
@@ -270,7 +267,12 @@ export function AgentMessage({
     }
   }, []);
 
-  useEventSource(buildEventSourceURL, onEventCallback);
+  useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    `message-${message.sId}`,
+    { isReadyToConsumeStream: shouldStream }
+  );
 
   const agentMessageToRender = ((): AgentMessageType => {
     switch (message.status) {
