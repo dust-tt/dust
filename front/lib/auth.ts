@@ -42,6 +42,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+
 import config from "./api/config";
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 

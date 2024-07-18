@@ -42,6 +42,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
+
 import { getDataSources } from "../data_sources";
 
 // Used when returning an agent with status 'disabled_by_admin'
@@ -104,7 +105,7 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
       workspaceId: prodCredentials.workspaceId,
     };
   } else {
-    let dataSources = await getDataSources(auth);
+    const dataSources = await getDataSources(auth);
     return {
       dataSources,
       workspaceId: owner.sId,
