@@ -1,22 +1,21 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import {
-  assertNever,
-  DustAPI,
-  isEmptyString,
-  minTranscriptsSize,
-} from "@dust-tt/types";
+import { assertNever, isEmptyString, minTranscriptsSize } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
-import config from "@app/lib/api/config";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  createConversation,
+  getConversation,
+  postNewContentFragment,
+} from "@app/lib/api/assistant/conversation";
+import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
 import {
   retrieveGongTranscriptContent,
@@ -124,7 +123,20 @@ export async function processTranscriptActivity(
     );
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+  const user = await UserResource.fetchByModelId(
+    transcriptsConfiguration.userId
+  );
+
+  if (!user) {
+    throw new Error(
+      `Could not find user for id ${transcriptsConfiguration.userId}.`
+    );
+  }
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
 
   if (!auth.workspace()) {
     throw new Error(
@@ -132,13 +144,10 @@ export async function processTranscriptActivity(
     );
   }
 
-  const user = await User.findByPk(transcriptsConfiguration.userId);
-  if (!user) {
-    mainLogger.error(
-      { fileId },
-      "[processTranscriptActivity] User not found. Stopping."
+  if (!auth.user() || !auth.isUser()) {
+    throw new Error(
+      `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
-    return;
   }
 
   const localLogger = mainLogger.child({
@@ -217,20 +226,8 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const prodCredentials = await prodAPICredentialsForOwner(
-    renderLightWorkspaceType({ workspace: owner }),
-    { useLocalInDev: true }
-  );
-  const dustAPI = new DustAPI(
-    config.getDustAPIConfig(),
-    prodCredentials,
-    localLogger,
-    {
-      useLocalInDev: true,
-    }
-  );
-
   const { agentConfigurationId } = transcriptsConfiguration;
+
   if (!agentConfigurationId) {
     localLogger.error(
       {},
@@ -239,22 +236,12 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-  if (agentConfigurationsRes.isErr()) {
-    return new Err(new Error(agentConfigurationsRes.error.message));
-  }
-
-  const agentConfigurations = agentConfigurationsRes.value;
-  const agent = agentConfigurations.find(
-    (agent) => agent.sId === agentConfigurationId
-  );
+  const agent = await getAgentConfiguration(auth, agentConfigurationId);
 
   if (!agent) {
     localLogger.error(
-      {
-        agentConfigurationId,
-      },
-      "[processTranscriptActivity] No agent found. Stopping."
+      {},
+      "[processTranscriptActivity] Agent configuration not found. Stopping."
     );
     return;
   }
@@ -262,54 +249,85 @@ export async function processTranscriptActivity(
   if (isEmptyString(user.username)) {
     return new Err(new Error("username must be a non-empty string"));
   }
-  const convRes = await dustAPI.createConversation({
+
+  let conversation = await createConversation(auth, {
     title: transcriptTitle,
-    visibility: "unlisted",
-    message: {
-      content: `:mention[${agent.name}]{sId=${agentConfigurationId}}`,
-      mentions: [{ configurationId: agentConfigurationId }],
-      context: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-        username: user.username,
-        fullName: user.name,
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-        origin: null,
-      },
-    },
-    contentFragment: {
-      title: transcriptTitle,
-      content: transcriptContent.toString(),
-      url: null,
-      contentType: "text/plain",
-      context: {
-        username: user.username,
-        fullName: user.name,
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-      },
-    },
-    blocking: true,
+    visibility: "workspace",
   });
 
-  if (convRes.isErr()) {
-    localLogger.error(
-      { agentConfigurationId, error: convRes.error },
-      "[processTranscriptActivity] Error creating conversation."
-    );
-    return new Err(new Error(convRes.error.message));
-  }
+  const baseContext = {
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+    username: user.username,
+    fullName: user.getFullName(),
+    email: user.email,
+    profilePictureUrl: user.imageUrl,
+    origin: null,
+  };
 
-  const { conversation } = convRes.value;
-  if (!conversation) {
+  const contentFragmentData = {
+    title: transcriptTitle,
+    content: transcriptContent.toString(),
+    url: null,
+    contentType: "text/plain",
+    baseContext,
+  };
+
+  const contentFragmentRes = await postNewContentFragment(
+    auth,
+    conversation,
+    contentFragmentData,
+    baseContext
+  );
+
+  if (contentFragmentRes.isErr()) {
     localLogger.error(
       {
         agentConfigurationId,
+        conversationSid: conversation.sId,
+        error: contentFragmentRes.error,
       },
-      "[processTranscriptActivity] No conversation found. Stopping."
+      "[processTranscriptActivity] Error creating content fragment. Stopping."
     );
     return;
   }
+
+  const messageRes = await postUserMessageWithPubSub(
+    auth,
+    {
+      conversation,
+      content: `Transcript: ${transcriptTitle}`,
+      mentions: [{ configurationId: agentConfigurationId }],
+      context: baseContext,
+    },
+    { resolveAfterFullGeneration: true }
+  );
+
+  if (messageRes.isErr()) {
+    localLogger.error(
+      {
+        agentConfigurationId,
+        conversationSid: conversation.sId,
+        error: messageRes.error,
+      },
+      "[processTranscriptActivity] Error creating message. Stopping."
+    );
+    return;
+  }
+
+  const updated = await getConversation(auth, conversation.sId);
+
+  if (!updated) {
+    localLogger.error(
+      {
+        agentConfigurationId,
+        conversationSid: conversation.sId,
+      },
+      "[processTranscriptActivity] Error getting conversation after creation. Stopping."
+    );
+    return;
+  }
+
+  conversation = updated;
 
   localLogger.info(
     {
