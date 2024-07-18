@@ -13,9 +13,8 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, getSanitizedHeaders, isSlugified, Ok } from "@dust-tt/types";
-import { parse } from "csv-parse/sync";
-import { stringify } from "csv-stringify/sync";
+import { parseAndStringifyCsv } from "@dust-tt/types";
+import { Err, isSlugified, Ok } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -25,7 +24,6 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { guessDelimiter } from "@app/lib/api/csv";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -180,16 +178,7 @@ export default function TableUpsert({
 
           const { content } = res.value;
           try {
-            const delimiter = await guessDelimiter(content);
-
-            const records = parse(content, {
-              columns: (c) => {
-                return getSanitizedHeaders(c);
-              },
-              delimiter,
-            });
-
-            const stringifiedContent = stringify(records, { header: true });
+            const stringifiedContent = await parseAndStringifyCsv(content);
 
             return new Ok(stringifiedContent);
           } catch (err) {

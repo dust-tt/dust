@@ -3,6 +3,7 @@ import {
   isTextExtractionSupportedContentType,
   TextExtraction,
 } from "@dust-tt/types";
+import { parseAndStringifyCsv } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import { slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
@@ -748,13 +749,14 @@ async function handleCsvFile(
   const tableId = file.id ?? "";
   const tableName = slugify(fileName.substring(0, 32));
   const tableDescription = `Structured data from Microsoft (${fileName})`;
+  const stringifiedContent = await parseAndStringifyCsv(tableCsv);
   try {
     await upsertTableFromCsv({
       dataSourceConfig,
       tableId,
       tableName,
       tableDescription,
-      tableCsv,
+      tableCsv: stringifiedContent,
       loggerArgs: {
         connectorId,
         fileId: tableId,

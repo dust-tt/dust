@@ -7,11 +7,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
+import { guessDelimiter } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import { DateTime } from "luxon";
 
 import config from "@app/lib/api/config";
-import { guessDelimiter } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
