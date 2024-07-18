@@ -439,6 +439,8 @@ export async function syncOneFile({
     return false;
   }
 
+  localLogger.info("Syncing file");
+
   const url =
     "@microsoft.graph.downloadUrl" in file
       ? file["@microsoft.graph.downloadUrl"]
@@ -720,6 +722,8 @@ export async function syncDeltaForNode({
     );
   }
 
+  logger.info({ connectorId, node }, "Syncing delta for node");
+
   // Goes through pagination to return all delta results. This is because delta
   // list can include same item more than once and api recommendation is to
   // ignore all but the last one.
@@ -764,6 +768,8 @@ export async function syncDeltaForNode({
       }
     } else if (driveItem.folder) {
       if (driveItem.deleted) {
+        // no need to delete children here since they will all be listed
+        // in the delta with the 'deleted' field set
         await deleteFolder({ connectorId, internalId });
       } else {
         await MicrosoftNodeResource.updateOrCreate(
@@ -980,17 +986,17 @@ async function deleteFolder({
   connectorId: number;
   internalId: string;
 }) {
-  logger.info(
-    {
-      internalId,
-      connectorId,
-    },
-    `Deleting Microsoft folder.`
-  );
-
   const folder = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     internalId
+  );
+
+  logger.info(
+    {
+      connectorId,
+      folder,
+    },
+    `Deleting Microsoft folder.`
   );
 
   const { itemAPIPath } = typeAndPathFromInternalId(internalId);
@@ -1027,7 +1033,7 @@ async function deleteFile({
     return;
   }
 
-  logger.info({ file }, `Deleting Microsoft file.`);
+  logger.info({ connectorId, file }, `Deleting Microsoft file.`);
 
   if (isMicrosoftSpreadsheet(file)) {
     await deleteAllSheets(dataSourceConfig, file);
