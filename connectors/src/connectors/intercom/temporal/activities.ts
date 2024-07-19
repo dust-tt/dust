@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomArticles,
   fetchIntercomCollection,
@@ -359,9 +360,9 @@ export async function syncArticleBatchActivity({
   if (!helpCenter) {
     throw new Error("[Intercom] HelpCenter not found");
   }
-
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
   const result = await fetchIntercomArticles({
-    nangoConnectionId: connector.connectionId,
+    accessToken,
     helpCenterId,
     page,
     pageSize: INTERCOM_ARTICLE_BATCH_SIZE,
@@ -509,9 +510,11 @@ export async function getNextConversationBatchToSyncActivity({
 
   let result;
 
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+
   if (teamId) {
     result = await fetchIntercomConversations({
-      nangoConnectionId: connector.connectionId,
+      accessToken,
       teamId,
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
@@ -519,7 +522,7 @@ export async function getNextConversationBatchToSyncActivity({
     });
   } else {
     result = await fetchIntercomConversations({
-      nangoConnectionId: connector.connectionId,
+      accessToken,
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
@@ -549,7 +552,6 @@ export async function syncConversationBatchActivity({
   currentSyncMs: number;
 }): Promise<void> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
-  const nangoConnectionId = connector.connectionId;
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -564,7 +566,7 @@ export async function syncConversationBatchActivity({
     (conversationId) =>
       fetchAndSyncConversation({
         connectorId,
-        nangoConnectionId,
+        connectionId: connector.connectionId,
         dataSourceConfig,
         conversationId,
         currentSyncMs,

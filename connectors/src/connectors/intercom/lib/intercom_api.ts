@@ -10,22 +10,19 @@ import {
   ExternalOauthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
-
-const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
 
 /**
  * Utility function to call the Intercom API.
  * It centralizes fetching the Access Token from Nango, calling the API and handling global errors.
  */
 async function queryIntercomAPI({
-  nangoConnectionId,
+  accessToken,
   path,
   method,
   body,
 }: {
-  nangoConnectionId: string;
+  accessToken: string;
   path: string;
   method: "GET" | "POST";
   body?: {
@@ -43,16 +40,6 @@ async function queryIntercomAPI({
     };
   };
 }) {
-  if (!NANGO_INTERCOM_CONNECTOR_ID) {
-    throw new Error("NANGO_NOTION_CONNECTOR_ID not set");
-  }
-
-  const accessToken = await getAccessTokenFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: NANGO_INTERCOM_CONNECTOR_ID,
-    useCache: true,
-  });
-
   // Intercom will route to the correct region based on the token.
   // https://developers.intercom.com/docs/build-an-integration/learn-more/rest-apis/#regional-hosting
   const rawResponse = await fetch(`https://api.intercom.io/${path}`, {
@@ -114,15 +101,13 @@ async function queryIntercomAPI({
 /**
  * Return the Intercom Workspace.
  */
-export async function fetchIntercomWorkspace(
-  nangoConnectionId: string
-): Promise<{
+export async function fetchIntercomWorkspace(accessToken: string): Promise<{
   id: string;
   name: string;
   region: string;
 } | null> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: "me",
     method: "GET",
   });
@@ -146,13 +131,13 @@ export async function fetchIntercomWorkspace(
  * Return the list of Help Centers of the Intercom workspace
  */
 export async function fetchIntercomHelpCenters(
-  nangoConnectionId: string
+  accessToken: string
 ): Promise<IntercomHelpCenterType[]> {
   const response: {
     type: "list";
     data: IntercomHelpCenterType[];
   } = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: "help_center/help_centers",
     method: "GET",
   });
@@ -164,11 +149,11 @@ export async function fetchIntercomHelpCenters(
  * Return the detail of Help Center
  */
 export async function fetchIntercomHelpCenter(
-  nangoConnectionId: string,
+  accessToken: string,
   helpCenterId: string
 ): Promise<IntercomHelpCenterType | null> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `help_center/help_centers/${helpCenterId}`,
     method: "GET",
   });
@@ -180,7 +165,7 @@ export async function fetchIntercomHelpCenter(
  * Return the list of Collections filtered by Help Center and parent Collection.
  */
 export async function fetchIntercomCollections(
-  nangoConnectionId: string,
+  accessToken: string,
   helpCenterId: string,
   parentId: string | null
 ): Promise<IntercomCollectionType[]> {
@@ -189,7 +174,7 @@ export async function fetchIntercomCollections(
   const collections: IntercomCollectionType[] = [];
   do {
     response = await queryIntercomAPI({
-      nangoConnectionId,
+      accessToken,
       path: `help_center/collections?page=${page}&per_page=12`,
       method: "GET",
     });
@@ -220,11 +205,11 @@ export async function fetchIntercomCollections(
  * Return the detail of a Collection.
  */
 export async function fetchIntercomCollection(
-  nangoConnectionId: string,
+  accessToken: string,
   collectionId: string
 ): Promise<IntercomCollectionType | null> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `help_center/collections/${collectionId}`,
     method: "GET",
   });
@@ -236,12 +221,12 @@ export async function fetchIntercomCollection(
  * Return the Articles that are children of a given Collection.
  */
 export async function fetchIntercomArticles({
-  nangoConnectionId,
+  accessToken,
   helpCenterId,
   page = 1,
   pageSize = 12,
 }: {
-  nangoConnectionId: string;
+  accessToken: string;
   helpCenterId: string;
   page: number;
   pageSize?: number;
@@ -259,7 +244,7 @@ export async function fetchIntercomArticles({
   };
 }> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `articles/search?help_center_id=${helpCenterId}&state=published&page=${page}&per_page=${pageSize}`,
     method: "GET",
   });
@@ -271,10 +256,10 @@ export async function fetchIntercomArticles({
  * Return the list of Teams.
  */
 export async function fetchIntercomTeams(
-  nangoConnectionId: string
+  accessToken: string
 ): Promise<IntercomTeamType[]> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `teams`,
     method: "GET",
   });
@@ -286,11 +271,11 @@ export async function fetchIntercomTeams(
  * Return the detail of a Team.
  */
 export async function fetchIntercomTeam(
-  nangoConnectionId: string,
+  accessToken: string,
   teamId: string
 ): Promise<IntercomTeamType | null> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `teams/${teamId}`,
     method: "GET",
   });
@@ -303,13 +288,13 @@ export async function fetchIntercomTeam(
  * Filtered on a slidingWindow and closed Conversations.
  */
 export async function fetchIntercomConversations({
-  nangoConnectionId,
+  accessToken,
   teamId,
   slidingWindow,
   cursor = null,
   pageSize = 20,
 }: {
-  nangoConnectionId: string;
+  accessToken: string;
   teamId?: string;
   slidingWindow: number;
   cursor: string | null;
@@ -354,7 +339,7 @@ export async function fetchIntercomConversations({
   }
 
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `conversations/search`,
     method: "POST",
     body: {
@@ -377,13 +362,13 @@ export async function fetchIntercomConversations({
  * Filtered on closed Conversations.
  */
 export async function fetchIntercomConversationsForDay({
-  nangoConnectionId,
+  accessToken,
   minCreatedAt,
   maxCreatedAt,
   cursor = null,
   pageSize = 20,
 }: {
-  nangoConnectionId: string;
+  accessToken: string;
   minCreatedAt: number;
   maxCreatedAt: number;
   cursor: string | null;
@@ -398,7 +383,7 @@ export async function fetchIntercomConversationsForDay({
   };
 }> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `conversations/search`,
     method: "POST",
     body: {
@@ -431,14 +416,14 @@ export async function fetchIntercomConversationsForDay({
  * Return the detail of a Conversation.
  */
 export async function fetchIntercomConversation({
-  nangoConnectionId,
+  accessToken,
   conversationId,
 }: {
-  nangoConnectionId: string;
+  accessToken: string;
   conversationId: string;
 }): Promise<IntercomConversationWithPartsType | null> {
   const response = await queryIntercomAPI({
-    nangoConnectionId,
+    accessToken,
     path: `conversations/${conversationId}`,
     method: "GET",
   });

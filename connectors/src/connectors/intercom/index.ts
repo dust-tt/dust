@@ -20,6 +20,7 @@ import {
   revokeSyncCollection,
   revokeSyncHelpCenter,
 } from "@connectors/connectors/intercom/lib/help_center_permissions";
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomWorkspace } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   getHelpCenterArticleIdFromInternalId,
@@ -61,16 +62,13 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, Error>> {
-    const nangoConnectionId = connectionId;
-
-    if (!NANGO_INTERCOM_CONNECTOR_ID) {
-      throw new Error("NANGO_INTERCOM_CONNECTOR_ID not set");
-    }
+    const intercomAccessToken = await getIntercomAccessToken(connectionId);
 
     let connector = null;
 
     try {
-      const intercomWorkspace = await fetchIntercomWorkspace(nangoConnectionId);
+      const intercomWorkspace =
+        await fetchIntercomWorkspace(intercomAccessToken);
       if (!intercomWorkspace) {
         return new Err(
           new Error(
@@ -91,7 +89,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       connector = await ConnectorResource.makeNew(
         "intercom",
         {
-          connectionId: nangoConnectionId,
+          connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
