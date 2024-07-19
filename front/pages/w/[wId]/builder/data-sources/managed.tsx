@@ -109,10 +109,10 @@ export async function setupConnection({
   if (
     isOAuthProvider(provider) &&
     // `oauth`-ready providers
-    (["github"].includes(provider) ||
-      // Behind flag oauth-ready providers
-      (["slack"].includes(provider) &&
-        owner.flags.includes("test_oauth_setup")))
+    ["github", "slack"].includes(provider)
+    // Behind flag oauth-ready providers
+    // ([""].includes(provider) &&
+    //   owner.flags.includes("test_oauth_setup"))
   ) {
     // OAuth flow
     const cRes = await setupOAuthConnection({
