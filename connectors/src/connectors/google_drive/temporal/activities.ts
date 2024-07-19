@@ -704,7 +704,7 @@ async function deleteOneFile(
   await deleteFile(googleDriveFile);
 }
 
-async function deleteFile(googleDriveFile: GoogleDriveFiles) {
+export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
   const connectorId = googleDriveFile.connectorId;
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
