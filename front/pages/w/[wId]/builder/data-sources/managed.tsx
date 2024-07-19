@@ -153,16 +153,6 @@ export async function setupConnection({
         new Error(`Failed to enable connection for ${provider}: ${err}`)
       );
     }
-  } else if (provider === "github") {
-    // Github legacy flow
-    try {
-      const installationId = await githubAuth(githubAppUrl);
-      connectionId = installationId;
-    } catch (err) {
-      return new Err(
-        new Error(`Failed to enable connection for ${provider}: ${err}`)
-      );
-    }
   } else {
     return new Err(new Error(`Unknown provider ${provider}`));
   }
