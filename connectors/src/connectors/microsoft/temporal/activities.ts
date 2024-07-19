@@ -781,10 +781,11 @@ export async function syncDeltaForNode({
         // in the delta with the 'deleted' field set
         await deleteFolder({ connectorId, internalId });
       } else {
-        await MicrosoftNodeResource.updateOrCreate(
+        const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
           itemToMicrosoftNode("folder", driveItem)
         );
+        await resource.update({ lastSeenTs: new Date() });
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
