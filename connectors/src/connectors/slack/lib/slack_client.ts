@@ -186,31 +186,19 @@ export async function getSlackConversationInfo(
 export async function getSlackAccessToken(
   connectionId: string
 ): Promise<string> {
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
-      provider: "slack",
-      connectionId,
-    });
-    if (tokRes.isErr()) {
-      logger.error(
-        { connectionId, error: tokRes.error },
-        "Error retrieving Slack access token"
-      );
-      throw new Error("Error retrieving Slack access token");
-    }
-
-    return tokRes.value.access_token;
-  } else {
-    // TODO(spolu) SLACK_MIGRATION remove once migrated
-    if (!NANGO_SLACK_CONNECTOR_ID) {
-      throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
-    }
-    return getAccessTokenFromNango({
-      connectionId: connectionId,
-      integrationId: NANGO_SLACK_CONNECTOR_ID,
-      useCache: true,
-    });
+  const tokRes = await getOAuthConnectionAccessToken({
+    config: apiConfig.getOAuthAPIConfig(),
+    logger,
+    provider: "slack",
+    connectionId,
+  });
+  if (tokRes.isErr()) {
+    logger.error(
+      { connectionId, error: tokRes.error },
+      "Error retrieving Slack access token"
+    );
+    throw new Error("Error retrieving Slack access token");
   }
+
+  return tokRes.value.access_token;
 }
