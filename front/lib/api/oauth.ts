@@ -185,8 +185,12 @@ const PROVIDER_STRATEGIES: Record<
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("intercom"))}`
       );
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (connection) => {
+      return getStringFromQuery(connection, "code");
+    },
+    connectionIdFromQuery: (connection) => {
+      return getStringFromQuery(connection, "state");
+    },
   },
   microsoft: {
     setupUri: () => {

@@ -54,17 +54,12 @@ impl Provider for IntercomConnectionProvider {
             None => Err(anyhow!("Missing `access_token` in response from Intercom"))?,
         };
 
-        let refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => token,
-            None => Err(anyhow!("Missing `refresh_token` in response from Intercom"))?,
-        };
-
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: None, // Intercom doesn't provide expiry time
-            refresh_token: Some(refresh_token.to_string()),
+            access_token_expiry: None,
+            refresh_token: None,
             raw_json,
         })
     }
@@ -77,6 +72,7 @@ impl Provider for IntercomConnectionProvider {
         let raw_json = match raw_json.clone() {
             serde_json::Value::Object(mut map) => {
                 map.remove("access_token");
+                map.remove("token");
                 serde_json::Value::Object(map)
             }
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,
