@@ -37,6 +37,8 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
+import { DataSourceConfig } from "@connectors/types/data_source_config";
+import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 
 const FILES_SYNC_CONCURRENCY = 10;
 
@@ -454,6 +456,11 @@ export async function syncDeltaForNode({
         // in the delta with the 'deleted' field set
         await deleteFolder({ connectorId, internalId });
       } else {
+        const isMoved = await isFolderMovedInSameRoot({
+          connectorId,
+          folder: driveItem,
+          internalId,
+        });
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
           itemToMicrosoftNode("folder", driveItem)
@@ -471,6 +478,13 @@ export async function syncDeltaForNode({
           parentInternalId,
           lastSeenTs: new Date(),
         });
+        if (isMoved) {
+          await updateDescendantsParentsInQdrant({
+            dataSourceConfig,
+            folder: resource,
+            startSyncTs,
+          });
+        }
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
@@ -619,4 +633,85 @@ async function getDeltaData({
     }
     throw e;
   }
+}
+
+async function isFolderMovedInSameRoot({
+  connectorId,
+  folder,
+  internalId,
+}: {
+  connectorId: ModelId;
+  folder: DriveItem;
+  internalId: string;
+}) {
+  if (!folder.parentReference) {
+    throw new Error(`Unexpected: parent reference missing: ${folder}`);
+  }
+
+  const oldResource = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    internalId
+  );
+
+  if (!oldResource) {
+    // the folder was not moved internally since we don't have it
+    return false;
+  }
+
+  const oldParentId = oldResource.parentInternalId;
+
+  const newParentId = getParentReferenceInternalId(folder.parentReference);
+
+  return oldParentId !== newParentId;
+}
+
+async function updateDescendantsParentsInQdrant({
+  folder,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  folder: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const children = await folder.fetchChildren();
+  const files = children.filter((child) => child.nodeType === "file");
+  const folders = children.filter((child) => child.nodeType === "folder");
+  await concurrentExecutor(
+    files,
+    async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
+    {
+      concurrency: 10,
+    }
+  );
+  for (const childFolder of folders) {
+    await updateDescendantsParentsInQdrant({
+      dataSourceConfig,
+      folder: childFolder,
+      startSyncTs,
+    });
+  }
+}
+
+async function updateParentsField({
+  file,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  file: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const parents = await getParents({
+    connectorId: file.connectorId,
+    internalId: file.internalId,
+    parentInternalId: file.parentInternalId,
+    startSyncTs,
+  });
+
+  await updateDocumentParentsField({
+    dataSourceConfig,
+    documentId: file.internalId,
+    parents,
+  });
 }
