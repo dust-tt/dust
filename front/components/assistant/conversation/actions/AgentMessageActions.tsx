@@ -24,8 +24,8 @@ export function AgentMessageActions({
   // gets emitted in which case the content will get requalified as chain of thoughts and this will
   // switch back to true.
   const isThinkingOrActing = useMemo(
-    () => !agentMessage.content?.length && agentMessage.status === "created",
-    [agentMessage.content, agentMessage.status]
+    () => agentMessage.status === "created",
+    [agentMessage.status]
   );
 
   useEffect(() => {
