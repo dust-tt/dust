@@ -1,6 +1,4 @@
-import type { Result } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import axios from "axios";
 
