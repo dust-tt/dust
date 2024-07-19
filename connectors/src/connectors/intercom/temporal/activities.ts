@@ -145,10 +145,11 @@ export async function syncHelpCenterOnlyActivity({
   }
 
   // If the help center is not on intercom anymore we delete the Help Center data
-  const helpCenterOnIntercom = await fetchIntercomHelpCenter(
-    connector.connectionId,
-    helpCenterOnDb.helpCenterId
-  );
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const helpCenterOnIntercom = await fetchIntercomHelpCenter({
+    accessToken,
+    helpCenterId: helpCenterOnDb.helpCenterId,
+  });
   if (!helpCenterOnIntercom) {
     await removeHelpCenter({
       connectorId,
@@ -289,10 +290,11 @@ export async function syncLevel1CollectionWithChildrenActivity({
   }
 
   // If the collection is not present on Intercom anymore we delete the collection and its children
-  const collectionOnIntercom = await fetchIntercomCollection(
-    connector.connectionId,
-    collectionOnDB.collectionId
-  );
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const collectionOnIntercom = await fetchIntercomCollection({
+    accessToken,
+    collectionId: collectionOnDB.collectionId,
+  });
   if (collectionOnIntercom === null) {
     await deleteCollectionWithChildren({
       connectorId,
@@ -463,10 +465,8 @@ export async function syncTeamOnlyActivity({
   }
 
   // If the team does not exists on Intercom we delete the team and its conversations
-  const teamOnIntercom = await fetchIntercomTeam(
-    connector.connectionId,
-    teamId
-  );
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
   if (!teamOnIntercom) {
     await deleteTeamAndConversations({
       connectorId,

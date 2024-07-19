@@ -1392,8 +1392,8 @@ export const intercom = async ({
     }
     case "check-teams": {
       logger.info("[Admin] Checking teams");
-
-      const teamsOnIntercom = await fetchIntercomTeams(connector.connectionId);
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
+      const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
       const teamsOnDb = await IntercomTeam.findAll({
         where: {
           connectorId,

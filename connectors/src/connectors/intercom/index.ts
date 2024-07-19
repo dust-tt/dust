@@ -67,8 +67,9 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     let connector = null;
 
     try {
-      const intercomWorkspace =
-        await fetchIntercomWorkspace(intercomAccessToken);
+      const intercomWorkspace = await fetchIntercomWorkspace({
+        accessToken: intercomAccessToken,
+      });
       if (!intercomWorkspace) {
         return new Err(
           new Error(
@@ -158,8 +159,10 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
     if (connectionId) {
       const newConnectionId = connectionId;
-      const newIntercomWorkspace =
-        await fetchIntercomWorkspace(newConnectionId);
+      const accessToken = await getIntercomAccessToken(newConnectionId);
+      const newIntercomWorkspace = await fetchIntercomWorkspace({
+        accessToken,
+      });
 
       if (!newIntercomWorkspace) {
         return new Err({

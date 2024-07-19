@@ -101,7 +101,11 @@ async function queryIntercomAPI({
 /**
  * Return the Intercom Workspace.
  */
-export async function fetchIntercomWorkspace(accessToken: string): Promise<{
+export async function fetchIntercomWorkspace({
+  accessToken,
+}: {
+  accessToken: string;
+}): Promise<{
   id: string;
   name: string;
   region: string;
@@ -130,9 +134,11 @@ export async function fetchIntercomWorkspace(accessToken: string): Promise<{
 /**
  * Return the list of Help Centers of the Intercom workspace
  */
-export async function fetchIntercomHelpCenters(
-  accessToken: string
-): Promise<IntercomHelpCenterType[]> {
+export async function fetchIntercomHelpCenters({
+  accessToken,
+}: {
+  accessToken: string;
+}): Promise<IntercomHelpCenterType[]> {
   const response: {
     type: "list";
     data: IntercomHelpCenterType[];
@@ -148,10 +154,13 @@ export async function fetchIntercomHelpCenters(
 /**
  * Return the detail of Help Center
  */
-export async function fetchIntercomHelpCenter(
-  accessToken: string,
-  helpCenterId: string
-): Promise<IntercomHelpCenterType | null> {
+export async function fetchIntercomHelpCenter({
+  accessToken,
+  helpCenterId,
+}: {
+  accessToken: string;
+  helpCenterId: string;
+}): Promise<IntercomHelpCenterType | null> {
   const response = await queryIntercomAPI({
     accessToken,
     path: `help_center/help_centers/${helpCenterId}`,
@@ -164,11 +173,15 @@ export async function fetchIntercomHelpCenter(
 /**
  * Return the list of Collections filtered by Help Center and parent Collection.
  */
-export async function fetchIntercomCollections(
-  accessToken: string,
-  helpCenterId: string,
-  parentId: string | null
-): Promise<IntercomCollectionType[]> {
+export async function fetchIntercomCollections({
+  accessToken,
+  helpCenterId,
+  parentId,
+}: {
+  accessToken: string;
+  helpCenterId: string;
+  parentId: string | null;
+}): Promise<IntercomCollectionType[]> {
   let response, hasMore;
   let page = 1;
   const collections: IntercomCollectionType[] = [];
@@ -204,10 +217,13 @@ export async function fetchIntercomCollections(
 /**
  * Return the detail of a Collection.
  */
-export async function fetchIntercomCollection(
-  accessToken: string,
-  collectionId: string
-): Promise<IntercomCollectionType | null> {
+export async function fetchIntercomCollection({
+  accessToken,
+  collectionId,
+}: {
+  accessToken: string;
+  collectionId: string;
+}): Promise<IntercomCollectionType | null> {
   const response = await queryIntercomAPI({
     accessToken,
     path: `help_center/collections/${collectionId}`,
@@ -255,9 +271,11 @@ export async function fetchIntercomArticles({
 /**
  * Return the list of Teams.
  */
-export async function fetchIntercomTeams(
-  accessToken: string
-): Promise<IntercomTeamType[]> {
+export async function fetchIntercomTeams({
+  accessToken,
+}: {
+  accessToken: string;
+}): Promise<IntercomTeamType[]> {
   const response = await queryIntercomAPI({
     accessToken,
     path: `teams`,
@@ -270,10 +288,13 @@ export async function fetchIntercomTeams(
 /**
  * Return the detail of a Team.
  */
-export async function fetchIntercomTeam(
-  accessToken: string,
-  teamId: string
-): Promise<IntercomTeamType | null> {
+export async function fetchIntercomTeam({
+  accessToken,
+  teamId,
+}: {
+  accessToken: string;
+  teamId: string;
+}): Promise<IntercomTeamType | null> {
   const response = await queryIntercomAPI({
     accessToken,
     path: `teams/${teamId}`,

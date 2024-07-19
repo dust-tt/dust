@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomCollections } from "@connectors/connectors/intercom/lib/intercom_api";
 import type {
   IntercomArticleType,
@@ -201,11 +202,12 @@ export async function upsertCollectionWithChildren({
   }
 
   // Then we call ourself recursively on the children collections
-  const childrenCollectionsOnIntercom = await fetchIntercomCollections(
-    connectionId,
+  const accessToken = await getIntercomAccessToken(connectionId);
+  const childrenCollectionsOnIntercom = await fetchIntercomCollections({
+    accessToken,
     helpCenterId,
-    collection.id
-  );
+    parentId: collection.id,
+  });
 
   await Promise.all(
     childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
