@@ -63,6 +63,7 @@ export async function getFilesAndFolders(
       `Invalid node type: ${nodeType} for getFilesAndFolders, expected drive or folder`
     );
   }
+
   const endpoint =
     nodeType === "drive"
       ? `${parentResourcePath}/root/children`
@@ -80,6 +81,90 @@ export async function getFilesAndFolders(
   }
 
   return { results: res.value };
+}
+
+export async function getDeltaResults({
+  client,
+  parentInternalId,
+  nextLink,
+  token,
+}: {
+  client: Client;
+  parentInternalId: string;
+} & (
+  | { nextLink: string; token?: never }
+  | { nextLink?: never; token: string }
+)) {
+  const { nodeType, itemAPIPath } = typeAndPathFromInternalId(parentInternalId);
+
+  if (nodeType !== "drive" && nodeType !== "folder") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for delta, expected drive or folder`
+    );
+  }
+
+  if (nextLink && token) {
+    throw new Error("nextLink and token cannot be used together");
+  }
+
+  const deltaPath =
+    (nodeType === "folder"
+      ? itemAPIPath + "/delta"
+      : itemAPIPath + "/root/delta") + (token ? `?token=${token}` : "");
+
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client
+        .api(deltaPath)
+        .header("Prefer", "odata.track-changes, deltaExcludeParent=true")
+        .get();
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  if ("@odata.deltaLink" in res) {
+    return {
+      results: res.value,
+      deltaLink: res["@odata.deltaLink"],
+    };
+  }
+
+  return { results: res.value };
+}
+
+/**
+ * Similar to getDeltaResults but goes through pagination (returning results and
+ * the deltalink)
+ */
+export async function getFullDeltaResults(
+  client: Client,
+  parentInternalId: string,
+  initialDeltaLink: string
+): Promise<{ results: microsoftgraph.DriveItem[]; deltaLink: string }> {
+  let nextLink: string | undefined = initialDeltaLink;
+  let allItems: microsoftgraph.DriveItem[] = [];
+  let deltaLink: string | undefined = undefined;
+
+  do {
+    const {
+      results,
+      nextLink: newNextLink,
+      deltaLink: finalDeltaLink,
+    } = await getDeltaResults({ client, parentInternalId, nextLink });
+    allItems = allItems.concat(results);
+    nextLink = newNextLink;
+    deltaLink = finalDeltaLink;
+  } while (nextLink);
+
+  if (!deltaLink) {
+    throw new Error("Delta link not found");
+  }
+
+  return { results: allItems, deltaLink };
 }
 
 export async function getWorksheets(
@@ -202,6 +287,7 @@ export async function getMessages(
 
   return { results: res.value };
 }
+
 /**
  * Given a getter function with a single nextLink optional parameter, this function
  * fetches all items by following nextLinks
@@ -225,6 +311,18 @@ export async function getAllPaginatedEntities<T extends MicrosoftGraph.Entity>(
 
 export async function getItem(client: Client, itemApiPath: string) {
   return client.api(itemApiPath).get();
+}
+
+export async function getFileDownloadURL(client: Client, internalId: string) {
+  const { nodeType, itemAPIPath } = typeAndPathFromInternalId(internalId);
+
+  if (nodeType !== "file") {
+    throw new Error(`Invalid node type: ${nodeType} for getFileDownloadURL`);
+  }
+
+  const res = await client.api(`${itemAPIPath}`).get();
+
+  return res["@microsoft.graph.downloadUrl"];
 }
 
 type MicrosoftEntity = {
@@ -260,11 +358,10 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalIdFromTypeAndPath({
-          nodeType,
-          itemAPIPath: getDriveItemAPIPath(item),
-        }),
-        parentInternalId: null,
+        internalId: getDriveItemInternalId(item),
+        parentInternalId: item.parentReference
+          ? getParentReferenceInternalId(item.parentReference)
+          : null,
         mimeType: null,
       };
     }
@@ -273,11 +370,10 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalIdFromTypeAndPath({
-          nodeType,
-          itemAPIPath: getDriveItemAPIPath(item),
-        }),
-        parentInternalId: null,
+        internalId: getDriveItemInternalId(item),
+        parentInternalId: item.parentReference
+          ? getParentReferenceInternalId(item.parentReference)
+          : null,
         mimeType: item.file?.mimeType ?? null,
       };
     }
@@ -286,10 +382,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       return {
         nodeType,
         name: item.name ?? null,
-        internalId: internalIdFromTypeAndPath({
-          nodeType,
-          itemAPIPath: getDriveAPIPath(item),
-        }),
+        internalId: getDriveInternalId(item),
         parentInternalId: null,
         mimeType: null,
       };
@@ -363,27 +456,53 @@ export function typeAndPathFromInternalId(internalId: string): {
   return { nodeType, itemAPIPath: resourcePathArr.join("/") };
 }
 
-export function getDriveItemAPIPath(item: MicrosoftGraph.DriveItem) {
+export function getDriveItemInternalId(item: MicrosoftGraph.DriveItem) {
   const { parentReference } = item;
 
   if (!parentReference?.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
 
-  return `/drives/${parentReference.driveId}/items/${item.id}`;
+  const nodeType = item.folder ? "folder" : item.file ? "file" : null;
+
+  if (!nodeType) {
+    throw new Error("Unexpected: item is neither folder nor file");
+  }
+
+  if (item.root) {
+    return internalIdFromTypeAndPath({
+      nodeType: "drive",
+      itemAPIPath: `/drives/${parentReference.driveId}`,
+    });
+  }
+
+  return internalIdFromTypeAndPath({
+    nodeType,
+    itemAPIPath: `/drives/${parentReference.driveId}/items/${item.id}`,
+  });
 }
 
-export function getParentReferenceAPIPath(
+export function getParentReferenceInternalId(
   parentReference: MicrosoftGraph.ItemReference
 ) {
   if (!parentReference.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
 
-  return `/drives/${parentReference.driveId}/items/${parentReference.id}`;
+  if (parentReference.path && !parentReference.path.endsWith("root:")) {
+    return internalIdFromTypeAndPath({
+      nodeType: "folder",
+      itemAPIPath: `/drives/${parentReference.driveId}/items/${parentReference.id}`,
+    });
+  }
+
+  return internalIdFromTypeAndPath({
+    nodeType: "drive",
+    itemAPIPath: `/drives/${parentReference.driveId}`,
+  });
 }
 
-export function getWorksheetAPIPath(
+export function getWorksheetInternalId(
   item: MicrosoftGraph.WorkbookWorksheet,
   parentInternalId: string
 ) {
@@ -394,29 +513,28 @@ export function getWorksheetAPIPath(
     throw new Error(`Invalid parent nodeType: ${nodeType}`);
   }
 
-  return `${parentItemApiPath}/workbook/worksheets/${item.id}`;
+  return internalIdFromTypeAndPath({
+    itemAPIPath: `${parentItemApiPath}/workbook/worksheets/${item.id}`,
+    nodeType: "worksheet",
+  });
 }
 
-export function getDriveAPIPath(drive: MicrosoftGraph.Drive) {
-  return `/drives/${drive.id}`;
+export function getDriveInternalId(drive: MicrosoftGraph.Drive) {
+  return internalIdFromTypeAndPath({
+    nodeType: "drive",
+    itemAPIPath: `/drives/${drive.id}`,
+  });
 }
 
-export function getDriveAPIPathFromItem(item: MicrosoftGraph.DriveItem) {
+export function getDriveInternalIdFromItem(item: MicrosoftGraph.DriveItem) {
   if (!item.parentReference?.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
 
-  return `/drives/${item.parentReference.driveId}`;
-}
-
-export function getDriveItemAPIPathFromReference(
-  parentReference: MicrosoftGraph.ItemReference
-) {
-  if (!parentReference.driveId) {
-    throw new Error("Unexpected: no drive id for item");
-  }
-
-  return `/drives/${parentReference.driveId}/items/${parentReference.id}`;
+  return internalIdFromTypeAndPath({
+    nodeType: "drive",
+    itemAPIPath: `/drives/${item.parentReference.driveId}`,
+  });
 }
 
 export function getSiteAPIPath(site: MicrosoftGraph.Site) {
