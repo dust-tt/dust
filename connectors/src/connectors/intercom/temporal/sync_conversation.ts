@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomConversation } from "@connectors/connectors/intercom/lib/intercom_api";
 import type {
   ConversationPartType,
@@ -92,7 +93,7 @@ export async function deleteConversation({
 
 export async function fetchAndSyncConversation({
   connectorId,
-  nangoConnectionId,
+  connectionId,
   dataSourceConfig,
   conversationId,
   currentSyncMs,
@@ -100,15 +101,16 @@ export async function fetchAndSyncConversation({
   loggerArgs,
 }: {
   connectorId: ModelId;
-  nangoConnectionId: string;
+  connectionId: string;
   dataSourceConfig: DataSourceConfig;
   conversationId: string;
   currentSyncMs: number;
   syncType: "incremental" | "batch";
   loggerArgs: Record<string, string | number | null>;
 }) {
+  const accessToken = await getIntercomAccessToken(connectionId);
   const conversation = await fetchIntercomConversation({
-    nangoConnectionId,
+    accessToken,
     conversationId,
   });
 

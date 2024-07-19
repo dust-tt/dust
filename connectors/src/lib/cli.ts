@@ -48,6 +48,7 @@ import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomConversation,
   fetchIntercomConversationsForDay,
@@ -1286,8 +1287,9 @@ export const intercom = async ({
 
       logger.info("[Admin] Checking conversation");
 
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
       const conversationOnIntercom = await fetchIntercomConversation({
-        nangoConnectionId: connector.connectionId,
+        accessToken,
         conversationId,
       });
       const teamIdOnIntercom =
@@ -1317,8 +1319,9 @@ export const intercom = async ({
 
       logger.info("[Admin] Checking conversation");
 
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
       const conversationOnIntercom = await fetchIntercomConversation({
-        nangoConnectionId: connector.connectionId,
+        accessToken,
         conversationId,
       });
 
@@ -1346,10 +1349,10 @@ export const intercom = async ({
       const convosOnIntercom = [];
       let cursor = null;
       let convosOnIntercomRes;
-
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
       do {
         convosOnIntercomRes = await fetchIntercomConversationsForDay({
-          nangoConnectionId: connector.connectionId,
+          accessToken,
           minCreatedAt: startOfDay.getTime() / 1000,
           maxCreatedAt: endOfDay.getTime() / 1000,
           cursor,
@@ -1389,8 +1392,8 @@ export const intercom = async ({
     }
     case "check-teams": {
       logger.info("[Admin] Checking teams");
-
-      const teamsOnIntercom = await fetchIntercomTeams(connector.connectionId);
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
+      const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
       const teamsOnDb = await IntercomTeam.findAll({
         where: {
           connectorId,

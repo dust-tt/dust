@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomArticles,
   fetchIntercomCollection,
@@ -144,10 +145,11 @@ export async function syncHelpCenterOnlyActivity({
   }
 
   // If the help center is not on intercom anymore we delete the Help Center data
-  const helpCenterOnIntercom = await fetchIntercomHelpCenter(
-    connector.connectionId,
-    helpCenterOnDb.helpCenterId
-  );
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const helpCenterOnIntercom = await fetchIntercomHelpCenter({
+    accessToken,
+    helpCenterId: helpCenterOnDb.helpCenterId,
+  });
   if (!helpCenterOnIntercom) {
     await removeHelpCenter({
       connectorId,
@@ -288,10 +290,11 @@ export async function syncLevel1CollectionWithChildrenActivity({
   }
 
   // If the collection is not present on Intercom anymore we delete the collection and its children
-  const collectionOnIntercom = await fetchIntercomCollection(
-    connector.connectionId,
-    collectionOnDB.collectionId
-  );
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const collectionOnIntercom = await fetchIntercomCollection({
+    accessToken,
+    collectionId: collectionOnDB.collectionId,
+  });
   if (collectionOnIntercom === null) {
     await deleteCollectionWithChildren({
       connectorId,
@@ -359,9 +362,9 @@ export async function syncArticleBatchActivity({
   if (!helpCenter) {
     throw new Error("[Intercom] HelpCenter not found");
   }
-
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
   const result = await fetchIntercomArticles({
-    nangoConnectionId: connector.connectionId,
+    accessToken,
     helpCenterId,
     page,
     pageSize: INTERCOM_ARTICLE_BATCH_SIZE,
@@ -462,10 +465,8 @@ export async function syncTeamOnlyActivity({
   }
 
   // If the team does not exists on Intercom we delete the team and its conversations
-  const teamOnIntercom = await fetchIntercomTeam(
-    connector.connectionId,
-    teamId
-  );
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
   if (!teamOnIntercom) {
     await deleteTeamAndConversations({
       connectorId,
@@ -509,9 +510,11 @@ export async function getNextConversationBatchToSyncActivity({
 
   let result;
 
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+
   if (teamId) {
     result = await fetchIntercomConversations({
-      nangoConnectionId: connector.connectionId,
+      accessToken,
       teamId,
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
@@ -519,7 +522,7 @@ export async function getNextConversationBatchToSyncActivity({
     });
   } else {
     result = await fetchIntercomConversations({
-      nangoConnectionId: connector.connectionId,
+      accessToken,
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
@@ -549,7 +552,6 @@ export async function syncConversationBatchActivity({
   currentSyncMs: number;
 }): Promise<void> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
-  const nangoConnectionId = connector.connectionId;
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -564,7 +566,7 @@ export async function syncConversationBatchActivity({
     (conversationId) =>
       fetchAndSyncConversation({
         connectorId,
-        nangoConnectionId,
+        connectionId: connector.connectionId,
         dataSourceConfig,
         conversationId,
         currentSyncMs,
