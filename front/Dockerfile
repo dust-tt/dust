@@ -15,9 +15,11 @@ RUN npm ci
 
 COPY /front .
 
+ARG COMMIT_HASH
+ENV NEXT_PUBLIC_COMMIT_HASH=${COMMIT_HASH}
+
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
-
 
 CMD ["npm", "--silent", "run", "start"]
