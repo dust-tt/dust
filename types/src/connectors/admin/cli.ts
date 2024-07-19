@@ -17,7 +17,11 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
 
 export const GithubCommandSchema = t.type({
   majorCommand: t.literal("github"),
-  command: t.union([t.literal("resync-repo"), t.literal("code-sync")]),
+  command: t.union([
+    t.literal("resync-repo"),
+    t.literal("code-sync"),
+    t.literal("sync-issue"),
+  ]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });
 

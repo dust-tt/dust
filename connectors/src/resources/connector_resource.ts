@@ -114,7 +114,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return connectors;
   }
 
-  static async findByDataSourceAndConnection(dataSource: {
+  static async findByDataSource(dataSource: {
     workspaceId: string;
     dataSourceName: string;
   }) {
