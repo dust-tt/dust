@@ -110,16 +110,20 @@ const PROVIDER_STRATEGIES: Record<
   slack: {
     setupUri: (connection) => {
       const scopes = [
+        "app_mentions:read",
         "channels:history",
         "channels:join",
         "channels:read",
+        "chat:write",
+        "groups:history",
+        "groups:read",
         "im:history",
+        "metadata.message:read",
+        "mpim:read",
+        "team:read",
         "users:read",
         "users:read.email",
-        "team:read",
-        "chat:write",
-        "app_mentions:read",
-        "reactions:read",
+        "mpim:history",
       ];
       return (
         `https://slack.com/oauth/v2/authorize?` +

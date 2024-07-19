@@ -12,7 +12,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
-use serde_json::json;
 use std::env;
 
 lazy_static! {
@@ -47,17 +46,12 @@ impl Provider for SlackConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult> {
-        let body = json!({
-            "code": code,
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code"
-        });
-
         let req = reqwest::Client::new()
             .post("https://slack.com/api/oauth.v2.access")
+            .header("Content-Type", "application/json; charset=utf-8")
             .header("Authorization", format!("Basic {}", self.basic_auth()))
-            .header("Content-Type", "application/json")
-            .json(&body);
+            // Very important, this will *not* work with JSON body.
+            .form(&[("code", code), ("redirect_uri", redirect_uri)]);
 
         let raw_json = execute_request(ConnectionProvider::Slack, req).await?;
 
@@ -90,16 +84,14 @@ impl Provider for SlackConnectionProvider {
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Slack connection"))?;
 
-        let body = json!({
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-        });
-
         let req = reqwest::Client::new()
             .post("https://slack.com/api/oauth.v2.access")
             .header("Authorization", format!("Basic {}", self.basic_auth()))
-            .header("Content-Type", "application/json")
-            .json(&body);
+            .header("Content-Type", "application/json; charset=utf-8")
+            .form(&[
+                ("grant_type", "refresh_token"),
+                ("refresh_token", &refresh_token),
+            ]);
 
         let raw_json = execute_request(ConnectionProvider::Slack, req).await?;
 
