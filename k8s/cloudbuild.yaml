@@ -11,6 +11,7 @@ steps:
       - --push
       - -f
       - ${_DOCKERFILE_PATH}
+      - --build-arg', 'COMMIT_HASH=${SHORT_SHA}'
       - .
     secretEnv: ["DEPOT_TOKEN"]
 

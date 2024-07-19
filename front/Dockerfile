@@ -19,5 +19,7 @@ COPY /front .
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
+ARG COMMIT_HASH
+ENV NEXT_PUBLIC_COMMIT_HASH=${COMMIT_HASH}
 
 CMD ["npm", "--silent", "run", "start"]
