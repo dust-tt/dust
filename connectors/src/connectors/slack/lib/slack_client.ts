@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIHTTPError,
@@ -11,8 +12,11 @@ import {
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
+import { apiConfig } from "@connectors/lib/api/config";
+import logger from "@connectors/logger/logger";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
@@ -180,14 +184,33 @@ export async function getSlackConversationInfo(
 }
 
 export async function getSlackAccessToken(
-  nangoConnectionId: string
+  connectionId: string
 ): Promise<string> {
-  if (!NANGO_SLACK_CONNECTOR_ID) {
-    throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
+  if (isDualUseOAuthConnectionId(connectionId)) {
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      provider: "slack",
+      connectionId,
+    });
+    if (tokRes.isErr()) {
+      logger.error(
+        { connectionId, error: tokRes.error },
+        "Error retrieving Slack access token"
+      );
+      throw new Error("Error retrieving Slack access token");
+    }
+
+    return tokRes.value.access_token;
+  } else {
+    // TODO(spolu) SLACK_MIGRATION remove once migrated
+    if (!NANGO_SLACK_CONNECTOR_ID) {
+      throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
+    }
+    return getAccessTokenFromNango({
+      connectionId: connectionId,
+      integrationId: NANGO_SLACK_CONNECTOR_ID,
+      useCache: true,
+    });
   }
-  return getAccessTokenFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: NANGO_SLACK_CONNECTOR_ID,
-    useCache: true,
-  });
 }
