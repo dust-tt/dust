@@ -1,8 +1,5 @@
-import type {
-  ConnectorProvider} from "@dust-tt/types";
-import {
-  microsoftIncrementalSyncWorkflowId,
-} from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
+import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
 import {
   getIntercomSyncWorkflowId,
   googleDriveIncrementalSyncWorkflowId,
