@@ -79,48 +79,49 @@ impl Provider for SlackConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult> {
-        let refresh_token = connection
-            .unseal_refresh_token()?
-            .ok_or_else(|| anyhow!("Missing `refresh_token` in Slack connection"))?;
+    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult> {
+        Err(anyhow!("Slack token rotation not implemented."))?
+        // let refresh_token = connection
+        //     .unseal_refresh_token()?
+        //     .ok_or_else(|| anyhow!("Missing `refresh_token` in Slack connection"))?;
 
-        let req = reqwest::Client::new()
-            .post("https://slack.com/api/oauth.v2.access")
-            .header("Authorization", format!("Basic {}", self.basic_auth()))
-            .header("Content-Type", "application/json; charset=utf-8")
-            .form(&[
-                ("grant_type", "refresh_token"),
-                ("refresh_token", &refresh_token),
-            ]);
+        // let req = reqwest::Client::new()
+        //     .post("https://slack.com/api/oauth.v2.access")
+        //     .header("Authorization", format!("Basic {}", self.basic_auth()))
+        //     .header("Content-Type", "application/json; charset=utf-8")
+        //     .form(&[
+        //         ("grant_type", "refresh_token"),
+        //         ("refresh_token", &refresh_token),
+        //     ]);
 
-        let raw_json = execute_request(ConnectionProvider::Slack, req).await?;
+        // let raw_json = execute_request(ConnectionProvider::Slack, req).await?;
 
-        if !raw_json["ok"].as_bool().unwrap_or(false) {
-            return Err(anyhow!(
-                "Slack OAuth error: {}",
-                raw_json["error"].as_str().unwrap_or("Unknown error")
-            ));
-        }
+        // if !raw_json["ok"].as_bool().unwrap_or(false) {
+        //     return Err(anyhow!(
+        //         "Slack OAuth error: {}",
+        //         raw_json["error"].as_str().unwrap_or("Unknown error")
+        //     ));
+        // }
 
-        let access_token = raw_json["access_token"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?;
+        // let access_token = raw_json["access_token"]
+        //     .as_str()
+        //     .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?;
 
-        let new_refresh_token = raw_json["refresh_token"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing `refresh_token` in response from Slack"))?;
+        // let new_refresh_token = raw_json["refresh_token"]
+        //     .as_str()
+        //     .ok_or_else(|| anyhow!("Missing `refresh_token` in response from Slack"))?;
 
-        // Slack tokens expire in 12 hours (43200 seconds)
-        let expires_in = 43200;
+        // // Slack tokens expire in 12 hours (43200 seconds)
+        // let expires_in = 43200;
 
-        Ok(RefreshResult {
-            access_token: access_token.to_string(),
-            access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-            ),
-            refresh_token: Some(new_refresh_token.to_string()),
-            raw_json,
-        })
+        // Ok(RefreshResult {
+        //     access_token: access_token.to_string(),
+        //     access_token_expiry: Some(
+        //         utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
+        //     ),
+        //     refresh_token: Some(new_refresh_token.to_string()),
+        //     raw_json,
+        // })
     }
 
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
