@@ -197,6 +197,20 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return new Ok(undefined);
   }
 
+  static async fetchByItemAPIPath(connectorId: ModelId, itemAPIPath: string) {
+    const blob = await this.model.findOne({
+      where: {
+        connectorId,
+        itemAPIPath,
+      },
+    });
+
+    if (!blob) {
+      return null;
+    }
+    return new this(this.model, blob.get());
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -214,6 +228,8 @@ export interface MicrosoftNodeResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   static model: ModelStatic<MicrosoftNodeModel> = MicrosoftNodeModel;
+
+  private delta: MicrosoftDeltaModel | null = null;
 
   constructor(
     model: ModelStatic<MicrosoftNodeModel>,
@@ -249,12 +265,19 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
         connectorId,
         internalId,
       },
+      include: [
+        {
+          model: MicrosoftDeltaModel,
+          as: "delta",
+        },
+      ],
     });
     if (!blob) {
       return null;
     }
-
-    return new this(this.model, blob.get());
+    const resource = new this(this.model, blob.get());
+    resource.delta = blob.delta;
+    return resource;
   }
 
   static async fetchByInternalIds(connectorId: ModelId, internalIds: string[]) {
@@ -285,6 +308,18 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     );
   }
 
+  get deltaLink() {
+    return this.delta?.deltaLink;
+  }
+
+  async updateDeltaLink(deltaLink: string) {
+    await MicrosoftDeltaModel.upsert({
+      connectorId: this.connectorId,
+      nodeId: this.id,
+      deltaLink,
+    });
+  }
+
   static async batchDelete({
     resourceIds,
     connectorId,
@@ -312,6 +347,21 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  static async updateOrCreate(
+    connectorId: ModelId,
+    node: MicrosoftNode
+  ): Promise<MicrosoftNodeResource> {
+    const res = await this.batchUpdateOrCreate(connectorId, [node]);
+
+    if (res.length !== 1 || !res[0]) {
+      throw new Error(
+        "Unreachable: batchUpdateOrCreate returned 0 or more than 1 resources"
+      );
+    }
+
+    return res[0];
   }
 
   static async batchUpdateOrCreate(

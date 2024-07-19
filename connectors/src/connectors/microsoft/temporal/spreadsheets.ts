@@ -5,17 +5,18 @@ import { stringify } from "csv-stringify/sync";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
-  getDriveItemAPIPath,
-  getWorksheetAPIPath,
+  getDriveItemInternalId,
   getWorksheetContent,
+  getWorksheetInternalId,
   getWorksheets,
-  internalIdFromTypeAndPath,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { upsertTableFromCsv } from "@connectors/lib/data_sources";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
@@ -192,12 +193,7 @@ export async function syncSpreadSheet({
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
-  const itemApiPath = getDriveItemAPIPath(file);
-
-  const documentId = internalIdFromTypeAndPath({
-    itemAPIPath: itemApiPath,
-    nodeType: "file",
-  });
+  const documentId = getDriveItemInternalId(file);
 
   const worksheets = await getAllPaginatedEntities((nextLink) =>
     getWorksheets(client, documentId, nextLink)
@@ -211,10 +207,7 @@ export async function syncSpreadSheet({
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheets) {
     if (worksheet.id) {
-      const internalWorkSheetId = internalIdFromTypeAndPath({
-        nodeType: "worksheet",
-        itemAPIPath: getWorksheetAPIPath(worksheet, documentId),
-      });
+      const internalWorkSheetId = getWorksheetInternalId(worksheet, documentId);
       const isImported = await processSheet(
         client,
         connector,
@@ -244,4 +237,26 @@ export async function syncSpreadSheet({
   }
 
   return { isSupported: true };
+}
+
+export async function deleteAllSheets(
+  dataSourceConfig: DataSourceConfig,
+  spreadsheet: MicrosoftNodeResource
+) {
+  await concurrentExecutor(
+    await spreadsheet.fetchChildren(),
+    async (sheet) => {
+      await deleteTable({
+        dataSourceConfig,
+        tableId: sheet.internalId,
+        loggerArgs: {
+          connectorId: spreadsheet.connectorId,
+          sheetId: sheet.internalId,
+          spreadsheetId: spreadsheet.internalId,
+        },
+      });
+      await sheet.delete();
+    },
+    { concurrency: 5 }
+  );
 }
