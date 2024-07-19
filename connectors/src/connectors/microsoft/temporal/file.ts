@@ -1,3 +1,15 @@
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import {
+  cacheWithRedis,
+  isTextExtractionSupportedContentType,
+  parseAndStringifyCsv,
+  slugify,
+  TextExtraction,
+} from "@dust-tt/types";
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
+import axios from "axios";
+import mammoth from "mammoth";
+import type { Logger } from "pino";
 import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -13,39 +25,26 @@ import {
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import { apiConfig } from "@connectors/lib/api/config";
 import {
-  upsertTableFromCsv,
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
+  upsertTableFromCsv,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
-import { WithCreationAttributes } from "@connectors/resources/connector/strategy";
+import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 import {
-  MicrosoftConfigurationResource,
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import {
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  slugify,
-  parseAndStringifyCsv,
-  isTextExtractionSupportedContentType,
-  TextExtraction,
-  cacheWithRedis,
-} from "@dust-tt/types";
-import { DriveItem } from "@microsoft/microsoft-graph-types";
-import axios from "axios";
-import mammoth from "mammoth";
-import { Logger } from "pino";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
 
