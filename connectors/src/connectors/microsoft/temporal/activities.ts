@@ -740,8 +740,9 @@ export async function syncDeltaForNode({
     node.deltaLink
   );
   const uniqueDriveItemList = removeDuplicateItems(results);
+  const sortedDriveItemList = sortForIncrementalUpdate(uniqueDriveItemList);
 
-  for (const driveItem of uniqueDriveItemList) {
+  for (const driveItem of sortedDriveItemList) {
     heartbeat();
 
     if (!driveItem.parentReference) {
@@ -793,6 +794,11 @@ export async function syncDeltaForNode({
   }
 
   await node.updateDeltaLink(deltaLink);
+
+  logger.info(
+    { connectorId, nodeId: node.internalId, name: node.name },
+    "Delta sync complete"
+  );
 }
 
 /**
@@ -1082,4 +1088,62 @@ async function isFileMovedInSameDrive({
       startSyncTs: new Date().getTime(),
     })
   ).includes(toplevelNode.internalId);
+}
+
+/**
+ * Order items as follows:
+ * - first those whose parentInternalId is not in the changedList, or the root drive
+ * - then those whose parentInternalId is in in the list above;
+ * - then those whose parentInternalId is in the updated list above, and so on
+ *
+ * This ensures we sync parents before their children; the converse would cause
+ * errors. For the initial case, if we don't have the parent in the changelist,
+ * it means it is already properly synced and did not change.
+ *
+ * The function makes the assumption that there is no circular parent
+ * relationship
+ */
+function sortForIncrementalUpdate(changedList: DriveItem[]) {
+  if (changedList.length === 0) {
+    return [];
+  }
+
+  const internalIds = changedList.map((item) => getDriveItemInternalId(item));
+
+  const sortedDriveItemList = changedList.filter((item) => {
+    if (!item.parentReference) {
+      return true;
+    }
+
+    if (item.root) {
+      return true;
+    }
+
+    const parentInternalId = getParentReferenceInternalId(item.parentReference);
+    return !internalIds.includes(parentInternalId);
+  });
+
+  while (sortedDriveItemList.length < changedList.length) {
+    const nextLevel = changedList.filter((item) => {
+      if (sortedDriveItemList.includes(item)) {
+        return false;
+      }
+
+      // not needed, but just to please TS
+      if (!item.parentReference) {
+        return true;
+      }
+
+      const parentInternalId = getParentReferenceInternalId(
+        item.parentReference
+      );
+      return sortedDriveItemList.some(
+        (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
+      );
+    });
+
+    sortedDriveItemList.push(...nextLevel);
+  }
+
+  return sortedDriveItemList;
 }
