@@ -1,9 +1,72 @@
+import type { Result } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import { Nango } from "@nangohq/node";
+import axios from "axios";
 
+import {
+  DustConnectorWorkflowError,
+  ExternalOauthTokenError,
+  NANGO_ERROR_TYPES,
+  NangoError,
+} from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
-import { nango_client } from "./nango_client";
+const { NANGO_SECRET_KEY } = process.env;
+
+class CustomNango extends Nango {
+  async getConnection(
+    providerConfigKey: string,
+    connectionId: string,
+    refreshToken?: boolean
+  ) {
+    try {
+      return await super.getConnection(
+        providerConfigKey,
+        connectionId,
+        true,
+        refreshToken
+      );
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        if (e.response?.status === 400) {
+          if (typeof e?.response?.data?.error === "string") {
+            const errorText = e.response.data.error;
+            if (
+              errorText.includes(
+                "The external API returned an error when trying to refresh the access token"
+              ) &&
+              errorText.includes("invalid_grant")
+            ) {
+              throw new ExternalOauthTokenError();
+            }
+            const errorType = e.response.data.type;
+            if (NANGO_ERROR_TYPES.includes(errorType)) {
+              throw new NangoError(errorType, e);
+            }
+          }
+        }
+        if (e.status === 520 && e.code === "ERR_BAD_RESPONSE") {
+          throw new DustConnectorWorkflowError(
+            "Nango transient 520 errors",
+            "transient_nango_activity_error"
+          );
+        }
+      }
+      throw e;
+    }
+  }
+}
+
+function nango_client() {
+  if (!NANGO_SECRET_KEY) {
+    throw new Error("Env var NANGO_SECRET_KEY is not defined");
+  }
+  const nango = new CustomNango({ secretKey: NANGO_SECRET_KEY });
+
+  return nango;
+}
 
 const NANGO_ACCESS_TOKEN_TTL_SECONDS = 60 * 5; // 5 minutes
 
@@ -84,6 +147,7 @@ export type NangoConnectionResponse = {
     raw: {
       scope: string;
       token_type: string;
+      workspace_id?: string;
     };
   };
 };

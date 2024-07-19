@@ -20,10 +20,9 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import {
-  nango_client,
-  nangoDeleteConnection,
-} from "@connectors/lib/nango_client";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+  getAccessTokenFromNango,
+  getConnectionFromNango,
+} from "@connectors/lib/nango_helpers";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -108,16 +107,17 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     if (connectionId) {
       const oldConnectionId = c.connectionId;
-      const connectionRes = await nango_client().getConnection(
-        getRequiredNangoNotionConnectorId(),
-        oldConnectionId,
-        false
-      );
-      const newConnectionRes = await nango_client().getConnection(
-        getRequiredNangoNotionConnectorId(),
+      const connectionRes = await getConnectionFromNango({
+        connectionId: oldConnectionId,
+        integrationId: getRequiredNangoNotionConnectorId(),
+        refreshToken: true,
+      });
+
+      const newConnectionRes = await getConnectionFromNango({
         connectionId,
-        false
-      );
+        integrationId: getRequiredNangoNotionConnectorId(),
+        refreshToken: false,
+      });
 
       const workspaceId = connectionRes?.credentials?.raw?.workspace_id || null;
       const newWorkspaceId =
@@ -137,15 +137,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }
 
       await c.update({ connectionId });
-      nangoDeleteConnection(
-        oldConnectionId,
-        getRequiredNangoNotionConnectorId()
-      ).catch((e) => {
-        logger.error(
-          { error: e, oldConnectionId },
-          "Error deleting old Nango connection"
-        );
-      });
 
       const dataSourceConfig = dataSourceConfigFromConnector(c);
       try {
@@ -244,8 +235,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       );
       return new Err(new Error("Connector not found"));
     }
-
-    await this.deleteNangoConnection(connector.connectionId);
 
     const res = await connector.delete();
     if (res.isErr()) {
@@ -615,18 +604,5 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
   async configure(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
-  }
-
-  private async deleteNangoConnection(connectionId: NangoConnectionId) {
-    const nangoRes = await nangoDeleteConnection(
-      connectionId,
-      getRequiredNangoNotionConnectorId()
-    );
-    if (nangoRes.isErr()) {
-      logger.error(
-        { err: nangoRes.error },
-        "Error deleting connection from Nango"
-      );
-    }
   }
 }

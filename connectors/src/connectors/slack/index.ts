@@ -22,10 +22,7 @@ import {
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import { ExternalOauthTokenError, NangoError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
-import {
-  nango_client,
-  nangoDeleteConnection,
-} from "@connectors/lib/nango_client.js";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -47,14 +44,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }): Promise<Result<string, Error>> {
     const nangoConnectionId = connectionId;
 
-    const nango = nango_client();
     if (!NANGO_SLACK_CONNECTOR_ID) {
       throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
     }
-    const slackAccessToken = (await nango.getToken(
-      NANGO_SLACK_CONNECTOR_ID,
-      nangoConnectionId
-    )) as string;
+    const slackAccessToken = (await getAccessTokenFromNango({
+      connectionId: nangoConnectionId,
+      integrationId: NANGO_SLACK_CONNECTOR_ID,
+    })) as string;
     const client = new WebClient(slackAccessToken);
 
     const teamInfo = await client.team.info();
@@ -778,13 +774,6 @@ export async function uninstallSlack(nangoConnectionId: string) {
     }
   }
 
-  const nangoRes = await nangoDeleteConnection(
-    nangoConnectionId,
-    NANGO_SLACK_CONNECTOR_ID
-  );
-  if (nangoRes.isErr()) {
-    return nangoRes;
-  }
   logger.info({ nangoConnectionId }, `Deactivated the Slack app`);
 
   return new Ok(undefined);

@@ -13,7 +13,6 @@ import {
   GoogleDriveFiles,
   GoogleDriveFolders,
 } from "@connectors/lib/models/google_drive";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
@@ -205,18 +204,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
-      const oldConnectionId = connector.connectionId;
       await connector.update({ connectionId });
-
-      nangoDeleteConnection(
-        oldConnectionId,
-        googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
-      ).catch((e) => {
-        logger.error(
-          { error: e, oldConnectionId },
-          "Error deleting old Nango connection"
-        );
-      });
     }
 
     return new Ok(connector.id.toString());
@@ -266,23 +254,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             err,
           },
           "Error revoking token"
-        );
-      }
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
-    );
-    if (nangoRes.isErr()) {
-      if (!force) {
-        return nangoRes;
-      } else {
-        logger.error(
-          {
-            err: nangoRes.error,
-          },
-          "Error deleting connection from Nango"
         );
       }
     }

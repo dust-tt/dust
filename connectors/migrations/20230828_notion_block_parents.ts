@@ -9,7 +9,7 @@ import { Op } from "sequelize";
 import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import { getBlockParentMemoized } from "@connectors/connectors/notion/lib/notion_api";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { nango_client } from "@connectors/lib/nango_client";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -60,10 +60,10 @@ async function main() {
     if (notionAccessTokenByConnectorId[connector.id]) {
       continue;
     }
-    const notionAccessToken = await nango_client().getToken(
-      getRequiredNangoNotionConnectorId(),
-      connector.connectionId
-    );
+    const notionAccessToken = await getAccessTokenFromNango({
+      connectionId: connector.connectionId,
+      integrationId: getRequiredNangoNotionConnectorId(),
+    });
     notionAccessTokenByConnectorId[connector.id] = notionAccessToken;
   }
 

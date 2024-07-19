@@ -32,7 +32,6 @@ import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -103,33 +102,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     throw Error("Not implemented");
   }
 
-  async clean({
-    force,
-  }: {
-    force: boolean;
-  }): Promise<Result<undefined, Error>> {
+  async clean(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
         new Error(`Could not find connector with id ${this.connectorId}`)
       );
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      microsoftConfig.getRequiredNangoMicrosoftConnectorId()
-    );
-    if (nangoRes.isErr()) {
-      if (!force) {
-        return nangoRes;
-      } else {
-        logger.error(
-          {
-            err: nangoRes.error,
-          },
-          "Error deleting connection from Nango"
-        );
-      }
     }
 
     const res = await connector.delete();
