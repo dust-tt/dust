@@ -44,7 +44,6 @@ import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAdmins } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -53,7 +52,6 @@ import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/da
 
 const {
   GA_TRACKING_ID = "",
-  GITHUB_APP_URL = "",
   NANGO_CONFLUENCE_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_INTERCOM_CONNECTOR_ID = "",
@@ -90,7 +88,6 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 export async function setupConnection({
   dustClientFacingUrl,
   nangoConfig,
-  githubAppUrl,
   owner,
   provider,
 }: {
@@ -104,7 +101,6 @@ export async function setupConnection({
     intercomConnectorId: string;
     microsoftConnectorId: string;
   };
-  githubAppUrl: string;
   owner: WorkspaceType;
   provider: ConnectorProvider;
 }): Promise<Result<string, Error>> {
@@ -153,16 +149,6 @@ export async function setupConnection({
         new Error(`Failed to enable connection for ${provider}: ${err}`)
       );
     }
-  } else if (provider === "github") {
-    // Github legacy flow
-    try {
-      const installationId = await githubAuth(githubAppUrl);
-      connectionId = installationId;
-    } catch (err) {
-      return new Err(
-        new Error(`Failed to enable connection for ${provider}: ${err}`)
-      );
-    }
   } else {
     return new Err(new Error(`Unknown provider ${provider}`));
   }
@@ -187,7 +173,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     intercomConnectorId: string;
     microsoftConnectorId: string;
   };
-  githubAppUrl: string;
   dustClientFacingUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -342,7 +327,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
         microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
-      githubAppUrl: GITHUB_APP_URL,
       dustClientFacingUrl: config.getClientFacingUrl(),
     },
   };
@@ -483,7 +467,6 @@ export default function DataSourcesView({
   plan,
   gaTrackingId,
   nangoConfig,
-  githubAppUrl,
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -512,7 +495,6 @@ export default function DataSourcesView({
       const connectionIdRes = await setupConnection({
         dustClientFacingUrl,
         nangoConfig,
-        githubAppUrl,
         owner,
         provider,
       });
