@@ -8,7 +8,6 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
-import { Op } from "sequelize";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
@@ -34,7 +33,6 @@ import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
-import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
@@ -43,6 +41,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
+  MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -172,12 +171,22 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (filterPermission === "read") {
-      const nodes = await retrieveChildrenNodes(
-        connector,
-        parentInternalId,
-        false
+      if (!parentInternalId) {
+        const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents();
+        return new Ok(
+          nodes.map((node) => getMicrosoftNodeAsContentNode(node, false))
+        );
+      }
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        this.connectorId,
+        parentInternalId
       );
-      return nodes;
+      if (!node) {
+        return new Err(
+          new Error(`Could not find node with id ${parentInternalId}`)
+        );
+      }
+      return retrieveChildrenNodes(node, false);
     }
     const client = await getClient(connector.connectionId);
     const nodes = [];
@@ -511,21 +520,14 @@ export async function getClient(connectionId: NangoConnectionId) {
 }
 
 export async function retrieveChildrenNodes(
-  connector: ConnectorResource,
-  parentInternalId: string | null,
+  microsoftNode: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): Promise<Result<ContentNode[], Error>> {
-  const childrenNodes = await MicrosoftNodeModel.findAll({
-    where: {
-      connectorId: connector.id,
-      parentInternalId,
-      nodeType: {
-        [Op.in]: ["file", "folder", "drive"],
-      },
-    },
-    raw: true,
-  });
-
+  const childrenNodes = await microsoftNode.fetchChildren([
+    "file",
+    "folder",
+    "drive",
+  ]);
   return new Ok(
     childrenNodes.map((node) =>
       getMicrosoftNodeAsContentNode(node, expandWorksheet)

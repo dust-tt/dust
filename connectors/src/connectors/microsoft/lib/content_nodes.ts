@@ -7,7 +7,7 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
 export function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode(), getTeamsRootAsContentNode()];
@@ -163,10 +163,7 @@ export function getFileAsContentNode(
 ): ContentNode {
   return {
     provider: "microsoft",
-    internalId: internalIdFromTypeAndPath({
-      itemAPIPath: getDriveItemAPIPath(file),
-      nodeType: "folder",
-    }),
+    internalId: getDriveItemInternalId(file),
     parentInternalId,
     type: "file",
     title: file.name || "unnamed",
@@ -179,7 +176,7 @@ export function getFileAsContentNode(
 }
 
 export function getMicrosoftNodeAsContentNode(
-  node: MicrosoftNodeModel,
+  node: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): ContentNode {
   // When table picking we want spreadsheets to expand to select the different

@@ -1,8 +1,12 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
-import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import type {
+  MicrosoftNode,
+  MicrosoftNodeType,
+} from "@connectors/connectors/microsoft/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MicrosoftConfigurationModel,
@@ -280,6 +284,15 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return resource;
   }
 
+  static async fetchNodesWithoutParents() {
+    const blobs = await this.model.findAll({
+      where: {
+        parentInternalId: null,
+      },
+    });
+    return blobs.map((blob) => new this(this.model, blob.get()));
+  }
+
   static async fetchByInternalIds(connectorId: ModelId, internalIds: string[]) {
     const blobs = await this.model.findAll({
       where: {
@@ -291,13 +304,24 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
-  async fetchChildren() {
+  async fetchChildren(nodeTypes?: MicrosoftNodeType[]) {
+    const whereClause: {
+      connectorId: number;
+      parentInternalId: string;
+      nodeType?: { [Op.in]: MicrosoftNodeType | MicrosoftNodeType[] };
+    } = {
+      connectorId: this.connectorId,
+      parentInternalId: this.internalId,
+    };
+
+    if (nodeTypes) {
+      whereClause.nodeType = { [Op.in]: nodeTypes };
+    }
+
     const blobs = await this.model.findAll({
-      where: {
-        connectorId: this.connectorId,
-        parentInternalId: this.internalId,
-      },
+      where: whereClause,
     });
+
     if (!blobs) {
       return [];
     }
