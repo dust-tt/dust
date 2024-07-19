@@ -51,8 +51,6 @@ export async function launchGithubFullSyncWorkflow({
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const connectionId = connector.connectionId;
-
   const workflow = await getGithubFullSyncWorkflow(connectorId);
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
@@ -67,13 +65,7 @@ export async function launchGithubFullSyncWorkflow({
   }
 
   await client.workflow.start(githubFullSyncWorkflow, {
-    args: [
-      dataSourceConfig,
-      connectionId,
-      connectorId,
-      syncCodeOnly,
-      forceCodeResync,
-    ],
+    args: [dataSourceConfig, connectorId, syncCodeOnly, forceCodeResync],
     taskQueue: QUEUE_NAME,
     workflowId: getFullSyncWorkflowId(dataSourceConfig),
     searchAttributes: {
@@ -125,10 +117,9 @@ export async function launchGithubReposSyncWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const connectionId = connector.connectionId;
 
   await client.workflow.start(githubReposSyncWorkflow, {
-    args: [dataSourceConfig, connectionId, orgLogin, repos, connectorId],
+    args: [dataSourceConfig, connectorId, orgLogin, repos],
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(dataSourceConfig),
     searchAttributes: {
@@ -153,10 +144,9 @@ export async function launchGithubCodeSyncWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const connectionId = connector.connectionId;
 
   await client.workflow.signalWithStart(githubCodeSyncWorkflow, {
-    args: [dataSourceConfig, connectionId, repoName, repoId, repoLogin],
+    args: [dataSourceConfig, connectorId, repoName, repoId, repoLogin],
     taskQueue: QUEUE_NAME,
     workflowId: getCodeSyncWorkflowId(dataSourceConfig, repoId),
     searchAttributes: {
@@ -171,7 +161,7 @@ export async function launchGithubCodeSyncWorkflow(
 }
 
 export async function launchGithubIssueSyncWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   repoLogin: string,
   repoName: string,
   repoId: number,
@@ -184,7 +174,6 @@ export async function launchGithubIssueSyncWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const connectionId = connector.connectionId;
 
   const workflowId = getIssueSyncWorkflowId(
     dataSourceConfig,
@@ -195,7 +184,7 @@ export async function launchGithubIssueSyncWorkflow(
   await client.workflow.signalWithStart(githubIssueSyncWorkflow, {
     args: [
       dataSourceConfig,
-      connectionId,
+      connector.id,
       repoName,
       repoId,
       repoLogin,
@@ -204,7 +193,7 @@ export async function launchGithubIssueSyncWorkflow(
     taskQueue: QUEUE_NAME,
     workflowId,
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
     signal: newWebhookSignal,
     signalArgs: undefined,
@@ -215,7 +204,7 @@ export async function launchGithubIssueSyncWorkflow(
 }
 
 export async function launchGithubDiscussionSyncWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   repoLogin: string,
   repoName: string,
   repoId: number,
@@ -228,7 +217,6 @@ export async function launchGithubDiscussionSyncWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const connectionId = connector.connectionId;
 
   const workflowId = getDiscussionSyncWorkflowId(
     connectorId,
@@ -240,14 +228,14 @@ export async function launchGithubDiscussionSyncWorkflow(
   await client.workflow.signalWithStart(githubDiscussionSyncWorkflow, {
     args: [
       dataSourceConfig,
-      connectionId,
+      connectorId,
       repoName,
       repoId,
       repoLogin,
       discussionNumber,
     ],
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
     taskQueue: QUEUE_NAME,
     workflowId,
@@ -260,7 +248,7 @@ export async function launchGithubDiscussionSyncWorkflow(
 }
 
 export async function launchGithubIssueGarbageCollectWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   repoLogin: string,
   repoName: string,
   repoId: number,
@@ -274,13 +262,12 @@ export async function launchGithubIssueGarbageCollectWorkflow(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const connectionId = connector.connectionId;
 
   await client.workflow.start(githubIssueGarbageCollectWorkflow, {
-    args: [dataSourceConfig, connectionId, repoId.toString(), issueNumber],
+    args: [dataSourceConfig, connectorId, repoId.toString(), issueNumber],
     taskQueue: QUEUE_NAME,
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
     workflowId: getIssueGarbageCollectWorkflowId(
       dataSourceConfig,
@@ -294,7 +281,7 @@ export async function launchGithubIssueGarbageCollectWorkflow(
 }
 
 export async function launchGithubDiscussionGarbageCollectWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   repoLogin: string,
   repoName: string,
   repoId: number,
@@ -308,10 +295,9 @@ export async function launchGithubDiscussionGarbageCollectWorkflow(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const connectionId = connector.connectionId;
 
   await client.workflow.start(githubDiscussionGarbageCollectWorkflow, {
-    args: [dataSourceConfig, connectionId, repoId.toString(), discussionNumber],
+    args: [dataSourceConfig, connectorId, repoId.toString(), discussionNumber],
     memo: {
       connectorId: connectorId,
     },
@@ -323,13 +309,13 @@ export async function launchGithubDiscussionGarbageCollectWorkflow(
       discussionNumber
     ),
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
   });
 }
 
 export async function launchGithubRepoGarbageCollectWorkflow(
-  connectorId: string,
+  connectorId: ModelId,
   repoLogin: string,
   repoName: string,
   repoId: number
@@ -342,14 +328,13 @@ export async function launchGithubRepoGarbageCollectWorkflow(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const connectionId = connector.connectionId;
 
   await client.workflow.start(githubRepoGarbageCollectWorkflow, {
-    args: [dataSourceConfig, connectionId, repoId.toString()],
+    args: [dataSourceConfig, connectorId, repoId.toString()],
     taskQueue: QUEUE_NAME,
     workflowId: getRepoGarbageCollectWorkflowId(dataSourceConfig, repoId),
     searchAttributes: {
-      connectorId: [parseInt(connectorId)],
+      connectorId: [connectorId],
     },
     memo: {
       connectorId: connectorId,
