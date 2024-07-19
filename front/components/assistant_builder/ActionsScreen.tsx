@@ -57,7 +57,6 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-import { classNames } from "@app/lib/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -509,6 +508,7 @@ function ActionCard({
     // Unreachable
     return null;
   }
+  const actionError = hasActionError(action);
   return (
     <CardButton
       variant="primary"
@@ -539,14 +539,17 @@ function ActionCard({
             />
           </div>
         ) : (
-          <div
-            className={classNames(
-              "w-full truncate text-base",
-              action.description ? "text-element-700" : "text-warning-500"
+          <>
+            {actionError ? (
+              <div className="w-full truncate text-base text-warning-500">
+                {actionError}
+              </div>
+            ) : (
+              <div className="w-full truncate text-base text-element-700">
+                {action.description}
+              </div>
             )}
-          >
-            {action.description || "Missing description. Click to edit."}
-          </div>
+          </>
         )}
       </div>
     </CardButton>
