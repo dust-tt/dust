@@ -10,7 +10,6 @@ import type {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MicrosoftConfigurationModel,
-  MicrosoftDeltaModel,
   MicrosoftNodeModel,
   MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
@@ -94,13 +93,6 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
       transaction,
     });
 
-    await MicrosoftDeltaModel.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
-      transaction,
-    });
-
     await MicrosoftRootModel.destroy({
       where: {
         connectorId: this.connectorId,
@@ -171,7 +163,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }) {
     return MicrosoftRootModel.destroy({
       where: {
-        itemAPIPath: resourceIds,
+        internalId: resourceIds,
         connectorId,
       },
       transaction,
@@ -201,11 +193,11 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return new Ok(undefined);
   }
 
-  static async fetchByItemAPIPath(connectorId: ModelId, itemAPIPath: string) {
+  static async fetchByInternalId(connectorId: ModelId, internalId: string) {
     const blob = await this.model.findOne({
       where: {
         connectorId,
-        itemAPIPath,
+        internalId,
       },
     });
 
@@ -219,7 +211,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return {
       id: this.id,
       nodeType: this.nodeType,
-      itemApiPath: this.itemAPIPath,
+      internalId: this.internalId,
       connectorId: this.connectorId,
     };
   }
@@ -232,8 +224,6 @@ export interface MicrosoftNodeResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   static model: ModelStatic<MicrosoftNodeModel> = MicrosoftNodeModel;
-
-  private delta: MicrosoftDeltaModel | null = null;
 
   constructor(
     model: ModelStatic<MicrosoftNodeModel>,
@@ -269,19 +259,11 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
         connectorId,
         internalId,
       },
-      include: [
-        {
-          model: MicrosoftDeltaModel,
-          as: "delta",
-        },
-      ],
     });
     if (!blob) {
       return null;
     }
-    const resource = new this(this.model, blob.get());
-    resource.delta = blob.delta;
-    return resource;
+    return new this(this.model, blob.get());
   }
 
   static async fetchNodesWithoutParents() {
@@ -330,18 +312,6 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       (blob) =>
         new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get())
     );
-  }
-
-  get deltaLink() {
-    return this.delta?.deltaLink;
-  }
-
-  async updateDeltaLink(deltaLink: string) {
-    await MicrosoftDeltaModel.upsert({
-      connectorId: this.connectorId,
-      nodeId: this.id,
-      deltaLink,
-    });
   }
 
   static async batchDelete({
@@ -449,5 +419,15 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       lastUpsertedTs: this.lastUpsertedTs,
       skipReason: this.skipReason,
     };
+  }
+
+  /** String representation of this node and its descendants in treeLike fashion */
+  async treeString(level = 0): Promise<string> {
+    const childrenStrings = await Promise.all(
+      (await this.fetchChildren()).map(async (c) => c.treeString(level + 1))
+    );
+    const hyphens = "\n" + "-".repeat(level * 2);
+
+    return `${this.name}${this.nodeType === "folder" ? "/" : ""}${childrenStrings.length > 0 ? hyphens + childrenStrings.join(hyphens) : ""}`;
   }
 }

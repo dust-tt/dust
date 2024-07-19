@@ -9,12 +9,14 @@ import {
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
-const { getSiteNodesToSync, syncFiles, markNodeAsVisited, populateDeltas } =
+const { getSiteNodesToSync, syncFiles, markNodeAsSeen, populateDeltas } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "30 minutes",
   });
 
-const { syncDeltaForNode } = proxyActivities<typeof activities>({
+const { syncDeltaForRoot: syncDeltaForNode } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
 });
@@ -89,7 +91,7 @@ export async function fullSyncSitesWorkflow({
       );
     } while (nextPageLink);
 
-    await markNodeAsVisited(connectorId, nodeId);
+    await markNodeAsSeen(connectorId, nodeId);
 
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof fullSyncSitesWorkflow>({
@@ -114,7 +116,7 @@ export async function incrementalSyncWorkflow({
   for (const nodeId of nodeIdsToSync) {
     await syncDeltaForNode({
       connectorId,
-      nodeId,
+      rootId: nodeId,
       startSyncTs,
     });
   }
