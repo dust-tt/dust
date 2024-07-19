@@ -44,7 +44,7 @@ async function migrateGithubConnectionId(
     metadata: {
       use_case: USE_CASE,
       workspace_id: connector.workspaceId,
-      user_id: "migrated",
+      origin: "migrated",
     },
   });
 
