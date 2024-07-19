@@ -234,15 +234,17 @@ export async function finalizeConnection(
     code,
     redirectUri: finalizeUriForProvider(provider),
   });
-  logger.error(
-    {
-      provider,
-      connectionId,
-      step: "connection_finalization",
-    },
-    "OAuth: Failed to finalize connection"
-  );
+
   if (cRes.isErr()) {
+    logger.error(
+      {
+        provider,
+        connectionId,
+        step: "connection_finalization",
+      },
+      "OAuth: Failed to finalize connection"
+    );
+
     return new Err({
       code: "connection_finalization_failed",
       message: `Failed to finalize ${provider} connection: ${cRes.error.message}`,
