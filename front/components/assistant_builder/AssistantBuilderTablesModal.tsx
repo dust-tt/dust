@@ -31,7 +31,11 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceNodes, useTables } from "@app/lib/swr";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
-const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = ["google_drive", "notion"];
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "microsoft",
+];
 
 export default function AssistantBuilderTablesModal({
   isOpen,

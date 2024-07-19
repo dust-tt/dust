@@ -29,6 +29,7 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
@@ -158,6 +159,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   async retrievePermissions({
     parentInternalId,
     filterPermission,
+    viewType,
   }: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
@@ -170,11 +172,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (filterPermission === "read") {
+    const isTablesView = viewType === "tables";
+    if (filterPermission === "read" || isTablesView) {
       if (!parentInternalId) {
         const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents();
         return new Ok(
-          nodes.map((node) => getMicrosoftNodeAsContentNode(node, false))
+          nodes.map((node) => getMicrosoftNodeAsContentNode(node, isTablesView))
         );
       }
       const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -186,7 +189,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           new Error(`Could not find node with id ${parentInternalId}`)
         );
       }
-      return retrieveChildrenNodes(node, false);
+      return retrieveChildrenNodes(node, isTablesView);
     }
     const client = await getClient(connector.connectionId);
     const nodes = [];
@@ -523,11 +526,11 @@ export async function retrieveChildrenNodes(
   microsoftNode: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): Promise<Result<ContentNode[], Error>> {
-  const childrenNodes = await microsoftNode.fetchChildren([
-    "file",
-    "folder",
-    "drive",
-  ]);
+  const nodeType: MicrosoftNodeType[] = ["file", "folder", "drive"];
+  if (expandWorksheet) {
+    nodeType.push("worksheet");
+  }
+  const childrenNodes = await microsoftNode.fetchChildren(nodeType);
   return new Ok(
     childrenNodes.map((node) =>
       getMicrosoftNodeAsContentNode(node, expandWorksheet)
