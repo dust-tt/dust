@@ -110,7 +110,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       const connectionRes = await getConnectionFromNango({
         connectionId: oldConnectionId,
         integrationId: getRequiredNangoNotionConnectorId(),
-        refreshToken: true,
+        refreshToken: false,
       });
 
       const newConnectionRes = await getConnectionFromNango({
