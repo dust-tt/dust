@@ -12,6 +12,7 @@ import { makeScript } from "scripts/helpers";
 import { apiConfig } from "@connectors/lib/api/config";
 import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
+import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -173,6 +174,10 @@ async function migrateAllConnections(
       connectorId: connector.id,
       workspaceId: connector.workspaceId,
     });
+
+    if (isDualUseOAuthConnectionId(connector.connectionId)) {
+      localLogger.info("Skipping alreaydy migrated collection");
+    }
 
     const migrationRes = await migrateConnectionId(
       api,
