@@ -8,6 +8,7 @@ import { cacheWithRedis } from "@dust-tt/types";
 import { slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
+import type { AxiosResponse } from "axios";
 import axios from "axios";
 import mammoth from "mammoth";
 import type { Logger } from "pino";
@@ -29,7 +30,10 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
-import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
+import {
+  getMimeTypesToSync,
+  MIME_TYPES_TIKA,
+} from "@connectors/connectors/microsoft/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -44,7 +48,6 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
-import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -376,12 +379,7 @@ export async function syncOneFile({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const localLogger = logger.child({
-    provider: "microsoft",
-    connectorId,
-    internalId: file.id,
-    name: file.name,
-  });
+
   if (!file.file) {
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
@@ -389,6 +387,13 @@ export async function syncOneFile({
   const documentId = internalIdFromTypeAndPath({
     itemAPIPath: getDriveItemAPIPath(file),
     nodeType: "file",
+  });
+
+  const localLogger = logger.child({
+    provider: "microsoft",
+    connectorId,
+    internalId: file.id,
+    name: file.name,
   });
 
   const fileResource = await MicrosoftNodeResource.fetchByInternalId(
@@ -417,31 +422,22 @@ export async function syncOneFile({
     "@microsoft.graph.downloadUrl" in file
       ? file["@microsoft.graph.downloadUrl"]
       : null;
-
   if (!url) {
     localLogger.error("Unexpected missing download URL");
     throw new Error("Unexpected missing download URL");
   }
 
-  if (!url) {
-    localLogger.info("No download URL found");
-    return false;
-  }
-
   // If the file is too big to be downloaded, we skip it.
   if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
     localLogger.info("File size exceeded, skipping file.");
-
     return false;
   }
 
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    connector,
-  });
-
-  const mimeType = file.file.mimeType;
-  if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
+  const mimeType = file.file.mimeType ?? undefined;
+  if (
+    !mimeType ||
+    !(await shouldSyncMimeType(providerConfig, connector, mimeType))
+  ) {
     localLogger.info("Type not supported, skipping file.");
     return false;
   }
@@ -457,53 +453,12 @@ export async function syncOneFile({
     ? MAX_LARGE_DOCUMENT_TXT_LEN
     : MAX_DOCUMENT_TXT_LEN;
 
-  const downloadRes = await axios.get(`${url}`, {
-    responseType: "arraybuffer",
-  });
-
-  if (downloadRes.status !== 200) {
-    localLogger.error(
-      `Error while downloading file ${file.name}: ${downloadRes.status}`
-    );
-    throw new Error(
-      `Error while downloading file ${file.name}: ${downloadRes.status}`
-    );
-  }
-
-  async function getDocumentContent() {
-    try {
-      const converted = await mammoth.convertToHtml({
-        buffer: Buffer.from(downloadRes.data),
-      });
-
-      const extracted = new turndown()
-        .remove(["style", "script", "iframe", "noscript", "form", "img"])
-        .turndown(converted.value);
-
-      return extracted.trim();
-    } catch (err) {
-      localLogger.error(
-        {
-          error: err,
-        },
-        `Error while converting docx document to text`
-      );
-      throw err;
-    }
-  }
+  const downloadRes = await downloadFile(`${url}`, file, localLogger);
 
   let documentSection: CoreAPIDataSourceDocumentSection | null = null;
-  if (
-    mimeType ===
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-  ) {
+  if (MIME_TYPES_TIKA.includes(mimeType)) {
     const data = Buffer.from(downloadRes.data);
-    documentSection = await handlePptxFile(
-      data,
-      file.id,
-      localLogger,
-      maxDocumentLen
-    );
+    documentSection = await handleTextExtraction(data, localLogger, file);
   } else if (mimeType === "application/vnd.ms-excel") {
     const data = Buffer.from(downloadRes.data);
     const isSuccessful = await handleCsvFile(
@@ -514,9 +469,7 @@ export async function syncOneFile({
       maxDocumentLen,
       connectorId
     );
-    if (isSuccessful) {
-      documentSection = null;
-    } else {
+    if (!isSuccessful) {
       return false;
     }
   } else if (
@@ -535,95 +488,47 @@ export async function syncOneFile({
           {},
           `Microsoft Spreadsheet document skipped with skip reason ${res.skipReason}`
         );
+        return true;
       }
     }
-  } else if (mimeType === "application/pdf") {
-    const data = Buffer.from(downloadRes.data);
-    documentSection = await handleTextExtraction(data, localLogger, file);
-  } else {
-    const documentContent = await getDocumentContent();
+  } else if (
+    mimeType ===
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    const documentContent = await getDocumentContent(downloadRes, localLogger);
     documentSection = {
       prefix: null,
       content: documentContent,
       sections: [],
     };
+  } else if (mimeType === "text/plain") {
+    const data = Buffer.from(downloadRes.data);
+    documentSection = handleTextFile(data, maxDocumentLen);
+  } else {
+    return false;
   }
 
   logger.info({ documentSection }, "Document section");
 
-  const updatedAt = file.lastModifiedDateTime
-    ? new Date(file.lastModifiedDateTime)
-    : undefined;
-
-  const createdAt = file.createdDateTime
-    ? new Date(file.createdDateTime)
-    : undefined;
-
-  const content = await renderDocumentTitleAndContent({
-    dataSourceConfig,
-    title: file.name ?? null,
-    updatedAt,
-    createdAt,
-    lastEditor: file.lastModifiedBy?.user
-      ? file.lastModifiedBy.user.displayName ?? undefined
-      : undefined,
-    content: documentSection,
-  });
-
-  if (documentSection === undefined) {
-    localLogger.error({}, "documentContent is undefined");
-    throw new Error("documentContent is undefined");
-  }
-
-  const tags = [`title:${file.name}`];
-
-  if (file.lastModifiedDateTime) {
-    tags.push(`updatedAt:${file.lastModifiedDateTime}`);
-  }
-
-  if (file.createdDateTime) {
-    tags.push(`createdAt:${file.createdDateTime}`);
-  }
-
-  if (file.lastModifiedBy?.user?.displayName) {
-    tags.push(`lastEditor:${file.lastModifiedBy.user.displayName}`);
-  }
-
-  tags.push(`mimeType:${file.file.mimeType}`);
-
-  const documentLength = documentSection ? sectionLength(documentSection) : 0;
-
-  const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
-
-  const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
-  if (isInSizeRange) {
-    const parents = await getParents({
-      connectorId,
-      internalId: documentId,
-      parentInternalId,
-      startSyncTs,
-    });
-    parents.reverse();
-
-    await upsertToDatasource({
+  let upsertTimestampMs: number | undefined;
+  if (
+    !(
+      mimeType ===
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      mimeType === "application/vnd.ms-excel"
+    )
+  ) {
+    upsertTimestampMs = await upsertDocument(
       dataSourceConfig,
+      file,
+      documentSection,
       documentId,
-      documentContent: content,
-      documentUrl: file.webUrl ?? undefined,
-      timestampMs: upsertTimestampMs,
-      tags,
-      parents: parents,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-      async: true,
-    });
-  } else {
-    localLogger.info(
-      {
-        documentLen: documentLength,
-      },
-      `Document is empty or too big to be upserted (marking as synced without upserting)`
+      maxDocumentLen,
+      localLogger,
+      connectorId,
+      startSyncTs,
+      isBatchSync,
+      parentInternalId
     );
   }
 
@@ -635,8 +540,7 @@ export async function syncOneFile({
     name: file.name ?? "",
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
-    lastUpsertedTs:
-      isInSizeRange && upsertTimestampMs ? new Date(upsertTimestampMs) : null,
+    lastUpsertedTs: upsertTimestampMs ? new Date(upsertTimestampMs) : null,
   };
 
   if (fileResource) {
@@ -644,8 +548,7 @@ export async function syncOneFile({
   } else {
     await MicrosoftNodeResource.makeNew(resourceBlob);
   }
-
-  return isInSizeRange;
+  return !!upsertTimestampMs;
 }
 
 async function getParents({
@@ -701,36 +604,6 @@ const getParentParentId = cacheWithRedis(
   PARENT_SYNC_CACHE_TTL_MS
 );
 
-async function handlePptxFile(
-  data: ArrayBuffer,
-  fileId: string | undefined,
-  localLogger: Logger,
-  maxDocumentLen: number
-): Promise<CoreAPIDataSourceDocumentSection | null> {
-  if (data.byteLength > 4 * maxDocumentLen) {
-    localLogger.info({}, "File too big to be chunked. Skipping");
-    return null;
-  }
-  try {
-    const converted = await PPTX2Text(Buffer.from(data), fileId);
-    return {
-      prefix: null,
-      content: null,
-      sections: converted.pages.map((page, i) => ({
-        prefix: `\n$Page: ${i + 1}/${converted.pages.length}\n`,
-        content: page.content,
-        sections: [],
-      })),
-    };
-  } catch (err) {
-    localLogger.warn(
-      { error: err },
-      "Error while converting pptx document to text"
-    );
-    return null;
-  }
-}
-
 async function handleCsvFile(
   dataSourceConfig: DataSourceConfig,
   data: ArrayBuffer,
@@ -769,6 +642,20 @@ async function handleCsvFile(
     return false;
   }
   return true;
+}
+
+function handleTextFile(
+  data: ArrayBuffer,
+  maxDocumentLen: number
+): CoreAPIDataSourceDocumentSection | null {
+  if (data.byteLength > 4 * maxDocumentLen) {
+    return null;
+  }
+  return {
+    prefix: null,
+    content: Buffer.from(data).toString("utf-8").trim(),
+    sections: [],
+  };
 }
 
 async function handleTextExtraction(
@@ -818,4 +705,146 @@ async function handleTextExtraction(
         })),
       }
     : null;
+}
+
+async function upsertDocument(
+  dataSourceConfig: DataSourceConfig,
+  file: microsoftgraph.DriveItem,
+  documentContent: CoreAPIDataSourceDocumentSection | null,
+  documentId: string,
+  maxDocumentLen: number,
+  localLogger: Logger,
+  connectorId: ModelId,
+  startSyncTs: number,
+  isBatchSync: boolean,
+  parentInternalId: string
+): Promise<number | undefined> {
+  const updatedAt = file.lastModifiedDateTime
+    ? new Date(file.lastModifiedDateTime)
+    : undefined;
+
+  const createdAt = file.createdDateTime
+    ? new Date(file.createdDateTime)
+    : undefined;
+
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title: file.name ?? null,
+    updatedAt,
+    createdAt: createdAt,
+    lastEditor: file.lastModifiedBy?.user?.displayName ?? undefined,
+    content: documentContent,
+  });
+
+  if (documentContent === undefined) {
+    localLogger.error({}, "documentContent is undefined");
+    throw new Error("documentContent is undefined");
+  }
+
+  const tags = [`title:${file.name}`];
+  if (updatedAt) {
+    tags.push(`updatedAt:${updatedAt}`);
+  }
+  if (file.createdDateTime) {
+    tags.push(`createdAt:${file.createdDateTime}`);
+  }
+  if (file.lastModifiedBy?.user?.displayName) {
+    tags.push(`lastEditor:${file.lastModifiedBy.user.displayName}`);
+  }
+
+  tags.push(`mimeType:${file.file?.mimeType}`);
+
+  const documentLength = documentContent ? sectionLength(documentContent) : 0;
+  const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
+  const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
+  if (isInSizeRange) {
+    const parents = await getParents({
+      connectorId,
+      internalId: documentId,
+      parentInternalId,
+      startSyncTs,
+    });
+    parents.reverse();
+
+    await upsertToDatasource({
+      dataSourceConfig,
+      documentId,
+      documentContent: content,
+      documentUrl: file.webUrl ?? undefined,
+      timestampMs: upsertTimestampMs,
+      tags,
+      parents: parents,
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+      async: true,
+    });
+  } else {
+    localLogger.info(
+      { documentLength },
+      "Document is empty or too big to be upserted. Skipping"
+    );
+    return undefined;
+  }
+}
+
+async function shouldSyncMimeType(
+  providerConfig: MicrosoftConfigurationResource,
+  connector: ConnectorResource,
+  mimeType?: string
+): Promise<boolean> {
+  if (!mimeType) {
+    return false;
+  }
+  const mimeTypesToSync = await getMimeTypesToSync({
+    pdfEnabled: providerConfig.pdfEnabled || false,
+    connector,
+  });
+
+  return mimeTypesToSync.includes(mimeType);
+}
+
+async function downloadFile(
+  url: string,
+  file: microsoftgraph.DriveItem,
+  localLogger: Logger
+) {
+  const downloadRes = await axios.get(`${url}`, {
+    responseType: "arraybuffer",
+  });
+
+  if (downloadRes.status !== 200) {
+    localLogger.error(
+      `Error while downloading file ${file.name}: ${downloadRes.status}`
+    );
+    throw new Error(
+      `Error while downloading file ${file.name}: ${downloadRes.status}`
+    );
+  }
+  return downloadRes;
+}
+
+async function getDocumentContent(
+  downloadRes: AxiosResponse,
+  localLogger: Logger
+) {
+  try {
+    const converted = await mammoth.convertToHtml({
+      buffer: Buffer.from(downloadRes.data),
+    });
+
+    const extracted = new turndown()
+      .remove(["style", "script", "iframe", "noscript", "form", "img"])
+      .turndown(converted.value);
+
+    return extracted.trim();
+  } catch (err) {
+    localLogger.error(
+      {
+        error: err,
+      },
+      `Error while converting docx document to text`
+    );
+    throw err;
+  }
 }

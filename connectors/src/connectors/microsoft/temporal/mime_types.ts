@@ -1,6 +1,11 @@
 import { getEnabledFeatureFlagsMemoized } from "@connectors/lib/workspace";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
+export const MIME_TYPES_TIKA = [
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/pdf",
+];
+
 export async function getMimeTypesToSync({
   pdfEnabled,
   connector,
@@ -10,8 +15,7 @@ export async function getMimeTypesToSync({
 }) {
   const mimeTypes = [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    // TODO(pr): support those
-    // "text/plain",
+    "text/plain",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
