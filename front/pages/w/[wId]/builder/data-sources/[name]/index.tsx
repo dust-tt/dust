@@ -59,7 +59,6 @@ import { setupConnection } from "../managed";
 
 const {
   GA_TRACKING_ID = "",
-  GITHUB_APP_URL = "",
   NANGO_CONFLUENCE_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_INTERCOM_CONNECTOR_ID = "",
@@ -88,7 +87,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     intercomConnectorId: string;
     microsoftConnectorId: string;
   };
-  githubAppUrl: string;
   dustClientFacingUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
@@ -154,7 +152,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
         microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
-      githubAppUrl: GITHUB_APP_URL,
       dustClientFacingUrl: config.getClientFacingUrl(),
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -1027,7 +1024,6 @@ function ManagedDataSourceView({
   dataSource,
   connector,
   nangoConfig,
-  githubAppUrl,
   dustClientFacingUrl,
   plan,
 }: {
@@ -1046,7 +1042,6 @@ function ManagedDataSourceView({
     intercomConnectorId: string;
     microsoftConnectorId: string;
   };
-  githubAppUrl: string;
   dustClientFacingUrl: string;
   plan: PlanType;
 }) {
@@ -1126,7 +1121,6 @@ function ManagedDataSourceView({
     const connectionIdRes = await setupConnection({
       dustClientFacingUrl,
       nangoConfig,
-      githubAppUrl,
       owner,
       provider,
     });
@@ -1379,7 +1373,6 @@ export default function DataSourceView({
   connector,
   standardView,
   nangoConfig,
-  githubAppUrl,
   dustClientFacingUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -1428,7 +1421,6 @@ export default function DataSourceView({
             dataSource,
             connector,
             nangoConfig,
-            githubAppUrl,
             dustClientFacingUrl,
             plan,
           }}
