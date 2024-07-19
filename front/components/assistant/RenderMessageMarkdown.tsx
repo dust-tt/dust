@@ -314,22 +314,22 @@ function CiteBlock(props: ReactMarkdownProps) {
   }
 }
 
+const getNodeText = (node: ReactNode): string => {
+  if (["string", "number"].includes(typeof node)) {
+    return node as string;
+  }
+  if (node instanceof Array) {
+    return node.map(getNodeText).join("");
+  }
+  if (node && typeof node === "object" && "props" in node) {
+    return getNodeText(node.props.children);
+  }
+
+  return "";
+};
+
 function TableBlock({ children }: { children: React.ReactNode }) {
   const tableData = useMemo(() => {
-    const getNodeText = (node: ReactNode): string => {
-      if (["string", "number"].includes(typeof node)) {
-        return node as string;
-      }
-      if (node instanceof Array) {
-        return node.map(getNodeText).join("");
-      }
-      if (node && typeof node === "object" && "props" in node) {
-        return getNodeText(node.props.children);
-      }
-
-      return "";
-    };
-
     const [headNode, bodyNode] = Array.from(children as [any, any]);
     if (
       !headNode ||
@@ -400,7 +400,16 @@ function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
     <td className="px-6 py-4 text-sm text-element-800 dark:text-element-800-dark">
-      {children}
+      {Array.isArray(children) ? (
+        children.map((child: any, i) => {
+          if (child === "<br>") {
+            return <br key={i} />;
+          }
+          return <React.Fragment key={i}>{getNodeText(child)}</React.Fragment>;
+        })
+      ) : (
+        <> {getNodeText(children)}</>
+      )}
     </td>
   );
 }
