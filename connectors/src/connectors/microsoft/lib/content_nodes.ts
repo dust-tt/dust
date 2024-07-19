@@ -1,4 +1,4 @@
-import type { ContentNode } from "@dust-tt/types";
+import type { ContentNode, ContentNodeType } from "@dust-tt/types";
 
 import {
   getDriveInternalId,
@@ -7,6 +7,7 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
 export function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode(), getTeamsRootAsContentNode()];
@@ -152,6 +153,59 @@ export function getFolderAsContentNode(
     dustDocumentId: null,
     lastUpdatedAt: null,
     expandable: true,
+    permission: "none",
+  };
+}
+
+export function getFileAsContentNode(
+  file: microsoftgraph.DriveItem,
+  parentInternalId: string
+): ContentNode {
+  return {
+    provider: "microsoft",
+    internalId: getDriveItemInternalId(file),
+    parentInternalId,
+    type: "file",
+    title: file.name || "unnamed",
+    sourceUrl: "",
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+    expandable: false,
+    permission: "none",
+  };
+}
+
+export function getMicrosoftNodeAsContentNode(
+  node: MicrosoftNodeResource,
+  expandWorksheet: boolean
+): ContentNode {
+  // When table picking we want spreadsheets to expand to select the different
+  // sheets. While extracting data we want to treat them as regular files.
+  const isExpandable =
+    !node.mimeType ||
+    (node.mimeType ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
+      expandWorksheet);
+  let type: ContentNodeType;
+  if (["drive", "folder"].includes(node.nodeType)) {
+    type = "folder";
+  } else if (node.nodeType === "worksheet") {
+    type = expandWorksheet ? "database" : "file";
+  } else if (node.nodeType === "file") {
+    type = node.nodeType;
+  } else {
+    throw new Error(`Unsupported nodeType ${node.nodeType}.`);
+  }
+  return {
+    provider: "microsoft",
+    internalId: node.internalId,
+    parentInternalId: node.parentInternalId,
+    type,
+    title: node.name || "unnamed",
+    sourceUrl: "",
+    dustDocumentId: null,
+    lastUpdatedAt: null,
+    expandable: isExpandable,
     permission: "none",
   };
 }

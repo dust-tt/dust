@@ -15,6 +15,7 @@ import {
   getChannelAsContentNode,
   getDriveAsContentNode,
   getFolderAsContentNode,
+  getMicrosoftNodeAsContentNode,
   getSiteAsContentNode,
   getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
@@ -40,6 +41,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
+  MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -168,6 +170,24 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    if (filterPermission === "read") {
+      if (!parentInternalId) {
+        const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents();
+        return new Ok(
+          nodes.map((node) => getMicrosoftNodeAsContentNode(node, false))
+        );
+      }
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        this.connectorId,
+        parentInternalId
+      );
+      if (!node) {
+        return new Err(
+          new Error(`Could not find node with id ${parentInternalId}`)
+        );
+      }
+      return retrieveChildrenNodes(node, false);
+    }
     const client = await getClient(connector.connectionId);
     const nodes = [];
 
@@ -227,11 +247,10 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
       case "drive":
       case "folder": {
-        const folders = (
-          await getAllPaginatedEntities((nextLink) =>
-            getFilesAndFolders(client, parentInternalId, nextLink)
-          )
-        ).filter((n) => n.folder);
+        const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
+          getFilesAndFolders(client, parentInternalId, nextLink)
+        );
+        const folders = filesAndFolders.filter((n) => n.folder);
         nodes.push(
           ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
         );
@@ -250,12 +269,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    const nodesWithPermissions = nodes.map((res) => ({
-      ...res,
-      permission: (selectedResources.includes(res.internalId)
-        ? "read"
-        : "none") as ConnectorPermission,
-    }));
+    const nodesWithPermissions = nodes.map((res) => {
+      return {
+        ...res,
+        permission: (selectedResources.includes(res.internalId) ||
+        (res.parentInternalId &&
+          selectedResources.includes(res.parentInternalId))
+          ? "read"
+          : "none") as ConnectorPermission,
+      };
+    });
 
     if (filterPermission) {
       return new Ok(
@@ -494,4 +517,20 @@ export async function getClient(connectionId: NangoConnectionId) {
   return Client.init({
     authProvider: (done) => done(null, msAccessToken),
   });
+}
+
+export async function retrieveChildrenNodes(
+  microsoftNode: MicrosoftNodeResource,
+  expandWorksheet: boolean
+): Promise<Result<ContentNode[], Error>> {
+  const childrenNodes = await microsoftNode.fetchChildren([
+    "file",
+    "folder",
+    "drive",
+  ]);
+  return new Ok(
+    childrenNodes.map((node) =>
+      getMicrosoftNodeAsContentNode(node, expandWorksheet)
+    )
+  );
 }
