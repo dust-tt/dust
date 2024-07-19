@@ -1,3 +1,5 @@
+import type { ModelId } from "@dust-tt/types";
+
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 export function getFullSyncWorkflowId(dataSourceInfo: DataSourceInfo) {
@@ -24,7 +26,7 @@ export function getIssueSyncWorkflowId(
 }
 
 export function getDiscussionSyncWorkflowId(
-  connectorId: string,
+  connectorId: ModelId,
   dataSourceInfo: DataSourceInfo,
   repoId: number,
   discussionNumber: number
@@ -41,7 +43,7 @@ export function getIssueGarbageCollectWorkflowId(
 }
 
 export function getDiscussionGarbageCollectWorkflowId(
-  connectorId: string,
+  connectorId: ModelId,
   dataSourceInfo: DataSourceInfo,
   repoId: number,
   issueNumber: number
