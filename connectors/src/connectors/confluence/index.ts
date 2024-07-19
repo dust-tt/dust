@@ -42,10 +42,9 @@ import {
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import {
-  nango_client,
-  nangoDeleteConnection,
-} from "@connectors/lib/nango_client";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+  getAccessTokenFromNango,
+  getConnectionFromNango,
+} from "@connectors/lib/nango_helpers";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -133,8 +132,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const { connectionId: oldConnectionId } = connector;
-
       const currentCloudInformation = await ConfluenceConfiguration.findOne({
         attributes: ["cloudId"],
         where: {
@@ -142,11 +139,11 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         },
       });
 
-      const newConnection = await nango_client().getConnection(
-        getRequiredNangoConfluenceConnectorId(),
+      const newConnection = await getConnectionFromNango({
         connectionId,
-        false
-      );
+        integrationId: getRequiredNangoConfluenceConnectorId(),
+        refreshToken: false,
+      });
 
       const confluenceAccessToken = newConnection?.credentials?.access_token;
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
@@ -160,11 +157,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         newConfluenceCloudInformation.id === currentCloudInformation.cloudId
       ) {
         await connector.update({ connectionId });
-
-        await nangoDeleteConnection(
-          oldConnectionId,
-          getRequiredNangoConfluenceConnectorId()
-        );
       } else {
         logger.info(
           {
@@ -173,13 +165,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
             previousCloudId: currentCloudInformation?.cloudId,
           },
           "Cannot change the workspace of a Confluence connector"
-        );
-
-        // If the new connection does not grant us access to the same cloud id
-        // delete the Nango Connection.
-        await nangoDeleteConnection(
-          connectionId,
-          getRequiredNangoConfluenceConnectorId()
         );
 
         return new Err({
@@ -200,14 +185,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         "Confluence connector not found."
       );
       return new Err(new Error("Connector not found"));
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      getRequiredNangoConfluenceConnectorId()
-    );
-    if (nangoRes.isErr()) {
-      throw nangoRes.error;
     }
 
     const res = await connector.delete();

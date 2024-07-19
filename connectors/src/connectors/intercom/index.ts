@@ -46,7 +46,6 @@ import {
   IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -160,7 +159,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const oldConnectionId = connector.connectionId;
       const newConnectionId = connectionId;
       const newIntercomWorkspace =
         await fetchIntercomWorkspace(newConnectionId);
@@ -172,15 +170,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         });
       }
       if (intercomWorkspace.intercomWorkspaceId !== newIntercomWorkspace.id) {
-        nangoDeleteConnection(
-          newConnectionId,
-          NANGO_INTERCOM_CONNECTOR_ID
-        ).catch((e) => {
-          logger.error(
-            { error: e, connectorId: this.connectorId },
-            "Error deleting old Nango connection"
-          );
-        });
         return new Err({
           type: "connector_oauth_target_mismatch",
           message: "Cannot change workspace of a Intercom connector",
@@ -197,14 +186,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         },
         {
           where: { connectorId: connector.id },
-        }
-      );
-      nangoDeleteConnection(oldConnectionId, NANGO_INTERCOM_CONNECTOR_ID).catch(
-        (e) => {
-          logger.error(
-            { error: e, connectorId: this.connectorId, oldConnectionId },
-            "Error deleting old Nango connection"
-          );
         }
       );
     }
@@ -252,21 +233,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       logger.error(
         { connectorId: this.connectorId, error: e },
         "Error uninstalling Intercom, continuing..."
-      );
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      NANGO_INTERCOM_CONNECTOR_ID
-    );
-    if (nangoRes.isErr()) {
-      logger.error(
-        {
-          error: nangoRes.error,
-          connectorId: connector.id,
-          connectionId: connector.connectionId,
-        },
-        "Error deleting old Nango connection (intercom uninstall webhook)"
       );
     }
 
