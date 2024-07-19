@@ -114,21 +114,14 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return connectors;
   }
 
-  static async findByDataSourceAndConnection(
-    dataSource: {
-      workspaceId: string;
-      dataSourceName: string;
-    },
-    { connectionId }: { connectionId?: string } = {}
-  ) {
+  static async findByDataSourceAndConnection(dataSource: {
+    workspaceId: string;
+    dataSourceName: string;
+  }) {
     const where: WhereOptions<ConnectorModel> = {
       workspaceId: dataSource.workspaceId,
       dataSourceName: dataSource.dataSourceName,
     };
-
-    if (connectionId) {
-      where.connectionId = connectionId;
-    }
 
     const blob = await ConnectorResource.model.findOne({
       where,

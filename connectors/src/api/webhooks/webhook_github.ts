@@ -365,7 +365,7 @@ async function garbageCollectRepos(
       for (const { name, id } of repos) {
         try {
           await launchGithubRepoGarbageCollectWorkflow(
-            c.id.toString(),
+            c.id,
             orgLogin,
             name,
             id
@@ -501,7 +501,7 @@ async function syncIssue(
   await Promise.all(
     connectors.map((c) =>
       launchGithubIssueSyncWorkflow(
-        c.id.toString(),
+        c.id,
         orgLogin,
         repoName,
         repoId,
@@ -543,7 +543,7 @@ async function syncDiscussion(
   await Promise.all(
     connectors.map((c) =>
       launchGithubDiscussionSyncWorkflow(
-        c.id.toString(),
+        c.id,
         orgLogin,
         repoName,
         repoId,
@@ -585,7 +585,7 @@ async function garbageCollectIssue(
   await Promise.all(
     connectors.map((c) =>
       launchGithubIssueGarbageCollectWorkflow(
-        c.id.toString(),
+        c.id,
         orgLogin,
         repoName,
         repoId,
@@ -627,7 +627,7 @@ async function garbageCollectDiscussion(
   await Promise.all(
     connectors.map((c) =>
       launchGithubDiscussionGarbageCollectWorkflow(
-        c.id.toString(),
+        c.id,
         orgLogin,
         repoName,
         repoId,
