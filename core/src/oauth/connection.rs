@@ -50,7 +50,6 @@ lazy_static! {
 pub enum ConnectionErrorCode {
     // Finalize
     ConnectionAlreadyFinalizedError,
-    ProviderInvalidToken,
     ProviderFinalizationError,
     // Refresh Access Token
     ConnectionNotFinalizedError,
@@ -179,10 +178,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
 pub enum ProviderError {
     #[error("Action not supported: {0}.")]
     ActionNotSupportedError(String),
-    #[error("Invalid token.")]
-    InvalidToken,
-    #[error("Token expired.")]
-    TokenExpired,
+    // TODO(2024-07-19 flav) Implement InvalidToken.
     #[error("Timeout error.")]
     TimeoutError,
     #[error("Unknown error: {0}.")]
@@ -201,8 +197,6 @@ impl From<&ProviderError> for ConnectionError {
     fn from(err: &ProviderError) -> Self {
         match err {
             ProviderError::ActionNotSupportedError(_)
-            | ProviderError::InvalidToken
-            | ProviderError::TokenExpired
             | ProviderError::TimeoutError
             | ProviderError::UnknownError(_) => ConnectionError {
                 code: ConnectionErrorCode::ProviderFinalizationError,
