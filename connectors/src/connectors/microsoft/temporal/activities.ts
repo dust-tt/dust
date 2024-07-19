@@ -660,6 +660,11 @@ async function isFolderMovedInSameRoot({
 
   const oldParentId = oldResource.parentInternalId;
 
+  if (!oldParentId) {
+    // this means it is a root
+    return false;
+  }
+
   const newParentId = getParentReferenceInternalId(folder.parentReference);
 
   return oldParentId !== newParentId;
