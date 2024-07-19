@@ -181,6 +181,7 @@ impl FromStr for ConnectionStatus {
 // is also "required in pinciple" but technically can be null for non-expiring acces tokens.
 #[derive(Deserialize)]
 pub struct MigratedCredentials {
+    redirect_uri: String,
     access_token_expiry: Option<u64>,
     authorization_code: Option<String>,
     access_token: String,
@@ -401,6 +402,7 @@ impl Connection {
         let mut c = store.create_connection(provider, metadata).await?;
 
         if let Some(creds) = migrated_credentials {
+            c.redirect_uri = Some(creds.redirect_uri);
             c.access_token_expiry = creds.access_token_expiry;
             c.encrypted_access_token = Some(Connection::seal_str(&creds.access_token)?);
             c.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
