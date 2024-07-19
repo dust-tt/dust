@@ -28,8 +28,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
-const { NANGO_SLACK_CONNECTOR_ID, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } =
-  process.env;
+const { SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } = process.env;
 
 export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
   static async create({
@@ -88,10 +87,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }: {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
-    if (!NANGO_SLACK_CONNECTOR_ID) {
-      throw new Error("NANGO_SLACK_CONNECTOR_ID not set");
-    }
-
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
@@ -719,9 +714,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 }
 
 export async function uninstallSlack(connectionId: string) {
-  if (!NANGO_SLACK_CONNECTOR_ID) {
-    throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
-  }
   if (!SLACK_CLIENT_ID) {
     throw new Error("SLACK_CLIENT_ID is not defined");
   }

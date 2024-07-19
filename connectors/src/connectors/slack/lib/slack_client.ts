@@ -7,16 +7,13 @@ import type {
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
 
+import { apiConfig } from "@connectors/lib/api/config";
 import {
   ExternalOauthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
-const { NANGO_SLACK_CONNECTOR_ID } = process.env;
-import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
