@@ -14,7 +14,7 @@ async function appendRollbackCommand(
   connectorId: ModelId,
   oldConnectionId: string
 ) {
-  const sql = `UPDATE connectors SET connectionId = '${oldConnectionId}' WHERE id = '${connectorId}';\n`;
+  const sql = `UPDATE connectors SET "connectionId" = '${oldConnectionId}' WHERE id = ${connectorId};\n`;
   await fs.appendFile(`${PROVIDER}_rollback_commands.sql`, sql);
 }
 
