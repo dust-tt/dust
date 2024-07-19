@@ -190,15 +190,15 @@ export async function getSlackAccessToken(
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,
-      provider: "github",
+      provider: "slack",
       connectionId,
     });
     if (tokRes.isErr()) {
       logger.error(
         { connectionId, error: tokRes.error },
-        "Error retrieving Github access token"
+        "Error retrieving Slack access token"
       );
-      throw new Error("Error retrieving Github access token");
+      throw new Error("Error retrieving Slack access token");
     }
 
     return tokRes.value.access_token;
