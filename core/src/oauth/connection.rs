@@ -1,8 +1,8 @@
 use crate::oauth::{
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
-        google_drive::GoogleDriveConnectionProvider, notion::NotionConnectionProvider,
-        slack::SlackConnectionProvider,
+        google_drive::GoogleDriveConnectionProvider, intercom::IntercomConnectionProvider,
+        notion::NotionConnectionProvider, slack::SlackConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -143,7 +143,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
-        ConnectionProvider::Intercom => unimplemented!(),
+        ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
     }
