@@ -470,6 +470,13 @@ export function getDriveItemInternalId(item: MicrosoftGraph.DriveItem) {
     throw new Error("Unexpected: item is neither folder nor file");
   }
 
+  if (item.root) {
+    return internalIdFromTypeAndPath({
+      nodeType: "drive",
+      itemAPIPath: `/drives/${parentReference.driveId}`,
+    });
+  }
+
   return internalIdFromTypeAndPath({
     nodeType,
     itemAPIPath: `/drives/${parentReference.driveId}/items/${item.id}`,
