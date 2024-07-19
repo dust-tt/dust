@@ -526,7 +526,7 @@ export async function githubSaveStartSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
   const connector =
-    await ConnectorResource.findByDataSourceAndConnection(dataSourceConfig);
+    await ConnectorResource.findByDataSource(dataSourceConfig);
   if (!connector) {
     throw new Error("Could not find connector");
   }
@@ -540,7 +540,7 @@ export async function githubSaveSuccessSyncActivity(
   dataSourceConfig: DataSourceConfig
 ) {
   const connector =
-    await ConnectorResource.findByDataSourceAndConnection(dataSourceConfig);
+    await ConnectorResource.findByDataSource(dataSourceConfig);
   if (!connector) {
     throw new Error("Could not find connector");
   }

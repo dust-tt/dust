@@ -39,6 +39,7 @@ import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
+  launchGithubIssueSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
 import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -208,19 +209,16 @@ export const github = async ({
         throw new Error("Missing --repo argument");
       }
 
-      const connector = await ConnectorModel.findOne({
-        where: {
-          type: "github",
-          workspaceId: `${args.wId}`,
-          dataSourceName: args.dataSourceName,
-        },
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: `${args.wId}`,
+        dataSourceName: args.dataSourceName,
       });
-
       if (!connector) {
         throw new Error(
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
         );
       }
+
       logger.info("[Admin] Resyncing repo " + args.owner + "/" + args.repo);
 
       const octokit = await getOctokit(connector.connectionId);
@@ -258,14 +256,10 @@ export const github = async ({
 
       const enable = args.enable === "true";
 
-      const connector = await ConnectorModel.findOne({
-        where: {
-          type: "github",
-          workspaceId: `${args.wId}`,
-          dataSourceName: args.dataSourceName,
-        },
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: `${args.wId}`,
+        dataSourceName: args.dataSourceName,
       });
-
       if (!connector) {
         throw new Error(
           `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
@@ -292,6 +286,47 @@ export const github = async ({
         connectorId: connector.id,
         syncCodeOnly: true,
       });
+
+      return { success: true };
+    }
+
+    case "sync-issue": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.repoLogin) {
+        throw new Error("Missing --repoLogin argument");
+      }
+      if (!args.repoName) {
+        throw new Error("Missing --repoName argument");
+      }
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+      if (!args.issueNumber) {
+        throw new Error("Missing --issueNumber argument");
+      }
+
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: args.wId,
+        dataSourceName: args.dataSourceName,
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+        );
+      }
+
+      await launchGithubIssueSyncWorkflow(
+        connector.id,
+        args.repoLogin,
+        args.repoName,
+        parseInt(args.repoId),
+        parseInt(args.issueNumber)
+      );
 
       return { success: true };
     }
