@@ -65,7 +65,6 @@ import {
   upsertDatabaseWorkflow,
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows";
-import { uninstallSlack } from "@connectors/connectors/slack";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
@@ -76,7 +75,6 @@ import {
   IntercomTeam,
 } from "@connectors/lib/models/intercom";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { nango_client } from "@connectors/lib/nango_client";
 import {
   getTemporalClient,
   terminateAllWorkflowsForConnectorId,
@@ -87,7 +85,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-const { NANGO_SLACK_CONNECTOR_ID, INTERACTIVE_CLI } = process.env;
+const { INTERACTIVE_CLI } = process.env;
 
 async function getConnectorOrThrow({
   connectorType,
@@ -963,71 +961,6 @@ export const slack = async ({
         )
       );
 
-      return { success: true };
-    }
-
-    case "uninstall-for-unknown-team-ids": {
-      if (!NANGO_SLACK_CONNECTOR_ID) {
-        throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
-      }
-
-      const slackConfigurations = await SlackConfigurationResource.listAll();
-      const connections = await nango_client().listConnections();
-
-      const oneHourAgo = new Date();
-      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-      const slackConnections = connections.connections.filter(
-        (connection: {
-          id: number;
-          connection_id: string;
-          provider: string;
-          created: string;
-        }) => {
-          const createdAt = new Date(connection.created);
-          return (
-            connection.provider === NANGO_SLACK_CONNECTOR_ID &&
-            createdAt < oneHourAgo
-          );
-        }
-      );
-
-      const askQuestion = async (query: string): Promise<string> => {
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-
-        return new Promise((resolve) => {
-          rl.question(query, (answer) => {
-            rl.close();
-            resolve(answer);
-          });
-        });
-      };
-
-      for (const connection of slackConnections) {
-        const connectionDetail = await nango_client().getConnection(
-          connection.provider,
-          connection.connection_id
-        );
-        const slackTeamId = connectionDetail.credentials.raw.team.id;
-
-        if (!slackConfigurations.find((sc) => sc.slackTeamId === slackTeamId)) {
-          if (INTERACTIVE_CLI) {
-            const answer: string = await askQuestion(
-              `Do you want to delete Nango connection ${connection.connection_id} and auth token for team ${slackTeamId}? (y/N) `
-            );
-            if (answer.toLowerCase() !== "y") {
-              continue;
-            }
-          }
-          logger.info(
-            "[Admin] Uninstalling Slack and cleaning connection id..."
-          );
-          await uninstallSlack(connection.connection_id);
-        }
-      }
       return { success: true };
     }
 

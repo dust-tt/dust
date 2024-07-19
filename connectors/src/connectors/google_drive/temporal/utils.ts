@@ -4,7 +4,6 @@ import { google } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
-import { nango_client } from "@connectors/lib/nango_client";
 import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -129,11 +128,11 @@ export async function driveObjectToDustType(
 export async function getGoogleCredentials(
   nangoConnectionId: string
 ): Promise<NangoConnectionResponse> {
-  return nango_client().getConnection(
-    googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
-    nangoConnectionId,
-    false
-  );
+  return getConnectionFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
+    refreshToken: false,
+  });
 }
 
 export async function getAuthObject(
