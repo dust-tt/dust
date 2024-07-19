@@ -7,6 +7,15 @@ export type OAuthAPIError = {
   code: string;
 };
 
+export type MigratedCredentialsType = {
+  redirect_uri: string;
+  access_token_expiry?: number;
+  authorization_code?: string;
+  access_token: string;
+  refresh_token?: string;
+  raw_json: unknown;
+};
+
 export function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
   return (
     typeof obj === "object" &&
@@ -41,19 +50,31 @@ export class OAuthAPI {
   async createConnection({
     provider,
     metadata,
+    migratedCredentials,
   }: {
     provider: OAuthProvider;
     metadata: Record<string, unknown> | null;
+    migratedCredentials?: MigratedCredentialsType;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
+    const body: {
+      provider: OAuthProvider;
+      metadata: Record<string, unknown> | null;
+      migrated_credentials?: MigratedCredentialsType;
+    } = {
+      provider,
+      metadata,
+    };
+
+    if (migratedCredentials) {
+      body.migrated_credentials = migratedCredentials;
+    }
+
     const response = await this._fetchWithError(`${this._url}/connections`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        provider,
-        metadata,
-      }),
+      body: JSON.stringify(body),
     });
     return this._resultFromResponse(response);
   }
