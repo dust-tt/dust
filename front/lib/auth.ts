@@ -203,6 +203,54 @@ export class Authenticator {
       flags,
     });
   }
+  /**
+   * Get an Authenticator for the target workspace associated with the specified user.
+   * To be used only in context where you can't get an authenticator object from a secured key (session or API Key)
+   *
+   * @param uId number user id
+   * @param wId string target workspace sid
+   * @returns Promise<Authenticator>
+   */
+  static async fromUserIdAndWorkspaceId(
+    uId: string,
+    wId: string
+  ): Promise<Authenticator> {
+    const [workspace, user] = await Promise.all([
+      Workspace.findOne({
+        where: {
+          sId: wId,
+        },
+      }),
+      UserResource.fetchById(uId),
+    ]);
+
+    let role: RoleType = "none";
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (user && workspace) {
+      [role, subscription, flags] = await Promise.all([
+        MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: renderLightWorkspaceType({ workspace }),
+        }).then((m) => m?.role ?? "none"),
+        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        FeatureFlag.findAll({
+          where: {
+            workspaceId: workspace.id,
+          },
+        }).then((flags) => flags.map((flag) => flag.name)),
+      ]);
+    }
+
+    return new Authenticator({
+      workspace,
+      user,
+      role,
+      subscription,
+      flags,
+    });
+  }
 
   /**
    * Get an Authenticator from an API key for a given workspace. Why? because by API you may want to
