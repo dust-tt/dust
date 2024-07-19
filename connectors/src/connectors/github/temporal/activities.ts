@@ -46,36 +46,8 @@ const logger = mainLogger.child({
   provider: "github",
 });
 
-export type ConnectionIdOrConnectorId = ModelId | string;
-
-async function connectorFromConnectionIdOrConnectorId(
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId
-): Promise<ConnectorResource> {
-  if (typeof connectionIdOrConnectorId === "string") {
-    const connector = await ConnectorResource.fetchByConnectionId(
-      connectionIdOrConnectorId
-    );
-    if (!connector) {
-      throw new Error(
-        `Connector not found (connectionId: ${connectionIdOrConnectorId})`
-      );
-    }
-    return connector;
-  }
-
-  const connector = await ConnectorResource.fetchById(
-    connectionIdOrConnectorId
-  );
-  if (!connector) {
-    throw new Error(
-      `Connector not found (connectorId: ${connectionIdOrConnectorId})`
-    );
-  }
-  return connector;
-}
-
 export async function githubGetReposResultPageActivity(
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   pageNumber: number, // 1-indexed
   loggerArgs: Record<string, string | number>
 ): Promise<{ name: string; id: number; login: string }[]> {
@@ -87,10 +59,10 @@ export async function githubGetReposResultPageActivity(
   if (pageNumber < 1) {
     throw new Error("Page number must be greater than 0 (1-indexed)");
   }
-
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   localLogger.info("Fetching GitHub repos result page.");
   const pageRes = await getReposPage(connector.connectionId, pageNumber);
@@ -106,7 +78,7 @@ export async function githubGetReposResultPageActivity(
 }
 
 export async function githubGetRepoIssuesResultPageActivity(
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   repoName: string,
   login: string,
   pageNumber: number, // 1-indexed
@@ -120,10 +92,10 @@ export async function githubGetRepoIssuesResultPageActivity(
   if (pageNumber < 1) {
     throw new Error("Page number must be greater than 0 (1-indexed)");
   }
-
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   localLogger.info("Fetching GitHub repo issues result page.");
   const page = await getRepoIssuesPage(
@@ -243,7 +215,7 @@ async function renderIssue(
 }
 
 export async function githubUpsertIssueActivity(
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   repoName: string,
   repoId: number,
   login: string,
@@ -259,9 +231,10 @@ export async function githubUpsertIssueActivity(
 
   localLogger.info("Upserting GitHub issue.");
 
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   const renderedIssueResult = await renderIssue(
     dataSourceConfig,
@@ -448,7 +421,7 @@ async function renderDiscussion(
 }
 
 export async function githubUpsertDiscussionActivity(
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   repoName: string,
   repoId: number,
   login: string,
@@ -464,9 +437,10 @@ export async function githubUpsertDiscussionActivity(
 
   localLogger.info("Upserting GitHub discussion.");
 
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   const { discussion, content: renderedDiscussion } = await renderDiscussion(
     dataSourceConfig,
@@ -517,7 +491,7 @@ export async function githubUpsertDiscussionActivity(
 }
 
 export async function githubGetRepoDiscussionsResultPageActivity(
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   repoName: string,
   login: string,
   cursor: string | null,
@@ -530,9 +504,10 @@ export async function githubGetRepoDiscussionsResultPageActivity(
 
   localLogger.info("Fetching GitHub discussions result page.");
 
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
     connector.connectionId,
@@ -578,14 +553,15 @@ export async function githubSaveSuccessSyncActivity(
 
 export async function githubIssueGarbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   repoId: string,
   issueNumber: number,
   loggerArgs: Record<string, string | number>
 ) {
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   await deleteIssue(
     dataSourceConfig,
@@ -598,14 +574,15 @@ export async function githubIssueGarbageCollectActivity(
 
 export async function githubDiscussionGarbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   repoId: string,
   discussionNumber: number,
   loggerArgs: Record<string, string | number>
 ) {
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   await deleteDiscussion(
     dataSourceConfig,
@@ -618,13 +595,14 @@ export async function githubDiscussionGarbageCollectActivity(
 
 export async function githubRepoGarbageCollectActivity(
   dataSourceConfig: DataSourceConfig,
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId,
+  connectorId: ModelId,
   repoId: string,
   loggerArgs: Record<string, string | number>
 ) {
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   const issuesInRepo = await GithubIssue.findAll({
     where: {
@@ -881,7 +859,7 @@ async function garbageCollectCodeSync(
 
 export async function githubCodeSyncActivity({
   dataSourceConfig,
-  connectionIdOrConnectorId,
+  connectorId,
   repoLogin,
   repoName,
   repoId,
@@ -890,7 +868,7 @@ export async function githubCodeSyncActivity({
   forceResync = false,
 }: {
   dataSourceConfig: DataSourceConfig;
-  connectionIdOrConnectorId: ConnectionIdOrConnectorId;
+  connectorId: ModelId;
   repoLogin: string;
   repoName: string;
   repoId: number;
@@ -901,9 +879,10 @@ export async function githubCodeSyncActivity({
   const codeSyncStartedAt = new Date();
   const localLogger = logger.child(loggerArgs);
 
-  const connector = await connectorFromConnectionIdOrConnectorId(
-    connectionIdOrConnectorId
-  );
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found (connectorId: ${connectorId})`);
+  }
 
   const connectorState = await GithubConnectorState.findOne({
     where: {

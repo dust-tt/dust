@@ -383,7 +383,7 @@ export async function githubRepoSyncWorkflow({
   // Start code syncing activity.
   await githubCodeSyncActivity({
     dataSourceConfig,
-    connectionIdOrConnectorId: connectorId,
+    connectorId,
     repoLogin,
     repoName,
     repoId,
@@ -428,7 +428,7 @@ export async function githubCodeSyncWorkflow(
     }
     await githubCodeSyncActivity({
       dataSourceConfig,
-      connectionIdOrConnectorId: connectorId,
+      connectorId,
       repoLogin,
       repoName,
       repoId,

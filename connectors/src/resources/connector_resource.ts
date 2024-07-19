@@ -114,41 +114,17 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return connectors;
   }
 
-  // TODO(spolu): GITHUB_MIGRATION_REMOVE (the connectionId param)
-  static async findByDataSourceAndConnection(
-    dataSource: {
-      workspaceId: string;
-      dataSourceName: string;
-    },
-    { connectionId }: { connectionId?: string } = {}
-  ) {
+  static async findByDataSourceAndConnection(dataSource: {
+    workspaceId: string;
+    dataSourceName: string;
+  }) {
     const where: WhereOptions<ConnectorModel> = {
       workspaceId: dataSource.workspaceId,
       dataSourceName: dataSource.dataSourceName,
     };
 
-    if (connectionId) {
-      where.connectionId = connectionId;
-    }
-
     const blob = await ConnectorResource.model.findOne({
       where,
-    });
-    if (!blob) {
-      return null;
-    }
-
-    const c = new this(this.model, blob.get());
-    await c.postFetchHook();
-    return c;
-  }
-
-  // TODO(spolu): GITHUB_MIGRATION_REMOVE
-  static async fetchByConnectionId(connectionId: string) {
-    const blob = await ConnectorResource.model.findOne({
-      where: {
-        connectionId,
-      },
     });
     if (!blob) {
       return null;
