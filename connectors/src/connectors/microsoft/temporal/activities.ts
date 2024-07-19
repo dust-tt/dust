@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
-import { GraphError, type Client } from "@microsoft/microsoft-graph-client";
+import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
 
@@ -30,6 +31,7 @@ import {
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -37,8 +39,7 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import { DataSourceConfig } from "@connectors/types/data_source_config";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FILES_SYNC_CONCURRENCY = 10;
 
