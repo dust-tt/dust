@@ -322,10 +322,10 @@ export const github = async ({
 
       await launchGithubIssueSyncWorkflow(
         connector.id,
-        args.repoLogin,
-        args.repoName,
-        parseInt(args.repoId),
-        parseInt(args.issueNumber)
+        `${args.repoLogin}`,
+        `${args.repoName}`,
+        parseInt(`${args.repoId}`),
+        parseInt(`${args.issueNumber}`)
       );
 
       return { success: true };
