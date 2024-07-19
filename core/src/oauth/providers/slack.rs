@@ -1,12 +1,16 @@
 use crate::{
     oauth::{
         connection::{
-            Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult,
-            PROVIDER_TIMEOUT_SECONDS,
+            Connection,
+            ConnectionProvider,
+            FinalizeResult,
+            Provider,
+            RefreshResult,
+            // PROVIDER_TIMEOUT_SECONDS,
         },
         providers::utils::execute_request,
     },
-    utils,
+    // utils,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
