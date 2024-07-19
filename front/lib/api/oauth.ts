@@ -177,11 +177,20 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   intercom: {
-    setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+    setupUri: (connection) => {
+      return (
+        `https://app.intercom.com/oauth` +
+        `?client_id=${config.getOAuthIntercomClientId()}` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("intercom"))}`
+      );
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (connection) => {
+      return getStringFromQuery(connection, "code");
+    },
+    connectionIdFromQuery: (connection) => {
+      return getStringFromQuery(connection, "state");
+    },
   },
   microsoft: {
     setupUri: () => {

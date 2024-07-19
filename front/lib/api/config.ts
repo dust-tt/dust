@@ -103,6 +103,9 @@ const config = {
   getOAuthSlackClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_CLIENT_ID");
   },
+  getOAuthIntercomClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_INTERCOM_CLIENT_ID");
+  },
 };
 
 export default config;
