@@ -1,9 +1,9 @@
-use crate::oauth::providers::{
-    confluence::ConfluenceConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-    slack::SlackConnectionProvider,
-};
 use crate::oauth::{
-    providers::{github::GithubConnectionProvider, notion::NotionConnectionProvider},
+    providers::{
+        confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
+        google_drive::GoogleDriveConnectionProvider, notion::NotionConnectionProvider,
+        slack::SlackConnectionProvider,
+    },
     store::OAuthStore,
 };
 use crate::utils;
