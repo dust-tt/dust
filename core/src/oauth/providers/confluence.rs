@@ -1,7 +1,7 @@
 use crate::{
     oauth::{
         connection::{
-            Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult,
+            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
             PROVIDER_TIMEOUT_SECONDS,
         },
         providers::utils::execute_request,
@@ -40,7 +40,7 @@ impl Provider for ConfluenceConnectionProvider {
         _connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult> {
+    ) -> Result<FinalizeResult, ProviderError> {
         let body = json!({
             "grant_type": "authorization_code",
             "client_id": *OAUTH_CONFLUENCE_CLIENT_ID,
@@ -54,7 +54,9 @@ impl Provider for ConfluenceConnectionProvider {
             .header("Content-Type", "application/json")
             .json(&body);
 
-        let raw_json = execute_request(ConnectionProvider::Confluence, req).await?;
+        let raw_json = execute_request(ConnectionProvider::Confluence, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
@@ -92,7 +94,7 @@ impl Provider for ConfluenceConnectionProvider {
     /// Note: Confluence hard expires refresh_tokens after 360 days.
     ///       Confluence expires access_tokens after 1 hour.
     ///       Confluence expires refresh_tokens after 30 days of inactivity.
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult> {
+    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
             Ok(None) => Err(anyhow!("Missing `refresh_token` in Confluence connection"))?,
@@ -111,7 +113,9 @@ impl Provider for ConfluenceConnectionProvider {
             .header("Content-Type", "application/json")
             .json(&body);
 
-        let raw_json = execute_request(ConnectionProvider::Confluence, req).await?;
+        let raw_json = execute_request(ConnectionProvider::Confluence, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,

@@ -1,5 +1,7 @@
 use crate::oauth::{
-    connection::{Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult},
+    connection::{
+        Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+    },
     providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
@@ -40,7 +42,7 @@ impl Provider for NotionConnectionProvider {
         _connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult> {
+    ) -> Result<FinalizeResult, ProviderError> {
         let body = json!({
             "grant_type": "authorization_code",
             "code": code,
@@ -54,7 +56,9 @@ impl Provider for NotionConnectionProvider {
             .header("Authorization", format!("Basic {}", self.basic_auth()))
             .json(&body);
 
-        let raw_json = execute_request(ConnectionProvider::Notion, req).await?;
+        let raw_json = execute_request(ConnectionProvider::Notion, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
@@ -71,8 +75,10 @@ impl Provider for NotionConnectionProvider {
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult> {
-        Err(anyhow!("Notion access tokens do not expire"))?
+    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+        Err(ProviderError::ActionNotSupportedError(
+            "Notion access tokens do not expire".to_string(),
+        ))?
     }
 
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {

@@ -1,16 +1,13 @@
-use crate::{
-    oauth::{
-        connection::{
-            Connection,
-            ConnectionProvider,
-            FinalizeResult,
-            Provider,
-            RefreshResult,
-            // PROVIDER_TIMEOUT_SECONDS,
-        },
-        providers::utils::execute_request,
+use crate::oauth::{
+    connection::{
+        Connection,
+        ConnectionProvider,
+        FinalizeResult,
+        Provider,
+        ProviderError,
+        RefreshResult, // PROVIDER_TIMEOUT_SECONDS,
     },
-    // utils,
+    providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -49,7 +46,7 @@ impl Provider for SlackConnectionProvider {
         _connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult> {
+    ) -> Result<FinalizeResult, ProviderError> {
         let req = reqwest::Client::new()
             .post("https://slack.com/api/oauth.v2.access")
             .header("Content-Type", "application/json; charset=utf-8")
@@ -57,13 +54,15 @@ impl Provider for SlackConnectionProvider {
             // Very important, this will *not* work with JSON body.
             .form(&[("code", code), ("redirect_uri", redirect_uri)]);
 
-        let raw_json = execute_request(ConnectionProvider::Slack, req).await?;
+        let raw_json = execute_request(ConnectionProvider::Slack, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         if !raw_json["ok"].as_bool().unwrap_or(false) {
-            return Err(anyhow!(
+            return Err(ProviderError::UnknownError(format!(
                 "Slack OAuth error: {}",
                 raw_json["error"].as_str().unwrap_or("Unknown error")
-            ));
+            )));
         }
 
         let access_token = raw_json["access_token"]
@@ -85,8 +84,10 @@ impl Provider for SlackConnectionProvider {
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult> {
-        Err(anyhow!("Slack token rotation not implemented."))?
+    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+        Err(ProviderError::ActionNotSupportedError(
+            "Slack access tokens do not expire.".to_string(),
+        ))?
         // let refresh_token = connection
         //     .unseal_refresh_token()?
         //     .ok_or_else(|| anyhow!("Missing `refresh_token` in Slack connection"))?;
