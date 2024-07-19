@@ -76,7 +76,7 @@ export default function CreateAssistant({
     null
   );
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    null
+    router.query.templateId ? (router.query.templateId as string) : null
   );
 
   const { assistantTemplates } = useAssistantTemplates({
@@ -123,19 +123,6 @@ export default function CreateAssistant({
     });
   };
 
-  const handleCloseModal = () => {
-    const currentPathname = router.pathname;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { templateId, ...restQuery } = router.query;
-    void router.replace(
-      { pathname: currentPathname, query: restQuery },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
-  };
-
   const tagsRefsMap = useRef<{
     [key: string]: React.MutableRefObject<HTMLDivElement | null>;
   }>({});
@@ -178,25 +165,6 @@ export default function CreateAssistant({
       element.classList.remove("animate-shake");
     }, 500);
   };
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const templateId = router.query.templateId ?? [];
-      if (templateId && typeof templateId === "string") {
-        setSelectedTemplateId(templateId);
-      } else {
-        setSelectedTemplateId(null);
-      }
-    };
-
-    // Initial check in case the component mounts with the query already set.
-    handleRouteChange();
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.query, router.events]);
 
   return (
     <AppLayout
@@ -256,7 +224,10 @@ export default function CreateAssistant({
             <div className="flex flex-col pb-56">
               {templateSearchTerm?.length ? (
                 <>
-                  <TemplateGrid templates={filteredTemplates.templates} />
+                  <TemplateGrid
+                    templates={filteredTemplates.templates}
+                    setSelectedTemplateId={setSelectedTemplateId}
+                  />
                 </>
               ) : (
                 <>
@@ -270,7 +241,10 @@ export default function CreateAssistant({
                           title={templateTagsMapping[tagName].label}
                           hasBorder={false}
                         />
-                        <TemplateGrid templates={templatesForTag} />
+                        <TemplateGrid
+                          templates={templatesForTag}
+                          setSelectedTemplateId={setSelectedTemplateId}
+                        />
                       </div>
                     );
                   })}
@@ -283,7 +257,7 @@ export default function CreateAssistant({
           flow={flow}
           owner={owner}
           templateId={selectedTemplateId}
-          onClose={handleCloseModal}
+          onClose={() => setSelectedTemplateId(null)}
         />
       </div>
     </AppLayout>
