@@ -66,15 +66,17 @@ impl Provider for SlackConnectionProvider {
             .as_str()
             .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?;
 
-        let expires_in = raw_json["expires_in"].as_u64();
-        let refresh_token = raw_json["refresh_token"].as_str().map(String::from);
+        // let expires_in = raw_json["expires_in"].as_u64();
+        // let refresh_token = raw_json["refresh_token"].as_str().map(String::from);
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: expires_in.map(|e| utils::now() + e * 1000),
-            refresh_token,
+            access_token_expiry: None,
+            refresh_token: None,
+            // access_token_expiry: expires_in.map(|e| utils::now() + e * 1000),
+            // refresh_token,
             raw_json,
         })
     }
