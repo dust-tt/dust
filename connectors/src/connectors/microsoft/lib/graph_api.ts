@@ -359,9 +359,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         nodeType,
         name: item.name ?? null,
         internalId: getDriveItemInternalId(item),
-        parentInternalId: item.parentReference
-          ? getParentReferenceInternalId(item.parentReference)
-          : null,
+        parentInternalId: null,
         mimeType: null,
       };
     }
@@ -371,9 +369,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         nodeType,
         name: item.name ?? null,
         internalId: getDriveItemInternalId(item),
-        parentInternalId: item.parentReference
-          ? getParentReferenceInternalId(item.parentReference)
-          : null,
+        parentInternalId: null,
         mimeType: item.file?.mimeType ?? null,
       };
     }

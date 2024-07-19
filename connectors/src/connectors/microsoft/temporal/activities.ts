@@ -465,7 +465,19 @@ export async function syncDeltaForNode({
           connectorId,
           itemToMicrosoftNode("folder", driveItem)
         );
-        await resource.update({ lastSeenTs: new Date() });
+
+        // add parent information to new node resource. for the toplevel folder,
+        // parent is null
+        const parentInternalId =
+          resource.internalId === nodeId
+            ? null
+            : getParentReferenceInternalId(driveItem.parentReference);
+
+        // check if we
+        await resource.update({
+          parentInternalId,
+          lastSeenTs: new Date(),
+        });
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
