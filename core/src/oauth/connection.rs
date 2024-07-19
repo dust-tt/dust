@@ -415,6 +415,10 @@ impl Connection {
             }
 
             store.update_connection_secrets(&c).await?;
+
+            // Finalize the connection as it's been created with migrated_credentials.
+            c.status = ConnectionStatus::Finalized;
+            store.update_connection_status(&c).await?;
         }
 
         Ok(c)
