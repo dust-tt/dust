@@ -239,14 +239,6 @@ export async function syncSpreadSheet({
   return { isSupported: true };
 }
 
-export function isMicrosoftSpreadsheet(file: MicrosoftNodeResource): boolean {
-  return (
-    file.mimeType ===
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    file.mimeType === "application/vnd.ms-excel"
-  );
-}
-
 export async function deleteAllSheets(
   dataSourceConfig: DataSourceConfig,
   spreadsheet: MicrosoftNodeResource

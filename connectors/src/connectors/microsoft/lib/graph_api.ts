@@ -99,7 +99,7 @@ export async function getDeltaResults({
 
   if (nodeType !== "drive" && nodeType !== "folder") {
     throw new Error(
-      `Invalid node type: ${nodeType} for getFilesAndFolders, expected drive or folder`
+      `Invalid node type: ${nodeType} for delta, expected drive or folder`
     );
   }
 
@@ -139,7 +139,6 @@ export async function getDeltaResults({
 /**
  * Similar to getDeltaResults but goes through pagination (returning results and
  * the deltalink)
- * @param client
  */
 export async function getFullDeltaResults(
   client: Client,

@@ -36,7 +36,6 @@ import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
-  isMicrosoftSpreadsheet,
   syncSpreadSheet,
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -739,7 +738,7 @@ export async function syncDeltaForNode({
     nodeId,
     node.deltaLink
   );
-  const uniqueDriveItemList = removeDuplicateItems(results);
+  const uniqueDriveItemList = removeAllButLastOccurences(results);
   const sortedDriveItemList = sortForIncrementalUpdate(uniqueDriveItemList);
 
   for (const driveItem of sortedDriveItemList) {
@@ -805,7 +804,7 @@ export async function syncDeltaForNode({
  *  As per recommendation, remove all but the last occurences of the same
  *  driveItem in the list
  */
-function removeDuplicateItems(deltaList: microsoftgraph.DriveItem[]) {
+function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
   const uniqueDeltas = new Set<string>();
   const resultList = [];
   for (const driveItem of deltaList.reverse()) {
@@ -1051,7 +1050,11 @@ async function deleteFile({
 
   logger.info({ connectorId, file }, `Deleting Microsoft file.`);
 
-  if (isMicrosoftSpreadsheet(file)) {
+  if (
+    file.mimeType ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    file.mimeType === "application/vnd.ms-excel"
+  ) {
     await deleteAllSheets(dataSourceConfig, file);
   } else {
     await deleteFromDataSource(dataSourceConfig, internalId);
