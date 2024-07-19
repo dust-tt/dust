@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
+import { Op } from "sequelize";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
@@ -518,6 +519,9 @@ export async function retrieveChildrenNodes(
     where: {
       connectorId: connector.id,
       parentInternalId,
+      nodeType: {
+        [Op.in]: ["file", "folder", "drive"],
+      },
     },
     raw: true,
   });
