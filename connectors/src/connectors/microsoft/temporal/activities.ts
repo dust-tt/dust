@@ -1,5 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError, type Client } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
 
@@ -394,12 +394,6 @@ export async function syncDeltaForNode({
 
   const client = await getClient(connector.connectionId);
 
-  if (!node.deltaLink) {
-    throw new Error(
-      `Delta link not found for root node resource ${JSON.stringify(node.toJSON())}`
-    );
-  }
-
   logger.info({ connectorId, node }, "Syncing delta for node");
 
   // Goes through pagination to return all delta results. This is because delta
@@ -413,15 +407,14 @@ export async function syncDeltaForNode({
   //
   // If it ever becomes an issue, redis-caching the list and having activities
   // grabbing pages of it can be implemented
-  const { results, deltaLink } = await getFullDeltaResults(
+  const { results, deltaLink } = await getDeltaData({
     client,
-    nodeId,
-    node.deltaLink
-  );
-  const uniqueDriveItemList = removeAllButLastOccurences(results);
-  const sortedDriveItemList = sortForIncrementalUpdate(uniqueDriveItemList);
+    node,
+  });
+  const uniqueChangedItems = removeAllButLastOccurences(results);
+  const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
 
-  for (const driveItem of sortedDriveItemList) {
+  for (const driveItem of sortedChangedItems) {
     heartbeat();
 
     if (!driveItem.parentReference) {
@@ -601,4 +594,29 @@ function sortForIncrementalUpdate(changedList: DriveItem[]) {
   }
 
   return sortedDriveItemList;
+}
+
+async function getDeltaData({
+  client,
+  node,
+}: {
+  client: Client;
+  node: MicrosoftNodeResource;
+}) {
+  if (!node.deltaLink) {
+    throw new Error(
+      `Delta link not found for root node resource ${JSON.stringify(node.toJSON())}`
+    );
+  }
+
+  try {
+    return await getFullDeltaResults(client, node.internalId, node.deltaLink);
+  } catch (e) {
+    if (e instanceof GraphError && e.statusCode === 410) {
+      // API is answering 'resync required'
+      // we repopulate the delta from scratch
+      return await getFullDeltaResults(client, node.internalId);
+    }
+    throw e;
+  }
 }

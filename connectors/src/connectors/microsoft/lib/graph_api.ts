@@ -83,6 +83,10 @@ export async function getFilesAndFolders(
   return { results: res.value };
 }
 
+/**
+ *  Get list of items that have changed Calling without nextLink nor token will
+ * result in initial delta call
+ */
 export async function getDeltaResults({
   client,
   parentInternalId,
@@ -92,7 +96,7 @@ export async function getDeltaResults({
   client: Client;
   parentInternalId: string;
 } & (
-  | { nextLink: string; token?: never }
+  | { nextLink?: string; token?: never }
   | { nextLink?: never; token: string }
 )) {
   const { nodeType, itemAPIPath } = typeAndPathFromInternalId(parentInternalId);
@@ -143,7 +147,7 @@ export async function getDeltaResults({
 export async function getFullDeltaResults(
   client: Client,
   parentInternalId: string,
-  initialDeltaLink: string
+  initialDeltaLink?: string
 ): Promise<{ results: microsoftgraph.DriveItem[]; deltaLink: string }> {
   let nextLink: string | undefined = initialDeltaLink;
   let allItems: microsoftgraph.DriveItem[] = [];
