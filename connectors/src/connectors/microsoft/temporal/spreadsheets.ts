@@ -23,7 +23,8 @@ const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 async function upsertSpreadsheetInDb(
   connector: ConnectorResource,
   internalId: string,
-  file: microsoftgraph.DriveItem
+  file: microsoftgraph.DriveItem,
+  parentInternalId: string
 ) {
   return MicrosoftNodeResource.upsert({
     internalId,
@@ -34,13 +35,15 @@ async function upsertSpreadsheetInDb(
     mimeType:
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     lastUpsertedTs: new Date(),
+    parentInternalId,
   });
 }
 
 async function upsertWorksheetInDb(
   connector: ConnectorResource,
   internalId: string,
-  worksheet: microsoftgraph.WorkbookWorksheet
+  worksheet: microsoftgraph.WorkbookWorksheet,
+  parentInternalId: string
 ) {
   return MicrosoftNodeResource.upsert({
     internalId,
@@ -50,6 +53,7 @@ async function upsertWorksheetInDb(
     name: worksheet.name ?? "",
     mimeType: "text/csv",
     lastUpsertedTs: new Date(),
+    parentInternalId,
   });
 }
 
@@ -95,7 +99,8 @@ async function processSheet(
   connector: ConnectorResource,
   spreadsheet: microsoftgraph.DriveItem,
   internalId: string,
-  worksheet: microsoftgraph.WorkbookWorksheet
+  worksheet: microsoftgraph.WorkbookWorksheet,
+  spreadsheetId: string
 ): Promise<boolean> {
   if (!worksheet.id) {
     return false;
@@ -144,7 +149,7 @@ async function processSheet(
       loggerArgs
     );
 
-    await upsertWorksheetInDb(connector, internalId, worksheet);
+    await upsertWorksheetInDb(connector, internalId, worksheet, spreadsheetId);
 
     return true;
   }
@@ -160,9 +165,11 @@ async function processSheet(
 export async function syncSpreadSheet({
   connectorId,
   file,
+  parentInternalId,
 }: {
   connectorId: number;
   file: microsoftgraph.DriveItem;
+  parentInternalId: string;
 }): Promise<
   | {
       isSupported: false;
@@ -199,7 +206,12 @@ export async function syncSpreadSheet({
     getWorksheets(client, documentId, nextLink)
   );
 
-  const spreadsheet = await upsertSpreadsheetInDb(connector, documentId, file);
+  const spreadsheet = await upsertSpreadsheetInDb(
+    connector,
+    documentId,
+    file,
+    parentInternalId
+  );
 
   // List synced sheets.
   const syncedWorksheets = await spreadsheet.fetchChildren();
@@ -213,7 +225,8 @@ export async function syncSpreadSheet({
         connector,
         file,
         internalWorkSheetId,
-        worksheet
+        worksheet,
+        documentId
       );
       if (isImported) {
         successfulSheetIdImports.push(internalWorkSheetId);

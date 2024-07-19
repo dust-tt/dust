@@ -472,13 +472,6 @@ export async function syncOneFile({
     return false;
   }
 
-  if (
-    mimeType ===
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  ) {
-    return (await syncSpreadSheet({ connectorId, file })).isSupported;
-  }
-
   const maxDocumentLen = providerConfig.largeFilesEnabled
     ? MAX_LARGE_DOCUMENT_TXT_LEN
     : MAX_DOCUMENT_TXT_LEN;
@@ -552,6 +545,7 @@ export async function syncOneFile({
     const res = await syncSpreadSheet({
       connectorId,
       file,
+      parentInternalId,
     });
     if (!res.isSupported) {
       return false;
