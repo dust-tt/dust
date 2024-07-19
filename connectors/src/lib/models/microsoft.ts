@@ -75,8 +75,9 @@ export class MicrosoftRootModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare itemAPIPath: string;
+  declare internalId: string;
   declare nodeType: MicrosoftNodeType;
+  declare currentDeltaLink: string;
 }
 MicrosoftRootModel.init(
   {
@@ -99,7 +100,7 @@ MicrosoftRootModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    itemAPIPath: {
+    internalId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -107,12 +108,16 @@ MicrosoftRootModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    currentDeltaLink: {
+      type: DataTypes.STRING(1024),
+      allowNull: false,
+    },
   },
   {
     sequelize: sequelizeConnection,
     modelName: "microsoft_roots",
     indexes: [
-      { fields: ["connectorId", "itemAPIPath"], unique: true },
+      { fields: ["connectorId", "internalId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
     ],
   }

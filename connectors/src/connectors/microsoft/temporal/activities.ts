@@ -1,22 +1,8 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import {
-  isTextExtractionSupportedContentType,
-  TextExtraction,
-} from "@dust-tt/types";
-import { parseAndStringifyCsv } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
-import { slugify } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
-<<<<<<< HEAD
-import type { AxiosResponse } from "axios";
-=======
 import { heartbeat } from "@temporalio/activity";
->>>>>>> 218a091a8 ([MS Connector] Incremental sync (#6317))
-import axios from "axios";
-import mammoth from "mammoth";
-import type { Logger } from "pino";
-import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -25,7 +11,6 @@ import {
   getDriveInternalIdFromItem,
   getDriveItemInternalId,
   getDrives,
-  getFileDownloadURL,
   getFilesAndFolders,
   getFullDeltaResults,
   getItem,
@@ -37,35 +22,18 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
-<<<<<<< HEAD
 import {
-  getMimeTypesToSync,
-  MIME_TYPES_TIKA,
-} from "@connectors/connectors/microsoft/temporal/mime_types";
-import { syncSpreadSheet } from "@connectors/connectors/microsoft/temporal/spreadsheets";
-=======
+  deleteFile,
+  deleteFolder,
+  getParents,
+  isAlreadySeenItem,
+  syncOneFile,
+} from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
-import {
-  deleteAllSheets,
-  syncSpreadSheet,
-} from "@connectors/connectors/microsoft/temporal/spreadsheets";
->>>>>>> 218a091a8 ([MS Connector] Incremental sync (#6317))
-import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import {
-  deleteFromDataSource,
-  MAX_DOCUMENT_TXT_LEN,
-  MAX_FILE_SIZE_TO_DOWNLOAD,
-  MAX_LARGE_DOCUMENT_TXT_LEN,
-  renderDocumentTitleAndContent,
-  sectionLength,
-  upsertTableFromCsv,
-  upsertToDatasource,
-} from "@connectors/lib/data_sources";
-import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
-import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
@@ -75,11 +43,6 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FILES_SYNC_CONCURRENCY = 10;
-const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
-
-const pagePrefixesPerMimeType: Record<string, string> = {
-  "application/pdf": "$pdfPage",
-};
 
 export async function getSiteNodesToSync(
   connectorId: ModelId
@@ -106,14 +69,19 @@ export async function getSiteNodesToSync(
       .map(async (resource) =>
         itemToMicrosoftNode(
           resource.nodeType as "folder" | "drive",
-          await getItem(client, resource.itemAPIPath)
+          await getItem(
+            client,
+            typeAndPathFromInternalId(resource.internalId).itemAPIPath
+          )
         )
       )
   );
 
   const rootSitePaths: string[] = rootResources
     .filter((resource) => resource.nodeType === "site")
-    .map((resource) => resource.itemAPIPath);
+    .map(
+      (resource) => typeAndPathFromInternalId(resource.internalId).itemAPIPath
+    );
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getAllPaginatedEntities((nextLink) =>
@@ -197,7 +165,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
   const client = await getClient(connector.connectionId);
 
   for (const nodeId of nodeIds) {
-    const node = await MicrosoftNodeResource.fetchByInternalId(
+    const node = await MicrosoftRootResource.fetchByInternalId(
       connectorId,
       nodeId
     );
@@ -211,7 +179,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       token: "latest",
     });
 
-    await node.updateDeltaLink(deltaLink);
+    await node.update({ currentDeltaLink: deltaLink });
   }
 }
 
@@ -258,10 +226,7 @@ async function isParentAlreadyInNodes({
   return false;
 }
 
-export async function markNodeAsVisited(
-  connectorId: ModelId,
-  internalId: string
-) {
+export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -276,7 +241,10 @@ export async function markNodeAsVisited(
     throw new Error(`Node ${internalId} not found`);
   }
 
-  await node.update({ lastSeenTs: new Date() });
+  // if node was updated more recently than this sync, we don't need to mark it
+  if (node.lastSeenTs && node.lastSeenTs < new Date()) {
+    await node.update({ lastSeenTs: new Date() });
+  }
 }
 
 /**
@@ -344,14 +312,14 @@ export async function syncFiles({
     pdfEnabled: providerConfig.pdfEnabled || false,
     connector,
   });
-  const childrenToSync = children.filter(
+  const filesToSync = children.filter(
     (item) =>
       item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
   );
 
   // sync files
   const results = await concurrentExecutor(
-    childrenToSync,
+    filesToSync,
     async (child) =>
       syncOneFile({
         connectorId,
@@ -376,226 +344,66 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
-  const childResources = await MicrosoftNodeResource.batchUpdateOrCreate(
+  // do not update folders that were already seen
+  const folderResources = await MicrosoftNodeResource.fetchByInternalIds(
     connectorId,
     children
       .filter((item) => item.folder)
-      .map(
-        (item): MicrosoftNode => ({
-          ...itemToMicrosoftNode("folder", item),
-          // add parent information to new node resources
-          parentInternalId,
-        })
-      )
+      .map((item) => getDriveItemInternalId(item))
   );
+
+  // compute folders that were already seen
+  const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
+  folderResources.forEach((f) => {
+    if (
+      isAlreadySeenItem({
+        driveItemResource: f,
+        startSyncTs,
+      })
+    ) {
+      alreadySeenResourcesById[f.internalId] = f;
+    }
+  });
+
+  const alreadySeenResources = Object.values(alreadySeenResourcesById);
+
+  const createdOrUpdatedResources =
+    await MicrosoftNodeResource.batchUpdateOrCreate(
+      connectorId,
+      children
+        .filter(
+          (item) =>
+            item.folder &&
+            // only create/update if resource unseen
+            !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
+        )
+        .map(
+          (item): MicrosoftNode => ({
+            ...itemToMicrosoftNode("folder", item),
+            // add parent information to new node resources
+            parentInternalId,
+          })
+        )
+    );
+
   return {
     count,
-    childNodes: childResources.map((r) => r.internalId),
+    // still visit children of already seen nodes; an already seen node does not
+    // mean all its children are already seen too
+    childNodes: [...createdOrUpdatedResources, ...alreadySeenResources].map(
+      (r) => r.internalId
+    ),
     nextLink: childrenResult.nextLink,
   };
 }
 
-export async function syncOneFile({
+export async function syncDeltaForRoot({
   connectorId,
-  dataSourceConfig,
-  providerConfig,
-  file,
-  parentInternalId,
-  startSyncTs,
-  isBatchSync = false,
-}: {
-  connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
-  providerConfig: MicrosoftConfigurationResource;
-  file: microsoftgraph.DriveItem;
-  parentInternalId: string;
-  startSyncTs: number;
-  isBatchSync?: boolean;
-}) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
-  }
-
-  if (!file.file) {
-    throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
-  }
-
-  const documentId = getDriveItemInternalId(file);
-
-  const localLogger = logger.child({
-    provider: "microsoft",
-    connectorId,
-    internalId: file.id,
-    name: file.name,
-  });
-
-  const fileResource = await MicrosoftNodeResource.fetchByInternalId(
-    connectorId,
-    documentId
-  );
-
-  // Early return if lastSeenTs is greater than workflow start.
-  // This allows avoiding resyncing already-synced documents in case of activity failure
-  if (
-    fileResource?.lastSeenTs &&
-    fileResource.lastSeenTs > new Date(startSyncTs)
-  ) {
-    return true;
-  }
-
-  if (fileResource?.skipReason) {
-    localLogger.info(
-      { skipReason: fileResource.skipReason },
-      "Skipping file sync"
-    );
-    return false;
-  }
-
-  localLogger.info("Syncing file");
-
-  const url =
-    "@microsoft.graph.downloadUrl" in file
-      ? file["@microsoft.graph.downloadUrl"]
-<<<<<<< HEAD
-      : null;
-=======
-      : await getFileDownloadURL(
-          await getClient(connector.connectionId),
-          documentId
-        );
-
->>>>>>> 218a091a8 ([MS Connector] Incremental sync (#6317))
-  if (!url) {
-    localLogger.error("Unexpected missing download URL");
-    throw new Error("Unexpected missing download URL");
-  }
-
-  // If the file is too big to be downloaded, we skip it.
-  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
-    localLogger.info("File size exceeded, skipping file.");
-    return false;
-  }
-
-  const mimeType = file.file.mimeType ?? undefined;
-  if (
-    !mimeType ||
-    !(await shouldSyncMimeType(providerConfig, connector, mimeType))
-  ) {
-    localLogger.info("Type not supported, skipping file.");
-    return false;
-  }
-
-  const maxDocumentLen = providerConfig.largeFilesEnabled
-    ? MAX_LARGE_DOCUMENT_TXT_LEN
-    : MAX_DOCUMENT_TXT_LEN;
-
-  const downloadRes = await downloadFile(`${url}`, file, localLogger);
-
-  let documentSection: CoreAPIDataSourceDocumentSection | null = null;
-  if (MIME_TYPES_TIKA.includes(mimeType)) {
-    const data = Buffer.from(downloadRes.data);
-    documentSection = await handleTextExtraction(data, localLogger, file);
-  } else if (mimeType === "application/vnd.ms-excel") {
-    const data = Buffer.from(downloadRes.data);
-    const isSuccessful = await handleCsvFile(
-      dataSourceConfig,
-      data,
-      file,
-      localLogger,
-      maxDocumentLen,
-      connectorId
-    );
-    if (!isSuccessful) {
-      return false;
-    }
-  } else if (
-    mimeType ===
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  ) {
-    const res = await syncSpreadSheet({
-      connectorId,
-      file,
-      parentInternalId,
-    });
-    if (!res.isSupported) {
-      return false;
-    } else {
-      if (res.skipReason) {
-        localLogger.info(
-          {},
-          `Microsoft Spreadsheet document skipped with skip reason ${res.skipReason}`
-        );
-        return true;
-      }
-    }
-  } else if (
-    mimeType ===
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    const documentContent = await getDocumentContent(downloadRes, localLogger);
-    documentSection = {
-      prefix: null,
-      content: documentContent,
-      sections: [],
-    };
-  } else if (mimeType === "text/plain") {
-    const data = Buffer.from(downloadRes.data);
-    documentSection = handleTextFile(data, maxDocumentLen);
-  } else {
-    return false;
-  }
-
-  logger.info({ documentSection }, "Document section");
-
-  let upsertTimestampMs: number | undefined;
-  if (
-    !(
-      mimeType ===
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-      mimeType === "application/vnd.ms-excel"
-    )
-  ) {
-    upsertTimestampMs = await upsertDocument(
-      dataSourceConfig,
-      file,
-      documentSection,
-      documentId,
-      maxDocumentLen,
-      localLogger,
-      connectorId,
-      startSyncTs,
-      isBatchSync,
-      parentInternalId
-    );
-  }
-
-  const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
-    internalId: documentId,
-    connectorId,
-    lastSeenTs: new Date(),
-    nodeType: "file",
-    name: file.name ?? "",
-    parentInternalId,
-    mimeType: file.file.mimeType ?? "",
-    lastUpsertedTs: upsertTimestampMs ? new Date(upsertTimestampMs) : null,
-  };
-
-  if (fileResource) {
-    await fileResource.update(resourceBlob);
-  } else {
-    await MicrosoftNodeResource.makeNew(resourceBlob);
-  }
-  return !!upsertTimestampMs;
-}
-
-export async function syncDeltaForNode({
-  connectorId,
-  nodeId,
+  rootId,
   startSyncTs,
 }: {
   connectorId: ModelId;
-  nodeId: string;
+  rootId: string;
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -612,28 +420,27 @@ export async function syncDeltaForNode({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const { nodeType } = typeAndPathFromInternalId(nodeId);
+  const { nodeType } = typeAndPathFromInternalId(rootId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Node ${nodeId} is not a drive or folder`);
+    throw new Error(`Node ${rootId} is not a drive or folder`);
   }
+
+  const root = await MicrosoftRootResource.fetchByInternalId(
+    connectorId,
+    rootId
+  );
 
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
-    nodeId
+    rootId
   );
 
-  if (!node) {
-    throw new Error(`Root node resource ${nodeId} not found`);
+  if (!node || !root) {
+    throw new Error(`Root or node resource ${rootId} not found`);
   }
 
   const client = await getClient(connector.connectionId);
-
-  if (!node.deltaLink) {
-    throw new Error(
-      `Delta link not found for root node resource ${JSON.stringify(node.toJSON())}`
-    );
-  }
 
   logger.info({ connectorId, node }, "Syncing delta for node");
 
@@ -648,15 +455,14 @@ export async function syncDeltaForNode({
   //
   // If it ever becomes an issue, redis-caching the list and having activities
   // grabbing pages of it can be implemented
-  const { results, deltaLink } = await getFullDeltaResults(
+  const { results, deltaLink } = await getDeltaData({
     client,
-    nodeId,
-    node.deltaLink
-  );
-  const uniqueDriveItemList = removeAllButLastOccurences(results);
-  const sortedDriveItemList = sortForIncrementalUpdate(uniqueDriveItemList);
+    root,
+  });
+  const uniqueChangedItems = removeAllButLastOccurences(results);
+  const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
 
-  for (const driveItem of sortedDriveItemList) {
+  for (const driveItem of sortedChangedItems) {
     heartbeat();
 
     if (!driveItem.parentReference) {
@@ -696,18 +502,42 @@ export async function syncDeltaForNode({
         // in the delta with the 'deleted' field set
         await deleteFolder({ connectorId, internalId });
       } else {
+        const isMoved = await isFolderMovedInSameRoot({
+          connectorId,
+          folder: driveItem,
+          internalId,
+        });
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
           itemToMicrosoftNode("folder", driveItem)
         );
-        await resource.update({ lastSeenTs: new Date() });
+
+        // add parent information to new node resource. for the toplevel folder,
+        // parent is null
+        const parentInternalId =
+          resource.internalId === rootId
+            ? null
+            : getParentReferenceInternalId(driveItem.parentReference);
+
+        await resource.update({
+          parentInternalId,
+          lastSeenTs: new Date(),
+        });
+
+        if (isMoved) {
+          await updateDescendantsParentsInQdrant({
+            dataSourceConfig,
+            folder: resource,
+            startSyncTs,
+          });
+        }
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
     }
   }
 
-  await node.updateDeltaLink(deltaLink);
+  await root.update({ currentDeltaLink: deltaLink });
 
   logger.info(
     { connectorId, nodeId: node.internalId, name: node.name },
@@ -737,301 +567,200 @@ function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
   return resultList;
 }
 
-async function getParents({
-  connectorId,
-  internalId,
-  parentInternalId,
-  startSyncTs,
+/**
+ * This function checks whether a file marked as deleted from a toplevel folder
+ * is actually just moved to another toplevel folder in the same drive (in which
+ * case we should not delete it)
+ *
+ * Note: this concerns toplevel folders, not drives; it's fine to delete files
+ * that move from a drive to another because they change id
+ */
+async function isFileMovedInSameDrive({
+  toplevelNode,
+  fileInternalId,
 }: {
-  connectorId: ModelId;
-  internalId: string;
-  parentInternalId: string | null;
-  startSyncTs: number;
-}): Promise<string[]> {
-  if (!parentInternalId) {
-    return [internalId];
+  toplevelNode: MicrosoftNodeResource;
+  fileInternalId: string;
+}) {
+  if (toplevelNode.nodeType === "drive") {
+    // if the toplevel node is a drive, then the deletion must happen
+    return false;
   }
-
-  const parentParentInternalId = await getParentParentId(
-    connectorId,
-    parentInternalId,
-    startSyncTs
-  );
-
-  return [
-    internalId,
-    ...(await getParents({
-      connectorId,
-      internalId: parentInternalId,
-      parentInternalId: parentParentInternalId,
-      startSyncTs,
-    })),
-  ];
+  // check that the file's parents array does not contain the toplevel folder, in
+  // which case it's a file movement; otherwise it's a file deletion
+  return !(
+    await getParents({
+      connectorId: toplevelNode.connectorId,
+      internalId: fileInternalId,
+      parentInternalId: toplevelNode.internalId,
+      startSyncTs: new Date().getTime(),
+    })
+  ).includes(toplevelNode.internalId);
 }
 
-/* Fetching parent's parent id queries the db for a resource; since those
- * fetches can be made a lot of times during a sync, cache for 10mins in a
- * per-sync basis (given by startSyncTs) */
-const getParentParentId = cacheWithRedis(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (connectorId, parentInternalId, startSyncTs) => {
-    const parent = await MicrosoftNodeResource.fetchByInternalId(
-      connectorId,
-      parentInternalId
-    );
-    if (!parent) {
-      throw new Error(`Parent node not found: ${parentInternalId}`);
+/**
+ * Order items as follows:
+ * - first those whose parentInternalId is not in the changedList, or the root drive
+ * - then those whose parentInternalId is in in the list above;
+ * - then those whose parentInternalId is in the updated list above, and so on
+ *
+ * This ensures we sync parents before their children; the converse would cause
+ * errors. For the initial case, if we don't have the parent in the changelist,
+ * it means it is already properly synced and did not change.
+ *
+ * The function makes the assumption that there is no circular parent
+ * relationship
+ */
+function sortForIncrementalUpdate(changedList: DriveItem[]) {
+  if (changedList.length === 0) {
+    return [];
+  }
+
+  const internalIds = changedList.map((item) => getDriveItemInternalId(item));
+
+  const sortedDriveItemList = changedList.filter((item) => {
+    if (!item.parentReference) {
+      return true;
     }
 
-    return parent.parentInternalId;
-  },
-  (connectorId, parentInternalId, startSyncTs) =>
-    `microsoft-${connectorId}-parent-${parentInternalId}-syncms-${startSyncTs}`,
-  PARENT_SYNC_CACHE_TTL_MS
-);
+    if (item.root) {
+      return true;
+    }
 
-async function handleCsvFile(
-  dataSourceConfig: DataSourceConfig,
-  data: ArrayBuffer,
-  file: DriveItem,
-  localLogger: Logger,
-  maxDocumentLen: number,
-  connectorId: ModelId
-): Promise<boolean> {
-  if (data.byteLength > 4 * maxDocumentLen) {
-    localLogger.info({}, "File too big to be chunked. Skipping");
-    return false;
-  }
-  const fileName = file.name ?? "";
-
-  const tableCsv = Buffer.from(data).toString("utf-8").trim();
-  const tableId = file.id ?? "";
-  const tableName = slugify(fileName.substring(0, 32));
-  const tableDescription = `Structured data from Microsoft (${fileName})`;
-  const stringifiedContent = await parseAndStringifyCsv(tableCsv);
-  try {
-    await upsertTableFromCsv({
-      dataSourceConfig,
-      tableId,
-      tableName,
-      tableDescription,
-      tableCsv: stringifiedContent,
-      loggerArgs: {
-        connectorId,
-        fileId: tableId,
-        fileName: tableName,
-      },
-      truncate: true,
-    });
-  } catch (err) {
-    localLogger.warn({ error: err }, "Error while upserting table");
-    return false;
-  }
-  return true;
-}
-
-function handleTextFile(
-  data: ArrayBuffer,
-  maxDocumentLen: number
-): CoreAPIDataSourceDocumentSection | null {
-  if (data.byteLength > 4 * maxDocumentLen) {
-    return null;
-  }
-  return {
-    prefix: null,
-    content: Buffer.from(data).toString("utf-8").trim(),
-    sections: [],
-  };
-}
-
-async function handleTextExtraction(
-  data: ArrayBuffer,
-  localLogger: Logger,
-  file: DriveItem
-): Promise<CoreAPIDataSourceDocumentSection | null> {
-  const mimeType = file.file?.mimeType;
-
-  if (!mimeType || !isTextExtractionSupportedContentType(mimeType)) {
-    localLogger.warn(
-      {
-        error: "Unexpected mimeType",
-        mimeType: mimeType,
-      },
-      "Unexpected mimeType"
-    );
-    return null;
-  }
-  const pageRes = await new TextExtraction(
-    apiConfig.getTextExtractionUrl()
-  ).fromBuffer(Buffer.from(data), mimeType);
-  if (pageRes.isErr()) {
-    localLogger.error(
-      {
-        error: pageRes.error,
-        mimeType: mimeType,
-      },
-      "Error while converting file to text"
-    );
-    // We don't know what to do with files that fails to be converted to text.
-    // So we log the error and skip the file.
-    return null;
-  }
-  const pages = pageRes.value;
-  const prefix = pagePrefixesPerMimeType[mimeType];
-  return pages.length > 0
-    ? {
-        prefix: null,
-        content: null,
-        sections: pages.map((page) => ({
-          prefix: prefix
-            ? `\n${prefix}: ${page.pageNumber}/${pages.length}\n`
-            : null,
-          content: page.content,
-          sections: [],
-        })),
-      }
-    : null;
-}
-
-<<<<<<< HEAD
-async function upsertDocument(
-  dataSourceConfig: DataSourceConfig,
-  file: microsoftgraph.DriveItem,
-  documentContent: CoreAPIDataSourceDocumentSection | null,
-  documentId: string,
-  maxDocumentLen: number,
-  localLogger: Logger,
-  connectorId: ModelId,
-  startSyncTs: number,
-  isBatchSync: boolean,
-  parentInternalId: string
-): Promise<number | undefined> {
-  const updatedAt = file.lastModifiedDateTime
-    ? new Date(file.lastModifiedDateTime)
-    : undefined;
-
-  const createdAt = file.createdDateTime
-    ? new Date(file.createdDateTime)
-    : undefined;
-
-  const content = await renderDocumentTitleAndContent({
-    dataSourceConfig,
-    title: file.name ?? null,
-    updatedAt,
-    createdAt: createdAt,
-    lastEditor: file.lastModifiedBy?.user?.displayName ?? undefined,
-    content: documentContent,
+    const parentInternalId = getParentReferenceInternalId(item.parentReference);
+    return !internalIds.includes(parentInternalId);
   });
 
-  if (documentContent === undefined) {
-    localLogger.error({}, "documentContent is undefined");
-    throw new Error("documentContent is undefined");
+  while (sortedDriveItemList.length < changedList.length) {
+    const nextLevel = changedList.filter((item) => {
+      if (sortedDriveItemList.includes(item)) {
+        return false;
+      }
+
+      // not needed, but just to please TS
+      if (!item.parentReference) {
+        return true;
+      }
+
+      const parentInternalId = getParentReferenceInternalId(
+        item.parentReference
+      );
+      return sortedDriveItemList.some(
+        (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
+      );
+    });
+
+    sortedDriveItemList.push(...nextLevel);
   }
 
-  const tags = [`title:${file.name}`];
-  if (updatedAt) {
-    tags.push(`updatedAt:${updatedAt}`);
+  return sortedDriveItemList;
+}
+
+async function getDeltaData({
+  client,
+  root: root,
+}: {
+  client: Client;
+  root: MicrosoftRootResource;
+}) {
+  try {
+    return await getFullDeltaResults(
+      client,
+      root.internalId,
+      root.currentDeltaLink
+    );
+  } catch (e) {
+    if (e instanceof GraphError && e.statusCode === 410) {
+      // API is answering 'resync required'
+      // we repopulate the delta from scratch
+      return await getFullDeltaResults(client, root.internalId);
+    }
+    throw e;
   }
-  if (file.createdDateTime) {
-    tags.push(`createdAt:${file.createdDateTime}`);
-  }
-  if (file.lastModifiedBy?.user?.displayName) {
-    tags.push(`lastEditor:${file.lastModifiedBy.user.displayName}`);
+}
+
+async function isFolderMovedInSameRoot({
+  connectorId,
+  folder,
+  internalId,
+}: {
+  connectorId: ModelId;
+  folder: DriveItem;
+  internalId: string;
+}) {
+  if (!folder.parentReference) {
+    throw new Error(`Unexpected: parent reference missing: ${folder}`);
   }
 
-  tags.push(`mimeType:${file.file?.mimeType}`);
+  const oldResource = await MicrosoftNodeResource.fetchByInternalId(
+    connectorId,
+    internalId
+  );
 
-  const documentLength = documentContent ? sectionLength(documentContent) : 0;
-  const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
-  const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
-  if (isInSizeRange) {
-    const parents = await getParents({
-      connectorId,
-      internalId: documentId,
-      parentInternalId,
+  if (!oldResource) {
+    // the folder was not moved internally since we don't have it
+    return false;
+  }
+
+  const oldParentId = oldResource.parentInternalId;
+
+  if (!oldParentId) {
+    // this means it is a root
+    return false;
+  }
+
+  const newParentId = getParentReferenceInternalId(folder.parentReference);
+
+  return oldParentId !== newParentId;
+}
+
+async function updateDescendantsParentsInQdrant({
+  folder,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  folder: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const children = await folder.fetchChildren();
+  const files = children.filter((child) => child.nodeType === "file");
+  const folders = children.filter((child) => child.nodeType === "folder");
+  await concurrentExecutor(
+    files,
+    async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
+    {
+      concurrency: 10,
+    }
+  );
+  for (const childFolder of folders) {
+    await updateDescendantsParentsInQdrant({
+      dataSourceConfig,
+      folder: childFolder,
       startSyncTs,
     });
-    parents.reverse();
-
-    await upsertToDatasource({
-      dataSourceConfig,
-      documentId,
-      documentContent: content,
-      documentUrl: file.webUrl ?? undefined,
-      timestampMs: upsertTimestampMs,
-      tags,
-      parents: parents,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-      async: true,
-    });
-  } else {
-    localLogger.info(
-      { documentLength },
-      "Document is empty or too big to be upserted. Skipping"
-    );
-    return undefined;
   }
 }
 
-async function shouldSyncMimeType(
-  providerConfig: MicrosoftConfigurationResource,
-  connector: ConnectorResource,
-  mimeType?: string
-): Promise<boolean> {
-  if (!mimeType) {
-    return false;
-  }
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    connector,
+async function updateParentsField({
+  file,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  file: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const parents = await getParents({
+    connectorId: file.connectorId,
+    internalId: file.internalId,
+    parentInternalId: file.parentInternalId,
+    startSyncTs,
   });
 
-  return mimeTypesToSync.includes(mimeType);
-}
-
-async function downloadFile(
-  url: string,
-  file: microsoftgraph.DriveItem,
-  localLogger: Logger
-) {
-  const downloadRes = await axios.get(`${url}`, {
-    responseType: "arraybuffer",
+  await updateDocumentParentsField({
+    dataSourceConfig,
+    documentId: file.internalId,
+    parents,
   });
-
-  if (downloadRes.status !== 200) {
-    localLogger.error(
-      `Error while downloading file ${file.name}: ${downloadRes.status}`
-    );
-    throw new Error(
-      `Error while downloading file ${file.name}: ${downloadRes.status}`
-    );
-  }
-  return downloadRes;
-}
-
-async function getDocumentContent(
-  downloadRes: AxiosResponse,
-  localLogger: Logger
-) {
-  try {
-    const converted = await mammoth.convertToHtml({
-      buffer: Buffer.from(downloadRes.data),
-    });
-
-    const extracted = new turndown()
-      .remove(["style", "script", "iframe", "noscript", "form", "img"])
-      .turndown(converted.value);
-
-    return extracted.trim();
-  } catch (err) {
-    localLogger.error(
-      {
-        error: err,
-      },
-      `Error while converting docx document to text`
-    );
-    throw err;
-  }
 }
