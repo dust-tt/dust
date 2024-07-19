@@ -128,7 +128,12 @@ export function Modal({
       <Dialog
         as="div"
         className="s-fixed s-absolute s-inset-0 s-z-50 s-overflow-hidden"
-        onClose={onClose}
+        onClose={() => {
+          // We allow closing the modal by clicking outside of it only if there are no changes
+          if (!hasChanged) {
+            onClose();
+          }
+        }}
       >
         {/* Smoke screen and transition */}
         <Transition.Child
