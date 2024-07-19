@@ -96,14 +96,17 @@ async function migrateConnectionId(
   };
 
   // Below is to be tested with a provider that has refresh tokens
-  if (connection.credentials.expires_at) {
-    migratedCredentials.access_token_expiry = Date.parse(
-      connection.credentials.expires_at
-    );
-  }
-  if (connection.credentials.refresh_token) {
-    migratedCredentials.refresh_token = connection.credentials.refresh_token;
-  }
+
+  // if (connection.credentials.expires_at) {
+  //   migratedCredentials.access_token_expiry = Date.parse(
+  //     connection.credentials.expires_at
+  //   );
+  // }
+  // if (connection.credentials.refresh_token) {
+  //   migratedCredentials.refresh_token = connection.credentials.refresh_token;
+  // }
+
+  // End has to be tested
 
   console.log(
     ">>>>>>>>>>>>>>>>>>>>>>>>>>> BEG MIGRATED_CREDENTIALS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
