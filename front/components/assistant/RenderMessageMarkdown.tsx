@@ -572,12 +572,14 @@ function OlBlock({ children }: { children: React.ReactNode }) {
 }
 function LiBlock({ children }: { children: React.ReactNode }) {
   return (
-    <li className="py-2 text-element-800 first:pt-0 last:pb-0">{children}</li>
+    <li className="break-words py-2 text-element-800 first:pt-0 last:pb-0">
+      {children}
+    </li>
   );
 }
 function ParagraphBlock({ children }: { children: React.ReactNode }) {
   return (
-    <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <div className="whitespace-pre-wrap break-words py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
       {children}
     </div>
   );
