@@ -130,7 +130,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    console.log("fullResyncMicrosoftConnector", this.connectorId, fromTs);
     return launchMicrosoftFullSyncWorkflow(this.connectorId, null);
   }
 
