@@ -8,6 +8,7 @@ export * from "./connectors/confluence";
 export * from "./connectors/content_nodes";
 export * from "./connectors/google_drive";
 export * from "./connectors/intercom";
+export * from "./connectors/microsoft";
 export * from "./connectors/notion";
 export * from "./connectors/slack";
 export * from "./connectors/webcrawler";
