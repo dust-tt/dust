@@ -118,10 +118,7 @@ export async function getDeltaResults({
 
   const res = nextLink
     ? await client.api(nextLink).get()
-    : await client
-        .api(deltaPath)
-        .header("Prefer", "odata.track-changes, deltaExcludeParent=true")
-        .get();
+    : await client.api(deltaPath).get();
 
   if ("@odata.nextLink" in res) {
     return {
