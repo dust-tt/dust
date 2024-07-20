@@ -768,6 +768,3 @@ async function updateParentsField({
     parents,
   });
 }
-function isDriveItemAlreadySeen(arg0: {}): unknown {
-  throw new Error("Function not implemented.");
-}

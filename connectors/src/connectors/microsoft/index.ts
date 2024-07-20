@@ -126,6 +126,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 
   async sync({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fromTs,
   }: {
     fromTs: number | null;
