@@ -90,11 +90,13 @@ export async function syncOneFile({
     documentId
   );
 
-  // Early return if lastSeenTs is greater than workflow start.
-  // This allows avoiding resyncing already-synced documents in case of activity failure
   if (
-    fileResource?.lastSeenTs &&
-    fileResource.lastSeenTs > new Date(startSyncTs)
+    fileResource &&
+    isAlreadySeenItem({
+      driveItem: file,
+      driveItemResource: fileResource,
+      startSyncTs,
+    })
   ) {
     return true;
   }
@@ -574,4 +576,25 @@ export async function deleteFile({
     await deleteFromDataSource(dataSourceConfig, internalId);
   }
   return file.delete();
+}
+
+export function isAlreadySeenItem({
+  driveItem,
+  driveItemResource,
+  startSyncTs,
+}: {
+  driveItem: DriveItem;
+  driveItemResource: MicrosoftNodeResource;
+  startSyncTs: number;
+}) {
+  return (
+    driveItemResource.lastSeenTs &&
+    // if lastSeenTs is greater than workflow start time, document was seen already
+    // e.g. because of an incremental sync or because an activity was retried
+    (driveItemResource.lastSeenTs > new Date(startSyncTs) ||
+      // driveitem also considered "seen" if it was not modified since it was last seen
+      (driveItem.lastModifiedDateTime &&
+        driveItemResource.lastSeenTs >
+          new Date(driveItem.lastModifiedDateTime)))
+  );
 }
