@@ -39,9 +39,11 @@ export const ListItemExample = () => (
             </div>
           </>
         }
-        action={<Chip size="xs" label="Last Sync ~7 days ago" color="pink" />}
         visual={<Icon visual={FolderIcon} size="md" />}
       >
+        <div className="s-py-2">
+          <Chip size="xs" label="Last Sync ~7 days ago" color="pink" />
+        </div>
         <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
       </ContextItem>
       <ContextItem.SectionHeader
