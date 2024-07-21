@@ -75,7 +75,7 @@ export class MicrosoftRootModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare itemAPIPath: string;
+  declare internalId: string;
   declare nodeType: MicrosoftNodeType;
 }
 MicrosoftRootModel.init(
@@ -99,7 +99,7 @@ MicrosoftRootModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    itemAPIPath: {
+    internalId: {
       type: DataTypes.STRING,
       allowNull: false,
     },

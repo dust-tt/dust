@@ -16,7 +16,6 @@ import { getClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
   getFileDownloadURL,
-  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
@@ -530,11 +529,9 @@ export async function deleteFolder({
     `Deleting Microsoft folder.`
   );
 
-  const { itemAPIPath } = typeAndPathFromInternalId(internalId);
-
-  const root = await MicrosoftRootResource.fetchByItemAPIPath(
+  const root = await MicrosoftRootResource.fetchByInternalId(
     connectorId,
-    itemAPIPath
+    internalId
   );
 
   if (root) {

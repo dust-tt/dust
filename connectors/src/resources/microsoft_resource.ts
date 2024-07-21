@@ -171,7 +171,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }) {
     return MicrosoftRootModel.destroy({
       where: {
-        itemAPIPath: resourceIds,
+        internalId: resourceIds,
         connectorId,
       },
       transaction,
@@ -201,11 +201,11 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return new Ok(undefined);
   }
 
-  static async fetchByItemAPIPath(connectorId: ModelId, itemAPIPath: string) {
+  static async fetchByInternalId(connectorId: ModelId, internalId: string) {
     const blob = await this.model.findOne({
       where: {
         connectorId,
-        itemAPIPath,
+        internalId,
       },
     });
 
@@ -219,7 +219,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return {
       id: this.id,
       nodeType: this.nodeType,
-      itemApiPath: this.itemAPIPath,
+      internalId: this.internalId,
       connectorId: this.connectorId,
     };
   }

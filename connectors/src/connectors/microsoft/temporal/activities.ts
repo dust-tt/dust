@@ -69,14 +69,19 @@ export async function getSiteNodesToSync(
       .map(async (resource) =>
         itemToMicrosoftNode(
           resource.nodeType as "folder" | "drive",
-          await getItem(client, resource.itemAPIPath)
+          await getItem(
+            client,
+            typeAndPathFromInternalId(resource.internalId).itemAPIPath
+          )
         )
       )
   );
 
   const rootSitePaths: string[] = rootResources
     .filter((resource) => resource.nodeType === "site")
-    .map((resource) => resource.itemAPIPath);
+    .map(
+      (resource) => typeAndPathFromInternalId(resource.internalId).itemAPIPath
+    );
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getAllPaginatedEntities((nextLink) =>

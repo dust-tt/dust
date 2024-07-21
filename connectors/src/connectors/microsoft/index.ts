@@ -174,12 +174,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const selectedResources = (
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-    ).map((r) =>
-      internalIdFromTypeAndPath({
-        nodeType: r.nodeType,
-        itemAPIPath: r.itemAPIPath,
-      })
-    );
+    ).map((r) => r.internalId);
 
     // at the time, we only sync sharepoint sites and drives, not team channels
     // work on teams has been started here and in graph_api.ts but is not yet
@@ -283,10 +278,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
 
     await MicrosoftRootResource.batchDelete({
-      resourceIds: Object.entries(permissions).map((internalId) => {
-        const { itemAPIPath } = typeAndPathFromInternalId(internalId[0]);
-        return itemAPIPath;
-      }),
+      resourceIds: Object.keys(permissions),
       connectorId: connector.id,
     });
 
@@ -294,9 +286,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       Object.entries(permissions)
         .filter(([, permission]) => permission === "read")
         .map(([id]) => {
+          const { nodeType } = typeAndPathFromInternalId(id);
           return {
             connectorId: connector.id,
-            ...typeAndPathFromInternalId(id),
+            nodeType,
+            internalId: id,
           };
         })
     );
