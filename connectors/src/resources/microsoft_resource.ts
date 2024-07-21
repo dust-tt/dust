@@ -440,4 +440,15 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       skipReason: this.skipReason,
     };
   }
+
+  /** String representation of this node and its descendants in treeLike fashion */
+  async treeString(): Promise<string> {
+    const childrenStrings = await Promise.all(
+      (await this.fetchChildren()).map(
+        async (c) => "--" + (await c.treeString())
+      )
+    );
+
+    return `${this.name}${this.nodeType === "folder" ? "/" : ""}\n${childrenStrings.join("\n")}}`;
+  }
 }
