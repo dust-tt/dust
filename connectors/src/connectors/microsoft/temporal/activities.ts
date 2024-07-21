@@ -165,7 +165,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
   const client = await getClient(connector.connectionId);
 
   for (const nodeId of nodeIds) {
-    const node = await MicrosoftNodeResource.fetchByInternalId(
+    const node = await MicrosoftRootResource.fetchByInternalId(
       connectorId,
       nodeId
     );
@@ -179,7 +179,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       token: "latest",
     });
 
-    await node.updateDeltaLink(deltaLink);
+    await node.update({ currentDeltaLink: deltaLink });
   }
 }
 
@@ -409,13 +409,13 @@ export async function syncFiles({
   };
 }
 
-export async function syncDeltaForNode({
+export async function syncDeltaForRoot({
   connectorId,
-  nodeId,
+  rootId,
   startSyncTs,
 }: {
   connectorId: ModelId;
-  nodeId: string;
+  rootId: string;
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -432,19 +432,24 @@ export async function syncDeltaForNode({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const { nodeType } = typeAndPathFromInternalId(nodeId);
+  const { nodeType } = typeAndPathFromInternalId(rootId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Node ${nodeId} is not a drive or folder`);
+    throw new Error(`Node ${rootId} is not a drive or folder`);
   }
+
+  const root = await MicrosoftRootResource.fetchByInternalId(
+    connectorId,
+    rootId
+  );
 
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
-    nodeId
+    rootId
   );
 
-  if (!node) {
-    throw new Error(`Root node resource ${nodeId} not found`);
+  if (!node || !root) {
+    throw new Error(`Root or node resource ${rootId} not found`);
   }
 
   const client = await getClient(connector.connectionId);
@@ -522,7 +527,7 @@ export async function syncDeltaForNode({
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         const parentInternalId =
-          resource.internalId === nodeId
+          resource.internalId === rootId
             ? null
             : getParentReferenceInternalId(driveItem.parentReference);
 
@@ -544,7 +549,7 @@ export async function syncDeltaForNode({
     }
   }
 
-  await node.updateDeltaLink(deltaLink);
+  await root.update({ currentDeltaLink: deltaLink });
 
   logger.info(
     { connectorId, nodeId: node.internalId, name: node.name },

@@ -3,7 +3,6 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
@@ -77,6 +76,7 @@ export class MicrosoftRootModel extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
+  declare currentDeltaLink: string;
 }
 MicrosoftRootModel.init(
   {
@@ -104,6 +104,10 @@ MicrosoftRootModel.init(
       allowNull: false,
     },
     nodeType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    currentDeltaLink: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -136,7 +140,6 @@ export class MicrosoftNodeModel extends Model<
   declare name: string | null;
   declare mimeType: string | null;
   declare parentInternalId: string | null;
-  declare delta: NonAttribute<MicrosoftDeltaModel>;
 }
 
 MicrosoftNodeModel.init(

@@ -279,9 +279,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     if (!blob) {
       return null;
     }
-    const resource = new this(this.model, blob.get());
-    resource.delta = blob.delta;
-    return resource;
+    return new this(this.model, blob.get());
   }
 
   static async fetchNodesWithoutParents() {
@@ -334,14 +332,6 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
 
   get deltaLink() {
     return this.delta?.deltaLink;
-  }
-
-  async updateDeltaLink(deltaLink: string) {
-    await MicrosoftDeltaModel.upsert({
-      connectorId: this.connectorId,
-      nodeId: this.id,
-      deltaLink,
-    });
   }
 
   static async batchDelete({

@@ -14,7 +14,9 @@ const { getSiteNodesToSync, syncFiles, markNodeAsSeen, populateDeltas } =
     startToCloseTimeout: "30 minutes",
   });
 
-const { syncDeltaForNode } = proxyActivities<typeof activities>({
+const { syncDeltaForRoot: syncDeltaForNode } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
 });
@@ -114,7 +116,7 @@ export async function incrementalSyncWorkflow({
   for (const nodeId of nodeIdsToSync) {
     await syncDeltaForNode({
       connectorId,
-      nodeId,
+      rootId: nodeId,
       startSyncTs,
     });
   }

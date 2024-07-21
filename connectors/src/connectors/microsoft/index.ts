@@ -22,6 +22,7 @@ import {
 import {
   getAllPaginatedEntities,
   getChannels,
+  getDeltaResults,
   getDrives,
   getFilesAndFolders,
   getSites,
@@ -34,6 +35,7 @@ import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -277,23 +279,37 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    const client = await getClient(connector.connectionId);
+
     await MicrosoftRootResource.batchDelete({
       resourceIds: Object.keys(permissions),
       connectorId: connector.id,
     });
 
-    await MicrosoftRootResource.batchMakeNew(
-      Object.entries(permissions)
-        .filter(([, permission]) => permission === "read")
-        .map(([id]) => {
-          const { nodeType } = typeAndPathFromInternalId(id);
-          return {
-            connectorId: connector.id,
-            nodeType,
-            internalId: id,
-          };
-        })
+    const newResourcesBlobs = await concurrentExecutor(
+      Object.entries(permissions).filter(
+        ([, permission]) => permission === "read"
+      ),
+      async ([id]) => {
+        const { nodeType } = typeAndPathFromInternalId(id);
+
+        const { deltaLink } = await getDeltaResults({
+          client,
+          parentInternalId: id,
+          token: "latest",
+        });
+
+        return {
+          connectorId: connector.id,
+          nodeType,
+          internalId: id,
+          currentDeltaLink: deltaLink,
+        };
+      },
+      { concurrency: 5 }
     );
+
+    await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
     return new Ok(undefined);
   }
