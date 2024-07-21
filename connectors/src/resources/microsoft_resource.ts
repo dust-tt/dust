@@ -422,11 +422,12 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   }
 
   /** String representation of this node and its descendants in treeLike fashion */
-  async treeString(): Promise<string> {
+  async treeString(level = 0): Promise<string> {
     const childrenStrings = await Promise.all(
-      (await this.fetchChildren()).map(async (c) => c.treeString())
+      (await this.fetchChildren()).map(async (c) => c.treeString(level + 1))
     );
+    const hyphens = "\n" + "-".repeat(level * 2);
 
-    return `${this.name}${this.nodeType === "folder" ? "/" : ""}${childrenStrings.length > 0 ? "\n--" + childrenStrings.join("\n--") : ""}`;
+    return `${this.name}${this.nodeType === "folder" ? "/" : ""}${childrenStrings.length > 0 ? hyphens + childrenStrings.join(hyphens) : ""}`;
   }
 }
