@@ -753,7 +753,7 @@ export async function validateAccessToken(notionAccessToken: string) {
     logger: notionClientLogger,
   });
   try {
-    await notionClient.search({ page_size: 1 });
+    await notionClient.users.me({});
   } catch (e) {
     return false;
   }
