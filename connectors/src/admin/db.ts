@@ -31,7 +31,6 @@ import {
 } from "@connectors/lib/models/intercom";
 import {
   MicrosoftConfigurationModel,
-  MicrosoftDeltaModel,
   MicrosoftNodeModel,
   MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
@@ -90,7 +89,6 @@ async function main(): Promise<void> {
   await MicrosoftConfigurationModel.sync({ alter: true });
   await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
-  await MicrosoftDeltaModel.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });

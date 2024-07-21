@@ -469,7 +469,7 @@ export async function syncDeltaForRoot({
   // grabbing pages of it can be implemented
   const { results, deltaLink } = await getDeltaData({
     client,
-    node,
+    root,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
   const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
@@ -670,24 +670,22 @@ function sortForIncrementalUpdate(changedList: DriveItem[]) {
 
 async function getDeltaData({
   client,
-  node,
+  root: root,
 }: {
   client: Client;
-  node: MicrosoftNodeResource;
+  root: MicrosoftRootResource;
 }) {
-  if (!node.deltaLink) {
-    throw new Error(
-      `Delta link not found for root node resource ${JSON.stringify(node.toJSON())}`
-    );
-  }
-
   try {
-    return await getFullDeltaResults(client, node.internalId, node.deltaLink);
+    return await getFullDeltaResults(
+      client,
+      root.internalId,
+      root.currentDeltaLink
+    );
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(client, node.internalId);
+      return await getFullDeltaResults(client, root.internalId);
     }
     throw e;
   }

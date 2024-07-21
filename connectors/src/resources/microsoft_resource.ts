@@ -10,7 +10,6 @@ import type {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   MicrosoftConfigurationModel,
-  MicrosoftDeltaModel,
   MicrosoftNodeModel,
   MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
@@ -88,13 +87,6 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await MicrosoftNodeModel.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
-      transaction,
-    });
-
-    await MicrosoftDeltaModel.destroy({
       where: {
         connectorId: this.connectorId,
       },
@@ -233,8 +225,6 @@ export interface MicrosoftNodeResource
 export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   static model: ModelStatic<MicrosoftNodeModel> = MicrosoftNodeModel;
 
-  private delta: MicrosoftDeltaModel | null = null;
-
   constructor(
     model: ModelStatic<MicrosoftNodeModel>,
     blob: Attributes<MicrosoftNodeModel>
@@ -269,12 +259,6 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
         connectorId,
         internalId,
       },
-      include: [
-        {
-          model: MicrosoftDeltaModel,
-          as: "delta",
-        },
-      ],
     });
     if (!blob) {
       return null;
@@ -328,10 +312,6 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       (blob) =>
         new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get())
     );
-  }
-
-  get deltaLink() {
-    return this.delta?.deltaLink;
   }
 
   static async batchDelete({
