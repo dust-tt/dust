@@ -352,28 +352,16 @@ export async function syncFiles({
       .map((item) => getDriveItemInternalId(item))
   );
 
-  // compute in O(n) folders that were already seen
+  // compute folders that were already seen
   const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
-  folderResources.forEach((f) => (alreadySeenResourcesById[f.internalId] = f));
-  children.forEach((c) => {
-    if (!c.folder) {
-      return;
-    }
-
-    const cResource = alreadySeenResourcesById[getDriveItemInternalId(c)];
-
-    if (!cResource) {
-      return;
-    }
-
+  folderResources.forEach((f) => {
     if (
-      !isAlreadySeenItem({
-        driveItem: c,
-        driveItemResource: cResource,
+      isAlreadySeenItem({
+        driveItemResource: f,
         startSyncTs,
       })
     ) {
-      delete alreadySeenResourcesById[cResource.internalId];
+      alreadySeenResourcesById[f.internalId] = f;
     }
   });
 

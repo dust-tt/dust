@@ -92,7 +92,6 @@ export async function syncOneFile({
   if (
     fileResource &&
     isAlreadySeenItem({
-      driveItem: file,
       driveItemResource: fileResource,
       startSyncTs,
     })
@@ -576,11 +575,9 @@ export async function deleteFile({
 }
 
 export function isAlreadySeenItem({
-  driveItem,
   driveItemResource,
   startSyncTs,
 }: {
-  driveItem: DriveItem;
   driveItemResource: MicrosoftNodeResource;
   startSyncTs: number;
 }) {
@@ -588,10 +585,6 @@ export function isAlreadySeenItem({
     driveItemResource.lastSeenTs &&
     // if lastSeenTs is greater than workflow start time, document was seen already
     // e.g. because of an incremental sync or because an activity was retried
-    (driveItemResource.lastSeenTs > new Date(startSyncTs) ||
-      // driveitem also considered "seen" if it was not modified since it was last seen
-      (driveItem.lastModifiedDateTime &&
-        driveItemResource.lastSeenTs >
-          new Date(driveItem.lastModifiedDateTime)))
+    driveItemResource.lastSeenTs > new Date(startSyncTs)
   );
 }

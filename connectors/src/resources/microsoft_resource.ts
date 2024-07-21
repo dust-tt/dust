@@ -424,7 +424,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   /** String representation of this node and its descendants in treeLike fashion */
   async treeString(): Promise<string> {
     const childrenStrings = await Promise.all(
-      (await this.fetchChildren()).map(async (c) => await c.treeString())
+      (await this.fetchChildren()).map(async (c) => c.treeString())
     );
 
     return `${this.name}${this.nodeType === "folder" ? "/" : ""}${childrenStrings.length > 0 ? "\n--" + childrenStrings.join("\n--") : ""}`;
