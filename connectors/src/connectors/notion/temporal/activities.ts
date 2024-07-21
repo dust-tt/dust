@@ -2,15 +2,12 @@ import type {
   CoreAPIDataSourceDocumentSection,
   ModelId,
   NotionGarbageCollectionMode,
-  Result,
 } from "@dust-tt/types";
 import type { PageObjectProperties, ParsedNotionBlock } from "@dust-tt/types";
 import {
   assertNever,
-  Err,
   getNotionDatabaseTableId,
   getOAuthConnectionAccessToken,
-  Ok,
   slugify,
 } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
