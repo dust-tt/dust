@@ -43,7 +43,6 @@ import type { InferAttributes, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
 import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
@@ -58,7 +57,6 @@ import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
-  getGoogleCredentials,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { syncSucceeded } from "@connectors/lib/sync_status";
@@ -210,11 +208,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
-  async clean({
-    force,
-  }: {
-    force: boolean;
-  }): Promise<Result<undefined, Error>> {
+  async clean(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
@@ -222,41 +216,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const authClient = new google.auth.OAuth2(
-      googleDriveConfig.getRequiredGoogleDriveClientId(),
-      googleDriveConfig.getRequiredGoogleDriveClientSecret()
-    );
-
-    try {
-      const credentials = await getGoogleCredentials(connector.connectionId);
-
-      const revokeTokenRes = await authClient.revokeToken(
-        credentials.credentials.refresh_token
-      );
-
-      if (revokeTokenRes.status !== 200) {
-        logger.error(
-          {
-            error: revokeTokenRes.data,
-          },
-          "Could not revoke token"
-        );
-        if (!force) {
-          return new Err(new Error("Could not revoke token"));
-        }
-      }
-    } catch (err) {
-      if (!force) {
-        throw err;
-      } else {
-        logger.error(
-          {
-            err,
-          },
-          "Error revoking token"
-        );
-      }
-    }
+    // Google revocation requires refresh tokens so would have to happen in `oauth`. But Google
+    // Drive does not rely on webhooks anymore so we can just delete the connector.
 
     const res = await connector.delete();
     if (res.isErr()) {
