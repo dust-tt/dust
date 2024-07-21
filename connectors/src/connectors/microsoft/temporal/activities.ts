@@ -474,11 +474,11 @@ export async function syncDeltaForNode({
             ? null
             : getParentReferenceInternalId(driveItem.parentReference);
 
-        // check if we
         await resource.update({
           parentInternalId,
           lastSeenTs: new Date(),
         });
+
         if (isMoved) {
           await updateDescendantsParentsInQdrant({
             dataSourceConfig,
