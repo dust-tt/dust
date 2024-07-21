@@ -1,5 +1,4 @@
 import type { drive_v3 } from "googleapis";
-import { google } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 
 import {
