@@ -123,7 +123,9 @@ export async function incrementalSyncWorkflow({
   }
 
   await sleep("5 minutes");
-  await continueAsNew(incrementalSyncWorkflow);
+  await continueAsNew<typeof incrementalSyncWorkflow>({
+    connectorId,
+  });
 }
 
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
