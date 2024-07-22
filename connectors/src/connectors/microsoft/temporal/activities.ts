@@ -32,7 +32,10 @@ import {
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { updateDocumentParentsField } from "@connectors/lib/data_sources";
+import {
+  deleteFromDataSource,
+  updateDocumentParentsField,
+} from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -758,4 +761,63 @@ async function updateParentsField({
     documentId: file.internalId,
     parents,
   });
+}
+
+export async function microsoftDeletionActivity({
+  connectorId,
+  nodeIdsToDelete,
+}: {
+  connectorId: number;
+  nodeIdsToDelete: string[];
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  async function deleteNodeAndChildren(nodeId: string) {
+    const node = await MicrosoftNodeResource.fetchByInternalId(
+      connectorId,
+      nodeId
+    );
+
+    if (!node) {
+      logger.warn({ connectorId, nodeId }, "Node not found for deletion");
+      return;
+    }
+
+    const { nodeType } = typeAndPathFromInternalId(nodeId);
+
+    if (nodeType === "file") {
+      try {
+        await deleteFromDataSource(dataSourceConfig, node.internalId);
+      } catch (error) {
+        logger.error(
+          { connectorId, nodeId, error },
+          `Failed to delete document ${node.internalId} from core data source`
+        );
+      }
+    } else if (nodeType === "folder" || nodeType === "drive") {
+      const children = await node.fetchChildren();
+      for (const child of children) {
+        await deleteNodeAndChildren(child.internalId);
+      }
+    }
+
+    await node.delete();
+
+    const root = await MicrosoftRootResource.fetchByInternalId(
+      connectorId,
+      nodeId
+    );
+    if (root) {
+      await root.delete();
+    }
+  }
+
+  for (const nodeId of nodeIdsToDelete) {
+    await deleteNodeAndChildren(nodeId);
+  }
 }
