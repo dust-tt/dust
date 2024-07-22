@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS "microsoft_configurations" ("id"  SERIAL , "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "connectorId" INTEGER NOT NULL REFERENCES "connectors" ("id") ON DELETE CASCADE ON UPDATE CASCADE, "pdfEnabled" BOOLEAN NOT NULL DEFAULT false, "largeFilesEnabled" BOOLEAN NOT NULL DEFAULT false, PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "microsoft_configurations_connector_id" ON "microsoft_configurations" ("connectorId");
+CREATE TABLE IF NOT EXISTS "microsoft_roots" ("id"  SERIAL , "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "connectorId" INTEGER NOT NULL REFERENCES "connectors" ("id") ON DELETE CASCADE ON UPDATE CASCADE, "internalId" VARCHAR(255) NOT NULL, "nodeType" VARCHAR(255) NOT NULL, "currentDeltaLink" VARCHAR(1024) NOT NULL, PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "microsoft_roots_connector_id_internal_id" ON "microsoft_roots" ("connectorId", "internalId");
+CREATE INDEX "microsoft_roots_connector_id_node_type" ON "microsoft_roots" ("connectorId", "nodeType");
+CREATE TABLE IF NOT EXISTS "microsoft_nodes" ("id"  SERIAL , "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "lastSeenTs" TIMESTAMP WITH TIME ZONE, "lastUpsertedTs" TIMESTAMP WITH TIME ZONE, "skipReason" VARCHAR(255), "connectorId" INTEGER NOT NULL REFERENCES "connectors" ("id") ON DELETE CASCADE ON UPDATE CASCADE, "internalId" VARCHAR(512) NOT NULL, "nodeType" VARCHAR(255) NOT NULL, "name" TEXT, "mimeType" VARCHAR(255), "parentInternalId" VARCHAR(512), PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "microsoft_nodes_internal_id_connector_id" ON "microsoft_nodes" ("internalId", "connectorId");
+CREATE INDEX "microsoft_nodes_connector_id_node_type" ON "microsoft_nodes" ("connectorId", "nodeType");
+CREATE INDEX CONCURRENTLY "microsoft_nodes_parent_internal_id_connector_id" ON "microsoft_nodes" ("parentInternalId", "connectorId");
