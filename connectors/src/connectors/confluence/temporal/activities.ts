@@ -66,7 +66,7 @@ async function getConfluenceAccessTokenWithThrow(connectionId: string) {
   if (isDualUseOAuthConnectionId(connectionId)) {
     const token = await getOAuthConnectionAccessTokenWithThrow({
       logger,
-      provider: "intercom",
+      provider: "confluence",
       connectionId,
     });
 
