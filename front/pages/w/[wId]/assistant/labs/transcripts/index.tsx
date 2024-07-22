@@ -245,40 +245,48 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
-  const saveOauthConnection = async (
+  const saveOAuthConnection = async (
     connectionId: string,
     provider: string
   ) => {
-    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        connectionId,
-        provider,
-      }),
-    });
+    try {
+      const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId,
+          provider,
+        }),
+      });
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect provider",
+          description:
+            "Could not connect to your transcripts provider. Please try again.",
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Provider connected",
+          description:
+            "Your transcripts provider has been connected successfully.",
+        });
 
-    if (!response.ok) {
+        await mutateTranscriptsConfiguration();
+      }
+      return response;
+    } catch (error) {
       sendNotification({
         type: "error",
         title: "Failed to connect provider",
         description:
-          "Could not connect to your transcripts provider. Please try again.",
+          "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
+          error,
       });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Provider connected",
-        description:
-          "Your transcripts provider has been connected successfully.",
-      });
-
-      await mutateTranscriptsConfiguration();
     }
-
-    return response;
   };
 
   const handleConnectGoogleTranscriptsSource = async () => {
@@ -302,7 +310,7 @@ export default function LabsTranscriptsIndex({
       return;
     }
 
-    await saveOauthConnection(
+    await saveOAuthConnection(
       cRes.value.connection_id,
       transcriptsConfigurationState.provider
     );
@@ -333,7 +341,7 @@ export default function LabsTranscriptsIndex({
           return;
         }
 
-        await saveOauthConnection(
+        await saveOAuthConnection(
           defaultConfiguration.connectionId,
           transcriptsConfigurationState.provider
         );
@@ -350,7 +358,7 @@ export default function LabsTranscriptsIndex({
           connectionId: newConnectionId,
         }: { providerConfigKey: string; connectionId: string } =
           await nango.auth(nangoGongConnectorId, nangoConnectionId);
-        await saveOauthConnection(
+        await saveOAuthConnection(
           newConnectionId,
           transcriptsConfigurationState.provider
         );
