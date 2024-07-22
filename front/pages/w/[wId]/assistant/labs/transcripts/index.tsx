@@ -49,7 +49,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   gaTrackingId: string;
   nangoDriveConnectorId: string;
-  nangoGongConnectorId: string;
   nangoPublicKey: string;
   dustClientFacingUrl: string;
 }>(async (_context, auth) => {
@@ -76,7 +75,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       gaTrackingId: apiConfig.getGaTrackingId(),
       nangoDriveConnectorId:
         config.getNangoConnectorIdForProvider("google_drive"),
-      nangoGongConnectorId: config.getNangoConnectorIdForProvider("gong"),
       nangoPublicKey: config.getNangoPublicKey(),
       dustClientFacingUrl: apiConfig.getClientFacingUrl(),
     },
@@ -89,7 +87,6 @@ export default function LabsTranscriptsIndex({
   subscription,
   gaTrackingId,
   nangoDriveConnectorId,
-  nangoGongConnectorId,
   nangoPublicKey,
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -351,38 +348,21 @@ export default function LabsTranscriptsIndex({
 
         return;
       } else {
-        if (owner.flags.includes("test_oauth_setup")) {
-          const cRes = await setupOAuthConnection({
-            dustClientFacingUrl,
-            owner,
-            provider: "gong",
-            useCase: "connection",
-          });
-          if (!cRes.isOk()) {
-            return cRes;
-          }
-          const connectionId = cRes.value.connection_id;
-
-          await saveOauthConnection(
-            connectionId,
-            transcriptsConfigurationState.provider
-          );
-        } else {
-          const nango = new Nango({ publicKey: nangoPublicKey });
-
-          const nangoConnectionId = buildLabsConnectionId(
-            `labs-transcripts-workspace-${owner.id}`,
-            transcriptsConfigurationState.provider
-          );
-          const {
-            connectionId: newConnectionId,
-          }: { providerConfigKey: string; connectionId: string } =
-            await nango.auth(nangoGongConnectorId, nangoConnectionId);
-          await saveOauthConnection(
-            newConnectionId,
-            transcriptsConfigurationState.provider
-          );
+        const cRes = await setupOAuthConnection({
+          dustClientFacingUrl,
+          owner,
+          provider: "gong",
+          useCase: "connection",
+        });
+        if (!cRes.isOk()) {
+          return cRes;
         }
+        const connectionId = cRes.value.connection_id;
+
+        await saveOauthConnection(
+          connectionId,
+          transcriptsConfigurationState.provider
+        );
       }
     } catch (error) {
       sendNotification({
