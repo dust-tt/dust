@@ -133,36 +133,19 @@ export async function driveObjectToDustType(
 export async function getAuthObject(
   connectionId: string
 ): Promise<OAuth2Client> {
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "google_drive",
+    connectionId,
+  });
+
   const oauth2Client = new google.auth.OAuth2();
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const token = await getOAuthConnectionAccessTokenWithThrow({
-      logger,
-      provider: "google_drive",
-      connectionId,
-    });
-
-    oauth2Client.setCredentials({
-      access_token: token.access_token,
-      scope: (token.scrubbed_raw_json as { scope: string }).scope,
-      token_type: (token.scrubbed_raw_json as { token_type: string })
-        .token_type,
-      expiry_date: token.access_token_expiry,
-    });
-  } else {
-    const res: NangoConnectionResponse = await getConnectionFromNango({
-      connectionId: connectionId,
-      integrationId: googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
-      refreshToken: false,
-      useCache: true,
-    });
-
-    oauth2Client.setCredentials({
-      access_token: res.credentials.access_token,
-      scope: res.credentials.raw.scope,
-      token_type: res.credentials.raw.token_type,
-      expiry_date: new Date(res.credentials.expires_at).getTime(),
-    });
-  }
+  oauth2Client.setCredentials({
+    access_token: token.access_token,
+    scope: (token.scrubbed_raw_json as { scope: string }).scope,
+    token_type: (token.scrubbed_raw_json as { token_type: string }).token_type,
+    expiry_date: token.access_token_expiry,
+  });
   return oauth2Client;
 }
 
