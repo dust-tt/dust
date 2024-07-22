@@ -42,7 +42,7 @@ async function workspaceIdFromConnectionId(connectionId: string) {
     connectionId,
   });
   if (tokRes.isErr()) {
-    return new Err("Error retrieving access token");
+    return tokRes;
   }
   return new Ok(
     (tokRes.value.scrubbed_raw_json as { workspace_id?: string })
@@ -132,9 +132,28 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       ]);
 
       if (workspaceIdRes.isErr() || newWorkspaceIdRes.isErr()) {
+        if (workspaceIdRes.isErr()) {
+          logger.error(
+            {
+              connectorId: c.id,
+              error: workspaceIdRes.error,
+            },
+            "Error retrieving workspace Id from old connection"
+          );
+        }
+        if (newWorkspaceIdRes.isErr()) {
+          logger.error(
+            {
+              connectorId: c.id,
+              error: newWorkspaceIdRes.error,
+            },
+            "Error retrieving workspace Id from new connection"
+          );
+        }
         return new Err({
           type: "connector_update_error",
-          message: "Error retrieving old workspace id",
+          message:
+            "Error retrieving workspace Ids from connections while checking update validity",
         });
       }
 
