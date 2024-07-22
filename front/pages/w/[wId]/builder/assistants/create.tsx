@@ -18,7 +18,7 @@ import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { createRef, useEffect, useRef, useState } from "react";
+import { createRef, useCallback, useEffect, useRef, useState } from "react";
 
 import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
@@ -97,6 +97,29 @@ export default function CreateAssistant({
       tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
     });
   }, [assistantTemplates]);
+
+  const openTemplateModal = useCallback(
+    async (templateId: string) => {
+      setSelectedTemplateId(templateId);
+      const wId = owner.sId;
+
+      await router.replace(
+        { pathname: router.pathname, query: { wId, templateId } },
+        undefined,
+        { shallow: true }
+      );
+    },
+    [router, owner.sId]
+  );
+
+  const closeTemplateModal = useCallback(async () => {
+    setSelectedTemplateId(null);
+    await router.replace(
+      { pathname: router.pathname, query: _.omit(router.query, "templateId") },
+      undefined,
+      { shallow: true }
+    );
+  }, [router]);
 
   const handleSearch = (searchTerm: string) => {
     setTemplateSearchTerm(searchTerm);
@@ -226,7 +249,7 @@ export default function CreateAssistant({
                 <>
                   <TemplateGrid
                     templates={filteredTemplates.templates}
-                    setSelectedTemplateId={setSelectedTemplateId}
+                    openTemplateModal={openTemplateModal}
                   />
                 </>
               ) : (
@@ -243,7 +266,7 @@ export default function CreateAssistant({
                         />
                         <TemplateGrid
                           templates={templatesForTag}
-                          setSelectedTemplateId={setSelectedTemplateId}
+                          openTemplateModal={openTemplateModal}
                         />
                       </div>
                     );
@@ -257,7 +280,7 @@ export default function CreateAssistant({
           flow={flow}
           owner={owner}
           templateId={selectedTemplateId}
-          onClose={() => setSelectedTemplateId(null)}
+          onClose={() => closeTemplateModal()}
         />
       </div>
     </AppLayout>

@@ -4,12 +4,12 @@ import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant
 
 interface TemplateGridProps {
   templates: AssistantTemplateListType[];
-  setSelectedTemplateId: (templateId: string) => void;
+  openTemplateModal: (templateId: string) => void;
 }
 
 export function TemplateGrid({
   templates,
-  setSelectedTemplateId,
+  openTemplateModal,
 }: TemplateGridProps) {
   if (!templates?.length) {
     return null;
@@ -23,7 +23,7 @@ export function TemplateGrid({
           pictureUrl={t.pictureUrl}
           description={t.description ?? ""}
           variant="list"
-          onClick={() => setSelectedTemplateId(t.sId)}
+          onClick={() => openTemplateModal(t.sId)}
         />
       ))}
     </div>
