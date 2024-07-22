@@ -101,17 +101,25 @@ impl Provider for GongConnectionProvider {
             Err(e) => Err(e)?,
         };
 
-        let body = json!({
-            "grant_type": "refresh_token",
-            "client_id": *OAUTH_GONG_CLIENT_ID,
-            "client_secret": *OAUTH_GONG_CLIENT_SECRET,
-            "refresh_token": refresh_token,
-        });
+        let authorization = format!(
+            "Basic
+          {}",
+            STANDARD.encode(format!(
+                "{}:{}",
+                *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET
+            ))
+        );
+
+        let params = [
+            ("grant_type", "authorization_code"),
+            ("refresh_token", &refresh_token),
+        ];
 
         let req = reqwest::Client::new()
             .post("https://app.gong.io/oauth2/generate-customer-token")
             .header("Content-Type", "application/json")
-            .json(&body);
+            .header("Authorization", authorization)
+            .query(&params);
 
         let raw_json = execute_request(ConnectionProvider::Gong, req)
             .await
