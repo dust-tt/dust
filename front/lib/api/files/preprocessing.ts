@@ -5,14 +5,14 @@ import type {
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, Ok, TextExtraction } from "@dust-tt/types";
 import { parse } from "csv-parse";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
 import { PassThrough, Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 
+import config from "@app/lib/api/config";
 import type { CSVRow } from "@app/lib/api/csv";
 import { analyzeCSVColumns } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
@@ -115,26 +115,21 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
 // PDF preprocessing.
 
 async function createPdfTextStream(buffer: Buffer) {
-  const loadingTask = getDocument({ data: new Uint8Array(buffer) });
-  const pdf = await loadingTask.promise;
+  const extractionRes = await new TextExtraction(
+    config.getTextExtractionUrl()
+  ).fromBuffer(buffer, "application/pdf");
+
+  if (extractionRes.isErr()) {
+    // We must throw here, stream does not support Result type.
+    throw extractionRes.error;
+  }
+
+  const pages = extractionRes.value;
 
   return new Readable({
     async read() {
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const content = await page.getTextContent();
-        const strings = content.items.map((item) => {
-          if (
-            item &&
-            typeof item === "object" &&
-            "str" in item &&
-            typeof item.str === "string"
-          ) {
-            return item.str;
-          }
-        });
-
-        const pageText = `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
+      for (const page of pages) {
+        const pageText = `$pdfPage: ${page.pageNumber}/${pages.length}\n${page.content}\n\n`;
         this.push(pageText);
       }
       this.push(null);
