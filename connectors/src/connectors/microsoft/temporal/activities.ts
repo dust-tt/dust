@@ -1,4 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -46,6 +47,7 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FILES_SYNC_CONCURRENCY = 10;
+const DELETE_CONCURRENCY = 5;
 
 export async function getSiteNodesToSync(
   connectorId: ModelId
@@ -767,17 +769,19 @@ export async function microsoftDeletionActivity({
   connectorId,
   nodeIdsToDelete,
 }: {
-  connectorId: number;
+  connectorId: ModelId;
   nodeIdsToDelete: string[];
-}) {
+}): Promise<Result<void, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
+    return new Err(new Error(`Connector ${connectorId} not found`));
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  async function deleteNodeAndChildren(nodeId: string) {
+  async function deleteNodeAndChildren(
+    nodeId: string
+  ): Promise<Result<void, Error>> {
     const node = await MicrosoftNodeResource.fetchByInternalId(
       connectorId,
       nodeId
@@ -785,7 +789,7 @@ export async function microsoftDeletionActivity({
 
     if (!node) {
       logger.warn({ connectorId, nodeId }, "Node not found for deletion");
-      return;
+      return new Ok(undefined);
     }
 
     const { nodeType } = typeAndPathFromInternalId(nodeId);
@@ -798,26 +802,59 @@ export async function microsoftDeletionActivity({
           { connectorId, nodeId, error },
           `Failed to delete document ${node.internalId} from core data source`
         );
+        return new Err(
+          new Error(`Failed to delete document ${node.internalId}`)
+        );
       }
     } else if (nodeType === "folder" || nodeType === "drive") {
       const children = await node.fetchChildren();
       for (const child of children) {
-        await deleteNodeAndChildren(child.internalId);
+        const result = await deleteNodeAndChildren(child.internalId);
+        if (result.isErr()) {
+          logger.error(
+            { connectorId, nodeId: child.internalId, error: result.error },
+            `Failed to delete child node`
+          );
+          return result;
+        }
       }
     }
 
-    await node.delete();
-
-    const root = await MicrosoftRootResource.fetchByInternalId(
-      connectorId,
-      nodeId
-    );
-    if (root) {
-      await root.delete();
+    try {
+      await node.delete();
+      const root = await MicrosoftRootResource.fetchByInternalId(
+        connectorId,
+        nodeId
+      );
+      if (root) {
+        await root.delete();
+      }
+    } catch (error) {
+      logger.error(
+        { connectorId, nodeId, error },
+        `Failed to delete node ${nodeId}`
+      );
+      return new Err(new Error(`Failed to delete node ${nodeId}`));
     }
+
+    return new Ok(undefined);
   }
 
-  for (const nodeId of nodeIdsToDelete) {
-    await deleteNodeAndChildren(nodeId);
+  const results = await concurrentExecutor(
+    nodeIdsToDelete,
+    async (nodeId) => deleteNodeAndChildren(nodeId),
+    { concurrency: DELETE_CONCURRENCY }
+  );
+
+  const errors = results.filter((r): r is Err<Error> => r.isErr());
+  if (errors.length > 0) {
+    logger.error(
+      { connectorId, errors: errors.map((e) => e.error.message) },
+      "Microsoft deletion workflow completed with errors"
+    );
+    return new Err(
+      new Error("Microsoft deletion workflow completed with errors")
+    );
   }
+  return new Ok(undefined);
 }
