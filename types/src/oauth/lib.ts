@@ -13,6 +13,7 @@ export const OAUTH_PROVIDERS = [
   "intercom",
   "notion",
   "slack",
+  "gong",
   "microsoft",
 ] as const;
 
