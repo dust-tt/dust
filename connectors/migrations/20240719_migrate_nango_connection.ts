@@ -104,7 +104,7 @@ async function migrateConnectionId(
 
     if (
       !connection.credentials.expires_at ||
-      Number.parseInt(connection.credentials.expires_at, 10) <
+      new Date(connection.credentials.expires_at).getTime() <
         thirtyMinutesFromNow.getTime()
     ) {
       return new Err(
@@ -192,6 +192,8 @@ async function migrateAllConnections(
 
     if (isDualUseOAuthConnectionId(connector.connectionId)) {
       localLogger.info("Skipping alreaydy migrated collection");
+
+      continue;
     }
 
     const migrationRes = await migrateConnectionId(
