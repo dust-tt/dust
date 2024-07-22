@@ -941,7 +941,7 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
   notion:
     "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
   github:
-    "You cannot select another Github Organization.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization.",
+    "You cannot create a new Github app installation.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.",
   google_drive:
     "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
   intercom:
