@@ -100,12 +100,21 @@ async function migrateConnectionId(
 
   // If provider supports refresh tokens, migrate them.
   if (CONNECTORS_WITH_REFRESH_TOKENS.includes(provider)) {
-    if (connection.credentials.expires_at) {
-      console.log(
-        "connection.credentials.expires_at:",
-        connection.credentials.expires_at
-      );
+    const thirtyMinutesFromNow = new Date(new Date().getTime() + 30 * 60000);
 
+    if (
+      !connection.credentials.expires_at ||
+      Number.parseInt(connection.credentials.expires_at, 10) <
+        thirtyMinutesFromNow.getTime()
+    ) {
+      return new Err(
+        new Error(
+          "Expires at is not set or is less than 30 minutes from now. Skipping migration."
+        )
+      );
+    }
+
+    if (connection.credentials.expires_at) {
       migratedCredentials.access_token_expiry = Date.parse(
         connection.credentials.expires_at
       );
