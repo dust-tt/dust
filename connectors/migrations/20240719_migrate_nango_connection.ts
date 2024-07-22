@@ -35,6 +35,8 @@ const NANGO_CONNECTOR_IDS: Record<string, string> = {
   gong: NANGO_GONG_CONNECTOR_ID,
 };
 
+const CONNECTORS_WITH_REFRESH_TOKENS = ["confluence"];
+
 async function appendRollbackCommand(
   provider: OAuthProvider,
   connectorId: ModelId,
@@ -96,18 +98,31 @@ async function migrateConnectionId(
     raw_json: connection.credentials.raw,
   };
 
-  // Below is to be tested with a provider that has refresh tokens
+  // If provider supports refresh tokens, migrate them.
+  if (CONNECTORS_WITH_REFRESH_TOKENS.includes(provider)) {
+    const thirtyMinutesFromNow = new Date(new Date().getTime() + 30 * 60000);
 
-  // if (connection.credentials.expires_at) {
-  //   migratedCredentials.access_token_expiry = Date.parse(
-  //     connection.credentials.expires_at
-  //   );
-  // }
-  // if (connection.credentials.refresh_token) {
-  //   migratedCredentials.refresh_token = connection.credentials.refresh_token;
-  // }
+    if (
+      !connection.credentials.expires_at ||
+      Number.parseInt(connection.credentials.expires_at, 10) <
+        thirtyMinutesFromNow.getTime()
+    ) {
+      return new Err(
+        new Error(
+          "Expires at is not set or is less than 30 minutes from now. Skipping migration."
+        )
+      );
+    }
 
-  // End has to be tested
+    if (connection.credentials.expires_at) {
+      migratedCredentials.access_token_expiry = Date.parse(
+        connection.credentials.expires_at
+      );
+    }
+    if (connection.credentials.refresh_token) {
+      migratedCredentials.refresh_token = connection.credentials.refresh_token;
+    }
+  }
 
   console.log(
     ">>>>>>>>>>>>>>>>>>>>>>>>>>> BEG MIGRATED_CREDENTIALS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
