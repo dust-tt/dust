@@ -136,7 +136,7 @@ export async function getAuthObject(
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,
-      provider: "slack",
+      provider: "google_drive",
       connectionId,
     });
     if (tokRes.isErr()) {
