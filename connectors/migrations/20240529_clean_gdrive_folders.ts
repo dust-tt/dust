@@ -5,7 +5,7 @@ import {
   getAuthObject,
   getDocumentId,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   GoogleDriveFiles,
   GoogleDriveFolders,
@@ -63,7 +63,7 @@ async function main() {
       try {
         return await getAuthObject(connector.connectionId);
       } catch (e) {
-        if (e instanceof ExternalOauthTokenError) {
+        if (e instanceof ExternalOAuthTokenError) {
           logger.info(
             { connectorId, folderId },
             `Auth revoked, deleting folder (live: ${LIVE})`

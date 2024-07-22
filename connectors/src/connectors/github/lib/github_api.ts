@@ -29,7 +29,7 @@ import {
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 
@@ -102,7 +102,7 @@ export async function installationIdFromConnectionId(
 export async function getReposPage(
   connectionId: string,
   page: number
-): Promise<Result<GithubRepo[], ExternalOauthTokenError>> {
+): Promise<Result<GithubRepo[], ExternalOAuthTokenError>> {
   try {
     const octokit = await getOctokit(connectionId);
 
@@ -128,7 +128,7 @@ export async function getReposPage(
     );
   } catch (e) {
     if (isGithubRequestErrorNotFound(e)) {
-      return new Err(new ExternalOauthTokenError(e));
+      return new Err(new ExternalOAuthTokenError(e));
     }
     throw e;
   }
@@ -691,7 +691,7 @@ export async function processRepository({
     ).data;
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
-      return new Err(new ExternalOauthTokenError(err));
+      return new Err(new ExternalOAuthTokenError(err));
     }
 
     throw err;

@@ -11,7 +11,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
-import { DustConnectorWorkflowError, ExternalOauthTokenError } from "./error";
+import { DustConnectorWorkflowError, ExternalOAuthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
 import { cancelWorkflow, getConnectorId } from "./temporal";
 
@@ -133,7 +133,7 @@ export class ActivityInboundLogInterceptor
         );
       }
 
-      if (err instanceof ExternalOauthTokenError) {
+      if (err instanceof ExternalOAuthTokenError) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const { workflowId } = this.context.info.workflowExecution;
 

@@ -4,7 +4,7 @@ import axios from "axios";
 
 import {
   DustConnectorWorkflowError,
-  ExternalOauthTokenError,
+  ExternalOAuthTokenError,
   NANGO_ERROR_TYPES,
   NangoError,
 } from "@connectors/lib/error";
@@ -37,7 +37,7 @@ class CustomNango extends Nango {
               ) &&
               errorText.includes("invalid_grant")
             ) {
-              throw new ExternalOauthTokenError();
+              throw new ExternalOAuthTokenError();
             }
             const errorType = e.response.data.type;
             if (NANGO_ERROR_TYPES.includes(errorType)) {
