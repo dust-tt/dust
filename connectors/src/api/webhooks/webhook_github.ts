@@ -195,10 +195,14 @@ const _webhookGithubAPIHandler = async (
       return rejectEvent();
     case "issues":
       if (isIssuePayload(jsonBody)) {
+        const login =
+          "organization" in jsonBody
+            ? jsonBody.organization.login
+            : jsonBody.user.login;
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
           return syncIssue(
             enabledConnectors,
-            jsonBody.organization.login,
+            login,
             jsonBody.repository.name,
             jsonBody.repository.id,
             jsonBody.issue.number,
@@ -207,7 +211,7 @@ const _webhookGithubAPIHandler = async (
         } else if (jsonBody.action === "deleted") {
           return garbageCollectIssue(
             enabledConnectors,
-            jsonBody.organization.login,
+            login,
             jsonBody.repository.name,
             jsonBody.repository.id,
             jsonBody.issue.number,
@@ -222,6 +226,10 @@ const _webhookGithubAPIHandler = async (
 
     case "issue_comment":
       if (isCommentPayload(jsonBody)) {
+        const login =
+          "organization" in jsonBody
+            ? jsonBody.organization.login
+            : jsonBody.user.login;
         if (
           jsonBody.action === "created" ||
           jsonBody.action === "edited" ||
@@ -229,7 +237,7 @@ const _webhookGithubAPIHandler = async (
         ) {
           return syncIssue(
             enabledConnectors,
-            jsonBody.organization.login,
+            login,
             jsonBody.repository.name,
             jsonBody.repository.id,
             jsonBody.issue.number,
@@ -243,10 +251,14 @@ const _webhookGithubAPIHandler = async (
 
     case "pull_request":
       if (isPullRequestPayload(jsonBody)) {
+        const login =
+          "organization" in jsonBody
+            ? jsonBody.organization.login
+            : jsonBody.user.login;
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
           return syncIssue(
             enabledConnectors,
-            jsonBody.organization.login,
+            login,
             jsonBody.repository.name,
             jsonBody.repository.id,
             jsonBody.pull_request.number,
@@ -256,7 +268,7 @@ const _webhookGithubAPIHandler = async (
           if (jsonBody.pull_request.merged) {
             return syncCode(
               enabledConnectors,
-              jsonBody.organization.login,
+              login,
               jsonBody.repository.name,
               jsonBody.repository.id,
               res
@@ -272,10 +284,14 @@ const _webhookGithubAPIHandler = async (
 
     case "discussion":
       if (isDiscussionPayload(jsonBody)) {
+        const login =
+          "organization" in jsonBody
+            ? jsonBody.organization.login
+            : jsonBody.user.login;
         if (jsonBody.action === "created" || jsonBody.action === "edited") {
           return syncDiscussion(
             enabledConnectors,
-            jsonBody.organization.login,
+            login,
             jsonBody.repository.name,
             jsonBody.repository.id,
             jsonBody.discussion.number,
@@ -284,7 +300,7 @@ const _webhookGithubAPIHandler = async (
         } else if (jsonBody.action === "deleted") {
           return garbageCollectDiscussion(
             enabledConnectors,
-            jsonBody.organization.login,
+            login,
             jsonBody.repository.name,
             jsonBody.repository.id,
             jsonBody.discussion.number,
@@ -298,6 +314,10 @@ const _webhookGithubAPIHandler = async (
 
     case "discussion_comment":
       if (isDiscussionPayload(jsonBody)) {
+        const login =
+          "organization" in jsonBody
+            ? jsonBody.organization.login
+            : jsonBody.user.login;
         if (
           jsonBody.action === "created" ||
           jsonBody.action === "edited" ||
@@ -305,7 +325,7 @@ const _webhookGithubAPIHandler = async (
         ) {
           return syncDiscussion(
             enabledConnectors,
-            jsonBody.organization.login,
+            login,
             jsonBody.repository.name,
             jsonBody.repository.id,
             jsonBody.discussion.number,
