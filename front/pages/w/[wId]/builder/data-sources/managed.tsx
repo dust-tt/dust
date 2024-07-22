@@ -106,16 +106,7 @@ export async function setupConnection({
 }): Promise<Result<string, Error>> {
   let connectionId: string;
 
-  if (
-    isOAuthProvider(provider) &&
-    // `oauth`-ready providers
-    (["confluence", "github", "slack", "notion", "microsoft", "google_drive"].includes(
-      provider
-    ) ||
-      // Behind flag oauth-ready providers
-      (["intercom"].includes(provider) &&
-        owner.flags.includes("test_oauth_setup")))
-  ) {
+  if (isOAuthProvider(provider)) {
     // OAuth flow
     const cRes = await setupOAuthConnection({
       dustClientFacingUrl,
