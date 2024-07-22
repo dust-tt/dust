@@ -1,4 +1,8 @@
-import type { LabsConnectorProvider, Result } from "@dust-tt/types";
+import type {
+  LabsConnectorProvider,
+  LabsTranscriptsProviderType,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -49,6 +53,27 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return new LabsTranscriptsConfigurationResource(
       LabsTranscriptsConfigurationModel,
       configuration.get()
+    );
+  }
+
+  // TODO(spolu): remove post migration
+  static async listByProvider({
+    provider,
+  }: {
+    provider: LabsTranscriptsProviderType;
+  }): Promise<LabsTranscriptsConfigurationResource[]> {
+    const configurations = await LabsTranscriptsConfigurationModel.findAll({
+      where: {
+        provider,
+      },
+    });
+
+    return configurations.map(
+      (configuration) =>
+        new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
+          configuration.get()
+        )
     );
   }
 
@@ -140,6 +165,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     }
 
     return this.update({ isActive });
+  }
+
+  // TODO(spolu): remove post migration
+  async updateConnectionId(connectionId: string) {
+    return this.update({ connectionId });
   }
 
   async delete(
