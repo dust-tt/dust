@@ -216,7 +216,6 @@ const PROVIDER_STRATEGIES: Record<
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
   },
-
 };
 
 export async function createConnectionAndGetSetupUrl(

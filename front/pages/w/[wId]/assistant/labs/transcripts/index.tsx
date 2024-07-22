@@ -10,10 +10,12 @@ import {
 } from "@dust-tt/sparkle";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
-import type {LabsTranscriptsProviderType, UserType, WorkspaceType} from "@dust-tt/types";
-import {
-  setupOAuthConnection
+import type {
+  LabsTranscriptsProviderType,
+  UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
+import { setupOAuthConnection } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
@@ -74,7 +76,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       nangoDriveConnectorId:
         config.getNangoConnectorIdForProvider("google_drive"),
       nangoPublicKey: config.getNangoPublicKey(),
-      dustClientFacingUrl: apiConfig.getClientFacingUrl()
+      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
     },
   };
 });
@@ -86,7 +88,7 @@ export default function LabsTranscriptsIndex({
   gaTrackingId,
   nangoDriveConnectorId,
   nangoPublicKey,
-  dustClientFacingUrl
+  dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
