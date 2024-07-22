@@ -48,6 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   gaTrackingId: string;
   nangoGongConnectorId: string;
   nangoPublicKey: string;
+  dustClientFacingUrl: string;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -71,6 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       gaTrackingId: apiConfig.getGaTrackingId(),
       nangoGongConnectorId: config.getNangoConnectorIdForProvider("gong"),
       nangoPublicKey: config.getNangoPublicKey(),
+      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
     },
   };
 });
@@ -81,6 +83,7 @@ export default function LabsTranscriptsIndex({
   gaTrackingId,
   nangoGongConnectorId,
   nangoPublicKey,
+  dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
@@ -284,7 +287,7 @@ export default function LabsTranscriptsIndex({
     }
 
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
+      dustClientFacingUrl,
       owner,
       provider: "google_drive",
       useCase: "labs_transcripts",
