@@ -157,7 +157,9 @@ impl Provider for GithubConnectionProvider {
 
     fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
         match &error {
-            ProviderHttpRequestError::RequestFailed { status, .. } if *status == 403 => {
+            ProviderHttpRequestError::RequestFailed { status, .. }
+                if *status == 403 || *status == 404 =>
+            {
                 ProviderError::TokenRevokedError
             }
             _ => {

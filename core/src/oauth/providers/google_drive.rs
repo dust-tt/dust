@@ -14,6 +14,8 @@ use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
 
+use super::utils::ProviderHttpRequestError;
+
 lazy_static! {
     static ref OAUTH_GOOGLE_DRIVE_CLIENT_ID: String =
         env::var("OAUTH_GOOGLE_DRIVE_CLIENT_ID").unwrap();
@@ -172,5 +174,26 @@ impl Provider for GoogleDriveConnectionProvider {
         };
 
         Ok(raw_json)
+    }
+
+    fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        match &error {
+            ProviderHttpRequestError::RequestFailed {
+                status, message, ..
+            } if *status == 400 => {
+                if message.contains("invalid_grant")
+                    && message.contains("Token has been expired or revoked")
+                {
+                    ProviderError::TokenRevokedError
+                } else {
+                    // Call the default implementation for other 400 errors.
+                    self.default_handle_provider_request_error(error)
+                }
+            }
+            _ => {
+                // Call the default implementation for other cases.
+                self.default_handle_provider_request_error(error)
+            }
+        }
     }
 }
