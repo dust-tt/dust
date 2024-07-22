@@ -7,7 +7,7 @@ import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/confi
 import { apiConfig } from "@connectors/lib/api/config";
 import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
-import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
+import { getOAuthConnectionAccessTokenWithThrow, isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
@@ -133,26 +133,18 @@ export async function getAuthObject(
 ): Promise<OAuth2Client> {
   const oauth2Client = new google.auth.OAuth2();
   if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
+    const token = await getOAuthConnectionAccessTokenWithThrow({
       logger,
       provider: "google_drive",
       connectionId,
     });
-    if (tokRes.isErr()) {
-      logger.error(
-        { connectionId, error: tokRes.error },
-        "Error retrieving Google access token"
-      );
-      throw new Error("Error retrieving Google access token");
-    }
 
     oauth2Client.setCredentials({
-      access_token: tokRes.value.access_token,
-      scope: (tokRes.value.scrubbed_raw_json as { scope: string }).scope,
-      token_type: (tokRes.value.scrubbed_raw_json as { token_type: string })
+      access_token: token.access_token,
+      scope: (token.scrubbed_raw_json as { scope: string }).scope,
+      token_type: (token.scrubbed_raw_json as { token_type: string })
         .token_type,
-      expiry_date: tokRes.value.access_token_expiry,
+      expiry_date: token.access_token_expiry,
     });
   } else {
     const res: NangoConnectionResponse = await getConnectionFromNango({

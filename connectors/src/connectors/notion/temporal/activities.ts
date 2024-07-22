@@ -71,7 +71,10 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
+import {
+  getOAuthConnectionAccessTokenWithThrow,
+  isDualUseOAuthConnectionId,
+} from "@connectors/lib/oauth";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -559,20 +562,12 @@ export async function getNotionAccessToken(
   connectionId: string
 ): Promise<string> {
   if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
+    const token = await getOAuthConnectionAccessTokenWithThrow({
       logger,
       provider: "notion",
       connectionId,
     });
-    if (tokRes.isErr()) {
-      logger.error(
-        { connectionId, error: tokRes.error },
-        "Error retrieving Notion access token"
-      );
-      throw new Error("Error retrieving Notion access token");
-    }
-    return tokRes.value.access_token;
+    return token.access_token;
   } else {
     return getAccessTokenFromNango({
       connectionId: connectionId,

@@ -44,7 +44,7 @@ pub async fn execute_request(
             .unwrap_or_else(|_| String::from("Unable to read response body"));
 
         return Err(ProviderHttpRequestError::RequestFailed {
-            provider: provider,
+            provider,
             status: status.as_u16(),
             message: body,
         });

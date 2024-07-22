@@ -12,6 +12,7 @@ import {
   ExternalOauthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
+import {getOAuthConnectionAccessTokenWithThrow} from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -183,19 +184,11 @@ export async function getSlackConversationInfo(
 export async function getSlackAccessToken(
   connectionId: string
 ): Promise<string> {
-  const tokRes = await getOAuthConnectionAccessToken({
-    config: apiConfig.getOAuthAPIConfig(),
+  const token = await getOAuthConnectionAccessTokenWithThrow({
     logger,
     provider: "slack",
     connectionId,
   });
-  if (tokRes.isErr()) {
-    logger.error(
-      { connectionId, error: tokRes.error },
-      "Error retrieving Slack access token"
-    );
-    throw new Error("Error retrieving Slack access token");
-  }
 
-  return tokRes.value.access_token;
+  return token.access_token;
 }
