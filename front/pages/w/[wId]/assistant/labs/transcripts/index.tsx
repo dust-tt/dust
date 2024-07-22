@@ -12,7 +12,6 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   LabsTranscriptsProviderType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
@@ -45,10 +44,8 @@ const defaultTranscriptConfigurationState = {
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
-  user: UserType;
   subscription: SubscriptionType;
   gaTrackingId: string;
-  nangoDriveConnectorId: string;
   nangoGongConnectorId: string;
   nangoPublicKey: string;
 }>(async (_context, auth) => {
@@ -70,11 +67,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
-      user,
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
-      nangoDriveConnectorId:
-        config.getNangoConnectorIdForProvider("google_drive"),
       nangoGongConnectorId: config.getNangoConnectorIdForProvider("gong"),
       nangoPublicKey: config.getNangoPublicKey(),
     },
@@ -83,10 +77,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function LabsTranscriptsIndex({
   owner,
-  user,
   subscription,
   gaTrackingId,
-  nangoDriveConnectorId,
   nangoGongConnectorId,
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
