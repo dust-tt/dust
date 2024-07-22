@@ -145,12 +145,33 @@ impl Provider for GoogleDriveConnectionProvider {
             ))?,
         };
 
-        let refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => token,
+        match raw_json["scope"].as_str() {
+            Some(_) => (),
+            None => Err(anyhow!("Missing `scope` in response from Google Drive"))?,
+        };
+
+        match raw_json["token_type"].as_str() {
+            Some(_) => (),
             None => Err(anyhow!(
-                "Missing `refresh_token` in response from Google Drive"
+                "Missing `token_type` in response from Google Drive"
             ))?,
         };
+
+        // Google Drive does not return a new refresh token when refreshing an access token. So we
+        // merge the new raw_json information in the existing one to preserve original refresh
+        // token.
+        let existing_raw_json = connection.unseal_raw_json()?;
+
+        let mut merged_raw_json = match existing_raw_json {
+            Some(serde_json::Value::Object(map)) => map,
+            _ => Err(anyhow!("Invalid `raw_json` stored on connection."))?,
+        };
+
+        // We checked above the presence of each of these fields in raw_json.
+        merged_raw_json["access_token"] = raw_json["access_token"].clone();
+        merged_raw_json["expires_in"] = raw_json["expires_in"].clone();
+        merged_raw_json["token_type"] = raw_json["token_type"].clone();
+        merged_raw_json["scope"] = raw_json["scope"].clone();
 
         Ok(RefreshResult {
             access_token: access_token.to_string(),
@@ -158,7 +179,7 @@ impl Provider for GoogleDriveConnectionProvider {
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
             refresh_token: Some(refresh_token.to_string()),
-            raw_json,
+            raw_json: serde_json::Value::Object(merged_raw_json),
         })
     }
 
