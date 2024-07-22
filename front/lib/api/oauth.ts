@@ -198,7 +198,7 @@ const PROVIDER_STRATEGIES: Record<
         "api:calls:read:transcript",
         "api:calls:read:extensive",
         "api:calls:read:basic",
-        "api:users:read"
+        "api:users:read",
       ];
       return (
         `https://app.gong.io/oauth2/authorize?` +

@@ -351,7 +351,6 @@ export default function LabsTranscriptsIndex({
 
         return;
       } else {
-
         if (owner.flags.includes("test_oauth_setup")) {
           const cRes = await setupOAuthConnection({
             dustClientFacingUrl,
