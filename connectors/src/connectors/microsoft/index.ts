@@ -36,7 +36,6 @@ import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -134,7 +133,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    return launchMicrosoftFullSyncWorkflow(this.connectorId);
   }
 
   async retrievePermissions({
@@ -303,7 +302,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const res = await launchMicrosoftFullSyncWorkflow(
       this.connectorId,
-      null,
       nodesToSync
     );
 
@@ -397,8 +395,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           pdfEnabled: configValue === "true",
         });
         const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId,
-          null
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -411,8 +408,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           largeFilesEnabled: configValue === "true",
         });
         const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId,
-          null
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -480,7 +476,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsUnpaused();
-    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId);
     if (r.isErr()) {
       return r;
     }
