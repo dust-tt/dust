@@ -47,7 +47,6 @@ import {
   IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -208,11 +207,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      const accessToken = await getAccessTokenFromNango({
-        connectionId: connector.connectionId,
-        integrationId: NANGO_INTERCOM_CONNECTOR_ID,
-        useCache: true,
-      });
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
 
       const resp = await fetch(`https://api.intercom.io/auth/uninstall`, {
         method: "POST",
