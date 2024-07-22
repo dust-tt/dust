@@ -284,9 +284,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       connectorId: connector.id,
     });
 
-    const newResourcesBlobs = Object.keys(permissions)
+    const newResourcesBlobs = Object.entries(permissions)
       .filter(([, permission]) => permission === "read")
-      .map((id) => ({
+      .map(([id]) => ({
         connectorId: connector.id,
         nodeType: typeAndPathFromInternalId(id).nodeType,
         internalId: id,
