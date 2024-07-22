@@ -93,6 +93,7 @@ pub enum ConnectionProvider {
     Intercom,
     Notion,
     Slack,
+    Gong,
 }
 
 impl fmt::Display for ConnectionProvider {

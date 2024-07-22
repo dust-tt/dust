@@ -91,6 +91,7 @@ pub mod oauth {
         pub mod intercom;
         pub mod notion;
         pub mod slack;
+        pub mod gong;
         pub mod utils;
     }
 }
