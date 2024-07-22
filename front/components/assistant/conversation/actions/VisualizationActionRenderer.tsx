@@ -35,6 +35,7 @@ export default function VisualizationActionRenderer({
   onRetry: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
+  const [tabManuallyChanged, setTabManuallyChanged] = useState(false);
 
   useEffect(() => {
     function listener(event: MessageEvent) {
@@ -65,10 +66,11 @@ export default function VisualizationActionRenderer({
   }, [action.generation, action.id, onRetry]);
 
   useEffect(() => {
-    if (activeTab === "code" && action.generation) {
+    if (activeTab === "code" && action.generation && !tabManuallyChanged) {
       setActiveTab("runtime");
+      setTabManuallyChanged(true);
     }
-  }, [action.generation, activeTab]);
+  }, [action.generation, activeTab, tabManuallyChanged]);
 
   const code = streamedCode || action.generation;
 
