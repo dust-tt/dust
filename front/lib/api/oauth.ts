@@ -192,13 +192,31 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(connection, "state");
     },
   },
+  gong: {
+    setupUri: (connection) => {
+      return (
+        `https://api.gong.io/v2/oauth/authorize?` +
+        `client_id=${config.getOAuthGongClientId()}` +
+        `&response_type=code` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("gong"))}`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+  },
   microsoft: {
     setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+      throw new Error("Microsoft OAuth is not implemented");
     },
     codeFromQuery: () => null,
     connectionIdFromQuery: () => null,
   },
+
 };
 
 export async function createConnectionAndGetSetupUrl(
