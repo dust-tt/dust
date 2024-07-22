@@ -311,6 +311,19 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
+    const res = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    const incrementalRes = await launchMicrosoftIncrementalSyncWorkflow(
+      this.connectorId
+    );
+    if (incrementalRes.isErr()) {
+      return incrementalRes;
+    }
+
     return new Ok(undefined);
   }
 
