@@ -385,7 +385,6 @@ export default function LabsTranscriptsIndex({
         }
       }
     } catch (error) {
-      console.error(error);
       sendNotification({
         type: "error",
         title: "Failed to connect Gong",
