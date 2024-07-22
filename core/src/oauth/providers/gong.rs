@@ -10,9 +10,8 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
-use serde_json::json;
 use std::env;
 
 lazy_static! {
@@ -43,7 +42,7 @@ impl Provider for GongConnectionProvider {
         let authorization = format!(
             "Basic
         {}",
-            STANDARD.encode(format!(
+            general_purpose::STANDARD.encode(format!(
                 "{}:{}",
                 *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET
             ))
@@ -51,6 +50,7 @@ impl Provider for GongConnectionProvider {
         let params = [
             ("grant_type", "authorization_code"),
             ("code", &code),
+            ("client_id", &*OAUTH_GONG_CLIENT_ID),
             ("redirect_uri", &redirect_uri),
         ];
 
@@ -104,7 +104,7 @@ impl Provider for GongConnectionProvider {
         let authorization = format!(
             "Basic
           {}",
-            STANDARD.encode(format!(
+            general_purpose::STANDARD.encode(format!(
                 "{}:{}",
                 *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET
             ))
