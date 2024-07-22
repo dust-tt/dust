@@ -35,7 +35,7 @@ const NANGO_CONNECTOR_IDS: Record<string, string> = {
   gong: NANGO_GONG_CONNECTOR_ID,
 };
 
-const CONNECTORS_WITH_REFRESH_TOKENS = ["confluence", "google_drive"];
+const CONNECTORS_WITH_REFRESH_TOKENS = ["confluence"];
 
 async function appendRollbackCommand(
   provider: OAuthProvider,
