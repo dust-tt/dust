@@ -2,7 +2,8 @@ use crate::oauth::{
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         google_drive::GoogleDriveConnectionProvider, intercom::IntercomConnectionProvider,
-        notion::NotionConnectionProvider, slack::SlackConnectionProvider,
+        microsoft::MicrosoftConnectionProvider, notion::NotionConnectionProvider,
+        slack::SlackConnectionProvider, utils::ProviderHttpRequestError,
     },
     store::OAuthStore,
 };
@@ -22,8 +23,6 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
-
-use super::providers::utils::ProviderHttpRequestError;
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -93,6 +92,7 @@ pub enum ConnectionProvider {
     Intercom,
     Notion,
     Slack,
+    Microsoft,
 }
 
 impl fmt::Display for ConnectionProvider {
@@ -177,6 +177,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
+        ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
     }
 }
 

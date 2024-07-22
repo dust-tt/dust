@@ -3,14 +3,12 @@ import type {
   ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
-  NangoConnectionId,
   Result,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
-import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
 import {
   getChannelAsContentNode,
   getDriveAsContentNode,
@@ -36,7 +34,7 @@ import {
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -509,17 +507,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 }
 
-export async function getClient(connectionId: NangoConnectionId) {
-  const nangoConnectionId = connectionId;
-
-  const msAccessToken = await getAccessTokenFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: microsoftConfig.getRequiredNangoMicrosoftConnectorId(),
-    useCache: false,
-  });
+export async function getClient(connectionId: string) {
+  const { access_token: accessToken } =
+    await getOAuthConnectionAccessTokenWithThrow({
+      logger,
+      provider: "microsoft",
+      connectionId,
+    });
 
   return Client.init({
-    authProvider: (done) => done(null, msAccessToken),
+    authProvider: (done) => done(null, accessToken),
   });
 }
 
