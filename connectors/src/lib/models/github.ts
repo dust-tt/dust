@@ -18,6 +18,7 @@ export class GithubConnectorState extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare installationId: string | null;
+  declare accountId: number | null;
   declare webhooksEnabledAt?: Date | null;
   declare codeSyncEnabled: boolean;
 
@@ -42,6 +43,10 @@ GithubConnectorState.init(
     },
     installationId: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    accountId: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
     webhooksEnabledAt: {

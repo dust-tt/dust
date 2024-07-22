@@ -4,6 +4,7 @@ import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type { GithubRepo } from "@connectors/connectors/github/lib/github_api";
 import {
+  getConnectedAccountId,
   getRepo,
   getReposPage,
   installationIdFromConnectionId,
@@ -41,11 +42,23 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Github: received connectionId is invalid"));
     }
 
+    let accountId: number;
+    try {
+      accountId = await getConnectedAccountId(connectionId);
+    } catch (err) {
+      logger.error({ error: err }, "Error creating github connector");
+
+      return new Err(
+        new Error(`Failed to get account id for Github installation`)
+      );
+    }
+
     try {
       const githubConfigurationBlob = {
         webhooksEnabledAt: new Date(),
         codeSyncEnabled: false,
         installationId,
+        accountId,
       };
 
       const connector = await ConnectorResource.makeNew(

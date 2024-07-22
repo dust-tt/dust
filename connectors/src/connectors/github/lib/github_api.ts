@@ -99,6 +99,30 @@ export async function installationIdFromConnectionId(
   ];
 }
 
+export async function getConnectedAccountId(
+  connectionId: string
+): Promise<number> {
+  const installationIdRaw = await installationIdFromConnectionId(connectionId);
+  if (!installationIdRaw) {
+    throw new Error("Failed to retrieve installation ID");
+  }
+  const installationId = parseInt(installationIdRaw);
+  if (isNaN(installationId)) {
+    throw new Error("Failed to parse installation ID");
+  }
+  const octokit = await getOctokit(connectionId);
+
+  const { data: installation } = await octokit.rest.apps.getInstallation({
+    installation_id: installationId,
+  });
+
+  if (!installation.account) {
+    throw new Error("Failed to retrieve installation account");
+  }
+
+  return installation.account.id;
+}
+
 export async function getReposPage(
   connectionId: string,
   page: number
