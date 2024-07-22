@@ -1,14 +1,14 @@
 import type {
   ModelId,
-  NangoConnectionId,
   NangoIntegrationId,
+  OAuthProvider,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import { google } from "googleapis";
-import type { OAuth2Client } from "googleapis-common";
 
+import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import config from "@app/lib/labs/config";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -16,24 +16,12 @@ import logger from "@app/logger/logger";
 
 const nango = new Nango({ secretKey: config.getNangoSecretKey() });
 
-// Google Auth
-export async function getGoogleAuthObject(
-  nangoIntegrationId: NangoIntegrationId,
-  nangoConnectionId: NangoConnectionId
-): Promise<OAuth2Client> {
-  const res = await nango.getConnection(nangoIntegrationId, nangoConnectionId);
-
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({
-    access_token: res.credentials.raw.access_token,
-    scope: res.credentials.raw.scope,
-    token_type: res.credentials.raw.token_type,
-    expiry_date: new Date(res.credentials.raw.expires_at).getTime(),
-  });
-
-  return oauth2Client;
+export function isDualUseOAuthConnectionId(connectionId: string): boolean {
+  // TODO(spolu): make sure this function is removed once fully migrated.
+  return connectionId.startsWith("con_");
 }
 
+// Google Auth
 export async function getTranscriptsGoogleAuth(
   auth: Authenticator,
   userId: ModelId
@@ -52,15 +40,54 @@ export async function getTranscriptsGoogleAuth(
     return;
   }
 
-  return getGoogleAuthObject(
-    config.getNangoConnectorIdForProvider("google_drive"),
-    transcriptsConfiguration.connectionId
-  );
+  const connectionId = transcriptsConfiguration.connectionId;
+  const provider: OAuthProvider = "google_drive";
+
+  const oauth2Client = new google.auth.OAuth2();
+
+  if (isDualUseOAuthConnectionId(connectionId)) {
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      provider,
+      connectionId,
+    });
+
+    if (tokRes.isErr()) {
+      logger.error(
+        { connectionId, error: tokRes.error, provider },
+        "Error retrieving access token"
+      );
+      throw new Error(`Error retrieving access token from ${provider}`);
+    }
+
+    oauth2Client.setCredentials({
+      access_token: tokRes.value.access_token,
+      scope: (tokRes.value.scrubbed_raw_json as { scope: string }).scope,
+      token_type: (tokRes.value.scrubbed_raw_json as { token_type: string })
+        .token_type,
+      expiry_date: tokRes.value.access_token_expiry,
+    });
+  } else {
+    const res = await nango.getConnection(
+      config.getNangoConnectorIdForProvider("google_drive"),
+      connectionId
+    );
+
+    oauth2Client.setCredentials({
+      access_token: res.credentials.raw.access_token,
+      scope: res.credentials.raw.scope,
+      token_type: res.credentials.raw.token_type,
+      expiry_date: new Date(res.credentials.raw.expires_at).getTime(),
+    });
+  }
+
+  return oauth2Client;
 }
 
 export async function getAccessTokenFromNango(
   nangoIntegrationId: NangoIntegrationId,
-  nangoConnectionId: NangoConnectionId
+  nangoConnectionId: string
 ): Promise<string> {
   const res = await nango.getConnection(nangoIntegrationId, nangoConnectionId);
 
