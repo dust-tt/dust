@@ -10,6 +10,7 @@ import config from "@app/lib/api/config";
 import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
 import {
   getMembers,
+  getWorkspaceInfos,
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator, subscriptionForWorkspaces } from "@app/lib/auth";
@@ -65,6 +66,10 @@ export async function shouldStillScrubData({
 }: {
   workspaceId: string;
 }): Promise<boolean> {
+  const workspace = await getWorkspaceInfos(workspaceId);
+  if (!workspace) {
+    return false;
+  }
   return !(
     await Authenticator.internalAdminForWorkspace(workspaceId)
   ).isUpgraded();

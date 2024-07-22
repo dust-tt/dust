@@ -118,6 +118,7 @@ async fn connections_finalize(
         {
             Err(e) => error_response(
                 match e.code {
+                    connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
                     connection::ConnectionErrorCode::ConnectionAlreadyFinalizedError => {
                         StatusCode::BAD_REQUEST
                     }
@@ -170,6 +171,7 @@ async fn connections_access_token(
         Ok(mut c) => match c.access_token(state.clone().store.clone()).await {
             Err(e) => error_response(
                 match e.code {
+                    connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
                     connection::ConnectionErrorCode::ConnectionNotFinalizedError => {
                         StatusCode::BAD_REQUEST
                     }

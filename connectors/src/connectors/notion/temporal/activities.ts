@@ -4,19 +4,13 @@ import type {
   NotionGarbageCollectionMode,
 } from "@dust-tt/types";
 import type { PageObjectProperties, ParsedNotionBlock } from "@dust-tt/types";
-import {
-  assertNever,
-  getNotionDatabaseTableId,
-  getOAuthConnectionAccessToken,
-  slugify,
-} from "@dust-tt/types";
+import { assertNever, getNotionDatabaseTableId, slugify } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
-import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import {
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
@@ -46,7 +40,6 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -70,16 +63,13 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models/notion";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
-import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const { getRequiredNangoNotionConnectorId } = notionConfig;
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -558,28 +548,12 @@ export async function saveStartSync(connectorId: ModelId) {
 export async function getNotionAccessToken(
   connectionId: string
 ): Promise<string> {
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
-      provider: "notion",
-      connectionId,
-    });
-    if (tokRes.isErr()) {
-      logger.error(
-        { connectionId, error: tokRes.error },
-        "Error retrieving Notion access token"
-      );
-      throw new Error("Error retrieving Notion access token");
-    }
-    return tokRes.value.access_token;
-  } else {
-    return getAccessTokenFromNango({
-      connectionId: connectionId,
-      integrationId: getRequiredNangoNotionConnectorId(),
-      useCache: true,
-    });
-  }
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "notion",
+    connectionId,
+  });
+  return token.access_token;
 }
 
 export async function shouldGarbageCollect({

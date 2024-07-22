@@ -1,4 +1,3 @@
-import { isNangoError } from "@dust-tt/types";
 import type { Context } from "@temporalio/activity";
 import type {
   ActivityExecuteInput,
@@ -11,7 +10,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
-import { DustConnectorWorkflowError, ExternalOauthTokenError } from "./error";
+import { DustConnectorWorkflowError, ExternalOAuthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
 import { cancelWorkflow, getConnectorId } from "./temporal";
 
@@ -114,26 +113,7 @@ export class ActivityInboundLogInterceptor
     } catch (err: unknown) {
       error = err;
 
-      if (
-        isNangoError(err) &&
-        [520, 522, 502, 500].includes(err.status) &&
-        err.config?.url?.includes("api.nango.dev")
-      ) {
-        this.logger.info(
-          {
-            raw_json_error: JSON.stringify(err, null, 2),
-          },
-          "Got 5xx Bad Response from external API"
-        );
-
-        error = new DustConnectorWorkflowError(
-          `Got ${err.status} Bad Response from Nango`,
-          "transient_nango_activity_error",
-          err
-        );
-      }
-
-      if (err instanceof ExternalOauthTokenError) {
+      if (err instanceof ExternalOAuthTokenError) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const { workflowId } = this.context.info.workflowExecution;
 

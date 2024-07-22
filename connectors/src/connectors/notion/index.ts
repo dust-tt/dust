@@ -12,7 +12,6 @@ import {
 } from "@dust-tt/types";
 import { v4 as uuidv4 } from "uuid";
 
-import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
 import {
   launchNotionSyncWorkflow,
@@ -25,46 +24,29 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models/notion";
-import {
-  getAccessTokenFromNango,
-  getConnectionFromNango,
-} from "@connectors/lib/nango_helpers";
-import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 import { BaseConnectorManager } from "../interface";
 import { getParents } from "./lib/parents";
 
-const { getRequiredNangoNotionConnectorId } = notionConfig;
-
 const logger = mainLogger.child({ provider: "notion" });
 
 async function workspaceIdFromConnectionId(connectionId: string) {
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
-      provider: "notion",
-      connectionId,
-    });
-    if (tokRes.isErr()) {
-      return new Err("Error retrieving access token");
-    }
-    return new Ok(
-      (tokRes.value.scrubbed_raw_json as { workspace_id?: string })
-        .workspace_id ?? null
-    );
-  } else {
-    const connectionRes = await getConnectionFromNango({
-      connectionId: connectionId,
-      integrationId: getRequiredNangoNotionConnectorId(),
-      refreshToken: false,
-    });
-    return new Ok(connectionRes?.credentials?.raw?.workspace_id || null);
+  const tokRes = await getOAuthConnectionAccessToken({
+    config: apiConfig.getOAuthAPIConfig(),
+    logger,
+    provider: "notion",
+    connectionId,
+  });
+  if (tokRes.isErr()) {
+    return tokRes;
   }
+  return new Ok(
+    (tokRes.value.scrubbed_raw_json as { workspace_id?: string })
+      .workspace_id ?? null
+  );
 }
 
 export class NotionConnectorManager extends BaseConnectorManager<null> {
@@ -73,32 +55,21 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     dataSourceConfig: DataSourceConfig;
-    connectionId: NangoConnectionId;
+    connectionId: string;
   }): Promise<Result<string, Error>> {
-    let notionAccessToken: string | null = null;
-
-    if (isDualUseOAuthConnectionId(connectionId)) {
-      const tokRes = await getOAuthConnectionAccessToken({
-        config: apiConfig.getOAuthAPIConfig(),
-        logger,
-        provider: "notion",
-        connectionId,
-      });
-      if (tokRes.isErr()) {
-        return new Err(
-          new Error("Error retrieving access token: " + tokRes.error.message)
-        );
-      }
-      notionAccessToken = tokRes.value.access_token;
-    } else {
-      notionAccessToken = (await getAccessTokenFromNango({
-        connectionId: connectionId,
-        integrationId: getRequiredNangoNotionConnectorId(),
-        useCache: false,
-      })) as string;
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      provider: "notion",
+      connectionId,
+    });
+    if (tokRes.isErr()) {
+      return new Err(
+        new Error("Error retrieving access token: " + tokRes.error.message)
+      );
     }
 
-    const isValidToken = await validateAccessToken(notionAccessToken);
+    const isValidToken = await validateAccessToken(tokRes.value.access_token);
     if (!isValidToken) {
       return new Err(new Error("Notion access token is invalid"));
     }
@@ -141,7 +112,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   async update({
     connectionId,
   }: {
-    connectionId?: NangoConnectionId | null;
+    connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
@@ -160,16 +131,39 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       ]);
 
       if (workspaceIdRes.isErr() || newWorkspaceIdRes.isErr()) {
+        if (workspaceIdRes.isErr()) {
+          logger.error(
+            {
+              oldConnectionId,
+              connectionId,
+              connectorId: c.id,
+              error: workspaceIdRes.error,
+            },
+            "Error retrieving workspace Id from old connection"
+          );
+        }
+        if (newWorkspaceIdRes.isErr()) {
+          logger.error(
+            {
+              oldConnectionId,
+              connectionId,
+              connectorId: c.id,
+              error: newWorkspaceIdRes.error,
+            },
+            "Error retrieving workspace Id from new connection"
+          );
+        }
         return new Err({
           type: "connector_update_error",
-          message: "Error retrieving old workspace id",
+          message:
+            "Error retrieving workspace Ids from connections while checking update validity",
         });
       }
 
       if (!workspaceIdRes.value || !newWorkspaceIdRes.value) {
         return new Err({
           type: "connector_update_error",
-          message: "Error retrieving nango connection info to update connector",
+          message: "Error retrieving connection info to update connector",
         });
       }
       if (workspaceIdRes.value !== newWorkspaceIdRes.value) {

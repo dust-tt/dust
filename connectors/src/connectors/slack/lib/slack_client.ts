@@ -1,5 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIHTTPError,
@@ -7,11 +6,11 @@ import type {
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
 
-import { apiConfig } from "@connectors/lib/api/config";
 import {
-  ExternalOauthTokenError,
+  ExternalOAuthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -94,7 +93,7 @@ export async function getSlackClient(
               platformError.data.error
             )
           ) {
-            throw new ExternalOauthTokenError();
+            throw new ExternalOAuthTokenError();
           }
         }
         throw e;
@@ -183,19 +182,11 @@ export async function getSlackConversationInfo(
 export async function getSlackAccessToken(
   connectionId: string
 ): Promise<string> {
-  const tokRes = await getOAuthConnectionAccessToken({
-    config: apiConfig.getOAuthAPIConfig(),
+  const token = await getOAuthConnectionAccessTokenWithThrow({
     logger,
     provider: "slack",
     connectionId,
   });
-  if (tokRes.isErr()) {
-    logger.error(
-      { connectionId, error: tokRes.error },
-      "Error retrieving Slack access token"
-    );
-    throw new Error("Error retrieving Slack access token");
-  }
 
-  return tokRes.value.access_token;
+  return token.access_token;
 }

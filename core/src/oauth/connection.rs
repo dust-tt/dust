@@ -2,8 +2,9 @@ use crate::oauth::{
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-        intercom::IntercomConnectionProvider, notion::NotionConnectionProvider,
-        slack::SlackConnectionProvider,
+        intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
+        notion::NotionConnectionProvider, slack::SlackConnectionProvider,
+        utils::ProviderHttpRequestError,
     },
     store::OAuthStore,
 };
@@ -24,14 +25,15 @@ use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
 
-use super::providers::utils::ProviderHttpRequestError;
-
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
 static REDIS_LOCK_TTL_SECONDS: u64 = 15;
 // To ensure we don't write without holding the lock providers must comply to this timeout when
 // operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
+// Buffer of time in ms before the expiry of an access token within which we will attempt to
+// refresh it.
+pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
 
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
@@ -90,11 +92,12 @@ impl std::error::Error for ConnectionError {}
 pub enum ConnectionProvider {
     Confluence,
     Github,
+    Gong,
     GoogleDrive,
     Intercom,
+    Microsoft,
     Notion,
     Slack,
-    Gong,
 }
 
 impl fmt::Display for ConnectionProvider {
@@ -144,8 +147,15 @@ pub trait Provider {
     // to prevent users from relying in the raw_json to access it.
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value>;
 
-    // Default implementation for handling errors.
     fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        self.default_handle_provider_request_error(error)
+    }
+
+    // Default implementation for handling errors.
+    fn default_handle_provider_request_error(
+        &self,
+        error: ProviderHttpRequestError,
+    ) -> ProviderError {
         match error {
             ProviderHttpRequestError::NetworkError(e) => ProviderError::UnknownError(e.to_string()),
             ProviderHttpRequestError::Timeout => ProviderError::TimeoutError,
@@ -168,11 +178,12 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
+        ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
+        ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
-        ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
     }
 }
 
@@ -182,7 +193,6 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
 pub enum ProviderError {
     #[error("Action not supported: {0}.")]
     ActionNotSupportedError(String),
-    // TODO(2024-07-19 flav) Implement InvalidToken.
     #[error("Timeout error.")]
     TimeoutError,
     #[error("Unknown error: {0}.")]
@@ -678,8 +688,8 @@ impl Connection {
 
         match self.access_token_expiry {
             Some(expiry) => {
-                if expiry > utils::now() {
-                    // Non-expired access_token.
+                if expiry - ACCESS_TOKEN_REFRESH_BUFFER_MILLIS > utils::now() {
+                    // Access token is not expired and not within the buffer to refresh.
                     Ok(Some(access_token))
                 } else {
                     // Access token expired.

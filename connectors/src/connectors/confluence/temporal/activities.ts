@@ -6,7 +6,6 @@ import {
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
-import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
   getActiveChildPageIds,
   pageHasReadRestrictions,
@@ -37,7 +36,7 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -49,19 +48,6 @@ const logger = mainLogger.child({
 
 const turndownService = new TurndownService();
 
-const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
-
-async function getConfluenceAccessToken(connectionId: string) {
-  const connection = await getConnectionFromNango({
-    connectionId: connectionId,
-    integrationId: getRequiredNangoConfluenceConnectorId(),
-    refreshToken: false,
-    useCache: true,
-  });
-
-  return connection.credentials.access_token;
-}
-
 async function fetchConfluenceConnector(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -69,6 +55,16 @@ async function fetchConfluenceConnector(connectorId: ModelId) {
   }
 
   return connector;
+}
+
+async function getConfluenceAccessTokenWithThrow(connectionId: string) {
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "confluence",
+    connectionId,
+  });
+
+  return token.access_token;
 }
 
 async function getConfluenceClient(config: {
@@ -97,7 +93,7 @@ async function getConfluenceClient(
     throw new Error("A valid connector or connectorId must be provided.");
   }
 
-  const accessToken = await getConfluenceAccessToken(
+  const accessToken = await getConfluenceAccessTokenWithThrow(
     effectiveConnector.connectionId
   );
 

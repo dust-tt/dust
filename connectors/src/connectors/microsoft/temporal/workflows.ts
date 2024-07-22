@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
-  executeChild,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -15,7 +14,7 @@ const { getSiteNodesToSync, syncFiles, markNodeAsSeen, populateDeltas } =
     startToCloseTimeout: "30 minutes",
   });
 
-const { syncDeltaForRoot: syncDeltaForNode } = proxyActivities<
+const { syncDeltaForRootNode: syncDeltaForNode } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "120 minutes",
@@ -30,38 +29,21 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
 
 export async function fullSyncWorkflow({
   connectorId,
-  startSyncTs = undefined,
-}: {
-  connectorId: ModelId;
-  startSyncTs?: number;
-}) {
-  if (startSyncTs === undefined) {
-    startSyncTs = new Date().getTime();
-  }
-
-  await executeChild(fullSyncSitesWorkflow, {
-    workflowId: microsoftFullSyncSitesWorkflowId(connectorId),
-    searchAttributes: {
-      connectorId: [connectorId],
-    },
-    args: [{ connectorId, startSyncTs }],
-    memo: workflowInfo().memo,
-  });
-}
-
-export async function fullSyncSitesWorkflow({
-  connectorId,
   startSyncTs,
-  nodeIdsToSync = undefined,
+  nodeIdsToSync,
   totalCount = 0,
 }: {
   connectorId: ModelId;
-  startSyncTs: number;
+  startSyncTs?: number;
   nodeIdsToSync?: string[];
   totalCount?: number;
 }) {
   if (nodeIdsToSync === undefined) {
     nodeIdsToSync = await getSiteNodesToSync(connectorId);
+  }
+
+  if (startSyncTs === undefined) {
+    startSyncTs = new Date().getTime();
   }
 
   await populateDeltas(connectorId, nodeIdsToSync);
@@ -95,7 +77,7 @@ export async function fullSyncSitesWorkflow({
     await markNodeAsSeen(connectorId, nodeId);
 
     if (workflowInfo().historyLength > 4000) {
-      await continueAsNew<typeof fullSyncSitesWorkflow>({
+      await continueAsNew<typeof fullSyncWorkflow>({
         connectorId,
         nodeIdsToSync: nodeIdsToSync,
         totalCount,
@@ -117,13 +99,15 @@ export async function incrementalSyncWorkflow({
   for (const nodeId of nodeIdsToSync) {
     await syncDeltaForNode({
       connectorId,
-      rootId: nodeId,
+      rootNodeId: nodeId,
       startSyncTs,
     });
   }
 
   await sleep("5 minutes");
-  await continueAsNew(incrementalSyncWorkflow);
+  await continueAsNew<typeof incrementalSyncWorkflow>({
+    connectorId,
+  });
 }
 
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {

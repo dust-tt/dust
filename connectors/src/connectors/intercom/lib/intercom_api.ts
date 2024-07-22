@@ -7,14 +7,14 @@ import type {
   IntercomTeamType,
 } from "@connectors/connectors/intercom/lib/types";
 import {
-  ExternalOauthTokenError,
+  ExternalOAuthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
 /**
  * Utility function to call the Intercom API.
- * It centralizes fetching the Access Token from Nango, calling the API and handling global errors.
+ * It centralizes calling the API and handling global errors.
  */
 async function queryIntercomAPI({
   accessToken,
@@ -69,7 +69,7 @@ async function queryIntercomAPI({
         const error = response.errors[0];
         // This error is thrown when we are dealing with a revoked OAuth token.
         if (error.code === "unauthorized") {
-          throw new ExternalOauthTokenError();
+          throw new ExternalOAuthTokenError();
         }
         // We return null for 404 errors.
         if (error.code === "not_found") {
