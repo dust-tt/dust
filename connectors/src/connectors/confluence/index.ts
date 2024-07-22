@@ -57,9 +57,8 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, Error>> {
-    const nangoConnectionId = connectionId;
     const confluenceAccessTokenRes =
-      await getConfluenceAccessToken(nangoConnectionId);
+      await getConfluenceAccessToken(connectionId);
     if (confluenceAccessTokenRes.isErr()) {
       return new Err(confluenceAccessTokenRes.error);
     }
@@ -88,7 +87,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       const connector = await ConnectorResource.makeNew(
         "confluence",
         {
-          connectionId: nangoConnectionId,
+          connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,

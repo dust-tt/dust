@@ -14,7 +14,7 @@ import logger from "@connectors/logger/logger";
 
 /**
  * Utility function to call the Intercom API.
- * It centralizes fetching the Access Token from Nango, calling the API and handling global errors.
+ * It centralizes calling the API and handling global errors.
  */
 async function queryIntercomAPI({
   accessToken,

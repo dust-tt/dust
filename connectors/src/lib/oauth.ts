@@ -5,14 +5,6 @@ import type { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
-// This function is used to discreminate between a new OAuth connection and an old Nango/Github
-// connection. It is used to support dual-use while migrating and should be unused by a connector
-// once fully migrated
-export function isDualUseOAuthConnectionId(connectionId: string): boolean {
-  // TODO(spolu): make sure this function is removed once fully migrated.
-  return connectionId.startsWith("con_");
-}
-
 // Most connectors are built on the assumption that errors are thrown with special handling of
 // selected errors such as ExternalOauthTokenError. This function is used to retrieve an OAuth
 // connection access token and throw an ExternalOauthTokenError if the token is revoked.
