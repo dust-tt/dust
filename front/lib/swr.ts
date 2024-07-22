@@ -18,6 +18,7 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { COMMIT_HASH } from "@app/lib/commit-hash";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
@@ -51,8 +52,6 @@ import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
-
-import { COMMIT_HASH } from "./commit-hash";
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
