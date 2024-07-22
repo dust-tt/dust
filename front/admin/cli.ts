@@ -21,10 +21,15 @@ import {
   internalSubscribeWorkspaceToFreeNoPlan,
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
+import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import {
+  launchRetrieveTranscriptsWorkflow,
+  stopRetrieveTranscriptsWorkflow,
+} from "@app/temporal/labs/client";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -489,6 +494,57 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "stop": {
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+      const transcriptsConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchByModelId(args.cId);
+
+      if (!transcriptsConfiguration) {
+        throw new Error(
+          `Transcripts configuration not found: cId='${args.cId}'`
+        );
+      }
+
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
+      logger.info(
+        {
+          transcriptsConfiguration,
+        },
+        "Transcript retrieval workflow stopped."
+      );
+
+      return;
+    }
+    case "start": {
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+      const transcriptsConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchByModelId(args.cId);
+
+      if (!transcriptsConfiguration) {
+        throw new Error(
+          `Transcripts configuration not found: cId='${args.cId}'`
+        );
+      }
+
+      await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
+      logger.info(
+        {
+          transcriptsConfiguration,
+        },
+        "Transcript retrieval workflow started."
+      );
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -516,9 +572,11 @@ const main = async () => {
       return;
     case "conversation":
       return conversation(command, argv);
+    case "transcripts":
+      return transcripts(command, argv);
     default:
       console.log(
-        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`"
+        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`, `transcripts`"
       );
       return;
   }
