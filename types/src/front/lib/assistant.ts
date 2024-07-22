@@ -79,6 +79,7 @@ export function getLargeWhitelistedModel(
 
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
+export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
@@ -99,6 +100,7 @@ export const MODEL_IDS = [
   GPT_4_TURBO_MODEL_ID,
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
+  GPT_4O_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
@@ -183,6 +185,20 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
+  isLegacy: false,
+  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  supportsVision: true,
+};
+export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_4O_MINI_MODEL_ID,
+  displayName: "GPT 4o mini",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description: "OpenAI's GPT 4o mini model (128k context).",
+  shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
@@ -404,6 +420,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
+  GPT_4O_MINI_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
