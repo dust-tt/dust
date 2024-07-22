@@ -90,12 +90,13 @@ impl FileStorageDocument {
         let serialized_document = serde_json::to_vec(&file_storage_document)?;
 
         let now = utils::now();
-        let _ = try_join!(Object::create(
+        let _ = Object::create(
             &bucket,
             serialized_document,
             &document_file_path,
             "application/json",
-        ),)?;
+        )
+        .await?;
 
         info!(
             data_source_internal_id = data_source_internal_id,
