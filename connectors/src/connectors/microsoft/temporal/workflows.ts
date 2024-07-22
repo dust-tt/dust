@@ -14,6 +14,10 @@ const { getSiteNodesToSync, syncFiles, markNodeAsSeen, populateDeltas } =
     startToCloseTimeout: "30 minutes",
   });
 
+const { microsoftDeletionActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
+
 const { syncDeltaForRootNode: syncDeltaForNode } = proxyActivities<
   typeof activities
 >({
@@ -110,6 +114,16 @@ export async function incrementalSyncWorkflow({
   });
 }
 
+export async function microsoftDeletionWorkflow({
+  connectorId,
+  nodeIdsToDelete,
+}: {
+  connectorId: number;
+  nodeIdsToDelete: string[];
+}) {
+  await microsoftDeletionActivity({ connectorId, nodeIdsToDelete });
+}
+
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-${connectorId}`;
 }
@@ -120,4 +134,23 @@ export function microsoftFullSyncSitesWorkflowId(connectorId: ModelId) {
 
 export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-incrementalSync-${connectorId}`;
+}
+
+export function microsoftDeletionWorkflowId(
+  connectorId: ModelId,
+  nodeIdsToDelete: string[]
+) {
+  // Simple, deterministic hashing function
+  function simpleHash(input: string): string {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      const char = input.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16).slice(0, 8).padStart(8, "0");
+  }
+  const sortedNodeIds = nodeIdsToDelete.sort().join(",");
+  const hash = simpleHash(sortedNodeIds);
+  return `microsoft-deletion-${connectorId}-${hash}`;
 }
