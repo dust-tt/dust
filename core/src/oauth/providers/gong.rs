@@ -19,6 +19,11 @@ lazy_static! {
     static ref OAUTH_GONG_CLIENT_SECRET: String = env::var("OAUTH_GONG_CLIENT_SECRET").unwrap();
 }
 
+pub fn create_gong_basic_auth_token() -> String {
+    let credentials = format!("{}:{}", *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET);
+    format!("Basic {}", general_purpose::STANDARD.encode(credentials))
+}
+
 pub struct GongConnectionProvider {}
 
 impl GongConnectionProvider {
@@ -39,13 +44,8 @@ impl Provider for GongConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let authorization = format!(
-            "Basic {}",
-            general_purpose::STANDARD.encode(format!(
-                "{}:{}",
-                *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET
-            ))
-        );
+        let authorization = create_gong_basic_auth_token();
+
         let params = [
             ("grant_type", "authorization_code"),
             ("code", &code),
@@ -100,14 +100,7 @@ impl Provider for GongConnectionProvider {
             Err(e) => Err(e)?,
         };
 
-        let authorization = format!(
-            "Basic
-          {}",
-            general_purpose::STANDARD.encode(format!(
-                "{}:{}",
-                *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET
-            ))
-        );
+        let authorization = create_gong_basic_auth_token();
 
         let params = [
             ("grant_type", "authorization_code"),
