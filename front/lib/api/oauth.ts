@@ -194,9 +194,16 @@ const PROVIDER_STRATEGIES: Record<
   },
   gong: {
     setupUri: (connection) => {
+      const scopes = [
+        "api:calls:read:transcript",
+        "api:calls:read:extensive",
+        "api:calls:read:basic",
+        "api:users:read"
+      ];
       return (
-        `https://api.gong.io/v2/oauth/authorize?` +
+        `https://app.gong.io/oauth2/authorize?` +
         `client_id=${config.getOAuthGongClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&response_type=code` +
         `&state=${connection.connection_id}` +
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("gong"))}`

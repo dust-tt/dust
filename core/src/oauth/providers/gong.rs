@@ -50,7 +50,7 @@ impl Provider for GongConnectionProvider {
       });
 
       let req = reqwest::Client::new()
-          .post("https://app.gong.io/oauth2/token")
+          .post("https://app.gong.io/oauth2/generate-customer-token")
           .header("Content-Type", "application/json")
           .json(&body);
 
@@ -113,7 +113,7 @@ impl Provider for GongConnectionProvider {
       });
 
       let req = reqwest::Client::new()
-          .post("https://app.gong.io/oauth2/token")
+          .post("https://app.gong.io/oauth2/generate-customer-token")
           .header("Content-Type", "application/json")
           .json(&body);
 
