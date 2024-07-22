@@ -7,8 +7,8 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
+  getConfluenceAccessToken,
   getConfluenceCloudInformation,
   getConfluenceUserAccountId,
   listConfluenceSpaces,
@@ -41,15 +41,9 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import {
-  getAccessTokenFromNango,
-  getConnectionFromNango,
-} from "@connectors/lib/nango_helpers";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 
 const logger = mainLogger.child({
   connector: "confluence",
@@ -64,11 +58,13 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     connectionId: string;
   }): Promise<Result<string, Error>> {
     const nangoConnectionId = connectionId;
-    const confluenceAccessToken = await getAccessTokenFromNango({
-      connectionId: nangoConnectionId,
-      integrationId: getRequiredNangoConfluenceConnectorId(),
-      useCache: false,
-    });
+    const confluenceAccessTokenRes =
+      await getConfluenceAccessToken(nangoConnectionId);
+    if (confluenceAccessTokenRes.isErr()) {
+      return new Err(confluenceAccessTokenRes.error);
+    }
+
+    const confluenceAccessToken = confluenceAccessTokenRes.value;
 
     const confluenceCloudInformation = await getConfluenceCloudInformation(
       confluenceAccessToken
@@ -139,15 +135,17 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         },
       });
 
-      const newConnection = await getConnectionFromNango({
-        connectionId,
-        integrationId: getRequiredNangoConfluenceConnectorId(),
-        refreshToken: false,
-      });
+      const confluenceAccessTokenRes =
+        await getConfluenceAccessToken(connectionId);
+      if (confluenceAccessTokenRes.isErr()) {
+        return new Err({
+          type: "connector_oauth_error",
+          message: confluenceAccessTokenRes.error.message,
+        });
+      }
 
-      const confluenceAccessToken = newConnection?.credentials?.access_token;
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
-        confluenceAccessToken
+        confluenceAccessTokenRes.value
       );
 
       // Change connection only if "cloudId" matches.
@@ -299,12 +297,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     } else {
       // If the permission is not set to 'read', users are limited to selecting only
       // spaces for synchronization with Dust.
-      const allSpaces = await retrieveAvailableSpaces(
+      const allSpacesRes = await retrieveAvailableSpaces(
         connector,
         confluenceConfig
       );
 
-      return new Ok(allSpaces);
+      return allSpacesRes;
     }
   }
 
@@ -326,7 +324,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       (permission) => permission === "read"
     );
     if (shouldFetchConfluenceSpaces) {
-      spaces = await listConfluenceSpaces(connector);
+      const spacesRes = await listConfluenceSpaces(connector);
+      if (spacesRes.isErr()) {
+        return spacesRes;
+      }
+
+      spaces = spacesRes.value;
     }
 
     const addedSpaceIds = [];
