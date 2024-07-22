@@ -47,8 +47,6 @@ export function withLogging<T>(
       }
     }
 
-    console.log(">> req.query", req.query);
-
     // Extract commit hash from headers or query params.
     const commitHash = req.headers["x-commit-hash"] ?? req.query.commitHash;
 

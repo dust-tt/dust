@@ -42,7 +42,7 @@ const stableEventSourceManager = {
     const urlWithCommitHash = new URL(url, document.baseURI);
     urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
 
-    // Extract everything except the origin
+    // Extract everything except the origin.
     const pathWithQueryAndHash =
       urlWithCommitHash.pathname +
       urlWithCommitHash.search +
