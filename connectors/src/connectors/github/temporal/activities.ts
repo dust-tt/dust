@@ -28,7 +28,7 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -961,7 +961,7 @@ export async function githubCodeSyncActivity({
   Context.current().heartbeat();
 
   if (repoRes.isErr()) {
-    if (repoRes.error instanceof ExternalOauthTokenError) {
+    if (repoRes.error instanceof ExternalOAuthTokenError) {
       localLogger.info(
         { err: repoRes.error },
         "Missing Github repository tarball: Garbage collecting repo."

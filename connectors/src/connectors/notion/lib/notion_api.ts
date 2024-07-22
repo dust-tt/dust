@@ -33,7 +33,7 @@ import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
 
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
 
 const logger = mainLogger.child({ provider: "notion" });
@@ -54,7 +54,7 @@ async function wrapNotionAPITokenErrors<T>(
   } catch (err) {
     if (isNotionClientError(err)) {
       if (err.code === "unauthorized") {
-        throw new ExternalOauthTokenError(err);
+        throw new ExternalOAuthTokenError(err);
       }
     }
 

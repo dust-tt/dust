@@ -3,7 +3,7 @@ import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import type { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 
 // This function is used to discreminate between a new OAuth connection and an old Nango/Github
 // connection. It is used to support dual-use while migrating and should be unused by a connector
@@ -44,7 +44,7 @@ export async function getOAuthConnectionAccessTokenWithThrow({
     );
 
     if (tokRes.error.code === "token_revoked_error") {
-      throw new ExternalOauthTokenError();
+      throw new ExternalOAuthTokenError();
     } else {
       throw new Error(`Error retrieving access token from ${provider}`);
     }

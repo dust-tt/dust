@@ -20,7 +20,7 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { ExternalOauthTokenError, NangoError } from "@connectors/lib/error";
+import { ExternalOAuthTokenError, NangoError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -376,7 +376,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
       return new Ok(resources);
     } catch (e) {
-      if (e instanceof ExternalOauthTokenError) {
+      if (e instanceof ExternalOAuthTokenError) {
         logger.error({ connectorId: this.connectorId }, "Slack token invalid");
         return new Err(
           new Error("Slack token invalid. Please re-authorize Slack.")
@@ -746,7 +746,7 @@ export async function uninstallSlack(connectionId: string) {
         "Unknown nango connection, skipping uninstallation of the Slack app"
       );
       return new Ok(undefined);
-    } else if (e instanceof ExternalOauthTokenError) {
+    } else if (e instanceof ExternalOAuthTokenError) {
       logger.info(
         {
           connectionId: connectionId,

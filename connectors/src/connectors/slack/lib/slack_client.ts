@@ -7,7 +7,7 @@ import type {
 import { ErrorCode, WebClient } from "@slack/web-api";
 
 import {
-  ExternalOauthTokenError,
+  ExternalOAuthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
@@ -93,7 +93,7 @@ export async function getSlackClient(
               platformError.data.error
             )
           ) {
-            throw new ExternalOauthTokenError();
+            throw new ExternalOAuthTokenError();
           }
         }
         throw e;
