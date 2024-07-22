@@ -40,23 +40,8 @@ export async function getOAuthConnectionAccessToken({
   const cached = CACHE.get(connectionId);
 
   if (cached && cached.local_expiry > Date.now()) {
-    logger.info(
-      {
-        provider,
-        connectionId,
-      },
-      "Access token cache hit"
-    );
     return new Ok(cached);
   }
-  logger.info(
-    {
-      cached: !!cached,
-      provider,
-      connectionId,
-    },
-    "Access token cache miss"
-  );
 
   const res = await new OAuthAPI(config, logger).getAccessToken({
     provider,
