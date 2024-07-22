@@ -117,7 +117,7 @@ export class OAuthAPI {
     OAuthAPIResponse<{
       connection: OAuthConnectionType;
       access_token: string;
-      access_token_expiry: number;
+      access_token_expiry: number | null;
       scrubbed_raw_json: unknown;
     }>
   > {
