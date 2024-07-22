@@ -35,6 +35,8 @@ const NANGO_CONNECTOR_IDS: Record<string, string> = {
   gong: NANGO_GONG_CONNECTOR_ID,
 };
 
+const CONNECTORS_WITH_REFRESH_TOKENS = ["confluence", "google_drive"];
+
 async function appendRollbackCommand(
   provider: OAuthProvider,
   connectorId: ModelId,
@@ -96,18 +98,22 @@ async function migrateConnectionId(
     raw_json: connection.credentials.raw,
   };
 
-  // Below is to be tested with a provider that has refresh tokens
+  // If provider supports refresh tokens, migrate them.
+  if (CONNECTORS_WITH_REFRESH_TOKENS.includes(provider)) {
+    if (connection.credentials.expires_at) {
+      console.log(
+        "connection.credentials.expires_at:",
+        connection.credentials.expires_at
+      );
 
-  // if (connection.credentials.expires_at) {
-  //   migratedCredentials.access_token_expiry = Date.parse(
-  //     connection.credentials.expires_at
-  //   );
-  // }
-  // if (connection.credentials.refresh_token) {
-  //   migratedCredentials.refresh_token = connection.credentials.refresh_token;
-  // }
-
-  // End has to be tested
+      migratedCredentials.access_token_expiry = Date.parse(
+        connection.credentials.expires_at
+      );
+    }
+    if (connection.credentials.refresh_token) {
+      migratedCredentials.refresh_token = connection.credentials.refresh_token;
+    }
+  }
 
   console.log(
     ">>>>>>>>>>>>>>>>>>>>>>>>>>> BEG MIGRATED_CREDENTIALS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
