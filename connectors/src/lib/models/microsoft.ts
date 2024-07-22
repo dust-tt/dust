@@ -193,7 +193,7 @@ MicrosoftNodeModel.init(
     },
     deltaLink: {
       type: DataTypes.STRING(1024),
-      allowNull: false,
+      allowNull: true,
     },
   },
   {
