@@ -58,8 +58,13 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     connectionId: string;
   }): Promise<Result<string, Error>> {
     const nangoConnectionId = connectionId;
-    const confluenceAccessToken =
+    const confluenceAccessTokenRes =
       await getConfluenceAccessToken(nangoConnectionId);
+    if (confluenceAccessTokenRes.isErr()) {
+      return new Err(confluenceAccessTokenRes.error);
+    }
+
+    const confluenceAccessToken = confluenceAccessTokenRes.value;
 
     const confluenceCloudInformation = await getConfluenceCloudInformation(
       confluenceAccessToken
@@ -130,10 +135,17 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         },
       });
 
-      const confluenceAccessToken =
+      const confluenceAccessTokenRes =
         await getConfluenceAccessToken(connectionId);
+      if (confluenceAccessTokenRes.isErr()) {
+        return new Err({
+          type: "connector_oauth_error",
+          message: confluenceAccessTokenRes.error.message,
+        });
+      }
+
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
-        confluenceAccessToken
+        confluenceAccessTokenRes.value
       );
 
       // Change connection only if "cloudId" matches.
@@ -285,12 +297,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     } else {
       // If the permission is not set to 'read', users are limited to selecting only
       // spaces for synchronization with Dust.
-      const allSpaces = await retrieveAvailableSpaces(
+      const allSpacesRes = await retrieveAvailableSpaces(
         connector,
         confluenceConfig
       );
 
-      return new Ok(allSpaces);
+      return allSpacesRes;
     }
   }
 
@@ -312,7 +324,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       (permission) => permission === "read"
     );
     if (shouldFetchConfluenceSpaces) {
-      spaces = await listConfluenceSpaces(connector);
+      const spacesRes = await listConfluenceSpaces(connector);
+      if (spacesRes.isErr()) {
+        return spacesRes;
+      }
+
+      spaces = spacesRes.value;
     }
 
     const addedSpaceIds = [];

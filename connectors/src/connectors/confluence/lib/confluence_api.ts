@@ -1,5 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
-import { getOAuthConnectionAccessToken } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 
 import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
@@ -23,7 +23,9 @@ export async function getConfluenceCloudInformation(accessToken: string) {
   }
 }
 
-export async function getConfluenceAccessToken(connectionId: string) {
+export async function getConfluenceAccessToken(
+  connectionId: string
+): Promise<Result<string, Error>> {
   if (isDualUseOAuthConnectionId(connectionId)) {
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
@@ -36,10 +38,11 @@ export async function getConfluenceAccessToken(connectionId: string) {
         { connectionId, error: tokRes.error },
         "Error retrieving Confluence access token"
       );
-      throw new Error("Error retrieving Confluence access token");
+
+      return new Err(new Error(tokRes.error.message));
     }
 
-    return tokRes.value.access_token;
+    return new Ok(tokRes.value.access_token);
   } else {
     const connection = await getConnectionFromNango({
       connectionId: connectionId,
@@ -48,7 +51,7 @@ export async function getConfluenceAccessToken(connectionId: string) {
       useCache: true,
     });
 
-    return connection.credentials.access_token;
+    return new Ok(connection.credentials.access_token);
   }
 }
 
@@ -73,14 +76,17 @@ async function fetchConfluenceConfiguration(connectorId: ModelId) {
 export async function listConfluenceSpaces(
   connector: ConnectorResource,
   confluenceConfig?: ConfluenceConfiguration
-) {
+): Promise<Result<ConfluenceSpaceType[], Error>> {
   const { id: connectorId, connectionId } = connector;
 
   const config =
     confluenceConfig ?? (await fetchConfluenceConfiguration(connectorId));
-  const confluenceAccessToken = await getConfluenceAccessToken(connectionId);
+  const confluenceAccessTokenRes = await getConfluenceAccessToken(connectionId);
+  if (confluenceAccessTokenRes.isErr()) {
+    return confluenceAccessTokenRes;
+  }
 
-  const client = new ConfluenceClient(confluenceAccessToken, {
+  const client = new ConfluenceClient(confluenceAccessTokenRes.value, {
     cloudId: config?.cloudId,
   });
 
@@ -95,7 +101,7 @@ export async function listConfluenceSpaces(
     nextPageCursor = nextCursor;
   } while (nextPageCursor);
 
-  return [...allSpaces.values()];
+  return new Ok([...allSpaces.values()]);
 }
 
 export async function pageHasReadRestrictions(
