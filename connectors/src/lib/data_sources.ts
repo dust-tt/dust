@@ -27,7 +27,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const axiosWithTimeout = axios.create({
-  timeout: 120000,
+  timeout: 60000,
   // Ensure client timeout is lower than the target server timeout.
   // See --keepAliveTimeout in next start command from front.
   httpAgent: new http.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
@@ -42,6 +42,8 @@ if (!DUST_FRONT_API) {
 // We limit the document size we support. Beyond a certain size, upsert is simply too slow (>300s)
 // and large files are generally less useful anyway.
 export const MAX_DOCUMENT_TXT_LEN = 750000;
+// For some data sources we allow small documents only to be processed.
+export const MAX_SMALL_DOCUMENT_TXT_LEN = 500000;
 // For some data sources we allow large documents (5mb) to be processed (behind flag).
 export const MAX_LARGE_DOCUMENT_TXT_LEN = 5000000;
 
