@@ -1,4 +1,3 @@
-import { isNangoError } from "@dust-tt/types";
 import type { Context } from "@temporalio/activity";
 import type {
   ActivityExecuteInput,
@@ -91,23 +90,6 @@ export class ActivityInboundLogInterceptor
       error = err;
 
       // Global error handling code goes here.
-      if (
-        isNangoError(err) &&
-        [520, 522, 502, 500].includes(err.status) &&
-        err.config?.url?.includes("api.nango.dev")
-      ) {
-        this.logger.info(
-          {
-            raw_json_error: JSON.stringify(err, null, 2),
-          },
-          "Got 5xx Bad Response from external API"
-        );
-        error = {
-          __is_dust_error: true,
-          message: `Got ${err.status} Bad Response from Nango`,
-          type: "nango_5xx_bad_response",
-        };
-      }
 
       throw err;
     } finally {

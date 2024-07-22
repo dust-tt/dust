@@ -25,24 +25,6 @@ export function isConnectorError(val: string): val is ConnectorErrorType {
   return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
 }
 
-export const CONNECTOR_PROVIDERS_USING_NANGO = [
-  "confluence",
-  "google_drive",
-  "microsoft",
-  "intercom",
-  "notion",
-  "slack",
-] as const;
-type ConnectorProviderUsingNango =
-  (typeof CONNECTOR_PROVIDERS_USING_NANGO)[number];
-
-export function connectorIsUsingNango(
-  provider: string
-): provider is ConnectorProviderUsingNango {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return CONNECTOR_PROVIDERS_USING_NANGO.includes(provider as any);
-}
-
 export type ConnectorType = {
   id: string;
   type: ConnectorProvider;
