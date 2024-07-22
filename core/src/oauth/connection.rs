@@ -30,6 +30,9 @@ static REDIS_LOCK_TTL_SECONDS: u64 = 15;
 // To ensure we don't write without holding the lock providers must comply to this timeout when
 // operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
+// Buffer of time in seconds before the expiry of an access token within which we will attempt to
+// refresh it.
+pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
 
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
@@ -683,8 +686,8 @@ impl Connection {
 
         match self.access_token_expiry {
             Some(expiry) => {
-                if expiry > utils::now() {
-                    // Non-expired access_token.
+                if expiry - ACCESS_TOKEN_REFRESH_BUFFER_MILLIS > utils::now() {
+                    // Access token is not expired and not within the buffer to refresh.
                     Ok(Some(access_token))
                 } else {
                     // Access token expired.
