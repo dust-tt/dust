@@ -106,6 +106,10 @@ const config = {
   getOAuthIntercomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_INTERCOM_CLIENT_ID");
   },
+  // Text extraction.
+  getTextExtractionUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
+  },
 };
 
 export default config;
