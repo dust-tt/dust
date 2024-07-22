@@ -27,8 +27,9 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const axiosWithTimeout = axios.create({
-  timeout: 60000,
+  timeout: 120000,
   // Ensure client timeout is lower than the target server timeout.
+  // See --keepAliveTimeout in next start command from front.
   httpAgent: new http.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
   httpsAgent: new https.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
 });
