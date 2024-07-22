@@ -1,7 +1,7 @@
 use crate::{
     oauth::{
         connection::{
-            Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult,
+            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
             PROVIDER_TIMEOUT_SECONDS,
         },
         providers::utils::execute_request,
@@ -40,7 +40,7 @@ impl Provider for GoogleDriveConnectionProvider {
         _connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult> {
+    ) -> Result<FinalizeResult, ProviderError> {
         let body = json!({
             "grant_type": "authorization_code",
             "client_id": *OAUTH_GOOGLE_DRIVE_CLIENT_ID,
@@ -54,7 +54,9 @@ impl Provider for GoogleDriveConnectionProvider {
             .header("Content-Type", "application/json")
             .json(&body);
 
-        let raw_json = execute_request(ConnectionProvider::GoogleDrive, req).await?;
+        let raw_json = execute_request(ConnectionProvider::GoogleDrive, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
@@ -97,7 +99,7 @@ impl Provider for GoogleDriveConnectionProvider {
     // Google Drive does not automatically expire refresh tokens for published apps,
     // unless they have been unused for six months.
     // Acess tokens expire after 1 hour.
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult> {
+    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
             Ok(None) => Err(anyhow!(
@@ -118,7 +120,9 @@ impl Provider for GoogleDriveConnectionProvider {
             .header("Content-Type", "application/json")
             .json(&body);
 
-        let raw_json = execute_request(ConnectionProvider::GoogleDrive, req).await?;
+        let raw_json = execute_request(ConnectionProvider::GoogleDrive, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,

@@ -23,6 +23,8 @@ use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
 
+use super::providers::utils::ProviderHttpRequestError;
+
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
 static REDIS_LOCK_TTL_SECONDS: u64 = 15;
@@ -39,6 +41,8 @@ lazy_static! {
         aead::LessSafeKey::new(unbound_key)
     };
 }
+
+// API Error types.
 
 // Define the ErrorKind enum with serde attributes for serialization
 #[derive(Debug, Serialize, Deserialize)]
@@ -128,14 +132,33 @@ pub trait Provider {
         connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult>;
+    ) -> Result<FinalizeResult, ProviderError>;
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult>;
+    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError>;
 
     // This method scrubs raw_json to remove information that should not exfill `oauth`, in
     // particular the `refresh_token`. By convetion the `access_token` should be scrubbed as well
     // to prevent users from relying in the raw_json to access it.
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value>;
+
+    // Default implementation for handling errors.
+    fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        match error {
+            ProviderHttpRequestError::NetworkError(e) => ProviderError::UnknownError(e.to_string()),
+            ProviderHttpRequestError::Timeout => ProviderError::TimeoutError,
+            ProviderHttpRequestError::RequestFailed {
+                provider,
+                status,
+                message: _,
+            } => ProviderError::UnknownError(format!(
+                "Request failed for provider {}. Status: {}.",
+                provider, status
+            )),
+            ProviderHttpRequestError::InvalidResponse(e) => {
+                ProviderError::UnknownError(e.to_string())
+            }
+        }
+    }
 }
 
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
@@ -146,6 +169,44 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
+    }
+}
+
+// Internal Error types.
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProviderError {
+    #[error("Action not supported: {0}.")]
+    ActionNotSupportedError(String),
+    // TODO(2024-07-19 flav) Implement InvalidToken.
+    #[error("Timeout error.")]
+    TimeoutError,
+    #[error("Unknown error: {0}.")]
+    UnknownError(String),
+    #[error("Internal error: {0}.")]
+    InternalError(anyhow::Error),
+}
+
+impl From<anyhow::Error> for ProviderError {
+    fn from(error: anyhow::Error) -> Self {
+        ProviderError::InternalError(error)
+    }
+}
+
+impl From<&ProviderError> for ConnectionError {
+    fn from(err: &ProviderError) -> Self {
+        match err {
+            ProviderError::ActionNotSupportedError(_)
+            | ProviderError::TimeoutError
+            | ProviderError::UnknownError(_) => ConnectionError {
+                code: ConnectionErrorCode::ProviderFinalizationError,
+                message: err.to_string(),
+            },
+            ProviderError::InternalError(_) => ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Failed to finalize connection with provider".to_string(),
+            },
+        }
     }
 }
 
@@ -558,10 +619,15 @@ impl Connection {
                     provider = ?self.provider,
                     "Failed to finalize connection",
                 );
-                Err(ConnectionError {
-                    code: ConnectionErrorCode::ProviderFinalizationError,
-                    message: "Failed to finalize connection with provider".to_string(),
-                })
+
+                if let Some(provider_error) = e.downcast_ref::<ProviderError>() {
+                    Err(ConnectionError::from(provider_error))
+                } else {
+                    Err(ConnectionError {
+                        code: ConnectionErrorCode::InternalError,
+                        message: "Failed to finalize connection with provider".to_string(),
+                    })
+                }
             }
         }
     }

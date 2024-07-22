@@ -1,5 +1,7 @@
 use crate::oauth::{
-    connection::{Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult},
+    connection::{
+        Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+    },
     providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
@@ -33,7 +35,7 @@ impl Provider for IntercomConnectionProvider {
         _connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult> {
+    ) -> Result<FinalizeResult, ProviderError> {
         let body = json!({
             "grant_type": "authorization_code",
             "client_id": *OAUTH_INTERCOM_CLIENT_ID,
@@ -47,7 +49,9 @@ impl Provider for IntercomConnectionProvider {
             .header("Content-Type", "application/json")
             .json(&body);
 
-        let raw_json = execute_request(ConnectionProvider::Intercom, req).await?;
+        let raw_json = execute_request(ConnectionProvider::Intercom, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
@@ -64,8 +68,10 @@ impl Provider for IntercomConnectionProvider {
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult> {
-        Err(anyhow!("Intercom access tokens do not expire"))?
+    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+        Err(ProviderError::ActionNotSupportedError(
+            "Intercom access tokens do not expire".to_string(),
+        ))?
     }
 
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {

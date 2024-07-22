@@ -1,6 +1,8 @@
 use crate::{
     oauth::{
-        connection::{Connection, ConnectionProvider, FinalizeResult, Provider, RefreshResult},
+        connection::{
+            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+        },
         providers::utils::execute_request,
     },
     utils,
@@ -102,7 +104,7 @@ impl Provider for GithubConnectionProvider {
         _connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult> {
+    ) -> Result<FinalizeResult, ProviderError> {
         // `code` is the installation_id returned by Github.
         let (token, expiry, raw_json) = self.refresh_token(code).await?;
 
@@ -117,7 +119,7 @@ impl Provider for GithubConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult> {
+    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
         // `code` is the installation_id returned by Github.
         let code = match connection.unseal_authorization_code()? {
             Some(code) => code,
@@ -145,4 +147,6 @@ impl Provider for GithubConnectionProvider {
         };
         Ok(raw_json)
     }
+
+    // TODO(2024-07-19 flav) Implement custom error handling for GitHub.
 }
