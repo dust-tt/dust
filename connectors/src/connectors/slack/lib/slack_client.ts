@@ -1,5 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIHTTPError,
@@ -7,7 +6,6 @@ import type {
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
 
-import { apiConfig } from "@connectors/lib/api/config";
 import {
   ExternalOauthTokenError,
   ProviderWorkflowError,

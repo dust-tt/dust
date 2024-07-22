@@ -1,10 +1,9 @@
-import { cacheWithRedis, getOAuthConnectionAccessToken } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
-import { apiConfig } from "@connectors/lib/api/config";
 import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import { getOAuthConnectionAccessTokenWithThrow, isDualUseOAuthConnectionId } from "@connectors/lib/oauth";

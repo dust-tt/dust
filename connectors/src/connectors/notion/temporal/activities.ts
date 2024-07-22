@@ -7,7 +7,6 @@ import type { PageObjectProperties, ParsedNotionBlock } from "@dust-tt/types";
 import {
   assertNever,
   getNotionDatabaseTableId,
-  getOAuthConnectionAccessToken,
   slugify,
 } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
@@ -46,7 +45,6 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
