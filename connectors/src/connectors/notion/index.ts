@@ -136,6 +136,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           logger.error(
             {
               oldConnectionId,
+              connectionId,
               connectorId: c.id,
               error: workspaceIdRes.error,
             },
@@ -145,6 +146,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         if (newWorkspaceIdRes.isErr()) {
           logger.error(
             {
+              oldConnectionId,
               connectionId,
               connectorId: c.id,
               error: newWorkspaceIdRes.error,
