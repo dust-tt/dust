@@ -3,6 +3,7 @@ import {
   continueAsNew,
   executeChild,
   proxyActivities,
+  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -120,6 +121,9 @@ export async function incrementalSyncWorkflow({
       startSyncTs,
     });
   }
+
+  await sleep("5 minutes");
+  await continueAsNew(incrementalSyncWorkflow);
 }
 
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
