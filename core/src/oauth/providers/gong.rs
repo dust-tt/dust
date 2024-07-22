@@ -40,8 +40,7 @@ impl Provider for GongConnectionProvider {
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
         let authorization = format!(
-            "Basic
-        {}",
+            "Basic {}",
             general_purpose::STANDARD.encode(format!(
                 "{}:{}",
                 *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET
