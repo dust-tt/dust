@@ -188,16 +188,20 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
           if (!m.fileId) {
             return;
           }
-          const file = await FileResource.fetchById(auth, m.fileId);
-          if (file === null) {
-            return null;
+          if (m.contentType.startsWith("text/")) {
+            const file = await FileResource.fetchById(auth, m.fileId);
+            if (file === null) {
+              return null;
+            }
+            const readStream = file.getReadStream({
+              auth,
+              version: "original",
+            });
+            const lines = await readFirstFiveLines(readStream);
+            return lines;
+          } else {
+            return [];
           }
-          const readStream = file.getReadStream({
-            auth,
-            version: "original",
-          });
-          const lines = await readFirstFiveLines(readStream);
-          return lines;
         })
     );
 

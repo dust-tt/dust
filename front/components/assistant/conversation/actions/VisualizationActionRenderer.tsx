@@ -1,8 +1,4 @@
-import {
-  ChatBubbleBottomCenterTextIcon,
-  RobotIcon,
-  Tab,
-} from "@dust-tt/sparkle";
+import { BracesIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
 import type { VisualizationActionType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { useEffect, useState } from "react";
@@ -67,6 +63,13 @@ export default function VisualizationActionRenderer({
       window.removeEventListener("message", listener);
     };
   }, [action.generation, action.id, onRetry]);
+
+  useEffect(() => {
+    if (activeTab === "code" && action.generation) {
+      setActiveTab("runtime");
+    }
+  }, [action.generation, activeTab]);
+
   const code = streamedCode || action.generation;
 
   return (
@@ -77,14 +80,14 @@ export default function VisualizationActionRenderer({
             label: "Code",
             id: "code",
             current: activeTab === "code",
-            icon: ChatBubbleBottomCenterTextIcon,
+            icon: BracesIcon,
             sizing: "expand",
           },
           {
             label: "Run",
             id: "runtime",
             current: activeTab === "runtime",
-            icon: RobotIcon,
+            icon: PlayIcon,
             sizing: "expand",
             hasSeparator: true,
           },
