@@ -8,13 +8,14 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   LabsTranscriptsProviderType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
+import { setupOAuthConnection } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
@@ -286,33 +287,30 @@ export default function LabsTranscriptsIndex({
   };
 
   const handleConnectGoogleTranscriptsSource = async () => {
-    try {
-      if (transcriptsConfigurationState.provider !== "google_drive") {
-        return;
-      }
-      const nango = new Nango({ publicKey: nangoPublicKey });
-      const nangoConnectionId = buildLabsConnectionId(
-        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
-        transcriptsConfigurationState.provider
-      );
-      const {
-        connectionId: newConnectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoDriveConnectorId,
-        nangoConnectionId
-      );
+    if (transcriptsConfigurationState.provider !== "google_drive") {
+      return;
+    }
 
-      await saveOauthConnection(
-        newConnectionId,
-        transcriptsConfigurationState.provider
-      );
-    } catch (error) {
+    const cRes = await setupOAuthConnection({
+      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
+      owner,
+      provider: "google_drive",
+      useCase: "labs_transcripts",
+    });
+
+    if (cRes.isErr()) {
       sendNotification({
         type: "error",
         title: "Failed to connect Google Drive",
-        description: "Could not connect to Google Drive. Please try again.",
+        description: cRes.error.message,
       });
+      return;
     }
+
+    await saveOauthConnection(
+      cRes.value.connection_id,
+      transcriptsConfigurationState.provider
+    );
   };
 
   const handleConnectGongTranscriptsSource = async () => {
