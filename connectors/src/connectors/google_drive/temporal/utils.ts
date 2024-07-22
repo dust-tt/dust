@@ -1,11 +1,14 @@
-import { cacheWithRedis } from "@dust-tt/types";
+import { cacheWithRedis, getOAuthConnectionAccessToken } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
+import { apiConfig } from "@connectors/lib/api/config";
 import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
+import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
+import logger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 export function getDocumentId(driveFileId: string): string {
@@ -125,34 +128,47 @@ export async function driveObjectToDustType(
   }
 }
 
-export async function getGoogleCredentials(
-  nangoConnectionId: string
-): Promise<NangoConnectionResponse> {
-  return getConnectionFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
-    refreshToken: false,
-  });
-}
-
 export async function getAuthObject(
-  nangoConnectionId: string
+  connectionId: string
 ): Promise<OAuth2Client> {
-  const res: NangoConnectionResponse = await getConnectionFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
-    refreshToken: false,
-    useCache: true,
-  });
-
   const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({
-    access_token: res.credentials.access_token,
-    scope: res.credentials.raw.scope,
-    token_type: res.credentials.raw.token_type,
-    expiry_date: new Date(res.credentials.expires_at).getTime(),
-  });
+  if (isDualUseOAuthConnectionId(connectionId)) {
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      provider: "google_drive",
+      connectionId,
+    });
+    if (tokRes.isErr()) {
+      logger.error(
+        { connectionId, error: tokRes.error },
+        "Error retrieving Google access token"
+      );
+      throw new Error("Error retrieving Google access token");
+    }
 
+    oauth2Client.setCredentials({
+      access_token: tokRes.value.access_token,
+      scope: (tokRes.value.scrubbed_raw_json as { scope: string }).scope,
+      token_type: (tokRes.value.scrubbed_raw_json as { token_type: string })
+        .token_type,
+      expiry_date: tokRes.value.access_token_expiry,
+    });
+  } else {
+    const res: NangoConnectionResponse = await getConnectionFromNango({
+      connectionId: connectionId,
+      integrationId: googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
+      refreshToken: false,
+      useCache: true,
+    });
+
+    oauth2Client.setCredentials({
+      access_token: res.credentials.access_token,
+      scope: res.credentials.raw.scope,
+      token_type: res.credentials.raw.token_type,
+      expiry_date: new Date(res.credentials.expires_at).getTime(),
+    });
+  }
   return oauth2Client;
 }
 
