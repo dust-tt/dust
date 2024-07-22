@@ -30,9 +30,11 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
 
 export async function fullSyncWorkflow({
   connectorId,
+  nodeIdsToSync,
   startSyncTs = undefined,
 }: {
   connectorId: ModelId;
+  nodeIdsToSync?: string[];
   startSyncTs?: number;
 }) {
   if (startSyncTs === undefined) {
@@ -44,7 +46,7 @@ export async function fullSyncWorkflow({
     searchAttributes: {
       connectorId: [connectorId],
     },
-    args: [{ connectorId, startSyncTs }],
+    args: [{ connectorId, startSyncTs, nodeIdsToSync }],
     memo: workflowInfo().memo,
   });
 }
@@ -52,7 +54,7 @@ export async function fullSyncWorkflow({
 export async function fullSyncSitesWorkflow({
   connectorId,
   startSyncTs,
-  nodeIdsToSync = undefined,
+  nodeIdsToSync,
   totalCount = 0,
 }: {
   connectorId: ModelId;

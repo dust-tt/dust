@@ -25,9 +25,11 @@ import {
   getDeltaResults,
   getDrives,
   getFilesAndFolders,
+  getItem,
   getSites,
   getTeams,
   internalIdFromTypeAndPath,
+  itemToMicrosoftNode,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
@@ -47,6 +49,13 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+export interface ResourceBlob {
+  connectorId: number;
+  nodeType: MicrosoftNodeType;
+  internalId: string;
+  currentDeltaLink: string;
+}
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -286,7 +295,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       connectorId: connector.id,
     });
 
-    const newResourcesBlobs = await concurrentExecutor(
+    const newResourcesBlobs: ResourceBlob[] = await concurrentExecutor(
       Object.entries(permissions).filter(
         ([, permission]) => permission === "read"
       ),
@@ -310,8 +319,34 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     );
 
     await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
+    const newNodes = await Promise.all(
+      newResourcesBlobs
+        .filter(
+          (resource) =>
+            resource.nodeType === "folder" || resource.nodeType === "drive"
+        )
+        .map(async (resource) =>
+          itemToMicrosoftNode(
+            resource.nodeType as "folder" | "drive",
+            await getItem(
+              client,
+              typeAndPathFromInternalId(resource.internalId).itemAPIPath
+            )
+          )
+        )
+    );
+    await MicrosoftNodeResource.batchMakeNew(
+      newNodes.map((nodes) => ({
+        ...nodes,
+        connectorId: connector.id,
+      }))
+    );
 
-    const res = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    const res = await launchMicrosoftFullSyncWorkflow(
+      this.connectorId,
+      null,
+      newResourcesBlobs
+    );
 
     if (res.isErr()) {
       return res;

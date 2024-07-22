@@ -1,6 +1,7 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
+import type { ResourceBlob } from "@connectors/connectors/microsoft";
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
 import {
   fullSyncWorkflow,
@@ -15,7 +16,8 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export async function launchMicrosoftFullSyncWorkflow(
   connectorId: ModelId,
-  fromTs: number | null
+  fromTs: number | null,
+  resourceBlobs?: ResourceBlob[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -35,8 +37,10 @@ export async function launchMicrosoftFullSyncWorkflow(
 
   try {
     await terminateWorkflow(workflowId);
+
+    const nodeIdsToSync = resourceBlobs?.map((blob) => blob.internalId);
     await client.workflow.start(fullSyncWorkflow, {
-      args: [{ connectorId }],
+      args: [{ connectorId, nodeIdsToSync }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
