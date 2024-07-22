@@ -51,8 +51,6 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
-
 export class IntercomConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
@@ -129,10 +127,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }: {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
-    if (!NANGO_INTERCOM_CONNECTOR_ID) {
-      throw new Error("NANGO_INTERCOM_CONNECTOR_ID not set");
-    }
-
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
@@ -166,7 +160,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       if (!newIntercomWorkspace) {
         return new Err({
           type: "connector_update_error",
-          message: "Error retrieving nango connection info to update connector",
+          message: "Error retrieving connection info to update connector",
         });
       }
       if (intercomWorkspace.intercomWorkspaceId !== newIntercomWorkspace.id) {
@@ -193,10 +187,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    if (!NANGO_INTERCOM_CONNECTOR_ID) {
-      throw new Error("INTERCOM_NANGO_CONNECTOR_ID not set");
-    }
-
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
@@ -224,7 +214,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         logger.info({ connectorId: this.connectorId }, "Uninstalled Intercom.");
       }
     } catch (e) {
-      // If we error we still continue the process, as it's likely the fact that the nango connection
+      // If we error we still continue the process, as it's likely the fact that the connection
       // was already deleted or the intercom app was already uninstalled.
       logger.error(
         { connectorId: this.connectorId, error: e },

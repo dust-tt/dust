@@ -17,7 +17,6 @@
     "@dust-tt/types": "file:../types",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
-    "@nangohq/node": "^0.21.4",
     "@notionhq/client": "^2.2.4",
     "@slack/web-api": "^6.8.1",
     "@temporalio/activity": "^1.9.3",

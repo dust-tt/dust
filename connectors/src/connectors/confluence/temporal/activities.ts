@@ -6,7 +6,6 @@ import {
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
-import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
   getActiveChildPageIds,
   pageHasReadRestrictions,
@@ -37,11 +36,7 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
-import {
-  getOAuthConnectionAccessTokenWithThrow,
-  isDualUseOAuthConnectionId,
-} from "@connectors/lib/oauth";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -63,24 +58,13 @@ async function fetchConfluenceConnector(connectorId: ModelId) {
 }
 
 async function getConfluenceAccessTokenWithThrow(connectionId: string) {
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const token = await getOAuthConnectionAccessTokenWithThrow({
-      logger,
-      provider: "confluence",
-      connectionId,
-    });
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "confluence",
+    connectionId,
+  });
 
-    return token.access_token;
-  } else {
-    const connection = await getConnectionFromNango({
-      connectionId: connectionId,
-      integrationId: confluenceConfig.getRequiredNangoConfluenceConnectorId(),
-      refreshToken: false,
-      useCache: true,
-    });
-
-    return connection.credentials.access_token;
-  }
+  return token.access_token;
 }
 
 async function getConfluenceClient(config: {

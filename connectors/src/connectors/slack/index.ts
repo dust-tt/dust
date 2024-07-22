@@ -20,7 +20,7 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import { ExternalOAuthTokenError, NangoError } from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -737,16 +737,7 @@ export async function uninstallSlack(connectionId: string) {
       );
     }
   } catch (e) {
-    if (e instanceof NangoError && e.type === "unknown_connection") {
-      logger.info(
-        {
-          connectionId: connectionId,
-          error: `Nango error: unknown connection: ${e.message}`,
-        },
-        "Unknown nango connection, skipping uninstallation of the Slack app"
-      );
-      return new Ok(undefined);
-    } else if (e instanceof ExternalOAuthTokenError) {
+    if (e instanceof ExternalOAuthTokenError) {
       logger.info(
         {
           connectionId: connectionId,

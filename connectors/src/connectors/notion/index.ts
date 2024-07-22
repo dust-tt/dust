@@ -27,7 +27,6 @@ import {
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { NangoConnectionId } from "@connectors/types/nango_connection_id";
 
 import { BaseConnectorManager } from "../interface";
 import { getParents } from "./lib/parents";
@@ -56,7 +55,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     connectionId,
   }: {
     dataSourceConfig: DataSourceConfig;
-    connectionId: NangoConnectionId;
+    connectionId: string;
   }): Promise<Result<string, Error>> {
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
@@ -113,7 +112,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   async update({
     connectionId,
   }: {
-    connectionId?: NangoConnectionId | null;
+    connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
@@ -164,7 +163,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       if (!workspaceIdRes.value || !newWorkspaceIdRes.value) {
         return new Err({
           type: "connector_update_error",
-          message: "Error retrieving nango connection info to update connector",
+          message: "Error retrieving connection info to update connector",
         });
       }
       if (workspaceIdRes.value !== newWorkspaceIdRes.value) {

@@ -1,17 +1,12 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 
-import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
 import { ConfluenceClient } from "@connectors/connectors/confluence/lib/confluence_client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
-import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
-import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
-const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 
 export async function getConfluenceCloudInformation(accessToken: string) {
   const client = new ConfluenceClient(accessToken);
@@ -26,33 +21,22 @@ export async function getConfluenceCloudInformation(accessToken: string) {
 export async function getConfluenceAccessToken(
   connectionId: string
 ): Promise<Result<string, Error>> {
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
-      provider: "confluence",
-      connectionId,
-    });
-    if (tokRes.isErr()) {
-      logger.error(
-        { connectionId, error: tokRes.error },
-        "Error retrieving Confluence access token"
-      );
+  const tokRes = await getOAuthConnectionAccessToken({
+    config: apiConfig.getOAuthAPIConfig(),
+    logger,
+    provider: "confluence",
+    connectionId,
+  });
+  if (tokRes.isErr()) {
+    logger.error(
+      { connectionId, error: tokRes.error },
+      "Error retrieving Confluence access token"
+    );
 
-      return new Err(new Error(tokRes.error.message));
-    }
-
-    return new Ok(tokRes.value.access_token);
-  } else {
-    const connection = await getConnectionFromNango({
-      connectionId: connectionId,
-      integrationId: getRequiredNangoConfluenceConnectorId(),
-      refreshToken: false,
-      useCache: true,
-    });
-
-    return new Ok(connection.credentials.access_token);
+    return new Err(new Error(tokRes.error.message));
   }
+
+  return new Ok(tokRes.value.access_token);
 }
 
 export async function getConfluenceUserAccountId(accessToken: string) {
