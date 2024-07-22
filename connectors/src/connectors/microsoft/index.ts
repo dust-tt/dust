@@ -20,7 +20,6 @@ import {
 import {
   getAllPaginatedEntities,
   getChannels,
-  getDeltaResults,
   getDrives,
   getFilesAndFolders,
   getSites,
@@ -30,10 +29,13 @@ import {
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import {
+  getSiteNodesToSync,
+  populateDeltas,
+} from "@connectors/connectors/microsoft/temporal/activities";
+import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -131,7 +133,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    return launchMicrosoftFullSyncWorkflow(this.connectorId);
   }
 
   async retrievePermissions({
@@ -277,39 +279,31 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const client = await getClient(connector.connectionId);
-
     await MicrosoftRootResource.batchDelete({
       resourceIds: Object.keys(permissions),
       connectorId: connector.id,
     });
 
-    const newResourcesBlobs = await concurrentExecutor(
-      Object.entries(permissions).filter(
-        ([, permission]) => permission === "read"
-      ),
-      async ([id]) => {
-        const { nodeType } = typeAndPathFromInternalId(id);
-
-        const { deltaLink } = await getDeltaResults({
-          client,
-          parentInternalId: id,
-          token: "latest",
-        });
-
-        return {
-          connectorId: connector.id,
-          nodeType,
-          internalId: id,
-          currentDeltaLink: deltaLink,
-        };
-      },
-      { concurrency: 5 }
-    );
+    const newResourcesBlobs = Object.entries(permissions)
+      .filter(([, permission]) => permission === "read")
+      .map(([id]) => ({
+        connectorId: connector.id,
+        nodeType: typeAndPathFromInternalId(id).nodeType,
+        internalId: id,
+      }));
 
     await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
-    const res = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    const nodesToSync = await getSiteNodesToSync(this.connectorId);
+
+    // poupulates deltas for the nodes so that if incremental sync starts before
+    // fullsync populated, there's no error
+    await populateDeltas(this.connectorId, nodesToSync);
+
+    const res = await launchMicrosoftFullSyncWorkflow(
+      this.connectorId,
+      nodesToSync
+    );
 
     if (res.isErr()) {
       return res;
@@ -401,8 +395,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           pdfEnabled: configValue === "true",
         });
         const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId,
-          null
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -415,8 +408,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           largeFilesEnabled: configValue === "true",
         });
         const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId,
-          null
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -484,7 +476,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsUnpaused();
-    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId);
     if (r.isErr()) {
       return r;
     }
