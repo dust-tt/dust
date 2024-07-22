@@ -193,11 +193,32 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   microsoft: {
-    setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+    setupUri: (connection) => {
+      const scopes = [
+        "User.Read",
+        "Sites.Read.All",
+        "Directory.Read.All",
+        "Files.Read.All",
+        "Team.ReadBasic.All",
+        "ChannelSettings.Read.All",
+        "ChannelMessage.Read.All",
+        "offline_access",
+      ];
+      const qs = querystring.stringify({
+        response_type: "code",
+        client_id: config.getOAuthMicrosoftClientId(),
+        state: connection.connection_id,
+        redirect_uri: finalizeUriForProvider("microsoft"),
+        scope: scopes.join(" "),
+      });
+      return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
 };
 

@@ -89,6 +89,7 @@ pub mod oauth {
         pub mod github;
         pub mod google_drive;
         pub mod intercom;
+        pub mod microsoft;
         pub mod notion;
         pub mod slack;
         pub mod utils;
