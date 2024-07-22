@@ -76,7 +76,6 @@ export class MicrosoftRootModel extends Model<
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare internalId: string;
   declare nodeType: MicrosoftNodeType;
-  declare currentDeltaLink: string;
 }
 MicrosoftRootModel.init(
   {
@@ -105,10 +104,6 @@ MicrosoftRootModel.init(
     },
     nodeType: {
       type: DataTypes.STRING,
-      allowNull: false,
-    },
-    currentDeltaLink: {
-      type: DataTypes.STRING(1024),
       allowNull: false,
     },
   },
@@ -140,6 +135,7 @@ export class MicrosoftNodeModel extends Model<
   declare name: string | null;
   declare mimeType: string | null;
   declare parentInternalId: string | null;
+  declare deltaLink: string | null;
 }
 
 MicrosoftNodeModel.init(
@@ -194,6 +190,10 @@ MicrosoftNodeModel.init(
     parentInternalId: {
       type: DataTypes.STRING(512),
       allowNull: true,
+    },
+    deltaLink: {
+      type: DataTypes.STRING(1024),
+      allowNull: false,
     },
   },
   {

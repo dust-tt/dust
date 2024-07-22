@@ -165,7 +165,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
   const client = await getClient(connector.connectionId);
 
   for (const nodeId of nodeIds) {
-    const node = await MicrosoftRootResource.fetchByInternalId(
+    const node = await MicrosoftNodeResource.fetchByInternalId(
       connectorId,
       nodeId
     );
@@ -179,7 +179,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       token: "latest",
     });
 
-    await node.update({ currentDeltaLink: deltaLink });
+    await node.update({ deltaLink });
   }
 }
 
@@ -397,13 +397,13 @@ export async function syncFiles({
   };
 }
 
-export async function syncDeltaForRoot({
+export async function syncDeltaForRootNode({
   connectorId,
-  rootId,
+  rootNodeId,
   startSyncTs,
 }: {
   connectorId: ModelId;
-  rootId: string;
+  rootNodeId: string;
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -420,24 +420,19 @@ export async function syncDeltaForRoot({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const { nodeType } = typeAndPathFromInternalId(rootId);
+  const { nodeType } = typeAndPathFromInternalId(rootNodeId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Node ${rootId} is not a drive or folder`);
+    throw new Error(`Node ${rootNodeId} is not a drive or folder`);
   }
-
-  const root = await MicrosoftRootResource.fetchByInternalId(
-    connectorId,
-    rootId
-  );
 
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
-    rootId
+    rootNodeId
   );
 
-  if (!node || !root) {
-    throw new Error(`Root or node resource ${rootId} not found`);
+  if (!node) {
+    throw new Error(`Root or node resource ${rootNodeId} not found`);
   }
 
   const client = await getClient(connector.connectionId);
@@ -457,7 +452,7 @@ export async function syncDeltaForRoot({
   // grabbing pages of it can be implemented
   const { results, deltaLink } = await getDeltaData({
     client,
-    root,
+    node,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
   const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
@@ -515,7 +510,7 @@ export async function syncDeltaForRoot({
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         const parentInternalId =
-          resource.internalId === rootId
+          resource.internalId === rootNodeId
             ? null
             : getParentReferenceInternalId(driveItem.parentReference);
 
@@ -537,7 +532,7 @@ export async function syncDeltaForRoot({
     }
   }
 
-  await root.update({ currentDeltaLink: deltaLink });
+  await node.update({ deltaLink });
 
   logger.info(
     { connectorId, nodeId: node.internalId, name: node.name },
@@ -658,22 +653,22 @@ function sortForIncrementalUpdate(changedList: DriveItem[]) {
 
 async function getDeltaData({
   client,
-  root: root,
+  node,
 }: {
   client: Client;
-  root: MicrosoftRootResource;
+  node: MicrosoftNodeResource;
 }) {
+  if (!node.deltaLink) {
+    throw new Error(`No delta link for root node ${node.internalId}`);
+  }
+
   try {
-    return await getFullDeltaResults(
-      client,
-      root.internalId,
-      root.currentDeltaLink
-    );
+    return await getFullDeltaResults(client, node.internalId, node.deltaLink);
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(client, root.internalId);
+      return await getFullDeltaResults(client, node.internalId);
     }
     throw e;
   }

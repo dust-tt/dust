@@ -15,7 +15,8 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export async function launchMicrosoftFullSyncWorkflow(
   connectorId: ModelId,
-  fromTs: number | null
+  fromTs: number | null,
+  nodeIdsToSync?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -36,7 +37,7 @@ export async function launchMicrosoftFullSyncWorkflow(
   try {
     await terminateWorkflow(workflowId);
     await client.workflow.start(fullSyncWorkflow, {
-      args: [{ connectorId }],
+      args: [{ connectorId, nodeIdsToSync }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
