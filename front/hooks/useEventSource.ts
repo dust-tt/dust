@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { COMMIT_HASH } from "@app/lib/commit-hash";
+
 const RECONNECT_DELAY = 5000; // 5 seconds.
 
 /**
@@ -35,8 +37,20 @@ const stableEventSourceManager = {
    * @returns The newly created EventSource instance
    */
   create(url: string, uniqueId: string) {
-    const newSource = new EventSource(url);
+    // EventSource does not support custom headers
+    // so we append the commit hash as a query parameter.
+    const urlWithCommitHash = new URL(url, document.baseURI);
+    urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
+
+    // Extract everything except the origin
+    const pathWithQueryAndHash =
+      urlWithCommitHash.pathname +
+      urlWithCommitHash.search +
+      urlWithCommitHash.hash;
+
+    const newSource = new EventSource(pathWithQueryAndHash);
     this.sources.set(uniqueId, newSource);
+
     return newSource;
   },
 
