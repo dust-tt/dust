@@ -11,7 +11,7 @@ export function TemplateGrid({
   templates,
   openTemplateModal,
 }: TemplateGridProps) {
-  if (!templates?.length) {
+  if (!templates.length) {
     return null;
   }
   return (
