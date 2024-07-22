@@ -209,7 +209,10 @@ export function useFileUploaderService({
       // Upload file to the obtained URL.
       let uploadResult;
       try {
-        uploadResult = await fetch(file.uploadUrl, {
+        const uploadUrl = file.uploadUrl.includes("/dust.tt")
+          ? file.uploadUrl.replace("/dust.tt", "/front-edge.dust.tt")
+          : file.uploadUrl;
+        uploadResult = await fetch(uploadUrl, {
           method: "POST",
           body: formData,
         });
