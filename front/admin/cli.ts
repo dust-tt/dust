@@ -510,6 +510,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      await transcriptsConfiguration.setIsActive(false);
 
       logger.info(
         {
@@ -534,6 +535,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      await transcriptsConfiguration.setIsActive(true);
 
       logger.info(
         {
