@@ -142,8 +142,15 @@ pub trait Provider {
     // to prevent users from relying in the raw_json to access it.
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value>;
 
-    // Default implementation for handling errors.
     fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        self.default_handle_provider_request_error(error)
+    }
+
+    // Default implementation for handling errors.
+    fn default_handle_provider_request_error(
+        &self,
+        error: ProviderHttpRequestError,
+    ) -> ProviderError {
         match error {
             ProviderHttpRequestError::NetworkError(e) => ProviderError::UnknownError(e.to_string()),
             ProviderHttpRequestError::Timeout => ProviderError::TimeoutError,
