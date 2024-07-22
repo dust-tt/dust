@@ -30,7 +30,7 @@ static REDIS_LOCK_TTL_SECONDS: u64 = 15;
 // To ensure we don't write without holding the lock providers must comply to this timeout when
 // operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
-// Buffer of time in seconds before the expiry of an access token within which we will attempt to
+// Buffer of time in ms before the expiry of an access token within which we will attempt to
 // refresh it.
 pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
 
