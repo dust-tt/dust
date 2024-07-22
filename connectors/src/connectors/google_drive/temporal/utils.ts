@@ -6,7 +6,10 @@ import { OAuth2Client } from "googleapis-common";
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
 import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
 import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
-import { getOAuthConnectionAccessTokenWithThrow, isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
+import {
+  getOAuthConnectionAccessTokenWithThrow,
+  isDualUseOAuthConnectionId,
+} from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 

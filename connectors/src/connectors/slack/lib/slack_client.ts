@@ -10,7 +10,7 @@ import {
   ExternalOauthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
-import {getOAuthConnectionAccessTokenWithThrow} from "@connectors/lib/oauth";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 

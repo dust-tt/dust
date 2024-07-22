@@ -1,7 +1,4 @@
-import type {
-  OAuthConnectionType,
-  OAuthProvider,
-} from "@dust-tt/types";
+import type { OAuthConnectionType, OAuthProvider } from "@dust-tt/types";
 import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import type { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
 
