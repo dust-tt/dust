@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 lazy_static! {
   static ref OAUTH_GONG_CLIENT_ID: String =
@@ -41,18 +42,25 @@ impl Provider for GongConnectionProvider {
       code: &str,
       redirect_uri: &str,
   ) -> Result<FinalizeResult, ProviderError> {
-      let body = json!({
-          "grant_type": "authorization_code",
-          "client_id": *OAUTH_GONG_CLIENT_ID,
-          "client_secret": *OAUTH_GONG_CLIENT_SECRET,
-          "code": code,
-          "redirect_uri": redirect_uri,
-      });
-
-      let req = reqwest::Client::new()
-          .post("https://app.gong.io/oauth2/generate-customer-token")
-          .header("Content-Type", "application/json")
-          .json(&body);
+    let authorization = format!(
+        "Basic
+        {}",
+        STANDARD.encode(format!(
+            "{}:{}",
+            *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET
+        ))
+      );
+    let params = [
+        ("grant_type", "authorization_code"),
+        ("code", &code),
+        ("redirect_uri", &redirect_uri),
+    ];
+    
+    let req = reqwest::Client::new()
+        .post("https://app.gong.io/oauth2/generate-customer-token")
+        .header("Content-Type", "application/json")
+        .header("Authorization", authorization)
+        .query(&params);
 
       let raw_json = execute_request(ConnectionProvider::Gong, req)
           .await
