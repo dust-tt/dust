@@ -22,6 +22,7 @@ import {
 import {
   getAllPaginatedEntities,
   getChannels,
+  getDeltaResults,
   getDrives,
   getFilesAndFolders,
   getSites,
@@ -34,6 +35,7 @@ import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -126,11 +128,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 
   async sync({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fromTs,
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    console.log("fullResyncMicrosoftConnector", this.connectorId, fromTs);
     return launchMicrosoftFullSyncWorkflow(this.connectorId, null);
   }
 
@@ -174,12 +176,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const selectedResources = (
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-    ).map((r) =>
-      internalIdFromTypeAndPath({
-        nodeType: r.nodeType,
-        itemAPIPath: r.itemAPIPath,
-      })
-    );
+    ).map((r) => r.internalId);
 
     // at the time, we only sync sharepoint sites and drives, not team channels
     // work on teams has been started here and in graph_api.ts but is not yet
@@ -282,24 +279,50 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    const client = await getClient(connector.connectionId);
+
     await MicrosoftRootResource.batchDelete({
-      resourceIds: Object.entries(permissions).map((internalId) => {
-        const { itemAPIPath } = typeAndPathFromInternalId(internalId[0]);
-        return itemAPIPath;
-      }),
+      resourceIds: Object.keys(permissions),
       connectorId: connector.id,
     });
 
-    await MicrosoftRootResource.batchMakeNew(
-      Object.entries(permissions)
-        .filter(([, permission]) => permission === "read")
-        .map(([id]) => {
-          return {
-            connectorId: connector.id,
-            ...typeAndPathFromInternalId(id),
-          };
-        })
+    const newResourcesBlobs = await concurrentExecutor(
+      Object.entries(permissions).filter(
+        ([, permission]) => permission === "read"
+      ),
+      async ([id]) => {
+        const { nodeType } = typeAndPathFromInternalId(id);
+
+        const { deltaLink } = await getDeltaResults({
+          client,
+          parentInternalId: id,
+          token: "latest",
+        });
+
+        return {
+          connectorId: connector.id,
+          nodeType,
+          internalId: id,
+          currentDeltaLink: deltaLink,
+        };
+      },
+      { concurrency: 5 }
     );
+
+    await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
+
+    const res = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    const incrementalRes = await launchMicrosoftIncrementalSyncWorkflow(
+      this.connectorId
+    );
+    if (incrementalRes.isErr()) {
+      return incrementalRes;
+    }
 
     return new Ok(undefined);
   }

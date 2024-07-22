@@ -3,7 +3,6 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
@@ -75,8 +74,9 @@ export class MicrosoftRootModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare itemAPIPath: string;
+  declare internalId: string;
   declare nodeType: MicrosoftNodeType;
+  declare currentDeltaLink: string;
 }
 MicrosoftRootModel.init(
   {
@@ -99,7 +99,7 @@ MicrosoftRootModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    itemAPIPath: {
+    internalId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -107,12 +107,16 @@ MicrosoftRootModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    currentDeltaLink: {
+      type: DataTypes.STRING(1024),
+      allowNull: false,
+    },
   },
   {
     sequelize: sequelizeConnection,
     modelName: "microsoft_roots",
     indexes: [
-      { fields: ["connectorId", "itemAPIPath"], unique: true },
+      { fields: ["connectorId", "internalId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
     ],
   }
@@ -136,7 +140,6 @@ export class MicrosoftNodeModel extends Model<
   declare name: string | null;
   declare mimeType: string | null;
   declare parentInternalId: string | null;
-  declare delta: NonAttribute<MicrosoftDeltaModel>;
 }
 
 MicrosoftNodeModel.init(
@@ -204,65 +207,3 @@ MicrosoftNodeModel.init(
   }
 );
 ConnectorModel.hasMany(MicrosoftNodeModel);
-
-// Delta links are used for creating a diff from the last calls.
-// On every delta call, we store the new delta token to be used in the next call
-// For each configured root node, we store a delta link.
-export class MicrosoftDeltaModel extends Model<
-  InferAttributes<MicrosoftDeltaModel>,
-  InferCreationAttributes<MicrosoftDeltaModel>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-  declare nodeId: ForeignKey<MicrosoftNodeModel["id"]>;
-  declare deltaLink: string;
-  declare connectorId: ForeignKey<ConnectorModel["id"]>;
-}
-MicrosoftDeltaModel.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    connectorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    nodeId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    deltaLink: {
-      type: DataTypes.STRING(1024),
-      allowNull: false,
-    },
-  },
-  {
-    sequelize: sequelizeConnection,
-    modelName: "microsoft_deltas",
-    indexes: [{ fields: ["connectorId", "nodeId"], unique: true }],
-  }
-);
-ConnectorModel.hasMany(MicrosoftDeltaModel);
-
-MicrosoftDeltaModel.belongsTo(MicrosoftNodeModel, {
-  foreignKey: "nodeId",
-  as: "node",
-});
-
-MicrosoftNodeModel.hasOne(MicrosoftDeltaModel, {
-  foreignKey: "nodeId",
-  as: "delta",
-});

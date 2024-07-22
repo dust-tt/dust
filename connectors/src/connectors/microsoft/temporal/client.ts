@@ -23,7 +23,7 @@ export async function launchMicrosoftFullSyncWorkflow(
   }
   if (fromTs) {
     return new Err(
-      new Error("Google Drive connector does not support partial resync")
+      new Error("Microsoft connector does not support partial resync")
     );
   }
 

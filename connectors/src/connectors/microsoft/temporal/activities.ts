@@ -26,6 +26,7 @@ import {
   deleteFile,
   deleteFolder,
   getParents,
+  isAlreadySeenItem,
   syncOneFile,
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
@@ -68,14 +69,19 @@ export async function getSiteNodesToSync(
       .map(async (resource) =>
         itemToMicrosoftNode(
           resource.nodeType as "folder" | "drive",
-          await getItem(client, resource.itemAPIPath)
+          await getItem(
+            client,
+            typeAndPathFromInternalId(resource.internalId).itemAPIPath
+          )
         )
       )
   );
 
   const rootSitePaths: string[] = rootResources
     .filter((resource) => resource.nodeType === "site")
-    .map((resource) => resource.itemAPIPath);
+    .map(
+      (resource) => typeAndPathFromInternalId(resource.internalId).itemAPIPath
+    );
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getAllPaginatedEntities((nextLink) =>
@@ -159,7 +165,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
   const client = await getClient(connector.connectionId);
 
   for (const nodeId of nodeIds) {
-    const node = await MicrosoftNodeResource.fetchByInternalId(
+    const node = await MicrosoftRootResource.fetchByInternalId(
       connectorId,
       nodeId
     );
@@ -173,7 +179,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       token: "latest",
     });
 
-    await node.updateDeltaLink(deltaLink);
+    await node.update({ currentDeltaLink: deltaLink });
   }
 }
 
@@ -220,10 +226,7 @@ async function isParentAlreadyInNodes({
   return false;
 }
 
-export async function markNodeAsVisited(
-  connectorId: ModelId,
-  internalId: string
-) {
+export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -238,7 +241,10 @@ export async function markNodeAsVisited(
     throw new Error(`Node ${internalId} not found`);
   }
 
-  await node.update({ lastSeenTs: new Date() });
+  // if node was updated more recently than this sync, we don't need to mark it
+  if (node.lastSeenTs && node.lastSeenTs < new Date()) {
+    await node.update({ lastSeenTs: new Date() });
+  }
 }
 
 /**
@@ -306,14 +312,14 @@ export async function syncFiles({
     pdfEnabled: providerConfig.pdfEnabled || false,
     connector,
   });
-  const childrenToSync = children.filter(
+  const filesToSync = children.filter(
     (item) =>
       item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
   );
 
   // sync files
   const results = await concurrentExecutor(
-    childrenToSync,
+    filesToSync,
     async (child) =>
       syncOneFile({
         connectorId,
@@ -338,32 +344,66 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
-  const childResources = await MicrosoftNodeResource.batchUpdateOrCreate(
+  // do not update folders that were already seen
+  const folderResources = await MicrosoftNodeResource.fetchByInternalIds(
     connectorId,
     children
       .filter((item) => item.folder)
-      .map(
-        (item): MicrosoftNode => ({
-          ...itemToMicrosoftNode("folder", item),
-          // add parent information to new node resources
-          parentInternalId,
-        })
-      )
+      .map((item) => getDriveItemInternalId(item))
   );
+
+  // compute folders that were already seen
+  const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
+  folderResources.forEach((f) => {
+    if (
+      isAlreadySeenItem({
+        driveItemResource: f,
+        startSyncTs,
+      })
+    ) {
+      alreadySeenResourcesById[f.internalId] = f;
+    }
+  });
+
+  const alreadySeenResources = Object.values(alreadySeenResourcesById);
+
+  const createdOrUpdatedResources =
+    await MicrosoftNodeResource.batchUpdateOrCreate(
+      connectorId,
+      children
+        .filter(
+          (item) =>
+            item.folder &&
+            // only create/update if resource unseen
+            !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
+        )
+        .map(
+          (item): MicrosoftNode => ({
+            ...itemToMicrosoftNode("folder", item),
+            // add parent information to new node resources
+            parentInternalId,
+          })
+        )
+    );
+
   return {
     count,
-    childNodes: childResources.map((r) => r.internalId),
+    // still visit children of already seen nodes; an already seen node does not
+    // mean all its children are already seen too
+    childNodes: [...createdOrUpdatedResources, ...alreadySeenResources].map(
+      (r) => r.internalId
+    ),
     nextLink: childrenResult.nextLink,
   };
 }
 
-export async function syncDeltaForNode({
+export async function syncDeltaForRoot({
   connectorId,
-  nodeId,
+  rootId,
   startSyncTs,
 }: {
   connectorId: ModelId;
-  nodeId: string;
+  rootId: string;
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -380,19 +420,24 @@ export async function syncDeltaForNode({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const { nodeType } = typeAndPathFromInternalId(nodeId);
+  const { nodeType } = typeAndPathFromInternalId(rootId);
 
   if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Node ${nodeId} is not a drive or folder`);
+    throw new Error(`Node ${rootId} is not a drive or folder`);
   }
+
+  const root = await MicrosoftRootResource.fetchByInternalId(
+    connectorId,
+    rootId
+  );
 
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
-    nodeId
+    rootId
   );
 
-  if (!node) {
-    throw new Error(`Root node resource ${nodeId} not found`);
+  if (!node || !root) {
+    throw new Error(`Root or node resource ${rootId} not found`);
   }
 
   const client = await getClient(connector.connectionId);
@@ -412,7 +457,7 @@ export async function syncDeltaForNode({
   // grabbing pages of it can be implemented
   const { results, deltaLink } = await getDeltaData({
     client,
-    node,
+    root,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
   const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
@@ -470,7 +515,7 @@ export async function syncDeltaForNode({
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         const parentInternalId =
-          resource.internalId === nodeId
+          resource.internalId === rootId
             ? null
             : getParentReferenceInternalId(driveItem.parentReference);
 
@@ -492,7 +537,7 @@ export async function syncDeltaForNode({
     }
   }
 
-  await node.updateDeltaLink(deltaLink);
+  await root.update({ currentDeltaLink: deltaLink });
 
   logger.info(
     { connectorId, nodeId: node.internalId, name: node.name },
@@ -613,24 +658,22 @@ function sortForIncrementalUpdate(changedList: DriveItem[]) {
 
 async function getDeltaData({
   client,
-  node,
+  root: root,
 }: {
   client: Client;
-  node: MicrosoftNodeResource;
+  root: MicrosoftRootResource;
 }) {
-  if (!node.deltaLink) {
-    throw new Error(
-      `Delta link not found for root node resource ${JSON.stringify(node.toJSON())}`
-    );
-  }
-
   try {
-    return await getFullDeltaResults(client, node.internalId, node.deltaLink);
+    return await getFullDeltaResults(
+      client,
+      root.internalId,
+      root.currentDeltaLink
+    );
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(client, node.internalId);
+      return await getFullDeltaResults(client, root.internalId);
     }
     throw e;
   }

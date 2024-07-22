@@ -16,7 +16,6 @@ import { getClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
   getFileDownloadURL,
-  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
@@ -90,11 +89,12 @@ export async function syncOneFile({
     documentId
   );
 
-  // Early return if lastSeenTs is greater than workflow start.
-  // This allows avoiding resyncing already-synced documents in case of activity failure
   if (
-    fileResource?.lastSeenTs &&
-    fileResource.lastSeenTs > new Date(startSyncTs)
+    fileResource &&
+    isAlreadySeenItem({
+      driveItemResource: fileResource,
+      startSyncTs,
+    })
   ) {
     return true;
   }
@@ -528,11 +528,9 @@ export async function deleteFolder({
     `Deleting Microsoft folder.`
   );
 
-  const { itemAPIPath } = typeAndPathFromInternalId(internalId);
-
-  const root = await MicrosoftRootResource.fetchByItemAPIPath(
+  const root = await MicrosoftRootResource.fetchByInternalId(
     connectorId,
-    itemAPIPath
+    internalId
   );
 
   if (root) {
@@ -574,4 +572,19 @@ export async function deleteFile({
     await deleteFromDataSource(dataSourceConfig, internalId);
   }
   return file.delete();
+}
+
+export function isAlreadySeenItem({
+  driveItemResource,
+  startSyncTs,
+}: {
+  driveItemResource: MicrosoftNodeResource;
+  startSyncTs: number;
+}) {
+  return (
+    driveItemResource.lastSeenTs &&
+    // if lastSeenTs is greater than workflow start time, document was seen already
+    // e.g. because of an incremental sync or because an activity was retried
+    driveItemResource.lastSeenTs > new Date(startSyncTs)
+  );
 }
