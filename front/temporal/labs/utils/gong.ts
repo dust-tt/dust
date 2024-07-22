@@ -1,6 +1,7 @@
+import { getOAuthConnectionAccessToken } from "@dust-tt/types";
+
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import config from "@app/lib/labs/config";
-import { getAccessTokenFromNango } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 
@@ -25,10 +26,21 @@ export async function retrieveGongTranscripts(
     return [];
   }
 
-  const gongAccessToken = await getAccessTokenFromNango(
-    config.getNangoConnectorIdForProvider("gong"),
-    transcriptsConfiguration.connectionId
-  );
+  const tokRes = await getOAuthConnectionAccessToken({
+    config: config.getOAuthAPIConfig(),
+    logger: localLogger,
+    provider: "gong",
+    connectionId: transcriptsConfiguration.connectionId,
+  });
+  if (tokRes.isErr()) {
+    localLogger.error(
+      { connectionId: transcriptsConfiguration.connectionId, error: tokRes.error },
+      "Error retrieving Intercom access token"
+    );
+    throw new Error("Error retrieving Intercom access token");
+  }
+
+  const gongAccessToken = tokRes.value.access_token;
 
   const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const newTranscripts = await fetch(
@@ -111,10 +123,21 @@ export async function retrieveGongTranscriptContent(
     );
   }
 
-  const gongAccessToken = await getAccessTokenFromNango(
-    config.getNangoConnectorIdForProvider("gong"),
-    transcriptsConfiguration.connectionId
-  );
+  const tokRes = await getOAuthConnectionAccessToken({
+    config: config.getOAuthAPIConfig(),
+    logger: localLogger,
+    provider: "gong",
+    connectionId: transcriptsConfiguration.connectionId,
+  });
+  if (tokRes.isErr()) {
+    localLogger.error(
+      { connectionId: transcriptsConfiguration.connectionId, error: tokRes.error },
+      "Error retrieving Intercom access token"
+    );
+    throw new Error("Error retrieving Intercom access token");
+  }
+
+  const gongAccessToken = tokRes.value.access_token;
 
   const findGongUser = async () => {
     const user = await transcriptsConfiguration.getUser();

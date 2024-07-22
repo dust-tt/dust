@@ -15,7 +15,7 @@ const config = {
           "NANGO_GOOGLE_DRIVE_CONNECTOR_ID"
         );
       case "gong":
-        return EnvironmentConfig.getEnvVariable("NANGO_GONG_CONNECTOR_ID");
+        throw new Error("Gong has been removed from Nango");
       default:
         assertNever(provider);
     }
