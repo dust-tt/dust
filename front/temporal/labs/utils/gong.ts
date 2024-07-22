@@ -1,8 +1,43 @@
+import { getOAuthConnectionAccessToken } from "@dust-tt/types";
+
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import config from "@app/lib/labs/config";
+import labsConfig from "@app/lib/labs/config";
 import { getAccessTokenFromNango } from "@app/lib/labs/transcripts/utils/helpers";
+import { isDualUseOAuthConnectionId } from "@app/lib/oauth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+
+const getGongAccessToken = async (
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
+  logger: Logger
+) => {
+  if (isDualUseOAuthConnectionId(transcriptsConfiguration.connectionId)) {
+    const tokRes = await getOAuthConnectionAccessToken({
+      config: config.getOAuthAPIConfig(),
+      logger,
+      provider: "gong",
+      connectionId: transcriptsConfiguration.connectionId,
+    });
+    if (tokRes.isErr()) {
+      logger.error(
+        {
+          connectionId: transcriptsConfiguration.connectionId,
+          error: tokRes.error,
+        },
+        "Error retrieving Intercom access token"
+      );
+      throw new Error("Error retrieving Intercom access token");
+    }
+
+    return tokRes.value.access_token;
+  } else {
+    return getAccessTokenFromNango(
+      labsConfig.getNangoConnectorIdForProvider("gong"),
+      transcriptsConfiguration.connectionId
+    );
+  }
+};
 
 export async function retrieveGongTranscripts(
   auth: Authenticator,
@@ -25,9 +60,9 @@ export async function retrieveGongTranscripts(
     return [];
   }
 
-  const gongAccessToken = await getAccessTokenFromNango(
-    config.getNangoConnectorIdForProvider("gong"),
-    transcriptsConfiguration.connectionId
+  const gongAccessToken = await getGongAccessToken(
+    transcriptsConfiguration,
+    localLogger
   );
 
   const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -111,9 +146,9 @@ export async function retrieveGongTranscriptContent(
     );
   }
 
-  const gongAccessToken = await getAccessTokenFromNango(
-    config.getNangoConnectorIdForProvider("gong"),
-    transcriptsConfiguration.connectionId
+  const gongAccessToken = await getGongAccessToken(
+    transcriptsConfiguration,
+    localLogger
   );
 
   const findGongUser = async () => {

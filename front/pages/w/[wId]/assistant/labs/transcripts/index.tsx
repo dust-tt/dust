@@ -8,13 +8,14 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import type { SubscriptionType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   LabsTranscriptsProviderType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
+import { setupOAuthConnection } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
@@ -50,6 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   nangoDriveConnectorId: string;
   nangoGongConnectorId: string;
   nangoPublicKey: string;
+  dustClientFacingUrl: string;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -76,6 +78,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         config.getNangoConnectorIdForProvider("google_drive"),
       nangoGongConnectorId: config.getNangoConnectorIdForProvider("gong"),
       nangoPublicKey: config.getNangoPublicKey(),
+      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
     },
   };
 });
@@ -88,6 +91,7 @@ export default function LabsTranscriptsIndex({
   nangoDriveConnectorId,
   nangoGongConnectorId,
   nangoPublicKey,
+  dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
@@ -347,20 +351,38 @@ export default function LabsTranscriptsIndex({
 
         return;
       } else {
-        const nango = new Nango({ publicKey: nangoPublicKey });
+        if (owner.flags.includes("test_oauth_setup")) {
+          const cRes = await setupOAuthConnection({
+            dustClientFacingUrl,
+            owner,
+            provider: "gong",
+            useCase: "connection",
+          });
+          if (!cRes.isOk()) {
+            return cRes;
+          }
+          const connectionId = cRes.value.connection_id;
 
-        const nangoConnectionId = buildLabsConnectionId(
-          `labs-transcripts-workspace-${owner.id}`,
-          transcriptsConfigurationState.provider
-        );
-        const {
-          connectionId: newConnectionId,
-        }: { providerConfigKey: string; connectionId: string } =
-          await nango.auth(nangoGongConnectorId, nangoConnectionId);
-        await saveOauthConnection(
-          newConnectionId,
-          transcriptsConfigurationState.provider
-        );
+          await saveOauthConnection(
+            connectionId,
+            transcriptsConfigurationState.provider
+          );
+        } else {
+          const nango = new Nango({ publicKey: nangoPublicKey });
+
+          const nangoConnectionId = buildLabsConnectionId(
+            `labs-transcripts-workspace-${owner.id}`,
+            transcriptsConfigurationState.provider
+          );
+          const {
+            connectionId: newConnectionId,
+          }: { providerConfigKey: string; connectionId: string } =
+            await nango.auth(nangoGongConnectorId, nangoConnectionId);
+          await saveOauthConnection(
+            newConnectionId,
+            transcriptsConfigurationState.provider
+          );
+        }
       }
     } catch (error) {
       sendNotification({
