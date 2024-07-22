@@ -109,9 +109,9 @@ export async function setupConnection({
   if (
     isOAuthProvider(provider) &&
     // `oauth`-ready providers
-    (["github", "slack"].includes(provider) ||
+    (["github", "slack", "notion"].includes(provider) ||
       // Behind flag oauth-ready providers
-      (["intercom", "notion", "google_drive"].includes(provider) &&
+      (["intercom", "google_drive"].includes(provider) &&
         owner.flags.includes("test_oauth_setup")))
   ) {
     // OAuth flow
