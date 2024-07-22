@@ -14,6 +14,8 @@ use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
+use super::utils::ProviderHttpRequestError;
+
 lazy_static! {
     static ref OAUTH_GITHUB_APP_CLIENT_ID: String =
         std::env::var("OAUTH_GITHUB_APP_CLIENT_ID").unwrap();
@@ -54,7 +56,10 @@ impl GithubConnectionProvider {
         Ok(token)
     }
 
-    async fn refresh_token(&self, code: &str) -> Result<(String, u64, serde_json::Value)> {
+    async fn refresh_token(
+        &self,
+        code: &str,
+    ) -> Result<(String, u64, serde_json::Value), ProviderError> {
         // https://github.com/octokit/auth-app.js/blob/main/src/get-installation-authentication.ts
         let req = reqwest::Client::new()
             .post(format!(
@@ -66,7 +71,9 @@ impl GithubConnectionProvider {
             .header("User-Agent", "dust/oauth")
             .header("X-GitHub-Api-Version", "2022-11-28");
 
-        let raw_json = execute_request(ConnectionProvider::Github, req).await?;
+        let raw_json = execute_request(ConnectionProvider::Github, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
 
         let token = match raw_json["token"].as_str() {
             Some(token) => token,
@@ -148,5 +155,15 @@ impl Provider for GithubConnectionProvider {
         Ok(raw_json)
     }
 
-    // TODO(2024-07-19 flav) Implement custom error handling for GitHub.
+    fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        match &error {
+            ProviderHttpRequestError::RequestFailed { status, .. } if *status == 403 => {
+                ProviderError::TokenRevokedError
+            }
+            _ => {
+                // Call the default implementation for other cases.
+                <Self as Provider>::handle_provider_request_error(self, error)
+            }
+        }
+    }
 }

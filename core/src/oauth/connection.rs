@@ -48,6 +48,7 @@ lazy_static! {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConnectionErrorCode {
+    TokenRevokedError,
     // Finalize
     ConnectionAlreadyFinalizedError,
     ProviderFinalizationError,
@@ -149,10 +150,10 @@ pub trait Provider {
             ProviderHttpRequestError::RequestFailed {
                 provider,
                 status,
-                message: _,
+                message,
             } => ProviderError::UnknownError(format!(
-                "Request failed for provider {}. Status: {}.",
-                provider, status
+                "Request failed for provider {}. Status: {}. Message {}.",
+                provider, status, message
             )),
             ProviderHttpRequestError::InvalidResponse(e) => {
                 ProviderError::UnknownError(e.to_string())
@@ -185,6 +186,8 @@ pub enum ProviderError {
     UnknownError(String),
     #[error("Internal error: {0}.")]
     InternalError(anyhow::Error),
+    #[error("Token revoked.")]
+    TokenRevokedError,
 }
 
 impl From<anyhow::Error> for ProviderError {
@@ -193,18 +196,41 @@ impl From<anyhow::Error> for ProviderError {
     }
 }
 
-impl From<&ProviderError> for ConnectionError {
-    fn from(err: &ProviderError) -> Self {
-        match err {
+impl ProviderError {
+    pub fn to_finalization_error(&self) -> ConnectionError {
+        match self {
             ProviderError::ActionNotSupportedError(_)
             | ProviderError::TimeoutError
             | ProviderError::UnknownError(_) => ConnectionError {
                 code: ConnectionErrorCode::ProviderFinalizationError,
-                message: err.to_string(),
+                message: self.to_string(),
+            },
+            ProviderError::TokenRevokedError => ConnectionError {
+                code: ConnectionErrorCode::TokenRevokedError,
+                message: self.to_string(),
             },
             ProviderError::InternalError(_) => ConnectionError {
                 code: ConnectionErrorCode::InternalError,
-                message: "Failed to finalize connection with provider".to_string(),
+                message: "Failed to finalize connection.".to_string(),
+            },
+        }
+    }
+
+    pub fn to_access_token_error(&self) -> ConnectionError {
+        match self {
+            ProviderError::ActionNotSupportedError(_)
+            | ProviderError::TimeoutError
+            | ProviderError::UnknownError(_) => ConnectionError {
+                code: ConnectionErrorCode::ProviderAccessTokenRefreshError,
+                message: self.to_string(),
+            },
+            ProviderError::TokenRevokedError => ConnectionError {
+                code: ConnectionErrorCode::TokenRevokedError,
+                message: self.to_string(),
+            },
+            ProviderError::InternalError(_) => ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Failed to refresh access token.".to_string(),
             },
         }
     }
@@ -621,7 +647,7 @@ impl Connection {
                 );
 
                 if let Some(provider_error) = e.downcast_ref::<ProviderError>() {
-                    Err(ConnectionError::from(provider_error))
+                    Err(provider_error.to_finalization_error())
                 } else {
                     Err(ConnectionError {
                         code: ConnectionErrorCode::InternalError,
@@ -774,10 +800,15 @@ impl Connection {
                     provider = ?self.provider,
                     "Failed to refresh access token",
                 );
-                Err(ConnectionError {
-                    code: ConnectionErrorCode::ProviderFinalizationError,
-                    message: "Failed to refresh access token with provider".to_string(),
-                })
+
+                if let Some(provider_error) = e.downcast_ref::<ProviderError>() {
+                    Err(provider_error.to_access_token_error())
+                } else {
+                    Err(ConnectionError {
+                        code: ConnectionErrorCode::InternalError,
+                        message: "Failed to refresh access token with provider".to_string(),
+                    })
+                }
             }
         }
     }
