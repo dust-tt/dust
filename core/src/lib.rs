@@ -87,11 +87,11 @@ pub mod oauth {
     pub mod providers {
         pub mod confluence;
         pub mod github;
+        pub mod gong;
         pub mod google_drive;
         pub mod intercom;
         pub mod notion;
         pub mod slack;
-        pub mod gong;
         pub mod utils;
     }
 }

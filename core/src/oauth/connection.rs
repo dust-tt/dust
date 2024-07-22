@@ -1,8 +1,9 @@
 use crate::oauth::{
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
-        google_drive::GoogleDriveConnectionProvider, intercom::IntercomConnectionProvider,
-        notion::NotionConnectionProvider, slack::SlackConnectionProvider, gong::GongConnectionProvider
+        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
+        intercom::IntercomConnectionProvider, notion::NotionConnectionProvider,
+        slack::SlackConnectionProvider,
     },
     store::OAuthStore,
 };
