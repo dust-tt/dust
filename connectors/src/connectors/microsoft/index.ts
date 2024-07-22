@@ -335,12 +335,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           )
         )
     );
-    await MicrosoftNodeResource.batchMakeNew(
-      newNodes.map((nodes) => ({
-        ...nodes,
-        connectorId: connector.id,
-      }))
-    );
+    const newNodesWithConnectorId = newNodes.map((nodes) => ({
+      ...nodes,
+      connectorId: connector.id,
+    }))
+    await MicrosoftNodeResource.batchMakeNew(newNodesWithConnectorId);
 
     const res = await launchMicrosoftFullSyncWorkflow(
       this.connectorId,
