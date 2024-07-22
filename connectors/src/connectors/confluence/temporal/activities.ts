@@ -6,9 +6,9 @@ import {
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
-import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
   getActiveChildPageIds,
+  getConfluenceAccessToken,
   pageHasReadRestrictions,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluencePageWithBodyType } from "@connectors/connectors/confluence/lib/confluence_client";
@@ -37,7 +37,6 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -48,19 +47,6 @@ const logger = mainLogger.child({
 });
 
 const turndownService = new TurndownService();
-
-const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
-
-async function getConfluenceAccessToken(connectionId: string) {
-  const connection = await getConnectionFromNango({
-    connectionId: connectionId,
-    integrationId: getRequiredNangoConfluenceConnectorId(),
-    refreshToken: false,
-    useCache: true,
-  });
-
-  return connection.credentials.access_token;
-}
 
 async function fetchConfluenceConnector(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);

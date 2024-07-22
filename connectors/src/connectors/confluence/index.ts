@@ -7,8 +7,8 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
+  getConfluenceAccessToken,
   getConfluenceCloudInformation,
   getConfluenceUserAccountId,
   listConfluenceSpaces,
@@ -41,15 +41,9 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import {
-  getAccessTokenFromNango,
-  getConnectionFromNango,
-} from "@connectors/lib/nango_helpers";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 
 const logger = mainLogger.child({
   connector: "confluence",
@@ -64,11 +58,8 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     connectionId: string;
   }): Promise<Result<string, Error>> {
     const nangoConnectionId = connectionId;
-    const confluenceAccessToken = await getAccessTokenFromNango({
-      connectionId: nangoConnectionId,
-      integrationId: getRequiredNangoConfluenceConnectorId(),
-      useCache: false,
-    });
+    const confluenceAccessToken =
+      await getConfluenceAccessToken(nangoConnectionId);
 
     const confluenceCloudInformation = await getConfluenceCloudInformation(
       confluenceAccessToken
@@ -139,13 +130,8 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         },
       });
 
-      const newConnection = await getConnectionFromNango({
-        connectionId,
-        integrationId: getRequiredNangoConfluenceConnectorId(),
-        refreshToken: false,
-      });
-
-      const confluenceAccessToken = newConnection?.credentials?.access_token;
+      const confluenceAccessToken =
+        await getConfluenceAccessToken(connectionId);
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
         confluenceAccessToken
       );
