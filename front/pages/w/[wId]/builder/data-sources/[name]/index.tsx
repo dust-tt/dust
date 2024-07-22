@@ -57,16 +57,7 @@ import logger from "@app/logger/logger";
 
 import { setupConnection } from "../managed";
 
-const {
-  GA_TRACKING_ID = "",
-  NANGO_CONFLUENCE_CONNECTOR_ID = "",
-  NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
-  NANGO_INTERCOM_CONNECTOR_ID = "",
-  NANGO_MICROSOFT_CONNECTOR_ID = "",
-  NANGO_NOTION_CONNECTOR_ID = "",
-  NANGO_PUBLIC_KEY = "",
-  NANGO_SLACK_CONNECTOR_ID = "",
-} = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -78,15 +69,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSource: DataSourceType;
   connector: ConnectorType | null;
   standardView: boolean;
-  nangoConfig: {
-    publicKey: string;
-    confluenceConnectorId: string;
-    slackConnectorId: string;
-    notionConnectorId: string;
-    googleDriveConnectorId: string;
-    intercomConnectorId: string;
-    microsoftConnectorId: string;
-  };
   dustClientFacingUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
@@ -143,15 +125,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSource,
       connector,
       standardView,
-      nangoConfig: {
-        publicKey: NANGO_PUBLIC_KEY,
-        confluenceConnectorId: NANGO_CONFLUENCE_CONNECTOR_ID,
-        slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
-        notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
-        googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-        intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
-        microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
-      },
       dustClientFacingUrl: config.getClientFacingUrl(),
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -1023,7 +996,6 @@ function ManagedDataSourceView({
   isBuilder,
   dataSource,
   connector,
-  nangoConfig,
   dustClientFacingUrl,
   plan,
 }: {
@@ -1033,15 +1005,6 @@ function ManagedDataSourceView({
   isBuilder: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType;
-  nangoConfig: {
-    publicKey: string;
-    confluenceConnectorId: string;
-    slackConnectorId: string;
-    notionConnectorId: string;
-    googleDriveConnectorId: string;
-    intercomConnectorId: string;
-    microsoftConnectorId: string;
-  };
   dustClientFacingUrl: string;
   plan: PlanType;
 }) {
@@ -1120,7 +1083,6 @@ function ManagedDataSourceView({
 
     const connectionIdRes = await setupConnection({
       dustClientFacingUrl,
-      nangoConfig,
       owner,
       provider,
     });
@@ -1372,7 +1334,6 @@ export default function DataSourceView({
   dataSource,
   connector,
   standardView,
-  nangoConfig,
   dustClientFacingUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -1420,7 +1381,6 @@ export default function DataSourceView({
             isBuilder,
             dataSource,
             connector,
-            nangoConfig,
             dustClientFacingUrl,
             plan,
           }}
