@@ -58,3 +58,12 @@ export function visualizationExtractCode(code: string) {
     visualizationExtractCodeStreaming(code)
   );
 }
+
+// This defines the commands that the iframe can send to the host window.
+export type VisualizationRPCCommand = "getCodeToExecute" | "retry";
+export type VisualizationRPCRequest = {
+  command: VisualizationRPCCommand;
+  messageUniqueId: string;
+  actionId: number;
+  params: unknown;
+};

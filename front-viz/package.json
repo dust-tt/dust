@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@dust-tt/sparkle": "^0.2.193",
+    "@dust-tt/types": "file:../types",
     "next": "14.2.5",
     "papaparse": "^5.4.1",
     "react": "^18",

@@ -1,6 +1,10 @@
 "use client";
 
 import { Button, Collapsible, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import {
+  VisualizationRPCCommand,
+  VisualizationRPCRequest,
+} from "@dust-tt/types";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import React from "react";
@@ -9,14 +13,7 @@ import { importCode, Runner } from "react-runner";
 import {} from "react-runner";
 import * as rechartsAll from "recharts";
 
-type RPCMethod = "getCodeToExecute" | "retry";
-export type CrossWindowRequest = {
-  command: RPCMethod;
-  messageUniqueId: string;
-  actionId: number;
-  params: unknown;
-};
-
+// This is a hook provided to the code generator model to fetch a file from the conversation.
 function useFile(workspaceId: string, fileId: string) {
   const [data, setData] = useState<File | null>(null);
   console.log("useFile", workspaceId, fileId);
@@ -42,17 +39,16 @@ function useFile(workspaceId: string, fileId: string) {
     return null;
   }
 
-  console.log("returned data", data);
   return data;
 }
 
+// This function creates a function that sends a command to the host window with templated Input and Output types.
 function makeIframeMessagePassingFunction<Params, Answer>(
-  methodName: RPCMethod,
+  methodName: VisualizationRPCCommand,
   actionId: number
 ) {
   return (params?: Params) => {
     return new Promise<Answer>((resolve, reject) => {
-      console.log("sending a message to parent", params);
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
         if (event.data.messageUniqueId === messageUniqueId) {
@@ -71,13 +67,15 @@ function makeIframeMessagePassingFunction<Params, Answer>(
           messageUniqueId,
           actionId,
           params,
-        } satisfies CrossWindowRequest,
+        } satisfies VisualizationRPCRequest,
         "*"
       );
     });
   };
 }
 
+// This component renders the generated code.
+// It gets the generated code via message passing to the host window.
 export function VisualizationIframe({
   actionId,
   workspaceId,
@@ -104,7 +102,6 @@ export function VisualizationIframe({
         if (match && match[1]) {
           extractedCode = match[1];
           setCode(extractedCode);
-          console.log("got code to execute", result, extractedCode);
         } else {
           setErrored(new Error("No visualization code found"));
         }
@@ -112,6 +109,8 @@ export function VisualizationIframe({
       .catch(console.error);
   }, [actionId]);
 
+  // This retry function sends the "retry" instruction to the host window, to retry an agent message
+  // in case the generated code does not work or is not satisfying.
   const retry = useMemo(() => {
     return makeIframeMessagePassingFunction("retry", parseInt(actionId, 10));
   }, [actionId]);
@@ -134,18 +133,19 @@ export function VisualizationIframe({
     import: {
       recharts: rechartsAll,
       react: reactAll,
-
-      "./local-file": importCode(code, { import: generatedCodeScope }),
+      // Here we expose the code generated as a module to be imported by the wrapper code below.
+      "@dust/generated-code": importCode(code, { import: generatedCodeScope }),
     },
   };
 
+  // This code imports and renders the generated code.
   const wrapperCode = `
-() => {
-import Comp from './local-file';
+    () => {
+    import Comp from '@dust/generated-code';
 
-return (<Comp />);
-}
-`;
+    return (<Comp />);
+    }
+  `;
 
   return (
     <>
@@ -162,6 +162,7 @@ return (<Comp />);
   );
 }
 
+// This is the component to render when an error occurs.
 function VisualizationError({
   error,
   retry,
@@ -206,6 +207,8 @@ type ErrorBoundaryState = {
   activeTab: "code" | "runtime";
 };
 
+// This is the error boundary component that wraps the VisualizationIframe component.
+// It needs to be a class component for error handling to work.
 export class VisualizationIframeContentWithErrorHandling extends React.Component<
   ErrorBoundaryProps,
   ErrorBoundaryState

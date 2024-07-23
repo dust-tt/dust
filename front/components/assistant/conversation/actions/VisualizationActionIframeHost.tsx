@@ -1,5 +1,9 @@
 import { BracesIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
-import type { VisualizationActionType, WorkspaceType } from "@dust-tt/types";
+import type {
+  VisualizationActionType,
+  VisualizationRPCRequest,
+  WorkspaceType,
+} from "@dust-tt/types";
 import {
   assertNever,
   visualizationExtractCodeNonStreaming,
@@ -7,11 +11,10 @@ import {
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
-import type { CrossWindowRequest } from "@app/components/assistant/conversation/actions/VisualizationIframeContent";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
 const answerToIframe = (
-  data: CrossWindowRequest,
+  data: VisualizationRPCRequest,
   answer: unknown,
   iframe: MessageEventSource
 ) => {
@@ -46,7 +49,7 @@ export default function VisualizationActionIframeHost({
 
   useEffect(() => {
     function listener(event: MessageEvent) {
-      const data = event.data as CrossWindowRequest;
+      const data = event.data as VisualizationRPCRequest;
       if (!data || !data.actionId || data.actionId !== action.id) {
         return;
       }

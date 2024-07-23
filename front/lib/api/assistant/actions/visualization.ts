@@ -184,6 +184,9 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
         .flat(1)
         .filter((m) => isContentFragmentType(m))
         .map(async (m) => {
+          // This is needed because the ContentFragmentType is not actually narrowed correctly,
+          // this type is actually pretty complex and even if VSCode figure it out, `npm run build` does not.
+          // @flavien knows about this.
           assert(isContentFragmentType(m));
           if (!m.fileId) {
             return;
@@ -205,13 +208,18 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
         })
     );
 
-    // Turn the conversation into a digest that can be presented to the model.
+    // The prompt is a list of files that the visualization action can access.
+    // I have empirically found that this format works well for the model to generate the appropriate code,
+    // but feel free to change it if you think otherwise.
     const prompt =
       `You have access to the following files:\n` +
       conversation.content
         .flat(1)
         .filter((m) => isContentFragmentType(m))
         .map((m, i) => {
+          // This is needed because the ContentFragmentType is not actually narrowed correctly,
+          // this type is actually pretty complex and even if VSCode figure it out, `npm run build` does not.
+          // @flavien knows about this.
           assert(isContentFragmentType(m));
           return `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n${contentFragmentsText[i]?.join("\n")}(truncated...)</file>`;
         });
@@ -221,7 +229,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
     const modelConversationRes = await renderConversationForModelMultiActions({
       conversation,
       model: agentModelConfig,
-      prompt: "",
+      prompt: prompt,
       allowedTokenCount: agentModelConfig.contextSize - MIN_GENERATION_TOKENS,
       excludeActions: false,
       excludeImages: true,
