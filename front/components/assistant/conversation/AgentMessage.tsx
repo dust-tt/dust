@@ -157,7 +157,6 @@ export function AgentMessage({
       m: AgentMessageType,
       action: AgentActionType
     ): AgentMessageType => {
-      console.log("updateMessageWithAction", m, action);
       return {
         ...m,
         actions: m.actions
@@ -169,7 +168,6 @@ export function AgentMessage({
     const event = eventPayload.data;
     switch (event.type) {
       case "agent_action_success":
-        console.log("agent_action_success", event);
         setStreamedAgentMessage((m) => {
           return { ...updateMessageWithAction(m, event.action) };
         });
@@ -183,7 +181,6 @@ export function AgentMessage({
       case "websearch_params":
       case "browse_params":
       case "visualization_params":
-        console.log("got viz param");
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });

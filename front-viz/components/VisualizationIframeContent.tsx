@@ -16,7 +16,6 @@ import * as rechartsAll from "recharts";
 // This is a hook provided to the code generator model to fetch a file from the conversation.
 function useFile(workspaceId: string, fileId: string) {
   const [data, setData] = useState<File | null>(null);
-  console.log("useFile", workspaceId, fileId);
   useEffect(() => {
     fetch(`/api/w/${workspaceId}/files/${fileId}?action=view`)
       .then((response) => {
