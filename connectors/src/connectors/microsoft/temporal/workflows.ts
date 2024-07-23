@@ -140,17 +140,17 @@ export function microsoftDeletionWorkflowId(
   connectorId: ModelId,
   nodeIdsToDelete: string[]
 ) {
-  // Simple, deterministic hashing function
-  function simpleHash(input: string): string {
-    let hash = 0;
-    for (let i = 0; i < input.length; i++) {
-      const char = input.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(16).slice(0, 8).padStart(8, "0");
+  function getLast4Chars(input: string) {
+    return input.slice(-4);
   }
-  const sortedNodeIds = nodeIdsToDelete.sort().join(",");
-  const hash = simpleHash(sortedNodeIds);
-  return `microsoft-deletion-${connectorId}-${hash}`;
+
+  // Sort the node IDs and concatenate the last 4 characters of each
+  // up to 256 characters
+  const sortedNodeIds = nodeIdsToDelete.sort();
+  const concatenatedLast4Chars = sortedNodeIds
+    .map(getLast4Chars)
+    .join("")
+    .slice(0, 256);
+
+  return `microsoft-deletion-${connectorId}-${concatenatedLast4Chars}`;
 }
