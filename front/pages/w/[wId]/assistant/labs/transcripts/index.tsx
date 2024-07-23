@@ -6,6 +6,7 @@ import {
   Page,
   SliderToggle,
   Spinner,
+  Tooltip,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -442,19 +443,21 @@ export default function LabsTranscriptsIndex({
                   style={{ maxHeight: "35px" }}
                 />
               </div>
-              <div
-                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                  transcriptsConfigurationState.provider == "gong"
-                    ? "border-gray-400"
-                    : "border-gray-200"
-                }`}
-                onClick={() => handleProviderChange("gong")}
-              >
-                <img
-                  src="/static/labs/transcripts/gong.jpeg"
-                  style={{ maxHeight: "35px" }}
-                />
-              </div>
+              <Tooltip label="Gong is under maintenance, check back soon.">
+                <div
+                  className={`cursor-pointer rounded-md border p-4 ${
+                    transcriptsConfigurationState.provider == "gong"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  // onClick={() => handleProviderChange("gong")}
+                >
+                  <img
+                    src="/static/labs/transcripts/gong.jpeg"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
+              </Tooltip>
             </Page.Layout>
           )}
 
