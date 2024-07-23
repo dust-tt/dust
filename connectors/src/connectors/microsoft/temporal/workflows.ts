@@ -15,7 +15,7 @@ const { getSiteNodesToSync, syncFiles, markNodeAsSeen, populateDeltas } =
   });
 
 const { microsoftDeletionActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "15 minutes",
 });
 
 const { syncDeltaForRootNode: syncDeltaForNode } = proxyActivities<
