@@ -28,15 +28,13 @@ import {
   deleteFolder,
   getParents,
   isAlreadySeenItem,
+  recursiveNodeDeletion,
   syncOneFile,
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import {
-  deleteFromDataSource,
-  updateDocumentParentsField,
-} from "@connectors/lib/data_sources";
+import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -776,73 +774,12 @@ export async function microsoftDeletionActivity({
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  async function deleteNodeAndChildren(
-    nodeId: string
-  ): Promise<Result<void, Error>> {
-    const node = await MicrosoftNodeResource.fetchByInternalId(
-      connectorId,
-      nodeId
-    );
-
-    if (!node) {
-      logger.warn({ connectorId, nodeId }, "Node not found for deletion");
-      return new Ok(undefined);
-    }
-
-    const { nodeType } = typeAndPathFromInternalId(nodeId);
-
-    if (nodeType === "file") {
-      try {
-        await deleteFromDataSource(dataSourceConfig, node.internalId);
-      } catch (error) {
-        logger.error(
-          { connectorId, nodeId, error },
-          `Failed to delete document ${node.internalId} from core data source`
-        );
-        return new Err(
-          new Error(`Failed to delete document ${node.internalId}`)
-        );
-      }
-    } else if (nodeType === "folder" || nodeType === "drive") {
-      const children = await node.fetchChildren();
-      for (const child of children) {
-        const result = await deleteNodeAndChildren(child.internalId);
-        if (result.isErr()) {
-          logger.error(
-            { connectorId, nodeId: child.internalId, error: result.error },
-            `Failed to delete child node`
-          );
-          return result;
-        }
-      }
-    }
-
-    try {
-      await node.delete();
-      const root = await MicrosoftRootResource.fetchByInternalId(
-        connectorId,
-        nodeId
-      );
-      if (root) {
-        await root.delete();
-      }
-    } catch (error) {
-      logger.error(
-        { connectorId, nodeId, error },
-        `Failed to delete node ${nodeId}`
-      );
-      return new Err(new Error(`Failed to delete node ${nodeId}`));
-    }
-
-    return new Ok(undefined);
-  }
 
   const results = await concurrentExecutor(
     nodeIdsToDelete,
-    async (nodeId) => deleteNodeAndChildren(nodeId),
+    async (nodeId) =>
+      recursiveNodeDeletion(nodeId, connectorId, dataSourceConfig),
     { concurrency: DELETE_CONCURRENCY }
   );
 
