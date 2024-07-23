@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
-import type { CrossWindowRequest } from "@app/components/assistant/conversation/actions/VisualizationIframe";
+import type { CrossWindowRequest } from "@app/components/assistant/conversation/actions/VisualizationIframeContent";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
 const answerToIframe = (
@@ -116,7 +116,8 @@ export default function VisualizationActionIframeHost({
       )}
       {activeTab === "runtime" && (
         <iframe
-          src={`/w/${owner.sId}/assistant/${conversationId}/visualization/${action.id}/iframe`}
+          style={{ width: "100%", height: "600px" }}
+          src={`/w/${owner.sId}/assistant/${conversationId}/visualization/${action.id}/iframe?wId=${owner.sId}&aId=${action.id}`}
         />
       )}
     </>

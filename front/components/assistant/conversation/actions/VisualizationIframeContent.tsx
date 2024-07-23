@@ -204,7 +204,7 @@ type ErrorBoundaryState = {
   activeTab: "code" | "runtime";
 };
 
-export default class VisualizationIframeWithErrorHandling extends React.Component<
+export class VisualizationIframeContentWithErrorHandling extends React.Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
 > {
