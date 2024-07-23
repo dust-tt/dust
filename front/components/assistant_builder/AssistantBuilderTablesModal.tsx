@@ -8,12 +8,14 @@ import {
   ServerIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ContentNode, WorkspaceType } from "@dust-tt/types";
 import type {
   ConnectorProvider,
+  ContentNode,
   CoreAPITable,
   DataSourceType,
+  WorkspaceType,
 } from "@dust-tt/types";
+import { getMicrosoftSheetContentNodeInternalIdFromTableId } from "@dust-tt/types";
 import {
   getGoogleSheetContentNodeInternalIdFromTableId,
   getNotionDatabaseContentNodeInternalIdFromTableId,
@@ -85,6 +87,8 @@ export default function AssistantBuilderTablesModal({
           return getGoogleSheetContentNodeInternalIdFromTableId(c.tableId);
         case "notion":
           return getNotionDatabaseContentNodeInternalIdFromTableId(c.tableId);
+        case "microsoft":
+          return getMicrosoftSheetContentNodeInternalIdFromTableId(c.tableId);
         default:
           throw new Error(
             `Unsupported connector provider: ${selectedDataSource.connectorProvider}`

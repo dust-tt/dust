@@ -124,7 +124,7 @@ AgentTablesQueryConfigurationTable.init(
       allowNull: false,
     },
     tableId: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(512),
       allowNull: false,
     },
   },
