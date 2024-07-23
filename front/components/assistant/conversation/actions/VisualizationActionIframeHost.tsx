@@ -15,20 +15,23 @@ const answerToIframe = (
   answer: unknown,
   iframe: MessageEventSource
 ) => {
-  iframe.postMessage({
-    command: "answer",
-    messageUniqueId: data.messageUniqueId,
-    actionId: data.actionId,
-    result: answer,
-  });
+  iframe.postMessage(
+    {
+      command: "answer",
+      messageUniqueId: data.messageUniqueId,
+      actionId: data.actionId,
+      result: answer,
+    },
+    { targetOrigin: "*" }
+  );
 };
 
 export default function VisualizationActionIframeHost({
   owner,
   action,
-  conversationId,
   isStreaming,
   streamedCode,
+
   onRetry,
 }: {
   conversationId: string;
@@ -117,7 +120,9 @@ export default function VisualizationActionIframeHost({
       {activeTab === "runtime" && (
         <iframe
           style={{ width: "100%", height: "600px" }}
-          src={`/w/${owner.sId}/assistant/${conversationId}/visualization/${action.id}/iframe?wId=${owner.sId}&aId=${action.id}`}
+          // localhost URL needs to be dynamic for dev/prod
+          src={`http://localhost:3003/?wId=${owner.sId}&aId=${action.id}`}
+          sandbox="allow-scripts "
         />
       )}
     </>
