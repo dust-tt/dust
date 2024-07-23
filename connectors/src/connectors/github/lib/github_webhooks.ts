@@ -57,32 +57,54 @@ const OrganizationSchema = t.type({
   login: t.string,
 });
 
-const IssuePayloadSchema = t.type({
-  action: t.union([
-    t.literal("opened"),
-    t.literal("edited"),
-    t.literal("deleted"),
-  ]),
-  issue: IssueSchema,
-  organization: OrganizationSchema,
-  repository: RepositorySchema,
+const UserSchema = t.type({
+  login: t.string,
 });
+
+const IssuePayloadSchema = t.intersection([
+  t.type({
+    action: t.union([
+      t.literal("opened"),
+      t.literal("edited"),
+      t.literal("deleted"),
+    ]),
+    issue: IssueSchema,
+    repository: RepositorySchema,
+  }),
+  t.union([
+    t.type({
+      organization: OrganizationSchema,
+    }),
+    t.type({
+      user: UserSchema,
+    }),
+  ]),
+]);
 type IssuePayload = t.TypeOf<typeof IssuePayloadSchema>;
 export function isIssuePayload(payload: unknown): payload is IssuePayload {
   const validation = IssuePayloadSchema.decode(payload);
   return isRight(validation);
 }
 
-const CommentPayloadSchema = t.type({
-  action: t.union([
-    t.literal("created"),
-    t.literal("edited"),
-    t.literal("deleted"),
+const CommentPayloadSchema = t.intersection([
+  t.type({
+    action: t.union([
+      t.literal("created"),
+      t.literal("edited"),
+      t.literal("deleted"),
+    ]),
+    issue: IssueSchema,
+    repository: RepositorySchema,
+  }),
+  t.union([
+    t.type({
+      organization: OrganizationSchema,
+    }),
+    t.type({
+      user: UserSchema,
+    }),
   ]),
-  issue: IssueSchema,
-  organization: OrganizationSchema,
-  repository: RepositorySchema,
-});
+]);
 type CommentPayload = t.TypeOf<typeof CommentPayloadSchema>;
 export function isCommentPayload(payload: unknown): payload is CommentPayload {
   const validation = CommentPayloadSchema.decode(payload);
@@ -95,16 +117,26 @@ const PullRequestSchema = t.type({
   merged: t.boolean,
 });
 
-const PullRequestPayloadSchema = t.type({
-  action: t.union([
-    t.literal("opened"),
-    t.literal("edited"),
-    t.literal("closed"),
+const PullRequestPayloadSchema = t.intersection([
+  t.type({
+    action: t.union([
+      t.literal("opened"),
+      t.literal("edited"),
+      t.literal("closed"),
+    ]),
+    pull_request: PullRequestSchema,
+    repository: RepositorySchema,
+  }),
+  t.union([
+    t.type({
+      organization: OrganizationSchema,
+    }),
+    t.type({
+      user: UserSchema,
+    }),
   ]),
-  pull_request: PullRequestSchema,
-  organization: OrganizationSchema,
-  repository: RepositorySchema,
-});
+]);
+
 type PullRequestPayload = t.TypeOf<typeof PullRequestPayloadSchema>;
 export function isPullRequestPayload(
   payload: unknown
@@ -117,16 +149,25 @@ const DiscussionSchema = t.type({
   number: t.number,
 });
 
-const DiscussionPayloadSchema = t.type({
-  action: t.union([
-    t.literal("created"),
-    t.literal("edited"),
-    t.literal("deleted"),
+const DiscussionPayloadSchema = t.intersection([
+  t.type({
+    action: t.union([
+      t.literal("created"),
+      t.literal("edited"),
+      t.literal("deleted"),
+    ]),
+    discussion: DiscussionSchema,
+    repository: RepositorySchema,
+  }),
+  t.union([
+    t.type({
+      organization: OrganizationSchema,
+    }),
+    t.type({
+      user: UserSchema,
+    }),
   ]),
-  discussion: DiscussionSchema,
-  organization: OrganizationSchema,
-  repository: RepositorySchema,
-});
+]);
 type DiscussionPayload = t.TypeOf<typeof DiscussionPayloadSchema>;
 export function isDiscussionPayload(
   payload: unknown
