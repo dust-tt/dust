@@ -1,4 +1,4 @@
-export const OAUTH_USE_CASES = ["connection"] as const;
+export const OAUTH_USE_CASES = ["connection", "labs_transcripts"] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
 

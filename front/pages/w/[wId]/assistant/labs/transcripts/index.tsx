@@ -12,7 +12,6 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   LabsTranscriptsProviderType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
@@ -45,11 +44,8 @@ const defaultTranscriptConfigurationState = {
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
-  user: UserType;
   subscription: SubscriptionType;
   gaTrackingId: string;
-  nangoDriveConnectorId: string;
-  nangoPublicKey: string;
   dustClientFacingUrl: string;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
@@ -70,12 +66,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
-      user,
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
-      nangoDriveConnectorId:
-        config.getNangoConnectorIdForProvider("google_drive"),
-      nangoPublicKey: config.getNangoPublicKey(),
       dustClientFacingUrl: apiConfig.getClientFacingUrl(),
     },
   };
@@ -83,11 +75,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function LabsTranscriptsIndex({
   owner,
-  user,
   subscription,
   gaTrackingId,
-  nangoDriveConnectorId,
-  nangoPublicKey,
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -250,70 +239,75 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
-  const saveOauthConnection = async (
+  const saveOAuthConnection = async (
     connectionId: string,
     provider: string
   ) => {
-    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        connectionId,
-        provider,
-      }),
-    });
+    try {
+      const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId,
+          provider,
+        }),
+      });
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect provider",
+          description:
+            "Could not connect to your transcripts provider. Please try again.",
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Provider connected",
+          description:
+            "Your transcripts provider has been connected successfully.",
+        });
 
-    if (!response.ok) {
+        await mutateTranscriptsConfiguration();
+      }
+      return response;
+    } catch (error) {
       sendNotification({
         type: "error",
         title: "Failed to connect provider",
         description:
-          "Could not connect to your transcripts provider. Please try again.",
+          "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
+          error,
       });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Provider connected",
-        description:
-          "Your transcripts provider has been connected successfully.",
-      });
-
-      await mutateTranscriptsConfiguration();
     }
-
-    return response;
   };
 
   const handleConnectGoogleTranscriptsSource = async () => {
-    try {
-      if (transcriptsConfigurationState.provider !== "google_drive") {
-        return;
-      }
-      const nango = new Nango({ publicKey: nangoPublicKey });
-      const nangoConnectionId = buildLabsConnectionId(
-        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
-        transcriptsConfigurationState.provider
-      );
-      const {
-        connectionId: newConnectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoDriveConnectorId,
-        nangoConnectionId
-      );
+    if (transcriptsConfigurationState.provider !== "google_drive") {
+      return;
+    }
 
-      await saveOauthConnection(
-        newConnectionId,
-        transcriptsConfigurationState.provider
-      );
-    } catch (error) {
+    const cRes = await setupOAuthConnection({
+      dustClientFacingUrl,
+      owner,
+      provider: "google_drive",
+      useCase: "labs_transcripts",
+    });
+
+    if (cRes.isErr()) {
       sendNotification({
         type: "error",
         title: "Failed to connect Google Drive",
-        description: "Could not connect to Google Drive. Please try again.",
+        description: cRes.error.message,
       });
+      return;
     }
+
+    await saveOAuthConnection(
+      cRes.value.connection_id,
+      transcriptsConfigurationState.provider
+    );
   };
 
   const handleConnectGongTranscriptsSource = async () => {
@@ -341,7 +335,7 @@ export default function LabsTranscriptsIndex({
           return;
         }
 
-        await saveOauthConnection(
+        await saveOAuthConnection(
           defaultConfiguration.connectionId,
           transcriptsConfigurationState.provider
         );
@@ -359,7 +353,7 @@ export default function LabsTranscriptsIndex({
         }
         const connectionId = cRes.value.connection_id;
 
-        await saveOauthConnection(
+        await saveOAuthConnection(
           connectionId,
           transcriptsConfigurationState.provider
         );
