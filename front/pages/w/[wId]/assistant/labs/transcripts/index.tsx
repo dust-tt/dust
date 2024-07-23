@@ -15,7 +15,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
-import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
 
@@ -24,9 +23,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
-import { buildLabsConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import config from "@app/lib/labs/config";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import {
   useAgentConfigurations,
