@@ -14,8 +14,10 @@ import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import config from "@app/lib/labs/config";
-import { nangoDeleteConnection } from "@app/lib/labs/transcripts/utils/helpers";
-import { isDualUseOAuthConnectionId } from "@app/lib/oauth";
+import {
+  isDualUseOAuthConnectionId,
+  nangoDeleteConnection,
+} from "@app/lib/labs/transcripts/utils/helpers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
@@ -193,7 +195,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
           connectionId: this.connectionId,
         },
       });
-      if (count === 0 && isDualUseOAuthConnectionId(this.connectionId)) {
+      if (count === 0 && !isDualUseOAuthConnectionId(this.connectionId)) {
         await nangoDeleteConnection(
           this.connectionId,
           config.getNangoConnectorIdForProvider(this.provider)
