@@ -584,6 +584,8 @@ const EXTENSION_WHITELIST = [
   ".sql",
   ".kt",
   ".kts",
+  ".gradle",
+  ".xml",
 ];
 
 const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
