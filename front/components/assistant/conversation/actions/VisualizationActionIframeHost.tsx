@@ -23,7 +23,7 @@ const answerToIframe = (
   });
 };
 
-export default function VisualizationActionRenderer({
+export default function VisualizationActionIframeHost({
   owner,
   action,
   conversationId,
@@ -62,7 +62,6 @@ export default function VisualizationActionRenderer({
           assertNever(data.command);
       }
     }
-    console.log("Adding event listener", action.id);
     window.addEventListener("message", listener);
     return () => {
       window.removeEventListener("message", listener);
@@ -105,7 +104,6 @@ export default function VisualizationActionRenderer({
           },
         ]}
         setCurrentTab={(tabId, event) => {
-          // add logic here
           event.preventDefault();
           setActiveTab(tabId as "code" | "runtime");
         }}
@@ -118,7 +116,6 @@ export default function VisualizationActionRenderer({
       )}
       {activeTab === "runtime" && (
         <iframe
-          style={{ width: "100%", height: 600 }}
           src={`/w/${owner.sId}/assistant/${conversationId}/visualization/${action.id}/iframe`}
         />
       )}

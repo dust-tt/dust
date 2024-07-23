@@ -45,7 +45,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import VisualizationActionRenderer from "@app/components/assistant/conversation/actions/VisualizationActionRenderer";
+import VisualizationActionIframeHost from "@app/components/assistant/conversation/actions/VisualizationActionIframeHost";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -568,7 +568,7 @@ export function AgentMessage({
               );
               assert(isVisualizationActionType(a));
               return (
-                <VisualizationActionRenderer
+                <VisualizationActionIframeHost
                   onRetry={() => retryHandler(agentMessage)}
                   owner={owner}
                   action={a}
