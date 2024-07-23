@@ -1,11 +1,9 @@
 import type {
   CoreAPIDataSourceDocumentSection,
   ModelId,
-  Result} from "@dust-tt/types";
-import {
-  Err,
-  Ok
+  Result,
 } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import {
   cacheWithRedis,
   isTextExtractionSupportedContentType,
@@ -616,7 +614,11 @@ export async function recursiveNodeDeletion(
 
   if (nodeType === "file") {
     try {
-      await deleteFromDataSource(dataSourceConfig, node.internalId);
+      await deleteFile({
+        connectorId,
+        dataSourceConfig,
+        internalId: node.internalId,
+      });
     } catch (error) {
       logger.error(
         { connectorId, nodeId, error },
@@ -640,10 +642,13 @@ export async function recursiveNodeDeletion(
         return result;
       }
     }
+    await deleteFolder({
+      connectorId,
+      internalId: node.internalId,
+    });
   }
 
   try {
-    await node.delete();
     const root = await MicrosoftRootResource.fetchByInternalId(
       connectorId,
       nodeId
