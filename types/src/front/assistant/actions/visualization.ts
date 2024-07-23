@@ -26,7 +26,7 @@ export const VisualizationActionOutputSchema = t.type({
   generation: t.string,
 });
 
-function visualizationExtractCodeNonStreaming(code: string) {
+export function visualizationExtractCodeNonStreaming(code: string) {
   const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*<\/visualization>/;
   let extractedCode: string | null = null;
   const match = code.match(regex);
@@ -39,17 +39,17 @@ function visualizationExtractCodeNonStreaming(code: string) {
   return extractedCode;
 }
 
-function visualizationExtractCodeStreaming(code: string) {
-  const regex = /<visualization[^>]*>(.*)/;
-  let extractedCode: string | null = null;
-  const match = code.match(regex);
-  if (match && match[0]) {
-    extractedCode = match[0];
-  }
-  if (!extractedCode) {
+export function visualizationExtractCodeStreaming(code: string) {
+  const startOffset = code.indexOf(">");
+  if (startOffset === -1) {
     return null;
   }
-  return extractedCode;
+  const endOffset = code.indexOf("</visualization>");
+  if (endOffset === -1) {
+    return code.substring(startOffset + 1);
+  } else {
+    return code.substring(startOffset + 1, endOffset);
+  }
 }
 
 export function visualizationExtractCode(code: string) {

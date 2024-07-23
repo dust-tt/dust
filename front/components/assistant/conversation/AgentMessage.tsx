@@ -529,27 +529,6 @@ export function AgentMessage({
           </div>
         ) : null}
 
-        <>
-          {agentMessage.actions
-            .filter((a) => isVisualizationActionType(a))
-            .map((a, i) => {
-              const streamingViz = streamedVisualizations.find(
-                (sv) => sv.actionId === a.id
-              );
-              assert(isVisualizationActionType(a));
-              return (
-                <VisualizationActionRenderer
-                  onRetry={() => retryHandler(agentMessage)}
-                  owner={owner}
-                  action={a}
-                  conversationId={conversationId}
-                  key={i}
-                  isStreaming={!!streamingViz}
-                  streamedCode={streamingViz?.visualization || null}
-                />
-              );
-            })}
-        </>
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
@@ -580,6 +559,27 @@ export function AgentMessage({
             )}
           </div>
         )}
+        <>
+          {agentMessage.actions
+            .filter((a) => isVisualizationActionType(a))
+            .map((a, i) => {
+              const streamingViz = streamedVisualizations.find(
+                (sv) => sv.actionId === a.id
+              );
+              assert(isVisualizationActionType(a));
+              return (
+                <VisualizationActionRenderer
+                  onRetry={() => retryHandler(agentMessage)}
+                  owner={owner}
+                  action={a}
+                  conversationId={conversationId}
+                  key={i}
+                  isStreaming={!!streamingViz}
+                  streamedCode={streamingViz?.visualization || null}
+                />
+              );
+            })}
+        </>
         {agentMessage.status === "cancelled" && (
           <Chip
             label="Message generation was interrupted"

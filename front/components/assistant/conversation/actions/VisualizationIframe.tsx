@@ -87,12 +87,6 @@ export function VisualizationIframe({
   const [errored, setErrored] = useState<Error | null>(null);
   const useFileWorkspaceWrapped = (fileId: string) =>
     useFile(workspaceId, fileId);
-  const generatedCodeScope = {
-    recharts: rechartsAll,
-    react: reactAll,
-    papaparse: papaparseAll,
-    "@dust/react-hooks": { useFile: useFileWorkspaceWrapped },
-  };
 
   useEffect(() => {
     // get the code to execute
@@ -102,13 +96,13 @@ export function VisualizationIframe({
     >("getCodeToExecute", parseInt(actionId, 10));
     getCodeToExecute({ actionId })
       .then((result) => {
-        console.log("got code to execute", result);
         const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*<\/visualization>/;
         let extractedCode: string | null = null;
         const match = result.code.match(regex);
         if (match && match[1]) {
           extractedCode = match[1];
           setCode(extractedCode);
+          console.log("got code to execute", result, extractedCode);
         } else {
           setErrored(new Error("No visualization code found"));
         }
@@ -126,6 +120,13 @@ export function VisualizationIframe({
   if (!code) {
     return <Spinner variant="color" size="xxl" />;
   }
+
+  const generatedCodeScope = {
+    recharts: rechartsAll,
+    react: reactAll,
+    papaparse: papaparseAll,
+    "@dust/react-hooks": { useFile: useFileWorkspaceWrapped },
+  };
 
   const scope = {
     import: {

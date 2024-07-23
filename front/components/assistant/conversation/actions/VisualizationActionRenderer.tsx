@@ -1,6 +1,10 @@
 import { BracesIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
 import type { VisualizationActionType, WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import {
+  assertNever,
+  visualizationExtractCodeNonStreaming,
+  visualizationExtractCodeStreaming,
+} from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import type { CrossWindowRequest } from "@app/components/assistant/conversation/actions/VisualizationIframe";
@@ -72,7 +76,13 @@ export default function VisualizationActionRenderer({
     }
   }, [action.generation, activeTab, tabManuallyChanged]);
 
-  const code = streamedCode || action.generation;
+  let extractedCode: string | null = null;
+
+  if (action.generation) {
+    extractedCode = visualizationExtractCodeNonStreaming(action.generation);
+  } else {
+    extractedCode = visualizationExtractCodeStreaming(streamedCode || "");
+  }
 
   return (
     <>
@@ -100,9 +110,9 @@ export default function VisualizationActionRenderer({
           setActiveTab(tabId as "code" | "runtime");
         }}
       />
-      {activeTab === "code" && (
+      {activeTab === "code" && extractedCode && extractedCode.length > 0 && (
         <RenderMessageMarkdown
-          content={"```js" + code + "\n```"}
+          content={"```javascript\n" + extractedCode + "\n```"}
           isStreaming={isStreaming}
         />
       )}
