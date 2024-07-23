@@ -35,7 +35,7 @@ export function getTableIdForContentNode(contentNode: ContentNode): string {
     case "microsoft":
       return getMicrosoftSheetContentNodeInternalIdFromTableId(
         contentNode.internalId
-      )
+      );
     default:
       throw new Error(`Provider ${contentNode.provider} is not supported`);
   }
