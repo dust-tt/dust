@@ -31,6 +31,8 @@ export function getTableIdForContentNode(contentNode: ContentNode): string {
       return getGoogleSheetTableIdFromContentNodeInternalId(
         contentNode.internalId
       );
+    case "microsoft":
+      return contentNode.internalId;
     default:
       throw new Error(`Provider ${contentNode.provider} is not supported`);
   }
