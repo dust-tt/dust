@@ -21,9 +21,9 @@ const getGongAccessToken = async (
         connectionId: transcriptsConfiguration.connectionId,
         error: tokRes.error,
       },
-      "Error retrieving Intercom access token"
+      "Error retrieving Gong access token"
     );
-    throw new Error("Error retrieving Intercom access token");
+    throw new Error("Error retrieving Gong access token");
   }
 
   return tokRes.value.access_token;
