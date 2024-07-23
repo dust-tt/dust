@@ -3,6 +3,7 @@ import {
   getGoogleSheetTableIdFromContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
 } from "./google_drive";
+import { getMicrosoftSheetContentNodeInternalIdFromTableId } from "./microsoft";
 import { getNotionDatabaseTableIdFromContentNodeInternalId } from "./notion";
 
 // When viewing ContentNodes for a connector, we have 2 view types: tables and documents.
@@ -32,7 +33,9 @@ export function getTableIdForContentNode(contentNode: ContentNode): string {
         contentNode.internalId
       );
     case "microsoft":
-      return contentNode.internalId;
+      return getMicrosoftSheetContentNodeInternalIdFromTableId(
+        contentNode.internalId
+      )
     default:
       throw new Error(`Provider ${contentNode.provider} is not supported`);
   }
