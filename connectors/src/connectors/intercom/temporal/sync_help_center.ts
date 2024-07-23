@@ -271,8 +271,10 @@ export async function upsertArticle({
     ? article.url
     : getArticleInAppUrl(article, region);
 
+  const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
   const parentCollectionId = article.parent_id?.toString();
   const parentCollectionIds = article.parent_ids.map((id) => id.toString());
+  parentCollectionIds.push(documentId); // Append the internal ID of the article to the parent collection IDs.
 
   if (!parentCollectionId) {
     logger.error(
@@ -378,7 +380,7 @@ export async function upsertArticle({
 
     await upsertToDatasource({
       dataSourceConfig,
-      documentId: getHelpCenterArticleInternalId(connectorId, article.id),
+      documentId,
       documentContent: renderedPage,
       documentUrl: articleUrl,
       timestampMs: updatedAtDate.getTime(),
