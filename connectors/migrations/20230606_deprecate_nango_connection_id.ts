@@ -1,8 +1,8 @@
 // import { Op } from "sequelize";
-// 
+//
 // import { sequelizeConnection } from "@connectors/resources/storage";
 // import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-// 
+//
 // async function main() {
 //   await ConnectorModel.update(
 //     {
@@ -18,7 +18,7 @@
 //     }
 //   );
 // }
-// 
+//
 // main()
 //   .then(() => {
 //     console.log("Done");
