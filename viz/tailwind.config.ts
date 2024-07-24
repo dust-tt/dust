@@ -15,5 +15,10 @@ const config: Config = {
     },
   },
   plugins: [],
+  safelist: [
+    {
+      pattern: /./, // This matches all class names.
+    },
+  ],
 };
 export default config;
