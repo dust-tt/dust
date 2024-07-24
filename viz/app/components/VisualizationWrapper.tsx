@@ -1,10 +1,10 @@
 "use client";
 
-import { Button, Collapsible, ContentMessage, Spinner } from "@dust-tt/sparkle";
 import type {
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@dust-tt/types";
+import { Button, ErrorMessage, Spinner } from "@viz/app/components/Components";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import React, { useCallback } from "react";
@@ -183,7 +183,7 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
   }
 
   if (!code) {
-    return <Spinner variant="color" size="xxl" />;
+    return <Spinner />;
   }
 
   const generatedCodeScope = {
@@ -232,29 +232,33 @@ function VisualizationError({
   error: Error;
   retry: () => void;
 }) {
+  const [showDetails, setShowDetails] = useState(false);
+
   return (
-    <>
-      <div className="flex w-full flex-col items-center justify-center gap-4">
-        <div>
-          <ContentMessage title="Error" variant="pink">
-            We encountered an error while running the code generated above. You
-            can try again by clicking the button below.
-            <Collapsible>
-              <Collapsible.Button label="Show details" />
-              <Collapsible.Panel>
-                <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
-                  Error messsage:
-                  {error.message}
-                </div>
-              </Collapsible.Panel>
-            </Collapsible>
-          </ContentMessage>
-        </div>
-        <div>
-          <Button label="Retry" onClick={retry} />
-        </div>
+    <div className="flex w-full flex-col items-center justify-center gap-4">
+      <ErrorMessage title="Error">
+        <>
+          We encountered an error while running the code generated above. You
+          can try again by clicking the button below.
+          <div className="mt-2">
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-pink-700 underline focus:outline-none"
+            >
+              {showDetails ? "Hide details" : "Show details"}
+            </button>
+            {showDetails && (
+              <div className="mt-2 p-2 bg-pink-50 rounded">
+                <strong>Error message:</strong> {error.message}
+              </div>
+            )}
+          </div>
+        </>
+      </ErrorMessage>
+      <div>
+        <Button label="Retry" onClick={retry} />
       </div>
-    </>
+    </div>
   );
 }
 

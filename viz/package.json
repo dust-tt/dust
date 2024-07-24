@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@dust-tt/sparkle": "^0.2.193",
     "@dust-tt/types": "file:../types",
     "dd-trace": "^5.1.0",
     "next": "14.2.5",
