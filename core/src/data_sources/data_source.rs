@@ -404,11 +404,11 @@ impl Document {
         })
     }
 
-    pub fn match_filter(&self, filter: Option<SearchFilter>) -> bool {
-        match filter {
+    pub fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
+        match &filter {
             Some(filter) => {
                 let mut m = true;
-                match filter.tags {
+                match &filter.tags {
                     Some(tags) => {
                         m = m
                             && match &tags.is_in {
@@ -423,7 +423,7 @@ impl Document {
                     }
                     None => (),
                 }
-                match filter.parents {
+                match &filter.parents {
                     Some(parents) => {
                         m = m
                             && match &parents.is_in {
@@ -442,7 +442,7 @@ impl Document {
                     }
                     None => (),
                 }
-                match filter.timestamp {
+                match &filter.timestamp {
                     Some(timestamp) => {
                         m = m
                             && match timestamp.gt {
@@ -1815,6 +1815,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
+        view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
         version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
@@ -1834,6 +1835,11 @@ impl DataSource {
                 return Ok(None);
             }
         };
+
+        // If the view_filter does not match the document we return as if it didn't exist.
+        if !d.match_filter(view_filter) {
+            return Ok(None);
+        }
 
         d.tags = if remove_system_tags {
             // remove tags that are prefixed with the system tag prefix
