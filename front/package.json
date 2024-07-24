@@ -28,8 +28,6 @@
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
     "@hookform/resolvers": "^3.3.4",
-    "@nangohq/frontend": "^0.16.1",
-    "@nangohq/node": "^0.36.37",
     "@radix-ui/react-checkbox": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-label": "^2.0.2",

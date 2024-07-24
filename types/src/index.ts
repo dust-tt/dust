@@ -79,7 +79,6 @@ export * from "./shared/env";
 export * from "./shared/feature_flags";
 export * from "./shared/message_classification";
 export * from "./shared/model_id";
-export * from "./shared/nango_errors";
 export * from "./shared/rate_limiter";
 export * from "./shared/result";
 export * from "./shared/text_extraction";
