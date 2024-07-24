@@ -8,7 +8,6 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -21,8 +20,6 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
-
-  private workspace?: Workspace;
 
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
     super(GroupModel, blob);

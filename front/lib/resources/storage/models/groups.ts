@@ -54,7 +54,7 @@ GroupModel.init(
   {
     modelName: "groups",
     sequelize: frontSequelize,
-    indexes: [{ unique: true, fields: ["name", "workspaceId"] }],
+    indexes: [{ unique: true, fields: ["workspaceId", "name"] }],
   }
 );
 
