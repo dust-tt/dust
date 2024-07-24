@@ -5,7 +5,10 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  assertNever,
+  isGetCodeToExecuteRequest,
+  isGetFileRequest,
+  isRetryRequest,
+  isVisualizationRPCRequest,
   visualizationExtractCodeNonStreaming,
   visualizationExtractCodeStreaming,
 } from "@dust-tt/types";
@@ -13,24 +16,25 @@ import { useCallback, useEffect, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
-const answerToIframe = (
-  data: VisualizationRPCRequest,
-  answer: unknown,
-  iframe: MessageEventSource
+const sendIframeResponse = (
+  request: VisualizationRPCRequest,
+  response: unknown,
+  target: MessageEventSource
 ) => {
-  iframe.postMessage(
+  target.postMessage(
     {
       command: "answer",
-      messageUniqueId: data.messageUniqueId,
-      actionId: data.actionId,
-      result: answer,
+      messageUniqueId: request.messageUniqueId,
+      actionId: request.actionId,
+      result: response,
     },
+    // TODO(2024-07-24 flav) Restrict origin.
     { targetOrigin: "*" }
   );
 };
 
-// Custom hook to encapsulate the logic for handling visualization messages
-function useVisualizationAPI(
+// Custom hook to encapsulate the logic for handling visualization messages.
+function useVisualizationDataHandler(
   action: VisualizationActionType,
   workspaceId: string,
   onRetry: () => void
@@ -55,36 +59,28 @@ function useVisualizationAPI(
 
   useEffect(() => {
     const listener = async (event: MessageEvent) => {
-      const data = event.data as VisualizationRPCRequest;
-      if (!data || data.actionId !== action.id) {
+      const { data } = event;
+
+      console.log(data);
+      // TODO(2024-07-24 flav) Check origin.
+      if (!isVisualizationRPCRequest(data) || !event.source) {
         return;
       }
 
-      // TODO: typeguards.
-      switch (data.command) {
-        case "getCodeToExecute":
-          if (event.source) {
-            const code = action.generation;
-            answerToIframe(data, { code }, event.source);
-          }
-          break;
+      if (isGetFileRequest(data)) {
+        const file = await getFile(data.params.fileId);
 
-        case "getFile":
-          if (data.params?.fileId) {
-            const file = await getFile(data.params.fileId);
-            if (event.source) {
-              answerToIframe(data, { file }, event.source);
-            }
-          }
-          break;
+        sendIframeResponse(data, { file }, event.source);
+      } else if (isGetCodeToExecuteRequest(data)) {
+        const code = action.generation;
 
-        case "retry":
-          onRetry();
-          break;
-
-        default:
-          console.error(`Unhandled command: ${data.command}`);
+        sendIframeResponse(data, { code }, event.source);
+      } else if (isRetryRequest(data)) {
+        // TODO(2024-07-24 flav) Pass the error message to the host window.
+        onRetry();
       }
+
+      // TODO: Types above are not accurate, as it can pass the first check but won't enter any if block.
     };
 
     window.addEventListener("message", listener);
@@ -94,12 +90,11 @@ function useVisualizationAPI(
   return { getFile };
 }
 
-export default function VisualizationActionIframeHost({
+export function VisualizationActionIframe({
   owner,
   action,
   isStreaming,
   streamedCode,
-  workspaceId,
   onRetry,
 }: {
   conversationId: string;
@@ -107,83 +102,14 @@ export default function VisualizationActionIframeHost({
   action: VisualizationActionType;
   streamedCode: string | null;
   isStreaming: boolean;
-  workspaceId: string;
   onRetry: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
   const [tabManuallyChanged, setTabManuallyChanged] = useState(false);
 
-  useVisualizationAPI(action, workspaceId, onRetry);
+  const workspaceId = owner.sId;
 
-  // const useFileWorkspaceWrapped = (fileId: string) =>
-  //   useFile(workspaceId, fileId);
-
-  // TODO: Remove useCallback here.
-  const getFile = useCallback(
-    async (fileId: string) => {
-      const response = await fetch(
-        `/api/w/${workspaceId}/files/${fileId}?action=view`
-      );
-
-      console.log(">> response.status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch file ${fileId}`);
-      }
-
-      const resBuffer = await response.arrayBuffer();
-
-      // TODO: Try/catch block.
-
-      return new File([resBuffer], fileId, {
-        type: response.headers.get("Content-Type") || undefined,
-      });
-    },
-    [workspaceId]
-  );
-
-  useEffect(() => {
-    async function listener(event: MessageEvent) {
-      console.log(">>> event:", event);
-      const data = event.data as VisualizationRPCRequest;
-      if (!data || !data.actionId || data.actionId !== action.id) {
-        return;
-      }
-
-      switch (data.command) {
-        case "getCodeToExecute": {
-          if (event.source) {
-            answerToIframe(data, { code: action.generation }, event.source);
-          }
-          break;
-        }
-
-        case "getFile": {
-          console.log("getFile", data);
-          const fileId = data.params?.fileId;
-          if (fileId) {
-            const file = await getFile(fileId);
-
-            if (event.source) {
-              answerToIframe(data, { file }, event.source);
-            }
-          }
-          break;
-        }
-
-        case "retry": {
-          onRetry();
-          break;
-        }
-        default:
-          assertNever(data.command);
-      }
-    }
-    window.addEventListener("message", listener);
-    return () => {
-      window.removeEventListener("message", listener);
-    };
-  }, [action.generation, action.id, onRetry, getFile]);
+  useVisualizationDataHandler(action, workspaceId, onRetry);
 
   useEffect(() => {
     if (activeTab === "code" && action.generation && !tabManuallyChanged) {
@@ -234,8 +160,7 @@ export default function VisualizationActionIframeHost({
       {activeTab === "runtime" && (
         <iframe
           style={{ width: "100%", height: "600px" }}
-          // localhost URL needs to be dynamic for dev/prod
-          src={`http://localhost:3007/content?aId=${action.id}`}
+          src={`${process.env.NEXT_PUBLIC_VIZ_URL}?aId=${action.id}`}
           sandbox="allow-scripts "
         />
       )}

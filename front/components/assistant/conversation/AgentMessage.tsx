@@ -45,7 +45,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import VisualizationActionIframeHost from "@app/components/assistant/conversation/actions/VisualizationActionIframeHost";
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -565,7 +565,7 @@ export function AgentMessage({
               );
               assert(isVisualizationActionType(a));
               return (
-                <VisualizationActionIframeHost
+                <VisualizationActionIframe
                   action={a}
                   conversationId={conversationId}
                   isStreaming={!!streamingViz}
@@ -573,7 +573,6 @@ export function AgentMessage({
                   onRetry={() => retryHandler(agentMessage)}
                   owner={owner}
                   streamedCode={streamingViz?.visualization || null}
-                  workspaceId={owner.sId}
                 />
               );
             })}
