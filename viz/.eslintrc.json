@@ -7,7 +7,6 @@
   "rules": {
     "eqeqeq": "error",
     "no-unused-vars": "error",
-    "no-console": "warn",
     "@typescript-eslint/no-explicit-any": "error"
   }
 }

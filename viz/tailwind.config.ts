@@ -1,8 +1,10 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  // This prevent tailwind from purging the classes that are not used in the html.
-  content: [],
+  content: [
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
   theme: {
     extend: {
       backgroundImage: {

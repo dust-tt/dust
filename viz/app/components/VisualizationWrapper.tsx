@@ -2,56 +2,78 @@
 
 import { Button, Collapsible, ContentMessage, Spinner } from "@dust-tt/sparkle";
 import {
+  visualizationExtractCodeNonStreaming,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@dust-tt/types";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import React from "react";
+import React, { useCallback } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { importCode, Runner } from "react-runner";
 import {} from "react-runner";
 import * as rechartsAll from "recharts";
 
-function isFileResult(res: unknown): res is { file: File } {
-  return (
-    typeof res === "object" &&
-    res !== null &&
-    "file" in res &&
-    res.file instanceof File
-  );
-}
-
-// This is a hook provided to the code generator model to fetch a file from the conversation.
-function useFile(actionId: string, fileId: string) {
-  const [file, setFile] = useState<File | null>(null);
+export function useVisualizationAPI(actionId: string) {
   const actionIdParsed = useMemo(() => parseInt(actionId, 10), [actionId]);
+  const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    if (!fileId) {
-      return;
-    }
+  const fetchCode = useCallback(async (): Promise<string | null> => {
+    const getCode = makeIframeMessagePassingFunction<
+      { actionId: number },
+      { code?: string }
+    >("getCodeToExecute", actionIdParsed);
+    try {
+      const result = await getCode({ actionId: actionIdParsed });
 
-    const getFileContent = async () => {
-      const getFile = makeIframeMessagePassingFunction<
-        { fileId: string },
-        { code: string }
-      >("getFile", actionIdParsed);
-
-      const res = await getFile({ fileId });
-      if (!isFileResult(res)) {
-        return;
+      const extractedCode = visualizationExtractCodeNonStreaming(
+        result.code ?? ""
+      );
+      if (!extractedCode) {
+        setError(new Error("Failed to extract visualization code."));
+        return null;
       }
 
-      const { file } = res;
+      return extractedCode;
+    } catch (error) {
+      console.error(error);
+      setError(
+        error instanceof Error
+          ? error
+          : new Error("Failed to fetch visualization code.")
+      );
 
-      setFile(file);
-    };
+      return null;
+    }
+  }, [actionIdParsed]);
 
-    getFileContent();
-  }, [actionIdParsed, fileId]);
+  const fetchFile = useCallback(
+    async (fileId: string): Promise<File | null> => {
+      const getFile = makeIframeMessagePassingFunction<
+        { fileId: string },
+        { file?: File }
+      >("getFile", actionIdParsed);
+      const res = await getFile({ fileId });
 
-  return file;
+      if (!res.file) {
+        setError(new Error("Failed to fetch file."));
+        return null;
+      }
+
+      return res.file;
+    },
+    [actionIdParsed]
+  );
+
+  // This retry function sends a command to the host window requesting a retry of a previous
+  // operation, typically if the generated code fails.
+  const retry = useCallback(async (): Promise<void> => {
+    const sendRetry = makeIframeMessagePassingFunction("retry", actionIdParsed);
+    // TODO(2024-07-24 flav) Pass the error message to the host window.
+    await sendRetry({});
+  }, [actionIdParsed]);
+
+  return { fetchCode, fetchFile, error, retry };
 }
 
 // This function creates a function that sends a command to the host window with templated Input and Output types.
@@ -91,40 +113,37 @@ function makeIframeMessagePassingFunction<Params, Answer>(
 export function VisualizationWrapper({ actionId }: { actionId: string }) {
   const [code, setCode] = useState<string | null>(null);
   const [errored, setErrored] = useState<Error | null>(null);
-  const useFileWrapped = (fileId: string) => useFile(actionId, fileId);
+
+  const { fetchCode, fetchFile, error, retry } = useVisualizationAPI(actionId);
+  const useFileWrapped = useCallback(
+    async (fileId: string) => fetchFile(fileId),
+    [fetchFile]
+  );
 
   useEffect(() => {
-    // Get the code to execute.
-    const getCodeToExecute = makeIframeMessagePassingFunction<
-      { actionId: string },
-      { code: string }
-    >("getCodeToExecute", parseInt(actionId, 10));
-
-    const fetchCode = async () => {
+    const loadCode = async () => {
       try {
-        const result = await getCodeToExecute({ actionId });
-        const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*<\/visualization>/;
-        let extractedCode: string | null = null;
-        const match = result.code.match(regex);
-        if (match && match[1]) {
-          extractedCode = match[1];
-          setCode(extractedCode);
+        const fetchedCode = await fetchCode();
+        if (fetchedCode) {
+          setCode(fetchedCode);
         } else {
           setErrored(new Error("No visualization code found"));
         }
       } catch (error) {
         console.error(error);
+        setErrored(new Error("Failed to fetch visualization code"));
       }
     };
 
-    fetchCode();
-  }, [actionId]);
+    loadCode();
+  }, [fetchCode]);
 
-  // This retry function sends the "retry" instruction to the host window, to retry an agent message
-  // in case the generated code does not work or is not satisfying.
-  const retry = useMemo(() => {
-    return makeIframeMessagePassingFunction("retry", parseInt(actionId, 10));
-  }, [actionId]);
+  // Sync the Visualization API error with the local state.
+  useEffect(() => {
+    if (error) {
+      setErrored(error);
+    }
+  }, [error]);
 
   if (errored) {
     return <VisualizationError error={errored} retry={() => retry()} />;
@@ -213,7 +232,6 @@ type ErrorBoundaryProps = {
 type ErrorBoundaryState = {
   hasError: boolean;
   error: unknown;
-  activeTab: "code" | "runtime";
 };
 
 // This is the error boundary component that wraps the VisualizationWrapper component.
@@ -224,7 +242,7 @@ export class VisualizationWrapperWithErrorHandling extends React.Component<
 > {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null, activeTab: "code" };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError() {
@@ -238,13 +256,13 @@ export class VisualizationWrapperWithErrorHandling extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
       let error: Error;
       if (this.state.error instanceof Error) {
         error = this.state.error;
       } else {
-        error = new Error("Unknown error");
+        error = new Error("Unknown error.");
       }
+
       const retry = makeIframeMessagePassingFunction(
         "retry",
         parseInt(this.props.actionId, 10)
