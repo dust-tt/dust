@@ -1721,23 +1721,17 @@ impl LLM for OpenAILLM {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
-        match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-            Ok(key) => {
-                self.api_key = Some(key);
+        match credentials.get("OPENAI_API_KEY") {
+            Some(api_key) => {
+                self.api_key = Some(api_key.clone());
             }
-            Err(_) => match credentials.get("OPENAI_API_KEY") {
-                Some(api_key) => {
-                    self.api_key = Some(api_key.clone());
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
                 }
-                None => match std::env::var("OPENAI_API_KEY") {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                    ))?,
-                },
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                ))?,
             },
         }
         Ok(())
@@ -2154,17 +2148,23 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        match credentials.get("OPENAI_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
+        // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
+        match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
+            Ok(key) => {
+                self.api_key = Some(key);
             }
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-                Ok(key) => {
-                    self.api_key = Some(key);
+            Err(_) => match credentials.get("OPENAI_API_KEY") {
+                Some(api_key) => {
+                    self.api_key = Some(api_key.clone());
                 }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                ))?,
+                None => match std::env::var("OPENAI_API_KEY") {
+                    Ok(key) => {
+                        self.api_key = Some(key);
+                    }
+                    Err(_) => Err(anyhow!(
+                        "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                    ))?,
+                },
             },
         }
         Ok(())
