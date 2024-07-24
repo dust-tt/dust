@@ -22,6 +22,9 @@ spec:
         - podSelector:
             matchLabels:
               app: connectors-worker
+        - podSelector:
+            matchLabels:
+              app: front-worker
       ports:
         - protocol: TCP
           port: 3006
