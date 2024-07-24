@@ -7,8 +7,6 @@ import { Err, Ok } from "@dust-tt/types";
 import {
   cacheWithRedis,
   isTextExtractionSupportedContentType,
-  parseAndStringifyCsv,
-  slugify,
   TextExtraction,
 } from "@dust-tt/types";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -28,6 +26,10 @@ import {
   deleteAllSheets,
   syncSpreadSheet,
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
+import {
+  handleCsvFile,
+  handleTextFile,
+} from "@connectors/connectors/shared/file";
 import { apiConfig } from "@connectors/lib/api/config";
 import {
   deleteFromDataSource,
@@ -36,11 +38,9 @@ import {
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
-  upsertTableFromCsv,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
-import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -187,26 +187,23 @@ export async function syncOneFile({
 
   let documentSection: CoreAPIDataSourceDocumentSection | null = null;
   if (
-    mimeType ===
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    [
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/pdf",
+    ].includes(mimeType)
   ) {
     const data = Buffer.from(downloadRes.data);
-    documentSection = await handlePptxFile(
-      data,
-      file.id,
-      localLogger,
-      maxDocumentLen
-    );
+    documentSection = await handleTextExtraction(data, localLogger, file);
   } else if (mimeType === "application/vnd.ms-excel") {
     const data = Buffer.from(downloadRes.data);
-    const isSuccessful = await handleCsvFile(
+    const isSuccessful = await handleCsvFile({
       dataSourceConfig,
       data,
       file,
       localLogger,
       maxDocumentLen,
-      connectorId
-    );
+      connectorId,
+    });
     if (isSuccessful) {
       documentSection = null;
     } else {
@@ -231,9 +228,8 @@ export async function syncOneFile({
         );
       }
     }
-  } else if (mimeType === "application/pdf") {
-    const data = Buffer.from(downloadRes.data);
-    documentSection = await handleTextExtraction(data, localLogger, file);
+  } else if (mimeType === "text/plain") {
+    documentSection = handleTextFile(downloadRes.data, maxDocumentLen);
   } else {
     const documentContent = await getDocumentContent();
     documentSection = {
@@ -394,76 +390,6 @@ const getParentParentId = cacheWithRedis(
     `microsoft-${connectorId}-parent-${parentInternalId}-syncms-${startSyncTs}`,
   PARENT_SYNC_CACHE_TTL_MS
 );
-
-async function handlePptxFile(
-  data: ArrayBuffer,
-  fileId: string | undefined,
-  localLogger: Logger,
-  maxDocumentLen: number
-): Promise<CoreAPIDataSourceDocumentSection | null> {
-  if (data.byteLength > 4 * maxDocumentLen) {
-    localLogger.info({}, "File too big to be chunked. Skipping");
-    return null;
-  }
-  try {
-    const converted = await PPTX2Text(Buffer.from(data), fileId);
-    return {
-      prefix: null,
-      content: null,
-      sections: converted.pages.map((page, i) => ({
-        prefix: `\n$Page: ${i + 1}/${converted.pages.length}\n`,
-        content: page.content,
-        sections: [],
-      })),
-    };
-  } catch (err) {
-    localLogger.warn(
-      { error: err },
-      "Error while converting pptx document to text"
-    );
-    return null;
-  }
-}
-
-async function handleCsvFile(
-  dataSourceConfig: DataSourceConfig,
-  data: ArrayBuffer,
-  file: DriveItem,
-  localLogger: Logger,
-  maxDocumentLen: number,
-  connectorId: ModelId
-): Promise<boolean> {
-  if (data.byteLength > 4 * maxDocumentLen) {
-    localLogger.info({}, "File too big to be chunked. Skipping");
-    return false;
-  }
-  const fileName = file.name ?? "";
-
-  const tableCsv = Buffer.from(data).toString("utf-8").trim();
-  const tableId = file.id ?? "";
-  const tableName = slugify(fileName.substring(0, 32));
-  const tableDescription = `Structured data from Microsoft (${fileName})`;
-  const stringifiedContent = await parseAndStringifyCsv(tableCsv);
-  try {
-    await upsertTableFromCsv({
-      dataSourceConfig,
-      tableId,
-      tableName,
-      tableDescription,
-      tableCsv: stringifiedContent,
-      loggerArgs: {
-        connectorId,
-        fileId: tableId,
-        fileName: tableName,
-      },
-      truncate: true,
-    });
-  } catch (err) {
-    localLogger.warn({ error: err }, "Error while upserting table");
-    return false;
-  }
-  return true;
-}
 
 async function handleTextExtraction(
   data: ArrayBuffer,
