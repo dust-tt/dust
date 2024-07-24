@@ -1,4 +1,4 @@
-import { VisualizationIframeContentWithErrorHandling } from "@viz/components/VisualizationIframeContent";
+import { VisualizationWrapperWithErrorHandling } from "@viz/app/components/VisualizationWrapper";
 
 type IframeProps = {
   wId: string;
@@ -10,7 +10,5 @@ export default function Iframe({
 }: {
   searchParams: IframeProps;
 }) {
-  return (
-    <VisualizationIframeContentWithErrorHandling actionId={searchParams.aId} />
-  );
+  return <VisualizationWrapperWithErrorHandling actionId={searchParams.aId} />;
 }
