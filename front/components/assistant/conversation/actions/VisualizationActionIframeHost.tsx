@@ -235,7 +235,7 @@ export default function VisualizationActionIframeHost({
         <iframe
           style={{ width: "100%", height: "600px" }}
           // localhost URL needs to be dynamic for dev/prod
-          src={`http://localhost:3003/content?wId=${owner.sId}&aId=${action.id}`}
+          src={`http://localhost:3007/content?aId=${action.id}`}
           sandbox="allow-scripts "
         />
       )}
