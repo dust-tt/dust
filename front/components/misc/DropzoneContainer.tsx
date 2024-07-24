@@ -25,10 +25,30 @@ export function DropzoneContainer({
     noClick: true, // Prevent default click behavior.
   });
 
+  const onPaste = (event: React.ClipboardEvent) => {
+    const items = event.clipboardData.items;
+    const files: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        if (file) {
+          files.push(file);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      setDroppedFiles(files);
+    }
+  };
+
   return (
     <div
       {...getRootProps()}
       className="flex h-full w-full flex-col items-center"
+      onPaste={onPaste}
     >
       <DropzoneOverlay
         description={description}
