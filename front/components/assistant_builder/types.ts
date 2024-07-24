@@ -11,7 +11,10 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, GPT_4_TURBO_MODEL_CONFIG } from "@dust-tt/types";
+import {
+  assertNever,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+} from "@dust-tt/types";
 
 import {
   DEFAULT_PROCESS_ACTION_NAME,
@@ -200,8 +203,8 @@ export function getDefaultAssistantState() {
     avatarUrl: null,
     generationSettings: {
       modelSettings: {
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
     },
