@@ -170,19 +170,21 @@ export async function groupRootItemsByDriveId(
 
   const client = await getClient(connector.connectionId);
 
-  const itemsWithDrive = await Promise.all(
-    nodeIds.map(async (id) => {
-      const typeAndPath = typeAndPathFromInternalId(id);
-      if (typeAndPath.nodeType === "folder") {
-        const folder = await getItem(client, typeAndPath.itemAPIPath);
+  const itemsWithDrive = await concurrentExecutor(
+    nodeIds,
+    async (id) => {
+      const { nodeType, itemAPIPath } = typeAndPathFromInternalId(id);
+      if (nodeType === "folder") {
+        const folder = await getItem(client, itemAPIPath);
         return {
           drive: getDriveInternalIdFromItem(folder),
           folder: getDriveItemInternalId(folder),
         };
-      } else if (typeAndPath.nodeType === "drive") {
+      } else if (nodeType === "drive") {
         return { drive: id, folder: id };
       }
-    })
+    },
+    { concurrency: 5 }
   );
 
   return itemsWithDrive.reduce(
@@ -449,12 +451,12 @@ export async function syncFiles({
 export async function syncDeltaForRootNode({
   connectorId,
   driveId,
-  parentIds,
+  rootNodeIds,
   startSyncTs,
 }: {
   connectorId: ModelId;
   driveId: string;
-  parentIds: string[];
+  rootNodeIds: string[];
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -471,29 +473,30 @@ export async function syncDeltaForRootNode({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const nodeTypes = parentIds.map(
+  const nodeTypes = rootNodeIds.map(
     (nodeId) => typeAndPathFromInternalId(nodeId).nodeType
   );
 
   if (
     nodeTypes.some((nodeType) => nodeType !== "drive" && nodeType !== "folder")
   ) {
-    throw new Error(`Some of ${parentIds} are not a drive or folder`);
+    throw new Error(`Some of ${rootNodeIds} are not a drive or folder`);
   }
 
-  const nodes = await Promise.all(
-    parentIds.map((id) =>
-      MicrosoftNodeResource.fetchByInternalId(connectorId, id)
-    )
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    rootNodeIds
   );
 
-  if (nodes.some((n) => !n)) {
+  const node = nodes[0];
+
+  if (nodes.length !== rootNodeIds.length || !node) {
     throw new Error(`Root or node resource ${nodes} not found`);
   }
 
   const client = await getClient(connector.connectionId);
 
-  logger.info({ connectorId, parentIds }, "Syncing delta for node");
+  logger.info({ connectorId, rootNodeIds }, "Syncing delta for node");
 
   // Goes through pagination to return all delta results. This is because delta
   // list can include same item more than once and api recommendation is to
@@ -508,7 +511,7 @@ export async function syncDeltaForRootNode({
   // grabbing pages of it can be implemented
   const { results, deltaLink } = await getDeltaData({
     client,
-    node: nodes[0] as MicrosoftNodeResource,
+    node,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
   const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
@@ -592,9 +595,13 @@ export async function syncDeltaForRootNode({
     }
   }
 
-  await Promise.all(nodes.map((node) => node && node.update({ deltaLink })));
+  await concurrentExecutor(
+    nodes,
+    (node) => node && node.update({ deltaLink }),
+    { concurrency: 5 }
+  );
 
-  logger.info({ connectorId, driveId, parentIds }, "Delta sync complete");
+  logger.info({ connectorId, driveId, rootNodeIds }, "Delta sync complete");
 }
 
 /**

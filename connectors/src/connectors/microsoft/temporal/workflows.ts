@@ -113,7 +113,7 @@ export async function incrementalSyncWorkflow({
     await syncDeltaForRootNode({
       connectorId,
       driveId: nodeId,
-      parentIds: groupedItems[nodeId] as string[],
+      rootNodeIds: groupedItems[nodeId] as string[],
       startSyncTs,
     });
   }
