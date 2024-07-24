@@ -1300,10 +1300,11 @@ async fn data_sources_search(
                         Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                         None => None,
                     },
-                    match payload.view_filter {
-                        Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
-                        None => None,
-                    },
+                    // TODO(spolu): follow_up PR.
+                    // match payload.view_filter {
+                    //     Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                    //     None => None,
+                    // },
                     payload.full_text,
                     payload.target_document_tokens,
                 )
@@ -1503,7 +1504,7 @@ async fn data_sources_documents_versions_list(
             &data_source_id,
             &document_id,
             Some((query.limit, query.offset)),
-            match query.view_filter {
+            &match query.view_filter {
                 Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                 None => None,
             },
@@ -1651,7 +1652,7 @@ async fn data_sources_documents_list(
             &project,
             &data_source_id,
             Some((query.limit, query.offset)),
-            match query.view_filter {
+            &match query.view_filter {
                 Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                 None => None,
             },
@@ -1716,10 +1717,11 @@ async fn data_sources_documents_retrieve(
                     state.store.clone(),
                     &document_id,
                     true,
-                    match query.view_filter {
-                        Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
-                        None => None,
-                    },
+                    // TODO(spolu): follow_up PR.
+                    // match query.view_filter {
+                    //     Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                    //     None => None,
+                    // },
                     &query.version_hash,
                 )
                 .await
