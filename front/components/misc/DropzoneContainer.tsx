@@ -40,6 +40,7 @@ export function DropzoneContainer({
     }
 
     if (files.length > 0) {
+      event.preventDefault();
       setDroppedFiles(files);
     }
   };
