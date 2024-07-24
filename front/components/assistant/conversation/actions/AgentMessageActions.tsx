@@ -11,6 +11,24 @@ interface AgentMessageActionsProps {
   size?: MessageSizeType;
 }
 
+function isActionComplete(action: AgentActionType): boolean {
+  switch (action.type) {
+    case "retrieval_action":
+      return action.documents !== null;
+    case "tables_query_action":
+    case "process_action":
+    case "websearch_action":
+    case "browse_action":
+      return "output" in action ? action.output !== null : false;
+    case "dust_app_run_action":
+      return action.output !== null && action.runningBlock === null;
+    case "visualization_action":
+      return action.generation !== null;
+    default:
+      return false;
+  }
+}
+
 export function AgentMessageActions({
   agentMessage,
   size = "normal",
@@ -23,10 +41,9 @@ export function AgentMessageActions({
   // emitted before actions in which case we will think we're not thinking or acting until an action
   // gets emitted in which case the content will get requalified as chain of thoughts and this will
   // switch back to true.
-  const isThinkingOrActing = useMemo(
-    () => agentMessage.status === "created",
-    [agentMessage.status]
-  );
+  const isThinkingOrActing = useMemo(() => {
+    return agentMessage.status === "created" && agentMessage.actions.every(action => !isActionComplete(action));
+  }, [agentMessage.status, agentMessage.actions]);
 
   useEffect(() => {
     if (isThinkingOrActing) {
