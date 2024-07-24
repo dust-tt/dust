@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS "groups" (
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, 
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, 
     "name" VARCHAR(255) NOT NULL, 
-    "isWorkspace" BOOLEAN NOT NULL DEFAULT false, 
-    "workspaceId" INTEGER NOT NULL REFERENCES "workspaces" ("id") ON DELETE CASCADE ON UPDATE CASCADE, 
+    "type" VARCHAR(255) NOT NULL, 
+    "workspaceId" INTEGER NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, 
     PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "groups_name" ON "groups" ("name");
+CREATE UNIQUE INDEX "groups_name_workspace_id" ON "groups" ("name", "workspaceId");

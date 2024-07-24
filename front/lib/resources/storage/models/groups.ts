@@ -1,8 +1,11 @@
+import type { GroupType } from "@dust-tt/types";
+import { isSystemGroupType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  Transaction,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
@@ -18,7 +21,7 @@ export class GroupModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare isWorkspace: boolean;
+  declare type: GroupType;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -43,20 +46,40 @@ GroupModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    isWorkspace: {
-      type: DataTypes.BOOLEAN,
+    type: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: false,
     },
   },
   {
     modelName: "groups",
     sequelize: frontSequelize,
-    indexes: [{ unique: true, fields: ["name"] }],
+    indexes: [{ unique: true, fields: ["name", "workspaceId"] }],
   }
 );
+
+GroupModel.addHook(
+  "beforeSave",
+  "enforce_one_system_group_per_workspace",
+  async (group: GroupModel, options: { transaction: Transaction }) => {
+    if (isSystemGroupType(group.type)) {
+      const existingSystemGroupType = await GroupModel.findOne({
+        where: {
+          workspaceId: group.workspaceId,
+          type: group.type,
+        },
+        transaction: options.transaction,
+      });
+
+      if (existingSystemGroupType) {
+        throw new Error("A system group exists for this workspace.");
+      }
+    }
+  }
+);
+
 Workspace.hasMany(GroupModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 GroupModel.belongsTo(Workspace);

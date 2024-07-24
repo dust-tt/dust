@@ -1,6 +1,11 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { Workspace } from "@app/lib/models/workspace";
@@ -23,7 +28,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     super(GroupModel, blob);
   }
 
-  static async makeNew(blob: Attributes<GroupModel>) {
+  static async makeNew(blob: Omit<CreationAttributes<GroupModel>, "sId">) {
     const group = await GroupModel.create({
       ...blob,
     });
@@ -51,22 +56,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
-  async update(
-    blob: Partial<Attributes<GroupModel>>,
-    transaction?: Transaction
-  ): Promise<[affectedCount: number]> {
-    const [affectedCount, affectedRows] = await this.model.update(blob, {
-      where: {
-        id: this.id,
-      },
-      transaction,
-      returning: true,
-    });
-    // Update the current instance with the new values to avoid stale data
-    Object.assign(this, affectedRows[0].get());
-    return [affectedCount];
-  }
-
   async delete(
     auth: Authenticator,
     transaction?: Transaction
@@ -85,9 +74,21 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   }
 
-  static async fetchById(id: string): Promise<GroupResource | null> {
-    // @todo daph we will probably want to add auth as a parameter to this function
-    const groupModelId = getResourceIdFromSId(id);
+  static async fetchById({
+    auth,
+    sId,
+  }: {
+    auth: Authenticator;
+    sId: string;
+  }): Promise<GroupResource | null> {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error(
+        "Unexpected unauthenticated call to `GroupResource.fetchById`"
+      );
+    }
+
+    const groupModelId = getResourceIdFromSId(sId);
     if (!groupModelId) {
       return null;
     }
@@ -95,6 +96,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const blob = await this.model.findOne({
       where: {
         id: groupModelId,
+        workspaceId: owner.id,
       },
     });
     if (!blob) {
@@ -105,13 +107,23 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new this(this.model, blob.get());
   }
 
-  static async fetchByWorkspaceId(
-    workspaceId: number,
-    transaction?: Transaction
-  ): Promise<GroupResource[]> {
+  static async fetchByAuthWorkspace({
+    auth,
+    transaction,
+  }: {
+    auth: Authenticator;
+    transaction?: Transaction;
+  }): Promise<GroupResource[]> {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error(
+        "Unexpected unauthenticated call to `GroupResource.fetchByAuthWorkspace`"
+      );
+    }
+
     const groups = await this.model.findAll({
       where: {
-        workspaceId,
+        workspaceId: owner.id,
       },
       transaction,
     });
@@ -119,16 +131,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  isWorkspaceGroup() {
-    return this.isWorkspace;
-  }
-
   toJSON() {
     return {
       id: this.id,
       name: this.name,
       workspaceId: this.workspaceId,
-      isWorkspace: this.isWorkspace,
+      type: this.type,
     };
   }
 }
