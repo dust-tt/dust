@@ -22,11 +22,11 @@ spec:
           image: gcr.io/or1g1n-186209/viz-image:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 3007
+            - containerPort: 3000
           readinessProbe:
             httpGet:
               path: /api/healthz
-              port: 3007
+              port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
 
