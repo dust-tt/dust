@@ -1383,7 +1383,7 @@ impl DataSource {
                 embedding_duration = utils::now() - time_qdrant_start;
 
                 // Construct the filters for the search query if specified.
-                let f = build_qdrant_filter(&filter);
+                let f = build_qdrant_filter(&filter, &view_filter);
 
                 let time_qdrant_search_start = utils::now();
                 let results = qdrant_client
@@ -2027,7 +2027,10 @@ impl DataSource {
     }
 }
 
-fn build_qdrant_filter(filter: &Option<SearchFilter>) -> Option<qdrant::Filter> {
+fn build_qdrant_filter(
+    filter: &Option<SearchFilter>,
+    view_filter: &Option<SearchFilter>,
+) -> Option<qdrant::Filter> {
     fn qdrant_match_field_condition(key: &str, v: Vec<String>) -> qdrant::Condition {
         qdrant::FieldCondition {
             key: key.to_string(),
@@ -2041,81 +2044,100 @@ fn build_qdrant_filter(filter: &Option<SearchFilter>) -> Option<qdrant::Filter> 
         .into()
     }
 
-    // Construct the filters for the search query if specified.
-    match filter {
-        Some(f) => {
-            let mut must_filter: Vec<qdrant::Condition> = vec![];
-            let mut must_not_filter: Vec<qdrant::Condition> = vec![];
+    let mut must_filter: Vec<qdrant::Condition> = vec![];
+    let mut must_not_filter: Vec<qdrant::Condition> = vec![];
 
-            match &f.tags {
-                Some(tags) => {
-                    match tags.is_in.clone() {
-                        Some(v) => must_filter.push(qdrant_match_field_condition("tags", v)),
-                        None => (),
-                    };
-                    match tags.is_not.clone() {
-                        Some(v) => must_not_filter.push(qdrant_match_field_condition("tags", v)),
-                        None => (),
-                    };
-                }
-                None => (),
-            };
+    let mut process_filter = |f: &SearchFilter| {
+        match &f.tags {
+            Some(tags) => {
+                match tags.is_in.clone() {
+                    Some(v) => must_filter.push(qdrant_match_field_condition("tags", v)),
+                    None => (),
+                };
+                match tags.is_not.clone() {
+                    Some(v) => must_not_filter.push(qdrant_match_field_condition("tags", v)),
+                    None => (),
+                };
+            }
+            None => (),
+        };
 
-            match &f.parents {
-                Some(parents) => {
-                    match parents.is_in.clone() {
-                        Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
-                        None => (),
-                    };
-                    match parents.is_not.clone() {
-                        Some(v) => must_not_filter.push(qdrant_match_field_condition("parents", v)),
-                        None => (),
-                    };
-                }
-                None => (),
-            };
+        match &f.parents {
+            Some(parents) => {
+                match parents.is_in.clone() {
+                    Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
+                    None => (),
+                };
+                match parents.is_not.clone() {
+                    Some(v) => must_not_filter.push(qdrant_match_field_condition("parents", v)),
+                    None => (),
+                };
+            }
+            None => (),
+        };
 
-            match &f.timestamp {
-                Some(timestamp) => {
-                    match timestamp.gt.clone() {
-                        Some(v) => must_filter.push(
-                            qdrant::FieldCondition {
-                                key: "timestamp".to_string(),
-                                range: Some(qdrant::Range {
-                                    gte: Some(v as f64),
-                                    ..Default::default()
-                                }),
+        match &f.timestamp {
+            Some(timestamp) => {
+                match timestamp.gt.clone() {
+                    Some(v) => must_filter.push(
+                        qdrant::FieldCondition {
+                            key: "timestamp".to_string(),
+                            range: Some(qdrant::Range {
+                                gte: Some(v as f64),
                                 ..Default::default()
-                            }
-                            .into(),
-                        ),
-                        None => (),
-                    };
-                    match timestamp.lt.clone() {
-                        Some(v) => must_filter.push(
-                            qdrant::FieldCondition {
-                                key: "timestamp".to_string(),
-                                range: Some(qdrant::Range {
-                                    lte: Some(v as f64),
-                                    ..Default::default()
-                                }),
+                            }),
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                    None => (),
+                };
+                match timestamp.lt.clone() {
+                    Some(v) => must_filter.push(
+                        qdrant::FieldCondition {
+                            key: "timestamp".to_string(),
+                            range: Some(qdrant::Range {
+                                lte: Some(v as f64),
                                 ..Default::default()
-                            }
-                            .into(),
-                        ),
-                        None => (),
-                    };
-                }
-                None => (),
-            };
+                            }),
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                    None => (),
+                };
+            }
+            None => (),
+        };
+    };
 
+    match (filter, view_filter) {
+        (Some(f), Some(vf)) => {
+            process_filter(f);
+            process_filter(vf);
             Some(qdrant::Filter {
                 must: must_filter,
                 must_not: must_not_filter,
                 ..Default::default()
             })
         }
-        None => None,
+        (Some(f), None) => {
+            process_filter(f);
+            Some(qdrant::Filter {
+                must: must_filter,
+                must_not: must_not_filter,
+                ..Default::default()
+            })
+        }
+        (None, Some(vf)) => {
+            process_filter(vf);
+            Some(qdrant::Filter {
+                must: must_filter,
+                must_not: must_not_filter,
+                ..Default::default()
+            })
+        }
+        (None, None) => None,
     }
 }
 
