@@ -47,7 +47,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
 
-export async function getSiteNodesToSync(
+export async function getRootNodesToSync(
   connectorId: ModelId
 ): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -158,7 +158,10 @@ export async function getSiteNodesToSync(
   return nodeResources.map((r) => r.internalId);
 }
 
-export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
+export async function groupRootItemsByDriveId(
+  connectorId: ModelId,
+  nodeIds: string[]
+) {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -167,22 +170,65 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
 
   const client = await getClient(connector.connectionId);
 
-  for (const nodeId of nodeIds) {
-    const node = await MicrosoftNodeResource.fetchByInternalId(
-      connectorId,
-      nodeId
-    );
+  const itemsWithDrive = await Promise.all(
+    nodeIds.map(async (id) => {
+      const typeAndPath = typeAndPathFromInternalId(id);
+      if (typeAndPath.nodeType === "folder") {
+        const folder = await getItem(client, typeAndPath.itemAPIPath);
+        return {
+          drive: getDriveInternalIdFromItem(folder),
+          folder: getDriveItemInternalId(folder),
+        };
+      } else if (typeAndPath.nodeType === "drive") {
+        return { drive: id, folder: id };
+      }
+    })
+  );
 
-    if (!node) {
-      throw new Error(`Node ${nodeId} not found`);
+  return itemsWithDrive.reduce(
+    (acc: { [key: string]: string[] }, current) =>
+      current
+        ? {
+            [current.drive]: acc[current.drive]
+              ? [...(acc[current.drive] as string[]), current.folder]
+              : [current.folder],
+          }
+        : acc,
+    {} as { [key: string]: string[] }
+  );
+}
+
+export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
+  const groupedItems = await groupRootItemsByDriveId(connectorId, nodeIds);
+  const connector = await ConnectorResource.fetchById(connectorId);
+
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const client = await getClient(connector.connectionId);
+
+  for (const driveId of Object.keys(groupedItems)) {
+    if (groupedItems[driveId]) {
+      const { deltaLink } = await getDeltaResults({
+        client,
+        parentInternalId: driveId,
+        token: "latest",
+      });
+
+      for (const nodeId of groupedItems[driveId]) {
+        const node = await MicrosoftNodeResource.fetchByInternalId(
+          connectorId,
+          nodeId
+        );
+
+        if (!node) {
+          throw new Error(`Node ${nodeId} not found`);
+        }
+
+        await node.update({ deltaLink });
+      }
     }
-    const { deltaLink } = await getDeltaResults({
-      client,
-      parentInternalId: nodeId,
-      token: "latest",
-    });
-
-    await node.update({ deltaLink });
   }
 }
 
@@ -402,11 +448,13 @@ export async function syncFiles({
 
 export async function syncDeltaForRootNode({
   connectorId,
-  rootNodeId,
+  driveId,
+  parentIds,
   startSyncTs,
 }: {
   connectorId: ModelId;
-  rootNodeId: string;
+  driveId: string;
+  parentIds: string[];
   startSyncTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -423,24 +471,29 @@ export async function syncDeltaForRootNode({
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const { nodeType } = typeAndPathFromInternalId(rootNodeId);
-
-  if (nodeType !== "drive" && nodeType !== "folder") {
-    throw new Error(`Node ${rootNodeId} is not a drive or folder`);
-  }
-
-  const node = await MicrosoftNodeResource.fetchByInternalId(
-    connectorId,
-    rootNodeId
+  const nodeTypes = parentIds.map(
+    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType
   );
 
-  if (!node) {
-    throw new Error(`Root or node resource ${rootNodeId} not found`);
+  if (
+    nodeTypes.some((nodeType) => nodeType !== "drive" && nodeType !== "folder")
+  ) {
+    throw new Error(`Some of ${parentIds} are not a drive or folder`);
+  }
+
+  const nodes = await Promise.all(
+    parentIds.map((id) =>
+      MicrosoftNodeResource.fetchByInternalId(connectorId, id)
+    )
+  );
+
+  if (nodes.some((n) => !n)) {
+    throw new Error(`Root or node resource ${nodes} not found`);
   }
 
   const client = await getClient(connector.connectionId);
 
-  logger.info({ connectorId, node }, "Syncing delta for node");
+  logger.info({ connectorId, parentIds }, "Syncing delta for node");
 
   // Goes through pagination to return all delta results. This is because delta
   // list can include same item more than once and api recommendation is to
@@ -455,7 +508,7 @@ export async function syncDeltaForRootNode({
   // grabbing pages of it can be implemented
   const { results, deltaLink } = await getDeltaData({
     client,
-    node,
+    node: nodes[0] as MicrosoftNodeResource,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
   const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
@@ -469,19 +522,22 @@ export async function syncDeltaForRootNode({
 
     const internalId = getDriveItemInternalId(driveItem);
 
+    // TODO filter from parentId
+
     if (driveItem.file) {
       if (driveItem.deleted) {
         // if file was just moved from a toplevel folder to another in the same drive, it's marked
         // as deleted but we don't want to delete it
         // internally means "in the same Drive" here
-        if (
-          !(await isFileMovedInSameDrive({
-            toplevelNode: node,
-            fileInternalId: internalId,
-          }))
-        ) {
-          await deleteFile({ connectorId, internalId, dataSourceConfig });
-        }
+        // TODO : check if the file is moved from all parent folders
+        // if (
+        //   !(await isFileMovedInSameDrive({
+        //     toplevelNode: drive,
+        //     fileInternalId: internalId,
+        //   }))
+        // ) {
+        //   await deleteFile({ connectorId, internalId, dataSourceConfig });
+        // }
       } else {
         await syncOneFile({
           connectorId,
@@ -512,8 +568,9 @@ export async function syncDeltaForRootNode({
 
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
+        // todo check filter
         const parentInternalId =
-          resource.internalId === rootNodeId
+          resource.internalId === driveId
             ? null
             : getParentReferenceInternalId(driveItem.parentReference);
 
@@ -535,12 +592,9 @@ export async function syncDeltaForRootNode({
     }
   }
 
-  await node.update({ deltaLink });
+  await Promise.all(nodes.map((node) => node && node.update({ deltaLink })));
 
-  logger.info(
-    { connectorId, nodeId: node.internalId, name: node.name },
-    "Delta sync complete"
-  );
+  logger.info({ connectorId, driveId, parentIds }, "Delta sync complete");
 }
 
 /**
