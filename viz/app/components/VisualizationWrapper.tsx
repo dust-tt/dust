@@ -1,30 +1,42 @@
 "use client";
 
 import { Button, Collapsible, ContentMessage, Spinner } from "@dust-tt/sparkle";
-import {
-  visualizationExtractCodeNonStreaming,
+import type {
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@dust-tt/types";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import React, { useCallback } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { importCode, Runner } from "react-runner";
 import {} from "react-runner";
 import * as rechartsAll from "recharts";
 
-export function useVisualizationAPI(actionId: string) {
-  const actionIdParsed = useMemo(() => parseInt(actionId, 10), [actionId]);
+// We can't import functions from the types package, so we define them here.
+function visualizationExtractCodeNonStreaming(code: string) {
+  const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*<\/visualization>/;
+  let extractedCode: string | null = null;
+  const match = code.match(regex);
+  if (match && match[1]) {
+    extractedCode = match[1];
+  }
+  if (!extractedCode) {
+    return null;
+  }
+  return extractedCode;
+}
+
+export function useVisualizationAPI(actionId: number) {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchCode = useCallback(async (): Promise<string | null> => {
     const getCode = makeIframeMessagePassingFunction<
       { actionId: number },
       { code?: string }
-    >("getCodeToExecute", actionIdParsed);
+    >("getCodeToExecute", actionId);
     try {
-      const result = await getCode({ actionId: actionIdParsed });
+      const result = await getCode({ actionId });
 
       const extractedCode = visualizationExtractCodeNonStreaming(
         result.code ?? ""
@@ -45,14 +57,14 @@ export function useVisualizationAPI(actionId: string) {
 
       return null;
     }
-  }, [actionIdParsed]);
+  }, [actionId]);
 
   const fetchFile = useCallback(
     async (fileId: string): Promise<File | null> => {
       const getFile = makeIframeMessagePassingFunction<
         { fileId: string },
         { file?: File }
-      >("getFile", actionIdParsed);
+      >("getFile", actionId);
       const res = await getFile({ fileId });
 
       if (!res.file) {
@@ -62,16 +74,16 @@ export function useVisualizationAPI(actionId: string) {
 
       return res.file;
     },
-    [actionIdParsed]
+    [actionId]
   );
 
   // This retry function sends a command to the host window requesting a retry of a previous
   // operation, typically if the generated code fails.
   const retry = useCallback(async (): Promise<void> => {
-    const sendRetry = makeIframeMessagePassingFunction("retry", actionIdParsed);
+    const sendRetry = makeIframeMessagePassingFunction("retry", actionId);
     // TODO(2024-07-24 flav) Pass the error message to the host window.
     await sendRetry({});
-  }, [actionIdParsed]);
+  }, [actionId]);
 
   return { fetchCode, fetchFile, error, retry };
 }
@@ -108,17 +120,38 @@ function makeIframeMessagePassingFunction<Params, Answer>(
   };
 }
 
+const useFile = (actionId: number, fileId: string) => {
+  const [file, setFile] = useState<File | null>(null);
+
+  const { fetchFile } = useVisualizationAPI(actionId); // Adjust the import based on your project structure
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const fetchedFile = await fetchFile(fileId);
+        setFile(fetchedFile);
+      } catch (err) {
+        setFile(null);
+      }
+    };
+
+    if (fileId) {
+      fetch();
+    }
+  }, [fileId, fetchFile]);
+
+  return file;
+};
+
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({ actionId }: { actionId: string }) {
   const [code, setCode] = useState<string | null>(null);
   const [errored, setErrored] = useState<Error | null>(null);
+  const actionIdParsed = parseInt(actionId, 10);
 
-  const { fetchCode, fetchFile, error, retry } = useVisualizationAPI(actionId);
-  const useFileWrapped = useCallback(
-    async (fileId: string) => fetchFile(fileId),
-    [fetchFile]
-  );
+  const { fetchCode, error, retry } = useVisualizationAPI(actionIdParsed);
+  const useFileWrapped = (fileId: string) => useFile(actionIdParsed, fileId);
 
   useEffect(() => {
     const loadCode = async () => {
