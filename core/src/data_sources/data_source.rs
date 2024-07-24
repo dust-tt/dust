@@ -1312,6 +1312,7 @@ impl DataSource {
         query: &Option<String>,
         top_k: usize,
         filter: Option<SearchFilter>,
+        view_filter: Option<SearchFilter>,
         full_text: bool,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
@@ -1319,8 +1320,14 @@ impl DataSource {
 
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
 
-        // We ensure that we have not left a `parents.is_in_map`` in the filter.
-        match filter.as_ref() {
+        // We ensure that we have not left a `parents.is_in_map`` in the filters.
+        match &filter {
+            Some(filter) => {
+                filter.ensure_postprocessed()?;
+            }
+            None => (),
+        }
+        match &view_filter {
             Some(filter) => {
                 filter.ensure_postprocessed()?;
             }
@@ -1352,7 +1359,13 @@ impl DataSource {
                     ))?;
                 }
                 let chunks = self
-                    .retrieve_chunks_without_query(store, qdrant_client.clone(), top_k, &filter)
+                    .retrieve_chunks_without_query(
+                        store,
+                        qdrant_client.clone(),
+                        top_k,
+                        &filter,
+                        &view_filter,
+                    )
                     .await?;
                 qdrant_search_duration = utils::now() - time_qdrant_start;
                 chunks
@@ -1687,6 +1700,7 @@ impl DataSource {
         qdrant_client: DustQdrantClient,
         top_k: usize,
         filter: &Option<SearchFilter>,
+        view_filter: &Option<SearchFilter>,
     ) -> Result<Vec<(String, Chunk)>> {
         let store = store.clone();
 
@@ -1695,6 +1709,7 @@ impl DataSource {
                 &self.project,
                 self.data_source_id(),
                 filter,
+                view_filter,
                 // With top_k documents, we should be guaranteed to have at least top_k chunks, if
                 // we make the assumption that each document has at least one chunk.
                 Some((top_k, 0)),
