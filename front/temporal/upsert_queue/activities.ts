@@ -76,7 +76,7 @@ export async function upsertDocumentActivity(
     `workspace_id:${upsertQueueItem.workspaceId}`,
   ];
 
-  // Dust managed credentials: all data sources.
+  // Data source operations are performed with our credentials.
   const credentials = dustManagedCredentials();
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
