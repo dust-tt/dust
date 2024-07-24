@@ -238,9 +238,8 @@ export async function syncSpreadSheet({
   // or have exceeded the maximum number of rows.
   const deletedSyncedSheetIds = syncedWorksheets
     .map((synced) => synced.internalId)
-    .filter((syncedId) =>
-      successfulSheetIdImports.find((sheetId) => sheetId === syncedId)
-    );
+    .filter((syncedId) => successfulSheetIdImports.indexOf(syncedId) === -1);
+
   if (deletedSyncedSheetIds.length > 0) {
     localLogger.info("[Spreadsheet] Deleting Excel spreadsheet.");
     await MicrosoftNodeResource.batchDelete({
