@@ -53,3 +53,14 @@ spec:
                 name: metabase-service
                 port:
                   number: 80
+
+    - host: viz.dust.tt
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: viz-service
+                port:
+                  number: 80
