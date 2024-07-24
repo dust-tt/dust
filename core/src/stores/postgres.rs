@@ -1466,40 +1466,75 @@ impl Store for PostgresStore {
             }
         };
 
+        let view_filter_sql = "
+            AND ($4::text[] IS NULL OR tags_array && $4::text[]) \
+            AND ($5::text[] IS NULL OR NOT (tags_array && $5::text[])) \
+            AND ($6::text[] IS NULL OR parents && $6::text[]) \
+            AND ($7::text[] IS NULL OR NOT (parents && $7::text[])) \
+            AND ($8 IS NULL OR timestamp > $8) \
+            AND ($9 IS NULL OR timestamp < $9) \
+        ";
+
+        let tags_in = view_filter
+            .as_ref()
+            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_in.as_ref()));
+        let tags_not = view_filter
+            .as_ref()
+            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_not.as_ref()));
+        let parents_in = view_filter
+            .as_ref()
+            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_in.as_ref()));
+        let parents_not = view_filter
+            .as_ref()
+            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_not.as_ref()));
+        let timestamp_gt = view_filter
+            .as_ref()
+            .and_then(|f| f.timestamp.as_ref().and_then(|t| t.gt.map(|v| v as i64)));
+        let timestamp_lt = view_filter
+            .as_ref()
+            .and_then(|f| f.timestamp.as_ref().and_then(|t| t.lt.map(|v| v as i64)));
+
+        let params: Vec<&(dyn ToSql + Sync)> = vec![
+            &data_source_row_id,
+            &document_id,
+            &latest_hash_created,
+            &tags_in,
+            &tags_not,
+            &parents_in,
+            &parents_not,
+            &timestamp_gt,
+            &timestamp_lt,
+        ];
+
         let rows = match limit_offset {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT hash, created FROM data_sources_documents \
-                           WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
-                           ORDER BY created DESC",
+                        format!(
+                            "SELECT hash, created FROM data_sources_documents \
+                               WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
+                               {} ORDER BY created DESC",
+                            view_filter_sql
+                        )
+                        .as_str(),
                     )
                     .await?;
-                c.query(
-                    &stmt,
-                    &[&data_source_row_id, &document_id, &latest_hash_created],
-                )
-                .await?
+                c.query(&stmt, &params).await?
             }
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
                         "SELECT hash, created FROM data_sources_documents \
                            WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
-                           ORDER BY created DESC LIMIT $4 OFFSET $5",
+                           {} ORDER BY created DESC LIMIT $10 OFFSET $11",
                     )
                     .await?;
-                c.query(
-                    &stmt,
-                    &[
-                        &data_source_row_id,
-                        &document_id,
-                        &latest_hash_created,
-                        &(limit as i64),
-                        &(offset as i64),
-                    ],
-                )
-                .await?
+                let mut params_with_limit_offset = params.clone();
+                let limit = limit as i64;
+                let offset = offset as i64;
+                params_with_limit_offset.push(&limit);
+                params_with_limit_offset.push(&offset);
+                c.query(&stmt, &params_with_limit_offset).await?
             }
         };
 
@@ -1518,14 +1553,15 @@ impl Store for PostgresStore {
             Some(_) => {
                 let stmt = c
                     .prepare(
-                        "SELECT COUNT(*) FROM data_sources_documents \
-                           WHERE data_source = $1 AND document_id = $2",
+                        format!(
+                            "SELECT COUNT(*) FROM data_sources_documents \
+                               WHERE data_source = $1 AND document_id = $2 AND created <= $3 {}",
+                            view_filter_sql
+                        )
+                        .as_str(),
                     )
                     .await?;
-                let t: i64 = c
-                    .query_one(&stmt, &[&data_source_row_id, &document_id])
-                    .await?
-                    .get(0);
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
                 t as usize
             }
         };
@@ -1810,13 +1846,12 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(format!("{} LIMIT $8 OFFSET $9", sql).as_str())
                     .await?;
-                let mut params_with_offset_limit = params.clone();
+                let mut params_with_limit_offset = params.clone();
                 let limit = limit as i64;
                 let offset = offset as i64;
-                params_with_offset_limit.push(&limit);
-                params_with_offset_limit.push(&offset);
-
-                c.query(&stmt, &params_with_offset_limit).await?
+                params_with_limit_offset.push(&limit);
+                params_with_limit_offset.push(&offset);
+                c.query(&stmt, &params_with_limit_offset).await?
             }
         };
 
