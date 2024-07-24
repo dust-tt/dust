@@ -1606,17 +1606,13 @@ impl Store for PostgresStore {
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
         let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            .query_one(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
+        let data_source_row_id: i64 = r.get(0);
 
         where_clauses.push("data_source = $1".to_string());
         params.push(&data_source_row_id);
