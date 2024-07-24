@@ -11,9 +11,6 @@ export default function Iframe({
   searchParams: IframeProps;
 }) {
   return (
-    <VisualizationIframeContentWithErrorHandling
-      workspaceId={searchParams.wId}
-      actionId={searchParams.aId}
-    />
+    <VisualizationIframeContentWithErrorHandling actionId={searchParams.aId} />
   );
 }

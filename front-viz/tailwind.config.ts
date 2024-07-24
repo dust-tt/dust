@@ -1,11 +1,8 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  // This prevent tailwind from purging the classes that are not used in the html.
+  content: [],
   theme: {
     extend: {
       backgroundImage: {
@@ -16,5 +13,10 @@ const config: Config = {
     },
   },
   plugins: [],
+  safelist: [
+    {
+      pattern: /./, // This matches all class names
+    },
+  ],
 };
 export default config;

@@ -566,13 +566,14 @@ export function AgentMessage({
               assert(isVisualizationActionType(a));
               return (
                 <VisualizationActionIframeHost
-                  onRetry={() => retryHandler(agentMessage)}
-                  owner={owner}
                   action={a}
                   conversationId={conversationId}
-                  key={i}
                   isStreaming={!!streamingViz}
+                  key={i}
+                  onRetry={() => retryHandler(agentMessage)}
+                  owner={owner}
                   streamedCode={streamingViz?.visualization || null}
+                  workspaceId={owner.sId}
                 />
               );
             })}

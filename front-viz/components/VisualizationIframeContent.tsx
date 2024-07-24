@@ -7,38 +7,51 @@ import {
 } from "@dust-tt/types";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import React from "react";
+import React, { useCallback } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { importCode, Runner } from "react-runner";
 import {} from "react-runner";
 import * as rechartsAll from "recharts";
 
+function isFileResult(res: unknown): res is { file: File } {
+  return (
+    typeof res === "object" &&
+    res !== null &&
+    "file" in res &&
+    res.file instanceof File
+  );
+}
+
 // This is a hook provided to the code generator model to fetch a file from the conversation.
-function useFile(workspaceId: string, fileId: string) {
-  const [data, setData] = useState<File | null>(null);
+function useFile(actionId: string, fileId: string) {
+  const [file, setFile] = useState<File | null>(null);
+  const actionIdParsed = useMemo(() => parseInt(actionId, 10), [actionId]);
+
   useEffect(() => {
-    fetch(`/api/w/${workspaceId}/files/${fileId}?action=view`)
-      .then((response) => {
-        console.log(response);
+    if (!fileId) {
+      return;
+    }
 
-        return response.arrayBuffer().then((buffer) => {
-          return { buffer, contentType: response.headers.get("Content-Type") };
-        });
-      })
-      .then(({ buffer, contentType }) =>
-        setData(
-          new File([buffer], fileId, {
-            type: contentType || undefined,
-          })
-        )
-      )
-      .catch(console.error);
-  }, [fileId, workspaceId]);
-  if (!fileId) {
-    return null;
-  }
+    const getFileContent = async () => {
+      const getFile = makeIframeMessagePassingFunction<
+        { fileId: string },
+        { code: string }
+      >("getFile", actionIdParsed);
 
-  return data;
+      const res = await getFile({ fileId });
+      if (!isFileResult(res)) {
+        return;
+      }
+
+      const { file } = res;
+
+      setFile(file);
+    };
+
+    getFileContent();
+  }, [actionIdParsed, fileId]);
+
+  return file;
 }
 
 // This function creates a function that sends a command to the host window with templated Input and Output types.
@@ -75,26 +88,21 @@ function makeIframeMessagePassingFunction<Params, Answer>(
 
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
-export function VisualizationIframe({
-  actionId,
-  workspaceId,
-}: {
-  actionId: string;
-  workspaceId: string;
-}) {
+export function VisualizationIframe({ actionId }: { actionId: string }) {
   const [code, setCode] = useState<string | null>(null);
   const [errored, setErrored] = useState<Error | null>(null);
-  const useFileWorkspaceWrapped = (fileId: string) =>
-    useFile(workspaceId, fileId);
+  const useFileWorkspaceWrapped = (fileId: string) => useFile(actionId, fileId);
 
   useEffect(() => {
-    // get the code to execute
+    // Get the code to execute.
     const getCodeToExecute = makeIframeMessagePassingFunction<
       { actionId: string },
       { code: string }
     >("getCodeToExecute", parseInt(actionId, 10));
-    getCodeToExecute({ actionId })
-      .then((result) => {
+
+    const fetchCode = async () => {
+      try {
+        const result = await getCodeToExecute({ actionId });
         const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*<\/visualization>/;
         let extractedCode: string | null = null;
         const match = result.code.match(regex);
@@ -104,8 +112,12 @@ export function VisualizationIframe({
         } else {
           setErrored(new Error("No visualization code found"));
         }
-      })
-      .catch(console.error);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchCode();
   }, [actionId]);
 
   // This retry function sends the "retry" instruction to the host window, to retry an agent message
@@ -117,6 +129,7 @@ export function VisualizationIframe({
   if (errored) {
     return <VisualizationError error={errored} retry={() => retry()} />;
   }
+
   if (!code) {
     return <Spinner variant="color" size="xxl" />;
   }
@@ -147,17 +160,15 @@ export function VisualizationIframe({
   `;
 
   return (
-    <>
-      <Runner
-        code={wrapperCode}
-        scope={scope}
-        onRendered={(error) => {
-          if (error) {
-            setErrored(error);
-          }
-        }}
-      />
-    </>
+    <Runner
+      code={wrapperCode}
+      scope={scope}
+      onRendered={(error) => {
+        if (error) {
+          setErrored(error);
+        }
+      }}
+    />
   );
 }
 
@@ -197,7 +208,6 @@ function VisualizationError({
 
 type ErrorBoundaryProps = {
   actionId: string;
-  workspaceId: string;
 };
 
 type ErrorBoundaryState = {
@@ -242,13 +252,6 @@ export class VisualizationIframeContentWithErrorHandling extends React.Component
       return <VisualizationError error={error} retry={() => retry} />;
     }
 
-    return (
-      <>
-        <VisualizationIframe
-          actionId={this.props.actionId}
-          workspaceId={this.props.workspaceId}
-        />
-      </>
-    );
+    return <VisualizationIframe actionId={this.props.actionId} />;
   }
 }

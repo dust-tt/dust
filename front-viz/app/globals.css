@@ -1,6 +1,9 @@
+/* purgecss start ignore */
 @tailwind base;
 @tailwind components;
+
 @tailwind utilities;
+/* purgecss end ignore */
 
 :root {
   --foreground-rgb: 0, 0, 0;

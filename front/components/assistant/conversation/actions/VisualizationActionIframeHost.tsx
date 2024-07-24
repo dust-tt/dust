@@ -9,7 +9,7 @@ import {
   visualizationExtractCodeNonStreaming,
   visualizationExtractCodeStreaming,
 } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
@@ -29,12 +29,77 @@ const answerToIframe = (
   );
 };
 
+// Custom hook to encapsulate the logic for handling visualization messages
+function useVisualizationAPI(
+  action: VisualizationActionType,
+  workspaceId: string,
+  onRetry: () => void
+) {
+  const getFile = useCallback(
+    async (fileId: string) => {
+      const response = await fetch(
+        `/api/w/${workspaceId}/files/${fileId}?action=view`
+      );
+      if (!response.ok) {
+        // TODO(2024-07-24 flav) Propagate the error to the iframe.
+        throw new Error(`Failed to fetch file ${fileId}`);
+      }
+
+      const resBuffer = await response.arrayBuffer();
+      return new File([resBuffer], fileId, {
+        type: response.headers.get("Content-Type") || undefined,
+      });
+    },
+    [workspaceId]
+  );
+
+  useEffect(() => {
+    const listener = async (event: MessageEvent) => {
+      const data = event.data as VisualizationRPCRequest;
+      if (!data || data.actionId !== action.id) {
+        return;
+      }
+
+      // TODO: typeguards.
+      switch (data.command) {
+        case "getCodeToExecute":
+          if (event.source) {
+            const code = action.generation;
+            answerToIframe(data, { code }, event.source);
+          }
+          break;
+
+        case "getFile":
+          if (data.params?.fileId) {
+            const file = await getFile(data.params.fileId);
+            if (event.source) {
+              answerToIframe(data, { file }, event.source);
+            }
+          }
+          break;
+
+        case "retry":
+          onRetry();
+          break;
+
+        default:
+          console.error(`Unhandled command: ${data.command}`);
+      }
+    };
+
+    window.addEventListener("message", listener);
+    return () => window.removeEventListener("message", listener);
+  }, [action.generation, action.id, onRetry, getFile]);
+
+  return { getFile };
+}
+
 export default function VisualizationActionIframeHost({
   owner,
   action,
   isStreaming,
   streamedCode,
-
+  workspaceId,
   onRetry,
 }: {
   conversationId: string;
@@ -42,17 +107,49 @@ export default function VisualizationActionIframeHost({
   action: VisualizationActionType;
   streamedCode: string | null;
   isStreaming: boolean;
+  workspaceId: string;
   onRetry: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
   const [tabManuallyChanged, setTabManuallyChanged] = useState(false);
 
+  useVisualizationAPI(action, workspaceId, onRetry);
+
+  // const useFileWorkspaceWrapped = (fileId: string) =>
+  //   useFile(workspaceId, fileId);
+
+  // TODO: Remove useCallback here.
+  const getFile = useCallback(
+    async (fileId: string) => {
+      const response = await fetch(
+        `/api/w/${workspaceId}/files/${fileId}?action=view`
+      );
+
+      console.log(">> response.status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file ${fileId}`);
+      }
+
+      const resBuffer = await response.arrayBuffer();
+
+      // TODO: Try/catch block.
+
+      return new File([resBuffer], fileId, {
+        type: response.headers.get("Content-Type") || undefined,
+      });
+    },
+    [workspaceId]
+  );
+
   useEffect(() => {
-    function listener(event: MessageEvent) {
+    async function listener(event: MessageEvent) {
+      console.log(">>> event:", event);
       const data = event.data as VisualizationRPCRequest;
       if (!data || !data.actionId || data.actionId !== action.id) {
         return;
       }
+
       switch (data.command) {
         case "getCodeToExecute": {
           if (event.source) {
@@ -60,6 +157,20 @@ export default function VisualizationActionIframeHost({
           }
           break;
         }
+
+        case "getFile": {
+          console.log("getFile", data);
+          const fileId = data.params?.fileId;
+          if (fileId) {
+            const file = await getFile(fileId);
+
+            if (event.source) {
+              answerToIframe(data, { file }, event.source);
+            }
+          }
+          break;
+        }
+
         case "retry": {
           onRetry();
           break;
@@ -72,7 +183,7 @@ export default function VisualizationActionIframeHost({
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [action.generation, action.id, onRetry]);
+  }, [action.generation, action.id, onRetry, getFile]);
 
   useEffect(() => {
     if (activeTab === "code" && action.generation && !tabManuallyChanged) {
@@ -124,7 +235,7 @@ export default function VisualizationActionIframeHost({
         <iframe
           style={{ width: "100%", height: "600px" }}
           // localhost URL needs to be dynamic for dev/prod
-          src={`http://localhost:3003/?wId=${owner.sId}&aId=${action.id}`}
+          src={`http://localhost:3003/content?wId=${owner.sId}&aId=${action.id}`}
           sandbox="allow-scripts "
         />
       )}
