@@ -224,18 +224,8 @@ async function handler(
         req.query.tags_not = [req.query.tags_not];
       }
 
-      let credentials: CredentialsType | null = null;
-      if (keyRes.value.isSystem) {
-        // Dust managed credentials: system API key (managed data source).
-        credentials = dustManagedCredentials();
-      } else {
-        const providers = await Provider.findAll({
-          where: {
-            workspaceId: keyRes.value.workspaceId,
-          },
-        });
-        credentials = credentialsFromProviders(providers);
-      }
+      // Data source operations are performed with our credentials.
+      const credentials = dustManagedCredentials();
 
       const queryRes = parse_payload(searchQuerySchema, req.query);
       if (queryRes.isErr()) {
