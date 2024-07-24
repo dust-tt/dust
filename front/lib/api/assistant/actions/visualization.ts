@@ -14,8 +14,10 @@ import type {
 } from "@dust-tt/types";
 import {
   BaseAction,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   cloneBaseConfig,
   DustProdActionRegistry,
+  isProviderWhitelisted,
   Ok,
   VisualizationActionOutputSchema,
 } from "@dust-tt/types";
@@ -245,10 +247,19 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-visualization"].config
     );
-    const model = agentConfiguration.model;
+
+    // If we can use Sonnet 3.5, we use it.
+    // Otherwise, we use the model from the agent configuration.
+    const model =
+      auth.isUpgraded() && isProviderWhitelisted(owner, "anthropic")
+        ? CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG
+        : agentConfiguration.model;
+
     config.MODEL.provider_id = model.providerId;
     config.MODEL.model_id = model.modelId;
-    config.MODEL.temperature = model.temperature;
+
+    // Preserve the temperature from the agent configuration.
+    config.MODEL.temperature = agentConfiguration.model.temperature;
 
     // Execute the Vizualization Dust App.
     const visualizationRes = await runActionStreamed(
