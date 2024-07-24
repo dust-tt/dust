@@ -28,10 +28,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     super(GroupModel, blob);
   }
 
-  static async makeNew(blob: Omit<CreationAttributes<GroupModel>, "sId">) {
-    const group = await GroupModel.create({
-      ...blob,
-    });
+  static async makeNew(blob: CreationAttributes<GroupModel>) {
+    const group = await GroupModel.create(blob);
 
     return new this(GroupModel, group.get());
   }
@@ -74,19 +72,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   }
 
-  static async fetchById({
-    auth,
-    sId,
-  }: {
-    auth: Authenticator;
-    sId: string;
-  }): Promise<GroupResource | null> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error(
-        "Unexpected unauthenticated call to `GroupResource.fetchById`"
-      );
-    }
+  static async fetchById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<GroupResource | null> {
+    const owner = auth.getNonNullableWorkspace();
 
     const groupModelId = getResourceIdFromSId(sId);
     if (!groupModelId) {
@@ -107,19 +97,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new this(this.model, blob.get());
   }
 
-  static async fetchByAuthWorkspace({
-    auth,
-    transaction,
-  }: {
-    auth: Authenticator;
-    transaction?: Transaction;
-  }): Promise<GroupResource[]> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error(
-        "Unexpected unauthenticated call to `GroupResource.fetchByAuthWorkspace`"
-      );
-    }
+  static async fetchByAuthWorkspace(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<GroupResource[]> {
+    const owner = auth.getNonNullableWorkspace();
 
     const groups = await this.model.findAll({
       where: {
