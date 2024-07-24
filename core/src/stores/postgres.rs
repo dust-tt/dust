@@ -1405,6 +1405,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
+        view_filter: Option<SearchFilter>,
         latest_hash: &Option<String>,
     ) -> Result<(Vec<DocumentVersion>, usize)> {
         let project_id = project.project_id();
@@ -1434,7 +1435,7 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         "SELECT created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
+                           WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
                     )
                     .await?;
                 let r = c
@@ -1452,7 +1453,8 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         "SELECT created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND status = 'latest' LIMIT 1",
+                           WHERE data_source = $1 AND document_id = $2 \
+                           AND status = 'latest' LIMIT 1",
                     )
                     .await?;
                 let r = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
@@ -1469,8 +1471,8 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         "SELECT hash, created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
-                        ORDER BY created DESC",
+                           WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
+                           ORDER BY created DESC",
                     )
                     .await?;
                 c.query(
@@ -1483,8 +1485,8 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         "SELECT hash, created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
-                        ORDER BY created DESC LIMIT $4 OFFSET $5",
+                           WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
+                           ORDER BY created DESC LIMIT $4 OFFSET $5",
                     )
                     .await?;
                 c.query(
@@ -1517,7 +1519,7 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         "SELECT COUNT(*) FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2",
+                           WHERE data_source = $1 AND document_id = $2",
                     )
                     .await?;
                 let t: i64 = c
@@ -1753,88 +1755,68 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let sql = "
-          SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, \
-                 text_size, chunk_count \
-            FROM data_sources_documents \
-            WHERE data_source = $1 AND status = 'latest' \
+        let view_filter_sql = "
             AND ($2::text[] IS NULL OR tags_array && $2::text[]) \
             AND ($3::text[] IS NULL OR NOT (tags_array && $3::text[])) \
             AND ($4::text[] IS NULL OR parents && $4::text[]) \
             AND ($5::text[] IS NULL OR NOT (parents && $5::text[])) \
             AND ($6 IS NULL OR timestamp > $6) \
             AND ($7 IS NULL OR timestamp < $7) \
-            ORDER BY timestamp DESC
         ";
+
+        let tags_in = view_filter
+            .as_ref()
+            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_in.as_ref()));
+        let tags_not = view_filter
+            .as_ref()
+            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_not.as_ref()));
+        let parents_in = view_filter
+            .as_ref()
+            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_in.as_ref()));
+        let parents_not = view_filter
+            .as_ref()
+            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_not.as_ref()));
+        let timestamp_gt = view_filter
+            .as_ref()
+            .and_then(|f| f.timestamp.as_ref().and_then(|t| t.gt.map(|v| v as i64)));
+        let timestamp_lt = view_filter
+            .as_ref()
+            .and_then(|f| f.timestamp.as_ref().and_then(|t| t.lt.map(|v| v as i64)));
+
+        let sql = format!(
+            "SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, \
+                   text_size, chunk_count \
+              FROM data_sources_documents \
+              WHERE data_source = $1 AND status = 'latest' {} ORDER BY timestamp DESC",
+            view_filter_sql
+        );
+
+        let params: Vec<&(dyn ToSql + Sync)> = vec![
+            &data_source_row_id,
+            &tags_in,
+            &tags_not,
+            &parents_in,
+            &parents_not,
+            &timestamp_gt,
+            &timestamp_lt,
+        ];
 
         let rows = match limit_offset {
             None => {
                 let stmt = c.prepare(&sql).await?;
-                c.query(
-                    &stmt,
-                    &[
-                        &data_source_row_id,
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_in.as_ref())),
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_not.as_ref())),
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_in.as_ref())),
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_not.as_ref())),
-                        &view_filter.as_ref().and_then(|f| {
-                            f.timestamp
-                                .as_ref()
-                                .and_then(|t| t.gt.as_ref().and_then(|v| Some(*v as i64)))
-                        }),
-                        &view_filter.as_ref().and_then(|f| {
-                            f.timestamp
-                                .as_ref()
-                                .and_then(|t| t.lt.as_ref().and_then(|v| Some(*v as i64)))
-                        }),
-                    ],
-                )
-                .await?
+                c.query(&stmt, &params).await?
             }
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(format!("{} LIMIT $8 OFFSET $9", sql).as_str())
                     .await?;
-                c.query(
-                    &stmt,
-                    &[
-                        &data_source_row_id,
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_in.as_ref())),
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.tags.as_ref().and_then(|t| t.is_not.as_ref())),
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_in.as_ref())),
-                        &view_filter
-                            .as_ref()
-                            .and_then(|f| f.parents.as_ref().and_then(|p| p.is_not.as_ref())),
-                        &view_filter.as_ref().and_then(|f| {
-                            f.timestamp
-                                .as_ref()
-                                .and_then(|t| t.gt.as_ref().and_then(|v| Some(*v as i64)))
-                        }),
-                        &view_filter.as_ref().and_then(|f| {
-                            f.timestamp
-                                .as_ref()
-                                .and_then(|t| t.lt.as_ref().and_then(|v| Some(*v as i64)))
-                        }),
-                        &(limit as i64),
-                        &(offset as i64),
-                    ],
-                )
-                .await?
+                let mut params_with_offset_limit = params.clone();
+                let limit = limit as i64;
+                let offset = offset as i64;
+                params_with_offset_limit.push(&limit);
+                params_with_offset_limit.push(&offset);
+
+                c.query(&stmt, &params_with_offset_limit).await?
             }
         };
 
@@ -1883,48 +1865,15 @@ impl Store for PostgresStore {
             Some(_) => {
                 let stmt = c
                     .prepare(
-                        "SELECT COUNT(*) FROM data_sources_documents \
-                           WHERE data_source = $1 AND status = 'latest' \
-                           AND ($2::text[] IS NULL OR tags_array && $2::text[]) \
-                           AND ($3::text[] IS NULL OR NOT (tags_array && $3::text[])) \
-                           AND ($4::text[] IS NULL OR parents && $4::text[]) \
-                           AND ($5::text[] IS NULL OR NOT (parents && $5::text[])) \
-                           AND ($6 IS NULL OR timestamp > $6) \
-                           AND ($7 IS NULL OR timestamp < $7)
-                        ",
+                        format!(
+                            "SELECT COUNT(*) FROM data_sources_documents \
+                               WHERE data_source = $1 AND status = 'latest' {}",
+                            view_filter_sql
+                        )
+                        .as_str(),
                     )
                     .await?;
-                let t: i64 = c
-                    .query_one(
-                        &stmt,
-                        &[
-                            &data_source_row_id,
-                            &view_filter
-                                .as_ref()
-                                .and_then(|f| f.tags.as_ref().and_then(|t| t.is_in.as_ref())),
-                            &view_filter
-                                .as_ref()
-                                .and_then(|f| f.tags.as_ref().and_then(|t| t.is_not.as_ref())),
-                            &view_filter
-                                .as_ref()
-                                .and_then(|f| f.parents.as_ref().and_then(|p| p.is_in.as_ref())),
-                            &view_filter
-                                .as_ref()
-                                .and_then(|f| f.parents.as_ref().and_then(|p| p.is_not.as_ref())),
-                            &view_filter.as_ref().and_then(|f| {
-                                f.timestamp
-                                    .as_ref()
-                                    .and_then(|t| t.gt.as_ref().and_then(|v| Some(*v as i64)))
-                            }),
-                            &view_filter.as_ref().and_then(|f| {
-                                f.timestamp
-                                    .as_ref()
-                                    .and_then(|t| t.lt.as_ref().and_then(|v| Some(*v as i64)))
-                            }),
-                        ],
-                    )
-                    .await?
-                    .get(0);
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
                 t as usize
             }
         };

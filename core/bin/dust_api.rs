@@ -1503,11 +1503,11 @@ async fn data_sources_documents_versions_list(
             &data_source_id,
             &document_id,
             Some((query.limit, query.offset)),
-            &query.latest_hash,
             match query.view_filter {
                 Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                 None => None,
             },
+            &query.latest_hash,
         )
         .await
     {
