@@ -12,7 +12,7 @@ export function buildConnectionId(
   return connectionName;
 }
 
-// Labs adds nango connections that are not necessarily made available to the rest of the product.
+// Labs adds connections that are not necessarily made available to the rest of the product.
 export function buildLabsConnectionId(
   wId: string,
   provider: LabsConnectorProvider
