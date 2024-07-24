@@ -1259,6 +1259,7 @@ struct DatasourceSearchPayload {
     query: Option<String>,
     top_k: usize,
     filter: Option<SearchFilter>,
+    view_filter: Option<SearchFilter>,
     full_text: bool,
     credentials: run::Credentials,
     target_document_tokens: Option<usize>,
@@ -1296,6 +1297,10 @@ async fn data_sources_search(
                     &payload.query,
                     payload.top_k,
                     match payload.filter {
+                        Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                        None => None,
+                    },
+                    match payload.view_filter {
                         Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                         None => None,
                     },
@@ -1482,6 +1487,7 @@ struct DataSourcesDocumentsVersionsListQuery {
     limit: usize,
     // hash of the latest version to retrieve
     latest_hash: Option<String>,
+    view_filter: Option<SearchFilter>,
 }
 
 async fn data_sources_documents_versions_list(
@@ -1498,6 +1504,10 @@ async fn data_sources_documents_versions_list(
             &document_id,
             Some((query.limit, query.offset)),
             &query.latest_hash,
+            match query.view_filter {
+                Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                None => None,
+            },
         )
         .await
     {
@@ -1626,6 +1636,7 @@ async fn data_sources_documents_upsert(
 struct DataSourcesListQuery {
     offset: usize,
     limit: usize,
+    view_filter: Option<SearchFilter>,
 }
 
 async fn data_sources_documents_list(
@@ -1640,6 +1651,10 @@ async fn data_sources_documents_list(
             &project,
             &data_source_id,
             Some((query.limit, query.offset)),
+            match query.view_filter {
+                Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                None => None,
+            },
             true, // remove system tags
         )
         .await
@@ -1669,6 +1684,7 @@ async fn data_sources_documents_list(
 #[derive(serde::Deserialize)]
 struct DataSourcesDocumentsRetrieveQuery {
     version_hash: Option<String>,
+    view_filter: Option<SearchFilter>,
 }
 
 async fn data_sources_documents_retrieve(
@@ -1696,7 +1712,16 @@ async fn data_sources_documents_retrieve(
                 None,
             ),
             Some(ds) => match ds
-                .retrieve(state.store.clone(), &document_id, true, &query.version_hash)
+                .retrieve(
+                    state.store.clone(),
+                    &document_id,
+                    true,
+                    match query.view_filter {
+                        Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                        None => None,
+                    },
+                    &query.version_hash,
+                )
                 .await
             {
                 Err(e) => error_response(
