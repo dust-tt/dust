@@ -368,17 +368,19 @@ export async function upsertArticle({
     });
 
     // Parents in the Core datasource should map the internal ids that we use in the permission modal
-    // Parents of an article are all the collections above it and the help center
+    // Parents of an article are all the collections above it and the help center + the article itself
     const parentsInternalsIds = article.parent_ids.map((id) =>
       getHelpCenterCollectionInternalId(connectorId, id.toString())
     );
     parentsInternalsIds.push(
       getHelpCenterInternalId(connectorId, helpCenterId)
     );
+    const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
+    parentsInternalsIds.push(documentId);
 
     await upsertToDatasource({
       dataSourceConfig,
-      documentId: getHelpCenterArticleInternalId(connectorId, article.id),
+      documentId,
       documentContent: renderedPage,
       documentUrl: articleUrl,
       timestampMs: updatedAtDate.getTime(),

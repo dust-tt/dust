@@ -192,6 +192,30 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(connection, "state");
     },
   },
+  gong: {
+    setupUri: (connection) => {
+      const scopes = [
+        "api:calls:read:transcript",
+        "api:calls:read:extensive",
+        "api:calls:read:basic",
+        "api:users:read",
+      ];
+      return (
+        `https://app.gong.io/oauth2/authorize?` +
+        `client_id=${config.getOAuthGongClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&response_type=code` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("gong"))}`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+  },
   microsoft: {
     setupUri: (connection) => {
       const scopes = [

@@ -71,8 +71,10 @@ async function handler(
   switch (req.method) {
     case "POST":
       if (
-        dataSource.connectorProvider !== "notion" &&
-        dataSource.connectorProvider !== "google_drive"
+        !dataSource.connectorProvider ||
+        !["notion", "google_drive", "microsoft"].includes(
+          dataSource.connectorProvider
+        )
       ) {
         return apiError(req, res, {
           status_code: 400,

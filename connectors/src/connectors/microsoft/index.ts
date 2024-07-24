@@ -33,6 +33,7 @@ import {
   populateDeltas,
 } from "@connectors/connectors/microsoft/temporal/activities";
 import {
+  launchMicrosoftDeletionWorkflow,
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
@@ -284,6 +285,20 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       connectorId: connector.id,
     });
 
+    const nodeIdsToDelete = Object.keys(permissions).filter(
+      (key) => permissions[key] === "none"
+    );
+    if (nodeIdsToDelete.length > 0) {
+      const gcRes = await launchMicrosoftDeletionWorkflow(
+        this.connectorId,
+        nodeIdsToDelete
+      );
+
+      if (gcRes.isErr()) {
+        return gcRes;
+      }
+    }
+
     const newResourcesBlobs = Object.entries(permissions)
       .filter(([, permission]) => permission === "read")
       .map(([id]) => ({
@@ -335,28 +350,79 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
   async retrieveBatchContentNodes({
     internalIds,
+    viewType,
   }: {
     internalIds: string[];
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    console.log("retrieveMicrosoftContentNodes", this.connectorId, internalIds);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Could not find connector with id ${this.connectorId}`)
+      );
+    }
+
+    try {
+      const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+        this.connectorId,
+        internalIds
+      );
+
+      const contentNodes = nodes.map((node) =>
+        getMicrosoftNodeAsContentNode(node, viewType === "tables")
+      );
+
+      const selectedResources = (
+        await MicrosoftRootResource.listRootsByConnectorId(connector.id)
+      ).map((r) => r.internalId);
+
+      const contentNodesWithPermissions = contentNodes.map((node) => ({
+        ...node,
+        permission: (selectedResources.includes(node.internalId) ||
+        (node.parentInternalId &&
+          selectedResources.includes(node.parentInternalId))
+          ? "read"
+          : "none") as ConnectorPermission,
+      }));
+
+      return new Ok(contentNodesWithPermissions);
+    } catch (error) {
+      return new Err(new Error("Failed to retrieve Microsoft content nodes"));
+    }
   }
 
   async retrieveContentNodeParents({
     internalId,
-    memoizationKey,
   }: {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    console.log(
-      "retrieveMicrosoftContentNodeParents",
-      this.connectorId,
-      internalId,
-      memoizationKey
-    );
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Could not find connector with id ${this.connectorId}`)
+      );
+    }
+
+    const parents: string[] = [];
+    let currentInternalId = internalId;
+
+    while (currentInternalId) {
+      parents.push(currentInternalId);
+
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        this.connectorId,
+        currentInternalId
+      );
+
+      if (!node || !node.parentInternalId) {
+        break;
+      }
+      currentInternalId = node.parentInternalId;
+    }
+    // Reverse the array to have the root as the first element
+    parents.reverse();
+    return new Ok(parents);
   }
 
   async setConfigurationKey({

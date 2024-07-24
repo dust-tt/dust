@@ -92,12 +92,12 @@ impl std::error::Error for ConnectionError {}
 pub enum ConnectionProvider {
     Confluence,
     Github,
+    Gong,
     GoogleDrive,
     Intercom,
+    Microsoft,
     Notion,
     Slack,
-    Microsoft,
-    Gong,
 }
 
 impl fmt::Display for ConnectionProvider {
@@ -178,12 +178,12 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
+        ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
+        ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
-        ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
-        ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
     }
 }
 
@@ -193,7 +193,6 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
 pub enum ProviderError {
     #[error("Action not supported: {0}.")]
     ActionNotSupportedError(String),
-    // TODO(2024-07-19 flav) Implement InvalidToken.
     #[error("Timeout error.")]
     TimeoutError,
     #[error("Unknown error: {0}.")]

@@ -1,4 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -27,6 +28,7 @@ import {
   deleteFolder,
   getParents,
   isAlreadySeenItem,
+  recursiveNodeDeletion,
   syncOneFile,
 } from "@connectors/connectors/microsoft/temporal/file";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
@@ -43,6 +45,7 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const FILES_SYNC_CONCURRENCY = 10;
+const DELETE_CONCURRENCY = 5;
 
 export async function getSiteNodesToSync(
   connectorId: ModelId
@@ -758,4 +761,37 @@ async function updateParentsField({
     documentId: file.internalId,
     parents,
   });
+}
+
+export async function microsoftDeletionActivity({
+  connectorId,
+  nodeIdsToDelete,
+}: {
+  connectorId: ModelId;
+  nodeIdsToDelete: string[];
+}): Promise<Result<void, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const results = await concurrentExecutor(
+    nodeIdsToDelete,
+    async (nodeId) =>
+      recursiveNodeDeletion(nodeId, connectorId, dataSourceConfig),
+    { concurrency: DELETE_CONCURRENCY }
+  );
+
+  const errors = results.filter((r): r is Err<Error> => r.isErr());
+  if (errors.length > 0) {
+    logger.error(
+      { connectorId, errors: errors.map((e) => e.error.message) },
+      "Microsoft deletion workflow completed with errors"
+    );
+    return new Err(
+      new Error("Microsoft deletion workflow completed with errors")
+    );
+  }
+  return new Ok(undefined);
 }

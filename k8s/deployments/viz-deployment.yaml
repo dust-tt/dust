@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: viz-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: viz
+  template:
+    metadata:
+      labels:
+        app: viz
+        name: viz-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "viz","service": "viz","tags": ["env:prod"]}]'
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/viz-image:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          envFrom:
+            - configMapRef:
+                name: viz-config
+
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 200Mi
+
+            limits:
+              cpu: 250m
+              memory: 200Mi

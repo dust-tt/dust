@@ -75,6 +75,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/core-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-sqlite-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/oauth-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/prodbox-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/viz-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying backend configs"
@@ -86,6 +87,7 @@ kubectl apply -f "$(dirname "$0")/backend-configs/connectors-backend-config.yaml
 kubectl apply -f "$(dirname "$0")/backend-configs/metabase-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/core-backend-config.yaml"
 kubectl apply -f "$(dirname "$0")/backend-configs/oauth-backend-config.yaml"
+kubectl apply -f "$(dirname "$0")/backend-configs/viz-backend-config.yaml"
 
 echo "-----------------------------------"
 echo "Applying managed certificates"
@@ -95,6 +97,7 @@ kubectl apply -f "$(dirname "$0")/managed-certs/front-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/front-edge-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/connectors-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/metabase-managed-cert.yaml"
+kubectl apply -f "$(dirname "$0")/managed-certs/viz-managed-cert.yaml"
 
 
 echo "-----------------------------------"
@@ -122,6 +125,7 @@ apply_deployment core-deployment
 apply_deployment core-sqlite-worker-deployment
 apply_deployment oauth-deployment
 apply_deployment prodbox-deployment
+apply_deployment viz-deployment
 
 echo "-----------------------------------"
 echo "Applying HPAs"
@@ -142,6 +146,7 @@ kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-sqlite-worker-headless-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/oauth-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/viz-service.yaml"
 
 
 echo "-----------------------------------"

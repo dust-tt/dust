@@ -106,6 +106,9 @@ const config = {
   getOAuthIntercomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_INTERCOM_CLIENT_ID");
   },
+  getOAuthGongClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_GONG_CLIENT_ID");
+  },
   getOAuthMicrosoftClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_CLIENT_ID");
   },

@@ -14,6 +14,10 @@ const { getSiteNodesToSync, syncFiles, markNodeAsSeen, populateDeltas } =
     startToCloseTimeout: "30 minutes",
   });
 
+const { microsoftDeletionActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "15 minutes",
+});
+
 const { syncDeltaForRootNode: syncDeltaForNode } = proxyActivities<
   typeof activities
 >({
@@ -110,6 +114,16 @@ export async function incrementalSyncWorkflow({
   });
 }
 
+export async function microsoftDeletionWorkflow({
+  connectorId,
+  nodeIdsToDelete,
+}: {
+  connectorId: number;
+  nodeIdsToDelete: string[];
+}) {
+  await microsoftDeletionActivity({ connectorId, nodeIdsToDelete });
+}
+
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-${connectorId}`;
 }
@@ -120,4 +134,23 @@ export function microsoftFullSyncSitesWorkflowId(connectorId: ModelId) {
 
 export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-incrementalSync-${connectorId}`;
+}
+
+export function microsoftDeletionWorkflowId(
+  connectorId: ModelId,
+  nodeIdsToDelete: string[]
+) {
+  function getLast4Chars(input: string) {
+    return input.slice(-4);
+  }
+
+  // Sort the node IDs and concatenate the last 4 characters of each
+  // up to 256 characters
+  const sortedNodeIds = nodeIdsToDelete.sort();
+  const concatenatedLast4Chars = sortedNodeIds
+    .map(getLast4Chars)
+    .join("")
+    .slice(0, 256);
+
+  return `microsoft-deletion-${connectorId}-${concatenatedLast4Chars}`;
 }

@@ -1,5 +1,6 @@
 import type {
   AgentActionSpecification,
+  AssistantFunctionCallMessageTypeModel,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -250,6 +251,46 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       return;
     }
 
+    const renderedConversation = modelConversationRes.value.modelConversation;
+    const lastMessage =
+      renderedConversation.messages[renderedConversation.messages.length - 1];
+
+    // If the last message is from the assistant, it means some content might have been generated along with the visualization tool call.
+    // In this case, we want to preserver the content (as it may be relevant to the model, as a "chain of thought"), so we
+    // update the last message to include an "enable_visualization_mode" function call and a dummy "visualization mode enabled" function
+    // result.
+    // This is necessary, as some model providers like Anthropic do not support multiple agent messages in a row.
+    if (lastMessage.role === "assistant") {
+      renderedConversation.messages.pop();
+
+      // Only bother with inserting tool_call/tool_result if there is content to preserve.
+      if (lastMessage.content) {
+        const fCallId = `call_${action.functionCallId ?? action.id.toString()}`;
+
+        const functionCallMessage: AssistantFunctionCallMessageTypeModel = {
+          role: "assistant",
+          content: lastMessage.content,
+          function_calls: [
+            {
+              id: fCallId,
+              name: `enable_visualization_mode`,
+              arguments: "{}",
+            },
+          ],
+        };
+
+        const functionResultMessage: FunctionMessageTypeModel = {
+          role: "function",
+          name: "enable_visualization_mode",
+          function_call_id: fCallId,
+          content: "Visualization mode successfully enabled.",
+        };
+
+        renderedConversation.messages.push(functionCallMessage);
+        renderedConversation.messages.push(functionResultMessage);
+      }
+    }
+
     // Configure the Vizualization Dust App to the assistant model configuration.
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-visualization"].config
@@ -266,7 +307,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       config,
       [
         {
-          conversation: modelConversationRes.value.modelConversation,
+          conversation: renderedConversation,
           prompt: prompt,
         },
       ],
