@@ -1525,7 +1525,7 @@ impl Store for PostgresStore {
         params.push(&data_source_row_id);
         where_clauses.push("document_id = $2".to_string());
         params.push(&document_id);
-        where_clauses.push("created <= $3'".to_string());
+        where_clauses.push("created <= $3".to_string());
         params.push(&latest_hash_created);
 
         let (filter_clauses, filter_params, p_idx) =
