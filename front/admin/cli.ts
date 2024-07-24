@@ -49,6 +49,11 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         type: "system",
         workspaceId: w.id,
       });
+      await GroupResource.makeNew({
+        name: "Workspace",
+        type: "workspace",
+        workspaceId: w.id,
+      });
 
       args.wId = w.sId;
       await workspace("show", args);

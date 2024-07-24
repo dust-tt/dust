@@ -28,6 +28,11 @@ export async function createWorkspace(session: SessionWithUser) {
     type: "system",
     workspaceId: workspace.id,
   });
+  await GroupResource.makeNew({
+    name: "Workspace",
+    type: "workspace",
+    workspaceId: workspace.id,
+  });
 
   sendUserOperationMessage({
     message: `<@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,
