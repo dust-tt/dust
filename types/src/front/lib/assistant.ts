@@ -89,6 +89,7 @@ export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
+export const MISTRAL_LARGE_2_MODEL_ID = "mistral-large-2407" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
 export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
@@ -107,6 +108,7 @@ export const MODEL_IDS = [
   CLAUDE_2_1_MODEL_ID,
   CLAUDE_INSTANT_1_2_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_LARGE_2_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
   MISTRAL_CODESTRAL_MODEL_ID,
@@ -344,6 +346,21 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   supportsVision: false,
 };
+
+export const MISTRAL_LARGE_2_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
+  modelId: MISTRAL_LARGE_2_MODEL_ID,
+  displayName: "Mistral Large 2",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Mistral's latest `large` model (128k context).",
+  shortDescription: "Mistral's latest large model.",
+  isLegacy: false,
+  supportsVision: false,
+};
+
 export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
   modelId: MISTRAL_MEDIUM_MODEL_ID,
@@ -427,6 +444,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
+  MISTRAL_LARGE_2_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   MISTRAL_CODESTRAL_MODEL_CONFIG,
