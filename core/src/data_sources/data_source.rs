@@ -54,8 +54,8 @@ pub struct ParentsFilter {
 /// timestamp greater than `gt` and less than `lt`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TimestampFilter {
-    pub gt: Option<u64>,
-    pub lt: Option<u64>,
+    pub gt: Option<i64>,
+    pub lt: Option<i64>,
 }
 
 // Custom deserializer for `TimestampFilter`
@@ -73,8 +73,8 @@ where
 
     let f = Option::<InnerTimestampFilter>::deserialize(deserializer)?.map(|inner_filter| {
         TimestampFilter {
-            gt: inner_filter.gt.map(|value| value as u64), // Convert f64 to u64
-            lt: inner_filter.lt.map(|value| value as u64), // Convert f64 to u64
+            gt: inner_filter.gt.map(|value| value as i64), // Convert f64 to u64
+            lt: inner_filter.lt.map(|value| value as i64), // Convert f64 to u64
         }
     });
 
@@ -402,6 +402,65 @@ impl Document {
             text: None,
             token_count: None,
         })
+    }
+
+    pub fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
+        match &filter {
+            Some(filter) => {
+                let mut m = true;
+                match &filter.tags {
+                    Some(tags) => {
+                        m = m
+                            && match &tags.is_in {
+                                Some(is_in) => is_in.iter().any(|tag| self.tags.contains(tag)),
+                                None => true,
+                            };
+                        m = m
+                            && match &tags.is_not {
+                                Some(is_not) => is_not.iter().all(|tag| !self.tags.contains(tag)),
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                match &filter.parents {
+                    Some(parents) => {
+                        m = m
+                            && match &parents.is_in {
+                                Some(is_in) => {
+                                    is_in.iter().any(|parent| self.parents.contains(parent))
+                                }
+                                None => true,
+                            };
+                        m = m
+                            && match &parents.is_not {
+                                Some(is_not) => {
+                                    is_not.iter().all(|parent| !self.parents.contains(parent))
+                                }
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                match &filter.timestamp {
+                    Some(timestamp) => {
+                        m = m
+                            && match timestamp.gt {
+                                Some(gt) => self.timestamp as i64 >= gt,
+                                None => true,
+                            };
+                        m = m
+                            && match timestamp.lt {
+                                Some(lt) => self.timestamp as i64 <= lt,
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                m
+            }
+            None => true,
+        }
     }
 }
 
@@ -1756,6 +1815,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
+        view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
         version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
@@ -1775,6 +1835,11 @@ impl DataSource {
                 return Ok(None);
             }
         };
+
+        // If the view_filter does not match the document we return as if it didn't exist.
+        if !d.match_filter(view_filter) {
+            return Ok(None);
+        }
 
         d.tags = if remove_system_tags {
             // remove tags that are prefixed with the system tag prefix

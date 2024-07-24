@@ -154,6 +154,7 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
+        view_filter: &Option<SearchFilter>,
         latest_hash: &Option<String>,
     ) -> Result<(Vec<DocumentVersion>, usize)>;
     async fn list_data_source_documents(
@@ -161,6 +162,7 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
+        view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
     ) -> Result<(Vec<Document>, usize)>;
     async fn delete_data_source_document(

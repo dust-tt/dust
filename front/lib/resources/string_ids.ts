@@ -20,6 +20,7 @@ const REGION = 1; // US.
 
 const RESOURCES_PREFIX = {
   file: "fil",
+  group: "grp",
 };
 
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);

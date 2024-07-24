@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
 use serde::{Deserialize, Serialize};
-use tokio::try_join;
 use tracing::info;
 
 use crate::utils;
