@@ -1749,12 +1749,11 @@ async fn data_sources_documents_retrieve(
                 .retrieve(
                     state.store.clone(),
                     &document_id,
+                    match query.view_filter {
+                        Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                        None => None,
+                    },
                     true,
-                    // TODO(spolu): follow_up PR.
-                    // match query.view_filter {
-                    //     Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
-                    //     None => None,
-                    // },
                     &query.version_hash,
                 )
                 .await
