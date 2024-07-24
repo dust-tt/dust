@@ -2,6 +2,7 @@ import { sendUserOperationMessage } from "@dust-tt/types";
 
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
@@ -20,6 +21,12 @@ export async function createWorkspace(session: SessionWithUser) {
   const workspace = await Workspace.create({
     sId: generateLegacyModelSId(),
     name: externalUser.nickname,
+  });
+
+  await GroupResource.makeNew({
+    name: "System",
+    type: "system",
+    workspaceId: workspace.id,
   });
 
   sendUserOperationMessage({
