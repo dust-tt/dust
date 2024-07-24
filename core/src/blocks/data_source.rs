@@ -110,6 +110,8 @@ impl DataSource {
                     Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                     None => None,
                 },
+                // TODO(spolu): add in subsequent PR (data_source block view_filter support).
+                None,
                 self.full_text,
                 target_document_tokens,
             )

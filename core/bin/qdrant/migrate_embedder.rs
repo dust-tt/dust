@@ -643,6 +643,7 @@ async fn refresh_chunk_count_for_updated_documents(
                 ds.project(),
                 ds.data_source_id(),
                 &Some(filter.clone()),
+                &None,
                 Some((batch_size, offset)),
             )
             .await?;
