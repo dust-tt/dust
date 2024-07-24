@@ -1749,7 +1749,7 @@ async fn data_sources_documents_retrieve(
                 .retrieve(
                     state.store.clone(),
                     &document_id,
-                    match query.view_filter {
+                    &match query.view_filter {
                         Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                         None => None,
                     },

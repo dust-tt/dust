@@ -405,7 +405,7 @@ impl Document {
     }
 
     pub fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
-        match filter.as_ref() {
+        match &filter {
             Some(filter) => {
                 let mut m = true;
                 match &filter.tags {
