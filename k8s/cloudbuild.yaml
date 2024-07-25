@@ -14,11 +14,10 @@ steps:
       - --build-arg
       - COMMIT_HASH=$SHORT_SHA
       - --build-arg
-      - NEXT_PUBLIC_VIZ_URL=$$NEXT_PUBLIC_VIZ_URL
+      - NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt
       - .
     secretEnv:
       - "DEPOT_TOKEN"
-      - "NEXT_PUBLIC_VIZ_URL"
 
 timeout: 600s
 
@@ -26,8 +25,6 @@ availableSecrets:
   secretManager:
     - versionName: projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
       env: DEPOT_TOKEN
-    - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_VIZ_URL/versions/latest
-      env: NEXT_PUBLIC_VIZ_URL
 
 options:
   logging: CLOUD_LOGGING_ONLY
