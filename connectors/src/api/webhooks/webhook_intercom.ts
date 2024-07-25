@@ -9,13 +9,10 @@ import {
   IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import { syncFailed } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-
-const { NANGO_INTERCOM_CONNECTOR_ID = "" } = process.env;
 
 const logger = mainLogger.child({ provider: "intercom" });
 
@@ -235,22 +232,6 @@ const _webhookIntercomUninstallAPIHandler = async (
 
   // Mark the connector as errored so that the user is notified.
   await syncFailed(connector.id, "oauth_token_revoked");
-
-  // Attempt to delete the nango connection Id. But fail silently if it fails.
-  const nangoRes = await nangoDeleteConnection(
-    connector.connectionId,
-    NANGO_INTERCOM_CONNECTOR_ID
-  );
-  if (nangoRes.isErr()) {
-    logger.error(
-      {
-        error: nangoRes.error,
-        connectorId: connector.id,
-        connectionId: connector.connectionId,
-      },
-      "Error deleting old Nango connection (intercom uninstall webhook)"
-    );
-  }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {

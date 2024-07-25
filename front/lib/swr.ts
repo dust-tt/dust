@@ -18,6 +18,7 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { COMMIT_HASH } from "@app/lib/commit-hash";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
@@ -66,6 +67,11 @@ function useSWRWithDefaults<T>(
   return useSWR<T>(key, fetcher, mergedConfig);
 }
 
+const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
+  ...headers,
+  "X-Commit-Hash": COMMIT_HASH,
+});
+
 const resHandler = async (res: Response) => {
   if (res.status >= 300) {
     const errorText = await res.text();
@@ -80,19 +86,26 @@ const resHandler = async (res: Response) => {
   return res.json();
 };
 
-export const fetcher = async (...args: Parameters<typeof fetch>) =>
-  resHandler(await fetch(...args));
+export const fetcher = async (...args: Parameters<typeof fetch>) => {
+  const [url, config] = args;
+  const res = await fetch(url, {
+    ...config,
+    headers: addCommitHashToHeaders(config?.headers),
+  });
+  return resHandler(res);
+};
 
-const postFetcher = async ([url, body]: [string, object]) =>
-  resHandler(
-    await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    })
-  );
+export const postFetcher = async ([url, body]: [string, object]) => {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: addCommitHashToHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(body),
+  });
+
+  return resHandler(res);
+};
 
 export function useDatasets({
   owner,

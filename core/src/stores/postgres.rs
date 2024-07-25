@@ -68,6 +68,58 @@ impl PostgresStore {
 
         Ok(())
     }
+
+    fn where_clauses_and_params_for_filter<'a>(
+        filter: &'a Option<SearchFilter>,
+        from_idx: usize,
+    ) -> (Vec<String>, Vec<&'a (dyn ToSql + Sync)>, usize) {
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<&'a (dyn ToSql + Sync)> = vec![];
+        let mut p_idx: usize = from_idx;
+
+        if let Some(filter) = filter {
+            if let Some(tags_filter) = &filter.tags {
+                if let Some(tags) = &tags_filter.is_in {
+                    where_clauses.push(format!("tags_array && ${}", p_idx));
+                    params.push(tags as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+                if let Some(tags) = &tags_filter.is_not {
+                    where_clauses.push(format!("NOT tags_array && ${}", p_idx));
+                    params.push(tags as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+            }
+
+            if let Some(parents_filter) = &filter.parents {
+                if let Some(parents) = &parents_filter.is_in {
+                    where_clauses.push(format!("parents && ${}", p_idx));
+                    params.push(parents as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+                if let Some(parents) = &parents_filter.is_not {
+                    where_clauses.push(format!("NOT parents && ${}", p_idx));
+                    params.push(parents as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+            }
+
+            if let Some(ts_filter) = &filter.timestamp {
+                if let Some(ts) = ts_filter.gt.as_ref() {
+                    where_clauses.push(format!("timestamp > ${}", p_idx));
+                    params.push(ts as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+                if let Some(ts) = ts_filter.lt.as_ref() {
+                    where_clauses.push(format!("timestamp < ${}", p_idx));
+                    params.push(ts as &(dyn ToSql + Sync));
+                    p_idx += 1;
+                }
+            }
+        }
+
+        (where_clauses, params, p_idx)
+    }
 }
 
 #[async_trait]
@@ -1405,6 +1457,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         document_id: &str,
         limit_offset: Option<(usize, usize)>,
+        view_filter: &Option<SearchFilter>,
         latest_hash: &Option<String>,
     ) -> Result<(Vec<DocumentVersion>, usize)> {
         let project_id = project.project_id();
@@ -1434,7 +1487,7 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         "SELECT created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
+                           WHERE data_source = $1 AND document_id = $2 AND hash = $3 LIMIT 1",
                     )
                     .await?;
                 let r = c
@@ -1452,7 +1505,8 @@ impl Store for PostgresStore {
                 let stmt = c
                     .prepare(
                         "SELECT created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND status = 'latest' LIMIT 1",
+                           WHERE data_source = $1 AND document_id = $2 \
+                           AND status = 'latest' LIMIT 1",
                     )
                     .await?;
                 let r = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
@@ -1464,40 +1518,45 @@ impl Store for PostgresStore {
             }
         };
 
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+
+        where_clauses.push("data_source = $1".to_string());
+        params.push(&data_source_row_id);
+        where_clauses.push("document_id = $2".to_string());
+        params.push(&document_id);
+        where_clauses.push("created <= $3".to_string());
+        params.push(&latest_hash_created);
+
+        let (filter_clauses, filter_params, p_idx) =
+            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+
+        where_clauses.extend(filter_clauses);
+        params.extend(filter_params);
+
+        let sql = format!(
+            "SELECT hash, created FROM data_sources_documents \
+               WHERE {} ORDER BY created DESC",
+            where_clauses.join(" AND ")
+        );
+
         let rows = match limit_offset {
             None => {
-                let stmt = c
-                    .prepare(
-                        "SELECT hash, created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
-                        ORDER BY created DESC",
-                    )
-                    .await?;
-                c.query(
-                    &stmt,
-                    &[&data_source_row_id, &document_id, &latest_hash_created],
-                )
-                .await?
+                let stmt = c.prepare(&sql).await?;
+                c.query(&stmt, &params).await?
             }
             Some((limit, offset)) => {
+                let limit = limit as i64;
+                let offset = offset as i64;
+
+                let mut params = params.clone();
+                params.push(&limit);
+                params.push(&offset);
+
                 let stmt = c
-                    .prepare(
-                        "SELECT hash, created FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2 AND created <= $3 \
-                        ORDER BY created DESC LIMIT $4 OFFSET $5",
-                    )
+                    .prepare(&(sql + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1)))
                     .await?;
-                c.query(
-                    &stmt,
-                    &[
-                        &data_source_row_id,
-                        &document_id,
-                        &latest_hash_created,
-                        &(limit as i64),
-                        &(offset as i64),
-                    ],
-                )
-                .await?
+                c.query(&stmt, &params).await?
             }
         };
 
@@ -1516,14 +1575,14 @@ impl Store for PostgresStore {
             Some(_) => {
                 let stmt = c
                     .prepare(
-                        "SELECT COUNT(*) FROM data_sources_documents \
-                        WHERE data_source = $1 AND document_id = $2",
+                        format!(
+                            "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
+                            where_clauses.join(" AND ")
+                        )
+                        .as_str(),
                     )
                     .await?;
-                let t: i64 = c
-                    .query_one(&stmt, &[&data_source_row_id, &document_id])
-                    .await?
-                    .get(0);
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
                 t as usize
             }
         };
@@ -1536,6 +1595,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         filter: &Option<SearchFilter>,
+        view_filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<String>, usize)> {
         let pool = self.pool.clone();
@@ -1546,89 +1606,41 @@ impl Store for PostgresStore {
         let mut where_clauses: Vec<String> = vec![];
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
 
-        let data_source_internal_id_rows = c
+        let r = c
             .query_one(
                 "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let data_source_internal_id: i64 = data_source_internal_id_rows.get(0);
+        let data_source_row_id: i64 = r.get(0);
 
         where_clauses.push("data_source = $1".to_string());
-        params.push(&data_source_internal_id);
-
-        let mut p_idx: usize = 2;
-
-        let tags_is_in: Vec<String>;
-        let tags_is_not: Vec<String>;
-        let parents_is_in: Vec<String>;
-        let parents_is_not: Vec<String>;
-        let ts_gt: i64;
-        let ts_lt: i64;
-
-        if let Some(filter) = filter {
-            if let Some(tags_filter) = &filter.tags {
-                if let Some(tags) = &tags_filter.is_in {
-                    tags_is_in = tags.to_vec();
-                    where_clauses.push(format!("tags_array && ${}", p_idx));
-                    params.push(&tags_is_in);
-                    p_idx += 1;
-                }
-                if let Some(tags) = &tags_filter.is_not {
-                    tags_is_not = tags.to_vec();
-                    where_clauses.push(format!("NOT tags_array && ${}", p_idx));
-                    params.push(&tags_is_not);
-                    p_idx += 1;
-                }
-            }
-
-            if let Some(parents_filter) = &filter.parents {
-                if let Some(parents) = &parents_filter.is_in {
-                    parents_is_in = parents.to_vec();
-                    where_clauses.push(format!("parents && ${}", p_idx));
-                    params.push(&parents_is_in);
-                    p_idx += 1;
-                }
-                if let Some(parents) = &parents_filter.is_not {
-                    parents_is_not = parents.to_vec();
-                    where_clauses.push(format!("NOT parents && ${}", p_idx));
-                    params.push(&parents_is_not);
-                    p_idx += 1;
-                }
-            }
-
-            if let Some(ts_filter) = &filter.timestamp {
-                if let Some(ts) = ts_filter.gt {
-                    where_clauses.push(format!("timestamp > ${}", p_idx));
-                    ts_gt = ts as i64;
-                    params.push(&ts_gt);
-                    p_idx += 1;
-                }
-                if let Some(ts) = ts_filter.lt {
-                    where_clauses.push(format!("timestamp < ${}", p_idx));
-                    ts_lt = ts as i64;
-                    params.push(&ts_lt);
-                    p_idx += 1;
-                }
-            }
-        }
-
+        params.push(&data_source_row_id);
         where_clauses.push("status = 'latest'".to_string());
 
-        let serialized_where_clauses = where_clauses.join(" AND ");
+        let (filter_clauses, filter_params, p_idx) =
+            Self::where_clauses_and_params_for_filter(filter, params.len() + 1);
+
+        where_clauses.extend(filter_clauses);
+        params.extend(filter_params);
+
+        let (view_filter_clauses, view_filter_params, p_idx) =
+            Self::where_clauses_and_params_for_filter(view_filter, p_idx);
+
+        where_clauses.extend(view_filter_clauses);
+        params.extend(view_filter_params);
 
         // compute the total count
         let count_query = format!(
             "SELECT COUNT(*) FROM data_sources_documents WHERE {}",
-            serialized_where_clauses
+            where_clauses.join(" AND ")
         );
         let count: i64 = c.query_one(&count_query, &params).await?.get(0);
 
         let mut query = format!(
-            "SELECT document_id FROM data_sources_documents \
-            WHERE {} ORDER BY timestamp DESC",
-            serialized_where_clauses
+            "SELECT document_id FROM data_sources_documents WHERE {} ORDER BY timestamp DESC",
+            where_clauses.join(" AND ")
         );
 
         let limit: i64;
@@ -1731,6 +1743,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         limit_offset: Option<(usize, usize)>,
+        view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
     ) -> Result<(Vec<Document>, usize)> {
         let project_id = project.project_id();
@@ -1752,32 +1765,44 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+
+        where_clauses.push("data_source = $1".to_string());
+        params.push(&data_source_row_id);
+        where_clauses.push("status = 'latest'".to_string());
+
+        let (filter_clauses, filter_params, p_idx) =
+            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+
+        where_clauses.extend(filter_clauses);
+        params.extend(filter_params);
+
+        let sql = format!(
+            "SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, \
+                    text_size, chunk_count \
+               FROM data_sources_documents \
+               WHERE {} ORDER BY timestamp DESC",
+            where_clauses.join(" AND "),
+        );
+
         let rows = match limit_offset {
             None => {
-                let stmt = c
-                    .prepare(
-                        "SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, text_size, \
-                           chunk_count FROM data_sources_documents \
-                           WHERE data_source = $1 AND status = 'latest' \
-                           ORDER BY timestamp DESC",
-                    )
-                    .await?;
-                c.query(&stmt, &[&data_source_row_id]).await?
+                let stmt = c.prepare(&sql).await?;
+                c.query(&stmt, &params).await?
             }
             Some((limit, offset)) => {
+                let limit = limit as i64;
+                let offset = offset as i64;
+
+                let mut params = params.clone();
+                params.push(&limit);
+                params.push(&offset);
+
                 let stmt = c
-                    .prepare(
-                        "SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, text_size, \
-                           chunk_count FROM data_sources_documents \
-                           WHERE data_source = $1 AND status = 'latest' \
-                           ORDER BY timestamp DESC LIMIT $2 OFFSET $3",
-                    )
+                    .prepare(&(sql + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1)))
                     .await?;
-                c.query(
-                    &stmt,
-                    &[&data_source_row_id, &(limit as i64), &(offset as i64)],
-                )
-                .await?
+                c.query(&stmt, &params).await?
             }
         };
 
@@ -1826,11 +1851,15 @@ impl Store for PostgresStore {
             Some(_) => {
                 let stmt = c
                     .prepare(
-                        "SELECT COUNT(*) FROM data_sources_documents \
-                           WHERE data_source = $1 AND status = 'latest'",
+                        format!(
+                            "SELECT COUNT(*) FROM data_sources_documents \
+                               WHERE {}",
+                            where_clauses.join(" AND ")
+                        )
+                        .as_str(),
                     )
                     .await?;
-                let t: i64 = c.query_one(&stmt, &[&data_source_row_id]).await?.get(0);
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
                 t as usize
             }
         };

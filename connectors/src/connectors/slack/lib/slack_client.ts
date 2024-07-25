@@ -7,12 +7,12 @@ import type {
 import { ErrorCode, WebClient } from "@slack/web-api";
 
 import {
-  ExternalOauthTokenError,
+  ExternalOAuthTokenError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-const { NANGO_SLACK_CONNECTOR_ID } = process.env;
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
@@ -93,7 +93,7 @@ export async function getSlackClient(
               platformError.data.error
             )
           ) {
-            throw new ExternalOauthTokenError();
+            throw new ExternalOAuthTokenError();
           }
         }
         throw e;
@@ -180,14 +180,13 @@ export async function getSlackConversationInfo(
 }
 
 export async function getSlackAccessToken(
-  nangoConnectionId: string
+  connectionId: string
 ): Promise<string> {
-  if (!NANGO_SLACK_CONNECTOR_ID) {
-    throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
-  }
-  return getAccessTokenFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: NANGO_SLACK_CONNECTOR_ID,
-    useCache: true,
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "slack",
+    connectionId,
   });
+
+  return token.access_token;
 }

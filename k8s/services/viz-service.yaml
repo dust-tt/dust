@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: viz-service
+  annotations:
+    cloud.google.com/backend-config: '{"default": "viz-backendconfig"}'
+spec:
+  selector:
+    app: viz
+    name: viz-pod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP

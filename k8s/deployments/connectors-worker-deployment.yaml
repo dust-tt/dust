@@ -20,7 +20,16 @@ spec:
         - name: web
           image: gcr.io/or1g1n-186209/connectors-image:latest
           command: ["npm", "run", "start:worker"]
-          args: ["--", "--workers", "confluence", "github", "intercom", "slack"]
+          args:
+            [
+              "--",
+              "--workers",
+              "confluence",
+              "github",
+              "intercom",
+              "slack",
+              "microsoft",
+            ]
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

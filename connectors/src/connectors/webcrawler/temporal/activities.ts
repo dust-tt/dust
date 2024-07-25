@@ -23,7 +23,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteFromDataSource,
-  MAX_DOCUMENT_TXT_LEN,
+  MAX_SMALL_DOCUMENT_TXT_LEN,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import {
@@ -274,7 +274,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         try {
           if (
             extracted.length > 0 &&
-            extracted.length <= MAX_DOCUMENT_TXT_LEN
+            extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
           ) {
             await upsertToDatasource({
               dataSourceConfig,

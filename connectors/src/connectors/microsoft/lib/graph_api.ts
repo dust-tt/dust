@@ -2,9 +2,11 @@ import { assertNever } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 
-import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
-import { isValidNodeType } from "@connectors/connectors/microsoft/lib/types";
+import {
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
 
 export async function getSites(
   client: Client,
@@ -83,6 +85,10 @@ export async function getFilesAndFolders(
   return { results: res.value };
 }
 
+/**
+ *  Get list of items that have changed Calling without nextLink nor token will
+ * result in initial delta call
+ */
 export async function getDeltaResults({
   client,
   parentInternalId,
@@ -92,7 +98,7 @@ export async function getDeltaResults({
   client: Client;
   parentInternalId: string;
 } & (
-  | { nextLink: string; token?: never }
+  | { nextLink?: string; token?: never }
   | { nextLink?: never; token: string }
 )) {
   const { nodeType, itemAPIPath } = typeAndPathFromInternalId(parentInternalId);
@@ -114,10 +120,7 @@ export async function getDeltaResults({
 
   const res = nextLink
     ? await client.api(nextLink).get()
-    : await client
-        .api(deltaPath)
-        .header("Prefer", "odata.track-changes, deltaExcludeParent=true")
-        .get();
+    : await client.api(deltaPath).get();
 
   if ("@odata.nextLink" in res) {
     return {
@@ -143,7 +146,7 @@ export async function getDeltaResults({
 export async function getFullDeltaResults(
   client: Client,
   parentInternalId: string,
-  initialDeltaLink: string
+  initialDeltaLink?: string
 ): Promise<{ results: microsoftgraph.DriveItem[]; deltaLink: string }> {
   let nextLink: string | undefined = initialDeltaLink;
   let allItems: microsoftgraph.DriveItem[] = [];
@@ -359,9 +362,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         nodeType,
         name: item.name ?? null,
         internalId: getDriveItemInternalId(item),
-        parentInternalId: item.parentReference
-          ? getParentReferenceInternalId(item.parentReference)
-          : null,
+        parentInternalId: null,
         mimeType: null,
       };
     }
@@ -371,9 +372,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         nodeType,
         name: item.name ?? null,
         internalId: getDriveItemInternalId(item),
-        parentInternalId: item.parentReference
-          ? getParentReferenceInternalId(item.parentReference)
-          : null,
+        parentInternalId: null,
         mimeType: item.file?.mimeType ?? null,
       };
     }
@@ -409,51 +408,6 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
     default:
       assertNever(nodeType);
   }
-}
-
-export function internalIdFromTypeAndPath({
-  nodeType,
-  itemAPIPath,
-}: {
-  nodeType: MicrosoftNodeType;
-  itemAPIPath: string;
-}): string {
-  let stringId = "";
-  if (nodeType === "sites-root" || nodeType === "teams-root") {
-    stringId = nodeType;
-  } else {
-    stringId = `${nodeType}/${itemAPIPath}`;
-  }
-  // encode to base64url so the internal id is URL-friendly
-  return "microsoft-" + Buffer.from(stringId).toString("base64url");
-}
-
-export function typeAndPathFromInternalId(internalId: string): {
-  nodeType: MicrosoftNodeType;
-  itemAPIPath: string;
-} {
-  if (!internalId.startsWith("microsoft-")) {
-    throw new Error(`Invalid internal id: ${internalId}`);
-  }
-
-  // decode from base64url
-  const decodedId = Buffer.from(
-    internalId.slice("microsoft-".length),
-    "base64url"
-  ).toString();
-
-  if (decodedId === "sites-root" || decodedId === "teams-root") {
-    return { nodeType: decodedId, itemAPIPath: "" };
-  }
-
-  const [nodeType, ...resourcePathArr] = decodedId.split("/");
-  if (!nodeType || !isValidNodeType(nodeType)) {
-    throw new Error(
-      `Invalid internal id: ${decodedId} with nodeType: ${nodeType}`
-    );
-  }
-
-  return { nodeType, itemAPIPath: resourcePathArr.join("/") };
 }
 
 export function getDriveItemInternalId(item: MicrosoftGraph.DriveItem) {

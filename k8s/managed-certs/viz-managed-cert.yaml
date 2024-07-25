@@ -1,0 +1,7 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: viz-managed-cert
+spec:
+  domains:
+    - viz.dust.tt

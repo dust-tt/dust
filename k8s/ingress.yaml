@@ -4,7 +4,7 @@ metadata:
   name: dust-ingress
   annotations:
     kubernetes.io/ingress.global-static-ip-name: dust-kube-ingress-ip-address
-    networking.gke.io/managed-certificates: front-managed-cert,front-edge-managed-cert,connectors-managed-cert,connectors-edge-managed-cert,metabase-managed-cert
+    networking.gke.io/managed-certificates: front-managed-cert,front-edge-managed-cert,connectors-managed-cert,metabase-managed-cert,viz-managed-cert
     networking.gke.io/v1beta1.FrontendConfig: "dust-frontendconfig"
     kubernetes.io/ingress.class: "gce"
 
@@ -51,5 +51,16 @@ spec:
             backend:
               service:
                 name: metabase-service
+                port:
+                  number: 80
+
+    - host: viz.dust.tt
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: viz-service
                 port:
                   number: 80

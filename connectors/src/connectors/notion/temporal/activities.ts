@@ -11,7 +11,6 @@ import { Context } from "@temporalio/activity";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
-import { notionConfig } from "@connectors/connectors/notion/lib/config";
 import {
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
@@ -64,15 +63,13 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models/notion";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const { getRequiredNangoNotionConnectorId } = notionConfig;
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -549,15 +546,14 @@ export async function saveStartSync(connectorId: ModelId) {
 }
 
 export async function getNotionAccessToken(
-  nangoConnectionId: string
+  connectionId: string
 ): Promise<string> {
-  const notionAccessToken = await getAccessTokenFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: getRequiredNangoNotionConnectorId(),
-    useCache: true,
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "notion",
+    connectionId,
   });
-
-  return notionAccessToken;
+  return token.access_token;
 }
 
 export async function shouldGarbageCollect({

@@ -47,19 +47,23 @@ export function withLogging<T>(
       }
     }
 
+    // Extract commit hash from headers or query params.
+    const commitHash = req.headers["x-commit-hash"] ?? req.query.commitHash;
+
     try {
       await handler(req, res);
     } catch (err) {
       const elapsed = new Date().getTime() - now.getTime();
       logger.error(
         {
-          method: req.method,
-          url: req.url,
-          route,
+          commitHash,
           durationMs: elapsed,
-          streaming,
           error: err,
+          method: req.method,
+          route,
           sessionId,
+          streaming,
+          url: req.url,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
         },
@@ -99,13 +103,14 @@ export function withLogging<T>(
 
     logger.info(
       {
-        method: req.method,
-        url: req.url,
-        route,
-        statusCode: res.statusCode,
+        commitHash,
         durationMs: elapsed,
+        method: req.method,
+        route,
         sessionId,
+        statusCode: res.statusCode,
         streaming,
+        url: req.url,
       },
       "Processed request"
     );

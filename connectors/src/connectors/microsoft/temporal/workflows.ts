@@ -1,20 +1,29 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
-  executeChild,
   proxyActivities,
+  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
-const { getSiteNodesToSync, syncFiles, markNodeAsVisited, populateDeltas } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "30 minutes",
-  });
+const {
+  getRootNodesToSync,
+  syncFiles,
+  markNodeAsSeen,
+  populateDeltas,
+  groupRootItemsByDriveId,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+});
 
-const { syncDeltaForNode } = proxyActivities<typeof activities>({
+const { microsoftDeletionActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "15 minutes",
+});
+
+const { syncDeltaForRootNodesInDrive } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
 });
@@ -27,38 +36,21 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
 
 export async function fullSyncWorkflow({
   connectorId,
-  startSyncTs = undefined,
-}: {
-  connectorId: ModelId;
-  startSyncTs?: number;
-}) {
-  if (startSyncTs === undefined) {
-    startSyncTs = new Date().getTime();
-  }
-
-  await executeChild(fullSyncSitesWorkflow, {
-    workflowId: microsoftFullSyncSitesWorkflowId(connectorId),
-    searchAttributes: {
-      connectorId: [connectorId],
-    },
-    args: [{ connectorId, startSyncTs }],
-    memo: workflowInfo().memo,
-  });
-}
-
-export async function fullSyncSitesWorkflow({
-  connectorId,
   startSyncTs,
-  nodeIdsToSync = undefined,
+  nodeIdsToSync,
   totalCount = 0,
 }: {
   connectorId: ModelId;
-  startSyncTs: number;
+  startSyncTs?: number;
   nodeIdsToSync?: string[];
   totalCount?: number;
 }) {
   if (nodeIdsToSync === undefined) {
-    nodeIdsToSync = await getSiteNodesToSync(connectorId);
+    nodeIdsToSync = await getRootNodesToSync(connectorId);
+  }
+
+  if (startSyncTs === undefined) {
+    startSyncTs = new Date().getTime();
   }
 
   await populateDeltas(connectorId, nodeIdsToSync);
@@ -89,10 +81,10 @@ export async function fullSyncSitesWorkflow({
       );
     } while (nextPageLink);
 
-    await markNodeAsVisited(connectorId, nodeId);
+    await markNodeAsSeen(connectorId, nodeId);
 
     if (workflowInfo().historyLength > 4000) {
-      await continueAsNew<typeof fullSyncSitesWorkflow>({
+      await continueAsNew<typeof fullSyncWorkflow>({
         connectorId,
         nodeIdsToSync: nodeIdsToSync,
         totalCount,
@@ -109,15 +101,34 @@ export async function incrementalSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  const nodeIdsToSync = await getSiteNodesToSync(connectorId);
+  const nodeIdsToSync = await getRootNodesToSync(connectorId);
+
+  const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
+
   const startSyncTs = new Date().getTime();
-  for (const nodeId of nodeIdsToSync) {
-    await syncDeltaForNode({
+  for (const nodeId of Object.keys(groupedItems)) {
+    await syncDeltaForRootNodesInDrive({
       connectorId,
-      nodeId,
+      driveId: nodeId,
+      rootNodeIds: groupedItems[nodeId] as string[],
       startSyncTs,
     });
   }
+
+  await sleep("5 minutes");
+  await continueAsNew<typeof incrementalSyncWorkflow>({
+    connectorId,
+  });
+}
+
+export async function microsoftDeletionWorkflow({
+  connectorId,
+  nodeIdsToDelete,
+}: {
+  connectorId: number;
+  nodeIdsToDelete: string[];
+}) {
+  await microsoftDeletionActivity({ connectorId, nodeIdsToDelete });
 }
 
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
@@ -130,4 +141,23 @@ export function microsoftFullSyncSitesWorkflowId(connectorId: ModelId) {
 
 export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-incrementalSync-${connectorId}`;
+}
+
+export function microsoftDeletionWorkflowId(
+  connectorId: ModelId,
+  nodeIdsToDelete: string[]
+) {
+  function getLast4Chars(input: string) {
+    return input.slice(-4);
+  }
+
+  // Sort the node IDs and concatenate the last 4 characters of each
+  // up to 256 characters
+  const sortedNodeIds = nodeIdsToDelete.sort();
+  const concatenatedLast4Chars = sortedNodeIds
+    .map(getLast4Chars)
+    .join("")
+    .slice(0, 256);
+
+  return `microsoft-deletion-${connectorId}-${concatenatedLast4Chars}`;
 }

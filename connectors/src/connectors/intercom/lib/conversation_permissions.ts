@@ -5,6 +5,7 @@ import type {
   ModelId,
 } from "@dust-tt/types";
 
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomTeam,
   fetchIntercomTeams,
@@ -41,7 +42,8 @@ export async function allowSyncTeam({
     });
   }
   if (!team) {
-    const teamOnIntercom = await fetchIntercomTeam(connectionId, teamId);
+    const accessToken = await getIntercomAccessToken(connectionId);
+    const teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
     if (teamOnIntercom) {
       team = await IntercomTeam.create({
         connectorId,
@@ -177,7 +179,8 @@ export async function retrieveIntercomConversationsPermissions({
       });
     }
   } else {
-    const teams = await fetchIntercomTeams(connector.connectionId);
+    const accessToken = await getIntercomAccessToken(connector.connectionId);
+    const teams = await fetchIntercomTeams({ accessToken });
     if (isRootLevel) {
       nodes.push({
         provider: "intercom",

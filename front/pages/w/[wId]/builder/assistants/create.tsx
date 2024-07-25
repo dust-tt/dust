@@ -18,7 +18,7 @@ import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { createRef, useEffect, useRef, useState } from "react";
+import { createRef, useCallback, useEffect, useRef, useState } from "react";
 
 import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
@@ -76,7 +76,7 @@ export default function CreateAssistant({
     null
   );
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    null
+    router.query.templateId ? (router.query.templateId as string) : null
   );
 
   const { assistantTemplates } = useAssistantTemplates({
@@ -97,6 +97,29 @@ export default function CreateAssistant({
       tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
     });
   }, [assistantTemplates]);
+
+  const openTemplateModal = useCallback(
+    async (templateId: string) => {
+      setSelectedTemplateId(templateId);
+      const wId = owner.sId;
+
+      await router.replace(
+        { pathname: router.pathname, query: { wId, templateId } },
+        undefined,
+        { shallow: true }
+      );
+    },
+    [router, owner.sId]
+  );
+
+  const closeTemplateModal = useCallback(async () => {
+    setSelectedTemplateId(null);
+    await router.replace(
+      { pathname: router.pathname, query: _.omit(router.query, "templateId") },
+      undefined,
+      { shallow: true }
+    );
+  }, [router]);
 
   const handleSearch = (searchTerm: string) => {
     setTemplateSearchTerm(searchTerm);
@@ -121,19 +144,6 @@ export default function CreateAssistant({
       templates: templatesToDisplay,
       tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
     });
-  };
-
-  const handleCloseModal = () => {
-    const currentPathname = router.pathname;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { templateId, ...restQuery } = router.query;
-    void router.replace(
-      { pathname: currentPathname, query: restQuery },
-      undefined,
-      {
-        shallow: true,
-      }
-    );
   };
 
   const tagsRefsMap = useRef<{
@@ -178,25 +188,6 @@ export default function CreateAssistant({
       element.classList.remove("animate-shake");
     }, 500);
   };
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const templateId = router.query.templateId ?? [];
-      if (templateId && typeof templateId === "string") {
-        setSelectedTemplateId(templateId);
-      } else {
-        setSelectedTemplateId(null);
-      }
-    };
-
-    // Initial check in case the component mounts with the query already set.
-    handleRouteChange();
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.query, router.events]);
 
   return (
     <AppLayout
@@ -256,7 +247,10 @@ export default function CreateAssistant({
             <div className="flex flex-col pb-56">
               {templateSearchTerm?.length ? (
                 <>
-                  <TemplateGrid templates={filteredTemplates.templates} />
+                  <TemplateGrid
+                    templates={filteredTemplates.templates}
+                    openTemplateModal={openTemplateModal}
+                  />
                 </>
               ) : (
                 <>
@@ -270,7 +264,10 @@ export default function CreateAssistant({
                           title={templateTagsMapping[tagName].label}
                           hasBorder={false}
                         />
-                        <TemplateGrid templates={templatesForTag} />
+                        <TemplateGrid
+                          templates={templatesForTag}
+                          openTemplateModal={openTemplateModal}
+                        />
                       </div>
                     );
                   })}
@@ -283,7 +280,7 @@ export default function CreateAssistant({
           flow={flow}
           owner={owner}
           templateId={selectedTemplateId}
-          onClose={handleCloseModal}
+          onClose={() => closeTemplateModal()}
         />
       </div>
     </AppLayout>

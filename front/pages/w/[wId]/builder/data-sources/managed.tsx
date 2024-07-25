@@ -23,14 +23,12 @@ import type {
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import {
-  connectorIsUsingNango,
   ConnectorsAPI,
   Err,
   isOAuthProvider,
   Ok,
   setupOAuthConnection,
 } from "@dust-tt/types";
-import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -42,26 +40,14 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAdmins } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 
-const {
-  GA_TRACKING_ID = "",
-  GITHUB_APP_URL = "",
-  NANGO_CONFLUENCE_CONNECTOR_ID = "",
-  NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
-  NANGO_INTERCOM_CONNECTOR_ID = "",
-  NANGO_MICROSOFT_CONNECTOR_ID = "",
-  NANGO_NOTION_CONNECTOR_ID = "",
-  NANGO_PUBLIC_KEY = "",
-  NANGO_SLACK_CONNECTOR_ID = "",
-} = process.env;
+const { GA_TRACKING_ID = "" } = process.env;
 
 type DataSourceIntegration = {
   name: string;
@@ -89,33 +75,16 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 
 export async function setupConnection({
   dustClientFacingUrl,
-  nangoConfig,
-  githubAppUrl,
   owner,
   provider,
 }: {
   dustClientFacingUrl: string;
-  nangoConfig: {
-    publicKey: string;
-    confluenceConnectorId: string;
-    slackConnectorId: string;
-    notionConnectorId: string;
-    googleDriveConnectorId: string;
-    intercomConnectorId: string;
-    microsoftConnectorId: string;
-  };
-  githubAppUrl: string;
   owner: WorkspaceType;
   provider: ConnectorProvider;
 }): Promise<Result<string, Error>> {
   let connectionId: string;
 
-  if (
-    isOAuthProvider(provider) &&
-    // Behind flag oauth-ready providers
-    // owner.flags.includes("test_oauth_setup") &&
-    ["github"].includes(provider)
-  ) {
+  if (isOAuthProvider(provider)) {
     // OAuth flow
     const cRes = await setupOAuthConnection({
       dustClientFacingUrl,
@@ -127,42 +96,6 @@ export async function setupConnection({
       return cRes;
     }
     connectionId = cRes.value.connection_id;
-  } else if (connectorIsUsingNango(provider)) {
-    // Nango flow
-    const nangoConnectorId = {
-      confluence: nangoConfig.confluenceConnectorId,
-      slack: nangoConfig.slackConnectorId,
-      notion: nangoConfig.notionConnectorId,
-      google_drive: nangoConfig.googleDriveConnectorId,
-      intercom: nangoConfig.intercomConnectorId,
-      microsoft: nangoConfig.microsoftConnectorId,
-    }[provider];
-    const nango = new Nango({ publicKey: nangoConfig.publicKey });
-    const newConnectionId = buildConnectionId(owner.sId, provider);
-
-    try {
-      const {
-        connectionId: nangoConnectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoConnectorId,
-        newConnectionId
-      );
-      connectionId = nangoConnectionId;
-    } catch (err) {
-      return new Err(
-        new Error(`Failed to enable connection for ${provider}: ${err}`)
-      );
-    }
-  } else if (provider === "github") {
-    // Github legacy flow
-    try {
-      const installationId = await githubAuth(githubAppUrl);
-      connectionId = installationId;
-    } catch (err) {
-      return new Err(
-        new Error(`Failed to enable connection for ${provider}: ${err}`)
-      );
-    }
   } else {
     return new Err(new Error(`Unknown provider ${provider}`));
   }
@@ -178,16 +111,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   integrations: DataSourceIntegration[];
   plan: PlanType;
   gaTrackingId: string;
-  nangoConfig: {
-    publicKey: string;
-    confluenceConnectorId: string;
-    slackConnectorId: string;
-    notionConnectorId: string;
-    googleDriveConnectorId: string;
-    intercomConnectorId: string;
-    microsoftConnectorId: string;
-  };
-  githubAppUrl: string;
   dustClientFacingUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -333,16 +256,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       integrations,
       plan,
       gaTrackingId: GA_TRACKING_ID,
-      nangoConfig: {
-        publicKey: NANGO_PUBLIC_KEY,
-        confluenceConnectorId: NANGO_CONFLUENCE_CONNECTOR_ID,
-        slackConnectorId: NANGO_SLACK_CONNECTOR_ID,
-        notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
-        googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-        intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
-        microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
-      },
-      githubAppUrl: GITHUB_APP_URL,
       dustClientFacingUrl: config.getClientFacingUrl(),
     },
   };
@@ -482,8 +395,6 @@ export default function DataSourcesView({
   integrations,
   plan,
   gaTrackingId,
-  nangoConfig,
-  githubAppUrl,
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -511,8 +422,6 @@ export default function DataSourcesView({
     try {
       const connectionIdRes = await setupConnection({
         dustClientFacingUrl,
-        nangoConfig,
-        githubAppUrl,
         owner,
         provider,
       });

@@ -1,4 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/types";
+import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
 import {
   getIntercomSyncWorkflowId,
   googleDriveIncrementalSyncWorkflowId,
@@ -36,6 +37,10 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   google_drive: {
     makeIdFn: (connector: ConnectorBlob) =>
       googleDriveIncrementalSyncWorkflowId(connector.id),
+  },
+  microsoft: {
+    makeIdFn: (connector: ConnectorBlob) =>
+      microsoftIncrementalSyncWorkflowId(connector.id),
   },
 };
 

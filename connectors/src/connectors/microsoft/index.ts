@@ -3,14 +3,12 @@ import type {
   ConnectorsAPIError,
   ContentNode,
   ContentNodesViewType,
-  NangoConnectionId,
   Result,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
-import { microsoftConfig } from "@connectors/connectors/microsoft/lib/config";
 import {
   getChannelAsContentNode,
   getDriveAsContentNode,
@@ -26,15 +24,22 @@ import {
   getFilesAndFolders,
   getSites,
   getTeams,
+} from "@connectors/connectors/microsoft/lib/graph_api";
+import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
+import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
-} from "@connectors/connectors/microsoft/lib/graph_api";
+} from "@connectors/connectors/microsoft/lib/utils";
 import {
+  getRootNodesToSync,
+  populateDeltas,
+} from "@connectors/connectors/microsoft/temporal/activities";
+import {
+  launchMicrosoftDeletionWorkflow,
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -105,33 +110,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     throw Error("Not implemented");
   }
 
-  async clean({
-    force,
-  }: {
-    force: boolean;
-  }): Promise<Result<undefined, Error>> {
+  async clean(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
         new Error(`Could not find connector with id ${this.connectorId}`)
       );
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      microsoftConfig.getRequiredNangoMicrosoftConnectorId()
-    );
-    if (nangoRes.isErr()) {
-      if (!force) {
-        return nangoRes;
-      } else {
-        logger.error(
-          {
-            err: nangoRes.error,
-          },
-          "Error deleting connection from Nango"
-        );
-      }
     }
 
     const res = await connector.delete();
@@ -147,17 +131,18 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 
   async sync({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fromTs,
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    console.log("fullResyncMicrosoftConnector", this.connectorId, fromTs);
-    return launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    return launchMicrosoftFullSyncWorkflow(this.connectorId);
   }
 
   async retrievePermissions({
     parentInternalId,
     filterPermission,
+    viewType,
   }: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
@@ -170,11 +155,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (filterPermission === "read") {
+    const isTablesView = viewType === "tables";
+    if (filterPermission === "read" || isTablesView) {
       if (!parentInternalId) {
         const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents();
         return new Ok(
-          nodes.map((node) => getMicrosoftNodeAsContentNode(node, false))
+          nodes.map((node) => getMicrosoftNodeAsContentNode(node, isTablesView))
         );
       }
       const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -186,19 +172,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           new Error(`Could not find node with id ${parentInternalId}`)
         );
       }
-      return retrieveChildrenNodes(node, false);
+      return retrieveChildrenNodes(node, isTablesView);
     }
     const client = await getClient(connector.connectionId);
     const nodes = [];
 
     const selectedResources = (
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-    ).map((r) =>
-      internalIdFromTypeAndPath({
-        nodeType: r.nodeType,
-        itemAPIPath: r.itemAPIPath,
-      })
-    );
+    ).map((r) => r.internalId);
 
     // at the time, we only sync sharepoint sites and drives, not team channels
     // work on teams has been started here and in graph_api.ts but is not yet
@@ -302,23 +283,55 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
 
     await MicrosoftRootResource.batchDelete({
-      resourceIds: Object.entries(permissions).map((internalId) => {
-        const { itemAPIPath } = typeAndPathFromInternalId(internalId[0]);
-        return itemAPIPath;
-      }),
+      resourceIds: Object.keys(permissions),
       connectorId: connector.id,
     });
 
-    await MicrosoftRootResource.batchMakeNew(
-      Object.entries(permissions)
-        .filter(([, permission]) => permission === "read")
-        .map(([id]) => {
-          return {
-            connectorId: connector.id,
-            ...typeAndPathFromInternalId(id),
-          };
-        })
+    const nodeIdsToDelete = Object.keys(permissions).filter(
+      (key) => permissions[key] === "none"
     );
+    if (nodeIdsToDelete.length > 0) {
+      const gcRes = await launchMicrosoftDeletionWorkflow(
+        this.connectorId,
+        nodeIdsToDelete
+      );
+
+      if (gcRes.isErr()) {
+        return gcRes;
+      }
+    }
+
+    const newResourcesBlobs = Object.entries(permissions)
+      .filter(([, permission]) => permission === "read")
+      .map(([id]) => ({
+        connectorId: connector.id,
+        nodeType: typeAndPathFromInternalId(id).nodeType,
+        internalId: id,
+      }));
+
+    await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
+
+    const nodesToSync = await getRootNodesToSync(this.connectorId);
+
+    // poupulates deltas for the nodes so that if incremental sync starts before
+    // fullsync populated, there's no error
+    await populateDeltas(this.connectorId, nodesToSync);
+
+    const res = await launchMicrosoftFullSyncWorkflow(
+      this.connectorId,
+      nodesToSync
+    );
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    const incrementalRes = await launchMicrosoftIncrementalSyncWorkflow(
+      this.connectorId
+    );
+    if (incrementalRes.isErr()) {
+      return incrementalRes;
+    }
 
     return new Ok(undefined);
   }
@@ -339,28 +352,79 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
   async retrieveBatchContentNodes({
     internalIds,
+    viewType,
   }: {
     internalIds: string[];
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    console.log("retrieveMicrosoftContentNodes", this.connectorId, internalIds);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Could not find connector with id ${this.connectorId}`)
+      );
+    }
+
+    try {
+      const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+        this.connectorId,
+        internalIds
+      );
+
+      const contentNodes = nodes.map((node) =>
+        getMicrosoftNodeAsContentNode(node, viewType === "tables")
+      );
+
+      const selectedResources = (
+        await MicrosoftRootResource.listRootsByConnectorId(connector.id)
+      ).map((r) => r.internalId);
+
+      const contentNodesWithPermissions = contentNodes.map((node) => ({
+        ...node,
+        permission: (selectedResources.includes(node.internalId) ||
+        (node.parentInternalId &&
+          selectedResources.includes(node.parentInternalId))
+          ? "read"
+          : "none") as ConnectorPermission,
+      }));
+
+      return new Ok(contentNodesWithPermissions);
+    } catch (error) {
+      return new Err(new Error("Failed to retrieve Microsoft content nodes"));
+    }
   }
 
   async retrieveContentNodeParents({
     internalId,
-    memoizationKey,
   }: {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    console.log(
-      "retrieveMicrosoftContentNodeParents",
-      this.connectorId,
-      internalId,
-      memoizationKey
-    );
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Could not find connector with id ${this.connectorId}`)
+      );
+    }
+
+    const parents: string[] = [];
+    let currentInternalId = internalId;
+
+    while (currentInternalId) {
+      parents.push(currentInternalId);
+
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        this.connectorId,
+        currentInternalId
+      );
+
+      if (!node || !node.parentInternalId) {
+        break;
+      }
+      currentInternalId = node.parentInternalId;
+    }
+    // Reverse the array to have the root as the first element
+    parents.reverse();
+    return new Ok(parents);
   }
 
   async setConfigurationKey({
@@ -399,8 +463,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           pdfEnabled: configValue === "true",
         });
         const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId,
-          null
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -413,8 +476,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           largeFilesEnabled: configValue === "true",
         });
         const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId,
-          null
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -482,7 +544,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsUnpaused();
-    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId, null);
+    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId);
     if (r.isErr()) {
       return r;
     }
@@ -505,17 +567,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 }
 
-export async function getClient(connectionId: NangoConnectionId) {
-  const nangoConnectionId = connectionId;
-
-  const msAccessToken = await getAccessTokenFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: microsoftConfig.getRequiredNangoMicrosoftConnectorId(),
-    useCache: false,
-  });
+export async function getClient(connectionId: string) {
+  const { access_token: accessToken } =
+    await getOAuthConnectionAccessTokenWithThrow({
+      logger,
+      provider: "microsoft",
+      connectionId,
+    });
 
   return Client.init({
-    authProvider: (done) => done(null, msAccessToken),
+    authProvider: (done) => done(null, accessToken),
   });
 }
 
@@ -523,11 +584,11 @@ export async function retrieveChildrenNodes(
   microsoftNode: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): Promise<Result<ContentNode[], Error>> {
-  const childrenNodes = await microsoftNode.fetchChildren([
-    "file",
-    "folder",
-    "drive",
-  ]);
+  const nodeType: MicrosoftNodeType[] = ["file", "folder", "drive"];
+  if (expandWorksheet) {
+    nodeType.push("worksheet");
+  }
+  const childrenNodes = await microsoftNode.fetchChildren(nodeType);
   return new Ok(
     childrenNodes.map((node) =>
       getMicrosoftNodeAsContentNode(node, expandWorksheet)

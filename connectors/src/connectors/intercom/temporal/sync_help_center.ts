@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomCollections } from "@connectors/connectors/intercom/lib/intercom_api";
 import type {
   IntercomArticleType,
@@ -201,11 +202,12 @@ export async function upsertCollectionWithChildren({
   }
 
   // Then we call ourself recursively on the children collections
-  const childrenCollectionsOnIntercom = await fetchIntercomCollections(
-    connectionId,
+  const accessToken = await getIntercomAccessToken(connectionId);
+  const childrenCollectionsOnIntercom = await fetchIntercomCollections({
+    accessToken,
     helpCenterId,
-    collection.id
-  );
+    parentId: collection.id,
+  });
 
   await Promise.all(
     childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
@@ -366,17 +368,19 @@ export async function upsertArticle({
     });
 
     // Parents in the Core datasource should map the internal ids that we use in the permission modal
-    // Parents of an article are all the collections above it and the help center
+    // Parents of an article are all the collections above it and the help center + the article itself
     const parentsInternalsIds = article.parent_ids.map((id) =>
       getHelpCenterCollectionInternalId(connectorId, id.toString())
     );
     parentsInternalsIds.push(
       getHelpCenterInternalId(connectorId, helpCenterId)
     );
+    const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
+    parentsInternalsIds.push(documentId);
 
     await upsertToDatasource({
       dataSourceConfig,
-      documentId: getHelpCenterArticleInternalId(connectorId, article.id),
+      documentId,
       documentContent: renderedPage,
       documentUrl: articleUrl,
       timestampMs: updatedAtDate.getTime(),

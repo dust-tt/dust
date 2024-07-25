@@ -1,29 +1,3 @@
-import type { drive_v3 } from "googleapis";
-import { google } from "googleapis";
-import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
-
-import {
-  getLocalParents,
-  isDriveObjectExpandable,
-} from "@connectors/connectors/google_drive/lib";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
-import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
-import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-} from "@connectors/lib/models/google_drive";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
-import logger from "@connectors/logger/logger";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-
-import { folderHasChildren, getDrives } from "./temporal/activities";
-import {
-  launchGoogleDriveFullSyncWorkflow,
-  launchGoogleDriveIncrementalSyncWorkflow,
-  launchGoogleGarbageCollector,
-} from "./temporal/client";
-export type NangoConnectionId = string;
 import type {
   ConnectorPermission,
   ConnectorsAPIError,
@@ -40,11 +14,16 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/types";
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
+import {
+  getLocalParents,
+  isDriveObjectExpandable,
+} from "@connectors/connectors/google_drive/lib";
 import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
@@ -59,24 +38,39 @@ import {
   driveObjectToDustType,
   getAuthObject,
   getDriveClient,
-  getGoogleCredentials,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveConfig,
+  GoogleDriveFiles,
+  GoogleDriveFolders,
+} from "@connectors/lib/models/google_drive";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
+
+import { folderHasChildren, getDrives } from "./temporal/activities";
+import {
+  launchGoogleDriveFullSyncWorkflow,
+  launchGoogleDriveIncrementalSyncWorkflow,
+  launchGoogleGarbageCollector,
+} from "./temporal/client";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
-    connectionId: nangoConnectionId,
+    connectionId,
   }: {
     dataSourceConfig: DataSourceConfig;
-    connectionId: NangoConnectionId;
+    connectionId: string;
   }): Promise<Result<string, Error>> {
     try {
-      const driveClient = await getDriveClient(nangoConnectionId);
+      const driveClient = await getDriveClient(connectionId);
 
       // Sanity checks to confirm we have sufficient permissions.
       const [sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList] =
@@ -128,7 +122,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.makeNew(
       "google_drive",
       {
-        connectionId: nangoConnectionId,
+        connectionId,
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceName: dataSourceConfig.dataSourceName,
@@ -205,28 +199,13 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
-      const oldConnectionId = connector.connectionId;
       await connector.update({ connectionId });
-
-      nangoDeleteConnection(
-        oldConnectionId,
-        googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
-      ).catch((e) => {
-        logger.error(
-          { error: e, oldConnectionId },
-          "Error deleting old Nango connection"
-        );
-      });
     }
 
     return new Ok(connector.id.toString());
   }
 
-  async clean({
-    force,
-  }: {
-    force: boolean;
-  }): Promise<Result<undefined, Error>> {
+  async clean(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
@@ -234,58 +213,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const authClient = new google.auth.OAuth2(
-      googleDriveConfig.getRequiredGoogleDriveClientId(),
-      googleDriveConfig.getRequiredGoogleDriveClientSecret()
-    );
-
-    try {
-      const credentials = await getGoogleCredentials(connector.connectionId);
-
-      const revokeTokenRes = await authClient.revokeToken(
-        credentials.credentials.refresh_token
-      );
-
-      if (revokeTokenRes.status !== 200) {
-        logger.error(
-          {
-            error: revokeTokenRes.data,
-          },
-          "Could not revoke token"
-        );
-        if (!force) {
-          return new Err(new Error("Could not revoke token"));
-        }
-      }
-    } catch (err) {
-      if (!force) {
-        throw err;
-      } else {
-        logger.error(
-          {
-            err,
-          },
-          "Error revoking token"
-        );
-      }
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      googleDriveConfig.getRequiredNangoGoogleDriveConnectorId()
-    );
-    if (nangoRes.isErr()) {
-      if (!force) {
-        return nangoRes;
-      } else {
-        logger.error(
-          {
-            err: nangoRes.error,
-          },
-          "Error deleting connection from Nango"
-        );
-      }
-    }
+    // Google revocation requires refresh tokens so would have to happen in `oauth`. But Google
+    // Drive does not rely on webhooks anymore so we can just delete the connector.
 
     const res = await connector.delete();
     if (res.isErr()) {

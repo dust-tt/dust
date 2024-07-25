@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from "uuid";
 import { checkActiveWorkflows } from "@app/lib/production_checks/checks/check_active_workflows_for_connectors";
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
-import { nangoConnectionIdCleanupSlack } from "@app/lib/production_checks/checks/nango_connection_id_cleanup_slack";
 import { scrubDeletedCoreDocumentVersionsCheck } from "@app/lib/production_checks/checks/scrub_deleted_core_document_versions";
 import type { Check } from "@app/lib/production_checks/types";
 import mainLogger from "@app/logger/logger";
@@ -14,11 +13,6 @@ export async function runAllChecksActivity() {
     {
       name: "managed_data_source_gdrive_gc",
       check: managedDataSourceGCGdriveCheck,
-      everyHour: 1,
-    },
-    {
-      name: "nango_connection_id_cleanup_slack",
-      check: nangoConnectionIdCleanupSlack,
       everyHour: 1,
     },
     {

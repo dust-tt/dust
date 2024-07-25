@@ -108,11 +108,37 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   slack: {
-    setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+    setupUri: (connection) => {
+      const scopes = [
+        "app_mentions:read",
+        "channels:history",
+        "channels:join",
+        "channels:read",
+        "chat:write",
+        "groups:history",
+        "groups:read",
+        "im:history",
+        "metadata.message:read",
+        "mpim:read",
+        "team:read",
+        "users:read",
+        "users:read.email",
+        "mpim:history",
+      ];
+      return (
+        `https://slack.com/oauth/v2/authorize?` +
+        `client_id=${config.getOAuthSlackClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("slack"))}` +
+        `&state=${connection.connection_id}`
+      );
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
   confluence: {
     setupUri: (connection) => {
@@ -151,18 +177,72 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   intercom: {
-    setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+    setupUri: (connection) => {
+      return (
+        `https://app.intercom.com/oauth` +
+        `?client_id=${config.getOAuthIntercomClientId()}` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("intercom"))}`
+      );
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (connection) => {
+      return getStringFromQuery(connection, "code");
+    },
+    connectionIdFromQuery: (connection) => {
+      return getStringFromQuery(connection, "state");
+    },
+  },
+  gong: {
+    setupUri: (connection) => {
+      const scopes = [
+        "api:calls:read:transcript",
+        "api:calls:read:extensive",
+        "api:calls:read:basic",
+        "api:users:read",
+      ];
+      return (
+        `https://app.gong.io/oauth2/authorize?` +
+        `client_id=${config.getOAuthGongClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&response_type=code` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("gong"))}`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
   microsoft: {
-    setupUri: () => {
-      throw new Error("Slack OAuth is not implemented");
+    setupUri: (connection) => {
+      const scopes = [
+        "User.Read",
+        "Sites.Read.All",
+        "Directory.Read.All",
+        "Files.Read.All",
+        "Team.ReadBasic.All",
+        "ChannelSettings.Read.All",
+        "ChannelMessage.Read.All",
+        "offline_access",
+      ];
+      const qs = querystring.stringify({
+        response_type: "code",
+        client_id: config.getOAuthMicrosoftClientId(),
+        state: connection.connection_id,
+        redirect_uri: finalizeUriForProvider("microsoft"),
+        scope: scopes.join(" "),
+      });
+      return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
     },
-    codeFromQuery: () => null,
-    connectionIdFromQuery: () => null,
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
   },
 };
 

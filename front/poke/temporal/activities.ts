@@ -42,7 +42,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { DataSource } from "@app/lib/models/data_source";
 import { Subscription } from "@app/lib/models/plan";
-import { User, UserMetadata } from "@app/lib/models/user";
+import { UserMetadata } from "@app/lib/models/user";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";

@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use cloud_storage::Object;
 use serde::{Deserialize, Serialize};
-use tokio::try_join;
 use tracing::info;
 
 use crate::utils;
@@ -71,23 +70,11 @@ impl FileStorageDocument {
     ) -> Result<()> {
         let bucket = FileStorageDocument::get_bucket().await?;
 
-        let data_source_project_id = data_source.project().project_id();
         let data_source_internal_id = data_source.internal_id();
 
         let document_hash = &document.hash;
         let document_id = &document.document_id;
 
-        // TODO(2024-06-03 flav) Delete once fully migrated to new format.
-        // Legacy.
-        let legacy_bucket_path = format!(
-            "{}/{}/{}",
-            data_source_project_id, data_source_internal_id, document_id_hash
-        );
-
-        let document_id_path = format!("{}/document_id.txt", legacy_bucket_path);
-        let content_path = format!("{}/{}/content.txt", legacy_bucket_path, document_hash);
-
-        // New.
         let document_file_path = FileStorageDocument::get_document_file_path(
             data_source,
             document.created,
@@ -102,36 +89,18 @@ impl FileStorageDocument {
         let serialized_document = serde_json::to_vec(&file_storage_document)?;
 
         let now = utils::now();
-        let _ = try_join!(
-            // TODO(2024-06-03 flav) Delete once fully migrated to new format.
-            // Legacy.
-            Object::create(
-                &bucket,
-                document_id.as_bytes().to_vec(),
-                &document_id_path,
-                "application/text",
-            ),
-            Object::create(
-                &bucket,
-                full_text.as_bytes().to_vec(),
-                &content_path,
-                "application/text",
-            ),
-            // New logic.
-            Object::create(
-                &bucket,
-                serialized_document,
-                &document_file_path,
-                "application/json",
-            ),
-        )?;
+        let _ = Object::create(
+            &bucket,
+            serialized_document,
+            &document_file_path,
+            "application/json",
+        )
+        .await?;
 
         info!(
             data_source_internal_id = data_source_internal_id,
             document_id = document_id,
             duration = utils::now() - now,
-            // Legacy.
-            legacy_blob_url = format!("gs://{}/{}", bucket, content_path),
             // New.
             blob_url = format!("gs://{}/{}", bucket, document_file_path),
             "Created document blob"

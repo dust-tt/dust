@@ -22,7 +22,7 @@ export function Tooltip({
   const handleMouseOver = () => {
     const id = window.setTimeout(() => {
       setIsHovered(true);
-    }, 800);
+    }, 600);
     setTimerId(id);
   };
 

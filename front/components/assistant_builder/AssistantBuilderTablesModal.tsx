@@ -8,12 +8,14 @@ import {
   ServerIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ContentNode, WorkspaceType } from "@dust-tt/types";
 import type {
   ConnectorProvider,
+  ContentNode,
   CoreAPITable,
   DataSourceType,
+  WorkspaceType,
 } from "@dust-tt/types";
+import { getMicrosoftSheetContentNodeInternalIdFromTableId } from "@dust-tt/types";
 import {
   getGoogleSheetContentNodeInternalIdFromTableId,
   getNotionDatabaseContentNodeInternalIdFromTableId,
@@ -31,7 +33,11 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceNodes, useTables } from "@app/lib/swr";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
-const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = ["google_drive", "notion"];
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "microsoft",
+];
 
 export default function AssistantBuilderTablesModal({
   isOpen,
@@ -81,6 +87,8 @@ export default function AssistantBuilderTablesModal({
           return getGoogleSheetContentNodeInternalIdFromTableId(c.tableId);
         case "notion":
           return getNotionDatabaseContentNodeInternalIdFromTableId(c.tableId);
+        case "microsoft":
+          return getMicrosoftSheetContentNodeInternalIdFromTableId(c.tableId);
         default:
           throw new Error(
             `Unsupported connector provider: ${selectedDataSource.connectorProvider}`

@@ -1,8 +1,11 @@
-use crate::oauth::providers::{
-    confluence::ConfluenceConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-};
 use crate::oauth::{
-    providers::{github::GithubConnectionProvider, notion::NotionConnectionProvider},
+    providers::{
+        confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
+        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
+        intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
+        notion::NotionConnectionProvider, slack::SlackConnectionProvider,
+        utils::ProviderHttpRequestError,
+    },
     store::OAuthStore,
 };
 use crate::utils;
@@ -28,6 +31,9 @@ static REDIS_LOCK_TTL_SECONDS: u64 = 15;
 // To ensure we don't write without holding the lock providers must comply to this timeout when
 // operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
+// Buffer of time in ms before the expiry of an access token within which we will attempt to
+// refresh it.
+pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
 
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
@@ -39,10 +45,13 @@ lazy_static! {
     };
 }
 
+// API Error types.
+
 // Define the ErrorKind enum with serde attributes for serialization
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConnectionErrorCode {
+    TokenRevokedError,
     // Finalize
     ConnectionAlreadyFinalizedError,
     ProviderFinalizationError,
@@ -83,8 +92,10 @@ impl std::error::Error for ConnectionError {}
 pub enum ConnectionProvider {
     Confluence,
     Github,
+    Gong,
     GoogleDrive,
     Intercom,
+    Microsoft,
     Notion,
     Slack,
 }
@@ -127,24 +138,114 @@ pub trait Provider {
         connection: &Connection,
         code: &str,
         redirect_uri: &str,
-    ) -> Result<FinalizeResult>;
+    ) -> Result<FinalizeResult, ProviderError>;
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult>;
+    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError>;
 
     // This method scrubs raw_json to remove information that should not exfill `oauth`, in
     // particular the `refresh_token`. By convetion the `access_token` should be scrubbed as well
     // to prevent users from relying in the raw_json to access it.
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value>;
+
+    fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        self.default_handle_provider_request_error(error)
+    }
+
+    // Default implementation for handling errors.
+    fn default_handle_provider_request_error(
+        &self,
+        error: ProviderHttpRequestError,
+    ) -> ProviderError {
+        match error {
+            ProviderHttpRequestError::NetworkError(e) => ProviderError::UnknownError(e.to_string()),
+            ProviderHttpRequestError::Timeout => ProviderError::TimeoutError,
+            ProviderHttpRequestError::RequestFailed {
+                provider,
+                status,
+                message,
+            } => ProviderError::UnknownError(format!(
+                "Request failed for provider {}. Status: {}. Message {}.",
+                provider, status, message
+            )),
+            ProviderHttpRequestError::InvalidResponse(e) => {
+                ProviderError::UnknownError(e.to_string())
+            }
+        }
+    }
 }
 
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
+        ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
-        ConnectionProvider::Intercom => unimplemented!(),
+        ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
+        ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
-        ConnectionProvider::Slack => unimplemented!(),
+        ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
+    }
+}
+
+// Internal Error types.
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProviderError {
+    #[error("Action not supported: {0}.")]
+    ActionNotSupportedError(String),
+    #[error("Timeout error.")]
+    TimeoutError,
+    #[error("Unknown error: {0}.")]
+    UnknownError(String),
+    #[error("Internal error: {0}.")]
+    InternalError(anyhow::Error),
+    #[error("Token revoked.")]
+    TokenRevokedError,
+}
+
+impl From<anyhow::Error> for ProviderError {
+    fn from(error: anyhow::Error) -> Self {
+        ProviderError::InternalError(error)
+    }
+}
+
+impl ProviderError {
+    pub fn to_finalization_error(&self) -> ConnectionError {
+        match self {
+            ProviderError::ActionNotSupportedError(_)
+            | ProviderError::TimeoutError
+            | ProviderError::UnknownError(_) => ConnectionError {
+                code: ConnectionErrorCode::ProviderFinalizationError,
+                message: self.to_string(),
+            },
+            ProviderError::TokenRevokedError => ConnectionError {
+                code: ConnectionErrorCode::TokenRevokedError,
+                message: self.to_string(),
+            },
+            ProviderError::InternalError(_) => ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Failed to finalize connection.".to_string(),
+            },
+        }
+    }
+
+    pub fn to_access_token_error(&self) -> ConnectionError {
+        match self {
+            ProviderError::ActionNotSupportedError(_)
+            | ProviderError::TimeoutError
+            | ProviderError::UnknownError(_) => ConnectionError {
+                code: ConnectionErrorCode::ProviderAccessTokenRefreshError,
+                message: self.to_string(),
+            },
+            ProviderError::TokenRevokedError => ConnectionError {
+                code: ConnectionErrorCode::TokenRevokedError,
+                message: self.to_string(),
+            },
+            ProviderError::InternalError(_) => ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Failed to refresh access token.".to_string(),
+            },
+        }
     }
 }
 
@@ -180,6 +281,7 @@ impl FromStr for ConnectionStatus {
 // is also "required in pinciple" but technically can be null for non-expiring acces tokens.
 #[derive(Deserialize)]
 pub struct MigratedCredentials {
+    redirect_uri: String,
     access_token_expiry: Option<u64>,
     authorization_code: Option<String>,
     access_token: String,
@@ -400,6 +502,7 @@ impl Connection {
         let mut c = store.create_connection(provider, metadata).await?;
 
         if let Some(creds) = migrated_credentials {
+            c.redirect_uri = Some(creds.redirect_uri);
             c.access_token_expiry = creds.access_token_expiry;
             c.encrypted_access_token = Some(Connection::seal_str(&creds.access_token)?);
             c.encrypted_raw_json = Some(Connection::seal_str(&serde_json::to_string(
@@ -414,6 +517,10 @@ impl Connection {
             }
 
             store.update_connection_secrets(&c).await?;
+
+            // Finalize the connection as it's been created with migrated_credentials.
+            c.status = ConnectionStatus::Finalized;
+            store.update_connection_status(&c).await?;
         }
 
         Ok(c)
@@ -551,10 +658,15 @@ impl Connection {
                     provider = ?self.provider,
                     "Failed to finalize connection",
                 );
-                Err(ConnectionError {
-                    code: ConnectionErrorCode::ProviderFinalizationError,
-                    message: "Failed to finalize connection with provider".to_string(),
-                })
+
+                if let Some(provider_error) = e.downcast_ref::<ProviderError>() {
+                    Err(provider_error.to_finalization_error())
+                } else {
+                    Err(ConnectionError {
+                        code: ConnectionErrorCode::InternalError,
+                        message: "Failed to finalize connection with provider".to_string(),
+                    })
+                }
             }
         }
     }
@@ -576,8 +688,8 @@ impl Connection {
 
         match self.access_token_expiry {
             Some(expiry) => {
-                if expiry > utils::now() {
-                    // Non-expired access_token.
+                if expiry - ACCESS_TOKEN_REFRESH_BUFFER_MILLIS > utils::now() {
+                    // Access token is not expired and not within the buffer to refresh.
                     Ok(Some(access_token))
                 } else {
                     // Access token expired.
@@ -701,10 +813,15 @@ impl Connection {
                     provider = ?self.provider,
                     "Failed to refresh access token",
                 );
-                Err(ConnectionError {
-                    code: ConnectionErrorCode::ProviderFinalizationError,
-                    message: "Failed to refresh access token with provider".to_string(),
-                })
+
+                if let Some(provider_error) = e.downcast_ref::<ProviderError>() {
+                    Err(provider_error.to_access_token_error())
+                } else {
+                    Err(ConnectionError {
+                        code: ConnectionErrorCode::InternalError,
+                        message: "Failed to refresh access token with provider".to_string(),
+                    })
+                }
             }
         }
     }

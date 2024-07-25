@@ -1,6 +1,5 @@
 import type { Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
-import { createAppAuth } from "@octokit/auth-app";
 import { hash as blake3 } from "blake3";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
@@ -30,8 +29,8 @@ import {
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
-import { isDualUseOAuthConnectionId } from "@connectors/lib/oauth";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 
 const API_PAGE_SIZE = 100;
@@ -78,64 +77,32 @@ type GithubIssueComment = {
   body?: string | null;
 };
 
-const { GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY_PATH } = process.env;
-
-let _githubAppPrivateKeyCache: string | null = null;
-
-export async function getGithubAppPrivateKey(): Promise<string> {
-  if (_githubAppPrivateKeyCache) {
-    return _githubAppPrivateKeyCache;
-  }
-
-  if (!GITHUB_APP_PRIVATE_KEY_PATH) {
-    throw new Error("GITHUB_APP_PRIVATE_KEY_PATH not set");
-  }
-
-  const privateKey = await fs.readFile(GITHUB_APP_PRIVATE_KEY_PATH, "utf8");
-  _githubAppPrivateKeyCache = privateKey;
-  return privateKey;
-}
-
 export async function installationIdFromConnectionId(
   connectionId: string
 ): Promise<string | null> {
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
-      provider: "github",
-      connectionId,
-    });
-    if (tokRes.isErr()) {
-      logger.error(
-        { connectionId, error: tokRes.error },
-        "Error retrieving Github access token"
-      );
-      return null;
-    }
-
-    return (tokRes.value.scrubbed_raw_json as { installation_id: string })[
-      "installation_id"
-    ];
-  } else {
-    // TODO(spolu) remove once fully migrated to oauth.
-    const octokit = await getOctokit(connectionId);
-
-    try {
-      await octokit.rest.apps.getAuthenticated();
-    } catch (e) {
-      logger.error({ error: e }, "Error validating github installation id");
-      return null;
-    }
-
-    return connectionId;
+  const tokRes = await getOAuthConnectionAccessToken({
+    config: apiConfig.getOAuthAPIConfig(),
+    logger,
+    provider: "github",
+    connectionId,
+  });
+  if (tokRes.isErr()) {
+    logger.error(
+      { connectionId, error: tokRes.error },
+      "Error retrieving Github access token"
+    );
+    return null;
   }
+
+  return (tokRes.value.scrubbed_raw_json as { installation_id: string })[
+    "installation_id"
+  ];
 }
 
 export async function getReposPage(
   connectionId: string,
   page: number
-): Promise<Result<GithubRepo[], ExternalOauthTokenError>> {
+): Promise<Result<GithubRepo[], ExternalOAuthTokenError>> {
   try {
     const octokit = await getOctokit(connectionId);
 
@@ -161,7 +128,7 @@ export async function getReposPage(
     );
   } catch (e) {
     if (isGithubRequestErrorNotFound(e)) {
-      return new Err(new ExternalOauthTokenError(e));
+      return new Err(new ExternalOAuthTokenError(e));
     }
     throw e;
   }
@@ -577,39 +544,13 @@ export async function getDiscussion(
 }
 
 export async function getOctokit(connectionId: string): Promise<Octokit> {
-  if (isDualUseOAuthConnectionId(connectionId)) {
-    const tokRes = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
-      provider: "github",
-      connectionId,
-    });
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "github",
+    connectionId,
+  });
 
-    if (tokRes.isErr()) {
-      logger.error(
-        { connectionId, error: tokRes.error },
-        "Error retrieving Github access token"
-      );
-      throw new Error("Error retrieving Github access token");
-    }
-
-    return new Octokit({ auth: tokRes.value.access_token });
-  } else {
-    // TODO(spolu) remove once fully migrated to oauth.
-    if (!GITHUB_APP_ID) {
-      throw new Error("GITHUB_APP_ID not set");
-    }
-    const privateKey = await getGithubAppPrivateKey();
-
-    return new Octokit({
-      authStrategy: createAppAuth,
-      auth: {
-        appId: GITHUB_APP_ID,
-        privateKey: privateKey,
-        installationId: connectionId,
-      },
-    });
-  }
+  return new Octokit({ auth: token.access_token });
 }
 
 // Repository processing
@@ -643,6 +584,8 @@ const EXTENSION_WHITELIST = [
   ".sql",
   ".kt",
   ".kts",
+  ".gradle",
+  ".xml",
 ];
 
 const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
@@ -750,7 +693,7 @@ export async function processRepository({
     ).data;
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
-      return new Err(new ExternalOauthTokenError(err));
+      return new Err(new ExternalOAuthTokenError(err));
     }
 
     throw err;

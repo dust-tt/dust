@@ -54,8 +54,8 @@ pub struct ParentsFilter {
 /// timestamp greater than `gt` and less than `lt`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TimestampFilter {
-    pub gt: Option<u64>,
-    pub lt: Option<u64>,
+    pub gt: Option<i64>,
+    pub lt: Option<i64>,
 }
 
 // Custom deserializer for `TimestampFilter`
@@ -73,8 +73,8 @@ where
 
     let f = Option::<InnerTimestampFilter>::deserialize(deserializer)?.map(|inner_filter| {
         TimestampFilter {
-            gt: inner_filter.gt.map(|value| value as u64), // Convert f64 to u64
-            lt: inner_filter.lt.map(|value| value as u64), // Convert f64 to u64
+            gt: inner_filter.gt.map(|value| value as i64), // Convert f64 to u64
+            lt: inner_filter.lt.map(|value| value as i64), // Convert f64 to u64
         }
     });
 
@@ -402,6 +402,65 @@ impl Document {
             text: None,
             token_count: None,
         })
+    }
+
+    pub fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
+        match &filter {
+            Some(filter) => {
+                let mut m = true;
+                match &filter.tags {
+                    Some(tags) => {
+                        m = m
+                            && match &tags.is_in {
+                                Some(is_in) => is_in.iter().any(|tag| self.tags.contains(tag)),
+                                None => true,
+                            };
+                        m = m
+                            && match &tags.is_not {
+                                Some(is_not) => is_not.iter().all(|tag| !self.tags.contains(tag)),
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                match &filter.parents {
+                    Some(parents) => {
+                        m = m
+                            && match &parents.is_in {
+                                Some(is_in) => {
+                                    is_in.iter().any(|parent| self.parents.contains(parent))
+                                }
+                                None => true,
+                            };
+                        m = m
+                            && match &parents.is_not {
+                                Some(is_not) => {
+                                    is_not.iter().all(|parent| !self.parents.contains(parent))
+                                }
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                match &filter.timestamp {
+                    Some(timestamp) => {
+                        m = m
+                            && match timestamp.gt {
+                                Some(gt) => self.timestamp as i64 >= gt,
+                                None => true,
+                            };
+                        m = m
+                            && match timestamp.lt {
+                                Some(lt) => self.timestamp as i64 <= lt,
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                m
+            }
+            None => true,
+        }
     }
 }
 
@@ -1253,6 +1312,7 @@ impl DataSource {
         query: &Option<String>,
         top_k: usize,
         filter: Option<SearchFilter>,
+        view_filter: Option<SearchFilter>,
         full_text: bool,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
@@ -1260,8 +1320,14 @@ impl DataSource {
 
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
 
-        // We ensure that we have not left a `parents.is_in_map`` in the filter.
-        match filter.as_ref() {
+        // We ensure that we have not left a `parents.is_in_map`` in the filters.
+        match &filter {
+            Some(filter) => {
+                filter.ensure_postprocessed()?;
+            }
+            None => (),
+        }
+        match &view_filter {
             Some(filter) => {
                 filter.ensure_postprocessed()?;
             }
@@ -1293,7 +1359,13 @@ impl DataSource {
                     ))?;
                 }
                 let chunks = self
-                    .retrieve_chunks_without_query(store, qdrant_client.clone(), top_k, &filter)
+                    .retrieve_chunks_without_query(
+                        store,
+                        qdrant_client.clone(),
+                        top_k,
+                        &filter,
+                        &view_filter,
+                    )
                     .await?;
                 qdrant_search_duration = utils::now() - time_qdrant_start;
                 chunks
@@ -1311,7 +1383,7 @@ impl DataSource {
                 embedding_duration = utils::now() - time_qdrant_start;
 
                 // Construct the filters for the search query if specified.
-                let f = build_qdrant_filter(&filter);
+                let f = build_qdrant_filter(&filter, &view_filter);
 
                 let time_qdrant_search_start = utils::now();
                 let results = qdrant_client
@@ -1628,6 +1700,7 @@ impl DataSource {
         qdrant_client: DustQdrantClient,
         top_k: usize,
         filter: &Option<SearchFilter>,
+        view_filter: &Option<SearchFilter>,
     ) -> Result<Vec<(String, Chunk)>> {
         let store = store.clone();
 
@@ -1636,6 +1709,7 @@ impl DataSource {
                 &self.project,
                 self.data_source_id(),
                 filter,
+                view_filter,
                 // With top_k documents, we should be guaranteed to have at least top_k chunks, if
                 // we make the assumption that each document has at least one chunk.
                 Some((top_k, 0)),
@@ -1756,6 +1830,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
+        view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
         version_hash: &Option<String>,
     ) -> Result<Option<Document>> {
@@ -1775,6 +1850,11 @@ impl DataSource {
                 return Ok(None);
             }
         };
+
+        // If the view_filter does not match the document we return as if it didn't exist.
+        if !d.match_filter(view_filter) {
+            return Ok(None);
+        }
 
         d.tags = if remove_system_tags {
             // remove tags that are prefixed with the system tag prefix
@@ -1947,7 +2027,10 @@ impl DataSource {
     }
 }
 
-fn build_qdrant_filter(filter: &Option<SearchFilter>) -> Option<qdrant::Filter> {
+fn build_qdrant_filter(
+    filter: &Option<SearchFilter>,
+    view_filter: &Option<SearchFilter>,
+) -> Option<qdrant::Filter> {
     fn qdrant_match_field_condition(key: &str, v: Vec<String>) -> qdrant::Condition {
         qdrant::FieldCondition {
             key: key.to_string(),
@@ -1961,81 +2044,100 @@ fn build_qdrant_filter(filter: &Option<SearchFilter>) -> Option<qdrant::Filter> 
         .into()
     }
 
-    // Construct the filters for the search query if specified.
-    match filter {
-        Some(f) => {
-            let mut must_filter: Vec<qdrant::Condition> = vec![];
-            let mut must_not_filter: Vec<qdrant::Condition> = vec![];
+    let mut must_filter: Vec<qdrant::Condition> = vec![];
+    let mut must_not_filter: Vec<qdrant::Condition> = vec![];
 
-            match &f.tags {
-                Some(tags) => {
-                    match tags.is_in.clone() {
-                        Some(v) => must_filter.push(qdrant_match_field_condition("tags", v)),
-                        None => (),
-                    };
-                    match tags.is_not.clone() {
-                        Some(v) => must_not_filter.push(qdrant_match_field_condition("tags", v)),
-                        None => (),
-                    };
-                }
-                None => (),
-            };
+    let mut process_filter = |f: &SearchFilter| {
+        match &f.tags {
+            Some(tags) => {
+                match tags.is_in.clone() {
+                    Some(v) => must_filter.push(qdrant_match_field_condition("tags", v)),
+                    None => (),
+                };
+                match tags.is_not.clone() {
+                    Some(v) => must_not_filter.push(qdrant_match_field_condition("tags", v)),
+                    None => (),
+                };
+            }
+            None => (),
+        };
 
-            match &f.parents {
-                Some(parents) => {
-                    match parents.is_in.clone() {
-                        Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
-                        None => (),
-                    };
-                    match parents.is_not.clone() {
-                        Some(v) => must_not_filter.push(qdrant_match_field_condition("parents", v)),
-                        None => (),
-                    };
-                }
-                None => (),
-            };
+        match &f.parents {
+            Some(parents) => {
+                match parents.is_in.clone() {
+                    Some(v) => must_filter.push(qdrant_match_field_condition("parents", v)),
+                    None => (),
+                };
+                match parents.is_not.clone() {
+                    Some(v) => must_not_filter.push(qdrant_match_field_condition("parents", v)),
+                    None => (),
+                };
+            }
+            None => (),
+        };
 
-            match &f.timestamp {
-                Some(timestamp) => {
-                    match timestamp.gt.clone() {
-                        Some(v) => must_filter.push(
-                            qdrant::FieldCondition {
-                                key: "timestamp".to_string(),
-                                range: Some(qdrant::Range {
-                                    gte: Some(v as f64),
-                                    ..Default::default()
-                                }),
+        match &f.timestamp {
+            Some(timestamp) => {
+                match timestamp.gt.clone() {
+                    Some(v) => must_filter.push(
+                        qdrant::FieldCondition {
+                            key: "timestamp".to_string(),
+                            range: Some(qdrant::Range {
+                                gte: Some(v as f64),
                                 ..Default::default()
-                            }
-                            .into(),
-                        ),
-                        None => (),
-                    };
-                    match timestamp.lt.clone() {
-                        Some(v) => must_filter.push(
-                            qdrant::FieldCondition {
-                                key: "timestamp".to_string(),
-                                range: Some(qdrant::Range {
-                                    lte: Some(v as f64),
-                                    ..Default::default()
-                                }),
+                            }),
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                    None => (),
+                };
+                match timestamp.lt.clone() {
+                    Some(v) => must_filter.push(
+                        qdrant::FieldCondition {
+                            key: "timestamp".to_string(),
+                            range: Some(qdrant::Range {
+                                lte: Some(v as f64),
                                 ..Default::default()
-                            }
-                            .into(),
-                        ),
-                        None => (),
-                    };
-                }
-                None => (),
-            };
+                            }),
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                    None => (),
+                };
+            }
+            None => (),
+        };
+    };
 
+    match (filter, view_filter) {
+        (Some(f), Some(vf)) => {
+            process_filter(f);
+            process_filter(vf);
             Some(qdrant::Filter {
                 must: must_filter,
                 must_not: must_not_filter,
                 ..Default::default()
             })
         }
-        None => None,
+        (Some(f), None) => {
+            process_filter(f);
+            Some(qdrant::Filter {
+                must: must_filter,
+                must_not: must_not_filter,
+                ..Default::default()
+            })
+        }
+        (None, Some(vf)) => {
+            process_filter(vf);
+            Some(qdrant::Filter {
+                must: must_filter,
+                must_not: must_not_filter,
+                ..Default::default()
+            })
+        }
+        (None, None) => None,
     }
 }
 

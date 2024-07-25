@@ -624,8 +624,8 @@ async fn refresh_chunk_count_for_updated_documents(
 
     let filter = SearchFilter {
         timestamp: Some(TimestampFilter {
-            gt: Some(from_timestamp),
-            lt: Some(now),
+            gt: Some(from_timestamp as i64),
+            lt: Some(now as i64),
         }),
         tags: None,
         parents: None,
@@ -643,6 +643,7 @@ async fn refresh_chunk_count_for_updated_documents(
                 ds.project(),
                 ds.data_source_id(),
                 &Some(filter.clone()),
+                &None,
                 Some((batch_size, offset)),
             )
             .await?;

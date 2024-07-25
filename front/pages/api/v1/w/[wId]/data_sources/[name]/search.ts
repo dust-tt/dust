@@ -1,9 +1,5 @@
 import type { DocumentType, WithAPIErrorResponse } from "@dust-tt/types";
-import type { CredentialsType } from "@dust-tt/types";
-import {
-  credentialsFromProviders,
-  dustManagedCredentials,
-} from "@dust-tt/types";
+import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { JSONSchemaType } from "ajv";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -12,7 +8,6 @@ import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
-import { Provider } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -224,18 +219,8 @@ async function handler(
         req.query.tags_not = [req.query.tags_not];
       }
 
-      let credentials: CredentialsType | null = null;
-      if (keyRes.value.isSystem) {
-        // Dust managed credentials: system API key (managed data source).
-        credentials = dustManagedCredentials();
-      } else {
-        const providers = await Provider.findAll({
-          where: {
-            workspaceId: keyRes.value.workspaceId,
-          },
-        });
-        credentials = credentialsFromProviders(providers);
-      }
+      // Data source operations are performed with our credentials.
+      const credentials = dustManagedCredentials();
 
       const queryRes = parse_payload(searchQuerySchema, req.query);
       if (queryRes.isErr()) {

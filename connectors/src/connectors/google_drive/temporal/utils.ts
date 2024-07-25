@@ -3,10 +3,8 @@ import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
 
-import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
-import { nango_client } from "@connectors/lib/nango_client";
-import type { NangoConnectionResponse } from "@connectors/lib/nango_helpers";
-import { getConnectionFromNango } from "@connectors/lib/nango_helpers";
+import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
+import logger from "@connectors/logger/logger";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 export function getDocumentId(driveFileId: string): string {
@@ -126,32 +124,21 @@ export async function driveObjectToDustType(
   }
 }
 
-export async function getGoogleCredentials(
-  nangoConnectionId: string
-): Promise<NangoConnectionResponse> {
-  return nango_client().getConnection(
-    googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
-    nangoConnectionId,
-    false
-  );
-}
-
 export async function getAuthObject(
-  nangoConnectionId: string
+  connectionId: string
 ): Promise<OAuth2Client> {
-  const res: NangoConnectionResponse = await getConnectionFromNango({
-    connectionId: nangoConnectionId,
-    integrationId: googleDriveConfig.getRequiredNangoGoogleDriveConnectorId(),
-    refreshToken: false,
-    useCache: true,
+  const oauth2Client = new google.auth.OAuth2();
+  const token = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "google_drive",
+    connectionId,
   });
 
-  const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
-    access_token: res.credentials.access_token,
-    scope: res.credentials.raw.scope,
-    token_type: res.credentials.raw.token_type,
-    expiry_date: new Date(res.credentials.expires_at).getTime(),
+    access_token: token.access_token,
+    scope: (token.scrubbed_raw_json as { scope: string }).scope,
+    token_type: (token.scrubbed_raw_json as { token_type: string }).token_type,
+    expiry_date: token.access_token_expiry,
   });
 
   return oauth2Client;

@@ -65,6 +65,7 @@ import {
 } from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 // Labs - Can be removed at all times if a solution is dropped
 import {
@@ -90,6 +91,8 @@ async function main() {
   await WorkspaceHasDomain.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
   await MembershipInvitation.sync({ alter: true });
+  await GroupModel.sync({ alter: true });
+
   await App.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });

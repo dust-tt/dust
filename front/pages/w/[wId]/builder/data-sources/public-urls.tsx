@@ -220,19 +220,22 @@ export default function DataSourcesView({
               subElement={
                 <>
                   Added by: {ds.editedByUser?.fullName}
-                  <span className="mx-2 h-3 w-0.5 bg-element-500" />
-                  Used by: {dataSourcesUsage[ds.id] ?? 0}
-                  <Icon visual={RobotIcon} />
+                  <span className="h-3 w-0.5 bg-element-500" />
+                  <div className="flex items-center gap-1">
+                    Used by: {dataSourcesUsage[ds.id] ?? 0}
+                    <Icon visual={RobotIcon} size="xs" />
+                  </div>
                 </>
               }
-              action={
+            >
+              <div className="py-2">
                 <ConnectorSyncingChip
                   initialState={ds.connector}
                   workspaceId={ds.connector.workspaceId}
                   dataSourceName={ds.connector.dataSourceName}
                 />
-              }
-            ></ContextItem>
+              </div>
+            </ContextItem>
           ))}
         </ContextItem.List>
       </Page.Vertical>

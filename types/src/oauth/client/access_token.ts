@@ -3,13 +3,16 @@ import { OAuthAPI, OAuthAPIError } from "../../oauth/oauth_api";
 import { LoggerInterface } from "../../shared/logger";
 import { Ok, Result } from "../../shared/result";
 
+const OAUTH_ACCESS_TOKEN_CACHE_TTL = 1000 * 60 * 5;
+
 const CACHE = new Map<
   string,
   {
     connection: OAuthConnectionType;
     access_token: string;
-    access_token_expiry: number;
+    access_token_expiry: number | null;
     scrubbed_raw_json: unknown;
+    local_expiry: number;
   }
 >();
 
@@ -28,7 +31,7 @@ export async function getOAuthConnectionAccessToken({
     {
       connection: OAuthConnectionType;
       access_token: string;
-      access_token_expiry: number;
+      access_token_expiry: number | null;
       scrubbed_raw_json: unknown;
     },
     OAuthAPIError
@@ -36,7 +39,7 @@ export async function getOAuthConnectionAccessToken({
 > {
   const cached = CACHE.get(connectionId);
 
-  if (cached && cached.access_token_expiry > Date.now()) {
+  if (cached && cached.local_expiry > Date.now()) {
     return new Ok(cached);
   }
 
@@ -48,7 +51,11 @@ export async function getOAuthConnectionAccessToken({
   if (res.isErr()) {
     return res;
   }
-  CACHE.set(connectionId, res.value);
+
+  CACHE.set(connectionId, {
+    local_expiry: Date.now() + OAUTH_ACCESS_TOKEN_CACHE_TTL,
+    ...res.value,
+  });
 
   return res;
 }

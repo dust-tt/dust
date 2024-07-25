@@ -52,7 +52,7 @@ export function useNavigationLock(
       void confirm(warningData).then((result) => {
         if (result) {
           isNavigatingAway.current = true;
-          void router.push(url);
+          void router.back();
         }
       });
 
@@ -68,5 +68,5 @@ export function useNavigationLock(
       window.removeEventListener("beforeunload", handleWindowClose);
       router.events.off("routeChangeStart", handleBrowseAway);
     };
-  }, [isEnabled, warningData, router.events, router.asPath, confirm, router]);
+  }, [isEnabled, warningData, confirm, router]);
 }

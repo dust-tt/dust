@@ -6,6 +6,7 @@ import type {
 } from "@dust-tt/types";
 import { Op } from "sequelize";
 
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
   fetchIntercomCollection,
   fetchIntercomCollections,
@@ -59,17 +60,17 @@ export async function allowSyncHelpCenter({
       helpCenterId,
     },
   });
-
+  const accessToken = await getIntercomAccessToken(connectionId);
   if (helpCenter?.permission === "none") {
     await helpCenter.update({
       permission: "read",
     });
   }
   if (!helpCenter) {
-    const helpCenterOnIntercom = await fetchIntercomHelpCenter(
-      connectionId,
-      helpCenterId
-    );
+    const helpCenterOnIntercom = await fetchIntercomHelpCenter({
+      accessToken,
+      helpCenterId,
+    });
     if (helpCenterOnIntercom) {
       helpCenter = await IntercomHelpCenter.create({
         connectorId: connectorId,
@@ -90,11 +91,11 @@ export async function allowSyncHelpCenter({
 
   // If withChildren we are allowing the full Help Center.
   if (withChildren) {
-    const level1Collections = await fetchIntercomCollections(
-      connectionId,
-      helpCenter.helpCenterId,
-      null
-    );
+    const level1Collections = await fetchIntercomCollections({
+      accessToken,
+      helpCenterId: helpCenter.helpCenterId,
+      parentId: null,
+    });
     const permissionUpdatePromises = level1Collections.map((c1) =>
       allowSyncCollection({
         connectorId,
@@ -191,16 +192,17 @@ export async function allowSyncCollection({
       collectionId,
     },
   });
+  const accessToken = await getIntercomAccessToken(connectionId);
 
   if (collection?.permission === "none") {
     await collection.update({
       permission: "read",
     });
   } else if (!collection) {
-    const intercomCollection = await fetchIntercomCollection(
-      connectionId,
-      collectionId
-    );
+    const intercomCollection = await fetchIntercomCollection({
+      accessToken,
+      collectionId,
+    });
 
     const hpId = helpCenterId || intercomCollection?.help_center_id;
 
@@ -237,11 +239,11 @@ export async function allowSyncCollection({
       helpCenterId: collection.helpCenterId,
       region,
     }),
-    fetchIntercomCollections(
-      connectionId,
-      collection.helpCenterId,
-      collection.collectionId
-    ),
+    fetchIntercomCollections({
+      accessToken,
+      helpCenterId: collection.helpCenterId,
+      parentId: collection.collectionId,
+    }),
   ]);
 
   const collectionPermissionPromises = childrenCollections.map((c) =>
@@ -362,6 +364,8 @@ export async function retrieveIntercomHelpCentersPermissions({
     throw new Error("Connector not found");
   }
 
+  const accessToken = await getIntercomAccessToken(connector.connectionId);
+
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
   let nodes: ContentNode[] = [];
@@ -393,9 +397,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         lastUpdatedAt: helpCenter.updatedAt.getTime(),
       }));
     } else {
-      const helpCenters = await fetchIntercomHelpCenters(
-        connector.connectionId
-      );
+      const helpCenters = await fetchIntercomHelpCenters({ accessToken });
       nodes = helpCenters.map((helpCenter) => ({
         provider: connector.type,
         internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
@@ -458,11 +460,11 @@ export async function retrieveIntercomHelpCentersPermissions({
         lastUpdatedAt: collection.updatedAt.getTime() || null,
       }));
     } else {
-      const collectionsInIntercom = await fetchIntercomCollections(
-        connector.connectionId,
-        helpCenterParentId,
-        parentId
-      );
+      const collectionsInIntercom = await fetchIntercomCollections({
+        accessToken,
+        helpCenterId: helpCenterParentId,
+        parentId,
+      });
       nodes = collectionsInIntercom.map((collection) => {
         const matchingCollectionInDb = collectionsInDb.find(
           (c) => c.collectionId === collection.id

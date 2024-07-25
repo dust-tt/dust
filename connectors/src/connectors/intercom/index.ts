@@ -20,6 +20,7 @@ import {
   revokeSyncCollection,
   revokeSyncHelpCenter,
 } from "@connectors/connectors/intercom/lib/help_center_permissions";
+import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomWorkspace } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   getHelpCenterArticleIdFromInternalId,
@@ -46,13 +47,9 @@ import {
   IntercomTeam,
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
-import { nangoDeleteConnection } from "@connectors/lib/nango_client";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const { NANGO_INTERCOM_CONNECTOR_ID } = process.env;
 
 export class IntercomConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -62,16 +59,14 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, Error>> {
-    const nangoConnectionId = connectionId;
-
-    if (!NANGO_INTERCOM_CONNECTOR_ID) {
-      throw new Error("NANGO_INTERCOM_CONNECTOR_ID not set");
-    }
+    const intercomAccessToken = await getIntercomAccessToken(connectionId);
 
     let connector = null;
 
     try {
-      const intercomWorkspace = await fetchIntercomWorkspace(nangoConnectionId);
+      const intercomWorkspace = await fetchIntercomWorkspace({
+        accessToken: intercomAccessToken,
+      });
       if (!intercomWorkspace) {
         return new Err(
           new Error(
@@ -92,7 +87,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       connector = await ConnectorResource.makeNew(
         "intercom",
         {
-          connectionId: nangoConnectionId,
+          connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
@@ -132,10 +127,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }: {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
-    if (!NANGO_INTERCOM_CONNECTOR_ID) {
-      throw new Error("NANGO_INTERCOM_CONNECTOR_ID not set");
-    }
-
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
@@ -160,27 +151,19 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const oldConnectionId = connector.connectionId;
       const newConnectionId = connectionId;
-      const newIntercomWorkspace =
-        await fetchIntercomWorkspace(newConnectionId);
+      const accessToken = await getIntercomAccessToken(newConnectionId);
+      const newIntercomWorkspace = await fetchIntercomWorkspace({
+        accessToken,
+      });
 
       if (!newIntercomWorkspace) {
         return new Err({
           type: "connector_update_error",
-          message: "Error retrieving nango connection info to update connector",
+          message: "Error retrieving connection info to update connector",
         });
       }
       if (intercomWorkspace.intercomWorkspaceId !== newIntercomWorkspace.id) {
-        nangoDeleteConnection(
-          newConnectionId,
-          NANGO_INTERCOM_CONNECTOR_ID
-        ).catch((e) => {
-          logger.error(
-            { error: e, connectorId: this.connectorId },
-            "Error deleting old Nango connection"
-          );
-        });
         return new Err({
           type: "connector_oauth_target_mismatch",
           message: "Cannot change workspace of a Intercom connector",
@@ -199,23 +182,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           where: { connectorId: connector.id },
         }
       );
-      nangoDeleteConnection(oldConnectionId, NANGO_INTERCOM_CONNECTOR_ID).catch(
-        (e) => {
-          logger.error(
-            { error: e, connectorId: this.connectorId, oldConnectionId },
-            "Error deleting old Nango connection"
-          );
-        }
-      );
     }
     return new Ok(connector.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    if (!NANGO_INTERCOM_CONNECTOR_ID) {
-      throw new Error("INTERCOM_NANGO_CONNECTOR_ID not set");
-    }
-
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
@@ -226,11 +197,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      const accessToken = await getAccessTokenFromNango({
-        connectionId: connector.connectionId,
-        integrationId: NANGO_INTERCOM_CONNECTOR_ID,
-        useCache: true,
-      });
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
 
       const resp = await fetch(`https://api.intercom.io/auth/uninstall`, {
         method: "POST",
@@ -247,26 +214,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         logger.info({ connectorId: this.connectorId }, "Uninstalled Intercom.");
       }
     } catch (e) {
-      // If we error we still continue the process, as it's likely the fact that the nango connection
+      // If we error we still continue the process, as it's likely the fact that the connection
       // was already deleted or the intercom app was already uninstalled.
       logger.error(
         { connectorId: this.connectorId, error: e },
         "Error uninstalling Intercom, continuing..."
-      );
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      NANGO_INTERCOM_CONNECTOR_ID
-    );
-    if (nangoRes.isErr()) {
-      logger.error(
-        {
-          error: nangoRes.error,
-          connectorId: connector.id,
-          connectionId: connector.connectionId,
-        },
-        "Error deleting old Nango connection (intercom uninstall webhook)"
       );
     }
 

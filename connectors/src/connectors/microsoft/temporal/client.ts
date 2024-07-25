@@ -5,6 +5,8 @@ import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
 import {
   fullSyncWorkflow,
   incrementalSyncWorkflow,
+  microsoftDeletionWorkflow,
+  microsoftDeletionWorkflowId,
   microsoftFullSyncWorkflowId,
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/connectors/microsoft/temporal/workflows";
@@ -15,16 +17,11 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export async function launchMicrosoftFullSyncWorkflow(
   connectorId: ModelId,
-  fromTs: number | null
+  nodeIdsToSync?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  if (fromTs) {
-    return new Err(
-      new Error("Google Drive connector does not support partial resync")
-    );
   }
 
   const client = await getTemporalClient();
@@ -36,7 +33,7 @@ export async function launchMicrosoftFullSyncWorkflow(
   try {
     await terminateWorkflow(workflowId);
     await client.workflow.start(fullSyncWorkflow, {
-      args: [{ connectorId }],
+      args: [{ connectorId, nodeIdsToSync }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
@@ -111,5 +108,48 @@ export async function launchMicrosoftIncrementalSyncWorkflow(
       `Failed starting workflow.`
     );
     return new Err(e as Error);
+  }
+}
+
+export async function launchMicrosoftDeletionWorkflow(
+  connectorId: ModelId,
+  nodeIdsToDelete: string[]
+): Promise<Result<void, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  const client = await getTemporalClient();
+
+  const workflowId = microsoftDeletionWorkflowId(connectorId, nodeIdsToDelete);
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  try {
+    await terminateWorkflow(workflowId);
+
+    await client.workflow.start(microsoftDeletionWorkflow, {
+      args: [{ connectorId, nodeIdsToDelete }],
+      taskQueue: QUEUE_NAME,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        error: err,
+      },
+      `Failed starting workflow.`
+    );
+    return new Err(err as Error);
   }
 }

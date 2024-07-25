@@ -178,7 +178,7 @@ export async function submitAssistantBuilderForm({
           {
             type: "visualization_configuration",
             name: DEFAULT_VISUALIZATION_ACTION_NAME,
-            description: "Generates graphs from data.",
+            description: "Generate client side javascript react code.",
           },
         ];
 

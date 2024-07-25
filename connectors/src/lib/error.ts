@@ -18,7 +18,6 @@ type ProviderErrorType =
 
 // Define general workflow error types.
 type GeneralWorkflowErrorType =
-  | "transient_nango_activity_error"
   | "transient_upstream_activity_error"
   | "unhandled_internal_activity_error"
   | "workflow_timeout_failure";
@@ -61,26 +60,10 @@ export interface NotFoundError extends HTTPError {
 }
 
 // This error is thrown when we are dealing with a revoked OAuth token.
-export class ExternalOauthTokenError extends Error {
+export class ExternalOAuthTokenError extends Error {
   constructor(readonly innerError?: Error) {
     super(innerError?.message);
-    this.name = "ExternalOauthTokenError";
-  }
-}
-
-export const NANGO_ERROR_TYPES = ["unknown_connection"];
-export type NangoErrorType = (typeof NANGO_ERROR_TYPES)[number];
-export class NangoError extends Error {
-  readonly type: NangoErrorType;
-
-  constructor(
-    type: NangoErrorType,
-    readonly innerError?: Error
-  ) {
-    super(innerError?.message);
-    this.name = "NangoError";
-    this.type = type;
-    this.innerError = innerError;
+    this.name = "ExternalOAuthTokenError";
   }
 }
 

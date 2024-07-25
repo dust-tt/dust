@@ -443,7 +443,7 @@ async function handler(
           },
         });
       } else {
-        // Dust managed credentials: all data sources.
+        // Data source operations are performed with our credentials.
         const credentials = dustManagedCredentials();
 
         // Create document with the Dust internal API.

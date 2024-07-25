@@ -1,4 +1,8 @@
-import type { LabsConnectorProvider, Result } from "@dust-tt/types";
+import type {
+  LabsConnectorProvider,
+  LabsTranscriptsProviderType,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -9,8 +13,6 @@ import type {
 import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import config from "@app/lib/labs/config";
-import { nangoDeleteConnection } from "@app/lib/labs/transcripts/utils/helpers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
@@ -49,6 +51,27 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return new LabsTranscriptsConfigurationResource(
       LabsTranscriptsConfigurationModel,
       configuration.get()
+    );
+  }
+
+  // TODO(spolu): remove post migration
+  static async listByProvider({
+    provider,
+  }: {
+    provider: LabsTranscriptsProviderType;
+  }): Promise<LabsTranscriptsConfigurationResource[]> {
+    const configurations = await LabsTranscriptsConfigurationModel.findAll({
+      where: {
+        provider,
+      },
+    });
+
+    return configurations.map(
+      (configuration) =>
+        new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
+          configuration.get()
+        )
     );
   }
 
@@ -142,6 +165,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
+  // TODO(spolu): remove post migration
+  async updateConnectionId(connectionId: string) {
+    return this.update({ connectionId });
+  }
+
   async delete(
     auth: Authenticator,
     transaction?: Transaction
@@ -154,21 +182,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
         },
         transaction,
       });
-
-      // If this was the last configuration using this connection, delete the connection
-      const count = await this.model.count({
-        where: {
-          workspaceId: this.workspaceId,
-          connectionId: this.connectionId,
-        },
-      });
-      if (count === 0) {
-        await nangoDeleteConnection(
-          this.connectionId,
-          config.getNangoConnectorIdForProvider(this.provider)
-        );
-      }
-
       return new Ok(undefined);
     } catch (err) {
       return new Err(err as Error);

@@ -243,7 +243,7 @@ export async function retrieveHierarchyForParent(
 export async function retrieveAvailableSpaces(
   connector: ConnectorResource,
   confluenceConfig: ConfluenceConfiguration
-) {
+): Promise<Result<ContentNode[], Error>> {
   const { id: connectorId } = connector;
 
   const syncedSpaces = await ConfluenceSpace.findAll({
@@ -252,16 +252,21 @@ export async function retrieveAvailableSpaces(
     },
   });
 
-  const spaces = await listConfluenceSpaces(connector, confluenceConfig);
+  const spacesRes = await listConfluenceSpaces(connector, confluenceConfig);
+  if (spacesRes.isErr()) {
+    return spacesRes;
+  }
 
-  return spaces.map((space) => {
-    const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
+  return new Ok(
+    spacesRes.value.map((space) => {
+      const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
 
-    return createContentNodeFromSpace(
-      space,
-      confluenceConfig.url,
-      isSynced ? "read" : "none",
-      { isExpandable: false }
-    );
-  });
+      return createContentNodeFromSpace(
+        space,
+        confluenceConfig.url,
+        isSynced ? "read" : "none",
+        { isExpandable: false }
+      );
+    })
+  );
 }

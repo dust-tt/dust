@@ -7,8 +7,8 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { confluenceConfig } from "@connectors/connectors/confluence/lib/config";
 import {
+  getConfluenceAccessToken,
   getConfluenceCloudInformation,
   getConfluenceUserAccountId,
   listConfluenceSpaces,
@@ -41,16 +41,9 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
-import {
-  nango_client,
-  nangoDeleteConnection,
-} from "@connectors/lib/nango_client";
-import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const { getRequiredNangoConfluenceConnectorId } = confluenceConfig;
 
 const logger = mainLogger.child({
   connector: "confluence",
@@ -64,12 +57,13 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, Error>> {
-    const nangoConnectionId = connectionId;
-    const confluenceAccessToken = await getAccessTokenFromNango({
-      connectionId: nangoConnectionId,
-      integrationId: getRequiredNangoConfluenceConnectorId(),
-      useCache: false,
-    });
+    const confluenceAccessTokenRes =
+      await getConfluenceAccessToken(connectionId);
+    if (confluenceAccessTokenRes.isErr()) {
+      return new Err(confluenceAccessTokenRes.error);
+    }
+
+    const confluenceAccessToken = confluenceAccessTokenRes.value;
 
     const confluenceCloudInformation = await getConfluenceCloudInformation(
       confluenceAccessToken
@@ -93,7 +87,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       const connector = await ConnectorResource.makeNew(
         "confluence",
         {
-          connectionId: nangoConnectionId,
+          connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceName: dataSourceConfig.dataSourceName,
@@ -133,8 +127,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const { connectionId: oldConnectionId } = connector;
-
       const currentCloudInformation = await ConfluenceConfiguration.findOne({
         attributes: ["cloudId"],
         where: {
@@ -142,15 +134,17 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         },
       });
 
-      const newConnection = await nango_client().getConnection(
-        getRequiredNangoConfluenceConnectorId(),
-        connectionId,
-        false
-      );
+      const confluenceAccessTokenRes =
+        await getConfluenceAccessToken(connectionId);
+      if (confluenceAccessTokenRes.isErr()) {
+        return new Err({
+          type: "connector_oauth_error",
+          message: confluenceAccessTokenRes.error.message,
+        });
+      }
 
-      const confluenceAccessToken = newConnection?.credentials?.access_token;
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
-        confluenceAccessToken
+        confluenceAccessTokenRes.value
       );
 
       // Change connection only if "cloudId" matches.
@@ -160,11 +154,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         newConfluenceCloudInformation.id === currentCloudInformation.cloudId
       ) {
         await connector.update({ connectionId });
-
-        await nangoDeleteConnection(
-          oldConnectionId,
-          getRequiredNangoConfluenceConnectorId()
-        );
       } else {
         logger.info(
           {
@@ -173,13 +162,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
             previousCloudId: currentCloudInformation?.cloudId,
           },
           "Cannot change the workspace of a Confluence connector"
-        );
-
-        // If the new connection does not grant us access to the same cloud id
-        // delete the Nango Connection.
-        await nangoDeleteConnection(
-          connectionId,
-          getRequiredNangoConfluenceConnectorId()
         );
 
         return new Err({
@@ -200,14 +182,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         "Confluence connector not found."
       );
       return new Err(new Error("Connector not found"));
-    }
-
-    const nangoRes = await nangoDeleteConnection(
-      connector.connectionId,
-      getRequiredNangoConfluenceConnectorId()
-    );
-    if (nangoRes.isErr()) {
-      throw nangoRes.error;
     }
 
     const res = await connector.delete();
@@ -322,12 +296,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     } else {
       // If the permission is not set to 'read', users are limited to selecting only
       // spaces for synchronization with Dust.
-      const allSpaces = await retrieveAvailableSpaces(
+      const allSpacesRes = await retrieveAvailableSpaces(
         connector,
         confluenceConfig
       );
 
-      return new Ok(allSpaces);
+      return allSpacesRes;
     }
   }
 
@@ -349,7 +323,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       (permission) => permission === "read"
     );
     if (shouldFetchConfluenceSpaces) {
-      spaces = await listConfluenceSpaces(connector);
+      const spacesRes = await listConfluenceSpaces(connector);
+      if (spacesRes.isErr()) {
+        return spacesRes;
+      }
+
+      spaces = spacesRes.value;
     }
 
     const addedSpaceIds = [];
