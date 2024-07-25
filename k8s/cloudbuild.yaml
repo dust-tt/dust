@@ -1,28 +1,32 @@
 steps:
   - name: ghcr.io/depot/cli:latest
-      entrypoint: 'bash'
     args:
-      - '-c'
-      - |
-        echo "NEXT_PUBLIC_VIZ_URL is: $$NEXT_PUBLIC_VIZ_URL"
-        depot build \
-          --project 3vz0lnf16v \
-          -t gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA \
-          -t gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest \
-          --push \
-          -f ${_DOCKERFILE_PATH} \
-          --build-arg COMMIT_HASH=$SHORT_SHA \
-          --build-arg NEXT_PUBLIC_VIZ_URL=$$NEXT_PUBLIC_VIZ_URL \
-          .
-    secretEnv: ["DEPOT_TOKEN", "NEXT_PUBLIC_VIZ_URL"]
+      - build
+      - --project
+      - 3vz0lnf16v
+      - -t
+      - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:$SHORT_SHA
+      - -t
+      - gcr.io/$PROJECT_ID/${_IMAGE_NAME}-image:latest
+      - --push
+      - -f
+      - ${_DOCKERFILE_PATH}
+      - --build-arg
+      - COMMIT_HASH=$SHORT_SHA
+      - --build-arg
+      - NEXT_PUBLIC_VIZ_URL=$$NEXT_PUBLIC_VIZ_URL
+      - .
+    secretEnv:
+      - "DEPOT_TOKEN"
+      - "NEXT_PUBLIC_VIZ_URL"
 
 timeout: 600s
 
 availableSecrets:
   secretManager:
-    - versionName: "projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest"
+    - versionName: projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
       env: DEPOT_TOKEN
-    - versionName: "projects/$PROJECT_ID/secrets/NEXT_PUBLIC_VIZ_URL/versions/latest"
+    - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_VIZ_URL/versions/latest
       env: NEXT_PUBLIC_VIZ_URL
 
 options:
