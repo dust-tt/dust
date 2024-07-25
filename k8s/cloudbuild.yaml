@@ -12,15 +12,18 @@ steps:
       - -f
       - ${_DOCKERFILE_PATH}
       - --build-arg
-      - COMMIT_HASH=${SHORT_SHA}
+      - COMMIT_HASH=$SHORT_SHA
+      - --build-arg
+      - NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt
       - .
-    secretEnv: ["DEPOT_TOKEN"]
+    secretEnv:
+      - "DEPOT_TOKEN"
 
 timeout: 600s
 
 availableSecrets:
   secretManager:
-    - versionName: "projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest"
+    - versionName: projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest
       env: DEPOT_TOKEN
 
 options:

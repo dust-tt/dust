@@ -359,7 +359,7 @@ async function renderFromFileId(
         content: [
           {
             type: "text",
-            text: `<attachment type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
+            text: `<attachment id="${fileId}" type="${contentType} title="${title}">[Image content interpreted by a vision-enabled model. Description not available in this context.]</attachment>`,
           },
         ],
       });
@@ -395,7 +395,7 @@ async function renderFromFileId(
       content: [
         {
           type: "text",
-          text: `<attachment type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+          text: `<attachment id="${fileId}" type="${contentType}" title="${title}">\n${content}\n</attachment>`,
         },
       ],
     });
@@ -440,7 +440,7 @@ export async function renderContentFragmentForModel(
         content: [
           {
             type: "text",
-            text: `<attachment type="${contentType}" title="${title}">\n${content}\n</attachment>`,
+            text: `<attachment id="${fileId}" type="${contentType}" title="${title}">\n${content}\n</attachment>`,
           },
         ],
       });

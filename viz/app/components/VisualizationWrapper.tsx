@@ -2,7 +2,7 @@
 
 import type {
   VisualizationRPCCommand,
-  VisualizationRPCRequest,
+  VisualizationRPCRequestMap,
 } from "@dust-tt/types";
 import { Button, ErrorMessage, Spinner } from "@viz/app/components/Components";
 import * as papaparseAll from "papaparse";
@@ -32,11 +32,11 @@ export function useVisualizationAPI(actionId: number) {
 
   const fetchCode = useCallback(async (): Promise<string | null> => {
     const getCode = makeIframeMessagePassingFunction<
-      { actionId: number },
-      { code?: string }
+      "getCodeToExecute",
+      { code: string }
     >("getCodeToExecute", actionId);
     try {
-      const result = await getCode({ actionId });
+      const result = await getCode(null);
 
       const extractedCode = visualizationExtractCodeNonStreaming(
         result.code ?? ""
@@ -62,7 +62,7 @@ export function useVisualizationAPI(actionId: number) {
   const fetchFile = useCallback(
     async (fileId: string): Promise<File | null> => {
       const getFile = makeIframeMessagePassingFunction<
-        { fileId: string },
+        "getFile",
         { file?: File }
       >("getFile", actionId);
       const res = await getFile({ fileId });
@@ -79,21 +79,23 @@ export function useVisualizationAPI(actionId: number) {
 
   // This retry function sends a command to the host window requesting a retry of a previous
   // operation, typically if the generated code fails.
-  const retry = useCallback(async (): Promise<void> => {
-    const sendRetry = makeIframeMessagePassingFunction("retry", actionId);
-    // TODO(2024-07-24 flav) Pass the error message to the host window.
-    await sendRetry({});
-  }, [actionId]);
+  const retry = useCallback(
+    async (errorMessage: string): Promise<void> => {
+      const sendRetry = makeIframeMessagePassingFunction("retry", actionId);
+      await sendRetry({ errorMessage });
+    },
+    [actionId]
+  );
 
   return { fetchCode, fetchFile, error, retry };
 }
 
 // This function creates a function that sends a command to the host window with templated Input and Output types.
-function makeIframeMessagePassingFunction<Params, Answer>(
-  methodName: VisualizationRPCCommand,
-  actionId: number
-) {
-  return (params?: Params) => {
+function makeIframeMessagePassingFunction<
+  T extends VisualizationRPCCommand,
+  Answer
+>(methodName: T, actionId: number) {
+  return (params: VisualizationRPCRequestMap[T]) => {
     return new Promise<Answer>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
@@ -113,7 +115,7 @@ function makeIframeMessagePassingFunction<Params, Answer>(
           messageUniqueId,
           actionId,
           params,
-        } satisfies VisualizationRPCRequest,
+        },
         "*"
       );
     });
@@ -179,7 +181,12 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
   }, [error]);
 
   if (errored) {
-    return <VisualizationError error={errored} retry={() => retry()} />;
+    return (
+      <VisualizationError
+        error={errored}
+        retry={() => retry(errored.message)}
+      />
+    );
   }
 
   if (!code) {
