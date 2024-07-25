@@ -26,7 +26,7 @@ async function backfillWorkspacesGroup(execute: boolean) {
               });
               await GroupResource.makeNew({
                 name: "Workspace",
-                type: "workspace",
+                type: "global",
                 workspaceId: w.id,
               });
               console.log(`System group created for workspace ${w.id}`);
@@ -38,9 +38,9 @@ async function backfillWorkspacesGroup(execute: boolean) {
                       `System group already exists for workspace ${w.id}`
                     );
                     break;
-                  case "enforce_one_workspace_group_per_workspace":
+                  case "enforce_one_global_group_per_workspace":
                     console.log(
-                      `Workspace group already exists for workspace ${w.id}`
+                      `Global group already exists for workspace ${w.id}`
                     );
                     break;
                   default:

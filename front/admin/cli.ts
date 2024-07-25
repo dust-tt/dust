@@ -52,7 +52,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         }),
         GroupResource.makeNew({
           name: "Workspace",
-          type: "workspace",
+          type: "global",
           workspaceId: w.id,
         }),
       ]);
