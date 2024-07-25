@@ -181,12 +181,9 @@ export function isVisualizationRPCRequest(
     return false;
   }
 
-  const v = value as Partial<VisualizationRPCRequest>;
-
   return (
-    typeof v.actionId === "number" &&
-    typeof v.messageUniqueId === "string" &&
-    typeof v.command === "string" &&
-    validCommands.includes(v.command as VisualizationRPCCommand)
+    isGetCodeToExecuteRequest(value) ||
+    isGetFileRequest(value) ||
+    isRetryRequest(value)
   );
 }

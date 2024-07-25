@@ -5,8 +5,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  isGetCodeToExecuteRequest,
-  isGetFileRequest,
+  assertNever,
   isVisualizationRPCRequest,
   visualizationExtractCodeNonStreaming,
   visualizationExtractCodeStreaming,
@@ -69,20 +68,24 @@ function useVisualizationDataHandler(
         return;
       }
 
-      if (isGetFileRequest(data)) {
-        const file = await getFile(data.params.fileId);
+      switch (data.command) {
+        case "getFile":
+          const file = await getFile(data.params.fileId);
 
-        sendResponseToIframe(data, { file }, event.source);
-      } else if (isGetCodeToExecuteRequest(data)) {
-        const code = action.generation;
+          sendResponseToIframe(data, { file }, event.source);
+          break;
 
-        sendResponseToIframe(data, { code }, event.source);
-      } else {
-        // TODO(2024-07-24 flav) Pass the error message to the host window.
-        onRetry();
+        case "getCodeToExecute":
+          sendResponseToIframe(data, { code: action.generation }, event.source);
+          break;
+
+        case "retry":
+          onRetry();
+          break;
+
+        default:
+          assertNever(data);
       }
-
-      // TODO: Types above are not accurate, as it can pass the first check but won't enter any if block.
     };
 
     window.addEventListener("message", listener);
