@@ -160,7 +160,7 @@ export function VisualizationActionIframe({
       {activeTab === "runtime" && (
         <iframe
           style={{ width: "100%", height: "600px" }}
-          src={`${process.env.NEXT_PUBLIC_VIZ_URL}?aId=${action.id}`}
+          src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
           sandbox="allow-scripts "
         />
       )}
