@@ -625,11 +625,13 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId: string) {
 
   const sortedItemList = changedList.filter((item) => {
     if (item.id === rootId) {
+      // Found selected root
       return true;
     }
 
-    if (!item.parentReference) {
-      return false;
+    if (!item.parentReference || !item.parentReference.id) {
+      // Root folder of the drive, always include it
+      return true;
     }
 
     const parentInternalId = getParentReferenceInternalId(item.parentReference);
