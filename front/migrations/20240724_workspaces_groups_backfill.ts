@@ -31,14 +31,21 @@ async function backfillWorkspacesGroup(execute: boolean) {
               });
               console.log(`System group created for workspace ${w.id}`);
             } catch (error) {
-              if (
-                error instanceof Error &&
-                error.cause &&
-                error.cause === "enforce_one_system_group_per_workspace"
-              ) {
-                console.log(
-                  `System group already exists for workspace ${w.id}`
-                );
+              if (error instanceof Error && error.cause) {
+                switch (error.cause) {
+                  case "enforce_one_system_group_per_workspace":
+                    console.log(
+                      `System group already exists for workspace ${w.id}`
+                    );
+                    break;
+                  case "enforce_one_workspace_group_per_workspace":
+                    console.log(
+                      `Workspace group already exists for workspace ${w.id}`
+                    );
+                    break;
+                  default:
+                    console.error(error);
+                }
               } else {
                 console.error(error);
               }

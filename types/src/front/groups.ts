@@ -7,3 +7,6 @@ export function isValidGroupType(value: unknown): value is GroupType {
 export function isSystemGroupType(value: GroupType): boolean {
   return value === "system";
 }
+export function isWorkspaceGroupType(value: GroupType): boolean {
+  return value === "workspace";
+}

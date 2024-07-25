@@ -1,5 +1,5 @@
 import type { GroupType } from "@dust-tt/types";
-import { isSystemGroupType } from "@dust-tt/types";
+import { isSystemGroupType, isWorkspaceGroupType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -59,21 +59,22 @@ GroupModel.init(
 );
 
 GroupModel.addHook(
-  "beforeSave",
-  "enforce_one_system_group_per_workspace",
+  "beforeCreate",
+  "enforce_one_system_and_workspace_group_per_workspace",
   async (group: GroupModel, options: { transaction: Transaction }) => {
-    if (isSystemGroupType(group.type)) {
-      const existingSystemGroupType = await GroupModel.findOne({
+    const groupType = group.type;
+    if (isSystemGroupType(groupType) || isWorkspaceGroupType(groupType)) {
+      const existingSystemOrWorkspaceGroupType = await GroupModel.findOne({
         where: {
           workspaceId: group.workspaceId,
-          type: group.type,
+          type: groupType,
         },
         transaction: options.transaction,
       });
 
-      if (existingSystemGroupType) {
-        throw new Error("A system group exists for this workspace.", {
-          cause: "enforce_one_system_group_per_workspace",
+      if (existingSystemOrWorkspaceGroupType) {
+        throw new Error(`A ${groupType} group exists for this workspace.`, {
+          cause: `enforce_one_${groupType}_group_per_workspace`,
         });
       }
     }
