@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@dust-tt/types";
@@ -31,10 +32,10 @@ export function useVisualizationAPI(actionId: number) {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchCode = useCallback(async (): Promise<string | null> => {
-    const getCode = makeIframeMessagePassingFunction<
+    const getCode = makeIframeMessagePassingFunction(
       "getCodeToExecute",
-      { code: string }
-    >("getCodeToExecute", actionId);
+      actionId
+    );
     try {
       const result = await getCode(null);
 
@@ -61,10 +62,7 @@ export function useVisualizationAPI(actionId: number) {
 
   const fetchFile = useCallback(
     async (fileId: string): Promise<File | null> => {
-      const getFile = makeIframeMessagePassingFunction<
-        "getFile",
-        { file?: File }
-      >("getFile", actionId);
+      const getFile = makeIframeMessagePassingFunction("getFile", actionId);
       const res = await getFile({ fileId });
 
       if (!res.file) {
@@ -91,12 +89,12 @@ export function useVisualizationAPI(actionId: number) {
 }
 
 // This function creates a function that sends a command to the host window with templated Input and Output types.
-function makeIframeMessagePassingFunction<
-  T extends VisualizationRPCCommand,
-  Answer
->(methodName: T, actionId: number) {
+function makeIframeMessagePassingFunction<T extends VisualizationRPCCommand>(
+  methodName: T,
+  actionId: number
+) {
   return (params: VisualizationRPCRequestMap[T]) => {
-    return new Promise<Answer>((resolve, reject) => {
+    return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
         if (event.data.messageUniqueId === messageUniqueId) {

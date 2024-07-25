@@ -100,6 +100,14 @@ export const validCommands: VisualizationRPCCommand[] = [
   "retry",
 ];
 
+// Command results.
+
+export interface CommandResultMap {
+  getFile: { file: File };
+  getCodeToExecute: { code: string };
+  retry: void;
+}
+
 // Type guard for getFile.
 export function isGetFileRequest(
   value: unknown
