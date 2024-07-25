@@ -22,6 +22,9 @@ spec:
         - podSelector:
             matchLabels:
               app: core-sqlite-worker
+        - podSelector:
+            matchLabels:
+              app: prodbox
       ports:
         - protocol: TCP
           port: 3001
