@@ -12,7 +12,7 @@ import {
   visualizationExtractCode,
 } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { classNames } from "@app/lib/utils";
@@ -38,13 +38,15 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 function useVisualizationDataHandler(
   action: VisualizationActionType,
   {
-    workspaceId,
     onRetry,
     setContentHeight,
+    vizIframeRef,
+    workspaceId,
   }: {
-    workspaceId: string;
     onRetry: () => void;
     setContentHeight: (v: SetStateAction<number>) => void;
+    vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+    workspaceId: string;
   }
 ) {
   const extractedCode = useMemo(
@@ -74,10 +76,12 @@ function useVisualizationDataHandler(
     const listener = async (event: MessageEvent) => {
       const { data } = event;
 
-      // TODO(2024-07-24 flav) Check origin.
+      const isOriginatingFromViz =
+        event.source && event.source === vizIframeRef.current?.contentWindow;
+
       if (
         !isVisualizationRPCRequest(data) ||
-        !event.source ||
+        !isOriginatingFromViz ||
         data.actionId !== action.id
       ) {
         return;
@@ -138,6 +142,7 @@ export function VisualizationActionIframe({
 }) {
   const [showIframe, setShowIframe] = useState<boolean | null>(null);
   const [contentHeight, setContentHeight] = useState(0);
+  const vizIframeRef = useRef(null);
 
   const workspaceId = owner.sId;
 
@@ -145,6 +150,7 @@ export function VisualizationActionIframe({
     workspaceId,
     onRetry,
     setContentHeight,
+    vizIframeRef,
   });
 
   useEffect(() => {
@@ -181,10 +187,13 @@ export function VisualizationActionIframe({
             style={{ height: `${contentHeight}px` }}
             className={classNames(
               "absolute left-0 top-0 max-h-[60vh] w-full",
-              !showIframe && contentHeight > 0 ? "opacity-0" : "opacity-100"
+              !showIframe && contentHeight > 0
+                ? "pointer-events-none opacity-0"
+                : "pointer-events-auto opacity-100"
             )}
           >
             <iframe
+              ref={vizIframeRef}
               className="h-full w-full"
               src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
               sandbox="allow-scripts"
