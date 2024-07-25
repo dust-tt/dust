@@ -24,6 +24,8 @@ availableSecrets:
   secretManager:
     - versionName: "projects/$PROJECT_ID/secrets/DEPOT_TOKEN/versions/latest"
       env: DEPOT_TOKEN
+    - versionName: "projects/$PROJECT_ID/secrets/NEXT_PUBLIC_VIZ_URL/versions/latest"
+      env: NEXT_PUBLIC_VIZ_URL
 
 options:
   logging: CLOUD_LOGGING_ONLY
