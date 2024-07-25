@@ -37,11 +37,11 @@ function useVisualizationDataHandler(
   {
     workspaceId,
     onRetry,
-    setIframeHeight,
+    setContentHeight,
   }: {
     workspaceId: string;
     onRetry: () => void;
-    setIframeHeight: (v: SetStateAction<number>) => void;
+    setContentHeight: (v: SetStateAction<number>) => void;
   }
 ) {
   const extractedCode = useMemo(
@@ -95,8 +95,8 @@ function useVisualizationDataHandler(
           onRetry();
           break;
 
-        case "setIframeHeight":
-          setIframeHeight(data.params.height);
+        case "setContentHeight":
+          setContentHeight(data.params.height);
           break;
 
         default:
@@ -112,7 +112,7 @@ function useVisualizationDataHandler(
     extractedCode,
     getFile,
     onRetry,
-    setIframeHeight,
+    setContentHeight,
   ]);
 
   return { getFile };
@@ -134,14 +134,14 @@ export function VisualizationActionIframe({
 }) {
   const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
   const [tabManuallyChanged, setTabManuallyChanged] = useState(false);
-  const [iframeHeight, setIframeHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
 
   const workspaceId = owner.sId;
 
   useVisualizationDataHandler(action, {
     workspaceId,
     onRetry,
-    setIframeHeight,
+    setContentHeight,
   });
 
   useEffect(() => {
@@ -190,7 +190,7 @@ export function VisualizationActionIframe({
       )}
       {activeTab === "runtime" && (
         <div
-          style={{ height: `${iframeHeight}px` }}
+          style={{ height: `${contentHeight}px` }}
           className="max-h-[40vh] w-full"
         >
           <iframe

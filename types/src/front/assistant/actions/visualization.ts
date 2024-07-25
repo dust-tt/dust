@@ -61,7 +61,7 @@ export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   retry: RetryParams;
-  setIframeHeight: { height: number };
+  setContentHeight: { height: number };
 };
 
 // Derive the command type from the keys of the request map
@@ -79,7 +79,7 @@ export const validCommands: VisualizationRPCCommand[] = [
   "getFile",
   "getCodeToExecute",
   "retry",
-  "setIframeHeight",
+  "setContentHeight",
 ];
 
 // Command results.
@@ -88,7 +88,7 @@ export interface CommandResultMap {
   getFile: { file: File };
   getCodeToExecute: { code: string };
   retry: void;
-  setIframeHeight: void;
+  setContentHeight: void;
 }
 
 // Type guard for getFile.
@@ -157,11 +157,11 @@ export function isRetryRequest(
   );
 }
 
-// Type guard for setIframeHeight.
-export function isSetIframeHeightRequest(
+// Type guard for setContentHeight.
+export function isSetContentHeightRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
-  command: "setIframeHeight";
+  command: "setContentHeight";
   params: { height: number };
 } {
   if (typeof value !== "object" || value === null) {
@@ -171,7 +171,7 @@ export function isSetIframeHeightRequest(
   const v = value as Partial<VisualizationRPCRequest>;
 
   return (
-    v.command === "setIframeHeight" &&
+    v.command === "setContentHeight" &&
     typeof v.actionId === "number" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
@@ -190,6 +190,7 @@ export function isVisualizationRPCRequest(
   return (
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
-    isRetryRequest(value)
+    isRetryRequest(value) ||
+    isSetContentHeightRequest(value)
   );
 }

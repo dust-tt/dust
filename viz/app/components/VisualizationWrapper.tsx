@@ -183,8 +183,8 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
       if (height === null) {
         return;
       }
-      const sendHeight = makeIframeMessagePassingFunction<"setIframeHeight">(
-        "setIframeHeight",
+      const sendHeight = makeIframeMessagePassingFunction<"setContentHeight">(
+        "setContentHeight",
         actionIdParsed
       );
       sendHeight({ height });
@@ -194,9 +194,8 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
 
   const { ref } = useResizeDetector({
     handleHeight: true,
-
-    refreshMode: "debounce",
-    refreshRate: 100,
+    refreshMode: "throttle",
+    refreshRate: 1000,
     onResize: sendHeightToParent,
   });
 
