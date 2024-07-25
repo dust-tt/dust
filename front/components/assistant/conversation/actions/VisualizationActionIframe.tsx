@@ -15,6 +15,7 @@ import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import { classNames } from "@app/lib/utils";
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -161,17 +162,30 @@ export function VisualizationActionIframe({
 
   return (
     <div className="relative">
+      {showIframe && (
+        <div
+          style={{
+            height: `${contentHeight}px`,
+          }}
+        />
+      )}
       <div>
-        {!showIframe && extractedCode && extractedCode.length > 0 && (
-          <RenderMessageMarkdown
-            content={"```javascript\n" + extractedCode + "\n```"}
-            isStreaming={isStreaming}
-          />
-        )}
-        {showIframe && (
+        {!(showIframe && contentHeight > 0) &&
+          extractedCode &&
+          extractedCode.length > 0 && (
+            <RenderMessageMarkdown
+              content={"```javascript\n" + extractedCode + "\n```"}
+              isStreaming={isStreaming}
+            />
+          )}
+
+        {!!action.generation && (
           <div
             style={{ height: `${contentHeight}px` }}
-            className="max-h-[40vh] w-full"
+            className={classNames(
+              "absolute left-0 top-0 max-h-[40vh] w-full",
+              !showIframe && contentHeight > 0 ? "opacity-0" : "opacity-100"
+            )}
           >
             <iframe
               className="h-full w-full"
@@ -181,6 +195,7 @@ export function VisualizationActionIframe({
           </div>
         )}
       </div>
+
       {action.generation && contentHeight > 0 && (
         <div className="absolute left-4 top-4">
           <IconToggleButton
