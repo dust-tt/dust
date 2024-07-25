@@ -1,14 +1,20 @@
-import { VisualizationWrapperWithErrorHandling } from "@viz/app/components/VisualizationWrapper";
+import { VisualizationWrapper } from "@viz/app/components/VisualizationWrapper";
 
-type IframeProps = {
-  wId: string;
+type RenderVisualizationSearchParams = {
   aId: string;
 };
 
-export default function Iframe({
+const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
+
+export default function RenderVisualization({
   searchParams,
 }: {
-  searchParams: IframeProps;
+  searchParams: RenderVisualizationSearchParams;
 }) {
-  return <VisualizationWrapperWithErrorHandling actionId={searchParams.aId} />;
+  return (
+    <VisualizationWrapper
+      actionId={parseInt(searchParams.aId, 10)}
+      allowedVisualizationOrigin={ALLOWED_VISUALIZATION_ORIGIN}
+    />
+  );
 }

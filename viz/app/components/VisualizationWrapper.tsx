@@ -5,25 +5,24 @@ import type {
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@dust-tt/types";
-import { Button, ErrorMessage, Spinner } from "@viz/app/components/Components";
+import { Spinner } from "@viz/app/components/Components";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useEffect, useState } from "react";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
 import { useResizeDetector } from "react-resize-detector";
+import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 
-export function useVisualizationAPI(actionId: number) {
+export function useVisualizationAPI(
+  sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
+) {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchCode = useCallback(async (): Promise<string | null> => {
-    const getCode = makeIframeMessagePassingFunction(
-      "getCodeToExecute",
-      actionId
-    );
     try {
-      const result = await getCode(null);
+      const result = await sendCrossDocumentMessage("getCodeToExecute", null);
 
       const { code } = result;
       if (!code) {
@@ -42,12 +41,11 @@ export function useVisualizationAPI(actionId: number) {
 
       return null;
     }
-  }, [actionId]);
+  }, [sendCrossDocumentMessage]);
 
   const fetchFile = useCallback(
     async (fileId: string): Promise<File | null> => {
-      const getFile = makeIframeMessagePassingFunction("getFile", actionId);
-      const res = await getFile({ fileId });
+      const res = await sendCrossDocumentMessage("getFile", { fileId });
 
       const { fileBlob: blob } = res;
 
@@ -60,58 +58,39 @@ export function useVisualizationAPI(actionId: number) {
 
       return file;
     },
-    [actionId]
+    [sendCrossDocumentMessage]
   );
 
   // This retry function sends a command to the host window requesting a retry of a previous
   // operation, typically if the generated code fails.
   const retry = useCallback(
     async (errorMessage: string): Promise<void> => {
-      const sendRetry = makeIframeMessagePassingFunction("retry", actionId);
-      await sendRetry({ errorMessage });
+      await sendCrossDocumentMessage("retry", { errorMessage });
     },
-    [actionId]
+    [sendCrossDocumentMessage]
   );
 
-  return { fetchCode, fetchFile, error, retry };
+  const sendHeightToParent = useCallback(
+    async ({ height }: { height: number | null }) => {
+      if (height === null) {
+        return;
+      }
+
+      await sendCrossDocumentMessage("setContentHeight", {
+        height,
+      });
+    },
+    [sendCrossDocumentMessage]
+  );
+
+  return { fetchCode, fetchFile, error, retry, sendHeightToParent };
 }
 
-// This function creates a function that sends a command to the host window with templated Input and Output types.
-function makeIframeMessagePassingFunction<T extends VisualizationRPCCommand>(
-  methodName: T,
-  actionId: number
-) {
-  return (params: VisualizationRPCRequestMap[T]) => {
-    return new Promise<CommandResultMap[T]>((resolve, reject) => {
-      const messageUniqueId = Math.random().toString();
-      const listener = (event: MessageEvent) => {
-        if (event.data.messageUniqueId === messageUniqueId) {
-          if (event.data.error) {
-            reject(event.data.error);
-          } else {
-            resolve(event.data.result);
-          }
-          window.removeEventListener("message", listener);
-        }
-      };
-      window.addEventListener("message", listener);
-      window.top?.postMessage(
-        {
-          command: methodName,
-          messageUniqueId,
-          actionId,
-          params,
-        },
-        "*"
-      );
-    });
-  };
-}
-
-const useFile = (actionId: number, fileId: string) => {
+const useFile = (
+  fileId: string,
+  fetchFile: (fileId: string) => Promise<File | null>
+) => {
   const [file, setFile] = useState<File | null>(null);
-
-  const { fetchFile } = useVisualizationAPI(actionId); // Adjust the import based on your project structure
 
   useEffect(() => {
     const fetch = async () => {
@@ -131,20 +110,34 @@ const useFile = (actionId: number, fileId: string) => {
   return file;
 };
 
+interface RunnerParams {
+  code: string;
+  scope: Record<string, unknown>;
+}
+
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
-export function VisualizationWrapper({ actionId }: { actionId: string }) {
-  type RunnerParams = {
-    code: string;
-    scope: Record<string, unknown>;
-  };
-
+export function VisualizationWrapper({
+  actionId,
+  allowedVisualizationOrigin,
+}: {
+  actionId: number;
+  allowedVisualizationOrigin: string | undefined;
+}) {
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
   const [errored, setErrored] = useState<Error | null>(null);
-  const actionIdParsed = parseInt(actionId, 10);
+  const sendCrossDocumentMessage = useMemo(
+    () =>
+      makeSendCrossDocumentMessage({
+        actionId,
+        allowedVisualizationOrigin,
+      }),
+    [actionId, allowedVisualizationOrigin]
+  );
 
-  const { fetchCode, error, retry } = useVisualizationAPI(actionIdParsed);
+  const { fetchCode, fetchFile, error, retry, sendHeightToParent } =
+    useVisualizationAPI(sendCrossDocumentMessage);
 
   useEffect(() => {
     const loadCode = async () => {
@@ -165,8 +158,7 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
                     react: reactAll,
                     papaparse: papaparseAll,
                     "@dust/react-hooks": {
-                      useFile: (fileId: string) =>
-                        useFile(actionIdParsed, fileId),
+                      useFile: (fileId: string) => useFile(fileId, fetchFile),
                     },
                   },
                 }),
@@ -180,21 +172,7 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
     };
 
     loadCode();
-  }, [fetchCode, actionIdParsed]);
-
-  const sendHeightToParent = useCallback(
-    ({ height }: { height: number | null }) => {
-      if (height === null) {
-        return;
-      }
-      const sendHeight = makeIframeMessagePassingFunction<"setContentHeight">(
-        "setContentHeight",
-        actionIdParsed
-      );
-      sendHeight({ height });
-    },
-    [actionIdParsed]
-  );
+  }, [fetchCode, fetchFile]);
 
   const { ref } = useResizeDetector({
     handleHeight: true,
@@ -210,12 +188,8 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
   }, [error]);
 
   if (errored) {
-    return (
-      <VisualizationError
-        error={errored}
-        retry={() => retry(errored.message)}
-      />
-    );
+    // Throw the error to the ErrorBoundary.
+    throw errored;
   }
 
   if (!runnerParams) {
@@ -223,103 +197,67 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
   }
 
   return (
-    <div ref={ref}>
-      <Runner
-        code={runnerParams.code}
-        scope={runnerParams.scope}
-        onRendered={(error) => {
-          if (error) {
-            setErrored(error);
-          }
-        }}
-      />
-    </div>
-  );
-}
-
-// This is the component to render when an error occurs.
-function VisualizationError({
-  error,
-  retry,
-}: {
-  error: Error;
-  retry: () => void;
-}) {
-  const [showDetails, setShowDetails] = useState(false);
-
-  return (
-    <div className="flex w-full flex-col items-center justify-center gap-4">
-      <ErrorMessage title="Error">
-        <>
-          We encountered an error while running the code generated above. You
-          can try again by clicking the button below.
-          <div className="mt-2">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="text-pink-700 underline focus:outline-none"
-            >
-              {showDetails ? "Hide details" : "Show details"}
-            </button>
-            {showDetails && (
-              <div className="mt-2 p-2 bg-pink-50 rounded">
-                <strong>Error message:</strong> {error.message}
-              </div>
-            )}
-          </div>
-        </>
-      </ErrorMessage>
-      <div>
-        <Button label="Retry" onClick={retry} />
+    <ErrorBoundary
+      errorMessage="We encountered an error while running the code generated above. You can try again by clicking the button below."
+      onRetryClick={retry}
+    >
+      <div ref={ref}>
+        <Runner
+          code={runnerParams.code}
+          scope={runnerParams.scope}
+          onRendered={(error) => {
+            if (error) {
+              setErrored(error);
+            }
+          }}
+        />
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }
 
-type ErrorBoundaryProps = {
-  actionId: string;
-};
+export function makeSendCrossDocumentMessage({
+  actionId,
+  allowedVisualizationOrigin,
+}: {
+  actionId: number;
+  allowedVisualizationOrigin: string | undefined;
+}) {
+  return <T extends VisualizationRPCCommand>(
+    command: T,
+    params: VisualizationRPCRequestMap[T]
+  ) => {
+    return new Promise<CommandResultMap[T]>((resolve, reject) => {
+      const messageUniqueId = Math.random().toString();
+      const listener = (event: MessageEvent) => {
+        if (event.origin !== allowedVisualizationOrigin) {
+          console.log(
+            `Ignored message from unauthorized origin: ${event.origin}`
+          );
 
-type ErrorBoundaryState = {
-  hasError: boolean;
-  error: unknown;
-};
+          // Simply ignore messages from unauthorized origins.
+          return;
+        }
 
-// This is the error boundary component that wraps the VisualizationWrapper component.
-// It needs to be a class component for error handling to work.
-export class VisualizationWrapperWithErrorHandling extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError() {
-    // Update state so the next render will show the fallback UI.
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: unknown) {
-    this.setState({ hasError: true, error });
-  }
-
-  render() {
-    if (this.state.hasError) {
-      let error: Error;
-      if (this.state.error instanceof Error) {
-        error = this.state.error;
-      } else {
-        error = new Error("Unknown error.");
-      }
-
-      const retry = makeIframeMessagePassingFunction(
-        "retry",
-        parseInt(this.props.actionId, 10)
+        if (event.data.messageUniqueId === messageUniqueId) {
+          if (event.data.error) {
+            reject(event.data.error);
+          } else {
+            resolve(event.data.result);
+          }
+          window.removeEventListener("message", listener);
+        }
+      };
+      window.addEventListener("message", listener);
+      window.top?.postMessage(
+        {
+          command,
+          messageUniqueId,
+          actionId,
+          params,
+        },
+        "*"
       );
-      return <VisualizationError error={error} retry={() => retry} />;
-    }
-
-    return <VisualizationWrapper actionId={this.props.actionId} />;
-  }
+    });
+  };
 }
