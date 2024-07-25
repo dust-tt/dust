@@ -137,16 +137,16 @@ export async function handleSearchDataSource({
       target_document_tokens: searchQuery.target_document_tokens,
       filter: {
         tags: {
-          in: searchQuery.tags_in,
-          not: searchQuery.tags_not,
+          in: searchQuery.tags_in ?? null,
+          not: searchQuery.tags_not ?? null,
         },
         parents: {
-          in: searchQuery.parents_in,
-          not: searchQuery.parents_not,
+          in: searchQuery.parents_in ?? null,
+          not: searchQuery.parents_not ?? null,
         },
         timestamp: {
-          gt: searchQuery.timestamp_gt,
-          lt: searchQuery.timestamp_lt,
+          gt: searchQuery.timestamp_gt ?? null,
+          lt: searchQuery.timestamp_lt ?? null,
         },
       },
       credentials: credentials,

@@ -140,6 +140,21 @@ export type CoreAPIQueryResult = {
   value: Record<string, unknown>;
 };
 
+export type CoreAPISearchFilter = {
+  tags: {
+    in: string[] | null;
+    not: string[] | null;
+  } | null;
+  parents: {
+    in: string[] | null;
+    not: string[] | null;
+  } | null;
+  timestamp: {
+    gt: number | null;
+    lt: number | null;
+  } | null;
+};
+
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
@@ -277,6 +292,9 @@ export class CoreAPI {
     credentials,
     secrets,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
+    // TODO(GROUPS_INFRA): use the auth as argument of that method instead of `runAsWorkspaceId`
+    // and pass both X-Dust-Workspace-Id and X-Dust-Group-Ids.
+
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}/runs`,
       {
@@ -318,6 +336,9 @@ export class CoreAPI {
       dustRunId: Promise<string>;
     }>
   > {
+    // TODO(GROUPS_INFRA): use the auth as argument of that method instead of `runAsWorkspaceId`
+    // and pass both X-Dust-Workspace-Id and X-Dust-Group-Ids.
+
     const res = await this._fetchWithError(
       `${this._url}/projects/${projectId}/runs/stream`,
       {
@@ -614,20 +635,7 @@ export class CoreAPI {
     payload: {
       query: string;
       topK: number;
-      filter?: {
-        tags: {
-          in?: string[] | null;
-          not?: string[] | null;
-        };
-        parents?: {
-          in?: string[] | null;
-          not?: string[] | null;
-        };
-        timestamp?: {
-          gt?: number | null;
-          lt?: number | null;
-        };
-      } | null;
+      filter?: CoreAPISearchFilter | null;
       fullText: boolean;
       credentials: { [key: string]: string };
       target_document_tokens?: number | null;
