@@ -373,7 +373,7 @@ export async function getParents({
           startSyncTs,
         })),
       ]
-    : [internalId];
+    : [internalId, parentInternalId];
 }
 
 /* Fetching parent's parent id queries the db for a resource; since those

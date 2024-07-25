@@ -176,7 +176,7 @@ export async function groupRootItemsByDriveId(nodeIds: string[]) {
 }
 
 export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
-  const groupedItems = groupRootItemsByDriveId(nodeIds);
+  const groupedItems = await groupRootItemsByDriveId(nodeIds);
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
