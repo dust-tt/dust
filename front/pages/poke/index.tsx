@@ -70,7 +70,7 @@ const Dashboard = () => {
                       </label>
                       {ws.subscription && (
                         <label
-                          className={`rounded px-1 text-sm text-gray-500 text-white ${ws.subscription.plan.name.startsWith("ENT_") ? "bg-red-500" : "bg-blue-500"}`}
+                          className={`rounded px-1 text-sm text-gray-500 text-white ${ws.subscription.plan.code.startsWith("ENT_") ? "bg-red-500" : "bg-blue-500"}`}
                         >
                           {ws.subscription.plan.name}
                         </label>
