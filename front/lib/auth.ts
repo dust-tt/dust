@@ -1,7 +1,10 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
+  ACLType,
+  GroupType,
   LightWorkspaceType,
   RoleType,
+  SupportedPermissionType,
   UserType,
   WhitelistableFeature,
   WorkspaceType,
@@ -12,6 +15,7 @@ import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
+  groupHasPermission,
   isAdmin,
   isBuilder,
   isDevelopment,
@@ -36,6 +40,7 @@ import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -61,6 +66,7 @@ export class Authenticator {
   _role: RoleType;
   _subscription: SubscriptionType | null;
   _user: UserResource | null;
+  _groups: GroupResource[];
   _workspace: Workspace | null;
 
   // Should only be called from the static methods below.
@@ -81,6 +87,8 @@ export class Authenticator {
   }) {
     this._workspace = workspace || null;
     this._user = user || null;
+    // TODO: Load groups memberships
+    this._groups = [];
     this._role = role;
     this._subscription = subscription || null;
     this._flags = flags;
@@ -545,6 +553,25 @@ export class Authenticator {
       isDevelopment() || DUST_INTERNAL_EMAIL_REGEXP.test(email);
 
     return isDustInternal && isDustSuperUser;
+  }
+
+  groups(): GroupType[] {
+    return this._groups ? this._groups.map((group) => group.toJSON()) : [];
+  }
+
+  hasPermission(acls: ACLType[], permission: SupportedPermissionType): boolean {
+    // Does the user belongs to a group which has the required permission on all ACLs ?
+    return this.groups().some((group) =>
+      acls.every((acl) => groupHasPermission(acl, permission, group.id))
+    );
+  }
+
+  canRead(acls: ACLType[]): boolean {
+    return this.hasPermission(acls, "read");
+  }
+
+  canWrite(acls: ACLType[]): boolean {
+    return this.hasPermission(acls, "write");
   }
 }
 

@@ -1,3 +1,5 @@
+import { ModelId } from "../shared/model_id";
+
 /**
  * system group:
  * Accessible by no-one other than our system API keys.
@@ -25,3 +27,9 @@ export function isSystemGroupType(value: SupportedGroupType): boolean {
 export function isGlobalGroupType(value: SupportedGroupType): boolean {
   return value === "global";
 }
+
+export type GroupType = {
+  id: ModelId;
+  type: SupportedGroupType;
+  name: string;
+};
