@@ -1,5 +1,5 @@
 import type {
-  LightWorkpaceTypeWithSubscription,
+  LightWorkpaceWithSubscriptionType,
   SubscriptionType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -19,7 +19,7 @@ import { isEmailValid } from "@app/lib/utils";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetPokeWorkspacesResponseBody = {
-  workspaces: LightWorkpaceTypeWithSubscription[];
+  workspaces: LightWorkpaceWithSubscriptionType[];
 };
 
 async function handler(

@@ -44,7 +44,7 @@ export type LightWorkspaceType = {
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
 };
 
-export type LightWorkpaceTypeWithSubscription = LightWorkspaceType & {
+export type LightWorkpaceWithSubscriptionType = LightWorkspaceType & {
   subscription: SubscriptionType | null;
 };
 
