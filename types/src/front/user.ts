@@ -1,5 +1,6 @@
 import * as t from "io-ts";
 
+import { SubscriptionType } from "..";
 import {
   EmbeddingProviderIdType,
   ModelProviderIdType,
@@ -41,6 +42,10 @@ export type LightWorkspaceType = {
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+};
+
+export type LightWorkpaceTypeWithSubscription = LightWorkspaceType & {
+  subscription: SubscriptionType | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {
