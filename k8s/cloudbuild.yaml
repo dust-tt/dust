@@ -12,9 +12,9 @@ steps:
       - -f
       - ${_DOCKERFILE_PATH}
       - --build-arg
-      - COMMIT_HASH=${SHORT_SHA}
+      - COMMIT_HASH=$SHORT_SHA
       - --build-arg
-      - NEXT_PUBLIC_VIZ_URL=${NEXT_PUBLIC_VIZ_URL}
+      - NEXT_PUBLIC_VIZ_URL=$$NEXT_PUBLIC_VIZ_URL
       - .
     secretEnv: ["DEPOT_TOKEN", "NEXT_PUBLIC_VIZ_URL"]
 
