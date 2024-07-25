@@ -118,20 +118,6 @@ function useVisualizationDataHandler(
   return { getFile };
 }
 
-const MemoizedIframe = memo(function MemoizedIframe({
-  actionId,
-}: {
-  actionId: number;
-}) {
-  return (
-    <iframe
-      style={{ width: "100%", height: "100%" }}
-      src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${actionId}`}
-      sandbox="allow-scripts"
-    />
-  );
-});
-
 export function VisualizationActionIframe({
   owner,
   action,
@@ -204,10 +190,14 @@ export function VisualizationActionIframe({
       )}
       {activeTab === "runtime" && (
         <div
-          style={{ width: "100%", height: `${iframeHeight}px` }}
-          className="max-h-[40vh]"
+          style={{ height: `${iframeHeight}px` }}
+          className="max-h-[40vh] w-full"
         >
-          <MemoizedIframe actionId={action.id} />
+          <iframe
+            className="h-full w-full"
+            src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
+            sandbox="allow-scripts"
+          />
         </div>
       )}
     </>
