@@ -5,7 +5,7 @@ import type {
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@dust-tt/types";
-import { Button, ErrorMessage, Spinner } from "@viz/app/components/Components";
+import { Spinner } from "@viz/app/components/Components";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import React, { useCallback, useMemo } from "react";
@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
 import { useResizeDetector } from "react-resize-detector";
-import { ErrorBoundary, RenderError } from "@viz/app/components/ErrorBoundary";
+import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
