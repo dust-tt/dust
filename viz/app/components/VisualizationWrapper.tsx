@@ -14,20 +14,6 @@ import { importCode, Runner } from "react-runner";
 import {} from "react-runner";
 import * as rechartsAll from "recharts";
 
-// We can't import functions from the types package, so we define them here.
-function visualizationExtractCodeNonStreaming(code: string) {
-  const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*<\/visualization>/;
-  let extractedCode: string | null = null;
-  const match = code.match(regex);
-  if (match && match[1]) {
-    extractedCode = match[1];
-  }
-  if (!extractedCode) {
-    return null;
-  }
-  return extractedCode;
-}
-
 export function useVisualizationAPI(actionId: number) {
   const [error, setError] = useState<Error | null>(null);
 
@@ -39,15 +25,13 @@ export function useVisualizationAPI(actionId: number) {
     try {
       const result = await getCode(null);
 
-      const extractedCode = visualizationExtractCodeNonStreaming(
-        result.code ?? ""
-      );
-      if (!extractedCode) {
+      const { code } = result;
+      if (!code) {
         setError(new Error("Failed to extract visualization code."));
         return null;
       }
 
-      return extractedCode;
+      return code;
     } catch (error) {
       console.error(error);
       setError(

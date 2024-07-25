@@ -7,10 +7,9 @@ import type {
 import {
   assertNever,
   isVisualizationRPCRequest,
-  visualizationExtractCodeNonStreaming,
-  visualizationExtractCodeStreaming,
+  visualizationExtractCode,
 } from "@dust-tt/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
@@ -37,6 +36,11 @@ function useVisualizationDataHandler(
   workspaceId: string,
   onRetry: () => void
 ) {
+  const extractedCode = useMemo(
+    () => visualizationExtractCode(action.generation ?? ""),
+    [action.generation]
+  );
+
   const getFile = useCallback(
     async (fileId: string) => {
       const response = await fetch(
@@ -76,7 +80,7 @@ function useVisualizationDataHandler(
           break;
 
         case "getCodeToExecute":
-          sendResponseToIframe(data, { code: action.generation }, event.source);
+          sendResponseToIframe(data, { code: extractedCode }, event.source);
           break;
 
         case "retry":
@@ -90,7 +94,7 @@ function useVisualizationDataHandler(
 
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  }, [action.generation, action.id, onRetry, getFile]);
+  }, [action.generation, action.id, extractedCode, getFile, onRetry]);
 
   return { getFile };
 }
@@ -125,11 +129,9 @@ export function VisualizationActionIframe({
 
   let extractedCode: string | null = null;
 
-  if (action.generation) {
-    extractedCode = visualizationExtractCodeNonStreaming(action.generation);
-  } else {
-    extractedCode = visualizationExtractCodeStreaming(streamedCode || "");
-  }
+  extractedCode = visualizationExtractCode(
+    action.generation ?? streamedCode ?? ""
+  );
 
   return (
     <>
