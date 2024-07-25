@@ -349,7 +349,6 @@ export async function renderConversationForModelMultiActions({
       promptToken: promptCount,
       tokensUsed,
       messageSelected: selected.length,
-      messages: JSON.stringify(selected, null, 2),
       elapsed: Date.now() - now,
     },
     "[ASSISTANT_TRACE] renderConversationForModelMultiActions"
