@@ -60,9 +60,12 @@ function useVisualizationDataHandler(
     const listener = async (event: MessageEvent) => {
       const { data } = event;
 
-      console.log(data);
       // TODO(2024-07-24 flav) Check origin.
-      if (!isVisualizationRPCRequest(data) || !event.source) {
+      if (
+        !isVisualizationRPCRequest(data) ||
+        !event.source ||
+        data.actionId !== action.id
+      ) {
         return;
       }
 
