@@ -198,8 +198,8 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
 
   const { ref } = useResizeDetector({
     handleHeight: true,
-    refreshMode: "throttle",
-    refreshRate: 1000,
+    refreshMode: "debounce",
+    refreshRate: 500,
     onResize: sendHeightToParent,
   });
 

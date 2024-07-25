@@ -452,7 +452,12 @@ export async function constructPromptMultiActions(
     (action) => isVisualizationConfiguration(action)
   );
   if (needVisualizationMetaPrompt) {
-    additionalInstructions += `If mermaid is asked for a graph you can proceed. Otherwise to generate graphs only call the visualization tool. It takes care of writing and rendering the graph above your message.\nNever repeat the generated code to the user.\nIf asked to manipulate CSV files, you can use the tool to generate the code and then use the code in the tool to manipulate the CSV file.\n`;
+    additionalInstructions +=
+      `If mermaid is asked for a graph you can proceed. Otherwise to generate graphs only call the visualization tool. ` +
+      `It takes care of writing and rendering the graph.\n` +
+      `Never repeat the generated code to the user.\n` +
+      `If asked to manipulate CSV files, you can use the tool to generate the code and then use the code in the tool to manipulate the CSV file.\n` +
+      `Unless explictly asked, never explain the code generated in <visualization> tags`;
   }
 
   const providerMetaPrompt = model.metaPrompt;
