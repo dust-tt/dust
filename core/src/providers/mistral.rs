@@ -149,31 +149,23 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
         match cm {
-            ChatMessage::Assistant(assistant_msg) => {
-                if assistant_msg.function_calls.is_some() {
-                    Ok(MistralChatMessage {
-                        role: MistralChatMessageRole::Assistant,
-                        content: None,
-                        tool_calls: assistant_msg
-                            .function_calls
-                            .as_ref()
-                            .map(|fc| {
-                                fc.iter()
-                                    .map(|f| MistralToolCall::try_from(f))
-                                    .collect::<Result<Vec<_>>>()
-                            })
-                            .transpose()?,
-                        tool_call_id: None,
+            ChatMessage::Assistant(assistant_msg) => Ok(MistralChatMessage {
+                role: MistralChatMessageRole::Assistant,
+                content: match assistant_msg.clone().function_calls {
+                    Some(_) => None,
+                    None => assistant_msg.clone().content,
+                },
+                tool_calls: assistant_msg
+                    .function_calls
+                    .as_ref()
+                    .map(|fc| {
+                        fc.iter()
+                            .map(|f| MistralToolCall::try_from(f))
+                            .collect::<Result<Vec<_>>>()
                     })
-                } else {
-                    Ok(MistralChatMessage {
-                        role: MistralChatMessageRole::Assistant,
-                        content: assistant_msg.content.clone(),
-                        tool_calls: None,
-                        tool_call_id: None,
-                    })
-                }
-            }
+                    .transpose()?,
+                tool_call_id: None,
+            }),
             ChatMessage::Function(function_msg) => Ok(MistralChatMessage {
                 role: MistralChatMessageRole::Tool,
                 content: Some(function_msg.content.clone()),
@@ -230,14 +222,15 @@ impl TryFrom<&MistralChatMessage> for AssistantChatMessage {
     fn try_from(cm: &MistralChatMessage) -> Result<Self, Self::Error> {
         let role = ChatMessageRole::from(cm.role.clone());
 
-        let (content, function_calls) = if let Some(tool_calls) = cm.tool_calls.as_ref() {
-            let function_calls = tool_calls
-                .iter()
-                .map(|tc| ChatFunctionCall::try_from(tc))
-                .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
-            (None, Some(function_calls))
-        } else {
-            (cm.content.clone(), None)
+        let (content, function_calls) = match cm.tool_calls.as_ref() {
+            None => (cm.content.clone(), None),
+            Some(tool_calls) => {
+                let function_calls = tool_calls
+                    .iter()
+                    .map(|tc| ChatFunctionCall::try_from(tc))
+                    .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
+                (None, Some(function_calls))
+            }
         };
 
         let function_call = function_calls.as_ref().and_then(|fc| fc.first().cloned());
