@@ -48,20 +48,25 @@ interface VisualizationRPCRequestBase {
 }
 
 // Define parameter types for each command.
-export type GetFileParams = {
-  fileId: string;
-};
 
-export type RetryParams = {
+interface GetFileParams {
+  fileId: string;
+}
+
+interface RetryParams {
   errorMessage: string;
-};
+}
+
+interface SetContentHeightParams {
+  height: number;
+}
 
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   retry: RetryParams;
-  setContentHeight: { height: number };
+  setContentHeight: SetContentHeightParams;
 };
 
 // Derive the command type from the keys of the request map
@@ -85,7 +90,7 @@ export const validCommands: VisualizationRPCCommand[] = [
 // Command results.
 
 export interface CommandResultMap {
-  getFile: { file: File };
+  getFile: { fileBlob: Blob | null };
   getCodeToExecute: { code: string };
   retry: void;
   setContentHeight: void;
@@ -162,7 +167,7 @@ export function isSetContentHeightRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
   command: "setContentHeight";
-  params: { height: number };
+  params: SetContentHeightParams;
 } {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -176,7 +181,7 @@ export function isSetContentHeightRequest(
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
-    typeof (v.params as { height: number }).height === "number"
+    typeof (v.params as SetContentHeightParams).height === "number"
   );
 }
 

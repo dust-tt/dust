@@ -1,6 +1,8 @@
 import { BracesIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
 import type {
+  CommandResultMap,
   VisualizationActionType,
+  VisualizationRPCCommand,
   VisualizationRPCRequest,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -14,9 +16,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
-const sendResponseToIframe = (
-  request: VisualizationRPCRequest,
-  response: unknown,
+const sendResponseToIframe = <T extends VisualizationRPCCommand>(
+  request: { command: T } & VisualizationRPCRequest,
+  response: CommandResultMap[T],
   target: MessageEventSource
 ) => {
   target.postMessage(
@@ -49,18 +51,18 @@ function useVisualizationDataHandler(
     [action.generation]
   );
 
-  const getFile = useCallback(
+  const getFileBlob = useCallback(
     async (fileId: string) => {
       const response = await fetch(
         `/api/w/${workspaceId}/files/${fileId}?action=view`
       );
       if (!response.ok) {
-        // TODO(2024-07-24 flav) Propagate the error to the iframe.
-        throw new Error(`Failed to fetch file ${fileId}`);
+        return null;
       }
 
       const resBuffer = await response.arrayBuffer();
-      return new File([resBuffer], fileId, {
+
+      return new Blob([resBuffer], {
         type: response.headers.get("Content-Type") || undefined,
       });
     },
@@ -82,13 +84,16 @@ function useVisualizationDataHandler(
 
       switch (data.command) {
         case "getFile":
-          const file = await getFile(data.params.fileId);
+          const fileBlob = await getFileBlob(data.params.fileId);
 
-          sendResponseToIframe(data, { file }, event.source);
+          sendResponseToIframe(data, { fileBlob }, event.source);
           break;
 
         case "getCodeToExecute":
-          sendResponseToIframe(data, { code: extractedCode }, event.source);
+          if (extractedCode) {
+            sendResponseToIframe(data, { code: extractedCode }, event.source);
+          }
+
           break;
 
         case "retry":
@@ -110,12 +115,10 @@ function useVisualizationDataHandler(
     action.generation,
     action.id,
     extractedCode,
-    getFile,
+    getFileBlob,
     onRetry,
     setContentHeight,
   ]);
-
-  return { getFile };
 }
 
 export function VisualizationActionIframe({
