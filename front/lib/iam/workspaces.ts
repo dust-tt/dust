@@ -23,16 +23,18 @@ export async function createWorkspace(session: SessionWithUser) {
     name: externalUser.nickname,
   });
 
-  await GroupResource.makeNew({
-    name: "System",
-    type: "system",
-    workspaceId: workspace.id,
-  });
-  await GroupResource.makeNew({
-    name: "Workspace",
-    type: "workspace",
-    workspaceId: workspace.id,
-  });
+  await Promise.all([
+    GroupResource.makeNew({
+      name: "System",
+      type: "system",
+      workspaceId: workspace.id,
+    }),
+    GroupResource.makeNew({
+      name: "Workspace",
+      type: "workspace",
+      workspaceId: workspace.id,
+    }),
+  ]);
 
   sendUserOperationMessage({
     message: `<@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,

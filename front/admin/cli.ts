@@ -44,16 +44,18 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         sId: generateLegacyModelSId(),
         name: args.name,
       });
-      await GroupResource.makeNew({
-        name: "System",
-        type: "system",
-        workspaceId: w.id,
-      });
-      await GroupResource.makeNew({
-        name: "Workspace",
-        type: "workspace",
-        workspaceId: w.id,
-      });
+      await Promise.all([
+        GroupResource.makeNew({
+          name: "System",
+          type: "system",
+          workspaceId: w.id,
+        }),
+        GroupResource.makeNew({
+          name: "Workspace",
+          type: "workspace",
+          workspaceId: w.id,
+        }),
+      ]);
 
       args.wId = w.sId;
       await workspace("show", args);
