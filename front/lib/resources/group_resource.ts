@@ -1,4 +1,4 @@
-import type { ModelId, Result } from "@dust-tt/types";
+import type { LightWorkspaceType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -67,6 +67,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
   }
 
   static async fetchById(
