@@ -183,7 +183,7 @@ export function VisualizationActionIframe({
           <div
             style={{ height: `${contentHeight}px` }}
             className={classNames(
-              "absolute left-0 top-0 max-h-[40vh] w-full",
+              "absolute left-0 top-0 max-h-[60vh] w-full",
               !showIframe && contentHeight > 0 ? "opacity-0" : "opacity-100"
             )}
           >
