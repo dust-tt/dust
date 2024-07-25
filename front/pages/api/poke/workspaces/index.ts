@@ -215,9 +215,9 @@ async function handler(
           })
           .sort((a, b) => {
             const aStartsWithENT =
-              a.subscription?.plan?.name?.startsWith("ENT_") || false;
+              a.subscription?.plan?.code?.startsWith("ENT_") || false;
             const bStartsWithENT =
-              b.subscription?.plan?.name?.startsWith("ENT_") || false;
+              b.subscription?.plan?.code?.startsWith("ENT_") || false;
 
             if (aStartsWithENT && !bStartsWithENT) {
               return -1;
