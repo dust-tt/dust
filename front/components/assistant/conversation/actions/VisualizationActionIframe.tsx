@@ -1,4 +1,4 @@
-import { BracesIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
+import { BracesIcon, IconToggleButton } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   VisualizationActionType,
@@ -135,8 +135,8 @@ export function VisualizationActionIframe({
   isStreaming: boolean;
   onRetry: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
-  const [tabManuallyChanged, setTabManuallyChanged] = useState(false);
+  // const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
+  const [showIframe, setShowIframe] = useState<boolean | null>(null);
   const [contentHeight, setContentHeight] = useState(0);
 
   const workspaceId = owner.sId;
@@ -148,11 +148,10 @@ export function VisualizationActionIframe({
   });
 
   useEffect(() => {
-    if (activeTab === "code" && action.generation && !tabManuallyChanged) {
-      setActiveTab("runtime");
-      setTabManuallyChanged(true);
+    if (showIframe === null && action.generation) {
+      setShowIframe(true);
     }
-  }, [action.generation, activeTab, tabManuallyChanged]);
+  }, [action.generation, showIframe]);
 
   let extractedCode: string | null = null;
 
@@ -161,48 +160,36 @@ export function VisualizationActionIframe({
   );
 
   return (
-    <>
-      <Tab
-        tabs={[
-          {
-            label: "Code",
-            id: "code",
-            current: activeTab === "code",
-            icon: BracesIcon,
-            sizing: "expand",
-          },
-          {
-            label: "Run",
-            id: "runtime",
-            current: activeTab === "runtime",
-            icon: PlayIcon,
-            sizing: "expand",
-            hasSeparator: true,
-          },
-        ]}
-        setCurrentTab={(tabId, event) => {
-          event.preventDefault();
-          setActiveTab(tabId as "code" | "runtime");
-        }}
-      />
-      {activeTab === "code" && extractedCode && extractedCode.length > 0 && (
-        <RenderMessageMarkdown
-          content={"```javascript\n" + extractedCode + "\n```"}
-          isStreaming={isStreaming}
-        />
-      )}
-      {activeTab === "runtime" && (
-        <div
-          style={{ height: `${contentHeight}px` }}
-          className="max-h-[40vh] w-full"
-        >
-          <iframe
-            className="h-full w-full"
-            src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
-            sandbox="allow-scripts"
+    <div className="relative">
+      <div>
+        {!showIframe && extractedCode && extractedCode.length > 0 && (
+          <RenderMessageMarkdown
+            content={"```javascript\n" + extractedCode + "\n```"}
+            isStreaming={isStreaming}
+          />
+        )}
+        {showIframe && (
+          <div
+            style={{ height: `${contentHeight}px` }}
+            className="max-h-[40vh] w-full"
+          >
+            <iframe
+              className="h-full w-full"
+              src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
+              sandbox="allow-scripts"
+            />
+          </div>
+        )}
+      </div>
+      {action.generation && contentHeight > 0 && (
+        <div className="absolute left-4 top-4">
+          <IconToggleButton
+            icon={BracesIcon}
+            selected={!showIframe}
+            onClick={() => setShowIframe((prev) => !prev)}
           />
         </div>
       )}
-    </>
+    </div>
   );
 }
