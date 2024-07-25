@@ -93,6 +93,7 @@ struct MistralToolCall {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 struct MistralChatMessage {
     pub role: MistralChatMessageRole,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<MistralToolCall>>,
@@ -150,15 +151,19 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
         match cm {
             ChatMessage::Assistant(assistant_msg) => Ok(MistralChatMessage {
                 role: MistralChatMessageRole::Assistant,
-                content: assistant_msg.content.clone(),
-                tool_calls: match assistant_msg.function_calls.as_ref() {
-                    Some(fc) => Some(
+                content: match assistant_msg.function_calls {
+                    Some(_) => None,
+                    None => assistant_msg.content.clone(),
+                },
+                tool_calls: assistant_msg
+                    .function_calls
+                    .as_ref()
+                    .map(|fc| {
                         fc.iter()
                             .map(|f| MistralToolCall::try_from(f))
-                            .collect::<Result<Vec<_>>>()?,
-                    ),
-                    None => None,
-                },
+                            .collect::<Result<Vec<_>>>()
+                    })
+                    .transpose()?,
                 tool_call_id: None,
             }),
             ChatMessage::Function(function_msg) => Ok(MistralChatMessage {
@@ -216,31 +221,19 @@ impl TryFrom<&MistralChatMessage> for AssistantChatMessage {
 
     fn try_from(cm: &MistralChatMessage) -> Result<Self, Self::Error> {
         let role = ChatMessageRole::from(cm.role.clone());
-        let content = match cm.content.as_ref() {
-            Some(c) => Some(c.clone()),
-            None => None,
-        };
 
-        let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
-            let cfc = tool_calls
-                .into_iter()
-                .map(|tc| ChatFunctionCall::try_from(tc))
-                .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
-
-            Some(cfc)
-        } else {
-            None
-        };
-
-        let function_call = if let Some(fcs) = function_calls.as_ref() {
-            match fcs.first() {
-                Some(fc) => Some(fc),
-                None => None,
+        let (content, function_calls) = match cm.tool_calls.as_ref() {
+            None => (cm.content.clone(), None),
+            Some(tool_calls) => {
+                let function_calls = tool_calls
+                    .iter()
+                    .map(|tc| ChatFunctionCall::try_from(tc))
+                    .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
+                (None, Some(function_calls))
             }
-            .cloned()
-        } else {
-            None
         };
+
+        let function_call = function_calls.as_ref().and_then(|fc| fc.first().cloned());
 
         Ok(AssistantChatMessage {
             content,
@@ -752,7 +745,8 @@ impl MistralAILLM {
                         None => (),
                         Some(tc) => {
                             c.choices[j].message.tool_calls =
-                                serde_json::from_value(tc.clone()).unwrap_or_else(|_| None);
+                                serde_json::from_value(tc.clone()).unwrap();
+                            c.choices[j].message.content = None; // Ensure content is None when tool_calls are present
                         }
                     };
                 }
