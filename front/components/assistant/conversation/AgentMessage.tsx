@@ -509,6 +509,27 @@ export function AgentMessage({
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />
+        <>
+          {agentMessage.actions
+            .filter((a) => isVisualizationActionType(a))
+            .map((a, i) => {
+              const streamingViz = streamedVisualizations.find(
+                (sv) => sv.actionId === a.id
+              );
+              assert(isVisualizationActionType(a));
+              return (
+                <VisualizationActionIframe
+                  action={a}
+                  conversationId={conversationId}
+                  isStreaming={!!streamingViz}
+                  key={i}
+                  onRetry={() => retryHandler(agentMessage)}
+                  owner={owner}
+                  streamedCode={streamingViz?.visualization || null}
+                />
+              );
+            })}
+        </>
 
         {agentMessage.chainOfThought?.length ? (
           <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">
@@ -556,27 +577,6 @@ export function AgentMessage({
             )}
           </div>
         )}
-        <>
-          {agentMessage.actions
-            .filter((a) => isVisualizationActionType(a))
-            .map((a, i) => {
-              const streamingViz = streamedVisualizations.find(
-                (sv) => sv.actionId === a.id
-              );
-              assert(isVisualizationActionType(a));
-              return (
-                <VisualizationActionIframe
-                  action={a}
-                  conversationId={conversationId}
-                  isStreaming={!!streamingViz}
-                  key={i}
-                  onRetry={() => retryHandler(agentMessage)}
-                  owner={owner}
-                  streamedCode={streamingViz?.visualization || null}
-                />
-              );
-            })}
-        </>
         {agentMessage.status === "cancelled" && (
           <Chip
             label="Message generation was interrupted"
