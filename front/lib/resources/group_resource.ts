@@ -9,9 +9,13 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -73,7 +77,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
-    return this.model.destroy({
+    await GroupMembershipModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+    await this.model.destroy({
       where: {
         workspaceId: workspace.id,
       },
@@ -187,6 +197,44 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return new this(GroupModel, group.get());
+  }
+
+  async addMember(
+    auth: Authenticator,
+    userId: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    const user = await UserResource.fetchById(userId);
+
+    if (!user) {
+      throw new Error("User not found.");
+    }
+    if (this.type !== "regular") {
+      throw new Error("Cannot add members to non-regular groups.");
+    }
+
+    const workspace = renderLightWorkspaceType({ workspace: owner });
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace,
+        transaction,
+      });
+
+    if (!membership) {
+      throw new Error("User is not a member of the workspace.");
+    }
+
+    await GroupMembershipModel.create(
+      {
+        groupId: this.id,
+        userId: user.id,
+        workspaceId: owner.id,
+        startAt: new Date(),
+      },
+      { transaction }
+    );
   }
 
   toJSON() {
