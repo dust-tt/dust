@@ -21,6 +21,7 @@ import {
   internalSubscribeWorkspaceToFreeNoPlan,
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
@@ -43,6 +44,18 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         sId: generateLegacyModelSId(),
         name: args.name,
       });
+      await Promise.all([
+        GroupResource.makeNew({
+          name: "System",
+          type: "system",
+          workspaceId: w.id,
+        }),
+        GroupResource.makeNew({
+          name: "Workspace",
+          type: "workspace",
+          workspaceId: w.id,
+        }),
+      ]);
 
       args.wId = w.sId;
       await workspace("show", args);
