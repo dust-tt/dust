@@ -57,8 +57,7 @@ function useVisualizationDataHandler(
         `/api/w/${workspaceId}/files/${fileId}?action=view`
       );
       if (!response.ok) {
-        // TODO(2024-07-24 flav) Propagate the error to the iframe.
-        throw new Error(`Failed to fetch file ${fileId}`);
+        return null;
       }
 
       const resBuffer = await response.arrayBuffer();

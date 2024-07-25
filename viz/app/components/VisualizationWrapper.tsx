@@ -51,7 +51,7 @@ export function useVisualizationAPI(actionId: number) {
 
       const { fileBlob: blob } = res;
 
-      if (!res.fileBlob) {
+      if (!blob) {
         setError(new Error("Failed to fetch file."));
         return null;
       }
