@@ -370,6 +370,21 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
       }
     }
 
+    yield {
+      type: "visualization_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new VisualizationAction({
+        id: action.id,
+        agentMessageId: action.agentMessageId,
+        generation,
+        functionCallId: action.functionCallId,
+        functionCallName: action.functionCallName,
+        step: action.step,
+      }),
+    };
+
     logger.info(
       {
         workspaceId: conversation.owner.sId,
