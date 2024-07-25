@@ -201,7 +201,7 @@ async function handler(
                 activeSubscription: ws.subscriptions[0],
               });
             }
-      
+
             return {
               id: ws.id,
               sId: ws.sId,
@@ -214,9 +214,11 @@ async function handler(
             };
           })
           .sort((a, b) => {
-            const aStartsWithENT = a.subscription?.plan?.name?.startsWith("ENT_") || false;
-            const bStartsWithENT = b.subscription?.plan?.name?.startsWith("ENT_") || false;
-      
+            const aStartsWithENT =
+              a.subscription?.plan?.name?.startsWith("ENT_") || false;
+            const bStartsWithENT =
+              b.subscription?.plan?.name?.startsWith("ENT_") || false;
+
             if (aStartsWithENT && !bStartsWithENT) {
               return -1;
             } else if (!aStartsWithENT && bStartsWithENT) {
@@ -226,7 +228,6 @@ async function handler(
             }
           }),
       });
-      
 
     default:
       return apiError(req, res, {
