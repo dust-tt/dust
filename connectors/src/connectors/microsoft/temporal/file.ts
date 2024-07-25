@@ -21,8 +21,8 @@ import { getClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
   getFileDownloadURL,
-  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/utils";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
@@ -363,15 +363,17 @@ export async function getParents({
     startSyncTs
   );
 
-  return [
-    internalId,
-    ...(await getParents({
-      connectorId,
-      internalId: parentInternalId,
-      parentInternalId: parentParentInternalId,
-      startSyncTs,
-    })),
-  ];
+  return parentParentInternalId
+    ? [
+        internalId,
+        ...(await getParents({
+          connectorId,
+          internalId: parentInternalId,
+          parentInternalId: parentParentInternalId,
+          startSyncTs,
+        })),
+      ]
+    : [internalId];
 }
 
 /* Fetching parent's parent id queries the db for a resource; since those
@@ -385,7 +387,7 @@ const getParentParentId = cacheWithRedis(
       parentInternalId
     );
     if (!parent) {
-      throw new Error(`Parent node not found: ${parentInternalId}`);
+      return "";
     }
 
     return parent.parentInternalId;
