@@ -18,11 +18,14 @@ import {
   getParentReferenceInternalId,
   getSiteAPIPath,
   getSites,
-  internalIdFromTypeAndPath,
   itemToMicrosoftNode,
-  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import {
+  getDriveInternalIdFromItemId,
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
 import {
   deleteFile,
   deleteFolder,
@@ -158,50 +161,22 @@ export async function getRootNodesToSync(
   return nodeResources.map((r) => r.internalId);
 }
 
-export async function groupRootItemsByDriveId(
-  connectorId: ModelId,
-  nodeIds: string[]
-) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-
-  if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
-  }
-
-  const client = await getClient(connector.connectionId);
-
-  const itemsWithDrive = await concurrentExecutor(
-    nodeIds,
-    async (id) => {
-      const { nodeType, itemAPIPath } = typeAndPathFromInternalId(id);
-      if (nodeType === "folder") {
-        const folder = await getItem(client, itemAPIPath);
-        return {
-          drive: getDriveInternalIdFromItem(folder),
-          folder: getDriveItemInternalId(folder),
-        };
-      } else if (nodeType === "drive") {
-        return { drive: id, folder: id };
-      }
-    },
-    { concurrency: 5 }
-  );
-
+export async function groupRootItemsByDriveId(nodeIds: string[]) {
+  const itemsWithDrive = nodeIds.map((id) => ({
+    drive: getDriveInternalIdFromItemId(id),
+    folder: id,
+  }));
   return itemsWithDrive.reduce(
-    (acc: { [key: string]: string[] }, current) =>
-      current
-        ? {
-            [current.drive]: acc[current.drive]
-              ? [...(acc[current.drive] as string[]), current.folder]
-              : [current.folder],
-          }
-        : acc,
+    (acc, current) => ({
+      ...acc,
+      [current.drive]: [...(acc[current.drive] || []), current.folder],
+    }),
     {} as { [key: string]: string[] }
   );
 }
 
 export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
-  const groupedItems = await groupRootItemsByDriveId(connectorId, nodeIds);
+  const groupedItems = groupRootItemsByDriveId(nodeIds);
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -210,26 +185,24 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
 
   const client = await getClient(connector.connectionId);
 
-  for (const driveId of Object.keys(groupedItems)) {
-    if (groupedItems[driveId]) {
-      const { deltaLink } = await getDeltaResults({
-        client,
-        parentInternalId: driveId,
-        token: "latest",
-      });
+  for (const [driveId, nodeIds] of Object.entries(groupedItems)) {
+    const { deltaLink } = await getDeltaResults({
+      client,
+      parentInternalId: driveId,
+      token: "latest",
+    });
 
-      for (const nodeId of groupedItems[driveId]) {
-        const node = await MicrosoftNodeResource.fetchByInternalId(
-          connectorId,
-          nodeId
-        );
+    for (const nodeId of nodeIds) {
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        connectorId,
+        nodeId
+      );
 
-        if (!node) {
-          throw new Error(`Node ${nodeId} not found`);
-        }
-
-        await node.update({ deltaLink });
+      if (!node) {
+        throw new Error(`Node ${nodeId} not found`);
       }
+
+      await node.update({ deltaLink });
     }
   }
 }
@@ -417,7 +390,6 @@ export async function syncFiles({
   });
 
   const alreadySeenResources = Object.values(alreadySeenResourcesById);
-
   const createdOrUpdatedResources =
     await MicrosoftNodeResource.batchUpdateOrCreate(
       connectorId,
@@ -448,7 +420,7 @@ export async function syncFiles({
   };
 }
 
-export async function syncDeltaForRootNode({
+export async function syncDeltaForRootNodesInDrive({
   connectorId,
   driveId,
   rootNodeIds,
@@ -514,33 +486,37 @@ export async function syncDeltaForRootNode({
     node,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
-  const sortedChangedItems = sortForIncrementalUpdate(uniqueChangedItems);
+
+  const microsoftNodes = await concurrentExecutor(
+    rootNodeIds,
+    async (rootNodeId) =>
+      getItem(client, typeAndPathFromInternalId(rootNodeId).itemAPIPath),
+    { concurrency: 5 }
+  );
+
+  const sortedChangedItems = microsoftNodes.flatMap((rootNode) =>
+    sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
+  );
+
+  // Finally add all removed items, which may not have been included even if they are in the selected roots
+  sortedChangedItems.push(
+    ...uniqueChangedItems.filter(
+      (item) =>
+        !sortedChangedItems.includes(item) && item.deleted?.state === "deleted"
+    )
+  );
 
   for (const driveItem of sortedChangedItems) {
     heartbeat();
-
     if (!driveItem.parentReference) {
       throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
     }
 
     const internalId = getDriveItemInternalId(driveItem);
 
-    // TODO filter from parentId
-
     if (driveItem.file) {
       if (driveItem.deleted) {
-        // if file was just moved from a toplevel folder to another in the same drive, it's marked
-        // as deleted but we don't want to delete it
-        // internally means "in the same Drive" here
-        // TODO : check if the file is moved from all parent folders
-        // if (
-        //   !(await isFileMovedInSameDrive({
-        //     toplevelNode: drive,
-        //     fileInternalId: internalId,
-        //   }))
-        // ) {
-        //   await deleteFile({ connectorId, internalId, dataSourceConfig });
-        // }
+        await deleteFile({ connectorId, internalId, dataSourceConfig });
       } else {
         await syncOneFile({
           connectorId,
@@ -627,37 +603,6 @@ function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
 }
 
 /**
- * This function checks whether a file marked as deleted from a toplevel folder
- * is actually just moved to another toplevel folder in the same drive (in which
- * case we should not delete it)
- *
- * Note: this concerns toplevel folders, not drives; it's fine to delete files
- * that move from a drive to another because they change id
- */
-async function isFileMovedInSameDrive({
-  toplevelNode,
-  fileInternalId,
-}: {
-  toplevelNode: MicrosoftNodeResource;
-  fileInternalId: string;
-}) {
-  if (toplevelNode.nodeType === "drive") {
-    // if the toplevel node is a drive, then the deletion must happen
-    return false;
-  }
-  // check that the file's parents array does not contain the toplevel folder, in
-  // which case it's a file movement; otherwise it's a file deletion
-  return !(
-    await getParents({
-      connectorId: toplevelNode.connectorId,
-      internalId: fileInternalId,
-      parentInternalId: toplevelNode.internalId,
-      startSyncTs: new Date().getTime(),
-    })
-  ).includes(toplevelNode.internalId);
-}
-
-/**
  * Order items as follows:
  * - first those whose parentInternalId is not in the changedList, or the root drive
  * - then those whose parentInternalId is in in the list above;
@@ -670,29 +615,29 @@ async function isFileMovedInSameDrive({
  * The function makes the assumption that there is no circular parent
  * relationship
  */
-function sortForIncrementalUpdate(changedList: DriveItem[]) {
+function sortForIncrementalUpdate(changedList: DriveItem[], rootId: string) {
   if (changedList.length === 0) {
     return [];
   }
 
   const internalIds = changedList.map((item) => getDriveItemInternalId(item));
 
-  const sortedDriveItemList = changedList.filter((item) => {
-    if (!item.parentReference) {
+  const sortedItemList = changedList.filter((item) => {
+    if (item.id === rootId) {
       return true;
     }
 
-    if (item.root) {
-      return true;
+    if (!item.parentReference) {
+      return false;
     }
 
     const parentInternalId = getParentReferenceInternalId(item.parentReference);
     return !internalIds.includes(parentInternalId);
   });
 
-  while (sortedDriveItemList.length < changedList.length) {
+  for (;;) {
     const nextLevel = changedList.filter((item) => {
-      if (sortedDriveItemList.includes(item)) {
+      if (sortedItemList.includes(item)) {
         return false;
       }
 
@@ -704,15 +649,18 @@ function sortForIncrementalUpdate(changedList: DriveItem[]) {
       const parentInternalId = getParentReferenceInternalId(
         item.parentReference
       );
-      return sortedDriveItemList.some(
+
+      return sortedItemList.some(
         (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
       );
     });
 
-    sortedDriveItemList.push(...nextLevel);
-  }
+    if (nextLevel.length === 0) {
+      return sortedItemList;
+    }
 
-  return sortedDriveItemList;
+    sortedItemList.push(...nextLevel);
+  }
 }
 
 async function getDeltaData({

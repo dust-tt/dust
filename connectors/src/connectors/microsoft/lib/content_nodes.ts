@@ -4,9 +4,11 @@ import {
   getDriveInternalId,
   getDriveItemInternalId,
   getSiteAPIPath,
+} from "@connectors/connectors/microsoft/lib/graph_api";
+import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
-} from "@connectors/connectors/microsoft/lib/graph_api";
+} from "@connectors/connectors/microsoft/lib/utils";
 import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 
 export function getRootNodes(): ContentNode[] {

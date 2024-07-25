@@ -24,10 +24,12 @@ import {
   getFilesAndFolders,
   getSites,
   getTeams,
-  internalIdFromTypeAndPath,
-  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
+import {
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
 import {
   getRootNodesToSync,
   populateDeltas,
