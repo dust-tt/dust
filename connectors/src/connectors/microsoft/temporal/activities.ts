@@ -549,7 +549,8 @@ export async function syncDeltaForRootNodesInDrive({
         // parent is null
         // todo check filter
         const parentInternalId =
-          resource.internalId === driveId
+          resource.internalId === driveId ||
+          rootNodeIds.indexOf(resource.internalId) !== -1
             ? null
             : getParentReferenceInternalId(driveItem.parentReference);
 
