@@ -23,6 +23,7 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderDataSourceConfigurations,
 } from "@app/components/assistant_builder/types";
+import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
@@ -117,6 +118,13 @@ export default function AssistantBuilderDataSourceModal({
   // Hack to filter out Websites from the list of data sources
   const [shouldDisplayWebsitesScreen, setShouldDisplayWebsitesScreen] =
     useState(false);
+
+  useNavigationLock(true, {
+    title: "Warning",
+    message:
+      "All unsaved changes will be lost, are you sure you want to continue?",
+    validation: "primaryWarning",
+  });
 
   useEffect(() => {
     if (!dataSourceConfigurations && isOpen) {
