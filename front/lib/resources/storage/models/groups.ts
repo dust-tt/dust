@@ -1,4 +1,4 @@
-import type { GroupType } from "@dust-tt/types";
+import type { SupportedGroupType } from "@dust-tt/types";
 import { isGlobalGroupType, isSystemGroupType } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -21,7 +21,7 @@ export class GroupModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare type: GroupType;
+  declare type: SupportedGroupType;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
