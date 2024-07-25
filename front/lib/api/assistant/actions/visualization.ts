@@ -232,7 +232,7 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
     const modelConversationRes = await renderConversationForModelMultiActions({
       conversation,
       model: agentModelConfig,
-      prompt: prompt,
+      prompt,
       allowedTokenCount: agentModelConfig.contextSize - MIN_GENERATION_TOKENS,
       excludeActions: false,
       excludeImages: true,

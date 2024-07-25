@@ -9,6 +9,7 @@ import {
   isVisualizationRPCRequest,
   visualizationExtractCode,
 } from "@dust-tt/types";
+import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
@@ -33,8 +34,15 @@ const sendResponseToIframe = (
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler(
   action: VisualizationActionType,
-  workspaceId: string,
-  onRetry: () => void
+  {
+    workspaceId,
+    onRetry,
+    setIframeHeight,
+  }: {
+    workspaceId: string;
+    onRetry: () => void;
+    setIframeHeight: (v: SetStateAction<number>) => void;
+  }
 ) {
   const extractedCode = useMemo(
     () => visualizationExtractCode(action.generation ?? ""),
@@ -87,6 +95,10 @@ function useVisualizationDataHandler(
           onRetry();
           break;
 
+        case "setIframeHeight":
+          setIframeHeight(data.params.height);
+          break;
+
         default:
           assertNever(data);
       }
@@ -94,10 +106,31 @@ function useVisualizationDataHandler(
 
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  }, [action.generation, action.id, extractedCode, getFile, onRetry]);
+  }, [
+    action.generation,
+    action.id,
+    extractedCode,
+    getFile,
+    onRetry,
+    setIframeHeight,
+  ]);
 
   return { getFile };
 }
+
+const MemoizedIframe = memo(function MemoizedIframe({
+  actionId,
+}: {
+  actionId: number;
+}) {
+  return (
+    <iframe
+      style={{ width: "100%", height: "100%" }}
+      src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${actionId}`}
+      sandbox="allow-scripts"
+    />
+  );
+});
 
 export function VisualizationActionIframe({
   owner,
@@ -115,10 +148,15 @@ export function VisualizationActionIframe({
 }) {
   const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
   const [tabManuallyChanged, setTabManuallyChanged] = useState(false);
+  const [iframeHeight, setIframeHeight] = useState(0);
 
   const workspaceId = owner.sId;
 
-  useVisualizationDataHandler(action, workspaceId, onRetry);
+  useVisualizationDataHandler(action, {
+    workspaceId,
+    onRetry,
+    setIframeHeight,
+  });
 
   useEffect(() => {
     if (activeTab === "code" && action.generation && !tabManuallyChanged) {
@@ -165,11 +203,12 @@ export function VisualizationActionIframe({
         />
       )}
       {activeTab === "runtime" && (
-        <iframe
-          style={{ width: "100%", height: "600px" }}
-          src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
-          sandbox="allow-scripts"
-        />
+        <div
+          style={{ width: "100%", height: `${iframeHeight}px` }}
+          className="max-h-[40vh]"
+        >
+          <MemoizedIframe actionId={action.id} />
+        </div>
       )}
     </>
   );

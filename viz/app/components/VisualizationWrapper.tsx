@@ -11,8 +11,8 @@ import * as reactAll from "react";
 import React, { useCallback } from "react";
 import { useEffect, useState } from "react";
 import { importCode, Runner } from "react-runner";
-import {} from "react-runner";
 import * as rechartsAll from "recharts";
+import { useResizeDetector } from "react-resize-detector";
 
 export function useVisualizationAPI(actionId: number) {
   const [error, setError] = useState<Error | null>(null);
@@ -130,32 +130,76 @@ const useFile = (actionId: number, fileId: string) => {
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({ actionId }: { actionId: string }) {
-  const [code, setCode] = useState<string | null>(null);
+  type RunnerParams = {
+    code: string;
+    scope: Record<string, unknown>;
+  };
+
+  const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
+
   const [errored, setErrored] = useState<Error | null>(null);
   const actionIdParsed = parseInt(actionId, 10);
 
   const { fetchCode, error, retry } = useVisualizationAPI(actionIdParsed);
-  const useFileWrapped = (fileId: string) => useFile(actionIdParsed, fileId);
 
   useEffect(() => {
     const loadCode = async () => {
       try {
         const fetchedCode = await fetchCode();
-        if (fetchedCode) {
-          setCode(fetchedCode);
-        } else {
+        if (!fetchedCode) {
           setErrored(new Error("No visualization code found"));
+        } else {
+          setRunnerParams({
+            code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
+            scope: {
+              import: {
+                recharts: rechartsAll,
+                react: reactAll,
+                "@dust/generated-code": importCode(fetchedCode, {
+                  import: {
+                    recharts: rechartsAll,
+                    react: reactAll,
+                    papaparse: papaparseAll,
+                    "@dust/react-hooks": {
+                      useFile: (fileId: string) =>
+                        useFile(actionIdParsed, fileId),
+                    },
+                  },
+                }),
+              },
+            },
+          });
         }
       } catch (error) {
-        console.error(error);
         setErrored(new Error("Failed to fetch visualization code"));
       }
     };
 
     loadCode();
-  }, [fetchCode]);
+  }, [fetchCode, actionIdParsed]);
 
-  // Sync the Visualization API error with the local state.
+  const sendHeightToParent = useCallback(
+    ({ height }: { height: number | null }) => {
+      if (height === null) {
+        return;
+      }
+      const sendHeight = makeIframeMessagePassingFunction<"setIframeHeight">(
+        "setIframeHeight",
+        actionIdParsed
+      );
+      sendHeight({ height });
+    },
+    [actionIdParsed]
+  );
+
+  const { ref } = useResizeDetector({
+    handleHeight: true,
+
+    refreshMode: "debounce",
+    refreshRate: 100,
+    onResize: sendHeightToParent,
+  });
+
   useEffect(() => {
     if (error) {
       setErrored(error);
@@ -171,45 +215,22 @@ export function VisualizationWrapper({ actionId }: { actionId: string }) {
     );
   }
 
-  if (!code) {
+  if (!runnerParams) {
     return <Spinner />;
   }
 
-  const generatedCodeScope = {
-    recharts: rechartsAll,
-    react: reactAll,
-    papaparse: papaparseAll,
-    "@dust/react-hooks": { useFile: useFileWrapped },
-  };
-
-  const scope = {
-    import: {
-      recharts: rechartsAll,
-      react: reactAll,
-      // Here we expose the code generated as a module to be imported by the wrapper code below.
-      "@dust/generated-code": importCode(code, { import: generatedCodeScope }),
-    },
-  };
-
-  // This code imports and renders the generated code.
-  const wrapperCode = `
-    () => {
-    import Comp from '@dust/generated-code';
-
-    return (<Comp />);
-    }
-  `;
-
   return (
-    <Runner
-      code={wrapperCode}
-      scope={scope}
-      onRendered={(error) => {
-        if (error) {
-          setErrored(error);
-        }
-      }}
-    />
+    <div ref={ref}>
+      <Runner
+        code={runnerParams.code}
+        scope={runnerParams.scope}
+        onRendered={(error) => {
+          if (error) {
+            setErrored(error);
+          }
+        }}
+      />
+    </div>
   );
 }
 
