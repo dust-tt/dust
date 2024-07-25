@@ -151,9 +151,9 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
         match cm {
             ChatMessage::Assistant(assistant_msg) => Ok(MistralChatMessage {
                 role: MistralChatMessageRole::Assistant,
-                content: match assistant_msg.clone().function_calls {
+                content: match assistant_msg.function_calls {
                     Some(_) => None,
-                    None => assistant_msg.clone().content,
+                    None => assistant_msg.content.clone(),
                 },
                 tool_calls: assistant_msg
                     .function_calls
