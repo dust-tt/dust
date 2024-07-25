@@ -16,11 +16,11 @@ RUN npm ci
 COPY /front .
 
 ARG COMMIT_HASH
-ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
 ARG NEXT_PUBLIC_VIZ_URL
-ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
+RUN echo "In Dockerfile, NEXT_PUBLIC_VIZ_URL is: $NEXT_PUBLIC_VIZ_URL"
 
-RUN echo "NEXT_PUBLIC_VIZ_URL is set to: $NEXT_PUBLIC_VIZ_URL"
+ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
 
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
