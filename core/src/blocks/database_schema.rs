@@ -1,4 +1,4 @@
-use super::helpers::get_data_source_project;
+use super::helpers::get_data_source_project_and_view_filter;
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
 use crate::databases::database::{get_unique_table_names_for_database, Table};
 use crate::Rule;
@@ -126,18 +126,20 @@ pub async fn load_tables_from_identifiers(
         .collect::<Vec<_>>();
 
     // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
-    let project_ids = try_join_all(
+    let project_ids_view_filters = try_join_all(
         data_source_identifiers
             .iter()
-            .map(|(w, d)| get_data_source_project(w, d, env)),
+            .map(|(w, d)| get_data_source_project_and_view_filter(w, d, env)),
     )
     .await?;
+
+    // TODO(GROUPS_INFRA): enforce view_filter as returned above.
 
     // Create a hashmap of (workspace_id, data_source_id) -> project_id.
     let project_by_data_source = data_source_identifiers
         .iter()
-        .zip(project_ids.iter())
-        .map(|((w, d), p)| ((*w, *d), p.clone()))
+        .zip(project_ids_view_filters.iter())
+        .map(|((w, d), p)| ((*w, *d), p.0.clone()))
         .collect::<std::collections::HashMap<_, _>>();
 
     let store = env.store.clone();

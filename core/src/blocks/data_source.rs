@@ -1,7 +1,7 @@
 use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
-use crate::blocks::helpers::get_data_source_project;
+use crate::blocks::helpers::get_data_source_project_and_view_filter;
 use crate::data_sources::data_source::{Document, SearchFilter};
 use crate::deno::js_executor::JSExecutor;
 use crate::Rule;
@@ -75,18 +75,14 @@ impl DataSource {
     async fn search_data_source(
         &self,
         env: &Env,
-        workspace_id: Option<String>,
+        workspace_id: String,
         data_source_id: String,
         top_k: usize,
         filter: Option<SearchFilter>,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
-        let data_source_project = match workspace_id {
-            Some(workspace_id) => {
-                get_data_source_project(&workspace_id, &data_source_id, env).await?
-            }
-            None => env.project.clone(),
-        };
+        let (data_source_project, view_filter) =
+            get_data_source_project_and_view_filter(&workspace_id, &data_source_id, env).await?;
 
         let ds = match env
             .store
@@ -110,8 +106,7 @@ impl DataSource {
                     Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                     None => None,
                 },
-                // TODO(spolu): add in subsequent PR (data_source block view_filter support).
-                None,
+                view_filter,
                 self.full_text,
                 target_document_tokens,
             )
@@ -200,8 +195,8 @@ impl Block for DataSource {
                     .iter()
                     .map(|v| {
                         let workspace_id = match v.get("workspace_id") {
-                            Some(Value::String(p)) => Some(p.clone()),
-                            _ => None,
+                            Some(Value::String(p)) => p.clone(),
+                            _ => Err(anyhow!(err_msg.clone()))?,
                         };
                         let data_source_id = match v.get("data_source_id") {
                             Some(Value::String(i)) => i.clone(),

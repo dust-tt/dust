@@ -58,7 +58,9 @@ async function handler(
     return;
   }
 
-  // TODO(GROUPS_INFRA): Add x-dust-group-ids header retrieval + checks
+  // TODO(GROUPS_INFRA): Add x-dust-group-ids header retrieval
+  //  - If not set default to the global workspace group
+  //  - Enforce checks for access to data sources and data sources view below
 
   const dustWorkspaceId = req.headers["x-dust-workspace-id"] as string;
 
