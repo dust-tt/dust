@@ -192,27 +192,41 @@ async function handler(
       });
 
       return res.status(200).json({
-        workspaces: workspaces.map((ws) => {
-          let subscription: SubscriptionType | null = null;
-          if (ws.subscriptions && ws.subscriptions.length > 0) {
-            subscription = renderSubscriptionFromModels({
-              plan: ws.subscriptions[0].plan,
-              activeSubscription: ws.subscriptions[0],
-            });
-          }
-
-          return {
-            id: ws.id,
-            sId: ws.sId,
-            name: ws.name,
-            role: "admin",
-            segmentation: ws.segmentation,
-            whiteListedProviders: ws.whiteListedProviders,
-            defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
-            subscription,
-          };
-        }),
+        workspaces: workspaces
+          .map((ws): LightWorkpaceWithSubscriptionType => {
+            let subscription: SubscriptionType | null = null;
+            if (ws.subscriptions && ws.subscriptions.length > 0) {
+              subscription = renderSubscriptionFromModels({
+                plan: ws.subscriptions[0].plan,
+                activeSubscription: ws.subscriptions[0],
+              });
+            }
+      
+            return {
+              id: ws.id,
+              sId: ws.sId,
+              name: ws.name,
+              role: "admin" as const, // Explicitly type this as "admin"
+              segmentation: ws.segmentation,
+              whiteListedProviders: ws.whiteListedProviders,
+              defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
+              subscription,
+            };
+          })
+          .sort((a, b) => {
+            const aStartsWithENT = a.subscription?.plan?.name?.startsWith("ENT_") || false;
+            const bStartsWithENT = b.subscription?.plan?.name?.startsWith("ENT_") || false;
+      
+            if (aStartsWithENT && !bStartsWithENT) {
+              return -1;
+            } else if (!aStartsWithENT && bStartsWithENT) {
+              return 1;
+            } else {
+              return 0;
+            }
+          }),
       });
+      
 
     default:
       return apiError(req, res, {
