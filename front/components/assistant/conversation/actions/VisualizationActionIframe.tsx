@@ -79,7 +79,7 @@ function useVisualizationDataHandler(
         sendResponseToIframe(data, { code }, event.source);
       } else {
         // TODO(2024-07-24 flav) Pass the error message to the host window.
-        onRetry(data.params.errorMessage);
+        onRetry();
       }
 
       // TODO: Types above are not accurate, as it can pass the first check but won't enter any if block.
