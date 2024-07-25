@@ -3,12 +3,12 @@ import { ModelId } from "../shared/model_id";
 // Supported permissions
 export const SUPPORTED_PERMISSIONS = ["read", "write"] as const;
 
-export type SupportedPermissionType = (typeof SUPPORTED_PERMISSIONS)[number];
+export type Permission = (typeof SUPPORTED_PERMISSIONS)[number];
 
 // Access Control Entry
 export type ACEType = {
   groupId: ModelId;
-  permissions: SupportedPermissionType[];
+  permissions: Permission[];
 };
 
 // Access Control List
@@ -18,7 +18,7 @@ export type ACLType = {
 
 export function groupHasPermission(
   acl: ACLType,
-  permission: SupportedPermissionType,
+  permission: Permission,
   groupId: ModelId
 ): boolean {
   const entry = acl.aclEntries.find((ace) => ace.groupId === groupId);
