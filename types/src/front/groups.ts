@@ -11,15 +11,17 @@
  * Contains specific users added by workspace admins.
  * Has access to the list of Vaults configured by workspace admins.
  */
-export const GROUP_TYPES = ["regular", "global", "system"] as const;
-export type GroupType = (typeof GROUP_TYPES)[number];
+export const SUPPORTED_GROUP_TYPES = ["regular", "global", "system"] as const;
+export type SupportedGroupType = (typeof SUPPORTED_GROUP_TYPES)[number];
 
-export function isValidGroupType(value: unknown): value is GroupType {
-  return GROUP_TYPES.includes(value as GroupType);
+export function isSupportedGroupType(
+  value: unknown
+): value is SupportedGroupType {
+  return SUPPORTED_GROUP_TYPES.includes(value as SupportedGroupType);
 }
-export function isSystemGroupType(value: GroupType): boolean {
+export function isSystemGroupType(value: SupportedGroupType): boolean {
   return value === "system";
 }
-export function isGlobalGroupType(value: GroupType): boolean {
+export function isGlobalGroupType(value: SupportedGroupType): boolean {
   return value === "global";
 }
