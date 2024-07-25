@@ -77,7 +77,7 @@ export type RetryParams = {
 };
 
 // Define a mapped type to extend the base with specific parameters.
-type VisualizationRPCRequestMap = {
+export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   retry: RetryParams;
