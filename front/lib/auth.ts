@@ -1,7 +1,7 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
   ACLType,
-  Group,
+  GroupType,
   LightWorkspaceType,
   RoleType,
   SupportedPermissionType,
@@ -555,7 +555,7 @@ export class Authenticator {
     return isDustInternal && isDustSuperUser;
   }
 
-  groups(): Group[] {
+  groups(): GroupType[] {
     return this._groups ? this._groups.map((group) => group.toJSON()) : [];
   }
 

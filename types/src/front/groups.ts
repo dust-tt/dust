@@ -28,8 +28,8 @@ export function isGlobalGroupType(value: SupportedGroupType): boolean {
   return value === "global";
 }
 
-export type Group = {
+export type GroupType = {
   id: ModelId;
-  type: GroupType;
+  type: SupportedGroupType;
   name: string;
 };
