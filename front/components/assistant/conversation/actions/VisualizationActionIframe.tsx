@@ -136,7 +136,6 @@ export function VisualizationActionIframe({
   isStreaming: boolean;
   onRetry: () => void;
 }) {
-  // const [activeTab, setActiveTab] = useState<"code" | "runtime">("code");
   const [showIframe, setShowIframe] = useState<boolean | null>(null);
   const [contentHeight, setContentHeight] = useState(0);
 
@@ -170,14 +169,12 @@ export function VisualizationActionIframe({
         />
       )}
       <div>
-        {!(showIframe && contentHeight > 0) &&
-          extractedCode &&
-          extractedCode.length > 0 && (
-            <RenderMessageMarkdown
-              content={"```javascript\n" + extractedCode + "\n```"}
-              isStreaming={isStreaming}
-            />
-          )}
+        {!(showIframe && contentHeight > 0) && extractedCode && (
+          <RenderMessageMarkdown
+            content={"```javascript\n" + extractedCode + "\n```"}
+            isStreaming={isStreaming}
+          />
+        )}
 
         {!!action.generation && (
           <div
