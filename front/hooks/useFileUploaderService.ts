@@ -209,12 +209,7 @@ export function useFileUploaderService({
       // Upload file to the obtained URL.
       let uploadResult;
       try {
-        // This is a hack to get it to work on front-edge because the file.uploadUrl is pointing to dust.tt on front-edge.
-        // This needs to be fixed before merging obviously.
-        const uploadUrl = file.uploadUrl.includes("/dust.tt")
-          ? file.uploadUrl.replace("/dust.tt", "/front-edge.dust.tt")
-          : file.uploadUrl;
-        uploadResult = await fetch(uploadUrl, {
+        uploadResult = await fetch(file.uploadUrl, {
           method: "POST",
           body: formData,
         });
