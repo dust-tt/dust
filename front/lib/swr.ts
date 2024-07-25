@@ -20,7 +20,7 @@ import useSWRInfinite from "swr/infinite";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
-import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
+import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
@@ -581,7 +581,7 @@ export function usePokeWorkspaces({
   disabled?: boolean;
   limit?: number;
 } = {}) {
-  const workspacesFetcher: Fetcher<GetWorkspacesResponseBody> = fetcher;
+  const workspacesFetcher: Fetcher<GetPokeWorkspacesResponseBody> = fetcher;
 
   const queryParams = [
     upgraded !== undefined ? `upgraded=${upgraded}` : null,

@@ -64,7 +64,18 @@ const Dashboard = () => {
                 <Link href={`/poke/${ws.sId}`} key={ws.id}>
                   <li className="border-material-100 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
                     <h2 className="text-xl font-semibold">{ws.name}</h2>
-                    <p className="text-sm text-gray-500">sId: {ws.sId}</p>
+                    <div className="flex items-center space-x-2">
+                      <label className="rounded bg-green-500 px-1 text-sm text-white">
+                        {ws.sId}
+                      </label>
+                      {ws.subscription && (
+                        <label
+                          className={`rounded px-1 text-sm text-gray-500 text-white ${ws.subscription.plan.name.startsWith("ENT_") ? "bg-red-500" : "bg-blue-500"}`}
+                        >
+                          {ws.subscription.plan.name}
+                        </label>
+                      )}
+                    </div>
                   </li>
                 </Link>
               ))}

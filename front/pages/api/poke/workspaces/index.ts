@@ -1,4 +1,8 @@
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  LightWorkpaceWithSubscriptionType,
+  SubscriptionType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -8,18 +12,19 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetWorkspacesResponseBody = {
-  workspaces: LightWorkspaceType[];
+export type GetPokeWorkspacesResponseBody = {
+  workspaces: LightWorkpaceWithSubscriptionType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetWorkspacesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetPokeWorkspacesResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(session, null);
@@ -167,19 +172,63 @@ async function handler(
           }
         : {};
 
-      const workspaces = await Workspace.findAll({ where, limit });
+      const workspaces = await Workspace.findAll({
+        where,
+        limit,
+        include: [
+          {
+            model: Subscription,
+            as: "subscriptions",
+            where: { status: "active" },
+            required: false,
+            include: [
+              {
+                model: Plan,
+                as: "plan",
+              },
+            ],
+          },
+        ],
+      });
 
       return res.status(200).json({
-        workspaces: workspaces.map((ws) => ({
-          id: ws.id,
-          sId: ws.sId,
-          name: ws.name,
-          role: "admin",
-          segmentation: ws.segmentation,
-          whiteListedProviders: ws.whiteListedProviders,
-          defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
-        })),
+        workspaces: workspaces
+          .map((ws): LightWorkpaceWithSubscriptionType => {
+            let subscription: SubscriptionType | null = null;
+            if (ws.subscriptions && ws.subscriptions.length > 0) {
+              subscription = renderSubscriptionFromModels({
+                plan: ws.subscriptions[0].plan,
+                activeSubscription: ws.subscriptions[0],
+              });
+            }
+
+            return {
+              id: ws.id,
+              sId: ws.sId,
+              name: ws.name,
+              role: "admin" as const, // Explicitly type this as "admin"
+              segmentation: ws.segmentation,
+              whiteListedProviders: ws.whiteListedProviders,
+              defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
+              subscription,
+            };
+          })
+          .sort((a, b) => {
+            const aStartsWithENT =
+              a.subscription?.plan?.name?.startsWith("ENT_") || false;
+            const bStartsWithENT =
+              b.subscription?.plan?.name?.startsWith("ENT_") || false;
+
+            if (aStartsWithENT && !bStartsWithENT) {
+              return -1;
+            } else if (!aStartsWithENT && bStartsWithENT) {
+              return 1;
+            } else {
+              return 0;
+            }
+          }),
       });
+
     default:
       return apiError(req, res, {
         status_code: 405,
