@@ -46,6 +46,7 @@ import { UserMetadata } from "@app/lib/models/user";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -565,6 +566,7 @@ export async function deleteWorkspaceActivity({
       transaction: t,
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
+    await GroupResource.deleteAllForWorkspace(workspace, t);
     logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
     await Workspace.destroy({
       where: {

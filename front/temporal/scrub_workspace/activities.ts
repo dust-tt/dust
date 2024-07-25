@@ -21,6 +21,7 @@ import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
@@ -84,6 +85,7 @@ export async function scrubWorkspaceData({
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteDatasources(auth);
+  await deleteGroups(auth);
   await cleanupCustomerio(auth);
 }
 
@@ -152,6 +154,15 @@ async function deleteDatasources(auth: Authenticator) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }
   }
+}
+
+async function deleteGroups(auth: Authenticator) {
+  const workspace = auth.workspace();
+  if (!workspace) {
+    throw new Error("No workspace found");
+  }
+  const w = renderLightWorkspaceType({ workspace });
+  await GroupResource.deleteAllForWorkspace(w);
 }
 
 async function cleanupCustomerio(auth: Authenticator) {
