@@ -94,7 +94,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new this(this.model, blob.get());
   }
 
-  static async fetchByAuthWorkspace(
+  static async fetchWorkspaceGroups(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<GroupResource[]> {
@@ -108,6 +108,73 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     return groups.map((group) => new this(GroupModel, group.get()));
+  }
+
+  static async fetchWorkspaceSystemGroup(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<GroupResource> {
+    const owner = auth.getNonNullableWorkspace();
+    const group = await this.model.findOne({
+      where: {
+        workspaceId: owner.id,
+        type: "system",
+      },
+      transaction,
+    });
+
+    if (!group) {
+      throw new Error("System group not found.");
+    }
+
+    return new this(GroupModel, group.get());
+  }
+
+  static async fetchWorkspaceGlobalGroup(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<GroupResource> {
+    const owner = auth.getNonNullableWorkspace();
+    const group = await this.model.findOne({
+      where: {
+        workspaceId: owner.id,
+        type: "global",
+      },
+      transaction,
+    });
+
+    if (!group) {
+      throw new Error("Global group not found.");
+    }
+
+    return new this(GroupModel, group.get());
+  }
+
+  static async fetchWorkspaceGroup(
+    auth: Authenticator,
+    groupId: string,
+    transaction?: Transaction
+  ): Promise<GroupResource | null> {
+    const owner = auth.getNonNullableWorkspace();
+    const groupModelId = getResourceIdFromSId(groupId);
+
+    if (!groupModelId) {
+      throw new Error("Invalid group ID.");
+    }
+
+    const group = await this.model.findOne({
+      where: {
+        workspaceId: owner.id,
+        id: groupModelId,
+      },
+      transaction,
+    });
+
+    if (!group) {
+      return null;
+    }
+
+    return new this(GroupModel, group.get());
   }
 
   toJSON() {

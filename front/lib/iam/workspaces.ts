@@ -31,7 +31,7 @@ export async function createWorkspace(session: SessionWithUser) {
     }),
     GroupResource.makeNew({
       name: "Workspace",
-      type: "workspace",
+      type: "global",
       workspaceId: workspace.id,
     }),
   ]);

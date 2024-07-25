@@ -1,5 +1,5 @@
 import type { GroupType } from "@dust-tt/types";
-import { isSystemGroupType, isWorkspaceGroupType } from "@dust-tt/types";
+import { isGlobalGroupType, isSystemGroupType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -60,10 +60,10 @@ GroupModel.init(
 
 GroupModel.addHook(
   "beforeCreate",
-  "enforce_one_system_and_workspace_group_per_workspace",
+  "enforce_one_system_and_global_group_per_workspace",
   async (group: GroupModel, options: { transaction: Transaction }) => {
     const groupType = group.type;
-    if (isSystemGroupType(groupType) || isWorkspaceGroupType(groupType)) {
+    if (isSystemGroupType(groupType) || isGlobalGroupType(groupType)) {
       const existingSystemOrWorkspaceGroupType = await GroupModel.findOne({
         where: {
           workspaceId: group.workspaceId,
