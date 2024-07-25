@@ -1,6 +1,8 @@
 import { BracesIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
 import type {
+  CommandResultMap,
   VisualizationActionType,
+  VisualizationRPCCommand,
   VisualizationRPCRequest,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -14,9 +16,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
-const sendResponseToIframe = (
-  request: VisualizationRPCRequest,
-  response: unknown,
+const sendResponseToIframe = <T extends VisualizationRPCCommand>(
+  request: { command: T } & VisualizationRPCRequest,
+  response: CommandResultMap[T],
   target: MessageEventSource
 ) => {
   target.postMessage(
@@ -60,7 +62,8 @@ function useVisualizationDataHandler(
       }
 
       const resBuffer = await response.arrayBuffer();
-      return new File([resBuffer], fileId, {
+
+      return new Blob([resBuffer], {
         type: response.headers.get("Content-Type") || undefined,
       });
     },
@@ -82,13 +85,16 @@ function useVisualizationDataHandler(
 
       switch (data.command) {
         case "getFile":
-          const file = await getFile(data.params.fileId);
+          const fileBlob = await getFile(data.params.fileId);
 
-          sendResponseToIframe(data, { file }, event.source);
+          sendResponseToIframe(data, { fileBlob }, event.source);
           break;
 
         case "getCodeToExecute":
-          sendResponseToIframe(data, { code: extractedCode }, event.source);
+          if (extractedCode) {
+            sendResponseToIframe(data, { code: extractedCode }, event.source);
+          }
+
           break;
 
         case "retry":

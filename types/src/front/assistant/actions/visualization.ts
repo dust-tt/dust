@@ -85,7 +85,7 @@ export const validCommands: VisualizationRPCCommand[] = [
 // Command results.
 
 export interface CommandResultMap {
-  getFile: { file: File };
+  getFile: { fileBlob: Blob };
   getCodeToExecute: { code: string };
   retry: void;
   setContentHeight: void;

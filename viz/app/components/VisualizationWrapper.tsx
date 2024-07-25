@@ -49,12 +49,16 @@ export function useVisualizationAPI(actionId: number) {
       const getFile = makeIframeMessagePassingFunction("getFile", actionId);
       const res = await getFile({ fileId });
 
-      if (!res.file) {
+      const { fileBlob: blob } = res;
+
+      if (!res.fileBlob) {
         setError(new Error("Failed to fetch file."));
         return null;
       }
 
-      return res.file;
+      const file = new File([blob], "fileId", { type: blob.type });
+
+      return file;
     },
     [actionId]
   );
