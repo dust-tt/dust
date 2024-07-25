@@ -1300,11 +1300,10 @@ async fn data_sources_search(
                         Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                         None => None,
                     },
-                    // TODO(spolu): follow_up PR.
-                    // match payload.view_filter {
-                    //     Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
-                    //     None => None,
-                    // },
+                    match payload.view_filter {
+                        Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
+                        None => None,
+                    },
                     payload.full_text,
                     payload.target_document_tokens,
                 )

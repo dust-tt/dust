@@ -277,11 +277,11 @@ const DataSourcePage = ({
         <div className="px-8 py-8"></div>
         <Page.Vertical align="stretch">
           <div className="flex flex-row gap-2">
-            <Page.SectionHeader title={`${dataSource.name}`} />
+            <Page.SectionHeader title={`${owner.name} → ${dataSource.name}`} />
           </div>
 
           <div className="flex flex-row gap-2 text-sm font-bold text-action-500">
-            <Link href={`/poke/${owner.sId}`}>&laquo; workspace</Link>
+            <Link href={`/poke/${owner.sId}`}>&laquo; workspace </Link>
             <div
               className="cursor-pointer"
               onClick={() => {
@@ -296,7 +296,7 @@ const DataSourcePage = ({
                 }
               }}
             >
-              🔒search
+              🔒 search data
             </div>
           </div>
 

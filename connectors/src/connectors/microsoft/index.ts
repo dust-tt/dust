@@ -24,12 +24,14 @@ import {
   getFilesAndFolders,
   getSites,
   getTeams,
-  internalIdFromTypeAndPath,
-  typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import {
-  getSiteNodesToSync,
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
+import {
+  getRootNodesToSync,
   populateDeltas,
 } from "@connectors/connectors/microsoft/temporal/activities";
 import {
@@ -309,7 +311,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
-    const nodesToSync = await getSiteNodesToSync(this.connectorId);
+    const nodesToSync = await getRootNodesToSync(this.connectorId);
 
     // poupulates deltas for the nodes so that if incremental sync starts before
     // fullsync populated, there's no error

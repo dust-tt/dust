@@ -882,24 +882,20 @@ impl LLM for MistralAILLM {
         self.id.clone()
     }
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match std::env::var("CORE_DATA_SOURCES_MISTRAL_API_KEY") {
-            Ok(key) => {
-                self.api_key = Some(key);
+        match credentials.get("MISTRAL_API_KEY") {
+            Some(api_key) => {
+                self.api_key = Some(api_key.clone());
             }
-            Err(_) => match credentials.get("MISTRAL_API_KEY") {
-                Some(api_key) => {
-                    self.api_key = Some(api_key.clone());
+            None => match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
                 }
-                None => match std::env::var("MISTRAL_API_KEY") {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `MISTRAL_API_KEY` is not set."
-                    ))?,
-                },
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `MISTRAL_API_KEY` is not set."
+                ))?,
             },
         }
+
         Ok(())
     }
 
@@ -1109,20 +1105,24 @@ impl Embedder for MistralEmbedder {
             ));
         }
 
-        match credentials.get("MISTRAL_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
+        match std::env::var("CORE_DATA_SOURCES_MISTRAL_API_KEY") {
+            Ok(key) => {
+                self.api_key = Some(key);
             }
-            None => match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
-                Ok(key) => {
-                    self.api_key = Some(key);
+            Err(_) => match credentials.get("MISTRAL_API_KEY") {
+                Some(api_key) => {
+                    self.api_key = Some(api_key.clone());
                 }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `MISTRAL_API_KEY` is not set."
-                ))?,
+                None => match std::env::var("MISTRAL_API_KEY") {
+                    Ok(key) => {
+                        self.api_key = Some(key);
+                    }
+                    Err(_) => Err(anyhow!(
+                        "Credentials or environment variable `MISTRAL_API_KEY` is not set."
+                    ))?,
+                },
             },
         }
-
         Ok(())
     }
 

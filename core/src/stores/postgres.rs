@@ -1525,7 +1525,7 @@ impl Store for PostgresStore {
         params.push(&data_source_row_id);
         where_clauses.push("document_id = $2".to_string());
         params.push(&document_id);
-        where_clauses.push("created <= $3'".to_string());
+        where_clauses.push("created <= $3".to_string());
         params.push(&latest_hash_created);
 
         let (filter_clauses, filter_params, p_idx) =
@@ -1595,6 +1595,7 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         filter: &Option<SearchFilter>,
+        view_filter: &Option<SearchFilter>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<String>, usize)> {
         let pool = self.pool.clone();
@@ -1623,6 +1624,12 @@ impl Store for PostgresStore {
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
+
+        let (view_filter_clauses, view_filter_params, p_idx) =
+            Self::where_clauses_and_params_for_filter(view_filter, p_idx);
+
+        where_clauses.extend(view_filter_clauses);
+        params.extend(view_filter_params);
 
         // compute the total count
         let count_query = format!(

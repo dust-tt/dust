@@ -72,7 +72,9 @@ GroupModel.addHook(
       });
 
       if (existingSystemGroupType) {
-        throw new Error("A system group exists for this workspace.");
+        throw new Error("A system group exists for this workspace.", {
+          cause: "enforce_one_system_group_per_workspace",
+        });
       }
     }
   }

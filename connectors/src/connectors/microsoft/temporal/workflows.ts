@@ -9,18 +9,21 @@ import {
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
-const { getSiteNodesToSync, syncFiles, markNodeAsSeen, populateDeltas } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "30 minutes",
-  });
+const {
+  getRootNodesToSync,
+  syncFiles,
+  markNodeAsSeen,
+  populateDeltas,
+  groupRootItemsByDriveId,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+});
 
 const { microsoftDeletionActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "15 minutes",
 });
 
-const { syncDeltaForRootNode: syncDeltaForNode } = proxyActivities<
-  typeof activities
->({
+const { syncDeltaForRootNodesInDrive } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
 });
@@ -43,7 +46,7 @@ export async function fullSyncWorkflow({
   totalCount?: number;
 }) {
   if (nodeIdsToSync === undefined) {
-    nodeIdsToSync = await getSiteNodesToSync(connectorId);
+    nodeIdsToSync = await getRootNodesToSync(connectorId);
   }
 
   if (startSyncTs === undefined) {
@@ -98,12 +101,16 @@ export async function incrementalSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  const nodeIdsToSync = await getSiteNodesToSync(connectorId);
+  const nodeIdsToSync = await getRootNodesToSync(connectorId);
+
+  const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
+
   const startSyncTs = new Date().getTime();
-  for (const nodeId of nodeIdsToSync) {
-    await syncDeltaForNode({
+  for (const nodeId of Object.keys(groupedItems)) {
+    await syncDeltaForRootNodesInDrive({
       connectorId,
-      rootNodeId: nodeId,
+      driveId: nodeId,
+      rootNodeIds: groupedItems[nodeId] as string[],
       startSyncTs,
     });
   }

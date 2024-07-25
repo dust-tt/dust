@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
+import { classNames } from "@app/lib/utils";
 
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
@@ -80,7 +81,10 @@ function ActionDetails({
     <div key={label} className="animate-fadeIn duration-1000 fade-out">
       <Chip size="sm" color="purple">
         <div
-          className="flex flex-row items-center gap-x-2"
+          className={classNames(
+            "flex flex-row items-center gap-x-2",
+            hasActions ? "cursor-pointer" : ""
+          )}
           onClick={hasActions ? onClick : undefined}
         >
           <Spinner variant="purple900" size="xs" />
