@@ -573,10 +573,6 @@ export class Authenticator {
   canWrite(acls: ACLType[]): boolean {
     return this.hasPermission(acls, "write");
   }
-
-  canExecute(acls: ACLType[]): boolean {
-    return this.hasPermission(acls, "execute");
-  }
 }
 
 /**

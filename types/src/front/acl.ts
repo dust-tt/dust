@@ -1,7 +1,7 @@
 import { ModelId } from "../shared/model_id";
 
 // Supported permissions
-export const SUPPORTED_PERMISSIONS = ["read", "write", "execute"] as const;
+export const SUPPORTED_PERMISSIONS = ["read", "write"] as const;
 
 export type PermissionType = (typeof SUPPORTED_PERMISSIONS)[number];
 
