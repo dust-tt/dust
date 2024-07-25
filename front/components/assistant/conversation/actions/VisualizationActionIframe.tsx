@@ -7,7 +7,6 @@ import type {
 import {
   isGetCodeToExecuteRequest,
   isGetFileRequest,
-  isRetryRequest,
   isVisualizationRPCRequest,
   visualizationExtractCodeNonStreaming,
   visualizationExtractCodeStreaming,
@@ -16,7 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
-const sendIframeResponse = (
+const sendResponseToIframe = (
   request: VisualizationRPCRequest,
   response: unknown,
   target: MessageEventSource
@@ -70,12 +69,12 @@ function useVisualizationDataHandler(
       if (isGetFileRequest(data)) {
         const file = await getFile(data.params.fileId);
 
-        sendIframeResponse(data, { file }, event.source);
+        sendResponseToIframe(data, { file }, event.source);
       } else if (isGetCodeToExecuteRequest(data)) {
         const code = action.generation;
 
-        sendIframeResponse(data, { code }, event.source);
-      } else if (isRetryRequest(data)) {
+        sendResponseToIframe(data, { code }, event.source);
+      } else {
         // TODO(2024-07-24 flav) Pass the error message to the host window.
         onRetry();
       }
