@@ -51,7 +51,7 @@ function useVisualizationDataHandler(
     [action.generation]
   );
 
-  const getFile = useCallback(
+  const getFileBlob = useCallback(
     async (fileId: string) => {
       const response = await fetch(
         `/api/w/${workspaceId}/files/${fileId}?action=view`
@@ -85,7 +85,7 @@ function useVisualizationDataHandler(
 
       switch (data.command) {
         case "getFile":
-          const fileBlob = await getFile(data.params.fileId);
+          const fileBlob = await getFileBlob(data.params.fileId);
 
           sendResponseToIframe(data, { fileBlob }, event.source);
           break;
@@ -116,12 +116,10 @@ function useVisualizationDataHandler(
     action.generation,
     action.id,
     extractedCode,
-    getFile,
+    getFileBlob,
     onRetry,
     setContentHeight,
   ]);
-
-  return { getFile };
 }
 
 export function VisualizationActionIframe({
