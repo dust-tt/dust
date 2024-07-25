@@ -33,6 +33,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: viz-config
+            - secretRef:
+                name: viz-secrets
 
           env:
             - name: DD_AGENT_HOST
