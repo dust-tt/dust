@@ -281,7 +281,7 @@ const DataSourcePage = ({
           </div>
 
           <div className="flex flex-row gap-2 text-sm font-bold text-action-500">
-            <Link href={`/poke/${owner.sId}`}>&laquo; workspace </Link>
+            <Link href={`/poke/${owner.sId}`}>&laquo; workspace</Link>
             <div
               className="cursor-pointer"
               onClick={() => {
