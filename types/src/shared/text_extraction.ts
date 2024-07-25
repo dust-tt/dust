@@ -212,7 +212,7 @@ export class TextExtraction {
 }
 
 export function isTextExtractionSupportedContentType(
-  contentType: string | undefined
+  contentType: string
 ): contentType is SupportedContentTypes {
   return supportedContentTypes.includes(contentType as SupportedContentTypes);
 }
