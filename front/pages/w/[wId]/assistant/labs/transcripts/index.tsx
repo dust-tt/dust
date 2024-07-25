@@ -6,7 +6,6 @@ import {
   Page,
   SliderToggle,
   Spinner,
-  Tooltip,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { SubscriptionType } from "@dust-tt/types";
