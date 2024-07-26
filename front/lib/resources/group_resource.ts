@@ -6,6 +6,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -15,7 +16,6 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -203,29 +203,57 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     userId: string,
     transaction?: Transaction
-  ): Promise<void> {
+  ): Promise<
+    Result<
+      undefined,
+      {
+        type:
+          | "user_not_found"
+          | "user_not_workspace_member"
+          | "group_not_regular"
+          | "user_already_group_member";
+      }
+    >
+  > {
+    // Checking that the user is a member of the workspace.
     const owner = auth.getNonNullableWorkspace();
     const user = await UserResource.fetchById(userId);
-
     if (!user) {
-      throw new Error("User not found.");
+      return new Err({ type: "user_not_found" });
     }
-    if (this.type !== "regular") {
-      throw new Error("Cannot add members to non-regular groups.");
-    }
-
-    const workspace = renderLightWorkspaceType({ workspace: owner });
-    const membership =
+    const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user,
-        workspace,
+        workspace: owner,
         transaction,
       });
 
-    if (!membership) {
-      throw new Error("User is not a member of the workspace.");
+    if (!workspaceMembership) {
+      return new Err({ type: "user_not_workspace_member" });
     }
 
+    // Users can only be added to regular groups.
+    if (this.type !== "regular") {
+      return new Err({ type: "group_not_regular" });
+    }
+
+    // Check if the user is already a member of the group.
+    const existingMembership = await GroupMembershipModel.findOne({
+      where: {
+        groupId: this.id,
+        userId: user.id,
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+      transaction,
+    });
+
+    if (existingMembership) {
+      return new Err({ type: "user_already_group_member" });
+    }
+
+    // Create a new membership.
     await GroupMembershipModel.create(
       {
         groupId: this.id,
@@ -235,6 +263,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       { transaction }
     );
+
+    return new Ok(undefined);
   }
 
   toJSON() {
