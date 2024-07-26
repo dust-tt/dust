@@ -26,7 +26,7 @@ export function useVisualizationAPI(
 
       const { code } = result;
       if (!code) {
-        setError(new Error("Failed to extract visualization code."));
+        setError(new Error("No code found in response from app."));
         return null;
       }
 
@@ -36,7 +36,7 @@ export function useVisualizationAPI(
       setError(
         error instanceof Error
           ? error
-          : new Error("Failed to fetch visualization code.")
+          : new Error("Failed to fetch visualization code from app.")
       );
 
       return null;
@@ -115,18 +115,13 @@ interface RunnerParams {
   scope: Record<string, unknown>;
 }
 
-// This component renders the generated code.
-// It gets the generated code via message passing to the host window.
-export function VisualizationWrapper({
+export function VisualizationWrapperWithErrorBoundary({
   actionId,
   allowedVisualizationOrigin,
 }: {
   actionId: number;
   allowedVisualizationOrigin: string | undefined;
 }) {
-  const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
-
-  const [errored, setErrored] = useState<Error | null>(null);
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
@@ -135,13 +130,37 @@ export function VisualizationWrapper({
       }),
     [actionId, allowedVisualizationOrigin]
   );
+  const api = useVisualizationAPI(sendCrossDocumentMessage);
 
-  const { fetchCode, fetchFile, error, retry, sendHeightToParent } =
-    useVisualizationAPI(sendCrossDocumentMessage);
+  return (
+    <ErrorBoundary
+      errorMessage="We encountered an error while running the code generated above. You can try again by clicking the button below."
+      onRetryClick={(errorMessage: string) => {
+        sendCrossDocumentMessage("retry", { errorMessage });
+      }}
+    >
+      <VisualizationWrapper api={api} />
+    </ErrorBoundary>
+  );
+}
+
+// This component renders the generated code.
+// It gets the generated code via message passing to the host window.
+export function VisualizationWrapper({
+  api,
+}: {
+  api: ReturnType<typeof useVisualizationAPI>;
+}) {
+  const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
+
+  const [errored, setErrored] = useState<Error | null>(null);
+
+  const { fetchCode, fetchFile, error, sendHeightToParent } = api;
 
   useEffect(() => {
     const loadCode = async () => {
       try {
+        console.log("Fetching visualization code");
         const fetchedCode = await fetchCode();
         if (!fetchedCode) {
           setErrored(new Error("No visualization code found"));
@@ -167,7 +186,11 @@ export function VisualizationWrapper({
           });
         }
       } catch (error) {
-        setErrored(new Error("Failed to fetch visualization code"));
+        setErrored(
+          error instanceof Error
+            ? error
+            : new Error("Failed to fetch visualization code")
+        );
       }
     };
 
@@ -197,22 +220,17 @@ export function VisualizationWrapper({
   }
 
   return (
-    <ErrorBoundary
-      errorMessage="We encountered an error while running the code generated above. You can try again by clicking the button below."
-      onRetryClick={retry}
-    >
-      <div ref={ref}>
-        <Runner
-          code={runnerParams.code}
-          scope={runnerParams.scope}
-          onRendered={(error) => {
-            if (error) {
-              setErrored(error);
-            }
-          }}
-        />
-      </div>
-    </ErrorBoundary>
+    <div ref={ref}>
+      <Runner
+        code={runnerParams.code}
+        scope={runnerParams.scope}
+        onRendered={(error) => {
+          if (error) {
+            setErrored(error);
+          }
+        }}
+      />
+    </div>
   );
 }
 
