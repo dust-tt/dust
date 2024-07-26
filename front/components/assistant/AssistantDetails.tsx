@@ -15,6 +15,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
   ContentNode,
@@ -22,6 +23,7 @@ import type {
   DataSourceConfiguration,
   DataSourceType,
   DustAppRunConfigurationType,
+  RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -239,76 +241,96 @@ export function AssistantDetails({
     actions,
   }: {
     actions: AgentConfigurationType["actions"];
-  }) =>
-    !!actions.length && (
-      <>
-        {actions.map((action, index) =>
-          isDustAppRunConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">Action</div>
-              <DustAppSection dustApp={action} owner={owner} />
-            </div>
-          ) : isRetrievalConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Data sources
-              </div>
-              <DataSourcesSection
-                owner={owner}
-                dataSources={dataSources}
-                dataSourceConfigurations={action.dataSources}
-              />
-            </div>
-          ) : isTablesQueryConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">Tables</div>
-              <TablesQuerySection tablesQueryConfig={action} />
-            </div>
-          ) : isProcessConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Extract from data sources
-              </div>
-              <DataSourcesSection
-                owner={owner}
-                dataSources={dataSources}
-                dataSourceConfigurations={action.dataSources}
-              />
-            </div>
-          ) : isWebsearchConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Web navigation
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon visual={PlanetIcon} size="xs" />
-                <div>
-                  Assistant can navigate the web (browse any provided links,
-                  make a google search, etc.) to answer
-                </div>
-              </div>
-            </div>
-          ) : isBrowseConfiguration(action) ? (
-            false
-          ) : isVisualizationConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Visualization
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon visual={ShapesIcon} size="xs" />
-                <div>
-                  Assistant can generate graphs to visually represent your data.
-                </div>
-              </div>
-            </div>
-          ) : (
-            assertNever(action)
-          )
-        )}
-      </>
+  }) => {
+    const [retrievalAction, otherActions] = actions.reduce(
+      ([dataSources, otherActions], a) => {
+        if (isRetrievalConfiguration(a)) {
+          dataSources.push(a);
+        } else {
+          otherActions.push(a);
+        }
+        return [dataSources, otherActions];
+      },
+      [[] as RetrievalConfigurationType[], [] as AgentActionConfigurationType[]]
     );
 
+    return (
+      !!actions.length && (
+        <>
+          {retrievalAction.length > 0 && (
+            <div>
+              <div className="pb-2 text-lg font-bold text-element-800">
+                Data sources
+              </div>
+              {retrievalAction.map((a, index) => (
+                <div className="flex flex-col gap-2" key={`action-${index}`}>
+                  <DataSourcesSection
+                    owner={owner}
+                    dataSources={dataSources}
+                    dataSourceConfigurations={a.dataSources}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {otherActions.map((action, index) =>
+            isDustAppRunConfiguration(action) ? (
+              <div className="flex flex-col gap-2" key={`action-${index}`}>
+                <div className="text-lg font-bold text-element-800">Action</div>
+                <DustAppSection dustApp={action} owner={owner} />
+              </div>
+            ) : isTablesQueryConfiguration(action) ? (
+              <div className="flex flex-col gap-2" key={`action-${index}`}>
+                <div className="text-lg font-bold text-element-800">Tables</div>
+                <TablesQuerySection tablesQueryConfig={action} />
+              </div>
+            ) : isProcessConfiguration(action) ? (
+              <div className="flex flex-col gap-2" key={`action-${index}`}>
+                <div className="text-lg font-bold text-element-800">
+                  Extract from data sources
+                </div>
+                <DataSourcesSection
+                  owner={owner}
+                  dataSources={dataSources}
+                  dataSourceConfigurations={action.dataSources}
+                />
+              </div>
+            ) : isWebsearchConfiguration(action) ? (
+              <div className="flex flex-col gap-2" key={`action-${index}`}>
+                <div className="text-lg font-bold text-element-800">
+                  Web navigation
+                </div>
+                <div className="flex items-center gap-2">
+                  <Icon visual={PlanetIcon} size="xs" />
+                  <div>
+                    Assistant can navigate the web (browse any provided links,
+                    make a google search, etc.) to answer
+                  </div>
+                </div>
+              </div>
+            ) : isBrowseConfiguration(action) ? (
+              false
+            ) : isVisualizationConfiguration(action) ? (
+              <div className="flex flex-col gap-2" key={`action-${index}`}>
+                <div className="text-lg font-bold text-element-800">
+                  Visualization
+                </div>
+                <div className="flex items-center gap-2">
+                  <Icon visual={ShapesIcon} size="xs" />
+                  <div>
+                    Assistant can generate graphs to visually represent your
+                    data.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              assertNever(action)
+            )
+          )}
+        </>
+      )
+    );
+  };
   return (
     <ElementModal
       openOnElement={agentConfiguration}
