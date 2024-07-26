@@ -196,6 +196,9 @@ pub trait Store {
         table_id: &str,
         name: &str,
         description: &str,
+        timestamp: u64,
+        tags: &Vec<String>,
+        parents: &Vec<String>,
     ) -> Result<Table>;
     async fn update_table_schema(
         &self,
@@ -444,6 +447,9 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        table_id                 TEXT NOT NULL, -- unique within datasource
        name                     TEXT NOT NULL, -- unique within datasource
        description              TEXT NOT NULL,
+       timestamp                BIGINT NOT NULL,
+       tags_array               TEXT[] NOT NULL,
+       parents                  TEXT[] NOT NULL,
        schema                   TEXT, -- json, kept up-to-date automatically with the last insert
        schema_stale_at          BIGINT, -- timestamp when the schema was last invalidated
        data_source              BIGINT NOT NULL,
@@ -451,7 +457,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 24] = [
+pub const SQL_INDEXES: [&'static str; 26] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -504,6 +510,10 @@ pub const SQL_INDEXES: [&'static str; 24] = [
        idx_databases_table_ids_hash ON databases (table_ids_hash);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
        idx_tables_data_source_table_id ON tables (data_source, table_id);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_tables_tags_array ON tables USING GIN (tags_array);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_tables_parents_array ON tables USING GIN (parents);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_sqlite_workers_url ON sqlite_workers (url);",
 ];
