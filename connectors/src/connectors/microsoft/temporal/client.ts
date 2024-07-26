@@ -4,7 +4,7 @@ import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/common";
 
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
-import type { microsoftGarbageCollectionWorkflow } from "@connectors/connectors/microsoft/temporal/workflows";
+import { microsoftGarbageCollectionWorkflow } from "@connectors/connectors/microsoft/temporal/workflows";
 import {
   fullSyncWorkflow,
   incrementalSyncWorkflow,
@@ -152,7 +152,7 @@ export async function launchMicrosoftGarbageCollectionWorkflow(
       }
     }
 
-    await client.workflow.start(incrementalSyncWorkflow, {
+    await client.workflow.start(microsoftGarbageCollectionWorkflow, {
       args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
