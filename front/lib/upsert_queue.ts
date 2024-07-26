@@ -47,8 +47,6 @@ export const EnqueueUpsertTable = t.type({
   tableId: t.string,
   tableName: t.string,
   tableDescription: t.string,
-  // undefined is present for backward compatibility
-  // TODO(spolu) remove once deployed
   tableTimestamp: t.union([t.number, t.undefined, t.null]),
   tableTags: t.union([t.array(t.string), t.undefined, t.null]),
   tableParents: t.union([t.array(t.string), t.undefined, t.null]),
