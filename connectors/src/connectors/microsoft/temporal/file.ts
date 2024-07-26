@@ -152,16 +152,8 @@ export async function syncOneFile({
   }
 
   let documentSection: CoreAPIDataSourceDocumentSection | null = null;
-  if (
-    [
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ].includes(mimeType)
-  ) {
-    const data = Buffer.from(downloadRes.data);
-    documentSection = await handleTextExtraction(data, localLogger, mimeType);
-  } else if (mimeType === "application/vnd.ms-excel") {
+
+  if (mimeType === "application/vnd.ms-excel") {
     const data = Buffer.from(downloadRes.data);
     const isSuccessful = await handleCsvFile({
       dataSourceConfig,
@@ -197,6 +189,9 @@ export async function syncOneFile({
     }
   } else if (mimeType === "text/plain") {
     documentSection = handleTextFile(downloadRes.data, maxDocumentLen);
+  } else {
+      const data = Buffer.from(downloadRes.data);
+      documentSection = await handleTextExtraction(data, localLogger, mimeType);
   }
 
   logger.info({ documentSection }, "Document section");

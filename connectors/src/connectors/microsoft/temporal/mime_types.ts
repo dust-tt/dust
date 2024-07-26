@@ -10,8 +10,7 @@ export async function getMimeTypesToSync({
 }) {
   const mimeTypes = [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    // TODO(pr): support those
-    // "text/plain",
+    "text/plain",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
