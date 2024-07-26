@@ -1,4 +1,4 @@
-import { BracesIcon, IconToggleButton } from "@dust-tt/sparkle";
+import { BracesIcon, IconToggleButton, Spinner } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   VisualizationActionType,
@@ -42,16 +42,20 @@ function useVisualizationDataHandler(
     setContentHeight,
     vizIframeRef,
     workspaceId,
+    streamedCode,
   }: {
     onRetry: () => void;
     setContentHeight: (v: SetStateAction<number>) => void;
     vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
     workspaceId: string;
+    streamedCode: string | null;
   }
 ) {
-  const extractedCode = useMemo(
-    () => visualizationExtractCode(action.generation ?? ""),
-    [action.generation]
+  const code = action.generation ?? streamedCode ?? "";
+
+  const { extractedCode } = useMemo(
+    () => visualizationExtractCode(code),
+    [code]
   );
 
   const getFileBlob = useCallback(
@@ -152,23 +156,35 @@ export function VisualizationActionIframe({
     onRetry,
     setContentHeight,
     vizIframeRef,
+    streamedCode,
   });
 
-  useEffect(() => {
-    if (showIframe === null && action.generation) {
-      setShowIframe(true);
+  const { extractedCode, isComplete: codeFullyGenerated } =
+    visualizationExtractCode(action.generation ?? streamedCode ?? "");
+
+  const iframeRendered = contentHeight !== 0;
+  const codeToggled = showIframe === false;
+
+  const mode = (() => {
+    // User clicked on code toggle => show code
+    // Code generation has not started => show spinner
+    // Code generation has not yet completed => show streaming code
+    // Code generation has completed but iframe is not rendered yet => show spinner
+    // Code is fully generated and iframe is rendered => show iframe
+    if (codeToggled) {
+      return "code";
     }
-  }, [action.generation, showIframe]);
-
-  let extractedCode: string | null = null;
-
-  extractedCode = visualizationExtractCode(
-    action.generation ?? streamedCode ?? ""
-  );
+    if (!codeFullyGenerated) {
+      return extractedCode ? "code" : "spinner";
+    }
+    return iframeRendered ? "iframe" : "spinner";
+  })();
 
   return (
     <div className="relative">
-      {showIframe && (
+      {mode === "iframe" && (
+        // If we displaying the iframe, we need to offset the agent message
+        // content to make space for the iframe.
         <div
           style={{
             height: `${contentHeight}px`,
@@ -176,19 +192,23 @@ export function VisualizationActionIframe({
         />
       )}
       <div>
-        {!(showIframe && contentHeight > 0) && extractedCode && (
+        {mode === "code" && (
           <RenderMessageMarkdown
-            content={"```javascript\n" + extractedCode + "\n```"}
-            isStreaming={isStreaming}
+            content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
+            isStreaming={!codeFullyGenerated && isStreaming}
           />
         )}
-
-        {!!action.generation && (
+        {mode === "spinner" && <Spinner />}
+        {codeFullyGenerated && (
+          // We render the iframe as soon as we have the code.
+          // Until it is actually rendered, we're showing a spinner so
+          // we use opacity-0 to hide the iframe.
+          // We also disable pointer event to allow interacting with the rest.
           <div
             style={{ height: `${contentHeight}px` }}
             className={classNames(
               "absolute left-0 top-0 max-h-[60vh] w-full",
-              !showIframe && contentHeight > 0
+              mode !== "iframe"
                 ? "pointer-events-none opacity-0"
                 : "pointer-events-auto opacity-100"
             )}
@@ -203,12 +223,15 @@ export function VisualizationActionIframe({
         )}
       </div>
 
-      {action.generation && contentHeight > 0 && (
+      {iframeRendered && (
+        // Only start showing the toggle once the iframe is rendered.
         <div className="absolute left-4 top-4">
           <IconToggleButton
             icon={BracesIcon}
             selected={!showIframe}
-            onClick={() => setShowIframe((prev) => !prev)}
+            onClick={() =>
+              setShowIframe((prev) => (prev === null ? false : !prev))
+            }
           />
         </div>
       )}

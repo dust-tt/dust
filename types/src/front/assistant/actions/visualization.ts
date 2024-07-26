@@ -26,7 +26,10 @@ export const VisualizationActionOutputSchema = t.type({
   generation: t.string,
 });
 
-export function visualizationExtractCode(code: string) {
+export function visualizationExtractCode(code: string): {
+  extractedCode: string;
+  isComplete: boolean;
+} {
   const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*(<\/visualization>|$)/;
   let extractedCode: string | null = null;
   const match = code.match(regex);
@@ -34,9 +37,13 @@ export function visualizationExtractCode(code: string) {
     extractedCode = match[1];
   }
   if (!extractedCode) {
-    return null;
+    return { extractedCode: "", isComplete: false };
   }
-  return extractedCode;
+
+  return {
+    extractedCode: extractedCode,
+    isComplete: code.includes("</visualization>"),
+  };
 }
 
 // This defines the commands that the iframe can send to the host window.
