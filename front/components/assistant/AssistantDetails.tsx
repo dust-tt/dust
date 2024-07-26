@@ -37,7 +37,7 @@ import {
   isVisualizationConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
@@ -242,17 +242,22 @@ export function AssistantDetails({
   }: {
     actions: AgentConfigurationType["actions"];
   }) => {
-    const [retrievalAction, otherActions] = actions.reduce(
-      ([dataSources, otherActions], a) => {
-        if (isRetrievalConfiguration(a)) {
-          dataSources.push(a);
-        } else {
-          otherActions.push(a);
-        }
-        return [dataSources, otherActions];
-      },
-      [[] as RetrievalConfigurationType[], [] as AgentActionConfigurationType[]]
-    );
+    const [retrievalAction, otherActions] = useMemo(() => {
+      return actions.reduce(
+        ([dataSources, otherActions], a) => {
+          if (isRetrievalConfiguration(a)) {
+            dataSources.push(a);
+          } else {
+            otherActions.push(a);
+          }
+          return [dataSources, otherActions];
+        },
+        [
+          [] as RetrievalConfigurationType[],
+          [] as AgentActionConfigurationType[],
+        ]
+      );
+    }, [actions]);
 
     return (
       !!actions.length && (
