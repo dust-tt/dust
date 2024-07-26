@@ -242,7 +242,7 @@ export function AssistantDetails({
   }: {
     actions: AgentConfigurationType["actions"];
   }) => {
-    const [retrievalAction, otherActions] = useMemo(() => {
+    const [retrievalActions, otherActions] = useMemo(() => {
       return actions.reduce(
         ([dataSources, otherActions], a) => {
           if (isRetrievalConfiguration(a)) {
@@ -262,12 +262,12 @@ export function AssistantDetails({
     return (
       !!actions.length && (
         <>
-          {retrievalAction.length > 0 && (
+          {retrievalActions.length && (
             <div>
               <div className="pb-2 text-lg font-bold text-element-800">
                 Data sources
               </div>
-              {retrievalAction.map((a, index) => (
+              {retrievalActions.map((a, index) => (
                 <div className="flex flex-col gap-2" key={`action-${index}`}>
                   <DataSourcesSection
                     owner={owner}
