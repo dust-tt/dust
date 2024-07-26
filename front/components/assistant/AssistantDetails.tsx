@@ -329,7 +329,7 @@ export function AssistantDetails({
                 </div>
               </div>
             ) : (
-              assertNever(action)
+              !isRetrievalConfiguration(action) && assertNever(action)
             )
           )}
         </>
