@@ -14,9 +14,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission } from "@dust-tt/types";
-import { useState } from "react";
+import _ from "lodash";
+import { useMemo, useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
+import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -93,6 +95,28 @@ export function PermissionTreeChildren({
       parentId,
       filterPermission: permissionFilter || null,
     });
+
+  const { resources: selectedResources } = useConnectorPermissionsHook({
+    owner,
+    dataSource,
+    parentId: null,
+    filterPermission: "read",
+  });
+
+  const { parentsById } = useParentResourcesById({
+    owner,
+    dataSource,
+    selectedResources,
+  });
+
+  const parentsWithCheckedChildren = useMemo(() => {
+    return _.chain(parentsById)
+      .values()
+      .flatMap((set) => Array.from(set))
+      .uniq()
+      .value();
+  }, [parentsById]);
+
   const [localStateByInternalId, setLocalStateByInternalId] = useState<
     Record<string, boolean>
   >({});
@@ -163,6 +187,10 @@ export function PermissionTreeChildren({
       )}
       <Tree isLoading={isResourcesLoading}>
         {resourcesFiltered.map((r, i) => {
+          const isChecked =
+            parentIsSelected ||
+            (localStateByInternalId[r.internalId] ??
+              ["read", "read_write"].includes(r.permission));
           return (
             <Tree.Item
               key={r.internalId}
@@ -176,10 +204,10 @@ export function PermissionTreeChildren({
                 onPermissionUpdate
                   ? {
                       disabled: parentIsSelected,
-                      checked:
-                        parentIsSelected ||
-                        (localStateByInternalId[r.internalId] ??
-                          ["read", "read_write"].includes(r.permission)),
+                      partialChecked:
+                        !isChecked &&
+                        parentsWithCheckedChildren.includes(r.internalId),
+                      checked: isChecked,
                       onChange: (checked) => {
                         setLocalStateByInternalId((prev) => ({
                           ...prev,
