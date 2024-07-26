@@ -835,6 +835,10 @@ export async function microsoftNodesGarbageCollectionActivity({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  logger.info(
+    { connectorId, idCursor },
+    "Garbage collection activity for cursor"
+  );
   const client = await getClient(connector.connectionId);
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
