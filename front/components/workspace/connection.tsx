@@ -148,15 +148,9 @@ export function EnterpriseConnectionDetails({
             variant="primary"
             disabled={!!enterpriseConnection}
             onClick={() => {
-              console.log(
-                "enterpriseConnection",
-                enterpriseConnection,
-                isUpgraded(plan)
-              );
               if (!isUpgraded(plan)) {
                 setShowNoInviteLinkPopup(true);
               } else {
-                console.log(">> setIsEnterpriseConnectionModalOpened(true)");
                 setIsEnterpriseConnectionModalOpened(true);
               }
             }}
