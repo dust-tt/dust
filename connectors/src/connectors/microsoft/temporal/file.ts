@@ -6,8 +6,6 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import axios from "axios";
-import mammoth from "mammoth";
-import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -153,33 +151,12 @@ export async function syncOneFile({
     );
   }
 
-  async function getDocumentContent() {
-    try {
-      const converted = await mammoth.convertToHtml({
-        buffer: Buffer.from(downloadRes.data),
-      });
-
-      const extracted = new turndown()
-        .remove(["style", "script", "iframe", "noscript", "form", "img"])
-        .turndown(converted.value);
-
-      return extracted.trim();
-    } catch (err) {
-      localLogger.error(
-        {
-          error: err,
-        },
-        `Error while converting docx document to text`
-      );
-      throw err;
-    }
-  }
-
   let documentSection: CoreAPIDataSourceDocumentSection | null = null;
   if (
     [
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ].includes(mimeType)
   ) {
     const data = Buffer.from(downloadRes.data);
@@ -220,13 +197,6 @@ export async function syncOneFile({
     }
   } else if (mimeType === "text/plain") {
     documentSection = handleTextFile(downloadRes.data, maxDocumentLen);
-  } else {
-    const documentContent = await getDocumentContent();
-    documentSection = {
-      prefix: null,
-      content: documentContent,
-      sections: [],
-    };
   }
 
   logger.info({ documentSection }, "Document section");
