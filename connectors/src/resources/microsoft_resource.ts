@@ -434,7 +434,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       where: {
         connectorId,
         id: {
-          [Op.gt]: idCursor,
+          [Op.gte]: idCursor,
         },
       },
       limit: pageSize,

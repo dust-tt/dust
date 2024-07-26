@@ -823,7 +823,7 @@ export async function microsoftDeletionActivity({
   return new Ok(undefined);
 }
 
-export async function microsoftNodesGCActivity({
+export async function microsoftNodesGarbageCollectionActivity({
   connectorId,
   idCursor,
 }: {
@@ -848,7 +848,7 @@ export async function microsoftNodesGCActivity({
   const lastNode = nodes.length > 0 ? nodes[nodes.length - 1] : null;
 
   if (!lastNode) {
-    throw new Error("Unreachable: last node not found");
+    return null;
   }
 
   const nextIdCursor = lastNode.id + 1;
