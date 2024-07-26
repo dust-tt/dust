@@ -229,13 +229,13 @@ export function VisualizationActionIframe({
             transform: `translateX(-${activeIndex * 100}%)`,
           }}
         >
-          <div className="w-full">
+          <div className="flex h-full w-full shrink-0">
             <RenderMessageMarkdown
               content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
               isStreaming={!codeFullyGenerated && isStreaming}
             />
           </div>
-          <div className="relative flex h-full min-h-96 w-full flex-shrink-0 items-center justify-center">
+          <div className="relative flex h-full min-h-96 w-full shrink-0 items-center justify-center">
             {mode === "spinner" && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Spinner />
