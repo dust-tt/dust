@@ -822,3 +822,72 @@ export async function microsoftDeletionActivity({
   }
   return new Ok(undefined);
 }
+
+export async function microsoftNodesGCActivity({
+  connectorId,
+  idCursor,
+}: {
+  connectorId: ModelId;
+  idCursor: ModelId;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const client = await getClient(connector.connectionId);
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
+    connectorId,
+    pageSize: 100,
+    idCursor,
+  });
+
+  const lastNode = nodes.length > 0 ? nodes[nodes.length - 1] : null;
+
+  if (!lastNode) {
+    throw new Error("Unreachable: last node not found");
+  }
+
+  const nextIdCursor = lastNode.id + 1;
+
+  // Explicitly not using concurrency here to avoid too many calls to the api
+  // This is a long running workflow that does not require high throughput
+  for (const node of nodes) {
+    const { itemAPIPath } = typeAndPathFromInternalId(node.internalId);
+
+    let entity = undefined;
+    try {
+      entity = await getItem(client, itemAPIPath);
+    } catch (e) {
+      // if the entity is not found, we can go on and delete
+      if (!(e instanceof GraphError && e.statusCode === 404)) {
+        throw e;
+      }
+    }
+
+    if (!entity || entity.deleted) {
+      switch (node.nodeType) {
+        case "drive":
+        case "folder":
+          await deleteFolder({ connectorId, internalId: node.internalId });
+          break;
+        case "file":
+          await deleteFile({
+            connectorId,
+            internalId: node.internalId,
+            dataSourceConfig,
+          });
+          break;
+        default:
+          throw new Error(
+            `Deletion not implemented for node type: ${node.nodeType}`
+          );
+      }
+    }
+  }
+
+  return nextIdCursor;
+}

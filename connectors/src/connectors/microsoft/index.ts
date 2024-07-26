@@ -37,6 +37,7 @@ import {
 import {
   launchMicrosoftDeletionWorkflow,
   launchMicrosoftFullSyncWorkflow,
+  launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
@@ -326,6 +327,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return res;
     }
 
+    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(
+      this.connectorId
+    );
+
+    if (gcRes.isErr()) {
+      return gcRes;
+    }
+
     const incrementalRes = await launchMicrosoftIncrementalSyncWorkflow(
       this.connectorId
     );
@@ -548,6 +557,15 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     if (r.isErr()) {
       return r;
     }
+
+    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(
+      this.connectorId
+    );
+
+    if (gcRes.isErr()) {
+      return gcRes;
+    }
+
     const incrementalSync = await launchMicrosoftIncrementalSyncWorkflow(
       this.connectorId
     );
