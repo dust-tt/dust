@@ -1,4 +1,5 @@
 import type {
+  SupportedEnterpriseConnectionStrategies,
   WithAPIErrorResponse,
   WorkspaceEnterpriseConnection,
 } from "@dust-tt/types";
@@ -26,8 +27,12 @@ const PostCreateEnterpriseConnectionRequestBodySchema = t.type({
   clientId: t.string,
   clientSecret: t.string,
   domain: t.string,
-  strategy: t.literal("okta"),
+  strategy: t.union([t.literal("okta"), t.literal("waad")]),
 });
+
+export type PostCreateEnterpriseConnectionRequestBodySchemaType = t.TypeOf<
+  typeof PostCreateEnterpriseConnectionRequestBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -67,9 +72,13 @@ async function handler(
       const enterpriseConnection =
         await getEnterpriseConnectionForWorkspace(auth);
       if (enterpriseConnection) {
-        return res
-          .status(200)
-          .json({ connection: { name: enterpriseConnection.name } });
+        return res.status(200).json({
+          connection: {
+            name: enterpriseConnection.name,
+            strategy:
+              enterpriseConnection.strategy as SupportedEnterpriseConnectionStrategies,
+          },
+        });
       }
       break;
 
