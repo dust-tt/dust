@@ -1008,12 +1008,18 @@ export class CoreAPI {
     tableId,
     name,
     description,
+    timestamp,
+    tags,
+    parents,
   }: {
     projectId: string;
     dataSourceName: string;
     tableId: string;
     name: string;
     description: string;
+    timestamp: number | null;
+    tags: string[];
+    parents: string[];
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -1028,6 +1034,9 @@ export class CoreAPI {
           table_id: tableId,
           name: name,
           description: description,
+          timestamp,
+          tags,
+          parents,
         }),
       }
     );

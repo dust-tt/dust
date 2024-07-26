@@ -229,6 +229,9 @@ export async function upsertTableActivity(
     tableName: upsertQueueItem.tableName,
     tableDescription: upsertQueueItem.tableDescription,
     tableId: upsertQueueItem.tableId,
+    tableTimestamp: upsertQueueItem.tableTimestamp ?? null,
+    tableTags: upsertQueueItem.tableTags || [],
+    tableParents: upsertQueueItem.tableParents || [],
     csv: upsertQueueItem.csv,
     truncate: upsertQueueItem.truncate,
   });

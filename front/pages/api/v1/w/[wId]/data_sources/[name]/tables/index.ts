@@ -25,6 +25,9 @@ const UpsertDatabaseTableRequestBodySchema = t.type({
   table_id: t.union([t.string, t.undefined]),
   name: t.string,
   description: t.string,
+  timestamp: t.union([t.number, t.undefined, t.null]),
+  tags: t.union([t.array(t.string), t.undefined, t.null]),
+  parents: t.union([t.array(t.string), t.undefined, t.null]),
 });
 
 type UpsertTableResponseBody = {
@@ -215,6 +218,9 @@ async function handler(
         name,
         description,
         table_id: maybeTableId,
+        timestamp,
+        tags,
+        parents,
       } = bodyValidation.right;
 
       const tableId = maybeTableId || generateLegacyModelSId();
@@ -260,6 +266,9 @@ async function handler(
         tableId,
         name,
         description,
+        timestamp: timestamp ?? null,
+        tags: tags || [],
+        parents: parents || [],
       });
 
       if (upsertRes.isErr()) {

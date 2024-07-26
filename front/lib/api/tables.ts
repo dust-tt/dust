@@ -116,6 +116,9 @@ export async function upsertTableFromCsv({
   tableName,
   tableDescription,
   tableId,
+  tableTimestamp,
+  tableTags,
+  tableParents,
   csv,
   truncate,
 }: {
@@ -125,6 +128,9 @@ export async function upsertTableFromCsv({
   tableName: string;
   tableDescription: string;
   tableId: string;
+  tableTimestamp: number | null;
+  tableTags: string[];
+  tableParents: string[];
   csv: string | null;
   truncate: boolean;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
@@ -198,9 +204,12 @@ export async function upsertTableFromCsv({
   const tableRes = await coreAPI.upsertTable({
     projectId,
     dataSourceName,
-    description: tableDescription,
-    name: tableName,
     tableId,
+    name: tableName,
+    description: tableDescription,
+    timestamp: tableTimestamp,
+    tags: tableTags,
+    parents: tableParents,
   });
 
   if (tableRes.isErr()) {
