@@ -1,4 +1,5 @@
 import type { SupportedEnterpriseConnectionStrategies } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { Connection } from "auth0";
 import { ManagementClient } from "auth0";
 
@@ -29,22 +30,15 @@ export function makeEnterpriseConnectionInitiateLoginUrl(workspaceId: string) {
   )}`;
 }
 
-export async function getEnterpriseConnectionForWorkspace(
-  auth: Authenticator,
-  strategy: SupportedEnterpriseConnectionStrategies = "okta"
-) {
-  const owner = auth.workspace();
-  if (!owner) {
-    return null;
-  }
-
-  // This endpoint supports fetching up to 1000 connections in one page.
-  // In the future, consider implementing pagination to handle larger datasets.
-  const connections = await getAuth0ManagemementClient().connections.getAll({
-    strategy: [strategy],
-  });
+export async function getEnterpriseConnectionForWorkspace(auth: Authenticator) {
+  const owner = auth.getNonNullableWorkspace();
 
   const expectedConnectionName = makeEnterpriseConnectionName(owner.sId);
+
+  const connections = await getAuth0ManagemementClient().connections.getAll({
+    name: expectedConnectionName,
+  });
+
   return connections.data.find((c) => c.name === expectedConnectionName);
 }
 
@@ -60,12 +54,7 @@ export async function createEnterpriseConnection(
   verifiedDomain: string | null,
   connectionDetails: EnterpriseConnectionDetails
 ): Promise<Connection> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error(
-      "Workspace is required to enable an enterprise connection."
-    );
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const { sId } = owner;
   const connection = await getAuth0ManagemementClient().connections.create({
@@ -73,10 +62,8 @@ export async function createEnterpriseConnection(
     display_name: makeEnterpriseConnectionName(sId),
     strategy: connectionDetails.strategy,
     options: {
-      client_id: connectionDetails.clientId,
-      client_secret: connectionDetails.clientSecret,
+      ...getCreateConnectionPayloadFromConnectionDetails(connectionDetails),
       domain_aliases: verifiedDomain ? [verifiedDomain] : [],
-      domain: connectionDetails.domain,
       scope: "email profile openid",
     },
     is_domain_connection: false,
@@ -88,21 +75,8 @@ export async function createEnterpriseConnection(
   return connection.data;
 }
 
-export async function deleteEnterpriseConnection(
-  auth: Authenticator,
-  strategy: SupportedEnterpriseConnectionStrategies = "okta"
-) {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error(
-      "Workspace is required to delete an enterprise connection."
-    );
-  }
-
-  const existingConnection = await getEnterpriseConnectionForWorkspace(
-    auth,
-    strategy
-  );
+export async function deleteEnterpriseConnection(auth: Authenticator) {
+  const existingConnection = await getEnterpriseConnectionForWorkspace(auth);
   if (!existingConnection) {
     throw new Error("Enterprise connection not found.");
   }
@@ -110,4 +84,31 @@ export async function deleteEnterpriseConnection(
   return getAuth0ManagemementClient().connections.delete({
     id: existingConnection.id,
   });
+}
+
+function getCreateConnectionPayloadFromConnectionDetails(
+  connectionDetails: EnterpriseConnectionDetails
+) {
+  switch (connectionDetails.strategy) {
+    case "okta":
+      return {
+        domain: connectionDetails.domain,
+        strategy: connectionDetails.strategy,
+        client_id: connectionDetails.clientId,
+        client_secret: connectionDetails.clientSecret,
+      };
+
+    case "waad":
+      return {
+        tenant_domain: connectionDetails.domain,
+        strategy: connectionDetails.strategy,
+        client_id: connectionDetails.clientId,
+        client_secret: connectionDetails.clientSecret,
+        // We trust the email from WAAD enterprise connection.
+        should_trust_email_verified_connection: "always_set_emails_as_verified",
+      };
+
+    default:
+      assertNever(connectionDetails.strategy);
+  }
 }

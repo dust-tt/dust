@@ -83,7 +83,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {
       callbackUrl: config.getAuth0TenantUrl(),
       initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
-      strategy: "okta",
     };
 
   const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
