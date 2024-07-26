@@ -1,6 +1,5 @@
 import {
   ContextItem,
-  DocumentPileIcon,
   FolderOpenIcon,
   Icon,
   Page,
@@ -104,7 +103,7 @@ export default function DataSourcesView({
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Folders"
-          icon={DocumentPileIcon}
+          icon={FolderOpenIcon}
           description="Make more documents accessible to this workspace. Manage folders manually or via API."
         />
 
