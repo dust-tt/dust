@@ -40,7 +40,7 @@ import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -74,6 +74,7 @@ export class Authenticator {
     workspace,
     user,
     role,
+    groups,
     subscription,
     flags,
     key,
@@ -81,14 +82,14 @@ export class Authenticator {
     workspace?: Workspace | null;
     user?: UserResource | null;
     role: RoleType;
+    groups: GroupResource[];
     subscription?: SubscriptionType | null;
     flags: WhitelistableFeature[];
     key?: KeyAuthType;
   }) {
     this._workspace = workspace || null;
     this._user = user || null;
-    // TODO: Load groups memberships
-    this._groups = [];
+    this._groups = groups;
     this._role = role;
     this._subscription = subscription || null;
     this._flags = flags;
@@ -125,15 +126,20 @@ export class Authenticator {
     ]);
 
     let role = "none" as RoleType;
+    let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
     if (user && workspace) {
-      [role, subscription, flags] = await Promise.all([
+      [role, groups, subscription, flags] = await Promise.all([
         MembershipResource.getActiveMembershipOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
+        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+          user,
+          workspace: renderLightWorkspaceType({ workspace }),
+        }),
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         FeatureFlag.findAll({
           where: {
@@ -147,6 +153,7 @@ export class Authenticator {
       workspace,
       user,
       role,
+      groups,
       subscription,
       flags,
     });
@@ -185,11 +192,15 @@ export class Authenticator {
       })(),
     ]);
 
+    let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
     if (workspace) {
-      [subscription, flags] = await Promise.all([
+      [groups, subscription, flags] = await Promise.all([
+        user?.isDustSuperUser
+          ? GroupResource.superAdminFetchWorkspaceGroups(user, workspace.id)
+          : [],
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         (async () => {
           return (
@@ -207,6 +218,7 @@ export class Authenticator {
       workspace,
       user,
       role: user?.isDustSuperUser ? "admin" : "none",
+      groups,
       subscription,
       flags,
     });
@@ -233,15 +245,20 @@ export class Authenticator {
     ]);
 
     let role: RoleType = "none";
+    let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
     if (user && workspace) {
-      [role, subscription, flags] = await Promise.all([
+      [role, groups, subscription, flags] = await Promise.all([
         MembershipResource.getActiveMembershipOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
+        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+          user,
+          workspace: renderLightWorkspaceType({ workspace }),
+        }),
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         FeatureFlag.findAll({
           where: {
@@ -255,6 +272,7 @@ export class Authenticator {
       workspace,
       user,
       role,
+      groups,
       subscription,
       flags,
     });
@@ -299,11 +317,13 @@ export class Authenticator {
       }
     }
 
+    let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
     if (workspace) {
-      [subscription, flags] = await Promise.all([
+      [groups, subscription, flags] = await Promise.all([
+        GroupResource.fetchWorkspaceGroupsFromKey(key),
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         (async () => {
           return (
@@ -321,6 +341,7 @@ export class Authenticator {
       auth: new Authenticator({
         workspace,
         role,
+        groups,
         subscription,
         flags,
         key: key.toAuthJSON(),
@@ -346,10 +367,12 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
+    let globalGroup: GroupResource | null = null;
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
-    [subscription, flags] = await Promise.all([
+    [globalGroup, subscription, flags] = await Promise.all([
+      GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
       (async () => {
         return (
@@ -365,6 +388,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "builder",
+      groups: globalGroup ? [globalGroup] : [],
       subscription,
       flags,
     });
@@ -383,10 +407,12 @@ export class Authenticator {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
 
+    let globalGroup: GroupResource | null = null;
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
-    [subscription, flags] = await Promise.all([
+    [globalGroup, subscription, flags] = await Promise.all([
+      GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
       (async () => {
         return (
@@ -402,6 +428,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "admin",
+      groups: globalGroup ? [globalGroup] : [],
       subscription,
       flags,
     });
@@ -453,6 +480,7 @@ export class Authenticator {
       key: auth._key,
       // We limit scope to a user role.
       role: "user",
+      groups: auth._groups,
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
@@ -556,7 +584,7 @@ export class Authenticator {
   }
 
   groups(): GroupType[] {
-    return this._groups ? this._groups.map((group) => group.toJSON()) : [];
+    return this._groups.map((g) => g.toJSON());
   }
 
   hasPermission(acls: ACLType[], permission: Permission): boolean {

@@ -32,4 +32,5 @@ export type GroupType = {
   id: ModelId;
   type: SupportedGroupType;
   name: string;
+  workspaceId: ModelId;
 };
