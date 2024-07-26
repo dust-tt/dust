@@ -1926,8 +1926,8 @@ struct DatabasesTablesUpsertPayload {
     name: String,
     description: String,
     timestamp: Option<u64>,
-    tags: Vec<String>,
-    parents: Vec<String>,
+    tags: Option<Vec<String>>,
+    parents: Option<Vec<String>>,
 }
 
 async fn tables_upsert(
@@ -1949,8 +1949,14 @@ async fn tables_upsert(
                 Some(timestamp) => timestamp,
                 None => utils::now(),
             },
-            &payload.tags,
-            &payload.parents,
+            &match payload.tags {
+                Some(tags) => tags,
+                None => vec![],
+            },
+            &match payload.parents {
+                Some(parents) => parents,
+                None => vec![],
+            },
         )
         .await
     {
