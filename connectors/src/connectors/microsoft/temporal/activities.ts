@@ -487,16 +487,27 @@ export async function syncDeltaForRootNodesInDrive({
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
-  const microsoftNodes = await concurrentExecutor(
-    rootNodeIds,
-    async (rootNodeId) =>
-      getItem(client, typeAndPathFromInternalId(rootNodeId).itemAPIPath),
-    { concurrency: 5 }
+  const sortedChangedItems: DriveItem[] = [];
+  const containWholeDrive = rootNodeIds.some(
+    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
   );
 
-  const sortedChangedItems = microsoftNodes.flatMap((rootNode) =>
-    sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
-  );
+  if (containWholeDrive) {
+    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+  } else {
+    const microsoftNodes = await concurrentExecutor(
+      rootNodeIds,
+      async (rootNodeId) =>
+        getItem(client, typeAndPathFromInternalId(rootNodeId).itemAPIPath),
+      { concurrency: 5 }
+    );
+
+    microsoftNodes.forEach((rootNode) => {
+      sortedChangedItems.push(
+        ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
+      );
+    });
+  }
 
   // Finally add all removed items, which may not have been included even if they are in the selected roots
   sortedChangedItems.push(
@@ -616,7 +627,7 @@ function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
  * The function makes the assumption that there is no circular parent
  * relationship
  */
-function sortForIncrementalUpdate(changedList: DriveItem[], rootId: string) {
+function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
   if (changedList.length === 0) {
     return [];
   }
@@ -624,12 +635,16 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId: string) {
   const internalIds = changedList.map((item) => getDriveItemInternalId(item));
 
   const sortedItemList = changedList.filter((item) => {
-    if (item.id === rootId) {
+    if (!item.parentReference) {
+      return false;
+    }
+
+    if (rootId && item.id === rootId) {
       // Found selected root
       return true;
     }
 
-    if (!item.parentReference || !item.parentReference.id) {
+    if (!rootId && !item.parentReference.id) {
       // Root folder of the drive, always include it
       return true;
     }
