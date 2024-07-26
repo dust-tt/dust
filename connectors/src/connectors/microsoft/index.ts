@@ -356,6 +356,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return res;
     }
 
+    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(
+      this.connectorId
+    );
+
+    if (gcRes.isErr()) {
+      return gcRes;
+    }
+
     return new Ok(undefined);
   }
 
