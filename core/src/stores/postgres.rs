@@ -2435,7 +2435,7 @@ impl Store for PostgresStore {
             String,
             String,
             String,
-            Option<i64>,
+            i64,
             Vec<String>,
             Vec<String>,
             Option<String>,
@@ -2486,10 +2486,7 @@ impl Store for PostgresStore {
                     &table_id,
                     &name,
                     &description,
-                    match timestamp {
-                        None => created as u64,
-                        Some(t) => t as u64,
-                    },
+                    timestamp as u64,
                     tags,
                     parents,
                     &parsed_schema,
@@ -2559,7 +2556,7 @@ impl Store for PostgresStore {
                 let table_id: String = r.get(1);
                 let name: String = r.get(2);
                 let description: String = r.get(3);
-                let timestamp: Option<i64> = r.get(4);
+                let timestamp: i64 = r.get(4);
                 let tags: Vec<String> = r.get(5);
                 let parents: Vec<String> = r.get(6);
                 let schema: Option<String> = r.get(7);
@@ -2583,10 +2580,7 @@ impl Store for PostgresStore {
                     &table_id,
                     &name,
                     &description,
-                    match timestamp {
-                        None => created as u64,
-                        Some(t) => t as u64,
-                    },
+                    timestamp as u64,
                     tags,
                     parents,
                     &parsed_schema,
