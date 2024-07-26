@@ -222,7 +222,7 @@ function CreateOktaEnterpriseConnectionModal({
         Discover how to set up Okta SSO – Read Our{" "}
         <a
           className="font-bold underline decoration-2"
-          href="https://docs.dust.tt/docs/single-sign-on-sso"
+          href="https://docs.dust.tt/docs/okta"
           target="_blank"
         >
           Documentation
@@ -363,8 +363,7 @@ function CreateWAADEnterpriseConnectionModal({
         Discover how to set up Microsoft Entra ID SSO – Read Our{" "}
         <a
           className="font-bold underline decoration-2"
-          // TODO(2024-07-26 flav) Update link to documentation once it's available.
-          href="https://docs.dust.tt/docs/single-sign-on-sso"
+          href="https://docs.dust.tt/docs/microsoft-entra-sso"
           target="_blank"
         >
           Documentation
