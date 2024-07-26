@@ -640,7 +640,7 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
       return true;
     }
 
-    if (!rootId && !item.root) {
+    if (!rootId && item.root) {
       // Root folder of the drive, include it if no specific root was passed
       return true;
     }
