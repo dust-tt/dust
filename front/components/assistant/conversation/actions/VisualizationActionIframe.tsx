@@ -11,6 +11,7 @@ import {
   isVisualizationRPCRequest,
   visualizationExtractCode,
 } from "@dust-tt/types";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -180,61 +181,144 @@ export function VisualizationActionIframe({
     return iframeRendered ? "iframe" : "spinner";
   })();
 
-  return (
-    <div className="relative">
-      {mode === "iframe" && (
-        // If we displaying the iframe, we need to offset the agent message
-        // content to make space for the iframe.
-        <div
-          style={{
-            height: `${contentHeight}px`,
-          }}
-        />
-      )}
-      <div>
-        {mode === "code" && (
-          <RenderMessageMarkdown
-            content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
-            isStreaming={!codeFullyGenerated && isStreaming}
-          />
-        )}
-        {mode === "spinner" && <Spinner />}
-        {codeFullyGenerated && (
-          // We render the iframe as soon as we have the code.
-          // Until it is actually rendered, we're showing a spinner so
-          // we use opacity-0 to hide the iframe.
-          // We also disable pointer event to allow interacting with the rest.
-          <div
-            style={{ height: `${contentHeight}px` }}
-            className={classNames(
-              "absolute left-0 top-0 max-h-[60vh] w-full",
-              mode !== "iframe"
-                ? "pointer-events-none opacity-0"
-                : "pointer-events-auto opacity-100"
-            )}
-          >
-            <iframe
-              ref={vizIframeRef}
-              className="h-full w-full"
-              src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
-              sandbox="allow-scripts"
-            />
-          </div>
-        )}
-      </div>
+  const [activeIndex, setActiveIndex] = useState(0);
 
+  useEffect(() => {
+    console.log(">> mode:", mode);
+    if (mode === "iframe" || mode === "spinner") {
+      setActiveIndex(1);
+    } else if (mode === "code") {
+      setActiveIndex(0);
+    }
+  }, [mode]);
+
+  const [containerHeight, setContainerHeight] = useState("h-full");
+
+  useEffect(() => {
+    if (activeIndex === 0) {
+      setContainerHeight("100%");
+    } else if (activeIndex === 1) {
+      setContainerHeight(`${contentHeight}px`);
+    }
+  }, [activeIndex, contentHeight]);
+
+  return (
+    <div className="flex flex-col">
       {iframeRendered && (
-        // Only start showing the toggle once the iframe is rendered.
-        <div className="absolute left-4 top-4">
-          <IconToggleButton
-            icon={BracesIcon}
-            selected={!showIframe}
-            onClick={() =>
-              setShowIframe((prev) => (prev === null ? false : !prev))
-            }
-          />
+        <div className="flex pb-2">
+          <div className="rounded-lg bg-gray-100 p-2">
+            {["Code", "Visualisation"].map((tab, index) => (
+              <button
+                key={tab}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""}`}
+                onClick={() => setActiveIndex(index)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
       )}
+      <div
+        className="transition-height relative w-full overflow-hidden duration-500 ease-in-out"
+        style={{ height: containerHeight }}
+      >
+        <div
+          className="flex transition-transform duration-500 ease-out"
+          style={{
+            transform: `translateX(-${activeIndex * 100}%)`,
+          }}
+        >
+          <div className="w-full">
+            <RenderMessageMarkdown
+              content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
+              isStreaming={!codeFullyGenerated && isStreaming}
+            />
+          </div>
+          <div className="relative flex h-full min-h-96 w-full flex-shrink-0 items-center justify-center">
+            {mode === "spinner" && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Spinner />
+              </div>
+            )}
+            {codeFullyGenerated && (
+              // We render the iframe as soon as we have the code.
+              // Until it is actually rendered, we're showing a spinner so
+              // we use opacity-0 to hide the iframe.
+              // We also disable pointer event to allow interacting with the rest.
+              <div
+                style={{ height: `${contentHeight}px` }}
+                className={classNames("max-h-[60vh] w-full")}
+              >
+                <iframe
+                  ref={vizIframeRef}
+                  className="h-full w-full"
+                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
+                  sandbox="allow-scripts"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
+
+  // return (
+  //   <div className="relative">
+  //     {mode === "iframe" && (
+  //       // If we displaying the iframe, we need to offset the agent message
+  //       // content to make space for the iframe.
+  //       <div
+  //         style={{
+  //           height: `${contentHeight}px`,
+  //         }}
+  //       />
+  //     )}
+  //     <div>
+  //       {mode === "code" && (
+  //         <RenderMessageMarkdown
+  //           content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
+  //           isStreaming={!codeFullyGenerated && isStreaming}
+  //         />
+  //       )}
+  //       {mode === "spinner" && <Spinner />}
+  //       {codeFullyGenerated && (
+  //         // We render the iframe as soon as we have the code.
+  //         // Until it is actually rendered, we're showing a spinner so
+  //         // we use opacity-0 to hide the iframe.
+  //         // We also disable pointer event to allow interacting with the rest.
+  //         <div
+  //           style={{ height: `${contentHeight}px` }}
+  //           className={classNames(
+  //             "absolute left-0 top-0 max-h-[60vh] w-full",
+  //             mode !== "iframe"
+  //               ? "pointer-events-none opacity-0"
+  //               : "pointer-events-auto opacity-100"
+  //           )}
+  //         >
+  //           <iframe
+  //             ref={vizIframeRef}
+  //             className="h-full w-full"
+  //             src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
+  //             sandbox="allow-scripts"
+  //           />
+  //         </div>
+  //       )}
+  //     </div>
+
+  //     {iframeRendered && (
+  //       // Only start showing the toggle once the iframe is rendered.
+  //       <div className="absolute left-4 top-4">
+  //         <IconToggleButton
+  //           icon={BracesIcon}
+  //           selected={!showIframe}
+  //           onClick={() =>
+  //             setShowIframe((prev) => (prev === null ? false : !prev))
+  //           }
+  //         />
+  //       </div>
+  //     )}
+  //   </div>
+  // );
 }
