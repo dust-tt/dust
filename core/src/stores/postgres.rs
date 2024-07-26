@@ -2234,9 +2234,20 @@ impl Store for PostgresStore {
         table_id: &str,
         name: &str,
         description: &str,
+        timestamp: u64,
+        tags: &Vec<String>,
+        parents: &Vec<String>,
     ) -> Result<Table> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
+
+        let table_created = utils::now();
+        let table_id = table_id.to_string();
+        let table_name = name.to_string();
+        let table_description = description.to_string();
+        let table_timestamp = timestamp;
+        let table_tags = tags.clone();
+        let table_parents = parents.clone();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2254,18 +2265,13 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let table_created = utils::now();
-
-        let table_id = table_id.to_string();
-        let table_name = name.to_string();
-        let table_description = description.to_string();
-
         // Upsert Table.
         let stmt = c
             .prepare(
                 "INSERT INTO tables \
-                   (id, data_source, created, table_id, name, description) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5) \
+                   (id, data_source, created, table_id, name, description,
+                    timestamp, tags_array, parents) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description \
                    RETURNING id",
@@ -2280,6 +2286,9 @@ impl Store for PostgresStore {
                 &table_id,
                 &table_name,
                 &table_description,
+                &(table_timestamp as i64),
+                &table_tags,
+                &table_parents,
             ],
         )
         .await?;
@@ -2291,6 +2300,9 @@ impl Store for PostgresStore {
             &table_id,
             &table_name,
             &table_description,
+            timestamp,
+            table_tags,
+            table_parents,
             &None,
             None,
         ))
@@ -2411,13 +2423,24 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description, schema, schema_stale_at FROM tables \
+                "SELECT created, table_id, name, description, timestamp, tags_array, parents, \
+                        schema, schema_stale_at FROM tables \
                 WHERE data_source = $1 AND table_id = $2 LIMIT 1",
             )
             .await?;
         let r = c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
 
-        let d: Option<(i64, String, String, String, Option<String>, Option<i64>)> = match r.len() {
+        let d: Option<(
+            i64,
+            String,
+            String,
+            String,
+            Option<i64>,
+            Vec<String>,
+            Vec<String>,
+            Option<String>,
+            Option<i64>,
+        )> = match r.len() {
             0 => None,
             1 => Some((
                 r[0].get(0),
@@ -2426,13 +2449,26 @@ impl Store for PostgresStore {
                 r[0].get(3),
                 r[0].get(4),
                 r[0].get(5),
+                r[0].get(6),
+                r[0].get(7),
+                r[0].get(8),
             )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((created, table_id, name, description, schema, schema_stale_at)) => {
+            Some((
+                created,
+                table_id,
+                name,
+                description,
+                timestamp,
+                tags,
+                parents,
+                schema,
+                schema_stale_at,
+            )) => {
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
                     Some(schema) => {
@@ -2450,6 +2486,12 @@ impl Store for PostgresStore {
                     &table_id,
                     &name,
                     &description,
+                    match timestamp {
+                        None => created as u64,
+                        Some(t) => t as u64,
+                    },
+                    tags,
+                    parents,
                     &parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                 )))
@@ -2487,8 +2529,9 @@ impl Store for PostgresStore {
             None => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description, schema, schema_stale_at FROM tables \
-                        WHERE data_source = $1",
+                        "SELECT created, table_id, name, description, timestamp, tags_array, \
+                                parents, schema, schema_stale_at FROM tables \
+                           WHERE data_source = $1",
                     )
                     .await?;
                 c.query(&stmt, &[&data_source_row_id]).await?
@@ -2496,7 +2539,8 @@ impl Store for PostgresStore {
             Some((limit, offset)) => {
                 let stmt = c
                     .prepare(
-                        "SELECT created, table_id, name, description, schema, schema_stale_at FROM tables \
+                        "SELECT created, table_id, name, description, timestamp, tags_array, \
+                                parents, schema, schema_stale_at FROM tables \
                         WHERE data_source = $1 LIMIT $2 OFFSET $3",
                     )
                     .await?;
@@ -2515,8 +2559,11 @@ impl Store for PostgresStore {
                 let table_id: String = r.get(1);
                 let name: String = r.get(2);
                 let description: String = r.get(3);
-                let schema: Option<String> = r.get(4);
-                let schema_stale_at: Option<i64> = r.get(5);
+                let timestamp: Option<i64> = r.get(4);
+                let tags: Vec<String> = r.get(5);
+                let parents: Vec<String> = r.get(6);
+                let schema: Option<String> = r.get(7);
+                let schema_stale_at: Option<i64> = r.get(8);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2536,6 +2583,12 @@ impl Store for PostgresStore {
                     &table_id,
                     &name,
                     &description,
+                    match timestamp {
+                        None => created as u64,
+                        Some(t) => t as u64,
+                    },
+                    tags,
+                    parents,
                     &parsed_schema,
                     schema_stale_at.map(|t| t as u64),
                 ))

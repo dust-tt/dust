@@ -27,7 +27,7 @@ use dust::{
     run,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
-    utils::{error_response, APIError, APIResponse, CoreRequestMakeSpan},
+    utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
 };
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
@@ -1925,6 +1925,9 @@ struct DatabasesTablesUpsertPayload {
     table_id: String,
     name: String,
     description: String,
+    timestamp: Option<u64>,
+    tags: Vec<String>,
+    parents: Vec<String>,
 }
 
 async fn tables_upsert(
@@ -1942,6 +1945,12 @@ async fn tables_upsert(
             &payload.table_id,
             &payload.name,
             &payload.description,
+            match payload.timestamp {
+                Some(timestamp) => timestamp,
+                None => utils::now(),
+            },
+            &payload.tags,
+            &payload.parents,
         )
         .await
     {

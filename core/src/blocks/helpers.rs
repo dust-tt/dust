@@ -4,7 +4,6 @@ use anyhow::{anyhow, Result};
 use hyper::body::Buf;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::io::prelude::*;
 use url::Url;
 use urlencoding::encode;

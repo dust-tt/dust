@@ -144,6 +144,10 @@ pub struct Table {
     table_id: String,
     name: String,
     description: String,
+    timestamp: u64,
+    tags: Vec<String>,
+    parents: Vec<String>,
+
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
 }
@@ -160,6 +164,9 @@ impl Table {
         table_id: &str,
         name: &str,
         description: &str,
+        timestamp: u64,
+        tags: Vec<String>,
+        parents: Vec<String>,
         schema: &Option<TableSchema>,
         schema_stale_at: Option<u64>,
     ) -> Self {
@@ -170,6 +177,9 @@ impl Table {
             table_id: table_id.to_string(),
             name: name.to_string(),
             description: description.to_string(),
+            timestamp,
+            tags,
+            parents,
             schema: schema.clone(),
             schema_stale_at,
         }
@@ -192,6 +202,9 @@ impl Table {
     }
     pub fn description(&self) -> &str {
         &self.description
+    }
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
     }
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
@@ -512,6 +525,9 @@ mod tests {
             "table_id",
             "test_dbml",
             "Test records for DBML rendering",
+            utils::now(),
+            vec![],
+            vec![],
             &Some(schema),
             None,
         );
