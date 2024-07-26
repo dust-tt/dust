@@ -16,10 +16,10 @@ export type CoreDSDocument = {
 export async function getCoreDocuments(
   frontDataSourceId: number
 ): Promise<Result<CoreDSDocument[], Error>> {
-  const core_sequelize = getCoreReplicaDbConnection();
-  const front_sequelize = getFrontReplicaDbConnection();
+  const coreReplica = getCoreReplicaDbConnection();
+  const frontReplica = getFrontReplicaDbConnection();
 
-  const managedDsData = await front_sequelize.query(
+  const managedDsData = await frontReplica.query(
     'SELECT id, "connectorId", "connectorProvider", "dustAPIProjectId" \
          FROM data_sources WHERE id = :frontDataSourceId',
     {
@@ -39,7 +39,7 @@ export async function getCoreDocuments(
     );
   }
   const ds = managedDs[0];
-  const coreDsData = await core_sequelize.query(
+  const coreDsData = await coreReplica.query(
     `SELECT id FROM data_sources WHERE "project" = :dustAPIProjectId`,
     {
       replacements: {
@@ -54,7 +54,7 @@ export async function getCoreDocuments(
       new Error(`Core data source not found for front datasource  ${ds.id}`)
     );
   }
-  const coreDocumentsData = await core_sequelize.query(
+  const coreDocumentsData = await coreReplica.query(
     `SELECT id, document_id, parents FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
     {
       replacements: {

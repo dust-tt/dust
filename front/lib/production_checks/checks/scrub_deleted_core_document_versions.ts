@@ -3,9 +3,12 @@ import { Storage } from "@google-cloud/storage";
 import { createHash } from "blake3";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
-import { Sequelize } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
+import {
+  getCorePrimaryDbConnection,
+  getCoreReplicaDbConnection,
+} from "@app/lib/production_checks/utils";
 import { withRetries } from "@app/lib/utils/retries";
 
 const { CORE_DATABASE_URI, SERVICE_ACCOUNT, DUST_DATA_SOURCES_BUCKET } =
@@ -25,13 +28,11 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
     throw new Error("Env var SERVICE_ACCOUNT is not defined");
   }
 
-  const core_sequelize = new Sequelize(CORE_DATABASE_URI as string, {
-    logging: false,
-  });
+  const coreReplica = getCoreReplicaDbConnection();
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
-  const deletedDocumentsData = await core_sequelize.query(
+  const deletedDocumentsData = await coreReplica.query(
     `SELECT * FROM data_sources_documents WHERE status = 'deleted'`
   );
 
@@ -67,7 +68,6 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
         return (async () => {
           const done = await scrubDocument({
             logger,
-            core_sequelize,
             seen,
             storage,
             data_source: d.data_source,
@@ -152,7 +152,6 @@ async function deleteFilesFromFolder(
 
 async function scrubDocument({
   logger,
-  core_sequelize,
   storage,
   seen,
   data_source,
@@ -161,7 +160,6 @@ async function scrubDocument({
   hash,
 }: {
   logger: pino.Logger<LoggerOptions>;
-  core_sequelize: Sequelize;
   storage: Storage;
   seen: Set<string>;
   data_source: number;
@@ -172,6 +170,7 @@ async function scrubDocument({
   if (!DUST_DATA_SOURCES_BUCKET) {
     throw new Error("Env var DUST_DATA_SOURCES_BUCKET is not defined");
   }
+  const corePrimary = getCorePrimaryDbConnection();
 
   // Process same version of same document only once.
   const uid = `${data_source}-${document_id}-${hash}`;
@@ -179,7 +178,7 @@ async function scrubDocument({
     return false;
   }
 
-  const moreRecentSameHash = await core_sequelize.query(
+  const moreRecentSameHash = await corePrimary.query(
     `SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created >= :created LIMIT 1`,
     {
       replacements: {
@@ -196,7 +195,7 @@ async function scrubDocument({
     return false;
   }
 
-  const dataSourceData = await core_sequelize.query(
+  const dataSourceData = await corePrimary.query(
     `SELECT * FROM data_sources WHERE id = :data_source`,
     {
       replacements: {
@@ -240,7 +239,7 @@ async function scrubDocument({
 
   await deleteFilesFromFolder(localLogger, bucket, seen, path, filename);
 
-  await core_sequelize.query(
+  await corePrimary.query(
     `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
     {
       replacements: {
