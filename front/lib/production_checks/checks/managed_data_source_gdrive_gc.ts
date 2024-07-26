@@ -14,10 +14,10 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   reportFailure,
   heartbeat
 ) => {
-  const connectorsSequelize = getConnectorReplicaDbConnection();
-  const frontSequelize = getFrontReplicaDbConnection();
+  const connectorsReplica = getConnectorReplicaDbConnection();
+  const frontReplica = getFrontReplicaDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
-    await frontSequelize.query(
+    await frontReplica.query(
       `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
       { type: QueryTypes.SELECT }
     );
@@ -27,7 +27,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
 
     // Retrieve all documents from the connector (first)
     const connectorDocuments: { id: number; coreDocumentId: string }[] =
-      await connectorsSequelize.query(
+      await connectorsReplica.query(
         'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId',
         {
           replacements: {
