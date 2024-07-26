@@ -3,8 +3,8 @@ import type {
   ACLType,
   GroupType,
   LightWorkspaceType,
+  Permission,
   RoleType,
-  SupportedPermissionType,
   UserType,
   WhitelistableFeature,
   WorkspaceType,
@@ -559,7 +559,7 @@ export class Authenticator {
     return this._groups ? this._groups.map((group) => group.toJSON()) : [];
   }
 
-  hasPermission(acls: ACLType[], permission: SupportedPermissionType): boolean {
+  hasPermission(acls: ACLType[], permission: Permission): boolean {
     // Does the user belongs to a group which has the required permission on all ACLs ?
     return this.groups().some((group) =>
       acls.every((acl) => groupHasPermission(acl, permission, group.id))
