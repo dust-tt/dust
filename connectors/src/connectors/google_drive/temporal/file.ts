@@ -145,7 +145,7 @@ async function handleFileExport(
       connectorId,
     });
   } else {
-    return handleTextExtraction(res.data, localLogger, file);
+    return handleTextExtraction(res.data, localLogger, file.mimeType);
   }
 }
 

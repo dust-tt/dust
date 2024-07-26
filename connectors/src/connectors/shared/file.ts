@@ -6,7 +6,6 @@ import {
 import { parseAndStringifyCsv, slugify } from "@dust-tt/types";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
 
-import { isMicrosoftDriveItem } from "@connectors/connectors/microsoft/lib/types";
 import { apiConfig } from "@connectors/lib/api/config";
 import { upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
@@ -92,24 +91,8 @@ export async function handleCsvFile({
 export async function handleTextExtraction(
   data: ArrayBuffer,
   localLogger: Logger,
-  file: GoogleDriveObjectType | DriveItem
+  mimeType: string
 ): Promise<CoreAPIDataSourceDocumentSection | null> {
-  let mimeType: string | undefined;
-  if (isMicrosoftDriveItem(file)) {
-    localLogger.error(
-      {
-        fileName: file.name,
-      },
-      "Error mimeType missing"
-    );
-    if (!file.file?.mimeType) {
-      return null;
-    }
-    mimeType = file.file?.mimeType;
-  } else {
-    mimeType = file.mimeType;
-  }
-
   if (!isTextExtractionSupportedContentType(mimeType)) {
     return null;
   }

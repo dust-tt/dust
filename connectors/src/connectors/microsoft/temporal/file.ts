@@ -4,15 +4,9 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import {
-  cacheWithRedis,
-  isTextExtractionSupportedContentType,
-  TextExtraction,
-} from "@dust-tt/types";
-import type { DriveItem } from "@microsoft/microsoft-graph-types";
+import { cacheWithRedis } from "@dust-tt/types";
 import axios from "axios";
 import mammoth from "mammoth";
-import type { Logger } from "pino";
 import turndown from "turndown";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -28,9 +22,9 @@ import {
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import {
   handleCsvFile,
+  handleTextExtraction,
   handleTextFile,
 } from "@connectors/connectors/shared/file";
-import { apiConfig } from "@connectors/lib/api/config";
 import {
   deleteFromDataSource,
   MAX_DOCUMENT_TXT_LEN,
@@ -52,10 +46,6 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
-
-const pagePrefixesPerMimeType: Record<string, string> = {
-  "application/pdf": "$pdfPage",
-};
 
 export async function syncOneFile({
   connectorId,
@@ -193,7 +183,7 @@ export async function syncOneFile({
     ].includes(mimeType)
   ) {
     const data = Buffer.from(downloadRes.data);
-    documentSection = await handleTextExtraction(data, localLogger, file);
+    documentSection = await handleTextExtraction(data, localLogger, mimeType);
   } else if (mimeType === "application/vnd.ms-excel") {
     const data = Buffer.from(downloadRes.data);
     const isSuccessful = await handleCsvFile({
@@ -390,55 +380,6 @@ const getParentParentId = cacheWithRedis(
     `microsoft-${connectorId}-parent-${parentInternalId}-syncms-${startSyncTs}`,
   PARENT_SYNC_CACHE_TTL_MS
 );
-
-async function handleTextExtraction(
-  data: ArrayBuffer,
-  localLogger: Logger,
-  file: DriveItem
-): Promise<CoreAPIDataSourceDocumentSection | null> {
-  const mimeType = file.file?.mimeType;
-
-  if (!mimeType || !isTextExtractionSupportedContentType(mimeType)) {
-    localLogger.warn(
-      {
-        error: "Unexpected mimeType",
-        mimeType: mimeType,
-      },
-      "Unexpected mimeType"
-    );
-    return null;
-  }
-  const pageRes = await new TextExtraction(
-    apiConfig.getTextExtractionUrl()
-  ).fromBuffer(Buffer.from(data), mimeType);
-  if (pageRes.isErr()) {
-    localLogger.error(
-      {
-        error: pageRes.error,
-        mimeType: mimeType,
-      },
-      "Error while converting file to text"
-    );
-    // We don't know what to do with files that fails to be converted to text.
-    // So we log the error and skip the file.
-    return null;
-  }
-  const pages = pageRes.value;
-  const prefix = pagePrefixesPerMimeType[mimeType];
-  return pages.length > 0
-    ? {
-        prefix: null,
-        content: null,
-        sections: pages.map((page) => ({
-          prefix: prefix
-            ? `\n${prefix}: ${page.pageNumber}/${pages.length}\n`
-            : null,
-          content: page.content,
-          sections: [],
-        })),
-      }
-    : null;
-}
 
 export async function deleteFolder({
   connectorId,
