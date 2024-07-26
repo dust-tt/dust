@@ -123,6 +123,7 @@ function useVisualizationDataHandler(
     getFileBlob,
     onRetry,
     setContentHeight,
+    vizIframeRef,
   ]);
 }
 
