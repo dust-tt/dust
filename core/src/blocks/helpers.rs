@@ -1,18 +1,26 @@
 use super::block::Env;
-use crate::project::Project;
+use crate::{data_sources::data_source::SearchFilter, project::Project};
 use anyhow::{anyhow, Result};
 use hyper::body::Buf;
 use reqwest::StatusCode;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io::prelude::*;
 use url::Url;
 use urlencoding::encode;
 
-pub async fn get_data_source_project(
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct FrontRegistryPayload {
+    data_source_id: String,
+    project_id: i64,
+    view_filter: Option<SearchFilter>,
+}
+
+pub async fn get_data_source_project_and_view_filter(
     workspace_id: &String,
     data_source_id: &String,
     env: &Env,
-) -> Result<Project> {
+) -> Result<(Project, Option<SearchFilter>)> {
     let dust_workspace_id = match env.credentials.get("DUST_WORKSPACE_ID") {
         None => Err(anyhow!(
             "DUST_WORKSPACE_ID credentials missing, but `workspace_id` \
@@ -20,6 +28,13 @@ pub async fn get_data_source_project(
         ))?,
         Some(v) => v.clone(),
     };
+    let dust_group_ids = match env.credentials.get("DUST_GROUP_IDS") {
+        Some(v) => v.clone(),
+        // We default to the empty string if not set which will default to the workspace global
+        // group in front registry.
+        None => "".to_string(),
+    };
+
     let registry_secret = match std::env::var("DUST_REGISTRY_SECRET") {
         Ok(key) => key,
         Err(_) => Err(anyhow!(
@@ -46,6 +61,7 @@ pub async fn get_data_source_project(
             format!("Bearer {}", registry_secret.as_str()),
         )
         .header("X-Dust-Workspace-Id", dust_workspace_id)
+        .header("X-Dust-Group-Ids", dust_group_ids)
         .send()
         .await?;
 
@@ -65,16 +81,14 @@ pub async fn get_data_source_project(
 
     let response_body = String::from_utf8_lossy(&b).into_owned();
 
-    let body = match serde_json::from_str::<serde_json::Value>(&response_body) {
-        Ok(body) => body,
+    // parse body into FrontRegistryPayload
+    let payload: FrontRegistryPayload = match serde_json::from_str(&response_body) {
+        Ok(payload) => payload,
         Err(_) => Err(anyhow!("Failed to parse registry response"))?,
     };
 
-    match body.get("project_id") {
-        Some(Value::Number(p)) => match p.as_i64() {
-            Some(p) => Ok(Project::new_from_id(p)),
-            None => Err(anyhow!("Failed to parse registry response")),
-        },
-        _ => Err(anyhow!("Failed to parse registry response")),
-    }
+    Ok((
+        Project::new_from_id(payload.project_id),
+        payload.view_filter,
+    ))
 }

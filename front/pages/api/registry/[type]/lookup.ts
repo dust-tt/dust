@@ -1,3 +1,4 @@
+import type { CoreAPISearchFilter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DataSource } from "@app/lib/models/data_source";
@@ -9,6 +10,7 @@ const { DUST_REGISTRY_SECRET } = process.env;
 type LookupDataSourceResponseBody = {
   project_id: number;
   data_source_id: string;
+  view_filter: CoreAPISearchFilter | null;
 };
 
 /**
@@ -56,6 +58,10 @@ async function handler(
     return;
   }
 
+  // TODO(GROUPS_INFRA): Add x-dust-group-ids header retrieval
+  //  - If not set default to the global workspace group
+  //  - Enforce checks for access to data sources and data sources view below
+
   const dustWorkspaceId = req.headers["x-dust-workspace-id"] as string;
 
   switch (req.method) {
@@ -98,9 +104,18 @@ async function handler(
             return;
           }
 
+          // TODO(GROUPS_INFRA):
+          // - Implement view_filter return when a data source view is looked up.
+          // - If data_source_ids is of the form `dsv_...` then it's a data source view
+          //   and we pull the view_filter to return it below
+          // - otherwise it's data source and the view_filter is null
+          // - Obviously this is where we check based on the x-dust-group-ids header that we
+          //   have access to the data source or data source view
+
           res.status(200).json({
             project_id: parseInt(dataSource.dustAPIProjectId),
             data_source_id: req.query.data_source_id,
+            view_filter: null,
           });
           return;
 
@@ -108,7 +123,6 @@ async function handler(
           res.status(405).end();
           return;
       }
-      return;
 
     default:
       res.status(405).end();

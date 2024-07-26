@@ -246,16 +246,16 @@ async function handler(
           target_document_tokens: query.target_document_tokens,
           filter: {
             tags: {
-              in: query.tags_in,
-              not: query.tags_not,
+              in: query.tags_in ?? null,
+              not: query.tags_not ?? null,
             },
             parents: {
-              in: query.parents_in,
-              not: query.parents_not,
+              in: query.parents_in ?? null,
+              not: query.parents_not ?? null,
             },
             timestamp: {
-              gt: query.timestamp_gt,
-              lt: query.timestamp_lt,
+              gt: query.timestamp_gt ?? null,
+              lt: query.timestamp_lt ?? null,
             },
           },
           credentials,

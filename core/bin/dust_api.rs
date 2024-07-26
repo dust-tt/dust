@@ -787,6 +787,15 @@ async fn runs_create(
         },
         None => (),
     };
+    match headers.get("X-Dust-Group-Ids") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_GROUP_IDS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
 
     match run_helper(project_id, payload.clone(), state.clone()).await {
         Ok(app) => {
@@ -829,6 +838,15 @@ async fn runs_create_stream(
         Some(v) => match v.to_str() {
             Ok(v) => {
                 credentials.insert("DUST_WORKSPACE_ID".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+    match headers.get("X-Dust-Group-Ids") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_GROUP_IDS".to_string(), v.to_string());
             }
             _ => (),
         },
