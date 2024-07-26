@@ -1038,7 +1038,7 @@ async function* runAction(
         conversation,
         agentMessage,
         rawInputs: inputs,
-        functionCallId: null,
+        functionCallId,
         step,
       },
       {
@@ -1091,7 +1091,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs: inputs,
-      functionCallId: null,
+      functionCallId,
       step,
     });
 
