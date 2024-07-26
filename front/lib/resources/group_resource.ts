@@ -125,8 +125,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async superAdminFetchWorkspaceGroups(
     userResource: UserResource,
-    workspaceId: ModelId,
-    transaction?: Transaction
+    workspaceId: ModelId
   ): Promise<GroupResource[]> {
     if (!userResource.isDustSuperUser) {
       throw new Error("User is not a super admin.");
@@ -136,22 +135,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         workspaceId,
       },
-      transaction,
     });
 
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
   static async fetchWorkspaceGroupsFromKey(
-    key: KeyResource,
-    transaction?: Transaction
+    key: KeyResource
   ): Promise<GroupResource[]> {
+    // TODO(GROUPS_INFRA): we need to pull the groups associated with the key once that's built.
     const group = await this.model.findOne({
       where: {
         workspaceId: key.workspaceId,
         type: key.isSystem ? "system" : "global",
       },
-      transaction,
     });
 
     if (!group) {
@@ -162,15 +159,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async internalFetchWorkspaceGlobalGroup(
-    workspaceId: ModelId,
-    transaction?: Transaction
+    workspaceId: ModelId
   ): Promise<GroupResource> {
     const group = await this.model.findOne({
       where: {
         workspaceId,
         type: "global",
       },
-      transaction,
     });
 
     if (!group) {
@@ -181,8 +176,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async fetchWorkspaceGlobalGroup(
-    auth: Authenticator,
-    transaction?: Transaction
+    auth: Authenticator
   ): Promise<GroupResource> {
     const owner = auth.getNonNullableWorkspace();
     const group = await this.model.findOne({
@@ -190,7 +184,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspaceId: owner.id,
         type: "global",
       },
-      transaction,
     });
 
     if (!group) {
@@ -201,8 +194,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async fetchWorkspaceGroups(
-    auth: Authenticator,
-    transaction?: Transaction
+    auth: Authenticator
   ): Promise<GroupResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -210,7 +202,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         workspaceId: owner.id,
       },
-      transaction,
     });
 
     return groups.map((group) => new this(GroupModel, group.get()));
@@ -218,8 +209,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchWorkspaceGroup(
     auth: Authenticator,
-    groupId: string,
-    transaction?: Transaction
+    groupId: string
   ): Promise<GroupResource | null> {
     const owner = auth.getNonNullableWorkspace();
     const groupModelId = getResourceIdFromSId(groupId);
@@ -233,7 +223,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspaceId: owner.id,
         id: groupModelId,
       },
-      transaction,
     });
 
     if (!group) {
@@ -246,18 +235,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchActiveGroupsOfUserInWorkspace({
     user,
     workspace,
-    transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
-    transaction?: Transaction;
   }): Promise<GroupResource[]> {
     // First we need to check if the user is a member of the workspace.
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user,
         workspace,
-        transaction,
       });
     if (!workspaceMembership) {
       return [];
@@ -270,7 +256,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspaceId: workspace.id,
         type: "global",
       },
-      transaction,
     });
 
     if (!globalGroup) {
@@ -290,7 +275,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           required: true,
         },
       ],
-      transaction,
     });
 
     const groups = [globalGroup, ...regularGroups];

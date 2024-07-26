@@ -371,6 +371,7 @@ export class Authenticator {
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
+    // TODO(GROUPS_INFRA): this should be refactored to use the new groups infra.
     [globalGroup, subscription, flags] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
@@ -411,6 +412,8 @@ export class Authenticator {
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
+    // TODO(GROUPS_INFRA): maybe this group should access not only to the global group
+    // but all groups? To be answered while moving forward with this new infra.
     [globalGroup, subscription, flags] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
