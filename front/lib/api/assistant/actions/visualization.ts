@@ -20,6 +20,7 @@ import {
   isContentFragmentType,
   isProviderWhitelisted,
   Ok,
+  removeNulls,
   VisualizationActionOutputSchema,
 } from "@dust-tt/types";
 import assert from "assert";
@@ -214,18 +215,20 @@ export class VisualizationConfigurationServerRunner extends BaseActionConfigurat
     // The prompt is a list of files that the visualization action can access.
     // I have empirically found that this format works well for the model to generate the appropriate code,
     // but feel free to change it if you think otherwise.
-    const prompt =
+    const prompt = removeNulls([
+      agentConfiguration.instructions,
       `You have access to the following files:\n` +
-      conversation.content
-        .flat(1)
-        .filter((m) => isContentFragmentType(m))
-        .map((m, i) => {
-          // This is needed because the ContentFragmentType is not actually narrowed correctly,
-          // this type is actually pretty complex and even if VSCode figure it out, `npm run build` does not.
-          // @flavien knows about this.
-          assert(isContentFragmentType(m));
-          return `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n${contentFragmentsText[i]?.join("\n")}(truncated...)</file>`;
-        });
+        conversation.content
+          .flat(1)
+          .filter((m) => isContentFragmentType(m))
+          .map((m, i) => {
+            // This is needed because the ContentFragmentType is not actually narrowed correctly,
+            // this type is actually pretty complex and even if VSCode figure it out, `npm run build` does not.
+            // @flavien knows about this.
+            assert(isContentFragmentType(m));
+            return `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n${contentFragmentsText[i]?.join("\n")}(truncated...)</file>`;
+          }),
+    ]).join("\n\n");
 
     const MIN_GENERATION_TOKENS = 2048;
     const agentModelConfig = getSupportedModelConfig(agentConfiguration.model);
