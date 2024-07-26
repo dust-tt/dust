@@ -1,4 +1,4 @@
-import { VisualizationWrapper } from "@viz/app/components/VisualizationWrapper";
+import { VisualizationWrapperWithErrorBoundary } from "@viz/app/components/VisualizationWrapper";
 
 type RenderVisualizationSearchParams = {
   aId: string;
@@ -12,7 +12,7 @@ export default function RenderVisualization({
   searchParams: RenderVisualizationSearchParams;
 }) {
   return (
-    <VisualizationWrapper
+    <VisualizationWrapperWithErrorBoundary
       actionId={parseInt(searchParams.aId, 10)}
       allowedVisualizationOrigin={ALLOWED_VISUALIZATION_ORIGIN}
     />
