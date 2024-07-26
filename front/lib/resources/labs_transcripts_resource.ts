@@ -54,27 +54,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
-  // TODO(spolu): remove post migration
-  static async listByProvider({
-    provider,
-  }: {
-    provider: LabsTranscriptsProviderType;
-  }): Promise<LabsTranscriptsConfigurationResource[]> {
-    const configurations = await LabsTranscriptsConfigurationModel.findAll({
-      where: {
-        provider,
-      },
-    });
-
-    return configurations.map(
-      (configuration) =>
-        new LabsTranscriptsConfigurationResource(
-          LabsTranscriptsConfigurationModel,
-          configuration.get()
-        )
-    );
-  }
-
   static async findByUserAndWorkspace({
     auth,
     userId,
@@ -163,11 +142,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     }
 
     return this.update({ isActive });
-  }
-
-  // TODO(spolu): remove post migration
-  async updateConnectionId(connectionId: string) {
-    return this.update({ connectionId });
   }
 
   async delete(
