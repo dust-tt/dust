@@ -51,7 +51,7 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-const PARENT_SYNC_CACHE_TTL_MS = 10 * 60 * 1000;
+const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
 
 const pagePrefixesPerMimeType: Record<string, string> = {
   "application/pdf": "$pdfPage",
@@ -377,7 +377,7 @@ export async function getParents({
 }
 
 /* Fetching parent's parent id queries the db for a resource; since those
- * fetches can be made a lot of times during a sync, cache for 10mins in a
+ * fetches can be made a lot of times during a sync, cache for a while in a
  * per-sync basis (given by startSyncTs) */
 const getParentParentId = cacheWithRedis(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
