@@ -407,11 +407,6 @@ function CreateWAADEnterpriseConnectionModal({
             }
             className="max-w-sm"
           />
-          <PlatformHelpLink
-            hint="See Microsoft docs for obtaining your Okta Domain"
-            link="find-your-domain/main"
-            strategy="waad"
-          />
         </div>
         <div>
           Microsoft Client Id:
