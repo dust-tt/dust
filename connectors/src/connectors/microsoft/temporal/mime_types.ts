@@ -20,6 +20,7 @@ export async function getMimeTypesToSync({
   const csvEnabled = await isCsvEnabled(connector);
   if (csvEnabled) {
     mimeTypes.push("application/vnd.ms-excel"); // Microsoft type for "text/csv"
+    mimeTypes.push("text/csv");
   }
 
   return mimeTypes;

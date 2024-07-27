@@ -153,7 +153,7 @@ export async function syncOneFile({
 
   let documentSection: CoreAPIDataSourceDocumentSection | null = null;
 
-  if (mimeType === "application/vnd.ms-excel") {
+  if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
     const data = Buffer.from(downloadRes.data);
     const isSuccessful = await handleCsvFile({
       dataSourceConfig,
@@ -403,7 +403,8 @@ export async function deleteFile({
   if (
     file.mimeType ===
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    file.mimeType === "application/vnd.ms-excel"
+    file.mimeType === "application/vnd.ms-excel" ||
+    file.mimeType === "text/csv"
   ) {
     await deleteAllSheets(dataSourceConfig, file);
   } else {

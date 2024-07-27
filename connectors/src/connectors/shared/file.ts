@@ -63,8 +63,9 @@ export async function handleCsvFile({
   const tableId = file.id ?? "";
   const tableName = slugify(fileName.substring(0, 32));
   const tableDescription = `Structured data from ${dataSourceNameToConnectorName[dataSourceConfig.dataSourceName]} (${file.name})`;
-  const stringifiedContent = await parseAndStringifyCsv(tableCsv);
+
   try {
+    const stringifiedContent = await parseAndStringifyCsv(tableCsv);
     await upsertTableFromCsv({
       dataSourceConfig,
       tableId,
