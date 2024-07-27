@@ -146,7 +146,6 @@ export function VisualizationActionIframe({
   isStreaming: boolean;
   onRetry: () => void;
 }) {
-  const [showIframe, setShowIframe] = useState<boolean | null>(null);
   const [contentHeight, setContentHeight] = useState(0);
   const vizIframeRef = useRef(null);
 
@@ -164,33 +163,60 @@ export function VisualizationActionIframe({
     visualizationExtractCode(action.generation ?? streamedCode ?? "");
 
   const iframeRendered = contentHeight !== 0;
-  const codeToggled = showIframe === false;
 
-  const mode = (() => {
-    // User clicked on code toggle => show code
-    // Code generation has not started => show spinner
-    // Code generation has not yet completed => show streaming code
-    // Code generation has completed but iframe is not rendered yet => show spinner
-    // Code is fully generated and iframe is rendered => show iframe
-    if (codeToggled) {
-      return "code";
-    }
-    if (!codeFullyGenerated) {
-      return extractedCode ? "code" : "spinner";
-    }
-    return iframeRendered ? "iframe" : "spinner";
-  })();
+  // const mode = (() => {
+  //   // User clicked on code toggle => show code
+  //   // Code generation has not started => show spinner
+  //   // Code generation has not yet completed => show streaming code
+  //   // Code generation has completed but iframe is not rendered yet => show spinner
+  //   // Code is fully generated and iframe is rendered => show iframe
+  //   // if (codeToggled) {
+  //   //   return "code";
+  //   // }
+  //   if (!codeFullyGenerated) {
+  //     return "spinner";
+  //     // return extractedCode ? "code" : "spinner";
+  //   }
+  //   return iframeRendered ? "iframe" : "spinner";
+  // })();
 
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [showSpinner, setShowSpinner] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(1);
 
   useEffect(() => {
-    console.log(">> mode:", mode);
-    if (mode === "iframe" || mode === "spinner") {
-      setActiveIndex(1);
-    } else if (mode === "code") {
+    console.log(">> codeFullyGenerated", codeFullyGenerated);
+    console.log(">> extractedCode", extractedCode);
+    if (!codeFullyGenerated) {
+      if (!extractedCode) {
+        setShowSpinner(true);
+      } else {
+        setShowSpinner(false);
+      }
       setActiveIndex(0);
+    } else if (iframeRendered) {
+      setShowSpinner(false);
+      setActiveIndex(1);
+    } else {
+      setShowSpinner(true);
+      setActiveIndex(1);
     }
-  }, [mode]);
+  }, [codeFullyGenerated, extractedCode, iframeRendered]);
+
+  // useEffect(() => {
+  //   if (!codeFullyGenerated || !iframeRendered) {
+  //     setShowSpinner(true);
+  //   } else {
+  //     setShowSpinner(false);
+  //   }
+  // }, [codeFullyGenerated, iframeRendered]);
+
+  // useEffect(() => {
+  //   if (mode === "iframe" || mode === "spinner") {
+  //     setActiveIndex(1);
+  //   } else if (mode === "code") {
+  //     setActiveIndex(0);
+  //   }
+  // }, [mode]);
 
   const [containerHeight, setContainerHeight] = useState("h-full");
 
@@ -202,25 +228,33 @@ export function VisualizationActionIframe({
     }
   }, [activeIndex, contentHeight]);
 
+  // TODO: iframeRendered does not work if the iframe fails.
   return (
-    <div className="flex flex-col">
-      {iframeRendered && (
-        <div className="flex pb-2">
-          <div className="rounded-lg bg-gray-100 p-2">
-            {["Code", "Visualisation"].map((tab, index) => (
-              <button
-                key={tab}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""}`}
-                onClick={() => setActiveIndex(index)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+    <div className="relative flex flex-col">
+      {/* // TODO: Disable the click. */}
+      {/* {iframeRendered && ( */}
+      <div className="flex pb-2">
+        <div className="rounded-lg bg-gray-100 p-2">
+          {["Code", "Visualisation"].map((tab, index) => (
+            <button
+              key={tab}
+              className={`rounded-lg px-4 py-2 text-sm font-medium text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""}`}
+              onClick={() => setActiveIndex(index)}
+              disabled={!codeFullyGenerated}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* )} */}
+      {showSpinner && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white bg-opacity-75">
+          <Spinner />
         </div>
       )}
       <div
-        className="transition-height relative w-full overflow-hidden duration-500 ease-in-out"
+        className="transition-height relative min-h-96 w-full overflow-hidden duration-500 ease-in-out"
         style={{ height: containerHeight }}
       >
         <div
@@ -236,11 +270,6 @@ export function VisualizationActionIframe({
             />
           </div>
           <div className="relative flex h-full min-h-96 w-full shrink-0 items-center justify-center">
-            {mode === "spinner" && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Spinner />
-              </div>
-            )}
             {codeFullyGenerated && (
               // We render the iframe as soon as we have the code.
               // Until it is actually rendered, we're showing a spinner so
