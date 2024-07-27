@@ -427,7 +427,7 @@ export default function Subscription({
               ) && (
                 <>
                   <Page.H variant="h5">Manage my plan</Page.H>
-                  <div className="s-w-full h-full pt-2">
+                  <div className="s-h-full s-w-full pt-2">
                     <PricePlans
                       size="xs"
                       className="lg:hidden"
