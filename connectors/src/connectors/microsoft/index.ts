@@ -115,9 +115,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       });
     }
 
-    // Ideally we want to check that the Google Project ID is the same as the one from the connector
-    // I couln't find an easy way to access it from the googleapis library
-    // Workaround is checking the domain of the user who is updating the connector
+    // Check that we don't switch tenants
     if (connectionId) {
       try {
         const client = await getClient(connector.connectionId);
@@ -134,7 +132,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         ) {
           return new Err({
             type: "connector_update_error",
-            message: "Error retrieving google drive info to update connector",
+            message: "Error retrieving organization info to update connector",
           });
         }
         if (currentOrg.value[0].id !== newOrg.value[0].id) {
