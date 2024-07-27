@@ -209,7 +209,12 @@ export function makeGetServerSidePropsRequirementsWrapper<
           };
         }
 
-        if (!allowUserOutsideCurrentWorkspace && !auth?.isUser()) {
+        // If we target a workspace and the user is not in the workspace, return not found.
+        if (
+          !allowUserOutsideCurrentWorkspace &&
+          auth?.workspace() &&
+          !auth?.isUser()
+        ) {
           return {
             notFound: true,
           };
