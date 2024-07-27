@@ -263,6 +263,10 @@ export const withDefaultUserAuthRequirements =
     requireCanUseProduct: true,
   });
 
+/**
+ * This should only be used for pages that don't require
+ * the current user to be in the current workspace.
+ */
 export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
