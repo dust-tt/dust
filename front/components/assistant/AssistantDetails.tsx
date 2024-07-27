@@ -262,7 +262,7 @@ export function AssistantDetails({
     return (
       !!actions.length && (
         <>
-          {retrievalActions.length && (
+          {!!retrievalActions.length && (
             <div>
               <div className="pb-2 text-lg font-bold text-element-800">
                 Data sources
