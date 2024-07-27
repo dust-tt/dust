@@ -190,7 +190,7 @@ export default function WorkspaceAdmin({
         gaTrackingId={gaTrackingId}
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
-        <div className="pt-8">
+        <div className="w-full max-w-4xl pt-8">
           <Page.Vertical align="stretch" gap="xl">
             <Page.Header
               title="Workspace"

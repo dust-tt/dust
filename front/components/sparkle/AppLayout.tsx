@@ -185,8 +185,8 @@ export default function AppLayout({
 
             <div
               className={classNames(
-                "flex h-screen w-full flex-col overflow-y-auto",
-                isWideMode ? "items-center" : "max-w-4xl px-6"
+                "flex h-screen w-full flex-col items-center overflow-y-auto",
+                isWideMode ? "" : "px-6"
               )}
             >
               {loaded && children}

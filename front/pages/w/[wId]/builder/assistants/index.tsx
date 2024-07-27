@@ -227,7 +227,7 @@ export default function WorkspaceAssistants({
         current: "workspace_assistants",
       })}
     >
-      <div className="pt-8">
+      <div className="w-full max-w-4xl pt-8">
         <AssistantDetails
           owner={owner}
           assistantId={showDetails?.sId || null}
@@ -259,7 +259,7 @@ export default function WorkspaceAssistants({
                 </Link>
               </Button.List>
             </div>
-            <div className="flex flex-col gap-4 pt-3">
+            <div className="flex flex-col gap-4 overflow-y-clip pt-3">
               <div className="flex flex-row gap-2">
                 <Tab
                   tabs={tabs}

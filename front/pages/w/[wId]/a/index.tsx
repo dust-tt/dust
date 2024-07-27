@@ -750,7 +750,7 @@ export default function Developers({
         current: "developers",
       })}
     >
-      <div className="pt-8">
+      <div className="w-full max-w-4xl pt-8">
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
             title="Developers Tools"
