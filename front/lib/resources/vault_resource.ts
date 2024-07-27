@@ -1,4 +1,9 @@
-import type { ACLType, ModelId, Result } from "@dust-tt/types";
+import type {
+  ACLType,
+  LightWorkspaceType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -9,8 +14,6 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -89,7 +92,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new this(VaultModel, group.get());
   }
 
-  static async fetchWorkspaceDefaultVault(
+  static async fetchWorkspaceGlobalVault(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<VaultResource> {
@@ -172,6 +175,18 @@ export class VaultResource extends BaseResource<VaultModel> {
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    await this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
   }
 
   acl(): ACLType {

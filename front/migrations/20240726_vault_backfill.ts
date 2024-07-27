@@ -46,16 +46,23 @@ async function backfillWorkspacesGroup(execute: boolean) {
               const globalVault =
                 existingVaults.find((v) => v.kind === "global") ||
                 (await VaultResource.makeNew({
-                  name: "Global",
+                  name: "Workspace",
                   kind: "global",
                   workspaceId: w.id,
                   groupId: globalGroupId,
                 }));
+              // Move connected (non webcrawler) to system vault
               await DataSource.update(
                 { vaultId: systemVault.id },
                 {
                   where: {
                     workspaceId: w.id,
+                    connectorId: {
+                      [Op.ne]: null,
+                    },
+                    connectorProvider: {
+                      [Op.ne]: "webcrawler",
+                    },
                   },
                 }
               );

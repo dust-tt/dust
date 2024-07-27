@@ -26,6 +26,7 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import {
   launchRetrieveTranscriptsWorkflow,
@@ -44,7 +45,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         sId: generateLegacyModelSId(),
         name: args.name,
       });
-      await Promise.all([
+      const groups = await Promise.all([
         GroupResource.makeNew({
           name: "System",
           type: "system",
@@ -54,6 +55,20 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           name: "Workspace",
           type: "global",
           workspaceId: w.id,
+        }),
+      ]);
+      await Promise.all([
+        VaultResource.makeNew({
+          name: "System",
+          kind: "system",
+          workspaceId: w.id,
+          groupId: groups[0].id,
+        }),
+        VaultResource.makeNew({
+          name: "Workspace",
+          kind: "global",
+          workspaceId: w.id,
+          groupId: groups[1].id,
         }),
       ]);
 

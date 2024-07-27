@@ -4,6 +4,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 
@@ -23,7 +24,7 @@ export async function createWorkspace(session: SessionWithUser) {
     name: externalUser.nickname,
   });
 
-  await Promise.all([
+  const groups = await Promise.all([
     GroupResource.makeNew({
       name: "System",
       type: "system",
@@ -33,6 +34,20 @@ export async function createWorkspace(session: SessionWithUser) {
       name: "Workspace",
       type: "global",
       workspaceId: workspace.id,
+    }),
+  ]);
+  await Promise.all([
+    VaultResource.makeNew({
+      name: "System",
+      kind: "system",
+      workspaceId: workspace.id,
+      groupId: groups[0].id,
+    }),
+    VaultResource.makeNew({
+      name: "Workspace",
+      kind: "global",
+      workspaceId: workspace.id,
+      groupId: groups[1].id,
     }),
   ]);
 

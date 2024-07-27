@@ -13,6 +13,7 @@ import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -170,6 +171,7 @@ async function handler(
         });
       }
 
+      const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
       const ds = await DataSource.create({
         name: req.body.name,
         description: description,
@@ -177,6 +179,7 @@ async function handler(
         workspaceId: owner.id,
         assistantDefaultSelected: req.body.assistantDefaultSelected,
         editedByUserId: user.id,
+        vaultId: globalVault.id,
       });
 
       const dataSourceType = await getDataSource(auth, ds.name);

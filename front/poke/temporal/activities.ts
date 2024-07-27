@@ -1,6 +1,7 @@
 import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { chunk } from "lodash";
+import { Vault } from "lucide-react";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
@@ -52,6 +53,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
@@ -566,6 +568,7 @@ export async function deleteWorkspaceActivity({
       transaction: t,
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
+    await VaultResource.deleteAllForWorkspace(workspace, t);
     await GroupResource.deleteAllForWorkspace(workspace, t);
     logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
     await Workspace.destroy({
