@@ -190,8 +190,8 @@ export async function syncOneFile({
   } else if (mimeType === "text/plain") {
     documentSection = handleTextFile(downloadRes.data, maxDocumentLen);
   } else {
-      const data = Buffer.from(downloadRes.data);
-      documentSection = await handleTextExtraction(data, localLogger, mimeType);
+    const data = Buffer.from(downloadRes.data);
+    documentSection = await handleTextExtraction(data, localLogger, mimeType);
   }
 
   logger.info({ documentSection }, "Document section");
