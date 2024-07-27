@@ -205,6 +205,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
           return {
             notFound: true,
           };
+        } else if (requireUserPrivilege === "user" && !auth?.isUser()) {
+          return {
+            notFound: true,
+          };
         }
 
         // Validate the user's session to guarantee compliance with the workspace's SSO requirements when SSO is enforced.
