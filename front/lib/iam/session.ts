@@ -84,6 +84,7 @@ interface MakeGetServerSidePropsRequirementsWrapperOptions<
   enableLogging?: boolean;
   requireUserPrivilege: R;
   requireCanUseProduct?: boolean;
+  requireUserInCurrentWorkspace?: boolean;
 }
 
 export type CustomGetServerSideProps<
@@ -145,6 +146,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
   enableLogging = true,
   requireUserPrivilege,
   requireCanUseProduct = false,
+  requireUserInCurrentWorkspace = true,
 }: MakeGetServerSidePropsRequirementsWrapperOptions<RequireUserPrivilege>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
     getServerSideProps: CustomGetServerSideProps<
@@ -205,7 +207,9 @@ export function makeGetServerSidePropsRequirementsWrapper<
           return {
             notFound: true,
           };
-        } else if (requireUserPrivilege === "user" && !auth?.isUser()) {
+        }
+
+        if (requireUserInCurrentWorkspace && !auth?.isUser()) {
           return {
             notFound: true,
           };
@@ -257,6 +261,15 @@ export const withDefaultUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,
+  });
+
+export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
+  makeGetServerSidePropsRequirementsWrapper({
+    requireUserPrivilege: "user",
+    requireCanUseProduct: true,
+    // This is a special case where we don't want to check
+    // if the user is in the current workspace.
+    requireUserInCurrentWorkspace: false,
   });
 
 export const withSuperUserAuthRequirements =

@@ -34,7 +34,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { extractConfig } from "@app/lib/config";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 import {
   addBlock,
   deleteBlock,
@@ -43,46 +43,47 @@ import {
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType | null;
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  url: string;
-  app: AppType;
-  gaTrackingId: string;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps =
+  withDefaultUserAuthRequirementsNoWorkspaceCheck<{
+    user: UserType | null;
+    owner: WorkspaceType;
+    subscription: SubscriptionType;
+    readOnly: boolean;
+    url: string;
+    app: AppType;
+    gaTrackingId: string;
+  }>(async (context, auth) => {
+    const owner = auth.workspace();
+    const subscription = auth.subscription();
 
-  if (!owner || !subscription) {
+    if (!owner || !subscription) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const readOnly = !auth.isBuilder();
+
+    const app = await getApp(auth, context.params?.aId as string);
+
+    if (!app) {
+      return {
+        notFound: true,
+      };
+    }
+
     return {
-      notFound: true,
+      props: {
+        user: auth.user(),
+        owner,
+        subscription,
+        readOnly,
+        url: config.getClientFacingUrl(),
+        app,
+        gaTrackingId: config.getGaTrackingId(),
+      },
     };
-  }
-
-  const readOnly = !auth.isBuilder();
-
-  const app = await getApp(auth, context.params?.aId as string);
-
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      user: auth.user(),
-      owner,
-      subscription,
-      readOnly,
-      url: config.getClientFacingUrl(),
-      app,
-      gaTrackingId: config.getGaTrackingId(),
-    },
-  };
-});
+  });
 
 let saveTimeout = null as string | number | NodeJS.Timeout | null;
 
