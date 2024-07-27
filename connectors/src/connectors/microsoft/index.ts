@@ -106,8 +106,55 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
-    console.log("updateMicrosoftConnector", this.connectorId, connectionId);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error({ connectorId: this.connectorId }, "Connector not found");
+      return new Err({
+        message: "Connector not found",
+        type: "connector_not_found",
+      });
+    }
+
+    // Ideally we want to check that the Google Project ID is the same as the one from the connector
+    // I couln't find an easy way to access it from the googleapis library
+    // Workaround is checking the domain of the user who is updating the connector
+    if (connectionId) {
+      try {
+        const client = await getClient(connector.connectionId);
+        const currentOrg = await client.api("/organization").get();
+
+        const newClient = await getClient(connectionId);
+        const newOrg = await newClient.api("/organization").get();
+
+        if (
+          !currentOrg?.value ||
+          !newOrg?.value ||
+          currentOrg.value.length === 0 ||
+          newOrg.value.length === 0
+        ) {
+          return new Err({
+            type: "connector_update_error",
+            message: "Error retrieving google drive info to update connector",
+          });
+        }
+        if (currentOrg.value[0].id !== newOrg.value[0].id) {
+          return new Err({
+            type: "connector_oauth_target_mismatch",
+            message: "Cannot change domain of a Microsoft connector",
+          });
+        }
+      } catch (e) {
+        logger.error(
+          {
+            error: e,
+          },
+          `Error checking Microsoft organization - lets update the connector regardless`
+        );
+      }
+      await connector.update({ connectionId });
+    }
+
+    return new Ok(connector.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {
