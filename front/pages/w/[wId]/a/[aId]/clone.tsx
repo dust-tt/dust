@@ -22,54 +22,55 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
 import { getUserFromSession } from "@app/lib/iam/session";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserTypeWithWorkspaces;
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  app: AppType;
-  gaTrackingId: string;
-}>(async (context, auth, session) => {
-  // This is a rare case where we need the full user object as we need to know the user available
-  // workspaces to clone the app into.
-  const user = await getUserFromSession(session);
-  if (!user) {
+export const getServerSideProps =
+  withDefaultUserAuthRequirementsNoWorkspaceCheck<{
+    user: UserTypeWithWorkspaces;
+    owner: WorkspaceType;
+    subscription: SubscriptionType;
+    app: AppType;
+    gaTrackingId: string;
+  }>(async (context, auth, session) => {
+    // This is a rare case where we need the full user object as we need to know the user available
+    // workspaces to clone the app into.
+    const user = await getUserFromSession(session);
+    if (!user) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const owner = auth.workspace();
+    const subscription = auth.subscription();
+
+    if (!owner || !subscription) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const app = await getApp(auth, context.params?.aId as string);
+
+    if (!app) {
+      return {
+        notFound: true,
+      };
+    }
+
     return {
-      notFound: true,
+      props: {
+        user,
+        owner,
+        subscription,
+        app,
+        gaTrackingId: GA_TRACKING_ID,
+      },
     };
-  }
-
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const app = await getApp(auth, context.params?.aId as string);
-
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      user,
-      owner,
-      subscription,
-      app,
-      gaTrackingId: GA_TRACKING_ID,
-    },
-  };
-});
+  });
 
 export default function CloneView({
   user,
