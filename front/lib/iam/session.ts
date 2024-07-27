@@ -84,7 +84,7 @@ interface MakeGetServerSidePropsRequirementsWrapperOptions<
   enableLogging?: boolean;
   requireUserPrivilege: R;
   requireCanUseProduct?: boolean;
-  requireUserInCurrentWorkspace?: boolean;
+  allowUserOutsideCurrentWorkspace?: boolean;
 }
 
 export type CustomGetServerSideProps<
@@ -146,7 +146,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
   enableLogging = true,
   requireUserPrivilege,
   requireCanUseProduct = false,
-  requireUserInCurrentWorkspace = true,
+  allowUserOutsideCurrentWorkspace,
 }: MakeGetServerSidePropsRequirementsWrapperOptions<RequireUserPrivilege>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
     getServerSideProps: CustomGetServerSideProps<
@@ -209,7 +209,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
           };
         }
 
-        if (requireUserInCurrentWorkspace && !auth?.isUser()) {
+        if (!allowUserOutsideCurrentWorkspace && !auth?.isUser()) {
           return {
             notFound: true,
           };
@@ -255,12 +255,14 @@ export const withDefaultUserAuthPaywallWhitelisted =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: false,
+    allowUserOutsideCurrentWorkspace: false,
   });
 
 export const withDefaultUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,
+    allowUserOutsideCurrentWorkspace: false,
   });
 
 /**
@@ -273,11 +275,12 @@ export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
     requireCanUseProduct: true,
     // This is a special case where we don't want to check
     // if the user is in the current workspace.
-    requireUserInCurrentWorkspace: false,
+    allowUserOutsideCurrentWorkspace: true,
   });
 
 export const withSuperUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "superuser",
     requireCanUseProduct: false,
+    allowUserOutsideCurrentWorkspace: false,
   });
