@@ -14,10 +14,13 @@ export async function sendEmail(email: string, message: any) {
   const msg = { ...message, to: email };
   try {
     await sgMail.send(msg);
-    logger.info({ email, subject: message.subject }, "Sending email");
+    logger.info(
+      { email, subject: message.subject, from: message.from },
+      "Sending email"
+    );
   } catch (error) {
     logger.error(
-      { error, email, subject: message.subject },
+      { error, email, subject: message.subject, from: message.from },
       "Error sending email."
     );
   }
