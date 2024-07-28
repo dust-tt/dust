@@ -889,36 +889,54 @@ export async function microsoftGarbageCollectionActivity({
       }
     }
 
-    if (
-      !driveOrItem ||
-      // 'deleted' is on drive items but not drives
-      (node.nodeType !== "drive" &&
-        "deleted" in driveOrItem &&
-        (driveOrItem.deleted ||
+    switch (node.nodeType) {
+      case "drive":
+        if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
+          await deleteFolder({ connectorId, internalId: node.internalId });
+        }
+        break;
+      case "folder": {
+        const folder = driveOrItem as DriveItem;
+        if (
+          !folder ||
+          folder.deleted ||
+          // isOutsideRootNodes
           (await isOutsideRootNodes({
             client,
-            driveItem: driveOrItem,
+            driveItem: folder,
             rootNodeIds,
             startGarbageCollectionTs,
-          }))))
-    ) {
-      switch (node.nodeType) {
-        case "drive":
-        case "folder":
+          }))
+        ) {
           await deleteFolder({ connectorId, internalId: node.internalId });
-          break;
-        case "file":
+        }
+        break;
+      }
+      case "file": {
+        const file = driveOrItem as DriveItem;
+        if (
+          !file ||
+          file.deleted ||
+          // isOutsideRootNodes
+          (await isOutsideRootNodes({
+            client,
+            driveItem: file,
+            rootNodeIds,
+            startGarbageCollectionTs,
+          }))
+        ) {
           await deleteFile({
             connectorId,
             internalId: node.internalId,
             dataSourceConfig,
           });
-          break;
-        default:
-          throw new Error(
-            `Unreachable: Deletion not implemented for node type: ${node.nodeType}`
-          );
+        }
+        break;
       }
+      default:
+        throw new Error(
+          `Unreachable: Deletion not implemented for node type: ${node.nodeType}`
+        );
     }
   }
 
