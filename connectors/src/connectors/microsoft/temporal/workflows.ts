@@ -19,7 +19,7 @@ const {
   startToCloseTimeout: "30 minutes",
 });
 
-const { microsoftDeletionActivity, microsoftNodesGarbageCollectionActivity } =
+const { microsoftDeletionActivity, microsoftGarbageCollectionActivity } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "15 minutes",
   });
@@ -137,11 +137,15 @@ export async function microsoftGarbageCollectionWorkflow({
 }: {
   connectorId: number;
 }) {
+  const rootNodeIds = await getRootNodesToSync(connectorId);
+  const startGarbageCollectionTs = new Date().getTime();
   let idCursor: number | null = 0;
   while (idCursor !== null) {
-    idCursor = await microsoftNodesGarbageCollectionActivity({
+    idCursor = await microsoftGarbageCollectionActivity({
       connectorId,
       idCursor,
+      rootNodeIds,
+      startGarbageCollectionTs,
     });
     await sleep("1 minute");
   }

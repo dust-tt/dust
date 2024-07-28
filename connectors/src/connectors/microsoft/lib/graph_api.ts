@@ -312,7 +312,10 @@ export async function getAllPaginatedEntities<T extends MicrosoftGraph.Entity>(
   return allItems;
 }
 
-export async function getItem(client: Client, itemApiPath: string) {
+export async function getItem(
+  client: Client,
+  itemApiPath: string
+): Promise<MicrosoftGraph.Entity> {
   return client.api(itemApiPath).get();
 }
 
