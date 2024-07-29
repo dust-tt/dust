@@ -6,7 +6,7 @@ export type SearchOrderType = (typeof SearchOrder)[number];
 const prettyfiedSearchOrder: { [key in SearchOrderType]: string } = {
   name: "Name",
   usage: "Usage",
-  edited_at: "Edited at",
+  edited_at: "Last edited at",
 };
 
 // Headless UI does not inherently handle Portal-based rendering,
