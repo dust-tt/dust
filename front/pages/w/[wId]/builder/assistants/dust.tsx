@@ -140,7 +140,7 @@ export default function EditDustAssistant({
     if (!res.ok) {
       const err = (await res.json()) as { error: APIError };
       window.alert(
-        `Failed to update the Data Source (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        `Failed to update the Data Source (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
     }
     await mutateDataSources();

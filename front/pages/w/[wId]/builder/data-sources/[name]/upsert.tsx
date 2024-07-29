@@ -307,7 +307,7 @@ export default function DatasourceUpsert({
                         description:
                           `Data Source document upload size is limited to ` +
                           `${plan.limits.dataSources.documents.sizeMb}MB (of raw text) ` +
-                          `Contact team@dust.tt if you want to increase this limit.`,
+                          `Contact support@dust.tt if you want to increase this limit.`,
                       });
                       return;
                     }

@@ -778,11 +778,11 @@ export default function DataSourcesView({
                         }
                         className="absolute bottom-8 right-0"
                         chipLabel="Coming Soon!"
-                        description="Please email us at team@dust.tt for early access."
+                        description="Please email us at support@dust.tt for early access."
                         buttonLabel="Contact us"
                         buttonClick={() => {
                           window.open(
-                            `mailto:team@dust.tt?subject=Early access to the ${ds.name} connection`
+                            `mailto:support@dust.tt?subject=Early access to the ${ds.name} connection`
                           );
                         }}
                         onClose={() => {

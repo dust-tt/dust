@@ -909,16 +909,16 @@ function IntercomConfigView({
 }
 
 const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
-  confluence: `You cannot select another Confluence Domain.\nPlease contact us at team@dust.tt if you initially selected the wrong Domain.`,
-  slack: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
+  confluence: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
+  slack: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
   notion:
-    "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+    "You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
   github:
-    "You cannot create a new Github app installation.\nPlease contact us at team@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.",
+    "You cannot create a new Github app installation.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.",
   google_drive:
-    "You cannot select another Google Drive Domain.\nPlease contact us at team@dust.tt if you initially selected a wrong shared Drive.",
+    "You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.",
   intercom:
-    "You cannot select another Intercom Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
+    "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
   microsoft: `Microsoft / mismatch error.`,
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
@@ -1070,7 +1070,7 @@ function ManagedDataSourceView({
     }
     return {
       success: false,
-      error: `Failed to update the permissions of the Data Source: (contact team@dust.tt for assistance)`,
+      error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
     };
   };
 

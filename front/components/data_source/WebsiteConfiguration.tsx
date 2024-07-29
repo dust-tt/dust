@@ -254,7 +254,7 @@ export default function WebsiteConfiguration({
     } else {
       const err = (await res.json()) as { error: APIError };
       window.alert(
-        `Failed to delete the Website (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        `Failed to delete the Website (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
     }
     return true;
