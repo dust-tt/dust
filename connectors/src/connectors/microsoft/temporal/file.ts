@@ -125,7 +125,7 @@ export async function syncOneFile({
 
   const mimeTypesToSync = await getMimeTypesToSync({
     pdfEnabled: providerConfig.pdfEnabled || false,
-    connector,
+    csvEnabled: providerConfig.csvEnabled || false,
   });
 
   const mimeType = file.file.mimeType;

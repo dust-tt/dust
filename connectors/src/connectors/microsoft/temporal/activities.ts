@@ -334,7 +334,7 @@ export async function syncFiles({
 
   const mimeTypesToSync = await getMimeTypesToSync({
     pdfEnabled: providerConfig.pdfEnabled || false,
-    connector,
+    csvEnabled: providerConfig.csvEnabled || false,
   });
   const filesToSync = children.filter(
     (item) =>

@@ -44,6 +44,8 @@ type FeaturesType = {
   googleDriveLargeFilesEnabled: boolean;
   microsoftPdfEnabled: boolean;
   microsoftLargeFilesEnabled: boolean;
+  googleDriveCsvEnabled: boolean;
+  microsoftCsvEnabled: boolean;
   githubCodeSyncEnabled: boolean;
   autoReadChannelPattern: string | null;
 };
@@ -112,6 +114,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDriveLargeFilesEnabled: false,
     microsoftPdfEnabled: false,
     microsoftLargeFilesEnabled: false,
+    googleDriveCsvEnabled: false,
+    microsoftCsvEnabled: false,
     githubCodeSyncEnabled: false,
     autoReadChannelPattern: null,
   };
@@ -153,6 +157,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         features.googleDrivePdfEnabled =
           gdrivePdfEnabledRes.value.configValue === "true";
 
+        const gdriveCsvEnabledRes = await connectorsAPI.getConnectorConfig(
+          dataSource.connectorId,
+          "csvEnabled"
+        );
+        if (gdriveCsvEnabledRes.isErr()) {
+          throw gdriveCsvEnabledRes.error;
+        }
+        features.googleDriveCsvEnabled =
+          gdriveCsvEnabledRes.value.configValue === "true";
+
         const gdriveLargeFilesEnabledRes =
           await connectorsAPI.getConnectorConfig(
             dataSource.connectorId,
@@ -174,6 +188,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.microsoftPdfEnabled =
           microsoftPdfEnabledRes.value.configValue === "true";
+
+        const microsoftCsvEnabledRes = await connectorsAPI.getConnectorConfig(
+          dataSource.connectorId,
+          "csvEnabled"
+        );
+        if (microsoftCsvEnabledRes.isErr()) {
+          throw microsoftCsvEnabledRes.error;
+        }
+        features.microsoftCsvEnabled =
+          microsoftCsvEnabledRes.value.configValue === "true";
 
         const microsoftLargeFilesEnabledRes =
           await connectorsAPI.getConnectorConfig(
