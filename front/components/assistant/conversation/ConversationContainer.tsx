@@ -226,7 +226,14 @@ export function ConversationContainer({
       );
       observer.observe(scrollContainerElement);
     }
-  }, [setAnimate, setInputbarMention]);
+    const handleRouteChange = (url: string) => {
+      if (url.endsWith("/new")) {
+        setSelectedAssistant(null);
+        assistantToMention.current = null;
+      }
+    };
+    router.events.on("routeChangeComplete", handleRouteChange);
+  }, [setAnimate, setInputbarMention, router, setSelectedAssistant]);
 
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
