@@ -13,55 +13,8 @@ export const config = {
 };
 
 /**
- * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/tables/csv:
- *   post:
- *     summary: Upsert CSV to table
- *     description: Upsert CSV data to a table in the data source identified by {name} in the workspace identified by {wId}.
- *     tags:
- *       - Datasources
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: Unique string identifier for the workspace
- *         schema:
- *           type: string
- *       - in: path
- *         name: name
- *         required: true
- *         description: Name of the data source
- *         schema:
- *           type: string
- *       - in: query
- *         name: table_id
- *         description: ID of the table
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: CSV file to be uploaded
- *     responses:
- *       200:
- *         description: The table
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Datasource'
- *       404:
- *         description: The table was not found
- *       405:
- *         description: Method not supported
+ * @ignoreswagger
+ * System API key only endpoint. Undocumented.
  */
 
 async function handler(

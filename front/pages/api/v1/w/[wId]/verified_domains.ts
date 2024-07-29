@@ -11,7 +11,7 @@ export type ListMemberEmailsResponseBody = {
 
 /**
  * @ignoreswagger
- * This endpoint is not to be included in the public API docs.
+ * System API key only endpoint. Undocumented.
  */
 
 async function handler(
