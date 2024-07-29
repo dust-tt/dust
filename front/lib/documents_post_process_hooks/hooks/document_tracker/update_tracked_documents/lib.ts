@@ -37,7 +37,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
     return false;
   }
 
-  const dataSource = await getDatasource(owner, params.dataSourceName);
+  const dataSource = await getDatasource(params.auth, params.dataSourceName);
 
   if (
     params.verb === "upsert" &&
@@ -91,7 +91,7 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
     "Running document_tracker_update_tracked_documents post upsert hook."
   );
 
-  const dataSource = await getDatasource(owner, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceName);
   if (
     TRACKABLE_CONNECTOR_TYPES.includes(
       dataSource.connectorProvider as ConnectorProvider
@@ -121,7 +121,7 @@ export async function documentTrackerUpdateTrackedDocumentsOnDelete({
     "Running document_tracker_update_tracked_documents onDelete."
   );
 
-  const dataSource = await getDatasource(owner, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceName);
 
   await TrackedDocument.destroy({
     where: {

@@ -40,12 +40,12 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { DataSource } from "@app/lib/models/data_source";
 import { Subscription } from "@app/lib/models/plan";
 import { UserMetadata } from "@app/lib/models/user";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -109,13 +109,7 @@ export async function isWorkflowDeletableActivity({
   }
 
   // Workspace must have no data sources.
-  const dataSources = await DataSource.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
-    limit: 1,
-  });
-  if (dataSources.length > 0) {
+  if (await DataSourceResource.workspaceHasDatasources(auth)) {
     return false;
   }
 

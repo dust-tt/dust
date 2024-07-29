@@ -8,7 +8,7 @@ import {
 } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetOrPostDataSourceResponseBody = {
@@ -81,8 +81,10 @@ async function handler(
         });
       }
 
-      const dataSourceModel = await DataSource.findByPk(dataSource.id);
-      if (!dataSourceModel) {
+      const dataSourceResource = await DataSourceResource.fetchByModelId(
+        dataSource.id
+      );
+      if (!dataSourceResource) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -92,7 +94,6 @@ async function handler(
         });
       }
 
-      let ds: DataSource;
       if (dataSource.connectorId) {
         // managed data source
         if (
@@ -109,7 +110,7 @@ async function handler(
             },
           });
         }
-        ds = await dataSourceModel.update({
+        await dataSourceResource.update({
           assistantDefaultSelected: req.body.assistantDefaultSelected,
         });
       } else {
@@ -141,20 +142,11 @@ async function handler(
           toUpdate.assistantDefaultSelected = req.body.assistantDefaultSelected;
         }
 
-        ds = await dataSourceModel.update(toUpdate);
+        await dataSourceResource.update(toUpdate);
       }
 
       return res.status(200).json({
-        dataSource: {
-          id: ds.id,
-          createdAt: ds.createdAt.getTime(),
-          name: ds.name,
-          description: ds.description,
-          assistantDefaultSelected: ds.assistantDefaultSelected,
-          dustAPIProjectId: ds.dustAPIProjectId,
-          connectorId: ds.connectorId,
-          connectorProvider: ds.connectorProvider,
-        },
+        dataSource: dataSourceResource.toJSON(),
       });
 
     case "DELETE":

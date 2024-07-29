@@ -12,12 +12,12 @@ import {
   getDatasource,
   getDocumentDiff,
 } from "@app/lib/documents_post_process_hooks/hooks/data_source_helpers";
-import { DataSource } from "@app/lib/models/data_source";
 import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
 import { User } from "@app/lib/models/user";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import mainLogger from "@app/logger/logger";
 
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
@@ -85,7 +85,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
     }
   }
 
-  const dataSource = await getDatasource(owner, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceName);
 
   const docIsTracked = !!(await TrackedDocument.count({
     where: {
@@ -106,10 +106,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
   }
 
   const workspaceDataSourceIds = (
-    await DataSource.findAll({
-      where: { workspaceId: dataSource.workspaceId },
-      attributes: ["id"],
-    })
+    await DataSourceResource.listByWorkspace(auth)
   ).map((ds) => ds.id);
 
   const hasTrackedDocuments = !!(await TrackedDocument.count({
@@ -166,7 +163,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Running document_tracker_suggest_changes post upsert hook."
   );
 
-  const dataSource = await getDatasource(owner, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceName);
   const isDocTracked = !!(await TrackedDocument.count({
     where: {
       dataSourceId: dataSource.id,
@@ -181,7 +178,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     return;
   }
   const documentDiff = await getDocumentDiff({
-    owner,
+    auth,
     dataSourceName: dataSource.name,
     documentId,
     hash: documentHash,
@@ -307,12 +304,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Match found."
   );
 
-  const matchedDs = await DataSource.findOne({
-    where: {
-      name: matchedDsName,
-      workspaceId: owner.id,
-    },
-  });
+  const matchedDs = await DataSourceResource.fetchByName(auth, matchedDsName);
   if (!matchedDs) {
     throw new Error(
       `Could not find data source with name ${matchedDsName} and workspace ${owner.sId}`

@@ -8,9 +8,9 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 
 import { frontSequelize } from "./resources/storage";
 
@@ -473,9 +473,10 @@ export async function checkWorkspaceActivity(workspace: Workspace) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const hasDataSource = await DataSource.findOne({
-    where: { workspaceId: workspace.id },
-  });
+  // TODO replace workspaceif with auth
+  const hasDataSource = await DataSourceResource.workspaceHasDatasources(
+    workspace.id
+  );
 
   const hasCreatedAssistant = await AgentConfiguration.findOne({
     where: { workspaceId: workspace.id },

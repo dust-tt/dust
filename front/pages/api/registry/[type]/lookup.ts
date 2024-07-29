@@ -1,8 +1,8 @@
 import type { CoreAPISearchFilter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { withLogging } from "@app/logger/withlogging";
 
 const { DUST_REGISTRY_SECRET } = process.env;
@@ -87,12 +87,11 @@ async function handler(
             return;
           }
 
-          const dataSource = await DataSource.findOne({
-            where: {
-              workspaceId: owner.id,
-              name: req.query.data_source_id,
-            },
-          });
+          // TODO get auth
+          const dataSource = await DataSourceResource.fetchByName(
+            auth,
+            req.query.data_source_id
+          );
 
           if (!dataSource) {
             res.status(404).end();
