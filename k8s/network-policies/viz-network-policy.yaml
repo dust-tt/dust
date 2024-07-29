@@ -1,0 +1,11 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: viz-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: viz
+  policyTypes:
+    - Egress
+  egress: []
