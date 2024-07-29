@@ -31,9 +31,9 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async makeNew(blob: CreationAttributes<VaultModel>) {
-    const group = await VaultModel.create(blob);
+    const vault = await VaultModel.create(blob);
 
-    return new this(VaultModel, group.get());
+    return new this(VaultModel, vault.get());
   }
 
   get sId(): string {
@@ -50,7 +50,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     id: ModelId;
     workspaceId: ModelId;
   }): string {
-    return makeSId("group", {
+    return makeSId("vault", {
       id,
       workspaceId,
     });
@@ -69,7 +69,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       transaction,
     });
 
-    return vaults.map((group) => new this(VaultModel, group.get()));
+    return vaults.map((vault) => new this(VaultModel, vault.get()));
   }
 
   static async fetchWorkspaceSystemVault(
@@ -77,7 +77,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     transaction?: Transaction
   ): Promise<VaultResource> {
     const owner = auth.getNonNullableWorkspace();
-    const group = await this.model.findOne({
+    const vault = await this.model.findOne({
       where: {
         workspaceId: owner.id,
         kind: "system",
@@ -85,11 +85,11 @@ export class VaultResource extends BaseResource<VaultModel> {
       transaction,
     });
 
-    if (!group) {
-      throw new Error("System group not found.");
+    if (!vault) {
+      throw new Error("System vault not found.");
     }
 
-    return new this(VaultModel, group.get());
+    return new this(VaultModel, vault.get());
   }
 
   static async fetchWorkspaceGlobalVault(
@@ -97,7 +97,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     transaction?: Transaction
   ): Promise<VaultResource> {
     const owner = auth.getNonNullableWorkspace();
-    const group = await this.model.findOne({
+    const vault = await this.model.findOne({
       where: {
         workspaceId: owner.id,
         kind: "global",
@@ -105,11 +105,11 @@ export class VaultResource extends BaseResource<VaultModel> {
       transaction,
     });
 
-    if (!group) {
-      throw new Error("Global group not found.");
+    if (!vault) {
+      throw new Error("Global vault not found.");
     }
 
-    return new this(VaultModel, group.get());
+    return new this(VaultModel, vault.get());
   }
 
   static async fetchById(
