@@ -254,10 +254,10 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
-              "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
+              "border-struture-200 border-b border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
               "transition-all",
               isFloating
-                ? "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
+                ? "sm:rounded-3xl sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
                 : "",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
@@ -307,7 +307,7 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 top-5 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
+    <div className="sticky bottom-0 top-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8 lg:top-5">
       <AssistantInputBar
         owner={owner}
         onSubmit={onSubmit}
