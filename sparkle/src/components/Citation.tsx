@@ -10,6 +10,7 @@ import {
   Microsoft,
   Notion,
   Slack,
+  Zendesk,
 } from "@sparkle/logo/platforms";
 
 import {
@@ -30,6 +31,7 @@ export type CitationType =
   | "image"
   | "intercom"
   | "microsoft"
+  | "zendesk"
   | "notion"
   | "slack";
 
@@ -55,6 +57,7 @@ const typeIcons = {
   google_drive: Drive,
   intercom: Intercom,
   microsoft: Microsoft,
+  zendesk: Zendesk,
   notion: Notion,
   slack: Slack,
   image: Image,

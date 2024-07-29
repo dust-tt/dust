@@ -31,3 +31,4 @@ export { default as Replicate } from "./Replicate";
 export { default as Salesforce } from "./Salesforce";
 export { default as Slack } from "./Slack";
 export { default as Zapier } from "./Zapier";
+export { default as Zendesk } from "./Zendesk";

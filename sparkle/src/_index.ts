@@ -208,6 +208,7 @@ import {
   Salesforce as SalesforceLogo,
   Slack as SlackLogo,
   Zapier as ZapierLogo,
+  Zendesk as ZendeskLogo,
 } from "./logo/platforms";
 
 export {
@@ -244,6 +245,7 @@ export {
   SalesforceLogo,
   SlackLogo,
   ZapierLogo,
+  ZendeskLogo,
 };
 
 import {
