@@ -64,6 +64,7 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     return this.makeNew({
       dataSourceId,
       parentsIn: [ALL_DOCUMENTS_TYPE],
+      vaultId: vault.id,
       workspaceId: vault.workspaceId,
     });
   }
