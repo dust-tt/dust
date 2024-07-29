@@ -1,12 +1,7 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
+import type { DataSourceViewType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -128,12 +123,11 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
 
   static async deleteAllForWorkspace(
     auth: Authenticator,
-    workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
     return this.model.destroy({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
@@ -164,7 +158,6 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
   toJSON(): DataSourceViewType {
     return {
       createdAt: this.createdAt.getTime(),
-      name: this.name,
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
