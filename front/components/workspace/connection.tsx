@@ -393,10 +393,10 @@ function CreateWAADEnterpriseConnectionModal({
         </div>
         <Page.Separator />
         <div>
-          Microsot Domain:
+          Microsoft Domain:
           <Input
             name="Microsoft Domain"
-            placeholder="<account_prefix>.onmicrososft.com"
+            placeholder="<account_prefix>.onmicrosoft.com"
             value={enterpriseConnectionDetails.domain ?? ""}
             onChange={(value) =>
               setEnterpriseConnectionDetails({
