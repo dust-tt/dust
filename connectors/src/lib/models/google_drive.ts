@@ -18,6 +18,7 @@ export class GoogleDriveConfig extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare pdfEnabled: boolean;
+  declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
 }
 GoogleDriveConfig.init(
@@ -42,6 +43,11 @@ GoogleDriveConfig.init(
       allowNull: false,
     },
     pdfEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    csvEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

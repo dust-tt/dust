@@ -1,12 +1,9 @@
-import { getEnabledFeatureFlagsMemoized } from "@connectors/lib/workspace";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
 export async function getMimeTypesToSync({
   pdfEnabled,
-  connector,
+  csvEnabled,
 }: {
   pdfEnabled: boolean;
-  connector: ConnectorResource;
+  csvEnabled: boolean;
 }) {
   const mimeTypes = [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -17,16 +14,10 @@ export async function getMimeTypesToSync({
   if (pdfEnabled) {
     mimeTypes.push("application/pdf");
   }
-  const csvEnabled = await isCsvEnabled(connector);
   if (csvEnabled) {
     mimeTypes.push("application/vnd.ms-excel"); // Microsoft type for "text/csv"
     mimeTypes.push("text/csv");
   }
 
   return mimeTypes;
-}
-
-async function isCsvEnabled(connector: ConnectorResource): Promise<boolean> {
-  const enabledFeatureFlags = await getEnabledFeatureFlagsMemoized(connector);
-  return !!enabledFeatureFlags.includes("microsoft_csv_sync");
 }
