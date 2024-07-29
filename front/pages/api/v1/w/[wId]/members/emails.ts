@@ -10,41 +10,8 @@ export type ListMemberEmailsResponseBody = {
 };
 
 /**
- * @swagger
- * /api/v1/w/{wId}/members/emails:
- *   get:
- *     summary: List member emails
- *     description: List the emails of all members in the workspace identified by {wId}.
- *     tags:
- *       - Workspace
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: Unique string identifier for the workspace
- *         schema:
- *           type: string
- *       - in: query
- *         name: activeOnly
- *         required: false
- *         description: Whether to list only active members
- *         schema:
- *           type: boolean
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: The emails
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 emails:
- *                   type: array
- *                   items:
- *                     type: string
- *                     description: Email address of a workspace member
+ * @ignoreswagger
+ * System API key only endpoint. Undocumented.
  */
 
 async function handler(
