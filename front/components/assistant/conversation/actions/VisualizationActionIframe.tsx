@@ -1,4 +1,4 @@
-import { BracesIcon, IconToggleButton, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   VisualizationActionType,
@@ -11,7 +11,6 @@ import {
   isVisualizationRPCRequest,
   visualizationExtractCode,
 } from "@dust-tt/types";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -264,12 +263,12 @@ const Tabs = ({
   tabs: string[];
 }) => {
   return (
-    <div className="flex pb-2">
+    <div className="flex justify-self-end pb-2">
       <div className="rounded-lg bg-gray-100 p-2">
         {tabs.map((tab, index) => (
           <button
             key={tab}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
+            className={`font-small rounded-lg px-4 py-2 text-xs text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
             onClick={() => onTabClick(index)}
             disabled={disabled}
           >
