@@ -820,8 +820,7 @@ export async function garbageCollect({
   do {
     // Find the resources not seen in the GC run (using runTimestamp).
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
-      connector.id,
-      runTimestamp
+      connector.id
     );
 
     const NOTION_UNHEALTHY_ERROR_CODES = [
@@ -1074,8 +1073,7 @@ export async function deletePageOrDatabaseIfArchived({
 }
 
 async function findResourcesNotSeenInGarbageCollectionRun(
-  connectorId: ModelId,
-  runTimestamp: number
+  connectorId: ModelId
 ): Promise<
   Array<{
     lastSeenTs: Date;
@@ -1114,10 +1112,8 @@ async function findResourcesNotSeenInGarbageCollectionRun(
     await NotionPage.findAll({
       where: {
         connectorId,
-        lastSeenTs: {
-          [Op.lt]: new Date(runTimestamp),
-        },
       },
+      order: [["lastSeenTs", "ASC"]],
       attributes: ["lastSeenTs", "notionPageId", "skipReason"],
       limit: pageSize,
     })
@@ -1142,10 +1138,8 @@ async function findResourcesNotSeenInGarbageCollectionRun(
     await NotionDatabase.findAll({
       where: {
         connectorId,
-        lastSeenTs: {
-          [Op.lt]: new Date(runTimestamp),
-        },
       },
+      order: [["lastSeenTs", "ASC"]],
       attributes: ["lastSeenTs", "notionDatabaseId", "skipReason"],
       limit: pageSize,
     })
