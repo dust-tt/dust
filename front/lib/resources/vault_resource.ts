@@ -1,8 +1,10 @@
 import type {
   ACLType,
+  GroupType,
   LightWorkspaceType,
   ModelId,
   Result,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -36,14 +38,18 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new this(VaultModel, vault.get());
   }
 
-  static async makeDefaultForWorkspace(
-    workspaceId: ModelId,
-    systemGroupId: ModelId,
-    workspaceGroupId: ModelId
-  ) {
+  static async makeDefaultsForWorkspace({
+    workspace,
+    systemGroup,
+    globalGroup,
+  }: {
+    workspace: LightWorkspaceType;
+    systemGroup: GroupType;
+    globalGroup: GroupType;
+  }) {
     const existingVaults = await VaultModel.findAll({
       where: {
-        workspaceId: workspaceId,
+        workspaceId: workspace.id,
       },
     });
     const systemVault =
@@ -51,16 +57,16 @@ export class VaultResource extends BaseResource<VaultModel> {
       (await VaultResource.makeNew({
         name: "System",
         kind: "system",
-        workspaceId: workspaceId,
-        groupId: systemGroupId,
+        workspaceId: workspace.id,
+        groupId: systemGroup.id,
       }));
     const globalVault =
       existingVaults.find((v) => v.kind === "global") ||
       (await VaultResource.makeNew({
         name: "Workspace",
         kind: "global",
-        workspaceId: workspaceId,
-        groupId: workspaceGroupId,
+        workspaceId: workspace.id,
+        groupId: globalGroup.id,
       }));
     return {
       systemVault,

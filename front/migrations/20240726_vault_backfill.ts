@@ -1,11 +1,12 @@
 import _ from "lodash";
 import { Op } from "sequelize";
 
+import { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
 async function backfillWorkspacesGroup(execute: boolean) {
@@ -23,22 +24,20 @@ async function backfillWorkspacesGroup(execute: boolean) {
         c.map((w) =>
           (async () => {
             try {
-              const groups = await GroupModel.findAll({
-                where: {
-                  workspaceId: w.id,
-                },
-              });
-              const systemGroupId = groups.find((g) => g.type === "system")?.id;
-              const globalGroupId = groups.find((g) => g.type === "global")?.id;
-              if (systemGroupId == null || globalGroupId == null) {
+              const auth = await Authenticator.internalAdminForWorkspace(w.sId);
+              const systemGroup =
+                await GroupResource.fetchWorkspaceSystemGroup(auth);
+              const globalGroup =
+                await GroupResource.fetchWorkspaceGlobalGroup(auth);
+              if (systemGroup == null || globalGroup == null) {
                 throw new Error("System or global group not found.");
               }
               const { systemVault, globalVault } =
-                await VaultResource.makeDefaultForWorkspace(
-                  w.id,
-                  systemGroupId,
-                  globalGroupId
-                );
+                await VaultResource.makeDefaultsForWorkspace({
+                  workspace: renderLightWorkspaceType({ workspace: w }),
+                  systemGroup,
+                  globalGroup,
+                });
               // Move connected (non webcrawler) to system vault
               await DataSource.update(
                 { vaultId: systemVault.id },

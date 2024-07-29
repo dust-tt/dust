@@ -42,6 +42,36 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new this(GroupModel, group.get());
   }
 
+  static async makeDefaultsForWorkspace({
+    workspace,
+  }: {
+    workspace: LightWorkspaceType;
+  }) {
+    const existingGroups = await GroupModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+      },
+    });
+    const systemGroup =
+      existingGroups.find((v) => v.type === "system") ||
+      (await GroupResource.makeNew({
+        name: "System",
+        type: "system",
+        workspaceId: workspace.id,
+      }));
+    const globalGroup =
+      existingGroups.find((v) => v.type === "global") ||
+      (await GroupResource.makeNew({
+        name: "Workspace",
+        type: "global",
+        workspaceId: workspace.id,
+      }));
+    return {
+      systemGroup,
+      globalGroup,
+    };
+  }
+
   get sId(): string {
     return GroupResource.modelIdToSId({
       id: this.id,
@@ -170,6 +200,24 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (!group) {
       throw new Error("Global group not found.");
+    }
+
+    return new this(GroupModel, group.get());
+  }
+
+  static async fetchWorkspaceSystemGroup(
+    auth: Authenticator
+  ): Promise<GroupResource> {
+    const owner = auth.getNonNullableWorkspace();
+    const group = await this.model.findOne({
+      where: {
+        workspaceId: owner.id,
+        type: "system",
+      },
+    });
+
+    if (!group) {
+      throw new Error("System group not found.");
     }
 
     return new this(GroupModel, group.get());
