@@ -1,4 +1,4 @@
-import { Icon,QuestionMarkCircleIcon } from "@dust-tt/sparkle";
+import { Icon, QuestionMarkCircleIcon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -78,7 +78,11 @@ export function HelpAndQuickGuideWrapper({
           )}
           onClick={() => setIsHelpDrawerOpen(true)}
         >
-          <Icon visual={QuestionMarkCircleIcon} className="text-white" size="xl" />
+          <Icon
+            visual={QuestionMarkCircleIcon}
+            className="text-white"
+            size="xl"
+          />
         </div>
       </div>
     </>
