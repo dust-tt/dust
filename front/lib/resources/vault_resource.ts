@@ -89,8 +89,7 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async listWorkspaceVaults(
-    auth: Authenticator,
-    transaction?: Transaction
+    auth: Authenticator
   ): Promise<VaultResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -98,15 +97,13 @@ export class VaultResource extends BaseResource<VaultModel> {
       where: {
         workspaceId: owner.id,
       },
-      transaction,
     });
 
     return vaults.map((vault) => new this(VaultModel, vault.get()));
   }
 
   static async fetchWorkspaceSystemVault(
-    auth: Authenticator,
-    transaction?: Transaction
+    auth: Authenticator
   ): Promise<VaultResource> {
     const owner = auth.getNonNullableWorkspace();
     const vault = await this.model.findOne({
@@ -114,7 +111,6 @@ export class VaultResource extends BaseResource<VaultModel> {
         workspaceId: owner.id,
         kind: "system",
       },
-      transaction,
     });
 
     if (!vault) {
@@ -125,8 +121,7 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async fetchWorkspaceGlobalVault(
-    auth: Authenticator,
-    transaction?: Transaction
+    auth: Authenticator
   ): Promise<VaultResource> {
     const owner = auth.getNonNullableWorkspace();
     const vault = await this.model.findOne({
@@ -134,7 +129,6 @@ export class VaultResource extends BaseResource<VaultModel> {
         workspaceId: owner.id,
         kind: "global",
       },
-      transaction,
     });
 
     if (!vault) {
