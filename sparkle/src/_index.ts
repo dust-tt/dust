@@ -148,6 +148,9 @@ export { Markdown };
 import { DataTable } from "./components/DataTable";
 export { DataTable };
 
+import { Table } from "./components/Table";
+export { Table };
+
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
   LogoHorizontalColorLayer1 as LogoHorizontalColorLogoLayer1,
