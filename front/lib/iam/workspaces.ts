@@ -36,20 +36,11 @@ export async function createWorkspace(session: SessionWithUser) {
       workspaceId: workspace.id,
     }),
   ]);
-  await Promise.all([
-    VaultResource.makeNew({
-      name: "System",
-      kind: "system",
-      workspaceId: workspace.id,
-      groupId: groups[0].id,
-    }),
-    VaultResource.makeNew({
-      name: "Workspace",
-      kind: "global",
-      workspaceId: workspace.id,
-      groupId: groups[1].id,
-    }),
-  ]);
+  await VaultResource.makeDefaultForWorkspace(
+    workspace.id,
+    groups[0].id,
+    groups[1].id
+  );
 
   sendUserOperationMessage({
     message: `<@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,

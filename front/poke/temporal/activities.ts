@@ -1,7 +1,6 @@
 import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { chunk } from "lodash";
-import { Vault } from "lucide-react";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";

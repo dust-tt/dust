@@ -1,3 +1,4 @@
+import type { VaultKind } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -16,9 +17,10 @@ export class VaultModel extends Model<
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare kind: string;
+  declare kind: VaultKind;
 
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -35,6 +37,11 @@ VaultModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -47,10 +54,7 @@ VaultModel.init(
   {
     modelName: "vaults",
     sequelize: frontSequelize,
-    indexes: [
-      { unique: true, fields: ["workspaceId", "name"] },
-      { unique: false, fields: ["workspaceId", "kind"] },
-    ],
+    indexes: [{ unique: false, fields: ["workspaceId", "kind"] }],
   }
 );
 

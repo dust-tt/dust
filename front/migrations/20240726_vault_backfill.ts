@@ -30,27 +30,15 @@ async function backfillWorkspacesGroup(execute: boolean) {
               });
               const systemGroupId = groups.find((g) => g.type === "system")?.id;
               const globalGroupId = groups.find((g) => g.type === "global")?.id;
-              const existingVaults = await VaultModel.findAll({
-                where: {
-                  workspaceId: w.id,
-                },
-              });
-              const systemVault =
-                existingVaults.find((v) => v.kind === "system") ||
-                (await VaultResource.makeNew({
-                  name: "System",
-                  kind: "system",
-                  workspaceId: w.id,
-                  groupId: systemGroupId,
-                }));
-              const globalVault =
-                existingVaults.find((v) => v.kind === "global") ||
-                (await VaultResource.makeNew({
-                  name: "Workspace",
-                  kind: "global",
-                  workspaceId: w.id,
-                  groupId: globalGroupId,
-                }));
+              if (systemGroupId == null || globalGroupId == null) {
+                throw new Error("System or global group not found.");
+              }
+              const { systemVault, globalVault } =
+                await VaultResource.makeDefaultForWorkspace(
+                  w.id,
+                  systemGroupId,
+                  globalGroupId
+                );
               // Move connected (non webcrawler) to system vault
               await DataSource.update(
                 { vaultId: systemVault.id },

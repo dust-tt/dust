@@ -69,6 +69,7 @@ export * from "./front/project";
 export * from "./front/provider";
 export * from "./front/run";
 export * from "./front/user";
+export * from "./front/vault";
 export * from "./front/workspace";
 export * from "./oauth/client/access_token";
 export * from "./oauth/client/setup";

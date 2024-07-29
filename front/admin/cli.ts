@@ -57,20 +57,12 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           workspaceId: w.id,
         }),
       ]);
-      await Promise.all([
-        VaultResource.makeNew({
-          name: "System",
-          kind: "system",
-          workspaceId: w.id,
-          groupId: groups[0].id,
-        }),
-        VaultResource.makeNew({
-          name: "Workspace",
-          kind: "global",
-          workspaceId: w.id,
-          groupId: groups[1].id,
-        }),
-      ]);
+
+      await VaultResource.makeDefaultForWorkspace(
+        w.id,
+        groups[0].id,
+        groups[1].id
+      );
 
       args.wId = w.sId;
       await workspace("show", args);

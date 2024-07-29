@@ -36,6 +36,38 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new this(VaultModel, vault.get());
   }
 
+  static async makeDefaultForWorkspace(
+    workspaceId: ModelId,
+    systemGroupId: ModelId,
+    workspaceGroupId: ModelId
+  ) {
+    const existingVaults = await VaultModel.findAll({
+      where: {
+        workspaceId: workspaceId,
+      },
+    });
+    const systemVault =
+      existingVaults.find((v) => v.kind === "system") ||
+      (await VaultResource.makeNew({
+        name: "System",
+        kind: "system",
+        workspaceId: workspaceId,
+        groupId: systemGroupId,
+      }));
+    const globalVault =
+      existingVaults.find((v) => v.kind === "global") ||
+      (await VaultResource.makeNew({
+        name: "Workspace",
+        kind: "global",
+        workspaceId: workspaceId,
+        groupId: workspaceGroupId,
+      }));
+    return {
+      systemVault,
+      globalVault,
+    };
+  }
+
   get sId(): string {
     return VaultResource.modelIdToSId({
       id: this.id,
@@ -56,7 +88,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
-  static async fetchWorkspaceVaults(
+  static async listWorkspaceVaults(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<VaultResource[]> {
@@ -128,28 +160,6 @@ export class VaultResource extends BaseResource<VaultModel> {
         id: vaultModelId,
         workspaceId: owner.id,
       },
-    });
-
-    if (!vault) {
-      return null;
-    }
-
-    return new this(VaultModel, vault.get());
-  }
-
-  static async fetchWorkspaceVaultByName(
-    auth: Authenticator,
-    name: string,
-    transaction?: Transaction
-  ): Promise<VaultResource | null> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const vault = await this.model.findOne({
-      where: {
-        workspaceId: owner.id,
-        name: name,
-      },
-      transaction,
     });
 
     if (!vault) {
