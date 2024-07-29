@@ -205,7 +205,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const isTablesView = viewType === "tables";
     if (filterPermission === "read" || isTablesView) {
       if (!parentInternalId) {
-        const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents();
+        const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents(
+          this.connectorId
+        );
         return new Ok(
           nodes.map((node) => getMicrosoftNodeAsContentNode(node, isTablesView))
         );
