@@ -34,6 +34,7 @@ export * from "./front/assistant/conversation";
 export * from "./front/assistant/templates";
 export * from "./front/content_fragment";
 export * from "./front/data_source";
+export * from "./front/data_source_view";
 export * from "./front/dataset";
 export * from "./front/document";
 export * from "./front/dust_app_secret";
