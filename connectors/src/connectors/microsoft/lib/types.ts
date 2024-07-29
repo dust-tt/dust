@@ -1,3 +1,5 @@
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
+
 export const MICROSOFT_NODE_TYPES = [
   "sites-root",
   "teams-root",
@@ -33,3 +35,19 @@ export type MicrosoftNode = {
   parentInternalId: string | null;
   mimeType: string | null;
 };
+
+export function isMicrosoftDriveItem(obj: unknown): obj is DriveItem {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "id" in obj &&
+    typeof obj.id === "string" &&
+    "name" in obj &&
+    typeof obj.name === "string" &&
+    "parentReference" in obj &&
+    typeof obj.parentReference === "object" &&
+    obj.parentReference !== null &&
+    "driveId" in obj.parentReference &&
+    typeof obj.parentReference.driveId === "string"
+  );
+}

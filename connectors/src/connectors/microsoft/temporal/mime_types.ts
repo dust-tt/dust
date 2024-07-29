@@ -10,8 +10,7 @@ export async function getMimeTypesToSync({
 }) {
   const mimeTypes = [
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    // TODO(pr): support those
-    // "text/plain",
+    "text/plain",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ];
@@ -21,6 +20,7 @@ export async function getMimeTypesToSync({
   const csvEnabled = await isCsvEnabled(connector);
   if (csvEnabled) {
     mimeTypes.push("application/vnd.ms-excel"); // Microsoft type for "text/csv"
+    mimeTypes.push("text/csv");
   }
 
   return mimeTypes;
