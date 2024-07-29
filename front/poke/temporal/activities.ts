@@ -567,7 +567,7 @@ export async function deleteWorkspaceActivity({
       transaction: t,
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
-    await VaultResource.deleteAllForWorkspace(workspace, t);
+    await VaultResource.deleteAllForWorkspace(auth, t);
     await GroupResource.deleteAllForWorkspace(workspace, t);
     logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
     await Workspace.destroy({

@@ -159,9 +159,7 @@ async function deleteDatasources(auth: Authenticator) {
 }
 
 async function deleteVaults(auth: Authenticator) {
-  const workspace = auth.getNonNullableWorkspace();
-  const w = renderLightWorkspaceType({ workspace });
-  await VaultResource.deleteAllForWorkspace(w);
+  await VaultResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteGroups(auth: Authenticator) {

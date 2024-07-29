@@ -189,12 +189,13 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     transaction?: Transaction
   ) {
+    const owner = auth.getNonNullableWorkspace();
     await this.model.destroy({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: owner.id,
       },
       transaction,
     });
