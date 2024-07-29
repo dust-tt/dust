@@ -117,7 +117,7 @@ export default function SettingsView({
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
         window.alert(
-          `Failed to delete the app (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+          `Failed to delete the app (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
         );
       }
       return true;
@@ -145,7 +145,7 @@ export default function SettingsView({
       setIsUpdating(false);
       const err = (await res.json()) as { error: APIError };
       window.alert(
-        `Failed to update the app (contact team@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
+        `Failed to update the app (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
       );
     }
   };

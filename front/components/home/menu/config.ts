@@ -40,6 +40,11 @@ const AboutMenuConfig: MenuConfig = {
       isExternal: true,
     },
     {
+      title: "Support",
+      href: "https://docs.dust.tt/discuss",
+      isExternal: true,
+    },
+    {
       title: "Blog",
       href: "https://blog.dust.tt/",
       isExternal: true,

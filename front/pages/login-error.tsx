@@ -46,7 +46,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
           is not authorized to join this workspace.
           <br />
           Please contact your workspace admin to get access or contact us at
-          team@dust.tt for assistance.
+          support@dust.tt for assistance.
         </p>
       </>
     );
@@ -63,7 +63,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             <br />
             To gain access, please ask your workspace administrator to add you
             or, your domain. <br />
-            Need more help? Email us at team@dust.tt.
+            Need more help? Email us at support@dust.tt.
           </p>
         </>
       );
@@ -113,7 +113,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             To gain access, please ask your workspace administrator to add you
             or.
             <br />
-            Need more help? Email us at team@dust.tt.
+            Need more help? Email us at support@dust.tt.
           </p>
         </>
       );
@@ -129,7 +129,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             Please verify your email or contact your workspace administrator for
             assistance.
             <br />
-            Need more help? Email us at team@dust.tt.
+            Need more help? Email us at support@dust.tt.
           </p>
         </>
       );
@@ -143,7 +143,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             <br />
             Contact your workspace administrator to update your role.
             <br />
-            Need more help? Email us at team@dust.tt.
+            Need more help? Email us at support@dust.tt.
           </p>
         </>
       );
@@ -153,7 +153,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           {headerNode}
           <p className={defaultErrorMessageClassName}>
-            Please contact us at team@dust.tt for assistance.
+            Please contact us at support@dust.tt for assistance.
           </p>
         </>
       );

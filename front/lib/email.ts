@@ -86,7 +86,7 @@ export async function sendReactivateSubscriptionEmail(
     html: `<p>You have requested to reactivate your subscription.</p>
     <p>Therefore, your subscription will not be canceled at the end of the billing period, no downgrade actions will take place, and you can continue using Dust as usual.</p>
     <p>We really appreciate you renewing your trust in us.</p>
-    <p>If you have any questions, we'll gladly answer at team@dust.tt.</p>
+    <p>If you have any questions, we'll gladly answer at support@dust.tt.</p>
     <p>Best,</p>
     <p>The Dust team</p>`,
   };

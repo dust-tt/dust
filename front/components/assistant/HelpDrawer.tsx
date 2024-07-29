@@ -7,6 +7,7 @@ import {
   LightbulbIcon,
   Modal,
   Page,
+  QuestionMarkCircleIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -27,18 +28,18 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 
 const topPicks = [
   {
-    title: "Creating Assistants",
-    href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants#here-are-some-tips-for-crafting-effective-instructions-and-prompts",
+    title: "How to create assistants",
+    href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
     icon: ArrowRightIcon,
   },
   {
-    title: "Managing Connections",
+    title: "How to add new connections",
     href: "https://docs.dust.tt/docs/google-drive-connection",
     icon: ArrowRightIcon,
   },
   {
-    title: "Choosing a Model",
-    href: "https://blog.dust.tt/comparing-ai-models-claude-gpt4-gemini-mistral/",
+    title: "What can I use Dust for?",
+    href: "https://docs.dust.tt/docs/use-cases",
     icon: ArrowRightIcon,
   },
 ];
@@ -145,6 +146,12 @@ export function HelpDrawer({
                       href: "https://docs.dust.tt",
                       description: "Guides, best practices, and more",
                       icon: FolderIcon,
+                    },
+                    {
+                      title: "Community Support",
+                      href: "https://docs.dust.tt/discuss",
+                      description: "Stuck? Ask your questions to the community",
+                      icon: QuestionMarkCircleIcon,
                     },
                   ]
                 : [
