@@ -28,12 +28,12 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 
 const topPicks = [
   {
-    title: "How to create assistants",
+    title: "How to create assistants?",
     href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
     icon: ArrowRightIcon,
   },
   {
-    title: "How to add new connections",
+    title: "How to add new connections?",
     href: "https://docs.dust.tt/docs/google-drive-connection",
     icon: ArrowRightIcon,
   },
