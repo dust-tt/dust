@@ -4,11 +4,12 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
+  useMemo,
 } from "react";
-
 import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/index";
-
 import { Icon } from "./Icon";
+import { classNames } from "@sparkle/lib/utils";
 
 interface TableContextType {
   sortColumn: string | null;
@@ -24,10 +25,6 @@ interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
 }
 
-interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
-  children: ReactNode;
-}
-
 const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -35,33 +32,50 @@ const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
     new Set()
   );
 
-  const handleSort = (column: string) => {
-    if (sortableColumns.has(column)) {
-      if (sortColumn === column) {
-        setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-      } else {
-        setSortColumn(column);
-        setSortDirection("asc");
+  const handleSort = useCallback(
+    (column: string) => {
+      if (sortableColumns.has(column)) {
+        setSortColumn((prevColumn) => {
+          if (prevColumn === column) {
+            setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+          } else {
+            setSortDirection("asc");
+          }
+          return column;
+        });
       }
-    }
-  };
+    },
+    [sortableColumns]
+  );
 
-  const registerSortableColumn = (column: string) => {
+  const registerSortableColumn = useCallback((column: string) => {
     setSortableColumns((prev) => new Set(prev).add(column));
-  };
+  }, []);
 
-  const contextValue: TableContextType = {
-    sortColumn,
-    sortDirection,
-    onSort: handleSort,
-    sortableColumns,
-    registerSortableColumn,
-  };
+  const contextValue = useMemo<TableContextType>(
+    () => ({
+      sortColumn,
+      sortDirection,
+      onSort: handleSort,
+      sortableColumns,
+      registerSortableColumn,
+    }),
+    [
+      sortColumn,
+      sortDirection,
+      handleSort,
+      sortableColumns,
+      registerSortableColumn,
+    ]
+  );
 
   return (
     <TableContext.Provider value={contextValue}>
       <table
-        className={`s-w-full s-table-auto s-border-collapse ${className || ""}`}
+        className={classNames(
+          "s-w-full s-table-auto s-border-collapse",
+          className || ""
+        )}
         {...props}
       >
         {children}
@@ -76,7 +90,10 @@ interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
 
 const Header: React.FC<HeaderProps> = ({ children, className, ...props }) => (
   <thead
-    className={`s-border-b s-border-structure-200 s-bg-structure-50 ${className || ""}`}
+    className={classNames(
+      "s-border-b s-border-structure-200 s-bg-structure-50",
+      className || ""
+    )}
     {...props}
   >
     {children}
@@ -108,10 +125,20 @@ const Head: React.FC<HeadProps> = ({
     }
   }, [sortable, registerSortableColumn, column]);
 
+  const handleClick = useCallback(() => {
+    if (sortable) {
+      onSort(column);
+    }
+  }, [sortable, onSort, column]);
+
   return (
     <th
-      className={`s-px-4 s-py-2 s-text-left s-font-medium s-text-element-700 ${sortable ? "s-cursor-pointer" : ""} ${className || ""}`}
-      onClick={() => sortable && onSort(column)}
+      className={classNames(
+        "s-px-4 s-py-2 s-text-left s-font-medium s-text-element-700",
+        sortable ? "s-cursor-pointer": "",
+        className || ""
+      )}
+      onClick={handleClick}
       {...props}
     >
       <div className="s-flex s-items-center s-space-x-1">
@@ -149,7 +176,10 @@ const Footer: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
   ...props
 }) => (
   <tfoot
-    className={`s-border-t s-border-structure-200 s-bg-structure-50 ${className || ""}`}
+    className={classNames(
+      "s-border-t s-border-structure-200 s-bg-structure-50",
+      className || ""
+    )}
     {...props}
   >
     {children}
@@ -162,7 +192,10 @@ const Row: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
   ...props
 }) => (
   <tr
-    className={`s-hover:bg-structure-50 s-border-b s-border-structure-200 ${className || ""}`}
+    className={classNames(
+      "s-hover:bg-structure-50 s-border-b s-border-structure-200",
+      className || ""
+    )}
     {...props}
   >
     {children}
@@ -175,7 +208,7 @@ const Cell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> = ({
   ...props
 }) => (
   <td
-    className={`s-px-4 s-py-2 s-text-element-800 ${className || ""}`}
+    className={classNames("s-px-4 s-py-2 s-text-element-800", className || "")}
     {...props}
   >
     {children}
@@ -188,7 +221,7 @@ const Caption: React.FC<React.HTMLAttributes<HTMLTableCaptionElement>> = ({
   ...props
 }) => (
   <caption
-    className={`s-mt-4 s-text-sm s-text-element-600 ${className || ""}`}
+    className={classNames("s-mt-4 s-text-sm s-text-element-600", className || "")}
     {...props}
   >
     {children}
