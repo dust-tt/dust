@@ -12,6 +12,7 @@ import React, { useCallback, useMemo } from "react";
 import { useEffect, useState } from "react";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
+import * as d3 from "d3";
 import { useResizeDetector } from "react-resize-detector";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 
@@ -170,9 +171,11 @@ export function VisualizationWrapper({
             scope: {
               import: {
                 recharts: rechartsAll,
+                d3,
                 react: reactAll,
                 "@dust/generated-code": importCode(fetchedCode, {
                   import: {
+                    d3,
                     recharts: rechartsAll,
                     react: reactAll,
                     papaparse: papaparseAll,
