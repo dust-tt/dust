@@ -21,6 +21,7 @@ const REGION = 1; // US.
 const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
+  vault: "vlt",
 };
 
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);

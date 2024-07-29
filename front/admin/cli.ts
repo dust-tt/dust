@@ -26,6 +26,8 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
   launchRetrieveTranscriptsWorkflow,
@@ -44,18 +46,16 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         sId: generateLegacyModelSId(),
         name: args.name,
       });
-      await Promise.all([
-        GroupResource.makeNew({
-          name: "System",
-          type: "system",
-          workspaceId: w.id,
-        }),
-        GroupResource.makeNew({
-          name: "Workspace",
-          type: "global",
-          workspaceId: w.id,
-        }),
-      ]);
+
+      const lightWorkspace = renderLightWorkspaceType({ workspace: w });
+
+      const { systemGroup, globalGroup } =
+        await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
+
+      await VaultResource.makeDefaultsForWorkspace(lightWorkspace, {
+        systemGroup,
+        globalGroup,
+      });
 
       args.wId = w.sId;
       await workspace("show", args);

@@ -79,6 +79,7 @@ import {
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import logger from "@app/logger/logger";
 
 async function main() {
@@ -102,6 +103,7 @@ async function main() {
   await KeyModel.sync({ alter: true });
   await FileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
+  await VaultModel.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });

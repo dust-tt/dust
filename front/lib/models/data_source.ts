@@ -11,6 +11,7 @@ import { DataTypes, Model } from "sequelize";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
 export class DataSource extends Model<
   InferAttributes<DataSource>,
@@ -31,6 +32,7 @@ export class DataSource extends Model<
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare vaultId: ForeignKey<VaultModel["id"]>;
 
   declare workspace: NonAttribute<Workspace>;
   declare editedByUser: NonAttribute<User>;
@@ -88,6 +90,7 @@ DataSource.init(
     indexes: [
       { fields: ["workspaceId", "name"], unique: true },
       { fields: ["workspaceId", "connectorProvider"] },
+      { fields: ["workspaceId", "vaultId"] },
     ],
   }
 );
@@ -105,4 +108,10 @@ DataSource.belongsTo(User, {
   as: "editedByUser",
   // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
   foreignKey: { name: "editedByUserId", allowNull: true },
+});
+
+DataSource.belongsTo(VaultModel, {
+  // TODO(2024-07-27 thomas) Set `allowNull` to `false` once backfilled.
+  foreignKey: { name: "vaultId", allowNull: true },
+  onDelete: "RESTRICT",
 });

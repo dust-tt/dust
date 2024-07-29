@@ -4,7 +4,9 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 export async function createWorkspace(session: SessionWithUser) {
@@ -23,18 +25,15 @@ export async function createWorkspace(session: SessionWithUser) {
     name: externalUser.nickname,
   });
 
-  await Promise.all([
-    GroupResource.makeNew({
-      name: "System",
-      type: "system",
-      workspaceId: workspace.id,
-    }),
-    GroupResource.makeNew({
-      name: "Workspace",
-      type: "global",
-      workspaceId: workspace.id,
-    }),
-  ]);
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+  const { systemGroup, globalGroup } =
+    await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
+
+  await VaultResource.makeDefaultsForWorkspace(lightWorkspace, {
+    systemGroup,
+    globalGroup,
+  });
 
   sendUserOperationMessage({
     message: `<@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,
