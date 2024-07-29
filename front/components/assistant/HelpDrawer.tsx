@@ -50,7 +50,8 @@ function LinksList({
 }: {
   linksList: {
     title: string;
-    href: string;
+    href?: string;
+    onClick?: () => void;
     icon?: ComponentType;
     description?: string;
   }[];
@@ -64,6 +65,7 @@ function LinksList({
           icon={link.icon}
           label={link.title}
           href={link.href}
+          onClick={link.onClick}
           key={index}
           description={link.description}
           target="_blank"
@@ -78,11 +80,13 @@ export function HelpDrawer({
   user,
   show,
   onClose,
+  setShowQuickGuide,
 }: {
   owner: WorkspaceType;
   user: UserType;
   show: boolean;
   onClose: () => void;
+  setShowQuickGuide: (show: boolean) => void;
 }) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -138,7 +142,7 @@ export function HelpDrawer({
                 ? [
                     {
                       title: "Quickstart Guide",
-                      href: "https://docs.dust.tt/docs/getting-started",
+                      onClick: () => setShowQuickGuide(true),
                       icon: LightbulbIcon,
                     },
                     {

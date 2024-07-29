@@ -51,6 +51,7 @@ export function HelpAndQuickGuideWrapper({
         user={user}
         show={isHelpDrawerOpen}
         onClose={() => setIsHelpDrawerOpen(false)}
+        setShowQuickGuide={setShowQuickGuide}
       />
       <QuickStartGuide
         owner={owner}
