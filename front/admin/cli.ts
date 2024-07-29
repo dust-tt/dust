@@ -50,12 +50,9 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const lightWorkspace = renderLightWorkspaceType({ workspace: w });
 
       const { systemGroup, globalGroup } =
-        await GroupResource.makeDefaultsForWorkspace({
-          workspace: lightWorkspace,
-        });
+        await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
 
-      await VaultResource.makeDefaultsForWorkspace({
-        workspace: renderLightWorkspaceType({ workspace: lightWorkspace }),
+      await VaultResource.makeDefaultsForWorkspace(lightWorkspace, {
         systemGroup,
         globalGroup,
       });

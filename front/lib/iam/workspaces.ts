@@ -25,15 +25,12 @@ export async function createWorkspace(session: SessionWithUser) {
     name: externalUser.nickname,
   });
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace: w });
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
 
   const { systemGroup, globalGroup } =
-    await GroupResource.makeDefaultsForWorkspace({
-      workspace: lightWorkspace,
-    });
+    await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
 
-  await VaultResource.makeDefaultsForWorkspace({
-    workspace: lightWorkspace,
+  await VaultResource.makeDefaultsForWorkspace(lightWorkspace, {
     systemGroup,
     globalGroup,
   });

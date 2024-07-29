@@ -33,11 +33,13 @@ async function backfillWorkspacesGroup(execute: boolean) {
                 throw new Error("System or global group not found.");
               }
               const { systemVault, globalVault } =
-                await VaultResource.makeDefaultsForWorkspace({
-                  workspace: renderLightWorkspaceType({ workspace: w }),
-                  systemGroup,
-                  globalGroup,
-                });
+                await VaultResource.makeDefaultsForWorkspace(
+                  renderLightWorkspaceType({ workspace: w }),
+                  {
+                    systemGroup,
+                    globalGroup,
+                  }
+                );
               // Move connected (non webcrawler) to system vault
               await DataSource.update(
                 { vaultId: systemVault.id },

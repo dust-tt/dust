@@ -42,11 +42,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new this(GroupModel, group.get());
   }
 
-  static async makeDefaultsForWorkspace({
-    workspace,
-  }: {
-    workspace: LightWorkspaceType;
-  }) {
+  static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
     const existingGroups = await GroupModel.findAll({
       where: {
         workspaceId: workspace.id,

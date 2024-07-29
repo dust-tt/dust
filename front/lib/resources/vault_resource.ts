@@ -38,15 +38,16 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new this(VaultModel, vault.get());
   }
 
-  static async makeDefaultsForWorkspace({
-    workspace,
-    systemGroup,
-    globalGroup,
-  }: {
-    workspace: LightWorkspaceType;
-    systemGroup: GroupType;
-    globalGroup: GroupType;
-  }) {
+  static async makeDefaultsForWorkspace(
+    workspace: LightWorkspaceType,
+    {
+      systemGroup,
+      globalGroup,
+    }: {
+      systemGroup: GroupType;
+      globalGroup: GroupType;
+    }
+  ) {
     const existingVaults = await VaultModel.findAll({
       where: {
         workspaceId: workspace.id,
