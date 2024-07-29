@@ -342,7 +342,7 @@ async function handler(
       });
 
       if (vault.isGlobal()) {
-        // For data source in the default vault, we create a view in the vault.
+        // For data source in the global vault, we create a default view in the vault.
         await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
           vault,
           { dataSourceId: dataSource.id }
