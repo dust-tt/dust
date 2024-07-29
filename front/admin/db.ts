@@ -64,6 +64,7 @@ import {
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -105,6 +106,7 @@ async function main() {
   await DustAppSecret.sync({ alter: true });
   await VaultModel.sync({ alter: true });
   await DataSource.sync({ alter: true });
+  await DataSourceViewModel.sync({ alter: true });
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
