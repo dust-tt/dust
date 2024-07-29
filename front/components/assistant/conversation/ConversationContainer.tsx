@@ -22,7 +22,6 @@ import {
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
@@ -319,10 +318,6 @@ export function ConversationContainer({
           owner={owner}
         />
       </Transition>
-
-      {activeConversationId !== "new" && (
-        <HelpAndQuickGuideWrapper owner={owner} user={user} />
-      )}
 
       <ReachedLimitPopup
         isOpened={planLimitReached}

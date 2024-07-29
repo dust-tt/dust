@@ -6,6 +6,8 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import React, { Fragment, useEffect, useState } from "react";
 
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
@@ -197,6 +199,9 @@ export default function AppLayout({
           </main>
         </div>
       </div>
+      {user.user && (
+        <GenerationContextProvider><HelpAndQuickGuideWrapper owner={owner} user={user?.user} /></GenerationContextProvider>
+      )}
       <>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
