@@ -1,5 +1,4 @@
 export const WHITELISTABLE_FEATURES = [
-  "workspace_analytics",
   "usage_data_api",
   "okta_enterprise_connection",
   "labs_transcripts",
@@ -7,8 +6,6 @@ export const WHITELISTABLE_FEATURES = [
   "microsoft_connector",
   "visualization_action_flag",
   "dust_splitted_ds_flag",
-  "microsoft_csv_sync",
-  "google_csv_sync",
   "test_oauth_setup",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];

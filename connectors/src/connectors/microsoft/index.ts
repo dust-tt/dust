@@ -78,6 +78,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const microsoftConfigurationBlob = {
       pdfEnabled: false,
+      csvEnabled: false,
       largeFilesEnabled: false,
     };
 
@@ -532,6 +533,18 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         }
         return new Ok(undefined);
       }
+      case "csvEnabled": {
+        await config.update({
+          csvEnabled: configValue === "true",
+        });
+        const workflowRes = await launchMicrosoftFullSyncWorkflow(
+          this.connectorId
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(undefined);
+      }
 
       case "largeFilesEnabled": {
         await config.update({
@@ -577,6 +590,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     switch (configKey) {
       case "pdfEnabled": {
         return new Ok(config.pdfEnabled ? "true" : "false");
+      }
+      case "csvEnabled": {
+        return new Ok(config.csvEnabled ? "true" : "false");
       }
       case "largeFilesEnabled": {
         return new Ok(config.largeFilesEnabled ? "true" : "false");

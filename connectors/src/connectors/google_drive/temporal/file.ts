@@ -182,7 +182,7 @@ export async function syncOneFile(
 
       const mimeTypesToDownload = await getMimeTypesToDownload({
         pdfEnabled: config?.pdfEnabled || false,
-        connector,
+        csvEnabled: config?.csvEnabled || false,
       });
 
       const documentId = getDocumentId(file.id);
