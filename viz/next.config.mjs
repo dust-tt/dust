@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV === "development";
 
+const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-ancestors 'self' ${
+  isDev ? "http://localhost:3000" : "https://dust.tt"
+};`;
+
 const nextConfig = {
   async headers() {
     return [
@@ -13,9 +17,7 @@ const nextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: isDev
-              ? "frame-ancestors 'self' http://localhost:3000;"
-              : "frame-ancestors 'self' https://dust.tt;",
+            value: CONTENT_SECURITY_POLICIES,
           },
         ],
       },
