@@ -1,8 +1,8 @@
 import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import type { DriveItem } from "@microsoft/microsoft-graph-types";
+import type { Drive, DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -821,4 +821,200 @@ export async function microsoftDeletionActivity({
     );
   }
   return new Ok(undefined);
+}
+
+export async function microsoftGarbageCollectionActivity({
+  connectorId,
+  idCursor,
+  rootNodeIds,
+  startGarbageCollectionTs,
+}: {
+  connectorId: ModelId;
+  idCursor: ModelId;
+  rootNodeIds: string[];
+  startGarbageCollectionTs: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  logger.info(
+    { connectorId, idCursor },
+    "Garbage collection activity for cursor"
+  );
+  const client = await getClient(connector.connectionId);
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
+    connectorId,
+    pageSize: 100,
+    idCursor,
+  });
+
+  const lastNode = nodes.length > 0 ? nodes[nodes.length - 1] : null;
+
+  if (!lastNode) {
+    return null;
+  }
+
+  const nextIdCursor = lastNode.id + 1;
+
+  // only consider nodes that were not seen after the start of the garbage
+  // collection. This avoids edge cases such as if a node is moved back to sync
+  // during the garbage collection and the caching below prevents this from
+  // being detected
+  const nodesToCheck = nodes
+    .filter((n) => n.lastSeenTs ?? 0 < startGarbageCollectionTs)
+    .filter(
+      (n) =>
+        n.nodeType === "drive" ||
+        n.nodeType === "folder" ||
+        n.nodeType === "file"
+    );
+
+  // Explicitly not using concurrency here to avoid too many calls to the api
+  // This is a long running workflow that does not require high throughput
+  for (const node of nodesToCheck) {
+    const { itemAPIPath } = typeAndPathFromInternalId(node.internalId);
+
+    let driveOrItem: DriveItem | undefined | Drive = undefined;
+    try {
+      driveOrItem = await getItem(client, itemAPIPath);
+    } catch (e) {
+      // if the entity is not found, we can go on and delete
+      if (!(e instanceof GraphError && e.statusCode === 404)) {
+        throw e;
+      }
+    }
+
+    switch (node.nodeType) {
+      case "drive":
+        if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
+          await deleteFolder({ connectorId, internalId: node.internalId });
+        }
+        break;
+      case "folder": {
+        const folder = driveOrItem as DriveItem;
+        if (
+          !folder ||
+          folder.deleted ||
+          // isOutsideRootNodes
+          (await isOutsideRootNodes({
+            client,
+            driveItem: folder,
+            rootNodeIds,
+            startGarbageCollectionTs,
+          }))
+        ) {
+          await deleteFolder({ connectorId, internalId: node.internalId });
+        }
+        break;
+      }
+      case "file": {
+        const file = driveOrItem as DriveItem;
+        if (
+          !file ||
+          file.deleted ||
+          // isOutsideRootNodes
+          (await isOutsideRootNodes({
+            client,
+            driveItem: file,
+            rootNodeIds,
+            startGarbageCollectionTs,
+          }))
+        ) {
+          await deleteFile({
+            connectorId,
+            internalId: node.internalId,
+            dataSourceConfig,
+          });
+        }
+        break;
+      }
+      default:
+        throw new Error(
+          `Unreachable: Deletion not implemented for node type: ${node.nodeType}`
+        );
+    }
+  }
+
+  return nextIdCursor;
+}
+
+const cachedGetParentFromGraphAPI = cacheWithRedis(
+  async ({
+    client,
+    parentInternalId,
+  }: {
+    client: Client;
+    parentInternalId: string;
+    startGarbageCollectionTs: number;
+  }) => {
+    const { itemAPIPath, nodeType } =
+      typeAndPathFromInternalId(parentInternalId);
+
+    if (nodeType === "drive") {
+      return null;
+    }
+
+    const driveItem: DriveItem = await getItem(client, itemAPIPath);
+
+    if (!driveItem.parentReference) {
+      throw new Error("Unexpected: no parent reference for drive item");
+    }
+
+    return getParentReferenceInternalId(driveItem.parentReference);
+  },
+  ({
+    parentInternalId,
+    startGarbageCollectionTs,
+  }: {
+    client: Client;
+    parentInternalId: string;
+    startGarbageCollectionTs: number;
+  }) =>
+    `microsoft-garbage-collection-ts-${startGarbageCollectionTs}-node-${parentInternalId}`,
+  60 * 60 * 24 * 1000
+);
+
+async function isOutsideRootNodes({
+  client,
+  driveItem,
+  rootNodeIds,
+  startGarbageCollectionTs,
+}: {
+  client: Client;
+  driveItem: DriveItem;
+  rootNodeIds: string[];
+  startGarbageCollectionTs: number;
+}) {
+  if (
+    rootNodeIds.includes(getDriveItemInternalId(driveItem)) ||
+    rootNodeIds.includes(getDriveInternalIdFromItem(driveItem))
+  ) {
+    return false;
+  }
+
+  if (!driveItem.parentReference) {
+    throw new Error("Unexpected: no parent reference for drive item");
+  }
+
+  let parentInternalId: string | null = getParentReferenceInternalId(
+    driveItem.parentReference
+  );
+
+  do {
+    if (rootNodeIds.includes(parentInternalId)) {
+      return false;
+    }
+    parentInternalId = await cachedGetParentFromGraphAPI({
+      client,
+      parentInternalId,
+      startGarbageCollectionTs,
+    });
+  } while (parentInternalId !== null);
+
+  return true;
 }

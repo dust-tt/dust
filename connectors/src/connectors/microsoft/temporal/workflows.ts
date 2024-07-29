@@ -19,9 +19,10 @@ const {
   startToCloseTimeout: "30 minutes",
 });
 
-const { microsoftDeletionActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "15 minutes",
-});
+const { microsoftDeletionActivity, microsoftGarbageCollectionActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "15 minutes",
+  });
 
 const { syncDeltaForRootNodesInDrive } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
@@ -131,6 +132,25 @@ export async function microsoftDeletionWorkflow({
   await microsoftDeletionActivity({ connectorId, nodeIdsToDelete });
 }
 
+export async function microsoftGarbageCollectionWorkflow({
+  connectorId,
+}: {
+  connectorId: number;
+}) {
+  const rootNodeIds = await getRootNodesToSync(connectorId);
+  const startGarbageCollectionTs = new Date().getTime();
+  let idCursor: number | null = 0;
+  while (idCursor !== null) {
+    idCursor = await microsoftGarbageCollectionActivity({
+      connectorId,
+      idCursor,
+      rootNodeIds,
+      startGarbageCollectionTs,
+    });
+    await sleep("1 minute");
+  }
+}
+
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-${connectorId}`;
 }
@@ -141,6 +161,10 @@ export function microsoftFullSyncSitesWorkflowId(connectorId: ModelId) {
 
 export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-incrementalSync-${connectorId}`;
+}
+
+export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
+  return `microsoft-garbageCollection-${connectorId}`;
 }
 
 export function microsoftDeletionWorkflowId(

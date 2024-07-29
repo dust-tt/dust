@@ -421,6 +421,29 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     };
   }
 
+  static async fetchByPaginatedIds({
+    connectorId,
+    pageSize,
+    idCursor,
+  }: {
+    connectorId: ModelId;
+    pageSize: number;
+    idCursor: ModelId;
+  }): Promise<MicrosoftNodeResource[]> {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId,
+        id: {
+          [Op.gte]: idCursor,
+        },
+      },
+      limit: pageSize,
+      order: [["id", "ASC"]],
+    });
+
+    return blobs.map((blob) => new this(this.model, blob.get()));
+  }
+
   /** String representation of this node and its descendants in treeLike fashion */
   async treeString(level = 0): Promise<string> {
     const childrenStrings = await Promise.all(
