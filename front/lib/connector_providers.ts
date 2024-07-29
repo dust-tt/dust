@@ -7,6 +7,7 @@ import {
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ConnectorProvider, WhitelistableFeature } from "@dust-tt/types";
 
@@ -123,6 +124,22 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isNested: true,
     isSearchEnabled: false,
   },
+  zendesk: {
+    name: "Zendesk",
+    connectorProvider: "zendesk",
+    status: "rolling_out",
+    rollingOutFlag: "zendesk_connector",
+    hide: false,
+    description:
+      "Authorize access to Zendesk for indexing tickets, articles, and comments from your help center.",
+    limitations:
+      "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
+    guideLink: "https://docs.dust.tt/docs/zendesk-connection",
+    logoComponent: ZendeskLogo,
+    isNested: false,
+    isSearchEnabled: true,
+  },
+
   webcrawler: {
     name: "Web Crawler",
     connectorProvider: "webcrawler",

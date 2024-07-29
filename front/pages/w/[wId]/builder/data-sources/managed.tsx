@@ -685,6 +685,9 @@ export default function DataSourcesView({
                               case "microsoft":
                                 isDataSourceAllowedInPlan = true;
                                 break;
+                              case "zendesk":
+                                isDataSourceAllowedInPlan = true;
+                                break;
                               case "webcrawler":
                                 // Web crawler connector is not displayed on this web page.
                                 isDataSourceAllowedInPlan = false;

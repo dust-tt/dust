@@ -10,6 +10,7 @@ export const CONNECTOR_PROVIDERS = [
   "slack",
   "microsoft",
   "webcrawler",
+  "zendesk",
 ] as const;
 
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
