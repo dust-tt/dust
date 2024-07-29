@@ -55,7 +55,7 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
   }
 
   // TODO(2024-07-29 flav) Replace dataSourceId by DataSourceResource once implemented.
-  // For now, we create a default view for all managed connections (except webcrawler).
+  // For now, we create a default view for all managed connections.
   // This view has access to all documents, which is represented by the special value "*".
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
     vault: VaultResource,

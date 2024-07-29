@@ -210,8 +210,4 @@ export class VaultResource extends BaseResource<VaultModel> {
       ],
     };
   }
-
-  isGlobal(): boolean {
-    return this.kind === "global";
-  }
 }

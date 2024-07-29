@@ -341,13 +341,11 @@ async function handler(
         vaultId: vault.id,
       });
 
-      if (vault.isGlobal()) {
-        // For data source in the global vault, we create a default view in the vault.
-        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-          vault,
-          { dataSourceId: dataSource.id }
-        );
-      }
+      // For managed data source, we create a default view in the vault.
+      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+        vault,
+        { dataSourceId: dataSource.id }
+      );
 
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),
