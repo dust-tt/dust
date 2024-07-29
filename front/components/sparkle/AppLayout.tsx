@@ -200,7 +200,9 @@ export default function AppLayout({
         </div>
       </div>
       {user.user && (
-        <GenerationContextProvider><HelpAndQuickGuideWrapper owner={owner} user={user?.user} /></GenerationContextProvider>
+        <GenerationContextProvider>
+          <HelpAndQuickGuideWrapper owner={owner} user={user?.user} />
+        </GenerationContextProvider>
       )}
       <>
         <Script
