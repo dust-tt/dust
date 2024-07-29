@@ -220,7 +220,7 @@ export function RenderMessageMarkdown({
   );
 
   return (
-    <div className={isStreaming ? "blinking-cursor" : ""}>
+    <div className={classNames("w-full", isStreaming ? "blinking-cursor" : "")}>
       <CitationsContext.Provider
         value={
           citationsContext || {
