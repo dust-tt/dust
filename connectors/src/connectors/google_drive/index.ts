@@ -117,6 +117,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     const googleDriveConfigurationBlob = {
       pdfEnabled: false,
       largeFilesEnabled: false,
+      csvEnabled: false,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -769,7 +770,19 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         }
         return new Ok(void 0);
       }
-
+      case "csvEnabled": {
+        await config.update({
+          csvEnabled: configValue === "true",
+        });
+        const workflowRes = await launchGoogleDriveFullSyncWorkflow(
+          this.connectorId,
+          null
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(void 0);
+      }
       case "largeFilesEnabled": {
         await config.update({
           largeFilesEnabled: configValue === "true",
@@ -817,6 +830,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
       case "largeFilesEnabled": {
         return new Ok(config.largeFilesEnabled ? "true" : "false");
+      }
+      case "csvEnabled": {
+        return new Ok(config.csvEnabled ? "true" : "false");
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

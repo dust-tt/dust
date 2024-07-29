@@ -1,6 +1,4 @@
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import { getEnabledFeatureFlagsMemoized } from "@connectors/lib/workspace";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
   "application/vnd.google-apps.document": "text/plain",
@@ -9,10 +7,10 @@ export const MIME_TYPES_TO_EXPORT: { [key: string]: string } = {
 
 export async function getMimeTypesToDownload({
   pdfEnabled,
-  connector,
+  csvEnabled,
 }: {
   pdfEnabled: boolean;
-  connector: ConnectorResource;
+  csvEnabled: boolean;
 }) {
   const mimeTypes = [
     "text/plain",
@@ -24,7 +22,6 @@ export async function getMimeTypesToDownload({
   if (pdfEnabled) {
     mimeTypes.push("application/pdf");
   }
-  const csvEnabled = await isCsvEnabled(connector);
   if (csvEnabled) {
     mimeTypes.push("text/csv");
   }
@@ -34,14 +31,14 @@ export async function getMimeTypesToDownload({
 
 export async function getMimeTypesToSync({
   pdfEnabled,
-  connector,
+  csvEnabled,
 }: {
   pdfEnabled: boolean;
-  connector: ConnectorResource;
+  csvEnabled: boolean;
 }) {
   const mimeTypes = await getMimeTypesToDownload({
     pdfEnabled,
-    connector,
+    csvEnabled,
   });
   mimeTypes.push(...Object.keys(MIME_TYPES_TO_EXPORT));
   mimeTypes.push("application/vnd.google-apps.folder");
@@ -56,9 +53,4 @@ export function isGoogleDriveFolder(file: GoogleDriveFiles) {
 
 export function isGoogleDriveSpreadSheetFile(file: { mimeType: string }) {
   return file.mimeType === "application/vnd.google-apps.spreadsheet";
-}
-
-async function isCsvEnabled(connector: ConnectorResource): Promise<boolean> {
-  const enabledFeatureFlags = await getEnabledFeatureFlagsMemoized(connector);
-  return !!enabledFeatureFlags.includes("google_csv_sync");
 }

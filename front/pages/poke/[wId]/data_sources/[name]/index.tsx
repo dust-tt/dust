@@ -363,6 +363,14 @@ const DataSourcePage = ({
                 configKey="pdfEnabled"
                 featureKey="googleDrivePdfEnabled"
               />
+              <ConfigToggle
+                title="CSV syncing enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource.name}
+                configKey="csvEnabled"
+                featureKey="googleDriveCsvEnabled"
+              />
 
               <ConfigToggle
                 title="Large Files enabled?"
@@ -383,6 +391,14 @@ const DataSourcePage = ({
                 dataSource={dataSource.name}
                 configKey="pdfEnabled"
                 featureKey="microsoftPdfEnabled"
+              />
+              <ConfigToggle
+                title="CSV syncing enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource.name}
+                configKey="csvEnabled"
+                featureKey="microsoftCsvEnabled"
               />
               <ConfigToggle
                 title="Large Files enabled?"
