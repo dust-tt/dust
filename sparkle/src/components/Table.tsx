@@ -1,28 +1,41 @@
 import React, {
-  createContext,
   ReactNode,
-  useContext,
   useState,
-  useEffect,
   useCallback,
-  useMemo,
+  useEffect,
+  ReactElement,
 } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/index";
 import { Icon } from "./Icon";
 import { classNames } from "@sparkle/lib/utils";
 
-interface TableContextType {
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  children: ReactNode;
+}
+
+type SortingProps = {
   sortColumn: string | null;
   sortDirection: "asc" | "desc";
   onSort: (column: string) => void;
-  sortableColumns: Set<string>;
+  registerSortableColumn: (column: string) => void;
+};
+
+interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
+  children: ReactNode;
+  sortColumn: string | null;
+  sortDirection: "asc" | "desc";
+  onSort: (column: string) => void;
   registerSortableColumn: (column: string) => void;
 }
 
-const TableContext = createContext<TableContextType | null>(null);
-
-interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  column: string;
+  sortable?: boolean;
   children: ReactNode;
+  sortColumn?: string | null;
+  sortDirection?: "asc" | "desc";
+  onSort?: (column: string) => void;
+  registerSortableColumn?: (column: string) => void;
 }
 
 const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
@@ -52,75 +65,78 @@ const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
     setSortableColumns((prev) => new Set(prev).add(column));
   }, []);
 
-  const contextValue = useMemo<TableContextType>(
-    () => ({
-      sortColumn,
-      sortDirection,
-      onSort: handleSort,
-      sortableColumns,
-      registerSortableColumn,
-    }),
-    [
-      sortColumn,
-      sortDirection,
-      handleSort,
-      sortableColumns,
-      registerSortableColumn,
-    ]
-  );
+  const childrenWithProps = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child as ReactElement<SortingProps>, {
+        sortColumn,
+        sortDirection,
+        onSort: handleSort,
+        registerSortableColumn,
+      });
+    }
+    return child;
+  });
 
   return (
-    <TableContext.Provider value={contextValue}>
-      <table
-        className={classNames(
-          "s-w-full s-table-auto s-border-collapse",
-          className || ""
-        )}
-        {...props}
-      >
-        {children}
-      </table>
-    </TableContext.Provider>
+    <table
+      className={classNames(
+        "s-w-full s-table-auto s-border-collapse",
+        className || ""
+      )}
+      {...props}
+    >
+      {childrenWithProps}
+    </table>
   );
 };
 
-interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
-  children: ReactNode;
-}
+const Header: React.FC<HeaderProps> = ({
+  children,
+  className,
+  sortColumn,
+  sortDirection,
+  onSort,
+  registerSortableColumn,
+  ...props
+}) => {
+  const headerChildren = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child as ReactElement<SortingProps>, {
+        sortColumn,
+        sortDirection,
+        onSort,
+        registerSortableColumn,
+      });
+    }
+    return child;
+  });
 
-const Header: React.FC<HeaderProps> = ({ children, className, ...props }) => (
-  <thead
-    className={classNames(
-      "s-border-b s-border-structure-200 s-bg-structure-50",
-      className || ""
-    )}
-    {...props}
-  >
-    {children}
-  </thead>
-);
-
-interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
-  column: string;
-  sortable?: boolean;
-  children: ReactNode;
-}
+  return (
+    <thead
+      className={classNames(
+        "s-border-b s-border-structure-200 s-bg-structure-50",
+        className || ""
+      )}
+      {...props}
+    >
+      {headerChildren}
+    </thead>
+  );
+};
 
 const Head: React.FC<HeadProps> = ({
   children,
   className,
   column,
   sortable = true,
+  sortColumn,
+  sortDirection,
+  onSort,
+  registerSortableColumn,
   ...props
 }) => {
-  const context = useContext(TableContext);
-  if (!context) {
-    throw new Error("Table.Head must be used within a Table");
-  }
-  const { sortColumn, sortDirection, onSort, registerSortableColumn } = context;
-
   useEffect(() => {
-    if (sortable) {
+    if (sortable && registerSortableColumn) {
       registerSortableColumn(column);
     }
   }, [sortable, registerSortableColumn, column]);
@@ -135,7 +151,7 @@ const Head: React.FC<HeadProps> = ({
     <th
       className={classNames(
         "s-px-4 s-py-2 s-text-left s-font-medium s-text-element-700",
-        sortable ? "s-cursor-pointer": "",
+        sortable ? "s-cursor-pointer" : "",
         className || ""
       )}
       onClick={handleClick}
@@ -165,7 +181,7 @@ const Body: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
   className,
   ...props
 }) => (
-  <tbody className={className} {...props}>
+  <tbody className={className || ""} {...props}>
     {children}
   </tbody>
 );
@@ -221,7 +237,10 @@ const Caption: React.FC<React.HTMLAttributes<HTMLTableCaptionElement>> = ({
   ...props
 }) => (
   <caption
-    className={classNames("s-mt-4 s-text-sm s-text-element-600", className || "")}
+    className={classNames(
+      "s-mt-4 s-text-sm s-text-element-600",
+      className || ""
+    )}
     {...props}
   >
     {children}
