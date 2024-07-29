@@ -24,6 +24,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -339,6 +340,14 @@ async function handler(
         editedByUserId: user.id,
         vaultId: vault.id,
       });
+
+      if (vault.isGlobal()) {
+        // For data source in the default vault, we create a view in the vault.
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          vault,
+          { dataSourceId: dataSource.id }
+        );
+      }
 
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),

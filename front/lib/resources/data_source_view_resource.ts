@@ -22,6 +22,9 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
+type AllDocumentsType = "*";
+const ALL_DOCUMENTS_TYPE: AllDocumentsType = "*";
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
@@ -44,7 +47,6 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     return new this(DataSourceViewResource.model, key.get());
   }
 
-  // TODO(2024-07-29 flav) Replace dataSourceId by DataSourceResource once implemented.
   static async createViewInVaultFromDataSource(
     vault: VaultResource,
     { dataSourceId }: { dataSourceId: ModelId },
@@ -52,8 +54,21 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
   ) {
     return this.makeNew({
       dataSourceId,
-      name: vault.name,
       parentsIn,
+      workspaceId: vault.workspaceId,
+    });
+  }
+
+  // TODO(2024-07-29 flav) Replace dataSourceId by DataSourceResource once implemented.
+  // For now, we create a default view for all managed connections (except webcrawler).
+  // This view has access to all documents, which is represented by the special value "*".
+  static async createViewInVaultFromDataSourceIncludingAllDocuments(
+    vault: VaultResource,
+    { dataSourceId }: { dataSourceId: ModelId }
+  ) {
+    return this.makeNew({
+      dataSourceId,
+      parentsIn: [ALL_DOCUMENTS_TYPE],
       workspaceId: vault.workspaceId,
     });
   }

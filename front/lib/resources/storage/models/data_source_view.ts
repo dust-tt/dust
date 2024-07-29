@@ -19,7 +19,6 @@ export class DataSourceViewModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare name: string;
   declare parentsIn: string[];
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
@@ -42,10 +41,6 @@ DataSourceViewModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     parentsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
