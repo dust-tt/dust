@@ -1,4 +1,3 @@
-import { HeartAltIcon, Icon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -78,7 +77,11 @@ export function HelpAndQuickGuideWrapper({
           )}
           onClick={() => setIsHelpDrawerOpen(true)}
         >
-          <Icon visual={HeartAltIcon} className="text-white" size="md" />
+          <span
+            style={{ fontSize: "32px", color: "white", fontWeight: "bold" }}
+          >
+            ?
+          </span>
         </div>
       </div>
     </>
