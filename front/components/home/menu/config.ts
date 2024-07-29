@@ -35,6 +35,11 @@ const AboutMenuConfig: MenuConfig = {
   title: "About",
   items: [
     {
+      title: "Blog",
+      href: "https://blog.dust.tt/",
+      isExternal: true,
+    },
+    {
       title: "Contact",
       href: "mailto:team@dust.tt",
       isExternal: true,
@@ -42,11 +47,6 @@ const AboutMenuConfig: MenuConfig = {
     {
       title: "Support",
       href: "https://docs.dust.tt/discuss",
-      isExternal: true,
-    },
-    {
-      title: "Blog",
-      href: "https://blog.dust.tt/",
       isExternal: true,
     },
     {
