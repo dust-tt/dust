@@ -1,7 +1,13 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
 
-export const SearchOrder = ["name", "usage"] as const;
+export const SearchOrder = ["name", "usage", "edited_at"] as const;
 export type SearchOrderType = (typeof SearchOrder)[number];
+
+const prettyfiedSearchOrder: { [key in SearchOrderType]: string } = {
+  name: "Name",
+  usage: "Usage",
+  edited_at: "Last edited at",
+};
 
 // Headless UI does not inherently handle Portal-based rendering,
 // leading to dropdown menus being hidden by parent divs with overflow settings.
@@ -21,7 +27,7 @@ export function SearchOrderDropdown({
         <Button
           type="select"
           labelVisible={true}
-          label={`Order by: ${orderBy}`}
+          label={`Order by: ${prettyfiedSearchOrder[orderBy]}`}
           variant="tertiary"
           hasMagnifying={false}
           size="sm"
@@ -32,7 +38,7 @@ export function SearchOrderDropdown({
         {SearchOrder.map((order) => (
           <DropdownMenu.Item
             key={order}
-            label={order}
+            label={prettyfiedSearchOrder[order]}
             onClick={() => setOrderBy(order)}
           />
         ))}

@@ -196,6 +196,17 @@ export default function WorkspaceAssistants({
       });
       break;
     }
+    case "edited_at":
+      filteredAgents.sort((a, b) => {
+        const dateA = a.versionCreatedAt
+          ? new Date(a.versionCreatedAt).getTime()
+          : -Infinity;
+        const dateB = b.versionCreatedAt
+          ? new Date(b.versionCreatedAt).getTime()
+          : -Infinity;
+        return dateB - dateA;
+      });
+      break;
     default:
       assertNever(orderBy);
   }
