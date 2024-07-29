@@ -147,7 +147,13 @@ export function VisualizationActionIframe({
   onRetry: () => void;
 }) {
   const [contentHeight, setContentHeight] = useState(0);
-  const vizIframeRef = useRef(null);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [showSpinner, setShowSpinner] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(1);
+
+  const vizIframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
 
   const workspaceId = owner.sId;
 
@@ -162,92 +168,46 @@ export function VisualizationActionIframe({
   const { extractedCode, isComplete: codeFullyGenerated } =
     visualizationExtractCode(action.generation ?? streamedCode ?? "");
 
-  const iframeRendered = contentHeight !== 0;
-
-  // const mode = (() => {
-  //   // User clicked on code toggle => show code
-  //   // Code generation has not started => show spinner
-  //   // Code generation has not yet completed => show streaming code
-  //   // Code generation has completed but iframe is not rendered yet => show spinner
-  //   // Code is fully generated and iframe is rendered => show iframe
-  //   // if (codeToggled) {
-  //   //   return "code";
-  //   // }
-  //   if (!codeFullyGenerated) {
-  //     return "spinner";
-  //     // return extractedCode ? "code" : "spinner";
-  //   }
-  //   return iframeRendered ? "iframe" : "spinner";
-  // })();
-
-  const [showSpinner, setShowSpinner] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(1);
-
   useEffect(() => {
-    console.log(">> codeFullyGenerated", codeFullyGenerated);
-    console.log(">> extractedCode", extractedCode);
     if (!codeFullyGenerated) {
-      if (!extractedCode) {
-        setShowSpinner(true);
-      } else {
-        setShowSpinner(false);
-      }
+      // Display spinner over the code block while waiting for code generation.
+      setShowSpinner(!extractedCode);
       setActiveIndex(0);
-    } else if (iframeRendered) {
+    } else if (iframeLoaded) {
+      // Display iframe if code is generated and iframe has loaded.
       setShowSpinner(false);
       setActiveIndex(1);
     } else {
+      // Show spinner while iframe is loading.
       setShowSpinner(true);
       setActiveIndex(1);
     }
-  }, [codeFullyGenerated, extractedCode, iframeRendered]);
-
-  // useEffect(() => {
-  //   if (!codeFullyGenerated || !iframeRendered) {
-  //     setShowSpinner(true);
-  //   } else {
-  //     setShowSpinner(false);
-  //   }
-  // }, [codeFullyGenerated, iframeRendered]);
-
-  // useEffect(() => {
-  //   if (mode === "iframe" || mode === "spinner") {
-  //     setActiveIndex(1);
-  //   } else if (mode === "code") {
-  //     setActiveIndex(0);
-  //   }
-  // }, [mode]);
-
-  const [containerHeight, setContainerHeight] = useState("h-full");
+  }, [codeFullyGenerated, extractedCode, iframeLoaded]);
 
   useEffect(() => {
-    if (activeIndex === 0) {
-      setContainerHeight("100%");
-    } else if (activeIndex === 1) {
-      setContainerHeight(`${contentHeight}px`);
+    if (!containerRef.current) {
+      return;
     }
-  }, [activeIndex, contentHeight]);
 
-  // TODO: iframeRendered does not work if the iframe fails.
+    if (activeIndex === 0) {
+      // Set height of the container to the height of the code block if the code is fully generated
+      // Otherwise, set the height to 100% to allow the code to grow as it gets generated.
+      containerRef.current.style.height = codeFullyGenerated
+        ? `${codeRef.current?.scrollHeight}px`
+        : "100%";
+    } else if (activeIndex === 1) {
+      containerRef.current.style.height = `${contentHeight}px`;
+    }
+  }, [activeIndex, contentHeight, codeFullyGenerated]);
+
   return (
     <div className="relative flex flex-col">
-      {/* // TODO: Disable the click. */}
-      {/* {iframeRendered && ( */}
-      <div className="flex pb-2">
-        <div className="rounded-lg bg-gray-100 p-2">
-          {["Code", "Visualisation"].map((tab, index) => (
-            <button
-              key={tab}
-              className={`rounded-lg px-4 py-2 text-sm font-medium text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""}`}
-              onClick={() => setActiveIndex(index)}
-              disabled={!codeFullyGenerated}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
-      {/* )} */}
+      <Tabs
+        tabs={["Code", "Visualisation"]}
+        disabled={!codeFullyGenerated}
+        activeIndex={activeIndex}
+        onTabClick={setActiveIndex}
+      />
       {showSpinner && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white bg-opacity-75">
           <Spinner />
@@ -255,7 +215,7 @@ export function VisualizationActionIframe({
       )}
       <div
         className="transition-height relative min-h-96 w-full overflow-hidden duration-500 ease-in-out"
-        style={{ height: containerHeight }}
+        ref={containerRef}
       >
         <div
           className="flex transition-transform duration-500 ease-out"
@@ -263,27 +223,25 @@ export function VisualizationActionIframe({
             transform: `translateX(-${activeIndex * 100}%)`,
           }}
         >
-          <div className="flex h-full w-full shrink-0">
+          <div className="flex h-full w-full shrink-0" ref={codeRef}>
             <RenderMessageMarkdown
               content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
               isStreaming={!codeFullyGenerated && isStreaming}
             />
           </div>
-          <div className="relative flex h-full min-h-96 w-full shrink-0 items-center justify-center">
+          <div className="relative flex h-full w-full shrink-0 items-center justify-center">
             {codeFullyGenerated && (
-              // We render the iframe as soon as we have the code.
-              // Until it is actually rendered, we're showing a spinner so
-              // we use opacity-0 to hide the iframe.
-              // We also disable pointer event to allow interacting with the rest.
               <div
                 style={{ height: `${contentHeight}px` }}
                 className={classNames("max-h-[60vh] w-full")}
               >
                 <iframe
                   ref={vizIframeRef}
-                  className="h-full w-full"
+                  // Set a min height so iframe can display error.
+                  className="h-full min-h-96 w-full"
                   src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
                   sandbox="allow-scripts"
+                  onLoad={() => setIframeLoaded(true)}
                 />
               </div>
             )}
@@ -292,62 +250,33 @@ export function VisualizationActionIframe({
       </div>
     </div>
   );
-
-  // return (
-  //   <div className="relative">
-  //     {mode === "iframe" && (
-  //       // If we displaying the iframe, we need to offset the agent message
-  //       // content to make space for the iframe.
-  //       <div
-  //         style={{
-  //           height: `${contentHeight}px`,
-  //         }}
-  //       />
-  //     )}
-  //     <div>
-  //       {mode === "code" && (
-  //         <RenderMessageMarkdown
-  //           content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
-  //           isStreaming={!codeFullyGenerated && isStreaming}
-  //         />
-  //       )}
-  //       {mode === "spinner" && <Spinner />}
-  //       {codeFullyGenerated && (
-  //         // We render the iframe as soon as we have the code.
-  //         // Until it is actually rendered, we're showing a spinner so
-  //         // we use opacity-0 to hide the iframe.
-  //         // We also disable pointer event to allow interacting with the rest.
-  //         <div
-  //           style={{ height: `${contentHeight}px` }}
-  //           className={classNames(
-  //             "absolute left-0 top-0 max-h-[60vh] w-full",
-  //             mode !== "iframe"
-  //               ? "pointer-events-none opacity-0"
-  //               : "pointer-events-auto opacity-100"
-  //           )}
-  //         >
-  //           <iframe
-  //             ref={vizIframeRef}
-  //             className="h-full w-full"
-  //             src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
-  //             sandbox="allow-scripts"
-  //           />
-  //         </div>
-  //       )}
-  //     </div>
-
-  //     {iframeRendered && (
-  //       // Only start showing the toggle once the iframe is rendered.
-  //       <div className="absolute left-4 top-4">
-  //         <IconToggleButton
-  //           icon={BracesIcon}
-  //           selected={!showIframe}
-  //           onClick={() =>
-  //             setShowIframe((prev) => (prev === null ? false : !prev))
-  //           }
-  //         />
-  //       </div>
-  //     )}
-  //   </div>
-  // );
 }
+
+const Tabs = ({
+  activeIndex,
+  disabled,
+  onTabClick,
+  tabs,
+}: {
+  activeIndex: number;
+  disabled: boolean;
+  onTabClick: (tabIndex: number) => void;
+  tabs: string[];
+}) => {
+  return (
+    <div className="flex pb-2">
+      <div className="rounded-lg bg-gray-100 p-2">
+        {tabs.map((tab, index) => (
+          <button
+            key={tab}
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
+            onClick={() => onTabClick(index)}
+            disabled={disabled}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
