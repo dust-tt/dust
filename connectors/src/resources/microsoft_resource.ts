@@ -266,9 +266,10 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return new this(this.model, blob.get());
   }
 
-  static async fetchNodesWithoutParents() {
+  static async fetchNodesWithoutParents(connectorId: ModelId) {
     const blobs = await this.model.findAll({
       where: {
+        connectorId,
         parentInternalId: null,
       },
     });
