@@ -66,17 +66,19 @@ export async function syncOneFile({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const localLogger = logger.child({
-    provider: "microsoft",
-    connectorId,
-    internalId: file.id,
-    name: file.name,
-  });
   if (!file.file) {
     throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
   }
 
   const documentId = getDriveItemInternalId(file);
+
+  const localLogger = logger.child({
+    provider: "microsoft",
+    connectorId,
+    internalId: documentId,
+    originalId: file.id,
+    name: file.name,
+  });
 
   const fileResource = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
@@ -194,7 +196,7 @@ export async function syncOneFile({
     documentSection = await handleTextExtraction(data, localLogger, mimeType);
   }
 
-  logger.info({ documentSection }, "Document section");
+  localLogger.info({ documentSection }, "Document section");
 
   const updatedAt = file.lastModifiedDateTime
     ? new Date(file.lastModifiedDateTime)
