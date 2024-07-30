@@ -1,4 +1,5 @@
-import { assertNever } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 
@@ -496,4 +497,14 @@ export function getDriveInternalIdFromItem(item: MicrosoftGraph.DriveItem) {
 
 export function getSiteAPIPath(site: MicrosoftGraph.Site) {
   return `/sites/${site.id}`;
+}
+
+export async function wrapWithResult<T>(
+  fn: () => Promise<T>
+): Promise<Result<T, Error>> {
+  try {
+    return new Ok(await fn());
+  } catch (error) {
+    return new Err(error as Error);
+  }
 }

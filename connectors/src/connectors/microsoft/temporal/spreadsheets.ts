@@ -10,6 +10,7 @@ import {
   getWorksheetContent,
   getWorksheetInternalId,
   getWorksheets,
+  wrapWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -102,30 +103,34 @@ async function processSheet(
   spreadsheet: microsoftgraph.DriveItem,
   internalId: string,
   worksheet: microsoftgraph.WorkbookWorksheet,
-  spreadsheetId: string
-): Promise<boolean> {
+  spreadsheetId: string,
+  localLogger: Logger
+): Promise<Result<null, Error>> {
   if (!worksheet.id) {
-    return false;
+    return new Err(new Error("worksheet_id_not_found"));
   }
-  const content = await getWorksheetContent(client, internalId);
+  const content = await wrapWithResult(() =>
+    getWorksheetContent(client, internalId)
+  );
+
+  if (content.isErr()) {
+    return content;
+  }
+
   const loggerArgs = {
-    connectorType: "microsoft",
-    connectorId: connector.id,
-    worksheetId: internalId,
     sheet: {
       id: worksheet.id,
       name: worksheet.name,
     },
   };
 
-  logger.info(
+  localLogger.info(
     { loggerArgs },
     "[Spreadsheet] Processing sheet in Microsoft Excel."
   );
 
   // Content.text is guaranteed to be a 2D array with each row of the same length.
-  const rows: string[][] = content.text;
-
+  const rows: string[][] = content.value.text;
   if (rows.length > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
     logger.info(
       { ...loggerArgs, rowCount: rows.length },
@@ -133,7 +138,7 @@ async function processSheet(
     );
 
     // If the sheet has too many rows, return an empty array to ignore it.
-    return false;
+    return new Err(new Error("too_many_rows"));
   }
 
   const [rawHeaders, ...rest] = rows;
@@ -153,7 +158,7 @@ async function processSheet(
 
     await upsertWorksheetInDb(connector, internalId, worksheet, spreadsheetId);
 
-    return true;
+    return new Ok(null);
   }
 
   logger.info(
@@ -161,7 +166,7 @@ async function processSheet(
     "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
   );
 
-  return false;
+  return new Err(new Error("empty_table"));
 }
 
 export async function handleSpreadSheet({
@@ -189,59 +194,59 @@ export async function handleSpreadSheet({
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
-  try {
-    const documentId = getDriveItemInternalId(file);
-    const worksheets = await getAllPaginatedEntities((nextLink) =>
+  const documentId = getDriveItemInternalId(file);
+
+  const worksheets = await wrapWithResult(() =>
+    getAllPaginatedEntities((nextLink) =>
       getWorksheets(client, documentId, nextLink)
-    );
+    )
+  );
 
-    const spreadsheet = await upsertSpreadsheetInDb(
-      connector,
-      documentId,
-      file,
-      parentInternalId
-    );
+  if (worksheets.isErr()) {
+    return worksheets;
+  }
 
-    // List synced sheets.
-    const syncedWorksheets = await spreadsheet.fetchChildren();
+  const spreadsheet = await upsertSpreadsheetInDb(
+    connector,
+    documentId,
+    file,
+    parentInternalId
+  );
 
-    const successfulSheetIdImports: string[] = [];
-    for (const worksheet of worksheets) {
-      if (worksheet.id) {
-        const internalWorkSheetId = getWorksheetInternalId(
-          worksheet,
-          documentId
-        );
-        const isImported = await processSheet(
-          client,
-          connector,
-          file,
-          internalWorkSheetId,
-          worksheet,
-          documentId
-        );
-        if (isImported) {
-          successfulSheetIdImports.push(internalWorkSheetId);
-        }
+  // List synced sheets.
+  const syncedWorksheets = await spreadsheet.fetchChildren();
+
+  const successfulSheetIdImports: string[] = [];
+  for (const worksheet of worksheets.value) {
+    if (worksheet.id) {
+      const internalWorkSheetId = getWorksheetInternalId(worksheet, documentId);
+      const importResult = await processSheet(
+        client,
+        connector,
+        file,
+        internalWorkSheetId,
+        worksheet,
+        documentId,
+        localLogger
+      );
+      if (importResult.isOk()) {
+        successfulSheetIdImports.push(internalWorkSheetId);
       }
     }
+  }
 
-    // Delete any previously synced sheets that no longer exist in the current spreadsheet
-    // or have exceeded the maximum number of rows.
-    const deletedSyncedSheetIds = syncedWorksheets
-      .map((synced) => synced.internalId)
-      .filter((syncedId) => successfulSheetIdImports.indexOf(syncedId) === -1);
+  // Delete any previously synced sheets that no longer exist in the current spreadsheet
+  // or have exceeded the maximum number of rows.
+  const deletedSyncedSheetIds = syncedWorksheets
+    .map((synced) => synced.internalId)
+    .filter((syncedId) => successfulSheetIdImports.indexOf(syncedId) === -1);
 
-    if (deletedSyncedSheetIds.length > 0) {
-      localLogger.info("[Spreadsheet] Deleting Excel spreadsheet.");
-      await MicrosoftNodeResource.batchDelete({
-        resourceIds: deletedSyncedSheetIds,
-        connectorId,
-      });
-    }
-  } catch (err) {
-    localLogger.warn({ error: err }, "Error while parsing spreadsheet");
-    return new Err(err as Error);
+  if (deletedSyncedSheetIds.length > 0) {
+    localLogger.info("[Spreadsheet] Deleting Excel spreadsheet.");
+    await MicrosoftNodeResource.batchDelete({
+      resourceIds: deletedSyncedSheetIds,
+      connectorId,
+    });
   }
 
   return new Ok(null);
