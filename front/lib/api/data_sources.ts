@@ -265,6 +265,7 @@ export async function deleteDataSource(
     }
   }
 
+  // TODO(2024-07-30 flav) Move to DataSourceResource.
   await DataSourceViewResource.deleteForDataSource(
     auth,
     renderDataSourceType(dataSource)
