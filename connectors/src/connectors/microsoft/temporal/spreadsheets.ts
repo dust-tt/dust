@@ -10,7 +10,7 @@ import {
   getWorksheetContent,
   getWorksheetInternalId,
   getWorksheets,
-  wrapWithResult,
+  wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -109,7 +109,7 @@ async function processSheet(
   if (!worksheet.id) {
     return new Err(new Error("worksheet_id_not_found"));
   }
-  const content = await wrapWithResult(() =>
+  const content = await wrapMicrosoftGraphAPIWithResult(() =>
     getWorksheetContent(client, internalId)
   );
 
@@ -196,14 +196,14 @@ export async function handleSpreadSheet({
 
   const documentId = getDriveItemInternalId(file);
 
-  const worksheetsRes = await wrapWithResult(() =>
+  const worksheetsRes = await wrapMicrosoftGraphAPIWithResult(() =>
     getAllPaginatedEntities((nextLink) =>
       getWorksheets(client, documentId, nextLink)
     )
   );
 
-  if (worksheets.isErr()) {
-    return worksheets;
+  if (worksheetsRes.isErr()) {
+    return worksheetsRes;
   }
 
   const spreadsheet = await upsertSpreadsheetInDb(
@@ -217,7 +217,7 @@ export async function handleSpreadSheet({
   const syncedWorksheets = await spreadsheet.fetchChildren();
 
   const successfulSheetIdImports: string[] = [];
-  for (const worksheet of worksheets.value) {
+  for (const worksheet of worksheetsRes.value) {
     if (worksheet.id) {
       const internalWorkSheetId = getWorksheetInternalId(worksheet, documentId);
       const importResult = await processSheet(
