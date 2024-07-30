@@ -15,9 +15,11 @@ import {
 import config from "@app/lib/api/config";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { renderDataSourceType } from "@app/lib/data_sources";
 import { sendGithubDeletionEmail } from "@app/lib/email";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -263,6 +265,10 @@ export async function deleteDataSource(
     }
   }
 
+  await DataSourceViewResource.deleteForDataSource(
+    auth,
+    renderDataSourceType(dataSource)
+  );
   await dataSource.destroy();
 
   await launchScrubDataSourceWorkflow({

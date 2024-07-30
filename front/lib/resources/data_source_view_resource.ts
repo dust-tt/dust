@@ -136,6 +136,18 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     });
   }
 
+  static async deleteForDataSource(
+    auth: Authenticator,
+    dataSource: DataSourceType
+  ) {
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: dataSource.id,
+      },
+    });
+  }
+
   get sId(): string {
     return DataSourceViewResource.modelIdToSId({
       id: this.id,
