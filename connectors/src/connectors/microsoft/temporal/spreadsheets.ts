@@ -107,7 +107,7 @@ async function processSheet(
   localLogger: Logger
 ): Promise<Result<null, Error>> {
   if (!worksheet.id) {
-    return new Err(new Error("worksheet_id_not_found"));
+    return new Err(new Error("Worksheet has no id"));
   }
   const content = await wrapMicrosoftGraphAPIWithResult(() =>
     getWorksheetContent(client, internalId)
@@ -138,7 +138,11 @@ async function processSheet(
     );
 
     // If the sheet has too many rows, return an empty array to ignore it.
-    return new Err(new Error("too_many_rows"));
+    return new Err(
+      new Error(
+        `Too many rows in sheet ${worksheet.name}, rows=${rows.length}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
+      )
+    );
   }
 
   const [rawHeaders, ...rest] = rows;
@@ -166,7 +170,7 @@ async function processSheet(
     "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
   );
 
-  return new Err(new Error("empty_table"));
+  return new Err(new Error(`Table ${worksheet.id} is empty`));
 }
 
 export async function handleSpreadSheet({
@@ -189,7 +193,7 @@ export async function handleSpreadSheet({
   const client = await getClient(connector.connectionId);
 
   if (!file.file) {
-    return new Err(new Error("not_a_file"));
+    return new Err(new Error(`Spreadsheet is not a file: ${file.name}`));
   }
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
