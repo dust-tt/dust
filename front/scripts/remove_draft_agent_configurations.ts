@@ -16,7 +16,7 @@ import { Mention } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
-import { makeScript, runOnAllWorkspaceIds } from "@app/scripts/helpers";
+import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
 async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
@@ -222,7 +222,7 @@ makeScript(
         execute
       );
     }
-    return runOnAllWorkspaceIds(async (workspace) => {
+    return runOnAllWorkspaces(async (workspace) => {
       await removeDraftAgentConfigurationsForWorkspace(
         workspace,
         logger,
