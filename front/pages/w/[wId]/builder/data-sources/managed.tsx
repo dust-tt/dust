@@ -597,7 +597,9 @@ export default function DataSourcesView({
         <ContextItem.List>
           {localIntegrations
             .filter(
-              (ds) => !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide
+              (ds) =>
+                !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide &&
+                (isAdmin || ds.connector)
             )
             .sort((a, b) => {
               if (a.status === b.status) {
