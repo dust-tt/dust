@@ -1,4 +1,5 @@
-import { getSanitizedHeaders, slugify } from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, Result } from "@dust-tt/types";
+import { Err, getSanitizedHeaders, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
@@ -170,15 +171,7 @@ export async function syncSpreadSheet({
   connectorId: number;
   file: microsoftgraph.DriveItem;
   parentInternalId: string;
-}): Promise<
-  | {
-      isSupported: false;
-    }
-  | {
-      isSupported: true;
-      skipReason?: string;
-    }
-> {
+}): Promise<Result<null, { skipReason?: string; error?: Error }>> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -187,68 +180,79 @@ export async function syncSpreadSheet({
 
   const client = await getClient(connector.connectionId);
 
+  const documentId = getDriveItemInternalId(file);
+
   const localLogger = logger.child({
     provider: "microsoft",
     connectorId: connectorId,
-    internalId: file.id,
+    internalId: documentId,
     name: file.name,
   });
 
   if (!file.file) {
-    throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
+    return new Err({ skipReason: "not_a_file" });
   }
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
-  const documentId = getDriveItemInternalId(file);
+  try {
+    const worksheets = await getAllPaginatedEntities((nextLink) =>
+      getWorksheets(client, documentId, nextLink)
+    );
 
-  const worksheets = await getAllPaginatedEntities((nextLink) =>
-    getWorksheets(client, documentId, nextLink)
-  );
+    const spreadsheet = await upsertSpreadsheetInDb(
+      connector,
+      documentId,
+      file,
+      parentInternalId
+    );
 
-  const spreadsheet = await upsertSpreadsheetInDb(
-    connector,
-    documentId,
-    file,
-    parentInternalId
-  );
+    // List synced sheets.
+    const syncedWorksheets = await spreadsheet.fetchChildren();
 
-  // List synced sheets.
-  const syncedWorksheets = await spreadsheet.fetchChildren();
-
-  const successfulSheetIdImports: string[] = [];
-  for (const worksheet of worksheets) {
-    if (worksheet.id) {
-      const internalWorkSheetId = getWorksheetInternalId(worksheet, documentId);
-      const isImported = await processSheet(
-        client,
-        connector,
-        file,
-        internalWorkSheetId,
-        worksheet,
-        documentId
-      );
-      if (isImported) {
-        successfulSheetIdImports.push(internalWorkSheetId);
+    const successfulSheetIdImports: string[] = [];
+    for (const worksheet of worksheets) {
+      if (worksheet.id) {
+        const internalWorkSheetId = getWorksheetInternalId(
+          worksheet,
+          documentId
+        );
+        const isImported = await processSheet(
+          client,
+          connector,
+          file,
+          internalWorkSheetId,
+          worksheet,
+          documentId
+        );
+        if (isImported) {
+          successfulSheetIdImports.push(internalWorkSheetId);
+        }
       }
     }
-  }
 
-  // Delete any previously synced sheets that no longer exist in the current spreadsheet
-  // or have exceeded the maximum number of rows.
-  const deletedSyncedSheetIds = syncedWorksheets
-    .map((synced) => synced.internalId)
-    .filter((syncedId) => successfulSheetIdImports.indexOf(syncedId) === -1);
+    // Delete any previously synced sheets that no longer exist in the current spreadsheet
+    // or have exceeded the maximum number of rows.
+    const deletedSyncedSheetIds = syncedWorksheets
+      .map((synced) => synced.internalId)
+      .filter((syncedId) => successfulSheetIdImports.indexOf(syncedId) === -1);
 
-  if (deletedSyncedSheetIds.length > 0) {
-    localLogger.info("[Spreadsheet] Deleting Excel spreadsheet.");
-    await MicrosoftNodeResource.batchDelete({
-      resourceIds: deletedSyncedSheetIds,
-      connectorId,
+    if (deletedSyncedSheetIds.length > 0) {
+      localLogger.info("[Spreadsheet] Deleting Excel spreadsheet.");
+      await MicrosoftNodeResource.batchDelete({
+        resourceIds: deletedSyncedSheetIds,
+        connectorId,
+      });
+    }
+  } catch (err) {
+    localLogger.warn({ error: err }, "Error while parsing spreadsheet");
+    return new Err({
+      skipReason: "microsoft_internal_error",
+      error: err as Error,
     });
   }
 
-  return { isSupported: true };
+  return new Ok(null);
 }
 
 export async function deleteAllSheets(

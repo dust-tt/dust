@@ -1,6 +1,12 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import {
+  Err,
   isTextExtractionSupportedContentType,
+  Ok,
   TextExtraction,
 } from "@dust-tt/types";
 import { parseAndStringifyCsv, slugify } from "@dust-tt/types";
@@ -26,15 +32,18 @@ const dataSourceNameToConnectorName: { [key: string]: string } = {
 export function handleTextFile(
   data: ArrayBuffer,
   maxDocumentLen: number
-): CoreAPIDataSourceDocumentSection | null {
+): Result<
+  CoreAPIDataSourceDocumentSection,
+  { skipReason?: string; error?: Error }
+> {
   if (data.byteLength > 4 * maxDocumentLen) {
-    return null;
+    return new Err({ skipReason: "file_too_big" });
   }
-  return {
+  return new Ok({
     prefix: null,
     content: Buffer.from(data).toString("utf-8").trim(),
     sections: [],
-  };
+  });
 }
 
 export async function handleCsvFile({
@@ -51,10 +60,10 @@ export async function handleCsvFile({
   localLogger: Logger;
   dataSourceConfig: DataSourceConfig;
   connectorId: ModelId;
-}): Promise<CoreAPIDataSourceDocumentSection | null> {
+}): Promise<Result<null, { skipReason?: string; error?: Error }>> {
   if (data.byteLength > 4 * maxDocumentLen) {
     localLogger.info({}, "File too big to be chunked. Skipping");
-    return null;
+    return new Err({ skipReason: "file_too_big" });
   }
 
   const fileName = file.name ?? "";
@@ -80,22 +89,27 @@ export async function handleCsvFile({
       truncate: true,
     });
   } catch (err) {
-    localLogger.warn({ error: err }, "Error while upserting table");
-    return null;
+    localLogger.warn({ error: err }, "Error while parsing or upserting table");
+    return new Err({
+      skipReason: "parsing_or_upsert_error",
+      error: err as Error,
+    });
   }
-  // if successfully return an "empty" CoreAPIDataSourceDocumentSection
-  // to distinguish between failed and successful table upsert, the
-  // csv won't be upserted as a document
-  return { prefix: null, content: null, sections: [] };
+  return new Ok(null);
 }
 
 export async function handleTextExtraction(
   data: ArrayBuffer,
   localLogger: Logger,
   mimeType: string
-): Promise<CoreAPIDataSourceDocumentSection | null> {
+): Promise<
+  Result<
+    CoreAPIDataSourceDocumentSection,
+    { skipReason?: string; error?: Error }
+  >
+> {
   if (!isTextExtractionSupportedContentType(mimeType)) {
-    return null;
+    return new Err({ skipReason: "unsupported_content_type" });
   }
 
   const pageRes = await new TextExtraction(
@@ -112,7 +126,10 @@ export async function handleTextExtraction(
     );
     // We don't know what to do with files that fails to be converted to text.
     // So we log the error and skip the file.
-    return null;
+    return new Err({
+      skipReason: "text_conversion_error",
+      error: pageRes.error,
+    });
   }
 
   const pages = pageRes.value;
@@ -127,7 +144,7 @@ export async function handleTextExtraction(
   );
 
   return pages.length > 0
-    ? {
+    ? new Ok({
         prefix: null,
         content: null,
         sections: pages.map((page) => ({
@@ -137,6 +154,6 @@ export async function handleTextExtraction(
           content: page.content,
           sections: [],
         })),
-      }
-    : null;
+      })
+    : new Err({ skipReason: "no_pages_extracted" });
 }
