@@ -1,4 +1,9 @@
-import type { DataSourceType, ModelId, Result } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  DataSourceType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -122,7 +127,7 @@ export class DataSourceResource extends BaseResource<DataSource> {
 
   static async listByConnectorProvider(
     auth: Authenticator,
-    connectorProvider: string
+    connectorProvider: ConnectorProvider
   ): Promise<DataSourceResource[]> {
     const owner = await auth.getNonNullableWorkspace();
     const datasources = await this.model.findAll({
