@@ -8,7 +8,6 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
-import type { Logger } from "@connectors/logger/logger";
 
 export async function getSites(
   client: Client,
