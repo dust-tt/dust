@@ -1,6 +1,7 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
 
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
@@ -88,7 +89,17 @@ async function handleGoogleDriveExport(
       return null;
     }
   } catch (e) {
-    localLogger.error({}, "Error exporting Google document");
+    if (e instanceof GaxiosError && e.response?.status === 404) {
+      localLogger.info(
+        {
+          error: e,
+        },
+        "Can't export Gdrive document. 404 error returned, even though we know the file exists. Skipping."
+      );
+      return null;
+    }
+
+    localLogger.error({ error: e }, "Error exporting Google document");
     throw e;
   }
 }
