@@ -44,7 +44,7 @@ impl Provider for ZendeskConnectionProvider {
             "redirect_uri": redirect_uri,
             "scope": "read"
         });
-    
+
         let req = reqwest::Client::new()
             .post("https://d3v-dust.zendesk.com/oauth/tokens")
             .header("Content-Type", "application/json")
@@ -71,9 +71,9 @@ impl Provider for ZendeskConnectionProvider {
     }
 
     async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
-      Err(ProviderError::ActionNotSupportedError(
-          "Zendesk access tokens do not expire".to_string(),
-      ))?
+        Err(ProviderError::ActionNotSupportedError(
+            "Zendesk access tokens do not expire".to_string(),
+        ))?
     }
 
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
