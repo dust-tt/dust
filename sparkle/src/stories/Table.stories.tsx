@@ -94,9 +94,7 @@ const TableExample = () => {
               clickable={row.clickable}
               onClick={() => row.clickable && alert(`Clicked on ${row.name}`)}
             >
-              <Table.Cell avatarUrl={row.avatarUrl} icon={row.icon}>
-                {row.name}
-              </Table.Cell>
+              <Table.Cell avatarUrl={row.avatarUrl} icon={row.icon}/>
               <Table.Cell>{row.usedBy}</Table.Cell>
               <Table.Cell>{row.addedBy}</Table.Cell>
               <Table.Cell>{row.lastUpdated}</Table.Cell>

@@ -19,15 +19,15 @@ interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
 }
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
-  column: string;
+  column?: string;
   sortable?: boolean;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 interface TableChildProps {
@@ -78,7 +78,7 @@ const Head: React.FC<HeadProps & TableChildProps> = ({
   ...props
 }) => {
   const handleClick = useCallback(() => {
-    if (sortable && onSort) {
+    if (column && sortable && onSort) {
       onSort(column);
     }
   }, [sortable, onSort, column]);
