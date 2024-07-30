@@ -206,6 +206,13 @@ export async function syncOneFile({
 
   tags.push(`mimeType:${file.file.mimeType}`);
 
+  if (result.isErr()) {
+    if (fileResource) {
+      await fileResource.delete();
+    }
+    return false;
+  }
+
   const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
     internalId: documentId,
     connectorId,
@@ -216,9 +223,9 @@ export async function syncOneFile({
     mimeType: file.file.mimeType ?? "",
   };
 
-  if (result.isOk() && result.value) {
+  const documentSection = result.value;
+  if (documentSection) {
     // In case of table, result is ok and result.value is null, no document to upsert
-    const documentSection = result.value;
     const documentLength = sectionLength(documentSection);
     const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
 
@@ -269,8 +276,10 @@ export async function syncOneFile({
         },
         `Document is empty or too big to be upserted (marking as synced without upserting)`
       );
-
-      result = new Err(new Error("document_too_big_or_empty"));
+      if (fileResource) {
+        await fileResource.delete();
+      }
+      return false;
     }
   }
 
@@ -280,7 +289,7 @@ export async function syncOneFile({
     await MicrosoftNodeResource.makeNew(resourceBlob);
   }
 
-  return result.isOk();
+  return true;
 }
 
 export async function getParents({
