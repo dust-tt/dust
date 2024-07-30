@@ -11,6 +11,7 @@ import {
   assertNever,
   credentialsFromProviders,
   dustManagedCredentials,
+  rateLimiter,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
@@ -253,6 +254,24 @@ async function handler(
         credentials = dustManagedCredentials();
       } else {
         credentials = credentialsFromProviders(providers);
+      }
+
+      if (!keyRes.value.isSystem) {
+        const remaining = await rateLimiter({
+          key: `app_run:w:${owner.sId}:a:${app.sId}`,
+          maxPerTimeframe: 2000,
+          timeframeSeconds: 60 * 60 * 24,
+          logger: logger,
+        });
+        if (remaining === 0) {
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message: `You have reached the maximum number of 2000 runs over the last 24 hours.`,
+            },
+          });
+        }
       }
 
       logger.info(
