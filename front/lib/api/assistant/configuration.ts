@@ -1514,18 +1514,13 @@ async function _createAgentDataSourcesConfigData(
   // and assign it to the agent data source configuration.
   const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
   const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-  const dataSourceViews = (
-    await Promise.all(
-      uniqueDataSources.map((ds) => {
-        return DataSourceViewResource.listForDataSourceInVault(
-          auth,
-          renderDataSourceType(ds),
-          globalVault,
-          { transaction: t }
-        );
-      })
-    )
-  ).flat();
+  const dataSourceViews =
+    await DataSourceViewResource.listForDataSourcesInVault(
+      auth,
+      uniqueDataSources.map((ds) => renderDataSourceType(ds)),
+      globalVault,
+      { transaction: t }
+    );
 
   const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] =
     await Promise.all(

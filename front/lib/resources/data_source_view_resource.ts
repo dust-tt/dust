@@ -83,20 +83,22 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     return blobs.map((b) => new this(this.model, b.get()));
   }
 
-  static async listForDataSourceInVault(
+  static async listForDataSourcesInVault(
     auth: Authenticator,
-    dataSource: DataSourceType,
+    dataSources: DataSourceType[],
     vault: VaultResource,
     { transaction }: { transaction?: Transaction } = {}
   ) {
-    return this.model.findAll({
+    const blobs = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: dataSource.id,
+        dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: vault.id,
       },
       transaction,
     });
+
+    return blobs.map((b) => new this(this.model, b.get()));
   }
 
   static async fetchById(auth: Authenticator, id: string) {
