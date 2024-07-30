@@ -1,6 +1,6 @@
 export interface DataSourceViewType {
   createdAt: number;
-  parentsIn: string[];
+  parentsIn: string[] | null;
   sId: string;
   updatedAt: number;
 }
