@@ -14,6 +14,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
@@ -167,11 +168,13 @@ export async function handleSpreadSheet({
   connectorId,
   file,
   parentInternalId,
+  localLogger,
 }: {
   connectorId: number;
   file: microsoftgraph.DriveItem;
   parentInternalId: string;
-}): Promise<Result<null, { reason?: string; error?: Error }>> {
+  localLogger: Logger;
+}): Promise<Result<null, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -180,22 +183,14 @@ export async function handleSpreadSheet({
 
   const client = await getClient(connector.connectionId);
 
-  const documentId = getDriveItemInternalId(file);
-
-  const localLogger = logger.child({
-    provider: "microsoft",
-    connectorId: connectorId,
-    internalId: documentId,
-    name: file.name,
-  });
-
   if (!file.file) {
-    return new Err({ reason: "not_a_file" });
+    return new Err(new Error("not_a_file"));
   }
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
   try {
+    const documentId = getDriveItemInternalId(file);
     const worksheets = await getAllPaginatedEntities((nextLink) =>
       getWorksheets(client, documentId, nextLink)
     );
@@ -246,10 +241,7 @@ export async function handleSpreadSheet({
     }
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing spreadsheet");
-    return new Err({
-      reason: "microsoft_internal_error",
-      error: err as Error,
-    });
+    return new Err(err as Error);
   }
 
   return new Ok(null);

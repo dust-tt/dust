@@ -153,10 +153,7 @@ export async function syncOneFile({
     );
   }
 
-  let result: Result<
-    CoreAPIDataSourceDocumentSection | null,
-    { reason?: string; error?: Error }
-  >;
+  let result: Result<CoreAPIDataSourceDocumentSection | null, Error>;
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
     const data = Buffer.from(downloadRes.data);
@@ -176,6 +173,7 @@ export async function syncOneFile({
       connectorId,
       file,
       parentInternalId,
+      localLogger,
     });
   } else if (mimeType === "text/plain") {
     result = handleTextFile(downloadRes.data, maxDocumentLen);
@@ -272,7 +270,7 @@ export async function syncOneFile({
         `Document is empty or too big to be upserted (marking as synced without upserting)`
       );
 
-      result = new Err({ reason: "document_too_big_or_empty" });
+      result = new Err(new Error("document_too_big_or_empty"));
     }
   }
 

@@ -32,12 +32,9 @@ const dataSourceNameToConnectorName: { [key: string]: string } = {
 export function handleTextFile(
   data: ArrayBuffer,
   maxDocumentLen: number
-): Result<
-  CoreAPIDataSourceDocumentSection,
-  { reason?: string; error?: Error }
-> {
+): Result<CoreAPIDataSourceDocumentSection, Error> {
   if (data.byteLength > 4 * maxDocumentLen) {
-    return new Err({ reason: "file_too_big" });
+    return new Err(new Error("file_too_big"));
   }
   return new Ok({
     prefix: null,
@@ -60,10 +57,10 @@ export async function handleCsvFile({
   localLogger: Logger;
   dataSourceConfig: DataSourceConfig;
   connectorId: ModelId;
-}): Promise<Result<null, { reason?: string; error?: Error }>> {
+}): Promise<Result<null, Error>> {
   if (data.byteLength > 4 * maxDocumentLen) {
     localLogger.info({}, "File too big to be chunked. Skipping");
-    return new Err({ reason: "file_too_big" });
+    return new Err(new Error("file_too_big"));
   }
 
   const fileName = file.name ?? "";
@@ -90,10 +87,7 @@ export async function handleCsvFile({
     });
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");
-    return new Err({
-      reason: "parsing_or_upsert_error",
-      error: err as Error,
-    });
+    return new Err(err as Error);
   }
   return new Ok(null);
 }
@@ -102,11 +96,9 @@ export async function handleTextExtraction(
   data: ArrayBuffer,
   localLogger: Logger,
   mimeType: string
-): Promise<
-  Result<CoreAPIDataSourceDocumentSection, { reason?: string; error?: Error }>
-> {
+): Promise<Result<CoreAPIDataSourceDocumentSection, Error>> {
   if (!isTextExtractionSupportedContentType(mimeType)) {
-    return new Err({ reason: "unsupported_content_type" });
+    return new Err(new Error("unsupported_content_type"));
   }
 
   const pageRes = await new TextExtraction(
@@ -123,10 +115,7 @@ export async function handleTextExtraction(
     );
     // We don't know what to do with files that fails to be converted to text.
     // So we log the error and skip the file.
-    return new Err({
-      reason: "text_conversion_error",
-      error: pageRes.error,
-    });
+    return pageRes;
   }
 
   const pages = pageRes.value;
@@ -152,5 +141,5 @@ export async function handleTextExtraction(
           sections: [],
         })),
       })
-    : new Err({ reason: "no_pages_extracted" });
+    : new Err(new Error("no_pages_extracted"));
 }
