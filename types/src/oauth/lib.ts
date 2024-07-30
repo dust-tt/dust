@@ -14,6 +14,7 @@ export const OAUTH_PROVIDERS = [
   "notion",
   "slack",
   "gong",
+  "zendesk",
   "microsoft",
 ] as const;
 

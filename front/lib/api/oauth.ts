@@ -216,6 +216,28 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(query, "state");
     },
   },
+  zendesk: {
+    setupUri: (connection) => {
+      const scopes = [
+        "tickets:read",
+        "hc:read",
+      ];
+      return (
+        `https://d3v-dust.zendesk.com/oauth/authorizations/new?` +
+        `client_id=${config.getOAuthZendeskClientId()}` +
+        `&scope=${encodeURIComponent(scopes.join(" "))}` +
+        `&response_type=code` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("zendesk"))}`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+  },
   microsoft: {
     setupUri: (connection) => {
       const scopes = [

@@ -109,6 +109,9 @@ const config = {
   getOAuthGongClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GONG_CLIENT_ID");
   },
+  getOAuthZendeskClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
+  },
   getOAuthMicrosoftClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_CLIENT_ID");
   },
