@@ -1,6 +1,11 @@
-import React, { ReactNode, useCallback, useState } from "react";
+import React, { ReactNode, useCallback } from "react";
 
-import { Avatar, ChevronDownIcon, ChevronUpIcon } from "@sparkle/index";
+import {
+  Avatar,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  MoreIcon,
+} from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -25,31 +30,23 @@ interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
 }
 
-type SortingState = {
-  column: string | null;
-  direction: "asc" | "desc";
-};
-
 interface TableChildProps {
   sorting?: SortingState;
   onSort?: (column: string) => void;
 }
 
-// Update the TableRoot component
+interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  children: ReactNode;
+  clickable?: boolean;
+  onClick?: () => void;
+}
+
+type SortingState = {
+  column: string | null;
+  direction: "asc" | "desc";
+};
+
 const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
-  const [sorting, setSorting] = useState<SortingState>({
-    column: null,
-    direction: "asc",
-  });
-
-  const handleSort = useCallback((column: string) => {
-    setSorting((prev) => ({
-      column,
-      direction:
-        prev.column === column && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  }, []);
-
   return (
     <table
       className={classNames(
@@ -58,12 +55,7 @@ const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
       )}
       {...props}
     >
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement<TableChildProps>(child)) {
-          return React.cloneElement(child, { sorting, onSort: handleSort });
-        }
-        return child;
-      })}
+      {children}
     </table>
   );
 };
@@ -152,9 +144,11 @@ const Footer: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
   </tfoot>
 );
 
-const Row: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
+const Row: React.FC<RowProps> = ({
   children,
   className,
+  clickable = false,
+  onClick,
   ...props
 }) => (
   <tr
@@ -165,6 +159,14 @@ const Row: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
     {...props}
   >
     {children}
+    {clickable && (
+      <td
+        className="s-hover:bg-structure-50 s-w-10 s-cursor-pointer s-px-4 s-py-2 s-text-element-600"
+        onClick={clickable ? onClick : undefined}
+      >
+        <Icon visual={MoreIcon} size="sm" />
+      </td>
+    )}
   </tr>
 );
 
@@ -180,9 +182,7 @@ const Cell: React.FC<CellProps> = ({
     {...props}
   >
     <div className="s-flex">
-      {avatarUrl &&
-        <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />
-      }
+      {avatarUrl && <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />}
       {icon && (
         <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
       )}
