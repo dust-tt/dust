@@ -258,7 +258,7 @@ export default function WorkspaceAssistants({
               </Link>
             </Button.List>
           </div>
-          <div className="flex flex-col gap-4 overflow-y-clip pt-3">
+          <div className="flex flex-col gap-4 pt-3">
             <div className="flex flex-row gap-2">
               <Tab
                 tabs={tabs}
