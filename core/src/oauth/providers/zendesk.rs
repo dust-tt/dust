@@ -1,20 +1,19 @@
-use crate::
-    oauth::{
-        connection::{
-            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
-        },
-        providers::utils::execute_request,
-    }
-;
+use crate::oauth::{
+    connection::{
+        Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+    },
+    providers::utils::execute_request,
+};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
-use std::env;
 use serde_json::json;
+use std::env;
 
 lazy_static! {
     static ref OAUTH_ZENDESK_CLIENT_ID: String = env::var("OAUTH_ZENDESK_CLIENT_ID").unwrap();
-    static ref OAUTH_ZENDESK_CLIENT_SECRET: String = env::var("OAUTH_ZENDESK_CLIENT_SECRET").unwrap();
+    static ref OAUTH_ZENDESK_CLIENT_SECRET: String =
+        env::var("OAUTH_ZENDESK_CLIENT_SECRET").unwrap();
 }
 
 pub struct ZendeskConnectionProvider {}
@@ -37,21 +36,19 @@ impl Provider for ZendeskConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-
-      let body = json!({
-        "grant_type": "authorization_code",
-        "client_id": *OAUTH_ZENDESK_CLIENT_ID,
-        "client_secret": *OAUTH_ZENDESK_CLIENT_SECRET,
-        "code": code,
-        "redirect_uri": redirect_uri,
-        "scope": "tickets:write hc:write"
-      });
-
+        let body = json!({
+          "grant_type": "authorization_code",
+          "client_id": *OAUTH_ZENDESK_CLIENT_ID,
+          "client_secret": *OAUTH_ZENDESK_CLIENT_SECRET,
+          "code": code,
+          "redirect_uri": redirect_uri,
+          "scope": "tickets:write hc:write"
+        });
 
         let req = reqwest::Client::new()
-          .post("https://d3v-dust.zendesk.com/api/v2/oauth/tokens")
-          .header("Content-Type", "application/json")
-          .json(&body);
+            .post("https://d3v-dust.zendesk.com/api/v2/oauth/tokens")
+            .header("Content-Type", "application/json")
+            .json(&body);
 
         let raw_json = execute_request(ConnectionProvider::Zendesk, req)
             .await
@@ -76,7 +73,9 @@ impl Provider for ZendeskConnectionProvider {
     async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
         let access_token = match connection.unseal_access_token() {
             Ok(Some(token)) => token,
-            Ok(None) => Err(anyhow!("Error getting `access_token` from Zendesk connection"))?,
+            Ok(None) => Err(anyhow!(
+                "Error getting `access_token` from Zendesk connection"
+            ))?,
             Err(e) => Err(e)?,
         };
 
@@ -84,7 +83,7 @@ impl Provider for ZendeskConnectionProvider {
             access_token: access_token.to_string(),
             access_token_expiry: None,
             refresh_token: None,
-            raw_json: None.unwrap_or_default()
+            raw_json: None.unwrap_or_default(),
         })
     }
 

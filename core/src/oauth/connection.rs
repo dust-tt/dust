@@ -1,11 +1,10 @@
 use crate::oauth::{
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
         intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
         notion::NotionConnectionProvider, slack::SlackConnectionProvider,
-        utils::ProviderHttpRequestError,
+        utils::ProviderHttpRequestError, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };

@@ -88,13 +88,13 @@ pub mod oauth {
         pub mod confluence;
         pub mod github;
         pub mod gong;
-        pub mod zendesk;
         pub mod google_drive;
         pub mod intercom;
         pub mod microsoft;
         pub mod notion;
         pub mod slack;
         pub mod utils;
+        pub mod zendesk;
     }
 }
 
