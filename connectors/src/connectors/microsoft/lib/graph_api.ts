@@ -499,7 +499,7 @@ export function getSiteAPIPath(site: MicrosoftGraph.Site) {
   return `/sites/${site.id}`;
 }
 
-export async function wrapWithResult<T>(
+export async function wrapMicrosoftGraphAPIWithResult<T>(
   fn: () => Promise<T>
 ): Promise<Result<T, Error>> {
   try {
