@@ -196,7 +196,7 @@ export async function handleSpreadSheet({
 
   const documentId = getDriveItemInternalId(file);
 
-  const worksheets = await wrapWithResult(() =>
+  const worksheetsRes = await wrapWithResult(() =>
     getAllPaginatedEntities((nextLink) =>
       getWorksheets(client, documentId, nextLink)
     )
