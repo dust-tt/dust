@@ -113,16 +113,20 @@ async function processSheet(
     getWorksheetContent(client, internalId)
   );
 
-  if (content.isErr()) {
-    return content;
-  }
-
   const loggerArgs = {
     sheet: {
       id: worksheet.id,
       name: worksheet.name,
     },
   };
+
+  if (content.isErr()) {
+    localLogger.error(
+      { ...loggerArgs, error: content.error },
+      "[Spreadsheet] Failed to fetch sheet content."
+    );
+    return content;
+  }
 
   localLogger.info(
     { loggerArgs },
@@ -207,6 +211,10 @@ export async function handleSpreadSheet({
   );
 
   if (worksheetsRes.isErr()) {
+    localLogger.error(
+      { error: worksheetsRes.error },
+      "[Spreadsheet] Failed to fetch worksheets."
+    );
     return worksheetsRes;
   }
 
