@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useMemo, useState } from "react";
+import React, { ReactNode, useCallback, useState } from "react";
 
 import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
@@ -24,11 +24,12 @@ type SortingState = {
   direction: "asc" | "desc";
 };
 
-const TableContext = React.createContext<{
-  sorting: SortingState;
-  onSort: (column: string) => void;
-} | null>(null);
+interface TableChildProps {
+  sorting?: SortingState;
+  onSort?: (column: string) => void;
+}
 
+// Update the TableRoot component
 const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
   const [sorting, setSorting] = useState<SortingState>({
     column: null,
@@ -43,23 +44,21 @@ const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
     }));
   }, []);
 
-  const contextValue = useMemo(
-    () => ({ sorting, onSort: handleSort }),
-    [sorting, handleSort]
-  );
-
   return (
-    <TableContext.Provider value={contextValue}>
-      <table
-        className={classNames(
-          "s-w-full s-table-auto s-border-collapse",
-          className || ""
-        )}
-        {...props}
-      >
-        {children}
-      </table>
-    </TableContext.Provider>
+    <table
+      className={classNames(
+        "s-w-full s-table-auto s-border-collapse",
+        className || ""
+      )}
+      {...props}
+    >
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement<TableChildProps>(child)) {
+          return React.cloneElement(child, { sorting, onSort: handleSort });
+        }
+        return child;
+      })}
+    </table>
   );
 };
 
@@ -77,21 +76,17 @@ const Header: React.FC<HeaderProps> = ({ children, className, ...props }) => {
   );
 };
 
-const Head: React.FC<HeadProps> = ({
+const Head: React.FC<HeadProps & TableChildProps> = ({
   children,
   className,
   column,
   sortable = true,
+  sorting,
+  onSort,
   ...props
 }) => {
-  const context = React.useContext(TableContext);
-  if (!context) {
-    throw new Error("Table.Head must be used within a Table");
-  }
-  const { sorting, onSort } = context;
-
   const handleClick = useCallback(() => {
-    if (sortable) {
+    if (sortable && onSort) {
       onSort(column);
     }
   }, [sortable, onSort, column]);
@@ -108,7 +103,7 @@ const Head: React.FC<HeadProps> = ({
     >
       <div className="s-flex s-items-center s-space-x-1">
         <span>{children}</span>
-        {sortable && (
+        {sortable && sorting && (
           <Icon
             visual={
               sorting.column === column

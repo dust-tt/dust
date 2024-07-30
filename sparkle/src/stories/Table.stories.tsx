@@ -3,16 +3,30 @@ import React, { useState, useCallback, useMemo } from 'react';
 
 import {
   Button,
-  Table
+  Table,
+
 } from "../index_with_tw_base"
 
 const meta = {
   title: "Components/Table",
-  component: Table,
-  parameters: {
-    layout: 'centered',
-  },
+  component: Table
 } satisfies Meta<typeof Table>;
+
+
+type SortingState = {
+  column: DataKeys | null;
+  direction: "asc" | "desc";
+};
+
+type Data = {
+  name: string;
+  usedBy: number;
+  addedBy: string;
+  lastUpdated: string;
+  size: string;
+};
+
+type DataKeys = keyof Data;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -26,7 +40,37 @@ const TableExample = () => {
     { name: "HR", usedBy: 3, addedBy: "User5", lastUpdated: "2023-07-06", size: "48kb" },
   ];
 
-  const [data, setData] = useState(initialData);
+  const [sorting, setSorting] = useState<SortingState>({ column: null, direction: 'asc' });
+
+  const sortedData = useMemo(() => {
+    if (!sorting.column) {
+      return initialData;
+    }
+
+    return [...initialData].sort((a, b) => {
+      if (!sorting.column) {
+        return -1;
+      }
+      const aValue = a[sorting.column];
+      const bValue = b[sorting.column];
+
+      if (aValue < bValue) {
+        return sorting.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sorting.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [initialData, sorting]);
+
+
+  const handleSort = useCallback((column: DataKeys | null) => {
+    setSorting(prev => ({
+      column: column,
+      direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  }, []);
 
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
@@ -34,15 +78,15 @@ const TableExample = () => {
         <Table.Caption>Files and Folders</Table.Caption>
         <Table.Header>
           <Table.Row>
-            <Table.Head column="name" sortable={true}>Name</Table.Head>
-            <Table.Head column="usedBy" sortable={true}>Used by</Table.Head>
-            <Table.Head column="addedBy" sortable={true}>Added by</Table.Head>
+            <Table.Head column="name" sortable={true} sorting={sorting} onSort={handleSort}>Name</Table.Head>
+            <Table.Head column="usedBy" sortable={true} sorting={sorting} onSort={handleSort}>Used by</Table.Head>
+            <Table.Head column="addedBy" sortable={true} sorting={sorting} onSort={handleSort}>Added by</Table.Head>
             <Table.Head column="lastUpdated" sortable={false}>Last updated</Table.Head>
-            <Table.Head column="size" sortable={true}>Size</Table.Head>
+            <Table.Head column="size" sortable={true} sorting={sorting} onSort={handleSort}>Size</Table.Head>
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {data.map((row, index) => (
+          {sortedData.map((row, index) => (
             <Table.Row key={index}>
               <Table.Cell>{row.name}</Table.Cell>
               <Table.Cell>{row.usedBy}</Table.Cell>
