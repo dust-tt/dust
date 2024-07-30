@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo,useState } from 'react';
 
 import {
-  Button, FolderIcon,
+  FolderIcon,
   Table,
-
 } from "../index_with_tw_base";
-import { IconButtonPrimary } from "@sparkle/stories/IconButton.stories";
 
 const meta = {
   title: "Components/Table",
