@@ -211,7 +211,6 @@ export class DataSourceResource extends BaseResource<DataSource> {
       connectorId: this.connectorId,
       connectorProvider: this.connectorProvider,
       assistantDefaultSelected: this.assistantDefaultSelected,
-      editedByUser: undefined,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
     };
   }
