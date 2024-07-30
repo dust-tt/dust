@@ -124,7 +124,8 @@ const _createConnectorAPIHandler = async (
       case "confluence":
       case "google_drive":
       case "intercom":
-      case "microsoft": {
+      case "microsoft":
+      case "zendesk": {
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {

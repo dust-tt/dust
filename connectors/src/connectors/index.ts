@@ -15,6 +15,7 @@ import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
+import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 type ConnectorManager =
@@ -25,7 +26,8 @@ type ConnectorManager =
   | SlackConnectorManager
   | IntercomConnectorManager
   | GithubConnectorManager
-  | GoogleDriveConnectorManager;
+  | GoogleDriveConnectorManager
+  | ZendeskConnectorManager;
 
 export function getConnectorManager({
   connectorProvider,
@@ -49,6 +51,8 @@ export function getConnectorManager({
       return new NotionConnectorManager(connectorId);
     case "slack":
       return new SlackConnectorManager(connectorId);
+    case "zendesk":
+      return new ZendeskConnectorManager(connectorId);
     case "webcrawler":
       return new WebcrawlerConnectorManager(connectorId);
     default:
@@ -99,6 +103,8 @@ export function createConnector({
       return NotionConnectorManager.create(params);
     case "slack":
       return SlackConnectorManager.create(params);
+    case "zendesk":
+      return ZendeskConnectorManager.create(params);
     case "webcrawler":
       return WebcrawlerConnectorManager.create(params);
     default:
