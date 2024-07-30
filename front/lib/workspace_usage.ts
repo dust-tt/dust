@@ -474,7 +474,6 @@ export async function checkWorkspaceActivity(workspace: Workspace) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  // TODO replace workspaceif with auth
   const hasDataSource = await DataSourceResource.workspaceHasDatasources(
     await Authenticator.internalAdminForWorkspace(workspace.sId)
   );
