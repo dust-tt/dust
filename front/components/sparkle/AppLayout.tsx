@@ -159,13 +159,13 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden">
+        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden">
           {!titleChildren && SHOW_INCIDENT_BANNER && (
             <IncidentBanner className="relative" />
           )}
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
-            className="flex h-full w-full flex-col items-center"
+            className="flex h-full w-full flex-col items-center overflow-y-auto"
           >
             {/* TODO: This should be moved to a TopBar component. */}
             <div
@@ -185,7 +185,7 @@ export default function AppLayout({
 
             <div
               className={classNames(
-                "flex w-full flex-col overflow-y-auto",
+                "flex w-full flex-col",
                 isWideMode ? "" : "max-w-4xl pt-8"
               )}
             >
