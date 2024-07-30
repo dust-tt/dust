@@ -218,10 +218,7 @@ const PROVIDER_STRATEGIES: Record<
   },
   zendesk: {
     setupUri: (connection) => {
-      const scopes = [
-        "tickets:read",
-        "hc:read",
-      ];
+      const scopes = ["tickets:read", "hc:read"];
       return (
         `https://d3v-dust.zendesk.com/oauth/authorizations/new?` +
         `client_id=${config.getOAuthZendeskClientId()}` +
