@@ -5,7 +5,6 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { CoreAPI, Err, Ok } from "@dust-tt/types";
-import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -135,6 +134,7 @@ async function getDataSourceDocument({
     return new Err(new Error(`Could not find workspace ${workspaceId}`));
   }
 
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
   const dataSource = await DataSourceResource.fetchByName(auth, dataSourceName);
 
   if (!dataSource) {
