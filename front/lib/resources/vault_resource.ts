@@ -4,6 +4,7 @@ import type {
   LightWorkspaceType,
   ModelId,
   Result,
+  VaultKind,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -209,5 +210,9 @@ export class VaultResource extends BaseResource<VaultModel> {
         },
       ],
     };
+  }
+
+  isGlobal() {
+    return this.kind === "global";
   }
 }

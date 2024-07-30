@@ -23,6 +23,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
+import { renderDataSourceType } from "@app/lib/data_sources";
 import { DataSource } from "@app/lib/models/data_source";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -341,10 +342,14 @@ async function handler(
         vaultId: vault.id,
       });
 
-      // For managed data source, we create a default view in the vault.
+      const globalVault = vault.isGlobal()
+        ? vault
+        : await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+      // For managed data source, we create a default view in the workspace vault.
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        vault,
-        { dataSourceId: dataSource.id }
+        globalVault,
+        renderDataSourceType(dataSource)
       );
 
       const connectorsAPI = new ConnectorsAPI(
