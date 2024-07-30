@@ -1,4 +1,4 @@
-import type { CoreAPIDataSourceDocumentSection, Result } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { Err, getSanitizedHeaders, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
