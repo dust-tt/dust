@@ -1,11 +1,110 @@
-import React, { ReactNode, useCallback } from "react";
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import React, { ReactNode } from "react";
 
-import { ArrowDownIcon, ArrowUpIcon, Avatar, MoreIcon } from "@sparkle/index";
+import { Avatar, MoreIcon } from "@sparkle/index";
+import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+interface TableProps<TData, TValue> {
+  data: TData[];
+  columns: ColumnDef<TData, TValue>[];
+  onSort?: (sorting: SortingState) => void;
+  className?: string;
+  width?: "expanded" | "normal";
+}
+
+export function Table<TData, TValue>({
+  data,
+  columns,
+  onSort,
+  className,
+  width,
+}: TableProps<TData, TValue>) {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting },
+    onSortingChange: (updater) => {
+      const newSorting =
+        typeof updater === "function" ? updater(sorting) : updater;
+      setSorting(newSorting);
+      onSort?.(newSorting);
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <TableData className={className}>
+      <TableData.Header>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <TableData.Row key={headerGroup.id}>
+            {headerGroup.headers.map((header) => (
+              <TableData.Head
+                key={header.id}
+                width={width ?? "normal"}
+                onClick={header.column.getToggleSortingHandler()}
+                className={header.column.getCanSort() ? "s-cursor-pointer" : ""}
+              >
+                <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                  {header.column.getCanSort() && (
+                    <Icon
+                      visual={
+                        header.column.getIsSorted() === "asc"
+                          ? ArrowUpIcon
+                          : header.column.getIsSorted() === "desc"
+                            ? ArrowDownIcon
+                            : ArrowDownIcon
+                      }
+                      className={classNames(
+                        "s-h-4 s-w-3 s-font-extralight",
+                        header.column.getIsSorted()
+                          ? "s-opacity-100"
+                          : "s-opacity-0"
+                      )}
+                    />
+                  )}
+                </div>
+              </TableData.Head>
+            ))}
+          </TableData.Row>
+        ))}
+      </TableData.Header>
+      <TableData.Body>
+        {table.getRowModel().rows.map((row) => (
+          <TableData.Row
+            key={row.id}
+            clickable={row.original.clickable}
+            onClick={row.original.onClick}
+          >
+            {row.getVisibleCells().map((cell) => (
+              <TableData.Cell key={cell.id}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableData.Cell>
+            ))}
+          </TableData.Row>
+        ))}
+      </TableData.Body>
+    </TableData>
+  );
+}
+
+interface TableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
 }
 
@@ -14,8 +113,6 @@ interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
 }
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
-  column?: string;
-  sortable?: boolean;
   children?: ReactNode;
   width?: "normal" | "expanded";
 }
@@ -27,23 +124,17 @@ interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   description?: string;
 }
 
-interface TableChildProps {
-  sorting?: SortingState;
-  onSort?: (column: string) => void;
-}
-
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   clickable?: boolean;
   onClick?: () => void;
 }
 
-type SortingState = {
-  column: string | null;
-  direction: "asc" | "desc";
-};
-
-const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
+const TableRoot: React.FC<TableRootProps> = ({
+  children,
+  className,
+  ...props
+}) => {
   return (
     <table
       className={classNames("s-w-full s-border-collapse", className || "")}
@@ -65,47 +156,23 @@ const Header: React.FC<HeaderProps> = ({ children, className, ...props }) => {
   );
 };
 
-const Head: React.FC<HeadProps & TableChildProps> = ({
+const Head: React.FC<HeadProps> = ({
   children,
   className,
-  column,
-  sortable = true,
-  sorting,
-  onSort,
   width,
   ...props
 }) => {
-  const handleClick = useCallback(() => {
-    if (column && sortable && onSort) {
-      onSort(column);
-    }
-  }, [sortable, onSort, column]);
-
   return (
     <th
       className={classNames(
-        "s-px-3 s-py-2 s-text-left s-font-medium s-text-element-800",
-        sortable ? "s-cursor-pointer" : "",
+        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
         width === "expanded" ? "s-w-full" : "s-w-auto",
         className || ""
       )}
-      onClick={handleClick}
       {...props}
     >
       <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
-        <span>{children}</span>
-        {sortable && sorting && (
-          <Icon
-            visual={
-              sorting.column === column
-                ? sorting.direction === "asc"
-                  ? ArrowUpIcon
-                  : ArrowDownIcon
-                : ArrowDownIcon
-            }
-            className="s-h-4 s-w-3 s-font-extralight"
-          />
-        )}
+        {children}
       </div>
     </th>
   );
@@ -154,7 +221,7 @@ const Row: React.FC<RowProps> = ({
     {children}
     {clickable && (
       <td
-        className="s-w-1 s-cursor-pointer s-text-element-600"
+        className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
         onClick={clickable ? onClick : undefined}
       >
         <Icon visual={MoreIcon} size="sm" />
@@ -173,15 +240,15 @@ const Cell: React.FC<CellProps> = ({
 }) => (
   <td
     className={classNames(
-      "s-whitespace-nowrap s-px-4 s-py-4 s-text-element-800",
+      "s-whitespace-nowrap s-py-2 s-pl-0.5 s-text-element-800",
       className || ""
     )}
     {...props}
   >
     <div className="s-flex">
-      {avatarUrl && <Avatar visual={avatarUrl} size="xs" className="s-mr-3" />}
+      {avatarUrl && <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />}
       {icon && (
-        <Icon visual={icon} size="sm" className="s-mr-3 s-text-element-600" />
+        <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
       )}
       <div className="s-flex">
         <span className="s-text-sm s-text-element-800">{children}</span>
@@ -205,7 +272,7 @@ const Caption: React.FC<React.HTMLAttributes<HTMLTableCaptionElement>> = ({
   </caption>
 );
 
-export const Table = Object.assign(TableRoot, {
+export const TableData = Object.assign(TableRoot, {
   Header,
   Body,
   Footer,
