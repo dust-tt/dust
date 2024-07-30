@@ -265,6 +265,7 @@ NotionDatabase.init(
       { fields: ["lastSeenTs"] },
       { fields: ["lastCreatedOrMovedRunTs"] },
       { fields: ["parentId"] },
+      { fields: ["connectorId", "lastSeenTs"], concurrently: true },
       {
         fields: ["titleSearchVector"],
         using: "gist",
