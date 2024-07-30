@@ -274,7 +274,7 @@ export async function syncOneFile({
         {
           documentLen: documentLength,
         },
-        `Document is empty or too big to be upserted (marking as synced without upserting)`
+        `Document is empty or too big to be upserted. Skipping.`
       );
       if (fileResource) {
         await fileResource.delete();
