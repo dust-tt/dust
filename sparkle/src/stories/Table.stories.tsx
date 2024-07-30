@@ -2,10 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState, useCallback, useMemo } from 'react';
 
 import {
-  Button,
+  Button, FolderIcon,
   Table,
 
-} from "../index_with_tw_base"
+} from "../index_with_tw_base";
+import { IconButtonPrimary } from "@sparkle/stories/IconButton.stories";
 
 const meta = {
   title: "Components/Table",
@@ -33,8 +34,8 @@ type Story = StoryObj<typeof meta>;
 
 const TableExample = () => {
   const initialData = [
-    { name: "Marketing", usedBy: 8, addedBy: "User1", lastUpdated: "2023-07-08", size: "32kb" },
-    { name: "Design", usedBy: 2, addedBy: "User2", lastUpdated: "2023-07-09", size: "64kb" },
+    { name: "Marketing", usedBy: 8, addedBy: "User1", lastUpdated: "2023-07-08", size: "32kb", avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" },
+    { name: "Design", usedBy: 2, addedBy: "User2", lastUpdated: "2023-07-09", size: "64kb", icon: FolderIcon },
     { name: "Development", usedBy: 5, addedBy: "User3", lastUpdated: "2023-07-07", size: "128kb" },
     { name: "Sales", usedBy: 10, addedBy: "User4", lastUpdated: "2023-07-10", size: "16kb" },
     { name: "HR", usedBy: 3, addedBy: "User5", lastUpdated: "2023-07-06", size: "48kb" },
@@ -88,7 +89,9 @@ const TableExample = () => {
         <Table.Body>
           {sortedData.map((row, index) => (
             <Table.Row key={index}>
-              <Table.Cell>{row.name}</Table.Cell>
+              <Table.Cell avatarUrl={row.avatarUrl} icon={row.icon}>
+                {row.name}
+              </Table.Cell>
               <Table.Cell>{row.usedBy}</Table.Cell>
               <Table.Cell>{row.addedBy}</Table.Cell>
               <Table.Cell>{row.lastUpdated}</Table.Cell>

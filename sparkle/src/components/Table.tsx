@@ -1,6 +1,6 @@
 import React, { ReactNode, useCallback, useState } from "react";
 
-import { ChevronDownIcon, ChevronUpIcon } from "@sparkle/index";
+import { Avatar, ChevronDownIcon, ChevronUpIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -16,6 +16,12 @@ interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   column: string;
   sortable?: boolean;
+  children: ReactNode;
+}
+
+interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  avatarUrl?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   children: ReactNode;
 }
 
@@ -162,16 +168,26 @@ const Row: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
   </tr>
 );
 
-const Cell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> = ({
+const Cell: React.FC<CellProps> = ({
   children,
   className,
+  avatarUrl,
+  icon,
   ...props
 }) => (
   <td
     className={classNames("s-px-4 s-py-2 s-text-element-800", className || "")}
     {...props}
   >
-    {children}
+    <div className="s-flex">
+      {avatarUrl &&
+        <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />
+      }
+      {icon && (
+        <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
+      )}
+      {children}
+    </div>
   </td>
 );
 
