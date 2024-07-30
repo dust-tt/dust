@@ -1,6 +1,5 @@
-import type { Diff, WorkspaceType } from "@dust-tt/types";
+import type { Diff } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { Auth } from "googleapis";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
