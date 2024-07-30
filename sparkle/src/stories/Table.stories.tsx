@@ -76,7 +76,7 @@ const TableExample = () => {
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <Table>
-        <Table.Caption>Files and Folders</Table.Caption>
+        <Table.Caption className="s-text-element-800">Files and Folders</Table.Caption>
         <Table.Header>
           <Table.Row>
             <Table.Head column="name" sortable={true} sorting={sorting} onSort={handleSort}>Name</Table.Head>
@@ -104,7 +104,6 @@ const TableExample = () => {
             </Table.Row>
           ))}
         </Table.Body>
-        {/* ... (Footer remains the same) */}
       </Table>
     </div>
   );

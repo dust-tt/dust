@@ -1,9 +1,9 @@
 import React, { ReactNode, useCallback } from "react";
 
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
   Avatar,
-  ChevronDownIcon,
-  ChevronUpIcon,
   MoreIcon,
 } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
@@ -49,10 +49,7 @@ type SortingState = {
 const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
   return (
     <table
-      className={classNames(
-        "s-w-full s-table-auto s-border-collapse",
-        className || ""
-      )}
+      className={classNames("s-w-full s-border-collapse", className || "")}
       {...props}
     >
       {children}
@@ -63,10 +60,7 @@ const TableRoot: React.FC<TableProps> = ({ children, className, ...props }) => {
 const Header: React.FC<HeaderProps> = ({ children, className, ...props }) => {
   return (
     <thead
-      className={classNames(
-        "s-border-b s-border-structure-200 s-bg-structure-50",
-        className || ""
-      )}
+      className={classNames("s-text-xs s-capitalize", className || "")}
       {...props}
     >
       {children}
@@ -92,7 +86,7 @@ const Head: React.FC<HeadProps & TableChildProps> = ({
   return (
     <th
       className={classNames(
-        "s-px-4 s-py-2 s-text-left s-font-medium s-text-element-700",
+        "s-px-4 s-py-2 s-text-left s-font-medium s-text-element-800",
         sortable ? "s-cursor-pointer" : "",
         className || ""
       )}
@@ -106,11 +100,11 @@ const Head: React.FC<HeadProps & TableChildProps> = ({
             visual={
               sorting.column === column
                 ? sorting.direction === "asc"
-                  ? ChevronUpIcon
-                  : ChevronDownIcon
-                : ChevronDownIcon
+                  ? ArrowUpIcon
+                  : ArrowDownIcon
+                : ArrowDownIcon
             }
-            className="s-h-4 s-w-4 s-text-element-500"
+            className="s-h-4 s-w-3 s-font-extralight"
           />
         )}
       </div>
@@ -153,7 +147,7 @@ const Row: React.FC<RowProps> = ({
 }) => (
   <tr
     className={classNames(
-      "s-hover:bg-structure-50 s-border-b s-border-structure-200",
+      "s-border-b s-border-structure-200 s-text-sm",
       className || ""
     )}
     {...props}
@@ -161,7 +155,7 @@ const Row: React.FC<RowProps> = ({
     {children}
     {clickable && (
       <td
-        className="s-hover:bg-structure-50 s-w-10 s-cursor-pointer s-px-4 s-py-2 s-text-element-600"
+        className="s-w-1 s-cursor-pointer s-text-element-600"
         onClick={clickable ? onClick : undefined}
       >
         <Icon visual={MoreIcon} size="sm" />
@@ -178,13 +172,16 @@ const Cell: React.FC<CellProps> = ({
   ...props
 }) => (
   <td
-    className={classNames("s-px-4 s-py-2 s-text-element-800", className || "")}
+    className={classNames(
+      "s-whitespace-nowrap s-px-4 s-py-4 s-text-element-800",
+      className || ""
+    )}
     {...props}
   >
     <div className="s-flex">
-      {avatarUrl && <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />}
+      {avatarUrl && <Avatar visual={avatarUrl} size="xs" className="s-mr-3" />}
       {icon && (
-        <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
+        <Icon visual={icon} size="sm" className="s-mr-3 s-text-element-600" />
       )}
       {children}
     </div>
@@ -196,13 +193,7 @@ const Caption: React.FC<React.HTMLAttributes<HTMLTableCaptionElement>> = ({
   className,
   ...props
 }) => (
-  <caption
-    className={classNames(
-      "s-mt-4 s-text-sm s-text-element-600",
-      className || ""
-    )}
-    {...props}
-  >
+  <caption className={classNames(className || "")} {...props}>
     {children}
   </caption>
 );
