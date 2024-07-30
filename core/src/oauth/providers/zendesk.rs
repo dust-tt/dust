@@ -70,21 +70,10 @@ impl Provider for ZendeskConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
-        let access_token = match connection.unseal_access_token() {
-            Ok(Some(token)) => token,
-            Ok(None) => Err(anyhow!(
-                "Error getting `access_token` from Zendesk connection"
-            ))?,
-            Err(e) => Err(e)?,
-        };
-
-        Ok(RefreshResult {
-            access_token: access_token.to_string(),
-            access_token_expiry: None,
-            refresh_token: None,
-            raw_json: None.unwrap_or_default(),
-        })
+    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+      Err(ProviderError::ActionNotSupportedError(
+          "Zendesk access tokens do not expire".to_string(),
+      ))?
     }
 
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
