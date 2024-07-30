@@ -16,7 +16,7 @@ import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
-  syncSpreadSheet as handleSpreadSheet,
+  handleSpreadSheet,
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import {
   handleCsvFile,

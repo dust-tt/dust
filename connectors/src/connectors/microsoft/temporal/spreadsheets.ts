@@ -163,7 +163,7 @@ async function processSheet(
   return false;
 }
 
-export async function syncSpreadSheet({
+export async function handleSpreadSheet({
   connectorId,
   file,
   parentInternalId,
