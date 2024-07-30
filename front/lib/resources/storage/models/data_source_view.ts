@@ -19,7 +19,7 @@ export class DataSourceViewModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare parentsIn: string[];
+  declare parentsIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
   declare vaultId: ForeignKey<VaultModel["id"]>;
@@ -44,7 +44,7 @@ DataSourceViewModel.init(
     },
     parentsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
+      allowNull: true,
     },
   },
   {

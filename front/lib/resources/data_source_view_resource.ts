@@ -22,9 +22,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
-type AllDocumentsType = "*";
-const ALL_DOCUMENTS_TYPE: AllDocumentsType = "*";
-
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
@@ -68,7 +65,7 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
   ) {
     return this.makeNew({
       dataSourceId: dataSource.id,
-      parentsIn: [ALL_DOCUMENTS_TYPE],
+      parentsIn: null,
       vaultId: vault.id,
       workspaceId: vault.workspaceId,
     });
