@@ -1488,7 +1488,6 @@ async function _createAgentDataSourcesConfigData(
     []
   );
 
-  // TODO get auth or keep workspace id
   // Then we get do one findAllQuery per workspaceId, in a Promise.all
   const getDataSourcesQueries = dsNamesPerWorkspaceId.map(
     ({ workspaceId, dataSourceNames }) => {

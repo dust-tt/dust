@@ -1,6 +1,7 @@
 import type { CoreAPISearchFilter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { withLogging } from "@app/logger/withlogging";
@@ -87,9 +88,10 @@ async function handler(
             return;
           }
 
-          // TODO get auth
           const dataSource = await DataSourceResource.fetchByName(
-            auth,
+            await Authenticator.internalBuilderForWorkspace(
+              req.query.workspace_id
+            ),
             req.query.data_source_id
           );
 
