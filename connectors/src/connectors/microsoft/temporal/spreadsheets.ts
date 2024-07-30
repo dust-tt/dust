@@ -171,7 +171,7 @@ export async function syncSpreadSheet({
   connectorId: number;
   file: microsoftgraph.DriveItem;
   parentInternalId: string;
-}): Promise<Result<null, { skipReason?: string; error?: Error }>> {
+}): Promise<Result<null, { reason?: string; error?: Error }>> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -190,7 +190,7 @@ export async function syncSpreadSheet({
   });
 
   if (!file.file) {
-    return new Err({ skipReason: "not_a_file" });
+    return new Err({ reason: "not_a_file" });
   }
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
@@ -247,7 +247,7 @@ export async function syncSpreadSheet({
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing spreadsheet");
     return new Err({
-      skipReason: "microsoft_internal_error",
+      reason: "microsoft_internal_error",
       error: err as Error,
     });
   }

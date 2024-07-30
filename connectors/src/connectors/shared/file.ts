@@ -34,10 +34,10 @@ export function handleTextFile(
   maxDocumentLen: number
 ): Result<
   CoreAPIDataSourceDocumentSection,
-  { skipReason?: string; error?: Error }
+  { reason?: string; error?: Error }
 > {
   if (data.byteLength > 4 * maxDocumentLen) {
-    return new Err({ skipReason: "file_too_big" });
+    return new Err({ reason: "file_too_big" });
   }
   return new Ok({
     prefix: null,
@@ -60,10 +60,10 @@ export async function handleCsvFile({
   localLogger: Logger;
   dataSourceConfig: DataSourceConfig;
   connectorId: ModelId;
-}): Promise<Result<null, { skipReason?: string; error?: Error }>> {
+}): Promise<Result<null, { reason?: string; error?: Error }>> {
   if (data.byteLength > 4 * maxDocumentLen) {
     localLogger.info({}, "File too big to be chunked. Skipping");
-    return new Err({ skipReason: "file_too_big" });
+    return new Err({ reason: "file_too_big" });
   }
 
   const fileName = file.name ?? "";
@@ -91,7 +91,7 @@ export async function handleCsvFile({
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");
     return new Err({
-      skipReason: "parsing_or_upsert_error",
+      reason: "parsing_or_upsert_error",
       error: err as Error,
     });
   }
@@ -103,13 +103,10 @@ export async function handleTextExtraction(
   localLogger: Logger,
   mimeType: string
 ): Promise<
-  Result<
-    CoreAPIDataSourceDocumentSection,
-    { skipReason?: string; error?: Error }
-  >
+  Result<CoreAPIDataSourceDocumentSection, { reason?: string; error?: Error }>
 > {
   if (!isTextExtractionSupportedContentType(mimeType)) {
-    return new Err({ skipReason: "unsupported_content_type" });
+    return new Err({ reason: "unsupported_content_type" });
   }
 
   const pageRes = await new TextExtraction(
@@ -127,7 +124,7 @@ export async function handleTextExtraction(
     // We don't know what to do with files that fails to be converted to text.
     // So we log the error and skip the file.
     return new Err({
-      skipReason: "text_conversion_error",
+      reason: "text_conversion_error",
       error: pageRes.error,
     });
   }
@@ -155,5 +152,5 @@ export async function handleTextExtraction(
           sections: [],
         })),
       })
-    : new Err({ skipReason: "no_pages_extracted" });
+    : new Err({ reason: "no_pages_extracted" });
 }

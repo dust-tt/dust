@@ -155,7 +155,7 @@ export async function syncOneFile({
 
   let result: Result<
     CoreAPIDataSourceDocumentSection | null,
-    { skipReason?: string; error?: Error }
+    { reason?: string; error?: Error }
   >;
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
@@ -272,12 +272,8 @@ export async function syncOneFile({
         `Document is empty or too big to be upserted (marking as synced without upserting)`
       );
 
-      result = new Err({ skipReason: "document_too_big_or_empty" });
+      result = new Err({ reason: "document_too_big_or_empty" });
     }
-  }
-
-  if (result.isErr()) {
-    // resourceBlob.skipReason = result.error.message;
   }
 
   if (fileResource) {
