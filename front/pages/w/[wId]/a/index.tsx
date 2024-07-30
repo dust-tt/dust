@@ -750,90 +750,85 @@ export default function Developers({
         current: "developers",
       })}
     >
-      <div className="w-full max-w-4xl pt-8">
-        <Page.Vertical gap="xl" align="stretch">
-          <Page.Header
-            title="Developers Tools"
-            icon={CommandLineIcon}
-            description="Design and deploy custom large language model apps with access to&nbsp;your data&nbsp;sources and other&nbsp;service&nbsp;providers."
-          />
-          <Page.Layout direction="horizontal">
-            <div className="w-full" />
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Developers Tools"
+          icon={CommandLineIcon}
+          description="Design and deploy custom large language model apps with access to&nbsp;your data&nbsp;sources and other&nbsp;service&nbsp;providers."
+        />
+        <Page.Layout direction="horizontal">
+          <div className="w-full" />
 
-            <Button
-              variant="tertiary"
-              label="Developer Documentation"
-              onClick={() => {
-                window.open("https://docs.dust.tt/reference", "_blank");
-              }}
-              icon={ExternalLinkIcon}
-            />
-            <Button
-              variant="tertiary"
-              label="Examples"
-              onClick={() => {
-                window.open(
-                  "https://docs.dust.tt/reference/examples",
-                  "_blank"
-                );
-              }}
-              icon={ExternalLinkIcon}
-            />
-          </Page.Layout>
-
-          <Tab
-            tabs={[
-              {
-                label: "My Apps",
-                id: "apps",
-                current: currentTab === "apps",
-                icon: CommandLineIcon,
-                sizing: "expand",
-              },
-              {
-                label: "Providers",
-                id: "providers",
-                current: currentTab === "providers",
-                icon: ShapesIcon,
-                sizing: "expand",
-              },
-              {
-                label: "Dev Secrets",
-                id: "secrets",
-                current: currentTab === "secrets",
-                icon: BracesIcon,
-                sizing: "expand",
-              },
-              {
-                label: "API Keys",
-                id: "apikeys",
-                current: currentTab === "apikeys",
-                icon: LockIcon,
-                sizing: "expand",
-              },
-            ]}
-            setCurrentTab={async (tabId, event) => {
-              event.preventDefault();
-              await handleTabChange(tabId);
+          <Button
+            variant="tertiary"
+            label="Developer Documentation"
+            onClick={() => {
+              window.open("https://docs.dust.tt/reference", "_blank");
             }}
+            icon={ExternalLinkIcon}
           />
+          <Button
+            variant="tertiary"
+            label="Examples"
+            onClick={() => {
+              window.open("https://docs.dust.tt/reference/examples", "_blank");
+            }}
+            icon={ExternalLinkIcon}
+          />
+        </Page.Layout>
 
-          {(() => {
-            switch (currentTab) {
-              case "apps":
-                return <Apps apps={apps} owner={owner} />;
-              case "providers":
-                return <Providers owner={owner} />;
-              case "apikeys":
-                return <APIKeys owner={owner} />;
-              case "secrets":
-                return <DustAppSecrets owner={owner} />;
-              default:
-                return null;
-            }
-          })()}
-        </Page.Vertical>
-      </div>
+        <Tab
+          tabs={[
+            {
+              label: "My Apps",
+              id: "apps",
+              current: currentTab === "apps",
+              icon: CommandLineIcon,
+              sizing: "expand",
+            },
+            {
+              label: "Providers",
+              id: "providers",
+              current: currentTab === "providers",
+              icon: ShapesIcon,
+              sizing: "expand",
+            },
+            {
+              label: "Dev Secrets",
+              id: "secrets",
+              current: currentTab === "secrets",
+              icon: BracesIcon,
+              sizing: "expand",
+            },
+            {
+              label: "API Keys",
+              id: "apikeys",
+              current: currentTab === "apikeys",
+              icon: LockIcon,
+              sizing: "expand",
+            },
+          ]}
+          setCurrentTab={async (tabId, event) => {
+            event.preventDefault();
+            await handleTabChange(tabId);
+          }}
+        />
+
+        {(() => {
+          switch (currentTab) {
+            case "apps":
+              return <Apps apps={apps} owner={owner} />;
+            case "providers":
+              return <Providers owner={owner} />;
+            case "apikeys":
+              return <APIKeys owner={owner} />;
+            case "secrets":
+              return <DustAppSecrets owner={owner} />;
+            default:
+              return null;
+          }
+        })()}
+      </Page.Vertical>
     </AppLayout>
   );
 }

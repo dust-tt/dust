@@ -100,96 +100,92 @@ export default function DataSourcesView({
         current: "data_sources_static",
       })}
     >
-      <div className="w-full max-w-4xl pt-8">
-        <Page.Vertical gap="xl" align="stretch">
-          <Page.Header
-            title="Folders"
-            icon={FolderOpenIcon}
-            description="Make more documents accessible to this workspace. Manage folders manually or via API."
-          />
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Folders"
+          icon={FolderOpenIcon}
+          description="Make more documents accessible to this workspace. Manage folders manually or via API."
+        />
 
-          {dataSources.length > 0 ? (
-            <div className="relative">
-              <Page.SectionHeader
-                title=""
-                description=""
-                action={
-                  !readOnly
-                    ? {
-                        label: "Add a new Folder",
-                        variant: "primary",
-                        icon: PlusIcon,
-                        onClick: async () => {
-                          await handleCreateDataSource();
-                        },
-                        disabled: isSubmittingCreateDataSource,
-                      }
-                    : undefined
-                }
-              />
-              <Popup
-                show={showDatasourceLimitPopup}
-                chipLabel={`${plan.name} plan`}
-                description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade your plan for unlimited datasources.`}
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                onClose={() => {
-                  setShowDatasourceLimitPopup(false);
-                }}
-                className="absolute bottom-8 right-0"
-              />
-            </div>
-          ) : (
-            <EmptyCallToAction
-              label="Create a new Folder"
-              icon={PlusIcon}
-              onClick={async () => {
-                await handleCreateDataSource();
-              }}
-            />
-          )}
-          <ContextItem.List>
-            {dataSources.map((ds) => (
-              <ContextItem
-                key={ds.name}
-                title={ds.name}
-                visual={
-                  <ContextItem.Visual
-                    visual={({ className }) =>
-                      FolderOpenIcon({
-                        className: className + " text-element-600",
-                      })
+        {dataSources.length > 0 ? (
+          <div className="relative">
+            <Page.SectionHeader
+              title=""
+              description=""
+              action={
+                !readOnly
+                  ? {
+                      label: "Add a new Folder",
+                      variant: "primary",
+                      icon: PlusIcon,
+                      onClick: async () => {
+                        await handleCreateDataSource();
+                      },
+                      disabled: isSubmittingCreateDataSource,
                     }
-                  />
-                }
-                subElement={
-                  <>
-                    Added by: {ds.editedByUser?.fullName}
-                    <span className="h-3 w-0.5 bg-element-500" />
-                    <div className="flex items-center gap-1">
-                      Used by: {dataSourcesUsage[ds.id] ?? 0}
-                      <Icon visual={RobotIcon} size="xs" />
-                    </div>
-                  </>
-                }
-                onClick={() => {
-                  void router.push(
-                    `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                  );
-                }}
-              >
-                <ContextItem.Description>
-                  <div className="text-sm text-element-700">
-                    {ds.description}
+                  : undefined
+              }
+            />
+            <Popup
+              show={showDatasourceLimitPopup}
+              chipLabel={`${plan.name} plan`}
+              description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade your plan for unlimited datasources.`}
+              buttonLabel="Check Dust plans"
+              buttonClick={() => {
+                void router.push(`/w/${owner.sId}/subscription`);
+              }}
+              onClose={() => {
+                setShowDatasourceLimitPopup(false);
+              }}
+              className="absolute bottom-8 right-0"
+            />
+          </div>
+        ) : (
+          <EmptyCallToAction
+            label="Create a new Folder"
+            icon={PlusIcon}
+            onClick={async () => {
+              await handleCreateDataSource();
+            }}
+          />
+        )}
+        <ContextItem.List>
+          {dataSources.map((ds) => (
+            <ContextItem
+              key={ds.name}
+              title={ds.name}
+              visual={
+                <ContextItem.Visual
+                  visual={({ className }) =>
+                    FolderOpenIcon({
+                      className: className + " text-element-600",
+                    })
+                  }
+                />
+              }
+              subElement={
+                <>
+                  Added by: {ds.editedByUser?.fullName}
+                  <span className="h-3 w-0.5 bg-element-500" />
+                  <div className="flex items-center gap-1">
+                    Used by: {dataSourcesUsage[ds.id] ?? 0}
+                    <Icon visual={RobotIcon} size="xs" />
                   </div>
-                </ContextItem.Description>
-              </ContextItem>
-            ))}
-          </ContextItem.List>
-        </Page.Vertical>
-      </div>
+                </>
+              }
+              onClick={() => {
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/${ds.name}`
+                );
+              }}
+            >
+              <ContextItem.Description>
+                <div className="text-sm text-element-700">{ds.description}</div>
+              </ContextItem.Description>
+            </ContextItem>
+          ))}
+        </ContextItem.List>
+      </Page.Vertical>
     </AppLayout>
   );
 }

@@ -492,7 +492,7 @@ function SlackIntegrationDrawer({
         hasChanged={false}
         variant="side-sm"
       >
-        <div className="w-full max-w-4xl pt-8">
+        <div className="pt-8">
           <Page.Vertical gap="lg" align="stretch">
             <div className="flex flex-col gap-y-2">
               <div className="grow text-sm font-medium text-element-800">

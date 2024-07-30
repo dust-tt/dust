@@ -227,88 +227,84 @@ export default function WorkspaceAssistants({
         current: "workspace_assistants",
       })}
     >
-      <div className="w-full max-w-4xl pt-8">
-        <AssistantDetails
-          owner={owner}
-          assistantId={showDetails?.sId || null}
-          onClose={() => setShowDetails(null)}
-          mutateAgentConfigurations={mutateAgentConfigurations}
-        />
-        <Page.Vertical gap="xl" align="stretch">
-          <Page.Header title="Manage Assistants" icon={RobotIcon} />
-          <Page.Vertical gap="md" align="stretch">
-            <div className="flex flex-row gap-2">
-              <Searchbar
-                ref={searchBarRef}
-                name="search"
-                placeholder="Search (Name)"
-                value={assistantSearch}
-                onChange={(s) => {
-                  setAssistantSearch(s);
-                }}
-              />
-              <Button.List>
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create an assistant"
-                  />
-                </Link>
-              </Button.List>
-            </div>
-            <div className="flex flex-col gap-4 overflow-y-clip pt-3">
-              <div className="flex flex-row gap-2">
-                <Tab
-                  tabs={tabs}
-                  tabClassName={classNames(
-                    assistantSearch ? disabledTablineClass : ""
-                  )}
+      <AssistantDetails
+        owner={owner}
+        assistantId={showDetails?.sId || null}
+        onClose={() => setShowDetails(null)}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+      />
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header title="Manage Assistants" icon={RobotIcon} />
+        <Page.Vertical gap="md" align="stretch">
+          <div className="flex flex-row gap-2">
+            <Searchbar
+              ref={searchBarRef}
+              name="search"
+              placeholder="Search (Name)"
+              value={assistantSearch}
+              onChange={(s) => {
+                setAssistantSearch(s);
+              }}
+            />
+            <Button.List>
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
+              >
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Create an assistant"
                 />
-                <div className="flex grow items-end justify-end">
-                  <SearchOrderDropdown
-                    orderBy={orderBy}
-                    setOrderBy={setOrderBy}
-                    disabled={tabScope === "global"}
+              </Link>
+            </Button.List>
+          </div>
+          <div className="flex flex-col gap-4 overflow-y-clip pt-3">
+            <div className="flex flex-row gap-2">
+              <Tab
+                tabs={tabs}
+                tabClassName={classNames(
+                  assistantSearch ? disabledTablineClass : ""
+                )}
+              />
+              <div className="flex grow items-end justify-end">
+                <SearchOrderDropdown
+                  orderBy={orderBy}
+                  setOrderBy={setOrderBy}
+                  disabled={tabScope === "global"}
+                />
+              </div>
+            </div>
+            <Page.P>
+              {assistantSearch
+                ? "Searching across all assistants"
+                : SCOPE_INFO[tabScope].text}
+            </Page.P>
+            {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
+              <AgentViewForScope
+                owner={owner}
+                agents={filteredAgents}
+                scopeView={assistantSearch ? "search-view" : tabScope}
+                setShowDetails={setShowDetails}
+                handleToggleAgentStatus={handleToggleAgentStatus}
+                showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
+                setShowDisabledFreeWorkspacePopup={
+                  setShowDisabledFreeWorkspacePopup
+                }
+              />
+            ) : (
+              !assistantSearch && (
+                <div className="pt-2">
+                  <EmptyCallToAction
+                    href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
+                    label="Create an Assistant"
+                    icon={PlusIcon}
                   />
                 </div>
-              </div>
-              <Page.P>
-                {assistantSearch
-                  ? "Searching across all assistants"
-                  : SCOPE_INFO[tabScope].text}
-              </Page.P>
-              {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
-                <AgentViewForScope
-                  owner={owner}
-                  agents={filteredAgents}
-                  scopeView={assistantSearch ? "search-view" : tabScope}
-                  setShowDetails={setShowDetails}
-                  handleToggleAgentStatus={handleToggleAgentStatus}
-                  showDisabledFreeWorkspacePopup={
-                    showDisabledFreeWorkspacePopup
-                  }
-                  setShowDisabledFreeWorkspacePopup={
-                    setShowDisabledFreeWorkspacePopup
-                  }
-                />
-              ) : (
-                !assistantSearch && (
-                  <div className="pt-2">
-                    <EmptyCallToAction
-                      href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
-                      label="Create an Assistant"
-                      icon={PlusIcon}
-                    />
-                  </div>
-                )
-              )}
-            </div>
-          </Page.Vertical>
+              )
+            )}
+          </div>
         </Page.Vertical>
-      </div>
+      </Page.Vertical>
     </AppLayout>
   );
 }

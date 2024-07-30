@@ -316,148 +316,145 @@ export default function Subscription({
         }}
         initialEmail={user.email}
       />
-      <div className="w-full max-w-4xl pt-8">
-        <Page.Vertical gap="xl" align="stretch">
-          <Page.Header
-            title="Subscription"
-            icon={ShapesIcon}
-            description="Manage your plan."
-          />
-          <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h5">Your plan </Page.H>
-            <div>
-              {isWebhookProcessing ? (
-                <Spinner />
-              ) : (
-                <>
-                  <Page.Horizontal gap="sm">
-                    <Chip size="sm" color={chipColor} label={planLabel} />
-                    {!subscription.trialing &&
-                      subscription.stripeSubscriptionId && (
-                        <DropdownMenu>
-                          <DropdownMenu.Button>
-                            <Button
-                              icon={MoreIcon}
-                              variant="tertiary"
-                              labelVisible={false}
-                              disabledTooltip={true}
-                              label=""
-                            />
-                          </DropdownMenu.Button>
-                          <DropdownMenu.Items origin="auto" width={210}>
-                            <DropdownMenu.Item
-                              label="Manage my subscription"
-                              onClick={handleGoToStripePortal}
-                            />
-                          </DropdownMenu.Items>
-                        </DropdownMenu>
-                      )}
-                  </Page.Horizontal>
-                </>
-              )}
-            </div>
-            {perSeatPricing && subscription.trialing && (
-              <Page.Vertical>
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Subscription"
+          icon={ShapesIcon}
+          description="Manage your plan."
+        />
+        <Page.Vertical align="stretch" gap="md">
+          <Page.H variant="h5">Your plan </Page.H>
+          <div>
+            {isWebhookProcessing ? (
+              <Spinner />
+            ) : (
+              <>
                 <Page.Horizontal gap="sm">
-                  <Button
-                    onClick={() => setShowSkipFreeTrialDialog(true)}
-                    label="End trial & get full access"
-                  />
-                  <Button
-                    label="Cancel subscription"
-                    variant="tertiary"
-                    onClick={() => setShowCancelFreeTrialDialog(true)}
-                  />
+                  <Chip size="sm" color={chipColor} label={planLabel} />
+                  {!subscription.trialing &&
+                    subscription.stripeSubscriptionId && (
+                      <DropdownMenu>
+                        <DropdownMenu.Button>
+                          <Button
+                            icon={MoreIcon}
+                            variant="tertiary"
+                            labelVisible={false}
+                            disabledTooltip={true}
+                            label=""
+                          />
+                        </DropdownMenu.Button>
+                        <DropdownMenu.Items origin="auto" width={210}>
+                          <DropdownMenu.Item
+                            label="Manage my subscription"
+                            onClick={handleGoToStripePortal}
+                          />
+                        </DropdownMenu.Items>
+                      </DropdownMenu>
+                    )}
                 </Page.Horizontal>
-              </Page.Vertical>
+              </>
             )}
-            <div className="h-4"></div>
-            {subscription.stripeSubscriptionId && (
-              <Page.Vertical gap="sm">
-                <Page.H variant="h5">Billing</Page.H>
-                {perSeatPricing !== null && (
-                  <>
-                    <Page.P>
-                      Estimated {perSeatPricing.billingPeriod} billing:{" "}
-                      <span className="font-bold">
+          </div>
+          {perSeatPricing && subscription.trialing && (
+            <Page.Vertical>
+              <Page.Horizontal gap="sm">
+                <Button
+                  onClick={() => setShowSkipFreeTrialDialog(true)}
+                  label="End trial & get full access"
+                />
+                <Button
+                  label="Cancel subscription"
+                  variant="tertiary"
+                  onClick={() => setShowCancelFreeTrialDialog(true)}
+                />
+              </Page.Horizontal>
+            </Page.Vertical>
+          )}
+          <div className="h-4"></div>
+          {subscription.stripeSubscriptionId && (
+            <Page.Vertical gap="sm">
+              <Page.H variant="h5">Billing</Page.H>
+              {perSeatPricing !== null && (
+                <>
+                  <Page.P>
+                    Estimated {perSeatPricing.billingPeriod} billing:{" "}
+                    <span className="font-bold">
+                      {getPriceAsString({
+                        currency: perSeatPricing.seatCurrency,
+                        priceInCents: perSeatPricing.seatPrice * workspaceSeats,
+                      })}
+                    </span>{" "}
+                    (excluding taxes).
+                  </Page.P>
+                  <Page.P>
+                    {workspaceSeats === 1 ? (
+                      <>
+                        {workspaceSeats} member,{" "}
                         {getPriceAsString({
                           currency: perSeatPricing.seatCurrency,
-                          priceInCents:
-                            perSeatPricing.seatPrice * workspaceSeats,
-                        })}
-                      </span>{" "}
-                      (excluding taxes).
-                    </Page.P>
-                    <Page.P>
-                      {workspaceSeats === 1 ? (
-                        <>
-                          {workspaceSeats} member,{" "}
-                          {getPriceAsString({
-                            currency: perSeatPricing.seatCurrency,
-                            priceInCents: perSeatPricing.seatPrice,
-                          })}{" "}
-                          per member.
-                        </>
-                      ) : (
-                        <>
-                          {workspaceSeats} members,{" "}
-                          {getPriceAsString({
-                            currency: perSeatPricing.seatCurrency,
-                            priceInCents: perSeatPricing.seatPrice,
-                          })}{" "}
-                          per member.
-                        </>
-                      )}
-                    </Page.P>
-                  </>
-                )}
-                <div className="my-5">
-                  <Button
-                    icon={CardIcon}
-                    label="Your billing dashboard on Stripe"
-                    variant="tertiary"
-                    onClick={handleGoToStripePortal}
+                          priceInCents: perSeatPricing.seatPrice,
+                        })}{" "}
+                        per member.
+                      </>
+                    ) : (
+                      <>
+                        {workspaceSeats} members,{" "}
+                        {getPriceAsString({
+                          currency: perSeatPricing.seatCurrency,
+                          priceInCents: perSeatPricing.seatPrice,
+                        })}{" "}
+                        per member.
+                      </>
+                    )}
+                  </Page.P>
+                </>
+              )}
+              <div className="my-5">
+                <Button
+                  icon={CardIcon}
+                  label="Your billing dashboard on Stripe"
+                  variant="tertiary"
+                  onClick={handleGoToStripePortal}
+                />
+              </div>
+            </Page.Vertical>
+          )}
+          {!plan ||
+            ([FREE_TEST_PLAN_CODE, FREE_UPGRADED_PLAN_CODE].includes(
+              plan.code
+            ) && (
+              <>
+                <Page.H variant="h5">Manage my plan</Page.H>
+                <div className="s-h-full s-w-full pt-2">
+                  <PricePlans
+                    size="xs"
+                    className="lg:hidden"
+                    isTabs
+                    plan={plan}
+                    onClickProPlan={onClickProPlan}
+                    onClickEnterprisePlan={onClickEnterprisePlan}
+                    isProcessing={isProcessing}
+                    display="subscribe"
+                  />
+                  <PricePlans
+                    size="xs"
+                    flexCSS="gap-3"
+                    className="hidden lg:flex"
+                    plan={plan}
+                    onClickProPlan={onClickProPlan}
+                    onClickEnterprisePlan={onClickEnterprisePlan}
+                    isProcessing={isProcessing}
+                    display="subscribe"
                   />
                 </div>
-              </Page.Vertical>
-            )}
-            {!plan ||
-              ([FREE_TEST_PLAN_CODE, FREE_UPGRADED_PLAN_CODE].includes(
-                plan.code
-              ) && (
-                <>
-                  <Page.H variant="h5">Manage my plan</Page.H>
-                  <div className="s-h-full s-w-full pt-2">
-                    <PricePlans
-                      size="xs"
-                      className="lg:hidden"
-                      isTabs
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                      display="subscribe"
-                    />
-                    <PricePlans
-                      size="xs"
-                      flexCSS="gap-3"
-                      className="hidden lg:flex"
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                      display="subscribe"
-                    />
-                  </div>
 
-                  <Link href="/terms" target="_blank" className="text-sm">
-                    Terms of use apply to all plans.
-                  </Link>
-                </>
-              ))}
-          </Page.Vertical>
+                <Link href="/terms" target="_blank" className="text-sm">
+                  Terms of use apply to all plans.
+                </Link>
+              </>
+            ))}
         </Page.Vertical>
-      </div>
+      </Page.Vertical>
       <div className="h-12" />
     </AppLayout>
   );
