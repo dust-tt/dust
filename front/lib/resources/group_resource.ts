@@ -124,6 +124,40 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  static async deleteAllForWorkspaceExceptDefaults(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const groups = await this.model.findAll({
+      include: ["id"],
+      where: {
+        workspaceId,
+        type: {
+          [Op.notIn]: ["system", "global"],
+        },
+      },
+    });
+
+    const groupIds = groups.map((group) => group.id);
+
+    await GroupMembershipModel.destroy({
+      where: {
+        workspaceId,
+        groupId: {
+          [Op.in]: groupIds,
+        },
+      },
+    });
+
+    await this.model.destroy({
+      where: {
+        id: {
+          [Op.in]: groupIds,
+        },
+        workspaceId,
+      },
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string
