@@ -22,7 +22,7 @@ const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
   vault: "vlt",
-  datasource: "ds",
+  datasource: "dts",
   data_source_view: "dsv",
 };
 

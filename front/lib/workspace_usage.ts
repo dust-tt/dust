@@ -473,10 +473,9 @@ function generateCsvFromQueryResult(
 export async function checkWorkspaceActivity(workspace: Workspace) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const hasDataSource = await DataSourceResource.workspaceHasDatasources(
-    await Authenticator.internalAdminForWorkspace(workspace.sId)
-  );
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const hasDataSource =
+    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
 
   const hasCreatedAssistant = await AgentConfiguration.findOne({
     where: { workspaceId: workspace.id },

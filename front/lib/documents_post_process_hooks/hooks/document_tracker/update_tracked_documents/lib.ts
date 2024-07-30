@@ -18,7 +18,8 @@ const logger = mainLogger.child({
 export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
-  const owner = params.auth.workspace();
+  const { auth, dataSourceName, documentId, verb } = params;
+  const owner = auth.workspace();
 
   if (!owner) {
     logger.info(
@@ -29,18 +30,18 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
 
   const localLogger = logger.child({
     workspaceId: owner.sId,
-    dataSourceName: params.dataSourceName,
-    documentId: params.documentId,
+    dataSourceName,
+    documentId,
   });
 
   if (!owner.flags.includes("document_tracker")) {
     return false;
   }
 
-  const dataSource = await getDatasource(params.auth, params.dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceName);
 
   if (
-    params.verb === "upsert" &&
+    verb === "upsert" &&
     params.documentText.includes("DUST_TRACK(") &&
     TRACKABLE_CONNECTOR_TYPES.includes(
       dataSource.connectorProvider as ConnectorProvider
@@ -55,7 +56,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   const docIsTracked = !!(await TrackedDocument.count({
     where: {
       dataSourceId: dataSource.id,
-      documentId: params.documentId,
+      documentId,
     },
   }));
 

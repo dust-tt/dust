@@ -109,7 +109,9 @@ export async function isWorkflowDeletableActivity({
   }
 
   // Workspace must have no data sources.
-  if (await DataSourceResource.workspaceHasDatasources(auth)) {
+  if (
+    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0
+  ) {
     return false;
   }
 

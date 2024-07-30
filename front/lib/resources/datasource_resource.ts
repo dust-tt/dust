@@ -1,7 +1,7 @@
 import type {
   ConnectorProvider,
   DataSourceType,
-  ModelId,
+  LightWorkspaceType,
   Result,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
@@ -21,7 +21,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 export type FetchDataSourceOptions = {
-  includeEditedBy: boolean;
+  includeEditedBy?: boolean;
+  limit?: number;
+  order?: [string, "ASC" | "DESC"][];
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -35,32 +37,40 @@ export class DataSourceResource extends BaseResource<DataSource> {
 
   editedByUser: Attributes<User> | undefined;
 
-  constructor(
-    model: ModelStatic<DataSource>,
-    blob: Attributes<DataSource>,
-    editedByUser?: Attributes<User>
-  ) {
-    super(DataSource, blob);
+  constructor(blob: Attributes<DataSource>, editedByUser?: Attributes<User>) {
+    super(DataSourceResource.model, blob);
     this.editedByUser = editedByUser;
   }
 
   static async makeNew(blob: CreationAttributes<DataSource>) {
     const datasource = await DataSource.create(blob);
 
-    return new this(DataSource, datasource.get());
+    return new this(datasource.get());
   }
 
-  private static getIncludes(options?: FetchDataSourceOptions) {
-    return options?.includeEditedBy
-      ? {
-          include: [
-            {
-              model: User,
-              as: "editedByUser",
-            },
-          ],
-        }
-      : undefined;
+  private static getOptions(options?: FetchDataSourceOptions) {
+    return {
+      ...(options?.includeEditedBy
+        ? {
+            include: [
+              {
+                model: User,
+                as: "editedByUser",
+              },
+            ],
+          }
+        : {}),
+      ...(options?.limit
+        ? {
+            limit: options.limit,
+          }
+        : {}),
+      ...(options?.order
+        ? {
+            order: options.order,
+          }
+        : {}),
+    };
   }
 
   static async fetchByName(
@@ -74,17 +84,13 @@ export class DataSourceResource extends BaseResource<DataSource> {
         workspaceId: owner.id,
         name,
       },
-      ...this.getIncludes(options),
+      ...this.getOptions(options),
     });
 
     if (!datasource) {
       return null;
     }
-    return new this(
-      DataSource,
-      datasource.get(),
-      datasource.editedByUser?.get()
-    );
+    return new this(datasource.get(), datasource.editedByUser?.get());
   }
 
   static async listByWorkspace(
@@ -96,38 +102,34 @@ export class DataSourceResource extends BaseResource<DataSource> {
       where: {
         workspaceId: owner.id,
       },
-      ...this.getIncludes(options),
-      order: [["updatedAt", "DESC"]],
+      ...this.getOptions(options),
     });
 
     return datasources.map(
-      (datasource) =>
-        new this(DataSource, datasource.get(), datasource.editedByUser?.get())
+      (datasource) => new this(datasource.get(), datasource.editedByUser?.get())
     );
   }
 
   static async listByWorkspaceIdAndNames(
-    workspaceId: ModelId,
+    workspace: LightWorkspaceType,
     names: string[]
   ): Promise<DataSourceResource[]> {
     const datasources = await this.model.findAll({
       where: {
-        workspaceId,
+        workspaceId: workspace.id,
         name: {
           [Op.in]: names,
         },
       },
-      order: [["updatedAt", "DESC"]],
     });
 
-    return datasources.map(
-      (datasource) => new this(DataSource, datasource.get())
-    );
+    return datasources.map((datasource) => new this(datasource.get()));
   }
 
   static async listByConnectorProvider(
     auth: Authenticator,
-    connectorProvider: ConnectorProvider
+    connectorProvider: ConnectorProvider,
+    options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
     const owner = await auth.getNonNullableWorkspace();
     const datasources = await this.model.findAll({
@@ -135,29 +137,17 @@ export class DataSourceResource extends BaseResource<DataSource> {
         workspaceId: owner.id,
         connectorProvider,
       },
+      ...this.getOptions(options),
     });
 
-    return datasources.map(
-      (datasource) => new this(DataSource, datasource.get())
-    );
-  }
-
-  static async workspaceHasDatasources(auth: Authenticator) {
-    const owner = await auth.getNonNullableWorkspace();
-    const dataSources = await DataSource.findAll({
-      where: {
-        workspaceId: owner.id,
-      },
-      limit: 1,
-    });
-    return dataSources.length > 0;
+    return datasources.map((datasource) => new this(datasource.get()));
   }
 
   async delete(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    await DataSourceViewResource.deleteForDataSource(auth, this.toJSON());
+    await DataSourceViewResource.deleteForDataSource(auth, this);
 
     try {
       await this.model.destroy({

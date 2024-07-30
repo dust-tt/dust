@@ -87,11 +87,11 @@ async function handler(
             res.status(404).end();
             return;
           }
-
+          const auth = await Authenticator.internalBuilderForWorkspace(
+            req.query.workspace_id
+          );
           const dataSource = await DataSourceResource.fetchByName(
-            await Authenticator.internalBuilderForWorkspace(
-              req.query.workspace_id
-            ),
+            auth,
             req.query.data_source_id
           );
 
