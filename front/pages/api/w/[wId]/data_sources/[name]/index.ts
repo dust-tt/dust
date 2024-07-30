@@ -42,8 +42,8 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, req.query.name);
-  if (!dataSource) {
+  const dataSource = await DataSourceResource.fetchByName(auth, req.query.name);
+  if (!dataSource || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -56,16 +56,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       res.status(200).json({
-        dataSource: {
-          id: dataSource.id,
-          createdAt: dataSource.createdAt,
-          name: dataSource.name,
-          description: dataSource.description,
-          dustAPIProjectId: dataSource.dustAPIProjectId,
-          connectorId: dataSource.connectorId,
-          connectorProvider: dataSource.connectorProvider,
-          assistantDefaultSelected: dataSource.assistantDefaultSelected,
-        },
+        dataSource: dataSource.toJSON(),
       });
       return;
 
@@ -77,19 +68,6 @@ async function handler(
             type: "data_source_auth_error",
             message:
               "Only the users that are `builders` for the current workspace can update a data source.",
-          },
-        });
-      }
-
-      const dataSourceResource = await DataSourceResource.fetchByModelId(
-        dataSource.id
-      );
-      if (!dataSourceResource) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
           },
         });
       }
@@ -110,7 +88,7 @@ async function handler(
             },
           });
         }
-        await dataSourceResource.update({
+        await dataSource.update({
           assistantDefaultSelected: req.body.assistantDefaultSelected,
         });
       } else {
