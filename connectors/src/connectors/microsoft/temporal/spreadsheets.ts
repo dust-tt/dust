@@ -1,4 +1,5 @@
-import { getSanitizedHeaders, slugify } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import { Err, getSanitizedHeaders, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
@@ -9,10 +10,12 @@ import {
   getWorksheetContent,
   getWorksheetInternalId,
   getWorksheets,
+  wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
@@ -100,30 +103,34 @@ async function processSheet(
   spreadsheet: microsoftgraph.DriveItem,
   internalId: string,
   worksheet: microsoftgraph.WorkbookWorksheet,
-  spreadsheetId: string
-): Promise<boolean> {
+  spreadsheetId: string,
+  localLogger: Logger
+): Promise<Result<null, Error>> {
   if (!worksheet.id) {
-    return false;
+    return new Err(new Error("Worksheet has no id"));
   }
-  const content = await getWorksheetContent(client, internalId);
+  const content = await wrapMicrosoftGraphAPIWithResult(() =>
+    getWorksheetContent(client, internalId)
+  );
+
+  if (content.isErr()) {
+    return content;
+  }
+
   const loggerArgs = {
-    connectorType: "microsoft",
-    connectorId: connector.id,
-    worksheetId: internalId,
     sheet: {
       id: worksheet.id,
       name: worksheet.name,
     },
   };
 
-  logger.info(
+  localLogger.info(
     { loggerArgs },
     "[Spreadsheet] Processing sheet in Microsoft Excel."
   );
 
   // Content.text is guaranteed to be a 2D array with each row of the same length.
-  const rows: string[][] = content.text;
-
+  const rows: string[][] = content.value.text;
   if (rows.length > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
     logger.info(
       { ...loggerArgs, rowCount: rows.length },
@@ -131,7 +138,11 @@ async function processSheet(
     );
 
     // If the sheet has too many rows, return an empty array to ignore it.
-    return false;
+    return new Err(
+      new Error(
+        `Too many rows in sheet ${worksheet.name}, rows=${rows.length}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
+      )
+    );
   }
 
   const [rawHeaders, ...rest] = rows;
@@ -151,7 +162,7 @@ async function processSheet(
 
     await upsertWorksheetInDb(connector, internalId, worksheet, spreadsheetId);
 
-    return true;
+    return new Ok(null);
   }
 
   logger.info(
@@ -159,26 +170,20 @@ async function processSheet(
     "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
   );
 
-  return false;
+  return new Err(new Error(`Table ${worksheet.id} is empty`));
 }
 
-export async function syncSpreadSheet({
+export async function handleSpreadSheet({
   connectorId,
   file,
   parentInternalId,
+  localLogger,
 }: {
   connectorId: number;
   file: microsoftgraph.DriveItem;
   parentInternalId: string;
-}): Promise<
-  | {
-      isSupported: false;
-    }
-  | {
-      isSupported: true;
-      skipReason?: string;
-    }
-> {
+  localLogger: Logger;
+}): Promise<Result<null, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -187,24 +192,23 @@ export async function syncSpreadSheet({
 
   const client = await getClient(connector.connectionId);
 
-  const localLogger = logger.child({
-    provider: "microsoft",
-    connectorId: connectorId,
-    internalId: file.id,
-    name: file.name,
-  });
-
   if (!file.file) {
-    throw new Error(`Item is not a file: ${JSON.stringify(file)}`);
+    return new Err(new Error(`Spreadsheet is not a file: ${file.name}`));
   }
 
   localLogger.info("[Spreadsheet] Syncing Excel Spreadsheet.");
 
   const documentId = getDriveItemInternalId(file);
 
-  const worksheets = await getAllPaginatedEntities((nextLink) =>
-    getWorksheets(client, documentId, nextLink)
+  const worksheetsRes = await wrapMicrosoftGraphAPIWithResult(() =>
+    getAllPaginatedEntities((nextLink) =>
+      getWorksheets(client, documentId, nextLink)
+    )
   );
+
+  if (worksheetsRes.isErr()) {
+    return worksheetsRes;
+  }
 
   const spreadsheet = await upsertSpreadsheetInDb(
     connector,
@@ -217,18 +221,19 @@ export async function syncSpreadSheet({
   const syncedWorksheets = await spreadsheet.fetchChildren();
 
   const successfulSheetIdImports: string[] = [];
-  for (const worksheet of worksheets) {
+  for (const worksheet of worksheetsRes.value) {
     if (worksheet.id) {
       const internalWorkSheetId = getWorksheetInternalId(worksheet, documentId);
-      const isImported = await processSheet(
+      const importResult = await processSheet(
         client,
         connector,
         file,
         internalWorkSheetId,
         worksheet,
-        documentId
+        documentId,
+        localLogger
       );
-      if (isImported) {
+      if (importResult.isOk()) {
         successfulSheetIdImports.push(internalWorkSheetId);
       }
     }
@@ -248,7 +253,7 @@ export async function syncSpreadSheet({
     });
   }
 
-  return { isSupported: true };
+  return new Ok(null);
 }
 
 export async function deleteAllSheets(

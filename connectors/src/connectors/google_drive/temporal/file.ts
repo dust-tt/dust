@@ -132,11 +132,11 @@ async function handleFileExport(
     localLogger.error({}, "res.data is not an ArrayBuffer");
     return null;
   }
-
+  let result;
   if (file.mimeType === "text/plain") {
-    return handleTextFile(res.data, maxDocumentLen);
+    result = handleTextFile(res.data, maxDocumentLen);
   } else if (file.mimeType === "text/csv") {
-    return handleCsvFile({
+    result = await handleCsvFile({
       data: res.data,
       file,
       maxDocumentLen,
@@ -145,8 +145,13 @@ async function handleFileExport(
       connectorId,
     });
   } else {
-    return handleTextExtraction(res.data, localLogger, file.mimeType);
+    result = await handleTextExtraction(res.data, localLogger, file.mimeType);
   }
+  if (result.isErr()) {
+    return null;
+  }
+
+  return result.value;
 }
 
 export async function syncOneFile(

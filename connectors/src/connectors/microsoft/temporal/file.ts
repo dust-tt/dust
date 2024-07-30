@@ -16,7 +16,7 @@ import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
-  syncSpreadSheet,
+  handleSpreadSheet,
 } from "@connectors/connectors/microsoft/temporal/spreadsheets";
 import {
   handleCsvFile,
@@ -153,11 +153,11 @@ export async function syncOneFile({
     );
   }
 
-  let documentSection: CoreAPIDataSourceDocumentSection | null = null;
+  let result: Result<CoreAPIDataSourceDocumentSection | null, Error>;
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
     const data = Buffer.from(downloadRes.data);
-    const isSuccessful = await handleCsvFile({
+    result = await handleCsvFile({
       dataSourceConfig,
       data,
       file,
@@ -165,38 +165,22 @@ export async function syncOneFile({
       maxDocumentLen,
       connectorId,
     });
-    if (isSuccessful) {
-      documentSection = null;
-    } else {
-      return false;
-    }
   } else if (
     mimeType ===
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   ) {
-    const res = await syncSpreadSheet({
+    result = await handleSpreadSheet({
       connectorId,
       file,
       parentInternalId,
+      localLogger,
     });
-    if (!res.isSupported) {
-      return false;
-    } else {
-      if (res.skipReason) {
-        localLogger.info(
-          {},
-          `Microsoft Spreadsheet document skipped with skip reason ${res.skipReason}`
-        );
-      }
-    }
   } else if (mimeType === "text/plain") {
-    documentSection = handleTextFile(downloadRes.data, maxDocumentLen);
+    result = handleTextFile(downloadRes.data, maxDocumentLen);
   } else {
     const data = Buffer.from(downloadRes.data);
-    documentSection = await handleTextExtraction(data, localLogger, mimeType);
+    result = await handleTextExtraction(data, localLogger, mimeType);
   }
-
-  localLogger.info({ documentSection }, "Document section");
 
   const updatedAt = file.lastModifiedDateTime
     ? new Date(file.lastModifiedDateTime)
@@ -205,22 +189,6 @@ export async function syncOneFile({
   const createdAt = file.createdDateTime
     ? new Date(file.createdDateTime)
     : undefined;
-
-  const content = await renderDocumentTitleAndContent({
-    dataSourceConfig,
-    title: file.name ?? null,
-    updatedAt,
-    createdAt,
-    lastEditor: file.lastModifiedBy?.user
-      ? file.lastModifiedBy.user.displayName ?? undefined
-      : undefined,
-    content: documentSection,
-  });
-
-  if (documentSection === undefined) {
-    localLogger.error({}, "documentContent is undefined");
-    throw new Error("documentContent is undefined");
-  }
 
   const tags = [`title:${file.name}`];
 
@@ -238,40 +206,11 @@ export async function syncOneFile({
 
   tags.push(`mimeType:${file.file.mimeType}`);
 
-  const documentLength = documentSection ? sectionLength(documentSection) : 0;
-
-  const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
-
-  const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
-  if (isInSizeRange) {
-    const parents = await getParents({
-      connectorId,
-      internalId: documentId,
-      parentInternalId,
-      startSyncTs,
-    });
-    parents.reverse();
-
-    await upsertToDatasource({
-      dataSourceConfig,
-      documentId,
-      documentContent: content,
-      documentUrl: file.webUrl ?? undefined,
-      timestampMs: upsertTimestampMs,
-      tags,
-      parents: parents,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-      async: true,
-    });
-  } else {
-    localLogger.info(
-      {
-        documentLen: documentLength,
-      },
-      `Document is empty or too big to be upserted (marking as synced without upserting)`
-    );
+  if (result.isErr()) {
+    if (fileResource) {
+      await fileResource.delete();
+    }
+    return false;
   }
 
   const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
@@ -282,9 +221,67 @@ export async function syncOneFile({
     name: file.name ?? "",
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
-    lastUpsertedTs:
-      isInSizeRange && upsertTimestampMs ? new Date(upsertTimestampMs) : null,
   };
+
+  const documentSection = result.value;
+  if (documentSection) {
+    // In case of table, result is ok and result.value is null, no document to upsert
+    const documentLength = sectionLength(documentSection);
+    const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
+
+    if (isInSizeRange) {
+      localLogger.info({ documentSection }, "Document section");
+      const content = await renderDocumentTitleAndContent({
+        dataSourceConfig,
+        title: file.name ?? null,
+        updatedAt,
+        createdAt,
+        lastEditor: file.lastModifiedBy?.user
+          ? file.lastModifiedBy.user.displayName ?? undefined
+          : undefined,
+        content: documentSection,
+      });
+
+      const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
+
+      const parents = await getParents({
+        connectorId,
+        internalId: documentId,
+        parentInternalId,
+        startSyncTs,
+      });
+      parents.reverse();
+
+      await upsertToDatasource({
+        dataSourceConfig,
+        documentId,
+        documentContent: content,
+        documentUrl: file.webUrl ?? undefined,
+        timestampMs: upsertTimestampMs,
+        tags,
+        parents: parents,
+        upsertContext: {
+          sync_type: isBatchSync ? "batch" : "incremental",
+        },
+        async: true,
+      });
+
+      resourceBlob.lastUpsertedTs = upsertTimestampMs
+        ? new Date(upsertTimestampMs)
+        : null;
+    } else {
+      localLogger.info(
+        {
+          documentLen: documentLength,
+        },
+        `Document is empty or too big to be upserted. Skipping.`
+      );
+      if (fileResource) {
+        await fileResource.delete();
+      }
+      return false;
+    }
+  }
 
   if (fileResource) {
     await fileResource.update(resourceBlob);
@@ -292,7 +289,7 @@ export async function syncOneFile({
     await MicrosoftNodeResource.makeNew(resourceBlob);
   }
 
-  return isInSizeRange;
+  return true;
 }
 
 export async function getParents({
