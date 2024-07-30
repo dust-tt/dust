@@ -7,6 +7,7 @@ export const WHITELISTABLE_FEATURES = [
   "visualization_action_flag",
   "dust_splitted_ds_flag",
   "test_oauth_setup",
+  "zendesk_connector",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
