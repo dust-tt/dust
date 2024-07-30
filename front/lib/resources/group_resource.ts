@@ -23,6 +23,7 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -92,6 +93,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        stack: new Error().stack,
+      },
+      "About to delete group"
+    );
+
     try {
       await this.model.destroy({
         where: {
@@ -110,6 +119,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        stack: new Error().stack,
+      },
+      "About to delete all groups for workspace"
+    );
+
     await GroupMembershipModel.destroy({
       where: {
         workspaceId: workspace.id,
