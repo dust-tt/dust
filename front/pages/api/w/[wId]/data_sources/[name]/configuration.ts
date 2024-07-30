@@ -78,6 +78,7 @@ async function handler(
     case "intercom":
     case "notion":
     case "microsoft":
+    case "zendesk":
     case "slack":
       if (!auth.isAdmin()) {
         return apiError(req, res, {

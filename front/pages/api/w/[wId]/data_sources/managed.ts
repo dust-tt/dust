@@ -124,6 +124,7 @@ async function handler(
         case "intercom":
         case "notion":
         case "microsoft":
+        case "zendesk":
         case "slack": {
           if (!auth.isAdmin()) {
             return apiError(req, res, {
@@ -237,6 +238,10 @@ async function handler(
           assistantDefaultSelected = true;
           break;
         case "microsoft":
+          isDataSourceAllowedInPlan = true;
+          assistantDefaultSelected = true;
+          break;
+        case "zendesk":
           isDataSourceAllowedInPlan = true;
           assistantDefaultSelected = true;
           break;

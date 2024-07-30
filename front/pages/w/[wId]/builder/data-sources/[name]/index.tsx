@@ -920,6 +920,8 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
   intercom:
     "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
   microsoft: `Microsoft / mismatch error.`,
+  zendesk:
+    "You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
@@ -945,6 +947,7 @@ function getRenderingConfigForConnectorProvider(
     case "confluence":
     case "google_drive":
     case "microsoft":
+    case "zendesk":
       return {
         ...commonConfig,
         displayDataSourceDetailsModal: true,
@@ -1168,6 +1171,7 @@ function ManagedDataSourceView({
                 case "notion":
                 case "intercom":
                 case "microsoft":
+                case "zendesk":
                   return `Manage Dust connection to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
                 case "webcrawler":
                   return `Manage Website`;
@@ -1267,6 +1271,7 @@ function ManagedDataSourceView({
                     case "notion":
                     case "intercom":
                     case "microsoft":
+                    case "zendesk":
                       return (
                         <>
                           Selected resources will be accessible to all members

@@ -139,7 +139,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isNested: false,
     isSearchEnabled: true,
   },
-
   webcrawler: {
     name: "Web Crawler",
     connectorProvider: "webcrawler",

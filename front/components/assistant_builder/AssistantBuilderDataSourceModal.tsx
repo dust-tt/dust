@@ -44,6 +44,7 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "article", plural: "articles" },
   microsoft: { singular: "folder", plural: "folders" },
+  zendesk: { singular: "ticket", plural: "tickets" },
   webcrawler: { singular: "page", plural: "pages" },
 };
 
@@ -630,6 +631,7 @@ function getDisplayNameForDataSource(ds: DataSourceType) {
       case "intercom":
       case "microsoft":
       case "notion":
+      case "zendesk":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
       case "webcrawler":
         return ds.name;
