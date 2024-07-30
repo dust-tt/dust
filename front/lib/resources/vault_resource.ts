@@ -12,6 +12,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -197,6 +198,18 @@ export class VaultResource extends BaseResource<VaultModel> {
         workspaceId: owner.id,
       },
       transaction,
+    });
+  }
+
+  static async deleteAllForWorkspaceExceptDefaults(auth: Authenticator) {
+    const owner = auth.getNonNullableWorkspace();
+    await this.model.destroy({
+      where: {
+        workspaceId: owner.id,
+        kind: {
+          [Op.notIn]: ["system", "global"],
+        },
+      },
     });
   }
 

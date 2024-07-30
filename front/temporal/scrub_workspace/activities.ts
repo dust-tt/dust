@@ -162,17 +162,19 @@ async function deleteDatasources(auth: Authenticator) {
   }
 }
 
+// Delete all vaults except the system and global vaults.
 async function deleteVaults(auth: Authenticator) {
-  await VaultResource.deleteAllForWorkspace(auth);
+  await VaultResource.deleteAllForWorkspaceExceptDefaults(auth);
 }
 
+// Delete all groups except the default groups.
 async function deleteGroups(auth: Authenticator) {
   const workspace = auth.workspace();
   if (!workspace) {
     throw new Error("No workspace found");
   }
-  const w = renderLightWorkspaceType({ workspace });
-  await GroupResource.deleteAllForWorkspace(w);
+
+  await GroupResource.deleteAllForWorkspaceExceptDefaults(auth);
 }
 
 async function cleanupCustomerio(auth: Authenticator) {
