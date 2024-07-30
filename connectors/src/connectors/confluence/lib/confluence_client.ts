@@ -2,6 +2,8 @@ import { ConfluenceClientError } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
+
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
 const ConfluenceAccessibleResourcesCodec = t.array(
@@ -203,6 +205,11 @@ export class ConfluenceClient {
     })();
 
     if (!response.ok) {
+      // If the token is invalid, the API will return a 403 Forbidden response.
+      if (response.status === 403 && response.statusText === "Forbidden") {
+        throw new ExternalOAuthTokenError();
+      }
+
       throw new ConfluenceClientError(
         `Confluence API responded with status: ${response.status}: ${this.apiUrl}${endpoint}`,
         {
