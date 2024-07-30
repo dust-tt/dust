@@ -1,11 +1,6 @@
 import React, { ReactNode, useCallback } from "react";
 
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  Avatar,
-  MoreIcon,
-} from "@sparkle/index";
+import { ArrowDownIcon, ArrowUpIcon, Avatar, MoreIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -22,12 +17,14 @@ interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   column?: string;
   sortable?: boolean;
   children?: ReactNode;
+  width?: "normal" | "expanded";
 }
 
 interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
   children?: ReactNode;
+  description?: string;
 }
 
 interface TableChildProps {
@@ -75,6 +72,7 @@ const Head: React.FC<HeadProps & TableChildProps> = ({
   sortable = true,
   sorting,
   onSort,
+  width,
   ...props
 }) => {
   const handleClick = useCallback(() => {
@@ -86,14 +84,15 @@ const Head: React.FC<HeadProps & TableChildProps> = ({
   return (
     <th
       className={classNames(
-        "s-px-4 s-py-2 s-text-left s-font-medium s-text-element-800",
+        "s-px-3 s-py-2 s-text-left s-font-medium s-text-element-800",
         sortable ? "s-cursor-pointer" : "",
+        width === "expanded" ? "s-w-full" : "s-w-auto",
         className || ""
       )}
       onClick={handleClick}
       {...props}
     >
-      <div className="s-flex s-items-center s-space-x-1">
+      <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
         <span>{children}</span>
         {sortable && sorting && (
           <Icon
@@ -169,6 +168,7 @@ const Cell: React.FC<CellProps> = ({
   className,
   avatarUrl,
   icon,
+  description,
   ...props
 }) => (
   <td
@@ -183,7 +183,14 @@ const Cell: React.FC<CellProps> = ({
       {icon && (
         <Icon visual={icon} size="sm" className="s-mr-3 s-text-element-600" />
       )}
-      {children}
+      <div className="s-flex">
+        <span className="s-text-sm s-text-element-800">{children}</span>
+        {description && (
+          <span className="s-pl-2 s-text-sm s-text-element-600">
+            {description}
+          </span>
+        )}
+      </div>
     </div>
   </td>
 );

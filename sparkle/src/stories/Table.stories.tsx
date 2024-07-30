@@ -34,7 +34,16 @@ type Story = StoryObj<typeof meta>;
 
 const TableExample = () => {
   const initialData = [
-    { name: "Marketing", usedBy: 8, addedBy: "User1", lastUpdated: "2023-07-08", size: "32kb", avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg", clickable: true },
+    {
+      name: "Marketing",
+      description: "(23 items)",
+      usedBy: 8,
+      addedBy: "User1",
+      lastUpdated: "July 8, 2023",
+      size: "32kb",
+      avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+      clickable: true
+    },
     { name: "Design", usedBy: 2, addedBy: "User2", lastUpdated: "2023-07-09", size: "64kb", icon: FolderIcon, clickable: true },
     { name: "Development", usedBy: 5, addedBy: "User3", lastUpdated: "2023-07-07", size: "128kb", clickable: false },
     { name: "Sales", usedBy: 10, addedBy: "User4", lastUpdated: "2023-07-10", size: "16kb", clickable: true },
@@ -79,7 +88,7 @@ const TableExample = () => {
         <Table.Caption className="s-text-element-800">Files and Folders</Table.Caption>
         <Table.Header>
           <Table.Row>
-            <Table.Head column="name" sortable={true} sorting={sorting} onSort={handleSort}>Name</Table.Head>
+            <Table.Head column="name" sortable={true} sorting={sorting} onSort={handleSort} width="expanded">Name</Table.Head>
             <Table.Head column="usedBy" sortable={true} sorting={sorting} onSort={handleSort}>Used by</Table.Head>
             <Table.Head column="addedBy" sortable={true} sorting={sorting} onSort={handleSort}>Added by</Table.Head>
             <Table.Head column="lastUpdated" sortable={false}>Last updated</Table.Head>
@@ -94,7 +103,9 @@ const TableExample = () => {
               clickable={row.clickable}
               onClick={() => row.clickable && alert(`Clicked on ${row.name}`)}
             >
-              <Table.Cell avatarUrl={row.avatarUrl} icon={row.icon}/>
+              <Table.Cell avatarUrl={row.avatarUrl} icon={row.icon}  description={row.description}>
+              {row.name}
+              </Table.Cell>
               <Table.Cell>{row.usedBy}</Table.Cell>
               <Table.Cell>{row.addedBy}</Table.Cell>
               <Table.Cell>{row.lastUpdated}</Table.Cell>
