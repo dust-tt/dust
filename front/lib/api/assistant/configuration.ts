@@ -25,6 +25,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
 } from "@dust-tt/types";
+import assert from "assert";
 import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
@@ -45,6 +46,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { renderDataSourceType } from "@app/lib/data_sources";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { App } from "@app/lib/models/apps";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
@@ -69,9 +71,11 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -1227,7 +1231,7 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(t, {
+        await _createAgentDataSourcesConfigData(auth, t, {
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: retrievalConfig.id,
           processConfigurationId: null,
@@ -1321,7 +1325,7 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(t, {
+        await _createAgentDataSourcesConfigData(auth, t, {
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: null,
           processConfigurationId: processConfig.id,
@@ -1420,6 +1424,7 @@ function renderRetrievalTimeframeType(
  * We obvisously need to do as few queries as possible.
  */
 async function _createAgentDataSourcesConfigData(
+  auth: Authenticator,
   t: Transaction,
   {
     dataSourceConfigurations,
@@ -1504,6 +1509,24 @@ async function _createAgentDataSourcesConfigData(
   const results = await Promise.all(getDataSourcesQueries);
   const dataSources = results.flat();
 
+  // Since the UI does not currently provide the data source view,
+  // we retrieve the view associated with the data from the global vault
+  // and assign it to the agent data source configuration.
+  const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
+  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const dataSourceViews = (
+    await Promise.all(
+      uniqueDataSources.map((ds) => {
+        return DataSourceViewResource.listForDataSourceInVault(
+          auth,
+          renderDataSourceType(ds),
+          globalVault,
+          { transaction: t }
+        );
+      })
+    )
+  ).flat();
+
   const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] =
     await Promise.all(
       dataSourceConfigurations.map(async (dsConfig) => {
@@ -1518,6 +1541,16 @@ async function _createAgentDataSourcesConfigData(
             `Can't create AgentDataSourcesConfig: datasource not found. dataSourceId: ${dsConfig.dataSourceId}`
           );
         }
+
+        const dsv = dataSourceViews.find(
+          (d) => d.dataSourceId === dataSource.id
+        );
+        // Pleasing TS here, assert that the data source view is found for the data source.
+        assert(
+          dsv !== undefined,
+          `Data source view not found for data source ${dataSource.id}`
+        );
+
         return AgentDataSourceConfiguration.create(
           {
             dataSourceId: dataSource.id,
@@ -1525,6 +1558,7 @@ async function _createAgentDataSourcesConfigData(
             parentsNotIn: dsConfig.filter.parents?.not,
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
+            dataSourceViewId: dsv.id,
           },
           { transaction: t }
         );

@@ -83,6 +83,22 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     return blobs.map((b) => new this(this.model, b.get()));
   }
 
+  static async listForDataSourceInVault(
+    auth: Authenticator,
+    dataSource: DataSourceType,
+    vault: VaultResource,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    return this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: dataSource.id,
+        vaultId: vault.id,
+      },
+      transaction,
+    });
+  }
+
   static async fetchById(auth: Authenticator, id: string) {
     const fileModelId = getResourceIdFromSId(id);
     if (!fileModelId) {
