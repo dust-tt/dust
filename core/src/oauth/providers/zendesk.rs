@@ -37,16 +37,16 @@ impl Provider for ZendeskConnectionProvider {
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
         let body = json!({
-          "grant_type": "authorization_code",
-          "client_id": *OAUTH_ZENDESK_CLIENT_ID,
-          "client_secret": *OAUTH_ZENDESK_CLIENT_SECRET,
-          "code": code,
-          "redirect_uri": redirect_uri,
-          "scope": "tickets:write hc:write"
+            "grant_type": "authorization_code",
+            "code": code,
+            "client_id": *OAUTH_ZENDESK_CLIENT_ID,
+            "client_secret": *OAUTH_ZENDESK_CLIENT_SECRET,
+            "redirect_uri": redirect_uri,
+            "scope": "read"
         });
-
+    
         let req = reqwest::Client::new()
-            .post("https://d3v-dust.zendesk.com/api/v2/oauth/tokens")
+            .post("https://d3v-dust.zendesk.com/oauth/tokens")
             .header("Content-Type", "application/json")
             .json(&body);
 
