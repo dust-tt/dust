@@ -61,6 +61,8 @@ export function makeScript<T extends ArgumentSpecs>(
       });
 
       await worker(args as InferArgs<T & { execute: boolean }>, scriptLogger);
+
+      process.exit(0);
     })
     .catch((error) => {
       console.error("An error occurred:", error);
@@ -68,8 +70,8 @@ export function makeScript<T extends ArgumentSpecs>(
     });
 }
 
-export async function runOnAllWorkspaceIds(
-  worker: (workspaceId: LightWorkspaceType) => Promise<void>
+export async function runOnAllWorkspaces(
+  worker: (workspace: LightWorkspaceType) => Promise<void>
 ) {
   const workspaces = await Workspace.findAll({});
 

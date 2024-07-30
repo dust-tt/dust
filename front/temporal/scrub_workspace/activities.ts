@@ -21,6 +21,7 @@ import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -150,6 +151,9 @@ async function archiveAssistants(auth: Authenticator) {
 
 async function deleteDatasources(auth: Authenticator) {
   const dataSources = await getDataSources(auth);
+  // First, we delete all the data source views.
+  await DataSourceViewResource.deleteAllForWorkspace(auth);
+
   for (const dataSource of dataSources) {
     const r = await deleteDataSource(auth, dataSource.name);
     if (r.isErr()) {

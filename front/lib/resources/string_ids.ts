@@ -22,6 +22,7 @@ const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
   vault: "vlt",
+  data_source_view: "dsv",
 };
 
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
