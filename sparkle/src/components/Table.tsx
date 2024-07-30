@@ -1,12 +1,14 @@
 import {
   type ColumnDef,
+  ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getSortedRowModel,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState } from "react";
 
 import { Avatar, MoreIcon } from "@sparkle/index";
 import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
@@ -14,35 +16,36 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
+type FirstColumnWidth = "expanded" | "normal";
+
 interface TableProps<TData, TValue> {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
-  onSort?: (sorting: SortingState) => void;
   className?: string;
-  width?: "expanded" | "normal";
+  width?: FirstColumnWidth;
 }
 
 export function Table<TData, TValue>({
   data,
   columns,
-  onSort,
   className,
-  width,
+  width = "normal",
 }: TableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
     data,
     columns,
-    state: { sorting },
-    onSortingChange: (updater) => {
-      const newSorting =
-        typeof updater === "function" ? updater(sorting) : updater;
-      setSorting(newSorting);
-      onSort?.(newSorting);
-    },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    state: {
+      columnFilters,
+      sorting,
+    },
   });
 
   return (
@@ -53,7 +56,7 @@ export function Table<TData, TValue>({
             {headerGroup.headers.map((header) => (
               <TableData.Head
                 key={header.id}
-                width={width ?? "normal"}
+                width={width}
                 onClick={header.column.getToggleSortingHandler()}
                 className={header.column.getCanSort() ? "s-cursor-pointer" : ""}
               >
@@ -114,7 +117,7 @@ interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
-  width?: "normal" | "expanded";
+  width?: FirstColumnWidth;
 }
 
 interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {

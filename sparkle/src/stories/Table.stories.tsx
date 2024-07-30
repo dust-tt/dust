@@ -2,8 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
 import React from 'react';
 
-import { FolderIcon, Table } from "../index_with_tw_base";
 import { TableData } from "@sparkle/components/Table";
+
+import { FolderIcon, Table } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/Table",
@@ -55,7 +56,7 @@ const TableExample = () => {
           icon={info.row.original.icon}
           description={info.row.original.description}
         >
-          {info.getValue()}
+          {info.row.original.name}
         </TableData.Cell>
       ),
       meta: { width: "expanded" }
@@ -63,23 +64,23 @@ const TableExample = () => {
     {
       accessorKey: "usedBy",
       header: "Used by",
-      cell: info => <TableData.Cell>{info.getValue()}</TableData.Cell>
+      cell: info => <TableData.Cell>{info.row.original.usedBy}</TableData.Cell>
     },
     {
       accessorKey: "addedBy",
       header: "Added by",
-      cell: info => <TableData.Cell>{info.getValue()}</TableData.Cell>
+      cell: info => <TableData.Cell>{info.row.original.addedBy}</TableData.Cell>
     },
     {
       accessorKey: "lastUpdated",
       header: "Last updated",
-      cell: info => <TableData.Cell>{info.getValue()}</TableData.Cell>,
+      cell: info => <TableData.Cell>{info.row.original.lastUpdated}</TableData.Cell>,
       enableSorting: false
     },
     {
       accessorKey: "size",
       header: "Size",
-      cell: info => <TableData.Cell>{info.getValue()}</TableData.Cell>
+      cell: info => <TableData.Cell>{info.row.original.size}</TableData.Cell>
     }
   ];
 
@@ -88,7 +89,6 @@ const TableExample = () => {
       <Table
         data={data}
         columns={columns}
-        onSort={(sorting) => console.log("New sorting:", sorting)}
       />
     </div>
   );
