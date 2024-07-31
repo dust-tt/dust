@@ -2,7 +2,6 @@ import type { CoreAPIDocument, DataSourceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { DataSource } from "@app/lib/models/data_source";
 
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";
@@ -33,18 +32,4 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
   } else {
     return ds.name;
   }
-}
-
-export function renderDataSourceType(dataSource: DataSource): DataSourceType {
-  return {
-    id: dataSource.id,
-    createdAt: dataSource.createdAt.getTime(),
-    name: dataSource.name,
-    description: dataSource.description,
-    assistantDefaultSelected: dataSource.assistantDefaultSelected,
-    dustAPIProjectId: dataSource.dustAPIProjectId,
-    connectorId: dataSource.connectorId,
-    connectorProvider: dataSource.connectorProvider,
-    editedByUser: undefined,
-  };
 }
