@@ -4,6 +4,7 @@
 import type {
   DataSourceType,
   DataSourceViewType,
+  LightWorkspaceType,
   ModelId,
   Result,
 } from "@dust-tt/types";
@@ -84,14 +85,14 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
   }
 
   static async listForDataSourcesInVault(
-    auth: Authenticator,
-    dataSources: DataSourceType[],
+    owner: LightWorkspaceType,
+    dataSources: DataSourceResource[],
     vault: VaultResource,
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const blobs = await this.model.findAll({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: owner.id,
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: vault.id,
       },

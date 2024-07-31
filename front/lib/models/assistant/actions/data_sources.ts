@@ -27,9 +27,7 @@ export class AgentDataSourceConfiguration extends Model<
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
-  // TODO(GROUPS_CLEANUP): Remove this once we backfilled using view.
   declare dataSourceId: ForeignKey<DataSource["id"]>;
-
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
   // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'

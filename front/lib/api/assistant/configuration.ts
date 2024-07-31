@@ -26,7 +26,6 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
 } from "@dust-tt/types";
-import assert from "assert";
 import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
