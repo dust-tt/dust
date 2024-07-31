@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteDataSource,
-  getDataSource,
   MANAGED_DS_DELETABLE_AS_BUILDER,
 } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
