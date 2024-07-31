@@ -16,7 +16,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useCallback, useContext } from "react";
@@ -29,14 +28,17 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 
 // describe the type of userContent where the
 
-const userContent: Record<RoleType, {
-  topPicks: {
-    title: string;
-    href: string;
-    icon: React.ComponentType;
-  }[];
-  helpIceBreakers: string[];
-}> = {
+const userContent: Record<
+  RoleType,
+  {
+    topPicks: {
+      title: string;
+      href: string;
+      icon: React.ComponentType;
+    }[];
+    helpIceBreakers: string[];
+  }
+> = {
   user: {
     topPicks: [
       {
@@ -46,10 +48,10 @@ const userContent: Record<RoleType, {
       },
     ],
     helpIceBreakers: [
-       "What are assistants?",
-       "What are the limitations of assistants?"
+      "What are assistants?",
+      "What are the limitations of assistants?",
     ],
-},
+  },
   builder: {
     topPicks: [
       {
@@ -69,9 +71,9 @@ const userContent: Record<RoleType, {
       },
     ],
     helpIceBreakers: [
-       "How to upload a file to a folder in Dust?",
-       "What are good use-cases for Customer support?",
-       "What does the Extract Data tool do?"
+      "How to upload a file to a folder in Dust?",
+      "What are good use-cases for Customer support?",
+      "What does the Extract Data tool do?",
     ],
   },
   admin: {
@@ -93,9 +95,9 @@ const userContent: Record<RoleType, {
       },
     ],
     helpIceBreakers: [
-       "How to create a new user?",
-       "How to add a new connection?",
-       "How to manage users?"
+      "How to invite a new user?",
+      "How to use assistants in Slack workflows?",
+      "How to manage billing?",
     ],
   },
   none: {
@@ -195,56 +197,55 @@ export function HelpDrawer({
     <Modal isOpen={show} variant="side-sm" hasChanged={false} onClose={onClose}>
       <div className="flex flex-col gap-5 pt-5">
         <Page.SectionHeader title="Learn about Dust" />
-          <LinksList
-            linksList={
-              [
-                    {
-                      title: "Quickstart Guide",
-                      onClick: () => setShowQuickGuide(true),
-                      icon: LightbulbIcon,
-                    },
-                    {
-                      title: "All help content",
-                      href: "https://docs.dust.tt",
-                      description: "Guides, best practices, and more",
-                      icon: FolderIcon,
-                    },
-                    {
-                      title: "Community Support",
-                      href: "https://docs.dust.tt/discuss",
-                      description: "Stuck? Ask your questions to the community",
-                      icon: QuestionMarkCircleIcon,
-                    },
-                  ]
-            }
-          />
+        <LinksList
+          linksList={[
+            {
+              title: "Quickstart Guide",
+              onClick: () => setShowQuickGuide(true),
+              icon: LightbulbIcon,
+            },
+            {
+              title: "All help content",
+              href: "https://docs.dust.tt",
+              description: "Guides, best practices, and more",
+              icon: FolderIcon,
+            },
+            {
+              title: "Community Support",
+              href: "https://docs.dust.tt/discuss",
+              description: "Stuck? Ask your questions to the community",
+              icon: QuestionMarkCircleIcon,
+            },
+          ]}
+        />
         <Page.SectionHeader title="Top picks for you" />
-          <LinksList linksList={userContent[owner.role].topPicks} />
-        
+        <LinksList linksList={userContent[owner.role].topPicks} />
+
         <div className="flex flex-col gap-4 [&>*]:pl-px">
           <Page.SectionHeader title="Ask questions to @help" />
           <Button.List isWrapping={true}>
-          <div className="flex flex-col gap-8">
-            <div className="flex flex-wrap gap-2">
-              {userContent[owner.role].helpIceBreakers.map((iceBreaker, index) => (
-                <Button
-                  variant="tertiary"
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  label={iceBreaker}
-                  size="sm"
-                  hasMagnifying={false}
-                  onClick={() => {
-                    void handleHelpSubmit(
-                      `@help ${iceBreaker}`,
-                      [{ configurationId: GLOBAL_AGENTS_SID.HELPER }]
-                    );
-                  }}
-                  key={index}
-                />
-              ))}
+            <div className="flex flex-col gap-8">
+              <div className="flex flex-wrap gap-2">
+                {userContent[owner.role].helpIceBreakers.map(
+                  (iceBreaker, index) => (
+                    <Button
+                      variant="tertiary"
+                      icon={ChatBubbleBottomCenterTextIcon}
+                      label={iceBreaker}
+                      size="sm"
+                      hasMagnifying={false}
+                      onClick={() => {
+                        void handleHelpSubmit(`@help ${iceBreaker}`, [
+                          { configurationId: GLOBAL_AGENTS_SID.HELPER },
+                        ]);
+                      }}
+                      key={index}
+                    />
+                  )
+                )}
+              </div>
             </div>
-          </div>
-        </Button.List>
+          </Button.List>
           <AssistantInputBar
             owner={owner}
             onSubmit={handleHelpSubmit}
