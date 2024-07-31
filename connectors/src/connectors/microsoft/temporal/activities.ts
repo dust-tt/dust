@@ -551,6 +551,7 @@ export async function syncDeltaForRootNodesInDrive({
           folder: driveItem,
           internalId,
         });
+        // TODO >!!!!
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
           itemToMicrosoftNode("folder", driveItem)

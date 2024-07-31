@@ -18,6 +18,7 @@ import { getConnectorManager } from "@connectors/connectors";
 import { github } from "@connectors/connectors/github/lib/cli";
 import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
 import { intercom } from "@connectors/connectors/intercom/lib/cli";
+import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
@@ -50,6 +51,8 @@ export async function runCommand(adminCommand: AdminCommandType) {
       return temporal(adminCommand);
     case "intercom":
       return intercom(adminCommand);
+    case "microsoft":
+      return microsoft(adminCommand);
     default:
       assertNever(adminCommand);
   }

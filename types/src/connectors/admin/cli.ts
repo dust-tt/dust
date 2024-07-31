@@ -176,6 +176,32 @@ export type IntercomCheckMissingConversationsResponseType = t.TypeOf<
  * </ Intercom>
  */
 
+export const MicrosoftCommandSchema = t.type({
+  majorCommand: t.literal("microsoft"),
+  command: t.union([
+    t.literal("garbage-collect-all"),
+    t.literal("check-file"),
+    t.literal("start-incremental-sync"),
+    t.literal("restart-all-incremental-sync-workflows"),
+    t.literal("skip-file"),
+  ]),
+  args: t.record(t.string, t.union([t.string, t.undefined])),
+});
+
+export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
+
+export const MicrosoftCheckFileResponseSchema = t.type({
+  success: t.boolean,
+  nodeType: t.string,
+  itemAPIPath: t.string,
+  microsoftNodeResource: t.unknown,
+  driveItem: t.unknown,
+});
+
+export type MicrosoftCheckFileResponseType = t.TypeOf<
+  typeof MicrosoftCheckFileResponseSchema
+>;
+
 export const AdminCommandSchema = t.union([
   ConnectorsCommandSchema,
   GithubCommandSchema,
@@ -186,6 +212,7 @@ export const AdminCommandSchema = t.union([
   WebcrawlerCommandSchema,
   TemporalCommandSchema,
   IntercomCommandSchema,
+  MicrosoftCommandSchema,
 ]);
 
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;

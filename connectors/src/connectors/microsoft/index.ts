@@ -647,8 +647,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
-    console.log("garbageCollectMicrosoftConnector", this.connectorId);
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+
+    return launchMicrosoftGarbageCollectionWorkflow(this.connectorId);
   }
 
   async configure(): Promise<Result<void, Error>> {
