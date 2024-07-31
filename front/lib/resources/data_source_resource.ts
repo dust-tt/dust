@@ -163,7 +163,9 @@ export class DataSourceResource extends BaseResource<DataSource> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    await DataSourceViewResource.deleteForDataSource(auth, this);
+    if (this.isManaged()) {
+      await DataSourceViewResource.deleteForDataSource(auth, this);
+    }
 
     try {
       await this.model.destroy({
