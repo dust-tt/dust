@@ -42,7 +42,7 @@ async function handler(
   }
 
   const dataSource = await DataSourceResource.fetchByName(auth, req.query.name);
-  if (!dataSource || !auth.isUser()) {
+  if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -119,11 +119,11 @@ async function handler(
           toUpdate.assistantDefaultSelected = req.body.assistantDefaultSelected;
         }
 
-        await dataSourceResource.update(toUpdate);
+        await dataSource.update(toUpdate);
       }
 
       return res.status(200).json({
-        dataSource: dataSourceResource.toJSON(),
+        dataSource: dataSource.toJSON(),
       });
 
     case "DELETE":

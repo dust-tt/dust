@@ -41,7 +41,8 @@ async function handler(
 
   const slackDataSources = await DataSourceResource.listByConnectorProvider(
     auth,
-    "slack"
+    "slack",
+    { limit: 1 }
   );
   const slackDataSource = slackDataSources[0];
 
