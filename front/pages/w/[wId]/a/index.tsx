@@ -3,7 +3,6 @@ import {
   Button,
   CommandLineIcon,
   Dialog,
-  DropdownMenu,
   ExternalLinkIcon,
   Input,
   LockIcon,
