@@ -53,7 +53,7 @@ DataSourceViewModel.init(
     indexes: [
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "dataSourceId", "vaultId"] },
+      { fields: ["workspaceId", "dataSourceId", "vaultId"], unique: true },
     ],
   }
 );
