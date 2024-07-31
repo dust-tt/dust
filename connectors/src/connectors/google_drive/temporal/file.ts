@@ -289,10 +289,6 @@ export async function syncOneFile(
         return false;
       }
 
-      if (!documentContent) {
-        return false;
-      }
-
       let upsertTimestampMs: number | undefined;
 
       if (!isGoogleDriveSpreadSheetFile(file) || file.mimeType === "text/csv") {
