@@ -1,13 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
-import React from 'react';
-
+import React from "react";
 
 import { FolderIcon, Table } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/Table",
-  component: Table
+  component: Table,
 } satisfies Meta<typeof Table>;
 
 export default meta;
@@ -37,19 +36,45 @@ const TableExample = () => {
       size: "32kb",
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
       clickable: true,
-      onClick: (() => console.log("hehe"))
+      onClick: () => console.log("hehe"),
     },
-    { name: "Design", usedBy: 2, addedBy: "User2", lastUpdated: "2023-07-09", size: "64kb", icon: FolderIcon, clickable: false},
-    { name: "Development", usedBy: 5, addedBy: "User3", lastUpdated: "2023-07-07", size: "128kb"},
-    { name: "Sales", usedBy: 10, addedBy: "User4", lastUpdated: "2023-07-10", size: "16kb"},
-    { name: "HR", usedBy: 3, addedBy: "User5", lastUpdated: "2023-07-06", size: "48kb"},
+    {
+      name: "Design",
+      usedBy: 2,
+      addedBy: "User2",
+      lastUpdated: "2023-07-09",
+      size: "64kb",
+      icon: FolderIcon,
+      clickable: false,
+    },
+    {
+      name: "Development",
+      usedBy: 5,
+      addedBy: "User3",
+      lastUpdated: "2023-07-07",
+      size: "128kb",
+    },
+    {
+      name: "Sales",
+      usedBy: 10,
+      addedBy: "User4",
+      lastUpdated: "2023-07-10",
+      size: "16kb",
+    },
+    {
+      name: "HR",
+      usedBy: 3,
+      addedBy: "User5",
+      lastUpdated: "2023-07-06",
+      size: "48kb",
+    },
   ];
 
   const columns: ColumnDef<Data>[] = [
     {
       accessorKey: "name",
       header: "Name",
-      cell: info => (
+      cell: (info) => (
         <Table.Cell
           avatarUrl={info.row.original.avatarUrl}
           icon={info.row.original.icon}
@@ -58,37 +83,34 @@ const TableExample = () => {
           {info.row.original.name}
         </Table.Cell>
       ),
-      meta: { width: "expanded" }
+      meta: { width: "expanded" },
     },
     {
       accessorKey: "usedBy",
       header: "Used by",
-      cell: info => <Table.Cell>{info.row.original.usedBy}</Table.Cell>
+      cell: (info) => <Table.Cell>{info.row.original.usedBy}</Table.Cell>,
     },
     {
       accessorKey: "addedBy",
       header: "Added by",
-      cell: info => <Table.Cell>{info.row.original.addedBy}</Table.Cell>
+      cell: (info) => <Table.Cell>{info.row.original.addedBy}</Table.Cell>,
     },
     {
       accessorKey: "lastUpdated",
       header: "Last updated",
-      cell: info => <Table.Cell>{info.row.original.lastUpdated}</Table.Cell>,
-      enableSorting: false
+      cell: (info) => <Table.Cell>{info.row.original.lastUpdated}</Table.Cell>,
+      enableSorting: false,
     },
     {
       accessorKey: "size",
       header: "Size",
-      cell: info => <Table.Cell>{info.row.original.size}</Table.Cell>
-    }
+      cell: (info) => <Table.Cell>{info.row.original.size}</Table.Cell>,
+    },
   ];
 
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
-      <Table
-        data={data}
-        columns={columns}
-      />
+      <Table data={data} columns={columns} />
     </div>
   );
 };
