@@ -1,19 +1,20 @@
 import {
   Button,
-  ContextItem,
+  FolderIcon,
   FolderOpenIcon,
-  Icon,
   Page,
   PlusIcon,
   Popup,
   RobotIcon,
   Searchbar,
+  Table,
+  TableData,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as React from "react";
 
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -94,6 +95,21 @@ export default function DataSourcesView({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
+  const columns = getTableColumns();
+
+  const clickableDataSources = useMemo(() => {
+    return dataSources.map((dataSource) => ({
+      ...dataSource,
+      clickable: true,
+      onClick: () => {
+        void router.push(
+          `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+        );
+      },
+      icon: FolderIcon,
+      usage: dataSourcesUsage[dataSource.id] || 0,
+    }));
+  }, [dataSources, dataSourcesUsage, owner.sId, router]);
   return (
     <AppLayout
       subscription={subscription}
@@ -158,43 +174,54 @@ export default function DataSourcesView({
             }}
           />
         )}
-        <ContextItem.List>
-          {dataSources.map((ds) => (
-            <ContextItem
-              key={ds.name}
-              title={ds.name}
-              visual={
-                <ContextItem.Visual
-                  visual={({ className }) =>
-                    FolderOpenIcon({
-                      className: className + " text-element-600",
-                    })
-                  }
-                />
-              }
-              subElement={
-                <>
-                  Added by: {ds.editedByUser?.fullName}
-                  <span className="h-3 w-0.5 bg-element-500" />
-                  <div className="flex items-center gap-1">
-                    Used by: {dataSourcesUsage[ds.id] ?? 0}
-                    <Icon visual={RobotIcon} size="xs" />
-                  </div>
-                </>
-              }
-              onClick={() => {
-                void router.push(
-                  `/w/${owner.sId}/builder/data-sources/${ds.name}`
-                );
-              }}
-            >
-              <ContextItem.Description>
-                <div className="text-sm text-element-700">{ds.description}</div>
-              </ContextItem.Description>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
+        <Table
+          data={clickableDataSources}
+          columns={columns}
+          // onRowClick={(row) => {
+          //   void router.push(`/w/${owner.sId}/builder/data-sources/${row.original.name}`);
+          // }}
+        />
       </Page.Vertical>
     </AppLayout>
   );
+}
+
+function getTableColumns() {
+  return [
+    {
+      header: "Name",
+      accessorKey: "name",
+      cell: (info) => (
+        <TableData.Cell icon={info.row.original.icon}>
+          {info.row.original.name}
+        </TableData.Cell>
+      ),
+    },
+    {
+      header: "Used by",
+      accessorKey: "usage",
+      cell: (info) => (
+        <TableData.Cell icon={RobotIcon}>
+          {info.row.original.usage}
+        </TableData.Cell>
+      ),
+    },
+    {
+      header: "Added by",
+      cell: (info) => (
+        <TableData.Cell avatarUrl={info.row.original.editedByUser.imageUrl} />
+      ),
+    },
+    {
+      header: "Lasted updated",
+      accessorKey: "editedByUser.editedAt",
+      cell: (info) => (
+        <TableData.Cell>
+          {new Date(
+            info.row.original.editedByUser.editedAt
+          ).toLocaleDateString()}
+        </TableData.Cell>
+      ),
+    },
+  ];
 }
