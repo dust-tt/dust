@@ -201,14 +201,6 @@ export async function syncOneFile(
           connectorId,
         },
       });
-      const maxDocumentLen = config?.largeFilesEnabled
-        ? MAX_LARGE_DOCUMENT_TXT_LEN
-        : MAX_DOCUMENT_TXT_LEN;
-
-      const mimeTypesToDownload = await getMimeTypesToDownload({
-        pdfEnabled: config?.pdfEnabled || false,
-        csvEnabled: config?.csvEnabled || false,
-      });
 
       const documentId = getDocumentId(file.id);
       const fileInDb = await GoogleDriveFiles.findOne({
@@ -255,68 +247,120 @@ export async function syncOneFile(
         return false;
       }
 
-      let documentContent: CoreAPIDataSourceDocumentSection | null = null;
-      let skipReason: string | undefined;
-
-      if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
-        documentContent = await handleGoogleDriveExport(
+      if (isGoogleDriveSpreadSheetFile(file)) {
+        return syncOneFileSpreadSheet(
+          connectorId,
           oauth2client,
           file,
           localLogger
         );
-      } else if (mimeTypesToDownload.includes(file.mimeType)) {
-        documentContent = await handleFileExport(
-          oauth2client,
-          file,
-          maxDocumentLen,
-          localLogger,
-          dataSourceConfig,
-          connectorId
-        );
-      } else if (isGoogleDriveSpreadSheetFile(file)) {
-        const res = await syncSpreadSheet(oauth2client, connectorId, file);
-        if (!res.isSupported) {
-          return false;
-        }
-        if (res.skipReason) {
-          localLogger.info(
-            {},
-            `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
-          );
-          skipReason = res.skipReason;
-        }
       } else {
-        return false;
-      }
-
-      let upsertTimestampMs: number | undefined;
-
-      if (!isGoogleDriveSpreadSheetFile(file) || file.mimeType === "text/csv") {
-        upsertTimestampMs = await upsertDocument(
-          dataSourceConfig,
-          file,
-          documentContent,
-          documentId,
-          maxDocumentLen,
-          localLogger,
-          oauth2client,
+        return syncOneFileTextDocument(
           connectorId,
+          oauth2client,
+          file,
+          localLogger,
+          config,
+          dataSourceConfig,
           startSyncTs,
           isBatchSync
         );
       }
-
-      await updateGoogleDriveFiles(
-        connectorId,
-        documentId,
-        file,
-        skipReason,
-        upsertTimestampMs
-      );
-
-      return !!upsertTimestampMs;
     }
   );
+}
+
+async function syncOneFileSpreadSheet(
+  connectorId: ModelId,
+  oauth2client: OAuth2Client,
+  file: GoogleDriveObjectType,
+  localLogger: Logger
+) {
+  const upsertTimestampMs = undefined;
+  const documentId = getDocumentId(file.id);
+  let skipReason: string | undefined;
+  const res = await syncSpreadSheet(oauth2client, connectorId, file);
+  if (!res.isSupported) {
+    return false;
+  }
+  if (res.skipReason) {
+    localLogger.info(
+      {},
+      `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
+    );
+    skipReason = res.skipReason;
+  }
+
+  await updateGoogleDriveFiles(
+    connectorId,
+    documentId,
+    file,
+    skipReason,
+    upsertTimestampMs
+  );
+
+  return !skipReason;
+}
+async function syncOneFileTextDocument(
+  connectorId: ModelId,
+  oauth2client: OAuth2Client,
+  file: GoogleDriveObjectType,
+  localLogger: Logger,
+  config: GoogleDriveConfig | null,
+  dataSourceConfig: DataSourceConfig,
+  startSyncTs: number,
+  isBatchSync: boolean
+) {
+  const maxDocumentLen = config?.largeFilesEnabled
+    ? MAX_LARGE_DOCUMENT_TXT_LEN
+    : MAX_DOCUMENT_TXT_LEN;
+
+  const documentId = getDocumentId(file.id);
+  let documentContent: CoreAPIDataSourceDocumentSection | null = null;
+  const mimeTypesToDownload = await getMimeTypesToDownload({
+    pdfEnabled: config?.pdfEnabled || false,
+    csvEnabled: config?.csvEnabled || false,
+  });
+  if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
+    documentContent = await handleGoogleDriveExport(
+      oauth2client,
+      file,
+      localLogger
+    );
+  } else if (mimeTypesToDownload.includes(file.mimeType)) {
+    documentContent = await handleFileExport(
+      oauth2client,
+      file,
+      maxDocumentLen,
+      localLogger,
+      dataSourceConfig,
+      connectorId
+    );
+  }
+  if (documentContent) {
+    const upsertTimestampMs = await upsertDocument(
+      dataSourceConfig,
+      file,
+      documentContent,
+      documentId,
+      maxDocumentLen,
+      localLogger,
+      oauth2client,
+      connectorId,
+      startSyncTs,
+      isBatchSync
+    );
+
+    await updateGoogleDriveFiles(
+      connectorId,
+      documentId,
+      file,
+      undefined,
+      upsertTimestampMs
+    );
+    return true;
+  }
+  return false;
 }
 
 async function upsertDocument(
