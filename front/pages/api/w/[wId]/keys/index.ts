@@ -1,5 +1,4 @@
 import type { KeyType, WithAPIErrorResponse } from "@dust-tt/types";
-import { group } from "console";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -20,7 +19,7 @@ export type PostKeysResponseBody = {
 
 const CreateKeyPostBodySchema = t.type({
   name: t.string,
-  group_id: t.union([t.string, t.null]),
+  group_id: t.union([t.string, t.undefined]),
 });
 
 async function handler(
