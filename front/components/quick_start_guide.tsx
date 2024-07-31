@@ -49,7 +49,7 @@ export function QuickStartGuide({
       variant="side-md"
       hasChanged={false}
       onClose={onClose}
-      title="Getting started with Dust"
+      title="🚀 Getting started with Dust"
     >
       <div className="pb-5">
         <Page>
