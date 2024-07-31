@@ -13,6 +13,7 @@ import { DataSource } from "@app/lib/models/data_source";
 
 export type DataSourcesUsageByAgent = Record<ModelId, number>;
 
+// TODO(GROUPS_INFRA) Add support for views here.
 export async function getDataSourcesUsageByAgents({
   auth,
   providerFilter,

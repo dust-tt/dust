@@ -71,9 +71,11 @@ import {
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
@@ -1230,7 +1232,7 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(t, {
+        await _createAgentDataSourcesConfigData(auth, t, {
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: retrievalConfig.id,
           processConfigurationId: null,
@@ -1324,7 +1326,7 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(t, {
+        await _createAgentDataSourcesConfigData(auth, t, {
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: null,
           processConfigurationId: processConfig.id,
@@ -1415,6 +1417,11 @@ function renderRetrievalTimeframeType(
   return timeframe;
 }
 
+interface DataSourceWithView {
+  ds: DataSourceResource;
+  view: DataSourceViewResource | null;
+}
+
 /**
  * Create the AgentDataSourceConfiguration rows in database.
  *
@@ -1423,6 +1430,7 @@ function renderRetrievalTimeframeType(
  * We obvisously need to do as few queries as possible.
  */
 async function _createAgentDataSourcesConfigData(
+  auth: Authenticator,
   t: Transaction,
   {
     dataSourceConfigurations,
@@ -1490,39 +1498,73 @@ async function _createAgentDataSourcesConfigData(
     []
   );
 
-  // Then we get do one findAllQuery per workspaceId, in a Promise.all
+  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+  // Then we get to do one findAllQuery per workspaceId, in a Promise.all.
   const getDataSourcesQueries = dsNamesPerWorkspaceId.map(
-    ({ workspace, dataSourceNames }) => {
-      return DataSourceResource.listByWorkspaceIdAndNames(
+    async ({ workspace, dataSourceNames }) => {
+      const dataSources = await DataSourceResource.listByWorkspaceIdAndNames(
         workspace,
         dataSourceNames
       );
+
+      const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
+
+      // Since the UI does not currently provide the data source view,
+      // we try to retrieve the view associated with the data from the global vault
+      // and assign it to the agent data source configuration.
+      const dataSourceViews =
+        await DataSourceViewResource.listForDataSourcesInVault(
+          workspace,
+          uniqueDataSources.filter((ds) => ds.isManaged()),
+          globalVault
+        );
+
+      // Create a mapping of data source ID to data source view.
+      const dataSourceViewMap = dataSourceViews.reduce(
+        (map, view) => {
+          map[view.dataSourceId] = view;
+          return map;
+        },
+        {} as Record<string, DataSourceViewResource>
+      );
+
+      // Create an array of objects containing data sources and their corresponding data source view if it exists.
+      const dataSourcesWithViews: DataSourceWithView[] = uniqueDataSources.map(
+        (ds) => ({
+          ds,
+          view: dataSourceViewMap[ds.id] ?? null,
+        })
+      );
+
+      return dataSourcesWithViews;
     }
   );
   const results = await Promise.all(getDataSourcesQueries);
-  const dataSources = results.flat();
+  const dataSourcesWithView = results.flat();
 
   const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] =
     await Promise.all(
       dataSourceConfigurations.map(async (dsConfig) => {
-        const dataSource = dataSources.find(
-          (ds) =>
-            ds.name === dsConfig.dataSourceId &&
-            ds.workspaceId ===
+        const dataSourceWithView = dataSourcesWithView.find(
+          (d) =>
+            d.ds.name === dsConfig.dataSourceId &&
+            d.ds.workspaceId ===
               workspaces.find((w) => w.sId === dsConfig.workspaceId)?.id
         );
-        if (!dataSource) {
+        if (!dataSourceWithView) {
           throw new Error(
             `Can't create AgentDataSourcesConfig: datasource not found. dataSourceId: ${dsConfig.dataSourceId}`
           );
         }
         return AgentDataSourceConfiguration.create(
           {
-            dataSourceId: dataSource.id,
+            dataSourceId: dataSourceWithView.ds.id,
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
+            dataSourceViewId: dataSourceWithView.view?.id,
           },
           { transaction: t }
         );

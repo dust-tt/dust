@@ -11,6 +11,7 @@ import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/pro
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { DataSource } from "@app/lib/models/data_source";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 /**
  * Configuration of Datasources used for Retrieval Action.
@@ -27,6 +28,7 @@ export class AgentDataSourceConfiguration extends Model<
   declare parentsNotIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
   // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'
   // configurations.
@@ -113,4 +115,13 @@ DataSource.hasMany(AgentDataSourceConfiguration, {
 AgentDataSourceConfiguration.belongsTo(DataSource, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
+});
+
+// Data source config <> Data source view
+DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
+  foreignKey: { allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
+  foreignKey: { allowNull: false },
 });
