@@ -8,6 +8,7 @@ import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
+  FindOptions,
   ModelStatic,
   Transaction,
 } from "sequelize";
@@ -48,33 +49,33 @@ export class DataSourceResource extends BaseResource<DataSource> {
     return new this(datasource.get());
   }
 
-private static getOptions(options?: FetchDataSourceOptions) {
-  const result: FindOptions<this.model> = {};
+  private static getOptions(options?: FetchDataSourceOptions) {
+    const result: FindOptions<DataSourceResource["model"]> = {};
 
-  if (options?.includeEditedBy) {
-    result.include = [
-      {
-        model: User,
-        as: "editedByUser",
-      },
-    ];
+    if (options?.includeEditedBy) {
+      result.include = [
+        {
+          model: User,
+          as: "editedByUser",
+        },
+      ];
+    }
+
+    if (options?.limit) {
+      result.limit = options.limit;
+    }
+
+    if (options?.order) {
+      result.order = options.order;
+    }
+
+    return result;
   }
-
-  if (options?.limit) {
-    result.limit = options.limit;
-  }
-
-  if (options?.order) {
-    result.order = options.order;
-  }
-
-  return result;
-}
 
   static async fetchByName(
     auth: Authenticator,
     name: string,
-    options?: FetchDataSourceOptions
+    options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
     const owner = await auth.getNonNullableWorkspace();
     const datasource = await this.model.findOne({
