@@ -30,8 +30,8 @@ const axiosWithTimeout = axios.create({
   timeout: 60000,
   // Ensure client timeout is lower than the target server timeout.
   // See --keepAliveTimeout in next start command from front.
-  httpAgent: new http.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
-  httpsAgent: new https.Agent({ keepAlive: true, keepAliveMsecs: 4000 }),
+  httpAgent: new http.Agent({ keepAlive: false }),
+  httpsAgent: new https.Agent({ keepAlive: false }),
 });
 
 const { DUST_FRONT_API } = process.env;
