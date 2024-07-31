@@ -3,6 +3,7 @@ import {
   Button,
   CommandLineIcon,
   Dialog,
+  DropdownMenu,
   ExternalLinkIcon,
   Input,
   LockIcon,
@@ -11,7 +12,11 @@ import {
   ShapesIcon,
   Tab,
 } from "@dust-tt/sparkle";
-import type { DustAppSecretType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DustAppSecretType,
+  GroupType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { KeyType } from "@dust-tt/types";
@@ -48,11 +53,13 @@ const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
+  groups: GroupType[];
   subscription: SubscriptionType;
   apps: AppType[];
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
+  const groups = auth.groups();
   const subscription = auth.subscription();
 
   if (!owner || !subscription || !auth.isBuilder()) {
@@ -66,6 +73,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
+      groups,
       subscription,
       apps,
       gaTrackingId: GA_TRACKING_ID,
@@ -252,26 +260,36 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   );
 }
 
-export function APIKeys({ owner }: { owner: WorkspaceType }) {
+export function APIKeys({
+  owner,
+  groups,
+}: {
+  owner: WorkspaceType;
+  groups: GroupType[];
+}) {
   const { mutate } = useSWRConfig();
+  const globalGroup = groups.find((group) => group.type === "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
+  const [newApiKeyGroup, setNewApiKeyGroup] = useState(globalGroup);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
 
   const { keys } = useKeys(owner);
   const { submit: handleGenerate, isSubmitting: isGenerating } =
-    useSubmitFunction(async (name: string) => {
-      await fetch(`/api/w/${owner.sId}/keys`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name }),
-      });
-      // const data = await res.json();
-      await mutate(`/api/w/${owner.sId}/keys`);
-      setIsNewApiKeyPromptOpen(false);
-      setNewApiKeyName("");
-    });
+    useSubmitFunction(
+      async ({ name, group }: { name: string; group?: GroupType }) => {
+        await fetch(`/api/w/${owner.sId}/keys`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name, group_id: group?.sId }),
+        });
+        // const data = await res.json();
+        await mutate(`/api/w/${owner.sId}/keys`);
+        setIsNewApiKeyPromptOpen(false);
+        setNewApiKeyName("");
+      }
+    );
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (key: KeyType) => {
@@ -291,7 +309,9 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
       <Dialog
         isOpen={isNewApiKeyPromptOpen}
         title="New API Key"
-        onValidate={() => handleGenerate(newApiKeyName)}
+        onValidate={() =>
+          handleGenerate({ name: newApiKeyName, group: newApiKeyGroup })
+        }
         onCancel={() => setIsNewApiKeyPromptOpen(false)}
       >
         <Input
@@ -300,6 +320,25 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
           value={newApiKeyName}
           onChange={(e) => setNewApiKeyName(e)}
         />
+        <div className="align-center flex flex-row items-center gap-2 p-2">
+          <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
+            Assign group permissions:{" "}
+          </span>
+          <DropdownMenu>
+            <DropdownMenu.Button type="select" label={newApiKeyGroup?.name} />
+            <DropdownMenu.Items width={220}>
+              {groups.map((group: GroupType) => (
+                <>
+                  <DropdownMenu.Item
+                    key={group.id}
+                    label={group.name}
+                    onClick={() => setNewApiKeyGroup(group)}
+                  />
+                </>
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </div>
       </Dialog>
       <Page.SectionHeader
         title="API Keys"
@@ -723,6 +762,7 @@ function Apps({ apps, owner }: { apps: AppType[]; owner: WorkspaceType }) {
 
 export default function Developers({
   owner,
+  groups,
   subscription,
   apps,
   gaTrackingId,
@@ -821,7 +861,7 @@ export default function Developers({
             case "providers":
               return <Providers owner={owner} />;
             case "apikeys":
-              return <APIKeys owner={owner} />;
+              return <APIKeys owner={owner} groups={groups} />;
             case "secrets":
               return <DustAppSecrets owner={owner} />;
             default:

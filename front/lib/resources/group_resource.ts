@@ -434,6 +434,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   toJSON(): GroupType {
     return {
       id: this.id,
+      sId: this.sId,
       name: this.name,
       workspaceId: this.workspaceId,
       type: this.type,
