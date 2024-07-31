@@ -70,6 +70,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-specific-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/discourse-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/alerting-temporal-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/core-sqlite-worker-configmap.yaml"
@@ -96,6 +97,7 @@ echo "-----------------------------------"
 kubectl apply -f "$(dirname "$0")/managed-certs/front-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/front-edge-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/connectors-managed-cert.yaml"
+kubectl apply -f "$(dirname "$0")/managed-certs/discourse-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/metabase-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/viz-managed-cert.yaml"
 
@@ -119,6 +121,7 @@ apply_deployment connectors-worker-deployment
 apply_deployment connectors-worker-notion-deployment
 apply_deployment connectors-worker-webcrawler-deployment
 apply_deployment connectors-worker-google-drive-deployment
+apply_deployment discourse-deployment
 apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
 apply_deployment core-deployment
@@ -142,6 +145,7 @@ kubectl apply -f "$(dirname "$0")/services/front-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-edge-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-worker-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/discourse-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-sqlite-worker-headless-service.yaml"

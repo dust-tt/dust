@@ -4,7 +4,7 @@ metadata:
   name: dust-ingress
   annotations:
     kubernetes.io/ingress.global-static-ip-name: dust-kube-ingress-ip-address
-    networking.gke.io/managed-certificates: front-managed-cert,front-edge-managed-cert,connectors-managed-cert,metabase-managed-cert,viz-managed-cert
+    networking.gke.io/managed-certificates: front-managed-cert,front-edge-managed-cert,connectors-managed-cert,metabase-managed-cert,viz-managed-cert,discourse-managed-cert
     networking.gke.io/v1beta1.FrontendConfig: "dust-frontendconfig"
     kubernetes.io/ingress.class: "gce"
 
@@ -40,6 +40,17 @@ spec:
             backend:
               service:
                 name: connectors-service
+                port:
+                  number: 80
+
+    - host: discourse.dust.tt
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: discourse-service
                 port:
                   number: 80
 
