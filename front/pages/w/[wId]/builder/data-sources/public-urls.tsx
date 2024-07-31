@@ -1,13 +1,13 @@
 import {
   Button,
-  ContextItem,
-  FolderOpenIcon,
-  Icon,
+  LinkIcon,
   Page,
   PlusIcon,
   Popup,
   RobotIcon,
   Searchbar,
+  Table,
+  TableData,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -19,10 +19,9 @@ import type {
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as React from "react";
 
-import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -139,6 +138,23 @@ export default function DataSourcesView({
     }
   });
   const searchBarRef = useRef<HTMLInputElement>(null);
+
+  const columns = getTableColumns();
+
+  const clickableDataSources = useMemo(() => {
+    return dataSources.map((dataSource) => ({
+      ...dataSource,
+      clickable: true,
+      onClick: () => {
+        void router.push(
+          `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+        );
+      },
+      icon: LinkIcon,
+      usage: dataSourcesUsage[dataSource.id] || 0,
+    }));
+  }, [dataSources, dataSourcesUsage, owner.sId, router]);
+
   return (
     <AppLayout
       subscription={subscription}
@@ -156,7 +172,7 @@ export default function DataSourcesView({
           description="Manage public URLs as data sources for the workspace."
         />
 
-        {dataSources.length > 0 ? (
+        {clickableDataSources.length > 0 ? (
           <div className="relative">
             <div className="flex flex-row gap-2">
               <Searchbar
@@ -173,7 +189,7 @@ export default function DataSourcesView({
                   <Button
                     variant="primary"
                     icon={PlusIcon}
-                    label="Create a wesbite"
+                    label="Add a website"
                     onClick={async () => {
                       await handleCreateDataSource();
                     }}
@@ -202,51 +218,56 @@ export default function DataSourcesView({
             icon={PlusIcon}
           />
         )}
-        <ContextItem.List>
-          {dataSources.map((ds) => (
-            <ContextItem
-              key={ds.name}
-              title={
-                ds.name.length > 60 ? ds.name.substring(0, 60) + "..." : ds.name
-              }
-              visual={
-                <ContextItem.Visual
-                  visual={({ className }) =>
-                    FolderOpenIcon({
-                      className: className + " text-element-600",
-                    })
-                  }
-                />
-              }
-              onClick={() => {
-                void router.push(
-                  `/w/${
-                    owner.sId
-                  }/builder/data-sources/${encodeURIComponent(ds.name)}`
-                );
-              }}
-              subElement={
-                <>
-                  Added by: {ds.editedByUser?.fullName}
-                  <span className="h-3 w-0.5 bg-element-500" />
-                  <div className="flex items-center gap-1">
-                    Used by: {dataSourcesUsage[ds.id] ?? 0}
-                    <Icon visual={RobotIcon} size="xs" />
-                  </div>
-                </>
-              }
-            >
-              <div className="py-2">
-                <ConnectorSyncingChip
-                  initialState={ds.connector}
-                  workspaceId={ds.connector.workspaceId}
-                  dataSourceName={ds.connector.dataSourceName}
-                />
-              </div>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
+        {clickableDataSources.length > 0 && (
+          <Table
+            data={clickableDataSources}
+            columns={columns}
+            width="expanded"
+            filter={dataSourceSearch}
+            filterColumn={"name"}
+          />
+        )}
       </Page.Vertical>
     </AppLayout>
   );
+}
+
+function getTableColumns() {
+  return [
+    {
+      header: "Name",
+      accessorKey: "name",
+      cell: (info) => (
+        <TableData.Cell icon={info.row.original.icon}>
+          {info.row.original.name}
+        </TableData.Cell>
+      ),
+    },
+    {
+      header: "Used by",
+      accessorKey: "usage",
+      cell: (info) => (
+        <TableData.Cell icon={RobotIcon}>
+          {info.row.original.usage}
+        </TableData.Cell>
+      ),
+    },
+    {
+      header: "Added by",
+      cell: (info) => (
+        <TableData.Cell avatarUrl={info.row.original.editedByUser.imageUrl} />
+      ),
+    },
+    {
+      header: "Last updated",
+      accessorKey: "editedByUser.editedAt",
+      cell: (info) => (
+        <TableData.Cell>
+          {new Date(
+            info.row.original.editedByUser.editedAt
+          ).toLocaleDateString()}
+        </TableData.Cell>
+      ),
+    },
+  ];
 }

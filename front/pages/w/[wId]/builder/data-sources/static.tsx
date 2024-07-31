@@ -126,7 +126,7 @@ export default function DataSourcesView({
           icon={FolderOpenIcon}
           description="Make more documents accessible to this workspace. Manage folders manually or via API."
         />
-        {dataSources.length > 0 ? (
+        {clickableDataSources.length > 0 ? (
           <div className="relative">
             <div className="flex flex-row gap-2">
               <Searchbar
@@ -174,13 +174,15 @@ export default function DataSourcesView({
             }}
           />
         )}
-        <Table
-          data={clickableDataSources}
-          columns={columns}
-          width="expanded"
-          filter={dataSourceSearch}
-          filterColumn={"name"}
-        />
+        {clickableDataSources.length > 0 && (
+          <Table
+            data={clickableDataSources}
+            columns={columns}
+            width="expanded"
+            filter={dataSourceSearch}
+            filterColumn={"name"}
+          />
+        )}
       </Page.Vertical>
     </AppLayout>
   );
