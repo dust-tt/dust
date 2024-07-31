@@ -145,9 +145,6 @@ export { TextArea };
 import { Markdown } from "./components/Markdown";
 export { Markdown };
 
-import { DataTable } from "./components/DataTable";
-export { DataTable };
-
 import { Table, TableData } from "./components/Table";
 export { Table, TableData };
 
