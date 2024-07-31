@@ -5,7 +5,6 @@ import type {
 } from "@dust-tt/types";
 import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
-import { c } from "tar";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { getClient } from "@connectors/connectors/microsoft";
