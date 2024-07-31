@@ -332,13 +332,14 @@ async function handler(
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
       const dataSource = await DataSourceResource.makeNew({
-        name: dataSourceName,
+        assistantDefaultSelected,
+        connectorProvider: provider,
         description: dataSourceDescription,
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        workspaceId: owner.id,
-        assistantDefaultSelected,
         editedByUserId: user.id,
+        name: dataSourceName,
         vaultId: vault.id,
+        workspaceId: owner.id,
       });
 
       // For managed data source, we create a default view in the workspace vault.
@@ -412,7 +413,6 @@ async function handler(
 
       await dataSource.update({
         connectorId: connectorsRes.value.id,
-        connectorProvider: provider,
       });
       const dataSourceType = await getDataSource(auth, dataSource.name);
       if (dataSourceType) {
