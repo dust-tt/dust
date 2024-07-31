@@ -2,10 +2,10 @@ import { CoreAPI } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models/data_source";
 import { TrackedDocument } from "@app/lib/models/doc_tracker";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 
@@ -16,7 +16,7 @@ export async function updateTrackedDocuments(
   documentId: string,
   documentContent: string
 ) {
-  const dataSource = await DataSource.findByPk(dataSourceId);
+  const dataSource = await DataSourceResource.fetchByModelId(dataSourceId);
   if (!dataSource) {
     throw new Error(`Could not find data source with id ${dataSourceId}`);
   }

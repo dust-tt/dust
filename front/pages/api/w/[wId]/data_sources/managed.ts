@@ -23,8 +23,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
-import { renderDataSourceType } from "@app/lib/data_sources";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -332,25 +331,26 @@ async function handler(
       const vault = await (provider === "webcrawler"
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
-      let dataSource = await DataSource.create({
-        name: dataSourceName,
+      const dataSource = await DataSourceResource.makeNew({
+        assistantDefaultSelected,
+        connectorProvider: provider,
         description: dataSourceDescription,
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        workspaceId: owner.id,
-        assistantDefaultSelected,
         editedByUserId: user.id,
+        name: dataSourceName,
         vaultId: vault.id,
+        workspaceId: owner.id,
       });
 
-      const globalVault = vault.isGlobal()
-        ? vault
-        : await VaultResource.fetchWorkspaceGlobalVault(auth);
-
       // For managed data source, we create a default view in the workspace vault.
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        globalVault,
-        renderDataSourceType(dataSource)
-      );
+      if (dataSource.isManaged()) {
+        const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          globalVault,
+          dataSource
+        );
+      }
 
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),
@@ -373,14 +373,7 @@ async function handler(
           },
           "Failed to create the connector"
         );
-
-        // TODO(2024-07-30 flav) Move to DataSourceResource.
-        await DataSourceViewResource.deleteForDataSource(
-          auth,
-          renderDataSourceType(dataSource)
-        );
-        await dataSource.destroy();
-
+        await dataSource.delete(auth);
         const deleteRes = await coreAPI.deleteDataSource({
           projectId: dustProject.value.project.project_id.toString(),
           dataSourceName: dustDataSource.value.data_source.data_source_id,
@@ -416,9 +409,8 @@ async function handler(
         });
       }
 
-      dataSource = await dataSource.update({
+      await dataSource.update({
         connectorId: connectorsRes.value.id,
-        connectorProvider: provider,
       });
       const dataSourceType = await getDataSource(auth, dataSource.name);
       if (dataSourceType) {

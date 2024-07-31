@@ -1,8 +1,7 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 
 import { Authenticator } from "@app/lib/auth";
-import { renderDataSourceType } from "@app/lib/data_sources";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -14,11 +13,8 @@ async function backfillDataSourceViewsForWorkspace(
   logger: Logger,
   execute: boolean
 ) {
-  const dataSources = await DataSource.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const dataSources = await DataSourceResource.listByWorkspace(auth);
 
   logger.info(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
@@ -27,8 +23,6 @@ async function backfillDataSourceViewsForWorkspace(
   if (!execute) {
     return;
   }
-
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
@@ -53,7 +47,7 @@ async function backfillDataSourceViewsForWorkspace(
     // Create a view for this data source in the global vault.
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
       globalVault,
-      renderDataSourceType(dataSource)
+      dataSource
     );
 
     updated++;

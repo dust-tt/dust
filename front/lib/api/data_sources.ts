@@ -4,45 +4,19 @@ import type {
   DataSourceType,
   Result,
 } from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-} from "@dust-tt/types";
+import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { renderDataSourceType } from "@app/lib/data_sources";
 import { sendGithubDeletionEmail } from "@app/lib/email";
-import { DataSource } from "@app/lib/models/data_source";
-import { User } from "@app/lib/models/user";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
 export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
   "webcrawler",
 ];
-
-function makeEditedBy(
-  editedByUser: User | undefined,
-  editedAt: Date | undefined
-) {
-  if (!editedByUser || !editedAt) {
-    return undefined;
-  }
-
-  return {
-    editedByUser: {
-      editedAt: editedAt.getTime(),
-      fullName: formatUserFullName(editedByUser),
-      imageUrl: editedByUser.imageUrl,
-    },
-  };
-}
 
 export async function getDataSource(
   auth: Authenticator,
@@ -60,40 +34,15 @@ export async function getDataSource(
     return null;
   }
 
-  const includes = includeEditedBy
-    ? {
-        include: [
-          {
-            model: User,
-            as: "editedByUser",
-          },
-        ],
-      }
-    : undefined;
-
-  const dataSource = await DataSource.findOne({
-    where: {
-      workspaceId: owner.id,
-      name,
-    },
-    ...includes,
+  const dataSource = await DataSourceResource.fetchByName(auth, name, {
+    includeEditedBy,
   });
 
   if (!dataSource) {
     return null;
   }
 
-  return {
-    id: dataSource.id,
-    createdAt: dataSource.createdAt.getTime(),
-    name: dataSource.name,
-    description: dataSource.description,
-    dustAPIProjectId: dataSource.dustAPIProjectId,
-    connectorId: dataSource.connectorId,
-    connectorProvider: dataSource.connectorProvider,
-    assistantDefaultSelected: dataSource.assistantDefaultSelected,
-    ...makeEditedBy(dataSource.editedByUser, dataSource.editedAt),
-  };
+  return dataSource.toJSON();
 }
 
 export async function getDataSources(
@@ -111,38 +60,11 @@ export async function getDataSources(
     return [];
   }
 
-  const includes = includeEditedBy
-    ? {
-        include: [
-          {
-            model: User,
-            as: "editedByUser",
-          },
-        ],
-      }
-    : undefined;
-
-  const dataSources = await DataSource.findAll({
-    where: {
-      workspaceId: owner.id,
-    },
-    ...includes,
-    order: [["updatedAt", "DESC"]],
+  const dataSources = await DataSourceResource.listByWorkspace(auth, {
+    includeEditedBy,
   });
 
-  return dataSources.map((dataSource): DataSourceType => {
-    return {
-      id: dataSource.id,
-      createdAt: dataSource.createdAt.getTime(),
-      name: dataSource.name,
-      description: dataSource.description,
-      dustAPIProjectId: dataSource.dustAPIProjectId,
-      connectorId: dataSource.connectorId,
-      connectorProvider: dataSource.connectorProvider,
-      assistantDefaultSelected: dataSource.assistantDefaultSelected,
-      ...makeEditedBy(dataSource.editedByUser, dataSource.editedAt),
-    };
-  });
+  return dataSources.map((dataSource) => dataSource.toJSON());
 }
 
 export async function updateDataSourceEditedBy(
@@ -166,18 +88,21 @@ export async function updateDataSourceEditedBy(
     });
   }
 
-  await DataSource.update(
-    {
-      editedAt: new Date(),
-      editedByUserId: user.id,
-    },
-    {
-      where: {
-        id: dataSource.id,
-        workspaceId: owner.id,
-      },
-    }
+  const dataSourceResource = await DataSourceResource.fetchByModelId(
+    dataSource.id
   );
+
+  if (!dataSourceResource) {
+    return new Err({
+      type: "data_source_not_found",
+      message: "Could not find the data source.",
+    });
+  }
+
+  await dataSourceResource.update({
+    editedAt: new Date(),
+    editedByUserId: user.id,
+  });
 
   return new Ok(undefined);
 }
@@ -202,12 +127,8 @@ export async function deleteDataSource(
     });
   }
 
-  const dataSource = await DataSource.findOne({
-    where: {
-      workspaceId: owner.id,
-      name: dataSourceName,
-    },
-  });
+  const dataSource = await DataSourceResource.fetchByName(auth, dataSourceName);
+
   if (!dataSource) {
     return new Err({
       type: "data_source_not_found",
@@ -265,12 +186,7 @@ export async function deleteDataSource(
     }
   }
 
-  // TODO(2024-07-30 flav) Move to DataSourceResource.
-  await DataSourceViewResource.deleteForDataSource(
-    auth,
-    renderDataSourceType(dataSource)
-  );
-  await dataSource.destroy();
+  await dataSource.delete(auth);
 
   await launchScrubDataSourceWorkflow({
     wId: owner.sId,

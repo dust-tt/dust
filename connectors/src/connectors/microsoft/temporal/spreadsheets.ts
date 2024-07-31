@@ -113,10 +113,6 @@ async function processSheet(
     getWorksheetContent(client, internalId)
   );
 
-  if (content.isErr()) {
-    return content;
-  }
-
   const loggerArgs = {
     sheet: {
       id: worksheet.id,
@@ -124,15 +120,33 @@ async function processSheet(
     },
   };
 
+  if (content.isErr()) {
+    localLogger.error(
+      { ...loggerArgs, error: content.error },
+      "[Spreadsheet] Failed to fetch sheet content."
+    );
+    return content;
+  }
+
   localLogger.info(
     { loggerArgs },
     "[Spreadsheet] Processing sheet in Microsoft Excel."
   );
 
   // Content.text is guaranteed to be a 2D array with each row of the same length.
-  const rows: string[][] = content.value.text;
+  const rows: string[][] = content?.value?.text;
+  if (!rows) {
+    localLogger.info(`[Spreadsheet] Cannot get any row from sheet.`);
+
+    return new Err(
+      new Error(
+        `Cannot get any row from sheet ${worksheet.id} in document ${spreadsheet.id}`
+      )
+    );
+  }
+
   if (rows.length > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
-    logger.info(
+    localLogger.info(
       { ...loggerArgs, rowCount: rows.length },
       `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, skipping further processing.`
     );
@@ -165,7 +179,7 @@ async function processSheet(
     return new Ok(null);
   }
 
-  logger.info(
+  localLogger.info(
     loggerArgs,
     "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
   );
@@ -207,6 +221,10 @@ export async function handleSpreadSheet({
   );
 
   if (worksheetsRes.isErr()) {
+    localLogger.error(
+      { error: worksheetsRes.error },
+      "[Spreadsheet] Failed to fetch worksheets."
+    );
     return worksheetsRes;
   }
 

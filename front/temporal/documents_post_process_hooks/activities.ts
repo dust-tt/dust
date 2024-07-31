@@ -10,8 +10,8 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DocumentsPostProcessHookType } from "@app/lib/documents_post_process_hooks/hooks";
 import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/lib/documents_post_process_hooks/hooks";
-import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 
@@ -134,12 +134,9 @@ async function getDataSourceDocument({
     return new Err(new Error(`Could not find workspace ${workspaceId}`));
   }
 
-  const dataSource = await DataSource.findOne({
-    where: {
-      name: dataSourceName,
-      workspaceId: workspace.id,
-    },
-  });
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const dataSource = await DataSourceResource.fetchByName(auth, dataSourceName);
+
   if (!dataSource) {
     return new Err(new Error(`Could not find data source ${dataSourceName}`));
   }

@@ -17,6 +17,7 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -56,12 +57,11 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     });
   }
 
-  // TODO(2024-07-29 flav) Replace dataSourceId by DataSourceResource once implemented.
   // For now, we create a default view for all data sources in the global vault.
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
     vault: VaultResource,
-    dataSource: DataSourceType
+    dataSource: DataSourceResource
   ) {
     return this.makeNew({
       dataSourceId: dataSource.id,
@@ -156,7 +156,7 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
 
   static async deleteForDataSource(
     auth: Authenticator,
-    dataSource: DataSourceType
+    dataSource: DataSourceResource
   ) {
     return this.model.destroy({
       where: {

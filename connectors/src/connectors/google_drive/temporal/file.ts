@@ -125,6 +125,15 @@ async function handleFileExport(
       }
     );
   } catch (e) {
+    if (e instanceof GaxiosError && e.response?.status === 404) {
+      localLogger.info(
+        {
+          error: e,
+        },
+        "Can't export Gdrive file. 404 error returned. Skipping."
+      );
+      return null;
+    }
     const maybeErrorWithCode = e as { code: string };
     if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
       localLogger.info({}, "File too big to be downloaded. Skipping");

@@ -94,7 +94,6 @@ pub mod oauth {
         pub mod notion;
         pub mod slack;
         pub mod utils;
-        pub mod zendesk;
     }
 }
 

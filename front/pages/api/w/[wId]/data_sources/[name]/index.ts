@@ -3,12 +3,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteDataSource,
-  getDataSource,
   MANAGED_DS_DELETABLE_AS_BUILDER,
 } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetOrPostDataSourceResponseBody = {
@@ -42,7 +41,7 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, req.query.name);
+  const dataSource = await DataSourceResource.fetchByName(auth, req.query.name);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -56,16 +55,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       res.status(200).json({
-        dataSource: {
-          id: dataSource.id,
-          createdAt: dataSource.createdAt,
-          name: dataSource.name,
-          description: dataSource.description,
-          dustAPIProjectId: dataSource.dustAPIProjectId,
-          connectorId: dataSource.connectorId,
-          connectorProvider: dataSource.connectorProvider,
-          assistantDefaultSelected: dataSource.assistantDefaultSelected,
-        },
+        dataSource: dataSource.toJSON(),
       });
       return;
 
@@ -81,18 +71,6 @@ async function handler(
         });
       }
 
-      const dataSourceModel = await DataSource.findByPk(dataSource.id);
-      if (!dataSourceModel) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
-        });
-      }
-
-      let ds: DataSource;
       if (dataSource.connectorId) {
         // managed data source
         if (
@@ -109,7 +87,7 @@ async function handler(
             },
           });
         }
-        ds = await dataSourceModel.update({
+        await dataSource.update({
           assistantDefaultSelected: req.body.assistantDefaultSelected,
         });
       } else {
@@ -141,20 +119,11 @@ async function handler(
           toUpdate.assistantDefaultSelected = req.body.assistantDefaultSelected;
         }
 
-        ds = await dataSourceModel.update(toUpdate);
+        await dataSource.update(toUpdate);
       }
 
       return res.status(200).json({
-        dataSource: {
-          id: ds.id,
-          createdAt: ds.createdAt.getTime(),
-          name: ds.name,
-          description: ds.description,
-          assistantDefaultSelected: ds.assistantDefaultSelected,
-          dustAPIProjectId: ds.dustAPIProjectId,
-          connectorId: ds.connectorId,
-          connectorProvider: ds.connectorProvider,
-        },
+        dataSource: dataSource.toJSON(),
       });
 
     case "DELETE":
