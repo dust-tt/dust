@@ -12,10 +12,10 @@ import {
 import type {
   AgentMention,
   MentionType,
+  RoleType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useCallback, useContext } from "react";
@@ -26,23 +26,85 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
-const topPicks = [
+// describe the type of userContent where the
+
+const userContent: Record<
+  RoleType,
   {
-    title: "How to create assistants?",
-    href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
-    icon: ArrowRightIcon,
+    topPicks: {
+      title: string;
+      href: string;
+      icon: React.ComponentType;
+    }[];
+    helpIceBreakers: string[];
+  }
+> = {
+  user: {
+    topPicks: [
+      {
+        title: "How to talk to assistants?",
+        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
+        icon: ArrowRightIcon,
+      },
+    ],
+    helpIceBreakers: [
+      "What are assistants?",
+      "What are the limitations of assistants?",
+    ],
   },
-  {
-    title: "How to add new connections?",
-    href: "https://docs.dust.tt/docs/google-drive-connection",
-    icon: ArrowRightIcon,
+  builder: {
+    topPicks: [
+      {
+        title: "How to create assistants?",
+        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
+        icon: ArrowRightIcon,
+      },
+      {
+        title: "What can I use Dust for?",
+        href: "https://docs.dust.tt/docs/use-cases",
+        icon: ArrowRightIcon,
+      },
+      {
+        title: "What is a Dust App?",
+        href: "https://docs.dust.tt/reference/developer-platform-overview",
+        icon: ArrowRightIcon,
+      },
+    ],
+    helpIceBreakers: [
+      "How to upload a file to a folder in Dust?",
+      "What are good use-cases for Customer support?",
+      "What does the Extract Data tool do?",
+    ],
   },
-  {
-    title: "What can I use Dust for?",
-    href: "https://docs.dust.tt/docs/use-cases",
-    icon: ArrowRightIcon,
+  admin: {
+    topPicks: [
+      {
+        title: "How to create assistants?",
+        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
+        icon: ArrowRightIcon,
+      },
+      {
+        title: "How to add new connections?",
+        href: "https://docs.dust.tt/docs/google-drive-connection",
+        icon: ArrowRightIcon,
+      },
+      {
+        title: "How to manage users?",
+        href: "https://docs.dust.tt/docs/manage-users",
+        icon: ArrowRightIcon,
+      },
+    ],
+    helpIceBreakers: [
+      "How to invite a new user?",
+      "How to use assistants in Slack workflows?",
+      "How to manage billing?",
+    ],
   },
-];
+  none: {
+    topPicks: [],
+    helpIceBreakers: [],
+  },
+};
 
 function LinksList({
   linksList,
@@ -135,78 +197,55 @@ export function HelpDrawer({
     <Modal isOpen={show} variant="side-sm" hasChanged={false} onClose={onClose}>
       <div className="flex flex-col gap-5 pt-5">
         <Page.SectionHeader title="Learn about Dust" />
-        <div>
-          <LinksList
-            linksList={
-              isBuilder(owner)
-                ? [
-                    {
-                      title: "Quickstart Guide",
-                      onClick: () => setShowQuickGuide(true),
-                      icon: LightbulbIcon,
-                    },
-                    {
-                      title: "All help content",
-                      href: "https://docs.dust.tt",
-                      description: "Guides, best practices, and more",
-                      icon: FolderIcon,
-                    },
-                    {
-                      title: "Community Support",
-                      href: "https://docs.dust.tt/discuss",
-                      description: "Stuck? Ask your questions to the community",
-                      icon: QuestionMarkCircleIcon,
-                    },
-                  ]
-                : [
-                    {
-                      title: "Quickstart Guide",
-                      href: "https://docs.dust.tt/docs/getting-started",
-                      icon: LightbulbIcon,
-                    },
-                  ]
-            }
-          />
-          {isBuilder(owner) && (
-            <LinksList linksList={topPicks} title="Top Picks" />
-          )}
-        </div>
-        {!isBuilder(owner) && (
+        <LinksList
+          linksList={[
+            {
+              title: "Quickstart Guide",
+              onClick: () => setShowQuickGuide(true),
+              icon: LightbulbIcon,
+            },
+            {
+              title: "All help content",
+              href: "https://docs.dust.tt",
+              description: "Guides, best practices, and more",
+              icon: FolderIcon,
+            },
+            {
+              title: "Community Support",
+              href: "https://docs.dust.tt/discuss",
+              description: "Stuck? Ask your questions to the community",
+              icon: QuestionMarkCircleIcon,
+            },
+          ]}
+        />
+        <Page.SectionHeader title="Top picks for you" />
+        <LinksList linksList={userContent[owner.role].topPicks} />
+
+        <div className="flex flex-col gap-4 [&>*]:pl-px">
+          <Page.SectionHeader title="Ask questions to @help" />
           <Button.List isWrapping={true}>
             <div className="flex flex-col gap-8">
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="tertiary"
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  label={"What can I use the assistants for?"}
-                  size="sm"
-                  hasMagnifying={false}
-                  onClick={() => {
-                    void handleHelpSubmit(
-                      "@help What can I use the assistants for?",
-                      [{ configurationId: GLOBAL_AGENTS_SID.HELPER }]
-                    );
-                  }}
-                />
-                <Button
-                  variant="tertiary"
-                  icon={ChatBubbleBottomCenterTextIcon}
-                  label={"What are the limitations of assistants?"}
-                  size="sm"
-                  hasMagnifying={false}
-                  onClick={() => {
-                    void handleHelpSubmit(
-                      "@help What are the limitations of assistants?",
-                      [{ configurationId: GLOBAL_AGENTS_SID.HELPER }]
-                    );
-                  }}
-                />
+                {userContent[owner.role].helpIceBreakers.map(
+                  (iceBreaker, index) => (
+                    <Button
+                      variant="tertiary"
+                      icon={ChatBubbleBottomCenterTextIcon}
+                      label={iceBreaker}
+                      size="sm"
+                      hasMagnifying={false}
+                      onClick={() => {
+                        void handleHelpSubmit(`@help ${iceBreaker}`, [
+                          { configurationId: GLOBAL_AGENTS_SID.HELPER },
+                        ]);
+                      }}
+                      key={index}
+                    />
+                  )
+                )}
               </div>
             </div>
           </Button.List>
-        )}
-        <div className="flex flex-col gap-4 [&>*]:pl-px">
-          <Page.SectionHeader title="Ask questions" />
           <AssistantInputBar
             owner={owner}
             onSubmit={handleHelpSubmit}
