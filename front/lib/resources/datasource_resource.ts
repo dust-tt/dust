@@ -48,30 +48,28 @@ export class DataSourceResource extends BaseResource<DataSource> {
     return new this(datasource.get());
   }
 
-  private static getOptions(options?: FetchDataSourceOptions) {
-    return {
-      ...(options?.includeEditedBy
-        ? {
-            include: [
-              {
-                model: User,
-                as: "editedByUser",
-              },
-            ],
-          }
-        : {}),
-      ...(options?.limit
-        ? {
-            limit: options.limit,
-          }
-        : {}),
-      ...(options?.order
-        ? {
-            order: options.order,
-          }
-        : {}),
-    };
+private static getOptions(options?: FetchDataSourceOptions) {
+  const result: FindOptions<this.model> = {};
+
+  if (options?.includeEditedBy) {
+    result.include = [
+      {
+        model: User,
+        as: "editedByUser",
+      },
+    ];
   }
+
+  if (options?.limit) {
+    result.limit = options.limit;
+  }
+
+  if (options?.order) {
+    result.order = options.order;
+  }
+
+  return result;
+}
 
   static async fetchByName(
     auth: Authenticator,
