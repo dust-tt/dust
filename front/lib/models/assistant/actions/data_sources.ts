@@ -119,7 +119,6 @@ AgentDataSourceConfiguration.belongsTo(DataSource, {
 
 // Data source config <> Data source view
 DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
-  // TODO(20240730 flav) Set to false once backfilled.
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
