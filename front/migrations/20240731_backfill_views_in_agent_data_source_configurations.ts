@@ -1,5 +1,4 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
-import { CONNECTOR_PROVIDERS } from "@dust-tt/types";
 import assert from "assert";
 
 import { Authenticator } from "@app/lib/auth";
