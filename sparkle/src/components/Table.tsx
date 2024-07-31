@@ -8,7 +8,7 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 
 import { Avatar, MoreIcon } from "@sparkle/index";
 import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
@@ -23,6 +23,8 @@ interface TableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   className?: string;
   width?: FirstColumnWidth;
+  filter?: string;
+  filterColumn?: string;
 }
 
 export function Table<TData, TValue>({
@@ -30,6 +32,8 @@ export function Table<TData, TValue>({
   columns,
   className,
   width = "normal",
+  filter,
+  filterColumn,
 }: TableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -47,6 +51,12 @@ export function Table<TData, TValue>({
       sorting,
     },
   });
+
+  useEffect(() => {
+    if (filter && filterColumn) {
+      table.getColumn(filterColumn)?.setFilterValue(filter);
+    }
+  }, [filter, filterColumn]);
 
   return (
     <TableData className={className}>
