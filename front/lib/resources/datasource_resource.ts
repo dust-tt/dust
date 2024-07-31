@@ -38,7 +38,11 @@ export class DataSourceResource extends BaseResource<DataSource> {
 
   editedByUser: Attributes<User> | undefined;
 
-  constructor(blob: Attributes<DataSource>, editedByUser?: Attributes<User>) {
+  constructor(
+    model: ModelStatic<DataSource>,
+    blob: Attributes<DataSource>,
+    editedByUser?: Attributes<User>
+  ) {
     super(DataSourceResource.model, blob);
     this.editedByUser = editedByUser;
   }
@@ -46,7 +50,7 @@ export class DataSourceResource extends BaseResource<DataSource> {
   static async makeNew(blob: CreationAttributes<DataSource>) {
     const datasource = await DataSource.create(blob);
 
-    return new this(datasource.get());
+    return new this(DataSourceResource.model, datasource.get());
   }
 
   private static getOptions(options?: FetchDataSourceOptions) {
@@ -89,7 +93,11 @@ export class DataSourceResource extends BaseResource<DataSource> {
     if (!datasource) {
       return null;
     }
-    return new this(datasource.get(), datasource.editedByUser?.get());
+    return new this(
+      DataSourceResource.model,
+      datasource.get(),
+      datasource.editedByUser?.get()
+    );
   }
 
   static async listByWorkspace(
@@ -105,7 +113,12 @@ export class DataSourceResource extends BaseResource<DataSource> {
     });
 
     return datasources.map(
-      (datasource) => new this(datasource.get(), datasource.editedByUser?.get())
+      (datasource) =>
+        new this(
+          DataSourceResource.model,
+          datasource.get(),
+          datasource.editedByUser?.get()
+        )
     );
   }
 
@@ -122,7 +135,9 @@ export class DataSourceResource extends BaseResource<DataSource> {
       },
     });
 
-    return datasources.map((datasource) => new this(datasource.get()));
+    return datasources.map(
+      (datasource) => new this(DataSourceResource.model, datasource.get())
+    );
   }
 
   static async listByConnectorProvider(
@@ -139,7 +154,9 @@ export class DataSourceResource extends BaseResource<DataSource> {
       ...this.getOptions(options),
     });
 
-    return datasources.map((datasource) => new this(datasource.get()));
+    return datasources.map(
+      (datasource) => new this(DataSourceResource.model, datasource.get())
+    );
   }
 
   async delete(
