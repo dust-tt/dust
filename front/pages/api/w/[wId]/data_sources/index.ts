@@ -183,11 +183,6 @@ async function handler(
         vaultId: globalVault.id,
       });
 
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        globalVault,
-        ds.toJSON()
-      );
-
       const dataSourceType = await getDataSource(auth, ds.name);
       if (dataSourceType) {
         void ServerSideTracking.trackDataSourceCreated({

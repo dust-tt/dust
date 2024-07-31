@@ -212,6 +212,16 @@ export class DataSourceResource extends BaseResource<DataSource> {
     };
   }
 
+  isManaged(): boolean {
+    return (
+      this.name.startsWith("managed-") &&
+      this.connectorProvider !== null &&
+      this.connectorProvider !== "webcrawler"
+    );
+  }
+
+  // Serialization.
+
   toJSON(): DataSourceType {
     return {
       id: this.id,

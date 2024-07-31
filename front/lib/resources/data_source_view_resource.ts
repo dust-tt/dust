@@ -57,12 +57,11 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     });
   }
 
-  // TODO(2024-07-29 flav) Replace dataSourceId by DataSourceResource once implemented.
   // For now, we create a default view for all data sources in the global vault.
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
     vault: VaultResource,
-    dataSource: DataSourceType
+    dataSource: DataSourceResource
   ) {
     return this.makeNew({
       dataSourceId: dataSource.id,
