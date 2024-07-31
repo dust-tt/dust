@@ -12,9 +12,8 @@ import config from "@app/lib/api/config";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { renderDataSourceType } from "@app/lib/data_sources";
-import { DataSource } from "@app/lib/models/data_source";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
@@ -174,7 +173,7 @@ async function handler(
       }
 
       const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-      const ds = await DataSource.create({
+      const ds = await DataSourceResource.makeNew({
         name: req.body.name,
         description: description,
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
@@ -186,7 +185,7 @@ async function handler(
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
         globalVault,
-        renderDataSourceType(ds)
+        ds.toJSON()
       );
 
       const dataSourceType = await getDataSource(auth, ds.name);

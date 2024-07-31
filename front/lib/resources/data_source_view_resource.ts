@@ -17,6 +17,7 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -138,7 +139,7 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
 
   static async deleteForDataSource(
     auth: Authenticator,
-    dataSource: DataSourceType
+    dataSource: DataSourceResource
   ) {
     return this.model.destroy({
       where: {

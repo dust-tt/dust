@@ -23,9 +23,8 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
-import { renderDataSourceType } from "@app/lib/data_sources";
-import { DataSource } from "@app/lib/models/data_source";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -332,7 +331,7 @@ async function handler(
       const vault = await (provider === "webcrawler"
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
-      let dataSource = await DataSource.create({
+      const dataSource = await DataSourceResource.makeNew({
         name: dataSourceName,
         description: dataSourceDescription,
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
@@ -349,7 +348,7 @@ async function handler(
       // For managed data source, we create a default view in the workspace vault.
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
         globalVault,
-        renderDataSourceType(dataSource)
+        dataSource.toJSON()
       );
 
       const connectorsAPI = new ConnectorsAPI(
@@ -373,14 +372,7 @@ async function handler(
           },
           "Failed to create the connector"
         );
-
-        // TODO(2024-07-30 flav) Move to DataSourceResource.
-        await DataSourceViewResource.deleteForDataSource(
-          auth,
-          renderDataSourceType(dataSource)
-        );
-        await dataSource.destroy();
-
+        await dataSource.delete(auth);
         const deleteRes = await coreAPI.deleteDataSource({
           projectId: dustProject.value.project.project_id.toString(),
           dataSourceName: dustDataSource.value.data_source.data_source_id,
@@ -416,7 +408,7 @@ async function handler(
         });
       }
 
-      dataSource = await dataSource.update({
+      await dataSource.update({
         connectorId: connectorsRes.value.id,
         connectorProvider: provider,
       });

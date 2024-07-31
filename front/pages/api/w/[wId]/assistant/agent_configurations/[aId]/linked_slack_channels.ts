@@ -9,7 +9,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -28,8 +28,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
@@ -41,12 +39,12 @@ async function handler(
     });
   }
 
-  const slackDataSource = await DataSource.findOne({
-    where: {
-      connectorProvider: "slack",
-      workspaceId: owner.id,
-    },
-  });
+  const slackDataSources = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack",
+    { limit: 1 }
+  );
+  const slackDataSource = slackDataSources[0];
 
   if (!slackDataSource) {
     return apiError(req, res, {

@@ -10,6 +10,7 @@ import type {
   AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
+  LightWorkspaceType,
   ModelId,
   ProcessSchemaPropertyType,
   ProcessTagsFilter,
@@ -69,9 +70,11 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -1454,7 +1457,7 @@ async function _createAgentDataSourcesConfigData(
   //   { workspaceId: 2, dataSourceNames: ["managed-notion"] }
   // ]
   type _DsNamesPerWorkspaceIdType = {
-    workspaceId: number;
+    workspace: LightWorkspaceType;
     dataSourceNames: string[];
   };
   const dsNamesPerWorkspaceId = dataSourceConfigurations.reduce(
@@ -1470,7 +1473,7 @@ async function _createAgentDataSourcesConfigData(
       // Find an existing entry for this workspaceId
       const existingEntry: _DsNamesPerWorkspaceIdType | undefined = acc.find(
         (entry: _DsNamesPerWorkspaceIdType) =>
-          entry.workspaceId === workspace.id
+          entry.workspace.id === workspace.id
       );
       if (existingEntry) {
         // Append dataSourceName to existing entry
@@ -1478,7 +1481,7 @@ async function _createAgentDataSourcesConfigData(
       } else {
         // Add a new entry for this workspaceId
         acc.push({
-          workspaceId: workspace.id,
+          workspace: renderLightWorkspaceType({ workspace }),
           dataSourceNames: [curr.dataSourceId],
         });
       }
@@ -1489,16 +1492,11 @@ async function _createAgentDataSourcesConfigData(
 
   // Then we get do one findAllQuery per workspaceId, in a Promise.all
   const getDataSourcesQueries = dsNamesPerWorkspaceId.map(
-    ({ workspaceId, dataSourceNames }) => {
-      return DataSource.findAll({
-        where: {
-          workspaceId,
-          name: {
-            [Op.in]: dataSourceNames,
-          },
-        },
-        transaction: t,
-      });
+    ({ workspace, dataSourceNames }) => {
+      return DataSourceResource.listByWorkspaceIdAndNames(
+        workspace,
+        dataSourceNames
+      );
     }
   );
   const results = await Promise.all(getDataSourcesQueries);

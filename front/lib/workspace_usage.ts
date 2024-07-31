@@ -2,15 +2,16 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   Conversation,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 
 import { frontSequelize } from "./resources/storage";
 
@@ -472,10 +473,9 @@ function generateCsvFromQueryResult(
 export async function checkWorkspaceActivity(workspace: Workspace) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const hasDataSource = await DataSource.findOne({
-    where: { workspaceId: workspace.id },
-  });
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const hasDataSource =
+    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
 
   const hasCreatedAssistant = await AgentConfiguration.findOne({
     where: { workspaceId: workspace.id },

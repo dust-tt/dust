@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -59,12 +59,10 @@ async function handler(
       }
       const { configKey, configValue } = req.body;
 
-      const dataSource = await DataSource.findOne({
-        where: {
-          workspaceId: owner.id,
-          name: req.query.name as string,
-        },
-      });
+      const dataSource = await DataSourceResource.fetchByName(
+        auth,
+        req.query.name as string
+      );
 
       if (!dataSource) {
         return apiError(req, res, {
