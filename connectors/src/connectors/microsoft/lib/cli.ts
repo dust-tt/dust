@@ -17,7 +17,6 @@ import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/
 import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { throwOnError } from "@connectors/lib/cli";
 import { terminateWorkflow } from "@connectors/lib/temporal";
-import { default as topLogger } from "@connectors/logger/logger";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -94,14 +93,14 @@ export const microsoft = async ({
           connector.id,
           args.internalId
         );
-
-      return {
-        success: true,
+      const content = {
         nodeType,
         itemAPIPath,
         microsoftNodeResource: microsoftNodeResource?.toJSON(),
         driveItem,
       };
+
+      return { status: 200, content, type: typeof content };
     }
 
     case "start-incremental-sync": {

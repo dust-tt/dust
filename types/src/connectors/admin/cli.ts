@@ -191,11 +191,19 @@ export const MicrosoftCommandSchema = t.type({
 export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 
 export const MicrosoftCheckFileResponseSchema = t.type({
-  success: t.boolean,
-  nodeType: t.string,
-  itemAPIPath: t.string,
-  microsoftNodeResource: t.unknown,
-  driveItem: t.unknown,
+  status: t.number,
+  // all literals from js `typeof`
+  type: t.union([
+    t.literal("undefined"),
+    t.literal("object"),
+    t.literal("boolean"),
+    t.literal("number"),
+    t.literal("string"),
+    t.literal("function"),
+    t.literal("symbol"),
+    t.literal("bigint"),
+  ]),
+  content: t.unknown, // google drive type, can't be iots'd
 });
 
 export type MicrosoftCheckFileResponseType = t.TypeOf<
