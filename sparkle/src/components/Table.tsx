@@ -53,7 +53,7 @@ export function Table<TData, TValue>({
   });
 
   useEffect(() => {
-    if (filter && filterColumn) {
+    if (filterColumn) {
       table.getColumn(filterColumn)?.setFilterValue(filter);
     }
   }, [filter, filterColumn]);
