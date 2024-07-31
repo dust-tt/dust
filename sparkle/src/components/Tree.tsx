@@ -50,7 +50,7 @@ interface TreeItemProps {
   type?: "node" | "item" | "leaf";
   variant?: "file" | "folder" | "database" | "channel";
   size?: "sm" | "md";
-  visual?: ComponentType<{ className?: string }>;
+  visual?: React.ReactNode;
   checkbox?: CheckboxProps;
   onChevronClick?: () => void;
   collapsed?: boolean;
@@ -138,11 +138,15 @@ Tree.Item = function ({
               size === "sm" ? "s-gap-1.5" : "s-gap-2"
             )}
           >
-            <Icon
-              visual={visual ? visual : visualTable[variant]}
-              size={size}
-              className="s-flex-shrink-0 s-text-element-700"
-            />
+            {visual ? (
+              visual
+            ) : (
+              <Icon
+                visual={visualTable[variant]}
+                size="sm"
+                className="s-flex-shrink-0 s-text-element-700"
+              />
+            )}
 
             <div
               className={classNames(

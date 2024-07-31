@@ -258,7 +258,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Intercom"
                 type="item"
-                visual={IntercomLogo}
+                visual={<IntercomLogo />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -270,7 +270,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Notion"
                 type="item"
-                visual={NotionLogo}
+                visual={<NotionLogo />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -282,7 +282,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Slack"
                 type="item"
-                visual={SlackLogo}
+                visual={<SlackLogo />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -294,7 +294,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={Dust}
+                visual={<Dust />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -538,7 +538,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Intercom"
                 type="item"
-                visual={IntercomLogo}
+                visual={<IntercomLogo />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -550,7 +550,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Notion"
                 type="item"
-                visual={NotionLogo}
+                visual={<NotionLogo />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -562,7 +562,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Slack"
                 type="item"
-                visual={SlackLogo}
+                visual={<SlackLogo />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -574,7 +574,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={Dust}
+                visual={<Dust />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -601,7 +601,7 @@ export const SelectDataSourceExample = () => {
             <Tree>
               <Tree.Item
                 label="Intercom"
-                visual={IntercomLogo}
+                visual={<IntercomLogo />}
                 size="md"
                 areActionsFading={false}
                 actions={
@@ -623,7 +623,7 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Slack"
                 collapsed={true}
-                visual={SlackLogo}
+                visual={<SlackLogo />}
                 areActionsFading={false}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
@@ -644,7 +644,7 @@ export const SelectDataSourceExample = () => {
               />
               <Tree.Item
                 label="Notion"
-                visual={NotionLogo}
+                visual={<NotionLogo />}
                 areActionsFading={false}
                 size="md"
                 actions={
@@ -673,7 +673,7 @@ export const SelectDataSourceExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Google Drive"
-                visual={DriveLogo}
+                visual={<DriveLogo />}
                 areActionsFading={false}
                 size="md"
                 defaultCollapsed={true}
@@ -704,7 +704,7 @@ export const SelectDataSourceExample = () => {
             <Tree>
               <Tree.Item
                 label="Intercom"
-                visual={IntercomLogo}
+                visual={<IntercomLogo />}
                 size="md"
                 checkbox={{
                   variant: "checkable",
@@ -717,7 +717,7 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Slack"
                 collapsed={true}
-                visual={SlackLogo}
+                visual={<SlackLogo />}
                 size="md"
                 checkbox={{
                   variant: "checkable",
@@ -729,7 +729,7 @@ export const SelectDataSourceExample = () => {
               />
               <Tree.Item
                 label="Notion"
-                visual={NotionLogo}
+                visual={<NotionLogo />}
                 size="md"
                 checkbox={{
                   variant: "checkable",
@@ -785,7 +785,7 @@ export const SelectDataSourceExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Google Drive"
-                visual={DriveLogo}
+                visual={<DriveLogo />}
                 size="md"
                 checkbox={{
                   variant: "checkable",
