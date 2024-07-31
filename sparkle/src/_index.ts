@@ -148,8 +148,8 @@ export { Markdown };
 import { DataTable } from "./components/DataTable";
 export { DataTable };
 
-import { Table } from "./components/Table";
-export { Table };
+import { Table, TableData } from "./components/Table";
+export { Table, TableData };
 
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,
