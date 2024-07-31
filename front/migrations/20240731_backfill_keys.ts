@@ -19,7 +19,14 @@ async function backfillApiKeys(
     if (!key.groupId) {
       logger.info(`Backfilling key ${key.id} to global group`);
       if (execute) {
-        await key.setGroup(globalGroup);
+        await KeyResource.model.update(
+          { groupId: globalGroup.id },
+          {
+            where: {
+              id: key.id,
+            },
+          }
+        );
       }
     }
   }

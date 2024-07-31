@@ -15,7 +15,6 @@ import { v4 as uuidv4 } from "uuid";
 
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
@@ -141,17 +140,6 @@ export class KeyResource extends BaseResource<KeyModel> {
   async setIsDisabled() {
     return this.model.update(
       { status: "disabled" },
-      {
-        where: {
-          id: this.id,
-        },
-      }
-    );
-  }
-
-  async setGroup(group: GroupResource) {
-    return this.model.update(
-      { groupId: group.id },
       {
         where: {
           id: this.id,
