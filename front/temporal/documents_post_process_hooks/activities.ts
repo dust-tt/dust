@@ -11,7 +11,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { DocumentsPostProcessHookType } from "@app/lib/documents_post_process_hooks/hooks";
 import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/lib/documents_post_process_hooks/hooks";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 

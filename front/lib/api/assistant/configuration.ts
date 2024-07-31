@@ -70,7 +70,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
