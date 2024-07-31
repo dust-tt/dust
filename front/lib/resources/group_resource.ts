@@ -202,7 +202,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  static async fetchWorkspaceGroupsFromKey(
+  static async listWorkspaceGroupsFromKey(
     key: KeyResource
   ): Promise<GroupResource[]> {
     // TODO(GROUPS_INFRA): we need to pull the groups associated with the key once that's built.
