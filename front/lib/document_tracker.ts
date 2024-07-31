@@ -5,7 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { TrackedDocument } from "@app/lib/models/doc_tracker";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 

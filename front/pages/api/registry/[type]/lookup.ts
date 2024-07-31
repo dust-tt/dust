@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { withLogging } from "@app/logger/withlogging";
 
 const { DUST_REGISTRY_SECRET } = process.env;

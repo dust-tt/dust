@@ -12,8 +12,7 @@ import config from "@app/lib/api/config";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
@@ -182,11 +181,6 @@ async function handler(
         editedByUserId: user.id,
         vaultId: globalVault.id,
       });
-
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        globalVault,
-        ds.toJSON()
-      );
 
       const dataSourceType = await getDataSource(auth, ds.name);
       if (dataSourceType) {

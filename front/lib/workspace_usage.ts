@@ -11,7 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 
 import { frontSequelize } from "./resources/storage";
 
@@ -185,7 +185,7 @@ export async function getMessageUsageData(
         "workspaces" w ON c."workspaceId" = w."id"
       LEFT JOIN
         "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
-      LEFT JOIN 
+      LEFT JOIN
         "messages" m2 on m."parentId" = m2."id"
       LEFT JOIN
         "user_messages" um on m2."userMessageId" = um."id"

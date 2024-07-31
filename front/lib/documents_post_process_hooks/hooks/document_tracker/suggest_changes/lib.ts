@@ -17,7 +17,7 @@ import {
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
 import { User } from "@app/lib/models/user";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import mainLogger from "@app/logger/logger";
 
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";

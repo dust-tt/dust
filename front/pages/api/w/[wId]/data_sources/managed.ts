@@ -23,8 +23,8 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSourceResource } from "@app/lib/resources/datasource_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
@@ -332,24 +332,25 @@ async function handler(
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
       const dataSource = await DataSourceResource.makeNew({
-        name: dataSourceName,
+        assistantDefaultSelected,
+        connectorProvider: provider,
         description: dataSourceDescription,
         dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        workspaceId: owner.id,
-        assistantDefaultSelected,
         editedByUserId: user.id,
+        name: dataSourceName,
         vaultId: vault.id,
+        workspaceId: owner.id,
       });
 
-      const globalVault = vault.isGlobal()
-        ? vault
-        : await VaultResource.fetchWorkspaceGlobalVault(auth);
-
       // For managed data source, we create a default view in the workspace vault.
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        globalVault,
-        dataSource.toJSON()
-      );
+      if (dataSource.isManaged()) {
+        const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          globalVault,
+          dataSource
+        );
+      }
 
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),
@@ -410,7 +411,6 @@ async function handler(
 
       await dataSource.update({
         connectorId: connectorsRes.value.id,
-        connectorProvider: provider,
       });
       const dataSourceType = await getDataSource(auth, dataSource.name);
       if (dataSourceType) {
