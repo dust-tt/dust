@@ -1,4 +1,5 @@
 import {
+  Button,
   ContextItem,
   FolderOpenIcon,
   Icon,
@@ -6,12 +7,14 @@ import {
   PlusIcon,
   Popup,
   RobotIcon,
+  Searchbar,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import * as React from "react";
 
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -76,10 +79,8 @@ export default function DataSourcesView({
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
-  const {
-    submit: handleCreateDataSource,
-    isSubmitting: isSubmittingCreateDataSource,
-  } = useSubmitFunction(async () => {
+  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const { submit: handleCreateDataSource } = useSubmitFunction(async () => {
     // Enforce plan limits: DataSources count.
     if (
       plan.limits.dataSources.count != -1 &&
@@ -90,6 +91,9 @@ export default function DataSourcesView({
       void router.push(`/w/${owner.sId}/builder/data-sources/new`);
     }
   });
+
+  const searchBarRef = useRef<HTMLInputElement>(null);
+
   return (
     <AppLayout
       subscription={subscription}
@@ -106,26 +110,31 @@ export default function DataSourcesView({
           icon={FolderOpenIcon}
           description="Make more documents accessible to this workspace. Manage folders manually or via API."
         />
-
         {dataSources.length > 0 ? (
           <div className="relative">
-            <Page.SectionHeader
-              title=""
-              description=""
-              action={
-                !readOnly
-                  ? {
-                      label: "Add a new Folder",
-                      variant: "primary",
-                      icon: PlusIcon,
-                      onClick: async () => {
-                        await handleCreateDataSource();
-                      },
-                      disabled: isSubmittingCreateDataSource,
-                    }
-                  : undefined
-              }
-            />
+            <div className="flex flex-row gap-2">
+              <Searchbar
+                ref={searchBarRef}
+                name="search"
+                placeholder="Search (Name)"
+                value={dataSourceSearch}
+                onChange={(s) => {
+                  setDataSourceSearch(s);
+                }}
+              />
+              {!readOnly && (
+                <Button.List>
+                  <Button
+                    variant="primary"
+                    icon={PlusIcon}
+                    label="Create a folder"
+                    onClick={async () => {
+                      await handleCreateDataSource();
+                    }}
+                  />
+                </Button.List>
+              )}
+            </div>
             <Popup
               show={showDatasourceLimitPopup}
               chipLabel={`${plan.name} plan`}

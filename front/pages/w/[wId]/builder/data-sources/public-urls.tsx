@@ -1,4 +1,5 @@
 import {
+  Button,
   ContextItem,
   FolderOpenIcon,
   Icon,
@@ -6,6 +7,7 @@ import {
   PlusIcon,
   Popup,
   RobotIcon,
+  Searchbar,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -17,7 +19,8 @@ import type {
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -123,11 +126,8 @@ export default function DataSourcesView({
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
-
-  const {
-    submit: handleCreateDataSource,
-    isSubmitting: isSubmittingCreateDataSource,
-  } = useSubmitFunction(async () => {
+  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const { submit: handleCreateDataSource } = useSubmitFunction(async () => {
     // Enforce plan limits: DataSources count.
     if (
       plan.limits.dataSources.count != -1 &&
@@ -138,6 +138,7 @@ export default function DataSourcesView({
       void router.push(`/w/${owner.sId}/builder/data-sources/new-public-url`);
     }
   });
+  const searchBarRef = useRef<HTMLInputElement>(null);
   return (
     <AppLayout
       subscription={subscription}
@@ -157,22 +158,29 @@ export default function DataSourcesView({
 
         {dataSources.length > 0 ? (
           <div className="relative">
-            <Page.SectionHeader
-              title=""
-              description=""
-              action={
-                !readOnly
-                  ? {
-                      label: "Add a public URL",
-                      variant: "primary",
-                      icon: PlusIcon,
-                      onClick: handleCreateDataSource,
-
-                      disabled: isSubmittingCreateDataSource,
-                    }
-                  : undefined
-              }
-            />
+            <div className="flex flex-row gap-2">
+              <Searchbar
+                ref={searchBarRef}
+                name="search"
+                placeholder="Search (Name)"
+                value={dataSourceSearch}
+                onChange={(s) => {
+                  setDataSourceSearch(s);
+                }}
+              />
+              {!readOnly && (
+                <Button.List>
+                  <Button
+                    variant="primary"
+                    icon={PlusIcon}
+                    label="Create a wesbite"
+                    onClick={async () => {
+                      await handleCreateDataSource();
+                    }}
+                  />
+                </Button.List>
+              )}
+            </div>
             <Popup
               show={showDatasourceLimitPopup}
               chipLabel={`${plan.name} plan`}
