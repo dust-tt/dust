@@ -134,7 +134,7 @@ async function processSheet(
   );
 
   // Content.text is guaranteed to be a 2D array with each row of the same length.
-  const rows: string[][] = content.value.text;
+  const rows: string[][] = content?.value?.text;
   if (!rows) {
     localLogger.info(
       `[Spreadsheet] Cannot get any row from sheet ${worksheet.id} in document ${spreadsheet.id}.`
