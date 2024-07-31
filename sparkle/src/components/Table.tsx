@@ -59,12 +59,12 @@ export function Table<TData, TValue>({
   }, [filter, filterColumn]);
 
   return (
-    <TableData className={className}>
-      <TableData.Header>
+    <Table.Root className={className}>
+      <Table.Header>
         {table.getHeaderGroups().map((headerGroup) => (
-          <TableData.Row key={headerGroup.id}>
+          <Table.Row key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
-              <TableData.Head
+              <Table.Head
                 key={header.id}
                 width={width}
                 onClick={header.column.getToggleSortingHandler()}
@@ -93,27 +93,27 @@ export function Table<TData, TValue>({
                     />
                   )}
                 </div>
-              </TableData.Head>
+              </Table.Head>
             ))}
-          </TableData.Row>
+          </Table.Row>
         ))}
-      </TableData.Header>
-      <TableData.Body>
+      </Table.Header>
+      <Table.Body>
         {table.getRowModel().rows.map((row) => (
-          <TableData.Row
+          <Table.Row
             key={row.id}
             clickable={row.original.clickable}
             onClick={row.original.onClick}
           >
             {row.getVisibleCells().map((cell) => (
-              <TableData.Cell key={cell.id}>
+              <Table.Cell key={cell.id}>
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableData.Cell>
+              </Table.Cell>
             ))}
-          </TableData.Row>
+          </Table.Row>
         ))}
-      </TableData.Body>
-    </TableData>
+      </Table.Body>
+    </Table.Root>
   );
 }
 
@@ -121,33 +121,11 @@ interface TableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
 }
 
-interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
-  children: ReactNode;
-}
-
-interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
-  children?: ReactNode;
-  width?: FirstColumnWidth;
-}
-
-interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
-  avatarUrl?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  children?: ReactNode;
-  description?: string;
-}
-
-interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
-  children: ReactNode;
-  clickable?: boolean;
-  onClick?: () => void;
-}
-
-const TableRoot: React.FC<TableRootProps> = ({
+Table.Root = function TableRoot({
   children,
   className,
   ...props
-}) => {
+}: TableRootProps) {
   return (
     <table
       className={classNames("s-w-full s-border-collapse", className || "")}
@@ -158,7 +136,11 @@ const TableRoot: React.FC<TableRootProps> = ({
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ children, className, ...props }) => {
+interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
+  children: ReactNode;
+}
+
+Table.Header = function Header({ children, className, ...props }: HeaderProps) {
   return (
     <thead
       className={classNames("s-text-xs s-capitalize", className || "")}
@@ -169,12 +151,17 @@ const Header: React.FC<HeaderProps> = ({ children, className, ...props }) => {
   );
 };
 
-const Head: React.FC<HeadProps> = ({
+interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  children?: ReactNode;
+  width?: FirstColumnWidth;
+}
+
+Table.Head = function Head({
   children,
   className,
   width,
   ...props
-}) => {
+}: HeadProps) {
   return (
     <th
       className={classNames(
@@ -184,113 +171,108 @@ const Head: React.FC<HeadProps> = ({
       )}
       {...props}
     >
-      <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
-        {children}
-      </div>
+      {children}
     </th>
   );
 };
 
-const Body: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
+Table.Body = function Body({
   children,
   className,
   ...props
-}) => (
-  <tbody className={className || ""} {...props}>
-    {children}
-  </tbody>
-);
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tbody className={className} {...props}>
+      {children}
+    </tbody>
+  );
+};
 
-const Footer: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
-  children,
-  className,
-  ...props
-}) => (
-  <tfoot
-    className={classNames(
-      "s-border-t s-border-structure-200 s-bg-structure-50",
-      className || ""
-    )}
-    {...props}
-  >
-    {children}
-  </tfoot>
-);
+interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  children: ReactNode;
+  clickable?: boolean;
+  onClick?: () => void;
+}
 
-const Row: React.FC<RowProps> = ({
+Table.Row = function Row({
   children,
   className,
   clickable = false,
   onClick,
   ...props
-}) => (
-  <tr
-    className={classNames(
-      "s-border-b s-border-structure-200 s-text-sm",
-      className || ""
-    )}
-    {...props}
-  >
-    {children}
-    {clickable && (
-      <td
-        className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
-        onClick={clickable ? onClick : undefined}
-      >
-        <Icon visual={MoreIcon} size="sm" />
-      </td>
-    )}
-  </tr>
-);
+}: RowProps) {
+  return (
+    <tr
+      className={classNames(
+        "s-border-b s-border-structure-200 s-text-sm",
+        className || ""
+      )}
+      {...props}
+    >
+      {children}
+      {clickable && (
+        <td
+          className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
+          onClick={clickable ? onClick : undefined}
+        >
+          <Icon visual={MoreIcon} size="sm" />
+        </td>
+      )}
+    </tr>
+  );
+};
 
-const Cell: React.FC<CellProps> = ({
+interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  avatarUrl?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children?: ReactNode;
+  description?: string;
+}
+
+Table.Cell = function Cell({
   children,
   className,
   avatarUrl,
   icon,
   description,
   ...props
-}) => (
-  <td
-    className={classNames(
-      "s-whitespace-nowrap s-py-2 s-pl-0.5 s-text-element-800",
-      className || ""
-    )}
-    {...props}
-  >
-    <div className="s-flex">
-      {avatarUrl && <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />}
-      {icon && (
-        <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
+}: CellProps) {
+  return (
+    <td
+      className={classNames(
+        "s-whitespace-nowrap s-py-2 s-pl-0.5 s-text-element-800",
+        className || ""
       )}
+      {...props}
+    >
       <div className="s-flex">
-        <span className="s-text-sm s-text-element-800">{children}</span>
-        {description && (
-          <span className="s-pl-2 s-text-sm s-text-element-600">
-            {description}
-          </span>
+        {avatarUrl && (
+          <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />
         )}
+        {icon && (
+          <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
+        )}
+        <div className="s-flex">
+          <span className="s-text-sm s-text-element-800">{children}</span>
+          {description && (
+            <span className="s-pl-2 s-text-sm s-text-element-600">
+              {description}
+            </span>
+          )}
+        </div>
       </div>
-    </div>
-  </td>
-);
+    </td>
+  );
+};
 
-const Caption: React.FC<React.HTMLAttributes<HTMLTableCaptionElement>> = ({
+Table.Caption = function Caption({
   children,
   className,
   ...props
-}) => (
-  <caption className={classNames(className || "")} {...props}>
-    {children}
-  </caption>
-);
-
-export const TableData = Object.assign(TableRoot, {
-  Header,
-  Body,
-  Footer,
-  Head,
-  Row,
-  Cell,
-  Caption,
-});
+}: React.HTMLAttributes<HTMLTableCaptionElement>) {
+  return (
+    <caption className={className} {...props}>
+      {children}
+    </caption>
+  );
+};
