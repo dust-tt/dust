@@ -42,8 +42,6 @@ async function handler(
     return;
   }
 
-  console.log("--------------------------");
-
   const parse = req.headers.authorization.match(/Bearer ([a-zA-Z0-9]+)/);
   if (!parse || !parse[1]) {
     res.status(401).end();
