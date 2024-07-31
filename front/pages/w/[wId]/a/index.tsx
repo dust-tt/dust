@@ -262,15 +262,15 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
 
 export function APIKeys({
   owner,
-  groups,
+  // groups,
 }: {
   owner: WorkspaceType;
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  const globalGroup = groups.find((group) => group.type === "global");
+  // const globalGroup = groups.find((group) => group.type === "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyGroup, setNewApiKeyGroup] = useState(globalGroup);
+  // const [newApiKeyGroup, setNewApiKeyGroup] = useState(globalGroup);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
 
   const { keys } = useKeys(owner);
@@ -310,7 +310,7 @@ export function APIKeys({
         isOpen={isNewApiKeyPromptOpen}
         title="New API Key"
         onValidate={() =>
-          handleGenerate({ name: newApiKeyName, group: newApiKeyGroup })
+          handleGenerate({ name: newApiKeyName /* group: newApiKeyGroup */ })
         }
         onCancel={() => setIsNewApiKeyPromptOpen(false)}
       >
@@ -320,7 +320,8 @@ export function APIKeys({
           value={newApiKeyName}
           onChange={(e) => setNewApiKeyName(e)}
         />
-        <div className="align-center flex flex-row items-center gap-2 p-2">
+        {/* TODO(20240731 thomas) Enable group selection }
+        {/* <div className="align-center flex flex-row items-center gap-2 p-2">
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
             Assign group permissions:{" "}
           </span>
@@ -338,7 +339,7 @@ export function APIKeys({
               ))}
             </DropdownMenu.Items>
           </DropdownMenu>
-        </div>
+        </div> */}
       </Dialog>
       <Page.SectionHeader
         title="API Keys"
