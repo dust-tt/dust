@@ -204,18 +204,21 @@ export class GroupResource extends BaseResource<GroupModel> {
     key: KeyResource
   ): Promise<GroupResource[]> {
     // TODO(GROUPS_INFRA): we need to pull the groups associated with the key once that's built.
-    const group = await this.model.findOne({
+    const groups = await this.model.findAll({
       where: {
         workspaceId: key.workspaceId,
-        type: key.isSystem ? "system" : "global",
+        [Op.or]: [
+          { type: key.isSystem ? "system" : "global" },
+          { id: key.groupId },
+        ],
       },
     });
 
-    if (!group) {
+    if (groups.length === 0) {
       throw new Error("Group for key not found.");
     }
 
-    return [new this(GroupModel, group.get())];
+    return groups.map((group) => new this(GroupModel, group.get()));
   }
 
   static async internalFetchWorkspaceGlobalGroup(
