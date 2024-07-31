@@ -43,11 +43,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
-    const existingGroups = await GroupModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
+    const existingGroups = (
+      await GroupModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+        },
+      })
+    ).map((group) => new this(GroupModel, group.get()));
     const systemGroup =
       existingGroups.find((v) => v.type === "system") ||
       (await GroupResource.makeNew({

@@ -48,11 +48,13 @@ export class VaultResource extends BaseResource<VaultModel> {
       globalGroup: GroupType;
     }
   ) {
-    const existingVaults = await VaultModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
+    const existingVaults = (
+      await VaultModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+        },
+      })
+    ).map((vault) => new this(VaultModel, vault.get()));
     const systemVault =
       existingVaults.find((v) => v.kind === "system") ||
       (await VaultResource.makeNew({
