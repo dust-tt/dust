@@ -54,3 +54,10 @@ export function isGoogleDriveFolder(file: GoogleDriveFiles) {
 export function isGoogleDriveSpreadSheetFile(file: { mimeType: string }) {
   return file.mimeType === "application/vnd.google-apps.spreadsheet";
 }
+
+export function isTableFile(file: { mimeType: string }) {
+  return (
+    file.mimeType === "application/vnd.google-apps.spreadsheet" ||
+    file.mimeType === "text/csv"
+  );
+}

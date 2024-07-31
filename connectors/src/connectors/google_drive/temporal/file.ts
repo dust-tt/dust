@@ -8,6 +8,7 @@ import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/
 import {
   getMimeTypesToDownload,
   isGoogleDriveSpreadSheetFile,
+  isTableFile,
   MIME_TYPES_TO_EXPORT,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
@@ -247,12 +248,18 @@ export async function syncOneFile(
         return false;
       }
 
-      if (isGoogleDriveSpreadSheetFile(file)) {
-        return syncOneFileSpreadSheet(
+      const maxDocumentLen = config?.largeFilesEnabled
+        ? MAX_LARGE_DOCUMENT_TXT_LEN
+        : MAX_DOCUMENT_TXT_LEN;
+
+      if (isTableFile(file)) {
+        return syncOneFileTable(
           connectorId,
           oauth2client,
           file,
-          localLogger
+          localLogger,
+          dataSourceConfig,
+          maxDocumentLen
         );
       } else {
         return syncOneFileTextDocument(
@@ -263,34 +270,49 @@ export async function syncOneFile(
           config,
           dataSourceConfig,
           startSyncTs,
-          isBatchSync
+          isBatchSync,
+          maxDocumentLen
         );
       }
     }
   );
 }
 
-async function syncOneFileSpreadSheet(
+async function syncOneFileTable(
   connectorId: ModelId,
   oauth2client: OAuth2Client,
   file: GoogleDriveObjectType,
-  localLogger: Logger
+  localLogger: Logger,
+  dataSourceConfig: DataSourceConfig,
+  maxDocumentLen: number
 ) {
-  const upsertTimestampMs = undefined;
-  const documentId = getDocumentId(file.id);
   let skipReason: string | undefined;
-  const res = await syncSpreadSheet(oauth2client, connectorId, file);
-  if (!res.isSupported) {
-    return false;
-  }
-  if (res.skipReason) {
-    localLogger.info(
-      {},
-      `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
-    );
-    skipReason = res.skipReason;
-  }
+  const upsertTimestampMs = undefined;
 
+  const documentId = getDocumentId(file.id);
+
+  if (isGoogleDriveSpreadSheetFile(file)) {
+    const res = await syncSpreadSheet(oauth2client, connectorId, file);
+    if (!res.isSupported) {
+      return false;
+    }
+    if (res.skipReason) {
+      localLogger.info(
+        {},
+        `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
+      );
+      skipReason = res.skipReason;
+    }
+  } else {
+    await handleFileExport(
+      oauth2client,
+      file,
+      maxDocumentLen,
+      localLogger,
+      dataSourceConfig,
+      connectorId
+    );
+  }
   await updateGoogleDriveFiles(
     connectorId,
     documentId,
@@ -301,6 +323,7 @@ async function syncOneFileSpreadSheet(
 
   return !skipReason;
 }
+
 async function syncOneFileTextDocument(
   connectorId: ModelId,
   oauth2client: OAuth2Client,
@@ -309,18 +332,18 @@ async function syncOneFileTextDocument(
   config: GoogleDriveConfig | null,
   dataSourceConfig: DataSourceConfig,
   startSyncTs: number,
-  isBatchSync: boolean
+  isBatchSync: boolean,
+  maxDocumentLen: number
 ) {
-  const maxDocumentLen = config?.largeFilesEnabled
-    ? MAX_LARGE_DOCUMENT_TXT_LEN
-    : MAX_DOCUMENT_TXT_LEN;
-
-  const documentId = getDocumentId(file.id);
   let documentContent: CoreAPIDataSourceDocumentSection | null = null;
+
   const mimeTypesToDownload = await getMimeTypesToDownload({
     pdfEnabled: config?.pdfEnabled || false,
     csvEnabled: config?.csvEnabled || false,
   });
+
+  const documentId = getDocumentId(file.id);
+
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     documentContent = await handleGoogleDriveExport(
       oauth2client,
