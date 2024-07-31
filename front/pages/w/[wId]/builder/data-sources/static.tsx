@@ -177,9 +177,9 @@ export default function DataSourcesView({
         <Table
           data={clickableDataSources}
           columns={columns}
-          // onRowClick={(row) => {
-          //   void router.push(`/w/${owner.sId}/builder/data-sources/${row.original.name}`);
-          // }}
+          width="expanded"
+          filter={dataSourceSearch}
+          filterColumn={"name"}
         />
       </Page.Vertical>
     </AppLayout>
@@ -213,7 +213,7 @@ function getTableColumns() {
       ),
     },
     {
-      header: "Lasted updated",
+      header: "Last updated",
       accessorKey: "editedByUser.editedAt",
       cell: (info) => (
         <TableData.Cell>
