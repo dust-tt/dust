@@ -49,6 +49,7 @@ interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
   variant?: "file" | "folder" | "database" | "channel";
+  size?: "sm" | "md";
   visual?: React.ReactNode;
   checkbox?: CheckboxProps;
   onChevronClick?: () => void;
@@ -56,6 +57,7 @@ interface TreeItemProps {
   defaultCollapsed?: boolean;
   className?: string;
   actions?: React.ReactNode;
+  areActionsFading?: boolean;
 }
 
 export interface TreeItemPropsWithChildren extends TreeItemProps {
@@ -73,12 +75,14 @@ Tree.Item = function ({
   type = "node",
   className = "",
   variant = "file",
+  size = "sm",
   visual,
   checkbox,
   onChevronClick,
   collapsed,
   defaultCollapsed,
   actions,
+  areActionsFading = true,
   renderTreeItems,
   children,
 }: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
@@ -108,7 +112,8 @@ Tree.Item = function ({
       <div
         className={classNames(
           className ? className : "",
-          "s-group s-flex s-cursor-default s-flex-row s-items-center s-gap-4 s-py-1"
+          "s-group s-flex s-cursor-default s-flex-row s-items-center s-gap-4",
+          size === "sm" ? "s-py-1" : "s-py-2"
         )}
       >
         {type === "node" && (
@@ -126,8 +131,13 @@ Tree.Item = function ({
         {type === "leaf" && <div className="s-w-5"></div>}
         {checkbox && <Checkbox {...checkbox} />}
 
-        <div className="s-flex s-w-full s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
-          <div className="s-grid s-w-full s-grid-cols-[auto,1fr,auto] s-items-center s-gap-1.5 s-text-sm s-font-medium s-text-element-900">
+        <div className="s-flex s-w-full s-items-center">
+          <div
+            className={classNames(
+              "s-grid s-w-full s-grid-cols-[auto,1fr,auto] s-items-center",
+              size === "sm" ? "s-gap-1.5" : "s-gap-2"
+            )}
+          >
             {visual ? (
               visual
             ) : (
@@ -138,9 +148,23 @@ Tree.Item = function ({
               />
             )}
 
-            <div className="s-truncate">{label}</div>
+            <div
+              className={classNames(
+                "s-truncate s-font-medium s-text-element-900",
+                size === "sm" ? "s-text-sm" : "s-text-base"
+              )}
+            >
+              {label}
+            </div>
             {actions && (
-              <div className="s-inline-block s-transform s-pl-5 s-opacity-0 s-duration-300 group-hover:s-opacity-100">
+              <div
+                className={classNames(
+                  "s-inline-block s-pl-5",
+                  areActionsFading
+                    ? "s-transform s-opacity-0 s-duration-300 group-hover:s-opacity-100"
+                    : ""
+                )}
+              >
                 {actions}
               </div>
             )}
