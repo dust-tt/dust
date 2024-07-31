@@ -30,6 +30,22 @@ async function backfillApiKeys(
       }
     }
   }
+
+  const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
+  const systemKey = await KeyResource.fetchSystemKeyForWorkspace(workspace);
+  if (systemKey) {
+    logger.info(`Backfilling system key ${systemKey.id} to globsystemal group`);
+    if (execute) {
+      await KeyResource.model.update(
+        { groupId: systemGroup.id },
+        {
+          where: {
+            id: systemKey.id,
+          },
+        }
+      );
+    }
+  }
 }
 
 makeScript({}, async ({ execute }, logger) => {

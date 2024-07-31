@@ -91,6 +91,7 @@ User.hasMany(KeyModel, {
   onDelete: "SET NULL",
 });
 GroupModel.hasMany(KeyModel, {
+  // TODO(20240731 thomas) allowNull to false once backfilled
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
