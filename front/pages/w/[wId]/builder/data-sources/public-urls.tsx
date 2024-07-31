@@ -19,6 +19,7 @@ import type {
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ComponentType } from "react";
 import { useMemo, useRef, useState } from "react";
 import * as React from "react";
 
@@ -233,11 +234,19 @@ export default function DataSourcesView({
 }
 
 function getTableColumns() {
+  // to please typescript
+  type OriginalType = DataSourceType & {
+    icon: ComponentType;
+    usage: number;
+  };
+  interface Info {
+    row: { original: OriginalType };
+  }
   return [
     {
       header: "Name",
       accessorKey: "name",
-      cell: (info) => (
+      cell: (info: Info) => (
         <TableData.Cell icon={info.row.original.icon}>
           {info.row.original.name}
         </TableData.Cell>
@@ -246,7 +255,7 @@ function getTableColumns() {
     {
       header: "Used by",
       accessorKey: "usage",
-      cell: (info) => (
+      cell: (info: Info) => (
         <TableData.Cell icon={RobotIcon}>
           {info.row.original.usage}
         </TableData.Cell>
@@ -254,18 +263,22 @@ function getTableColumns() {
     },
     {
       header: "Added by",
-      cell: (info) => (
-        <TableData.Cell avatarUrl={info.row.original.editedByUser.imageUrl} />
+      cell: (info: Info) => (
+        <TableData.Cell
+          avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+        />
       ),
     },
     {
       header: "Last updated",
       accessorKey: "editedByUser.editedAt",
-      cell: (info) => (
+      cell: (info: Info) => (
         <TableData.Cell>
-          {new Date(
-            info.row.original.editedByUser.editedAt
-          ).toLocaleDateString()}
+          {info.row.original.editedByUser?.editedAt
+            ? new Date(
+                info.row.original.editedByUser.editedAt
+              ).toLocaleDateString()
+            : null}
         </TableData.Cell>
       ),
     },
