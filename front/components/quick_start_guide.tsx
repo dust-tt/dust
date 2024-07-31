@@ -4,11 +4,10 @@ import {
   Icon,
   Modal,
   Page,
-  RocketIcon,
 } from "@dust-tt/sparkle";
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { ClientSideTracking } from "@app/lib/tracking/client";
 
