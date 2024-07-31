@@ -83,7 +83,6 @@ const TableExample = () => {
           {info.row.original.name}
         </Table.Cell>
       ),
-      meta: { width: "expanded" },
     },
     {
       accessorKey: "usedBy",

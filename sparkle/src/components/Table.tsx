@@ -16,13 +16,10 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-type FirstColumnWidth = "expanded" | "normal";
-
 interface TableProps<TData, TValue> {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
   className?: string;
-  width?: FirstColumnWidth;
   filter?: string;
   filterColumn?: string;
 }
@@ -31,7 +28,6 @@ export function Table<TData, TValue>({
   data,
   columns,
   className,
-  width = "normal",
   filter,
   filterColumn,
 }: TableProps<TData, TValue>) {
@@ -66,7 +62,6 @@ export function Table<TData, TValue>({
             {headerGroup.headers.map((header) => (
               <Table.Head
                 key={header.id}
-                width={width}
                 onClick={header.column.getToggleSortingHandler()}
                 className={header.column.getCanSort() ? "s-cursor-pointer" : ""}
               >
@@ -153,20 +148,13 @@ Table.Header = function Header({ children, className, ...props }: HeaderProps) {
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
-  width?: FirstColumnWidth;
 }
 
-Table.Head = function Head({
-  children,
-  className,
-  width,
-  ...props
-}: HeadProps) {
+Table.Head = function Head({ children, className, ...props }: HeadProps) {
   return (
     <th
       className={classNames(
-        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
-        width === "expanded" ? "s-w-full" : "s-w-auto",
+        "s-w-full s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
         className || ""
       )}
       {...props}
