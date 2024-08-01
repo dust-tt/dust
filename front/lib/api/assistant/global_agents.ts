@@ -239,7 +239,7 @@ function _getGPT4GlobalAgent({
     description: GPT_4O_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
-    status: status,
+    status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     model: {
