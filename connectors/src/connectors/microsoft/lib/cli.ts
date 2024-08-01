@@ -80,9 +80,6 @@ export const microsoft = async ({
       const { nodeType, itemAPIPath } = typeAndPathFromInternalId(
         args.internalId
       );
-      if (nodeType !== "file") {
-        throw new Error(`Can only skip file, got ${nodeType} / ${itemAPIPath}`);
-      }
 
       const client = await getClient(connector.connectionId);
       const driveItem = (await getItem(client, itemAPIPath)) as DriveItem;

@@ -382,9 +382,10 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
     }
     case "drive": {
       const item = itemRaw as MicrosoftGraph.Drive;
+      const siteName = extractSiteName(item);
       return {
         nodeType,
-        name: item.name ?? null,
+        name: (item.name ?? "unknown") + (siteName ? ` (${siteName})` : ""),
         internalId: getDriveInternalId(item),
         parentInternalId: null,
         mimeType: null,
@@ -425,13 +426,6 @@ export function getDriveItemInternalId(item: MicrosoftGraph.DriveItem) {
 
   if (!nodeType) {
     throw new Error("Unexpected: item is neither folder nor file");
-  }
-
-  if (item.root) {
-    return internalIdFromTypeAndPath({
-      nodeType: "drive",
-      itemAPIPath: `/drives/${parentReference.driveId}`,
-    });
   }
 
   return internalIdFromTypeAndPath({
@@ -506,5 +500,15 @@ export async function wrapMicrosoftGraphAPIWithResult<T>(
     return new Ok(await fn());
   } catch (error) {
     return new Err(error as Error);
+  }
+}
+
+export function extractSiteName(item: MicrosoftGraph.BaseItem) {
+  const webUrl = item.webUrl;
+  if (webUrl) {
+    const siteName = webUrl.match(/\/sites\/([^/]+)\//);
+    if (siteName) {
+      return siteName[1];
+    }
   }
 }

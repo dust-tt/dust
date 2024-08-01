@@ -551,9 +551,20 @@ export async function syncDeltaForRootNodesInDrive({
           folder: driveItem,
           internalId,
         });
+
+        const blob = driveItem.root
+          ? itemToMicrosoftNode(
+              "drive",
+              await getItem(
+                client,
+                `/drives/${driveItem.parentReference.driveId}`
+              )
+            )
+          : itemToMicrosoftNode("folder", driveItem);
+
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
-          itemToMicrosoftNode("folder", driveItem)
+          blob
         );
 
         // add parent information to new node resource. for the toplevel folder,
