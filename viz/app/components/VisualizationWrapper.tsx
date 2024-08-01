@@ -61,15 +61,6 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  // This retry function sends a command to the host window requesting a retry of a previous
-  // operation, typically if the generated code fails.
-  const retry = useCallback(
-    async (errorMessage: string): Promise<void> => {
-      await sendCrossDocumentMessage("retry", { errorMessage });
-    },
-    [sendCrossDocumentMessage]
-  );
-
   const sendHeightToParent = useCallback(
     async ({ height }: { height: number | null }) => {
       if (height === null) {
@@ -83,7 +74,7 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  return { fetchCode, fetchFile, error, retry, sendHeightToParent };
+  return { fetchCode, fetchFile, error, sendHeightToParent };
 }
 
 const useFile = (
@@ -134,9 +125,8 @@ export function VisualizationWrapperWithErrorBoundary({
 
   return (
     <ErrorBoundary
-      errorMessage="We encountered an error while running the code generated above. You can try again by clicking the button below."
-      onRetryClick={(errorMessage: string) => {
-        sendCrossDocumentMessage("retry", { errorMessage });
+      onErrored={() => {
+        sendCrossDocumentMessage("setErrored", undefined);
       }}
     >
       <VisualizationWrapper api={api} />

@@ -12,10 +12,6 @@ interface GetFileParams {
   fileId: string;
 }
 
-interface RetryParams {
-  errorMessage: string;
-}
-
 interface SetContentHeightParams {
   height: number;
 }
@@ -24,8 +20,8 @@ interface SetContentHeightParams {
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
-  retry: RetryParams;
   setContentHeight: SetContentHeightParams;
+  setErrored: void;
 };
 
 // Derive the command type from the keys of the request map
@@ -42,8 +38,8 @@ export type VisualizationRPCRequest = {
 export const validCommands: VisualizationRPCCommand[] = [
   "getFile",
   "getCodeToExecute",
-  "retry",
   "setContentHeight",
+  "setErrored",
 ];
 
 // Command results.
@@ -51,8 +47,8 @@ export const validCommands: VisualizationRPCCommand[] = [
 export interface CommandResultMap {
   getFile: { fileBlob: Blob | null };
   getCodeToExecute: { code: string };
-  retry: void;
   setContentHeight: void;
+  setErrored: void;
 }
 
 // TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
@@ -100,29 +96,6 @@ export function isGetCodeToExecuteRequest(
   );
 }
 
-// Type guard for retry.
-export function isRetryRequest(
-  value: unknown
-): value is VisualizationRPCRequest & {
-  command: "retry";
-  params: RetryParams;
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "retry" &&
-    typeof v.identifier === "string" &&
-    typeof v.messageUniqueId === "string" &&
-    typeof v.params === "object" &&
-    v.params !== null &&
-    typeof (v.params as RetryParams).errorMessage === "string"
-  );
-}
-
 // Type guard for setContentHeight.
 export function isSetContentHeightRequest(
   value: unknown
@@ -146,6 +119,24 @@ export function isSetContentHeightRequest(
   );
 }
 
+export function isSetErroredRequest(
+  value: unknown
+): value is VisualizationRPCRequest & {
+  command: "setErrored";
+} {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const v = value as Partial<VisualizationRPCRequest>;
+
+  return (
+    v.command === "setErrored" &&
+    typeof v.identifier === "string" &&
+    typeof v.messageUniqueId === "string"
+  );
+}
+
 export function isVisualizationRPCRequest(
   value: unknown
 ): value is VisualizationRPCRequest {
@@ -156,7 +147,7 @@ export function isVisualizationRPCRequest(
   return (
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
-    isRetryRequest(value) ||
-    isSetContentHeightRequest(value)
+    isSetContentHeightRequest(value) ||
+    isSetErroredRequest(value)
   );
 }
