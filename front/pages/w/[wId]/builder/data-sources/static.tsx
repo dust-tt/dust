@@ -1,5 +1,6 @@
 import {
   Button,
+  DataTable,
   FolderIcon,
   FolderOpenIcon,
   Page,
@@ -7,8 +8,6 @@ import {
   Popup,
   RobotIcon,
   Searchbar,
-  Table,
-  TableData,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -176,10 +175,9 @@ export default function DataSourcesView({
           />
         )}
         {clickableDataSources.length > 0 && (
-          <Table
+          <DataTable
             data={clickableDataSources}
             columns={columns}
-            width="expanded"
             filter={dataSourceSearch}
             filterColumn={"name"}
           />
@@ -203,24 +201,24 @@ function getTableColumns() {
       header: "Name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <TableData.Cell icon={info.row.original.icon}>
+        <DataTable.Cell icon={info.row.original.icon}>
           {info.row.original.name}
-        </TableData.Cell>
+        </DataTable.Cell>
       ),
     },
     {
       header: "Used by",
       accessorKey: "usage",
       cell: (info: Info) => (
-        <TableData.Cell icon={RobotIcon}>
+        <DataTable.Cell icon={RobotIcon}>
           {info.row.original.usage}
-        </TableData.Cell>
+        </DataTable.Cell>
       ),
     },
     {
       header: "Added by",
       cell: (info: Info) => (
-        <TableData.Cell
+        <DataTable.Cell
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
         />
       ),
@@ -229,13 +227,13 @@ function getTableColumns() {
       header: "Last updated",
       accessorKey: "editedByUser.editedAt",
       cell: (info: Info) => (
-        <TableData.Cell>
+        <DataTable.Cell>
           {info.row.original.editedByUser?.editedAt
             ? new Date(
                 info.row.original.editedByUser.editedAt
               ).toLocaleDateString()
             : null}
-        </TableData.Cell>
+        </DataTable.Cell>
       ),
     },
   ];
