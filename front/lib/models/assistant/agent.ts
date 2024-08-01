@@ -126,6 +126,7 @@ AgentConfiguration.init(
     visualizationEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
+      defaultValue: false,
     },
     pictureUrl: {
       type: DataTypes.TEXT,
