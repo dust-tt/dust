@@ -99,7 +99,7 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
     )
   ) {
     logger.info("Updating tracked documents.");
-    await updateTrackedDocuments(dataSource.id, documentId, documentText);
+    await updateTrackedDocuments(auth, dataSource.id, documentId, documentText);
   }
 }
 

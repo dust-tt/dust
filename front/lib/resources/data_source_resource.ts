@@ -1,4 +1,9 @@
-import type { ConnectorProvider, DataSourceType, Result } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  DataSourceType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -127,6 +132,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
         connectorProvider,
       },
     });
+  }
+
+  // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
+  static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
+    const [dataSource] = await this.baseFetch(auth, { where: { id } });
+
+    return dataSource ?? null;
   }
 
   async delete(
