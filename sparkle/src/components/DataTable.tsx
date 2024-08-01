@@ -58,7 +58,7 @@ export function DataTable<TData, TValue>({
     <DataTable.Root className={className}>
       <DataTable.Header>
         {table.getHeaderGroups().map((headerGroup) => (
-          <DataTable.Row key={headerGroup.id} >
+          <DataTable.Row key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
               <DataTable.Head
                 key={header.id}
@@ -184,18 +184,14 @@ DataTable.Body = function Body({
 
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
-  clickable?: boolean;
   onClick?: () => void;
-  showMore?: boolean;
   onMoreClick?: () => void;
 }
 
 DataTable.Row = function Row({
   children,
   className,
-  clickable = false,
   onClick,
-  showMore = false,
   onMoreClick,
   ...props
 }: RowProps) {
@@ -203,18 +199,21 @@ DataTable.Row = function Row({
     <tr
       className={classNames(
         "s-border-b s-border-structure-200 s-text-sm",
-        clickable ? "s-cursor-pointer" : "",
+        onMoreClick ? "s-cursor-pointer" : "",
         className || ""
       )}
-      onClick={clickable ? onClick : undefined}
+      onClick={onClick ? onClick : undefined}
       {...props}
     >
       {children}
-      {showMore && (
-        <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600" onClick={(e) => {
-          e.stopPropagation(); // Prevent row click event
-          onMoreClick?.();
-        }}>
+      {onMoreClick && (
+        <td
+          className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent row click event
+            onMoreClick?.();
+          }}
+        >
           <Icon visual={MoreIcon} size="sm" />
         </td>
       )}

@@ -37,9 +37,7 @@ const DataTableExample = () => {
       lastUpdated: "July 8, 2023",
       size: "32kb",
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-      clickable: true,
       onClick: () => console.log("hehe"),
-      showMore: true,
       onMoreClick: () => console.log("show more"),
     },
     {
@@ -49,7 +47,6 @@ const DataTableExample = () => {
       lastUpdated: "2023-07-09",
       size: "64kb",
       icon: FolderIcon,
-      clickable: false,
     },
     {
       name: "Development",
