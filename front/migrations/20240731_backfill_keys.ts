@@ -11,41 +11,37 @@ async function backfillApiKeys(
   logger: Logger,
   execute: boolean
 ) {
+  logger.info("Handle workspace " + workspace.id);
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
-  const allKeys = await KeyResource.listNonSystemKeysByWorkspace(workspace);
 
-  for (const key of allKeys) {
-    if (!key.groupId) {
-      logger.info(`Backfilling key ${key.id} to global group`);
-      if (execute) {
-        await KeyResource.model.update(
-          { groupId: globalGroup.id },
-          {
-            where: {
-              id: key.id,
-            },
-          }
-        );
-      }
+  if (execute) {
+    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (globalGroup) {
+      await KeyResource.model.update(
+        { groupId: globalGroup.id },
+        {
+          where: {
+            workspaceId: workspace.id,
+            isSystem: false,
+          },
+        }
+      );
     }
-  }
 
-  const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
-  const systemKey = await KeyResource.fetchSystemKeyForWorkspace(workspace);
-  if (systemKey) {
-    logger.info(`Backfilling system key ${systemKey.id} to globsystemal group`);
-    if (execute) {
+    const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
+    if (systemGroup) {
       await KeyResource.model.update(
         { groupId: systemGroup.id },
         {
           where: {
-            id: systemKey.id,
+            workspaceId: workspace.id,
+            isSystem: true,
           },
         }
       );
     }
   }
+  logger.info("Done with workspace " + workspace.id);
 }
 
 makeScript({}, async ({ execute }, logger) => {
