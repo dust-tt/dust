@@ -1408,10 +1408,12 @@ async function _createAgentDataSourcesConfigData(
   // Although we have the capability to support multiple workspaces,
   // currently, we only support one workspace, which is the one the user is in.
   // This allows us to use the current authenticator to fetch resources.
-  const allWorkspaceIds = _.uniqBy(dataSourceConfigurations, "workspaceSId");
+  const allWorkspaceIds = [
+    ...new Set(dataSourceConfigurations.map((dsc) => dsc.workspaceId)),
+  ];
   const hasUniqueAccessibleWorkspace =
     allWorkspaceIds.length === 1 &&
-    auth.getNonNullableWorkspace().sId === allWorkspaceIds[0].workspaceId;
+    auth.getNonNullableWorkspace().sId === allWorkspaceIds[0];
   if (!hasUniqueAccessibleWorkspace) {
     throw new Error(
       "Can't create AgentDataSourcesConfig for retrieval: Multiple workspaces."
