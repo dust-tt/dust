@@ -1,6 +1,6 @@
 import {
   Button,
-  CloudArrowDownIcon,
+  GlobeAltIcon,
   Item,
   Modal,
   Page,
@@ -300,7 +300,7 @@ function PickDataSource({
             icon={
               ds.connectorProvider
                 ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-                : CloudArrowDownIcon
+                : GlobeAltIcon
             }
             key={ds.id}
             onClick={() => {

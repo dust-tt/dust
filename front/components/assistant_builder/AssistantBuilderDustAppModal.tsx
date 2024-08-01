@@ -1,10 +1,4 @@
-import {
-  CloudArrowDownIcon,
-  CommandLineIcon,
-  Item,
-  Modal,
-  Page,
-} from "@dust-tt/sparkle";
+import { CommandLineIcon, Item, Modal, Page } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 
@@ -60,7 +54,7 @@ function PickDustApp({
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
-        <Page.Header title="Select Dust App" icon={CloudArrowDownIcon} />
+        <Page.Header title="Select Dust App" icon={CommandLineIcon} />
         {hasSomeUnselectableApps && (
           <Page.P>
             Dust apps without a description are not selectable. To make a Dust
