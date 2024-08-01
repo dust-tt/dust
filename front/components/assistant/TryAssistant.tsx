@@ -93,6 +93,7 @@ export function usePreviewAssistant({
         generationSettings: builderState.generationSettings,
         actions: builderState.actions,
         maxStepsPerRun: builderState.maxStepsPerRun,
+        visualizationEnabled: builderState.visualizationEnabled,
         templateId: builderState.templateId,
       },
       agentConfigurationId: null,
@@ -131,6 +132,7 @@ export function usePreviewAssistant({
     builderState.actions,
     builderState.maxStepsPerRun,
     builderState.templateId,
+    builderState.visualizationEnabled,
     sendNotification,
   ]);
 

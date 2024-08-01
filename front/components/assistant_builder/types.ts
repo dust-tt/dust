@@ -169,6 +169,7 @@ export type AssistantBuilderState = {
   };
   actions: Array<AssistantBuilderActionConfiguration>;
   maxStepsPerRun: number | null;
+  visualizationEnabled: boolean;
   templateId: string | null;
 };
 
@@ -184,6 +185,7 @@ export type AssistantBuilderInitialState = {
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
   maxStepsPerRun: number | null;
+  visualizationEnabled: boolean;
   templateId: string | null;
 };
 
@@ -204,6 +206,7 @@ export function getDefaultAssistantState() {
       temperature: 0.7,
     },
     maxStepsPerRun: 3,
+    visualizationEnabled: false,
     templateId: null,
   } satisfies AssistantBuilderState;
 }
