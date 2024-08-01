@@ -12,6 +12,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { classNames } from "@app/lib/utils";
 
+type Visualization = {
+  code: string;
+  complete: boolean;
+  identifier: string;
+};
+
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
   response: CommandResultMap[T],
@@ -21,7 +27,7 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
     {
       command: "answer",
       messageUniqueId: request.messageUniqueId,
-      index: request.index,
+      identifier: request.identifier,
       result: response,
     },
     // TODO(2024-07-24 flav) Restrict origin.
@@ -37,17 +43,13 @@ function useVisualizationDataHandler({
   vizIframeRef,
   workspaceId,
 }: {
-  visualization: {
-    visualization: string;
-    complete: boolean;
-    index: number;
-  };
+  visualization: Visualization;
   onRetry: () => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
 }) {
-  const code = visualization.visualization;
+  const code = visualization.code;
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -77,7 +79,7 @@ function useVisualizationDataHandler({
       if (
         !isVisualizationRPCRequest(data) ||
         !isOriginatingFromViz ||
-        data.index !== visualization.index
+        data.identifier !== visualization.identifier
       ) {
         return;
       }
@@ -112,7 +114,7 @@ function useVisualizationDataHandler({
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
   }, [
-    visualization.index,
+    visualization.identifier,
     code,
     getFileBlob,
     onRetry,
@@ -127,11 +129,7 @@ export function VisualizationActionIframe({
   onRetry,
 }: {
   owner: WorkspaceType;
-  visualization: {
-    visualization: string;
-    complete: boolean;
-    index: number;
-  };
+  visualization: Visualization;
 
   onRetry: () => void;
 }) {
@@ -154,7 +152,7 @@ export function VisualizationActionIframe({
     vizIframeRef,
   });
 
-  const { visualization: code, complete: codeFullyGenerated } = visualization;
+  const { code, complete: codeFullyGenerated } = visualization;
 
   useEffect(() => {
     if (!codeFullyGenerated) {
@@ -230,7 +228,7 @@ export function VisualizationActionIframe({
                   ref={vizIframeRef}
                   // Set a min height so iframe can display error.
                   className="h-full min-h-96 w-full"
-                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?index=${visualization.index}`}
+                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
                   sandbox="allow-scripts"
                   onLoad={() => setIframeLoaded(true)}
                 />

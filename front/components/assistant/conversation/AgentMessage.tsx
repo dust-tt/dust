@@ -87,7 +87,7 @@ export function AgentMessage({
     useState<AgentMessageType>(message);
 
   const [visualizations, setVisualizations] = useState<
-    { visualization: string; complete: boolean }[]
+    { code: string; complete: boolean }[]
   >([]);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
@@ -105,7 +105,7 @@ export function AgentMessage({
     if (message.status === "succeeded") {
       setVisualizations(
         message.visualizations.map((v) => ({
-          visualization: v,
+          code: v,
           complete: true,
         }))
       );
@@ -220,16 +220,11 @@ export function AgentMessage({
             if (event.delimiterClassification === "visualization") {
               // If we receive a closing delimiter for a visualization, we can
               // consider the last viz to be complete.
-              setVisualizations((v) => {
-                const lastViz = v[v.length - 1];
-                if (lastViz) {
-                  return [
-                    ...v.slice(0, v.length - 1),
-                    { ...lastViz, complete: true },
-                  ];
-                }
-                return v;
-              });
+              setVisualizations((v) =>
+                v.map((item, index) =>
+                  index === v.length - 1 ? { ...item, complete: true } : item
+                )
+              );
             }
             break;
           case "opening_delimiter":
@@ -260,12 +255,12 @@ export function AgentMessage({
                 return [
                   ...v.slice(0, v.length - 1),
                   {
-                    visualization: lastViz.visualization + event.text,
+                    code: lastViz.code + event.text,
                     complete: false,
                   },
                 ];
               }
-              return [...v, { visualization: event.text, complete: false }];
+              return [...v, { code: event.text, complete: false }];
             });
             break;
           default:
@@ -509,7 +504,7 @@ export function AgentMessage({
     references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
-    visualizations: { visualization: string; complete: boolean }[];
+    visualizations: { code: string; complete: boolean }[];
   }) {
     if (agentMessage.status === "failed") {
       return (
@@ -534,7 +529,7 @@ export function AgentMessage({
           {visualizations.map((v, i) => {
             return (
               <VisualizationActionIframe
-                visualization={{ ...v, index: i }}
+                visualization={{ ...v, identifier: `${agentMessage.sId}_${i}` }}
                 key={i}
                 onRetry={() => retryHandler(agentMessage)}
                 owner={owner}

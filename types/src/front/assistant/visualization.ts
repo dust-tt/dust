@@ -2,7 +2,7 @@
 
 // Common base interface.
 interface VisualizationRPCRequestBase {
-  index: number;
+  identifier: string;
   messageUniqueId: string;
 }
 
@@ -72,7 +72,7 @@ export function isGetFileRequest(
 
   return (
     v.command === "getFile" &&
-    typeof v.index === "number" &&
+    typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
@@ -95,7 +95,7 @@ export function isGetCodeToExecuteRequest(
 
   return (
     v.command === "getCodeToExecute" &&
-    typeof v.index === "number" &&
+    typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string"
   );
 }
@@ -115,7 +115,7 @@ export function isRetryRequest(
 
   return (
     v.command === "retry" &&
-    typeof v.index === "number" &&
+    typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
@@ -138,7 +138,7 @@ export function isSetContentHeightRequest(
 
   return (
     v.command === "setContentHeight" &&
-    typeof v.index === "number" &&
+    typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&

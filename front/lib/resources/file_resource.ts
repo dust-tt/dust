@@ -57,10 +57,6 @@ export class FileResource extends BaseResource<FileModel> {
     id: string
   ): Promise<FileResource | null> {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `fetchById`");
-    }
     const res = await FileResource.fetchByIds(auth, [id]);
     return res.length > 0 ? res[0] : null;
   }
@@ -69,10 +65,7 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     ids: string[]
   ): Promise<FileResource[]> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `fetchByIds`");
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     const fileModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
 
@@ -204,20 +197,13 @@ export class FileResource extends BaseResource<FileModel> {
 
   getPublicUrl(auth: Authenticator): string {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getPublicUrl`");
-    }
-
+    const owner = auth.getNonNullableWorkspace();
     return `${config.getClientFacingUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     return FileResource.getCloudStoragePathForId({
       fileId: this.sId,

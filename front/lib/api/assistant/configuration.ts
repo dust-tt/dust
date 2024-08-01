@@ -387,7 +387,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     processConfigs,
     websearchConfigs,
     browseConfigs,
-
     agentUserRelations,
   ] = await Promise.all([
     variant === "full"

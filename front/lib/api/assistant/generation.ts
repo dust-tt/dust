@@ -2,7 +2,6 @@ import type {
   AgentConfigurationType,
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
-  ContentFragmentType,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -25,17 +24,13 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/types";
-import _ from "lodash";
 import moment from "moment-timezone";
-import * as readline from "readline";
-import type { Readable } from "stream";
 
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
+import { getVisualizationPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import { renderContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { tokenCountForTexts, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
@@ -503,81 +498,4 @@ function getTextContentFromMessage(
       return c.image_url.url;
     })
     .join("\n");
-}
-
-async function getVisualizationPrompt({
-  auth,
-  conversation,
-}: {
-  auth: Authenticator;
-  conversation: ConversationType;
-}) {
-  const readFirstFiveLines = (inputStream: Readable): Promise<string[]> => {
-    return new Promise((resolve, reject) => {
-      const rl: readline.Interface = readline.createInterface({
-        input: inputStream,
-        crlfDelay: Infinity,
-      });
-
-      let lineCount: number = 0;
-      const lines: string[] = [];
-
-      rl.on("line", (line: string) => {
-        lines.push(line);
-        lineCount++;
-        if (lineCount === 5) {
-          rl.close();
-        }
-      });
-
-      rl.on("close", () => {
-        resolve(lines);
-      });
-
-      rl.on("error", (err: Error) => {
-        reject(err);
-      });
-    });
-  };
-
-  const contentFragmentMessages: Array<ContentFragmentType> = [];
-  for (const m of conversation.content.flat(1)) {
-    if (isContentFragmentType(m)) {
-      contentFragmentMessages.push(m);
-    }
-  }
-  const contentFragmentFileBySid = _.keyBy(
-    await FileResource.fetchByIds(
-      auth,
-      removeNulls(contentFragmentMessages.map((m) => m.fileId))
-    ),
-    "sId"
-  );
-
-  const contentFragmentTextByMessageId: Record<string, string[]> = {};
-  for (const m of contentFragmentMessages) {
-    if (!m.fileId || !m.contentType.startsWith("text/")) {
-      continue;
-    }
-
-    const file = contentFragmentFileBySid[m.fileId];
-    if (!file) {
-      continue;
-    }
-    const readStream = file.getReadStream({
-      auth,
-      version: "original",
-    });
-    contentFragmentTextByMessageId[m.sId] =
-      await readFirstFiveLines(readStream);
-  }
-
-  return (
-    `${visualizationSystemPrompt.trim()}\n\nYou have access to the following files:\n` +
-    contentFragmentMessages
-      .map((m) => {
-        return `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n${contentFragmentTextByMessageId[m.sId]?.join("\n")}(truncated...)</file>`;
-      })
-      .join("\n")
-  );
 }
