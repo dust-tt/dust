@@ -6,6 +6,7 @@ const readFileAsync = promisify(fs.readFile);
 
 import type {
   AgentActionConfigurationType,
+  AgentConfigurationStatus,
   AgentConfigurationType,
   AgentModelConfigurationType,
   ConnectorProvider,
@@ -214,10 +215,20 @@ function _getGPT35TurboGlobalAgent({
 
 function _getGPT4GlobalAgent({
   auth,
+  settings,
 }: {
   auth: Authenticator;
+  settings: GlobalAgentSettings | null;
 }): AgentConfigurationType {
-  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
@@ -228,7 +239,7 @@ function _getGPT4GlobalAgent({
     description: GPT_4O_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
-    status,
+    status: status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     model: {
@@ -1026,7 +1037,7 @@ function getGlobalAgent(
       agentConfiguration = _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = _getGPT4GlobalAgent({ auth });
+      agentConfiguration = _getGPT4GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
