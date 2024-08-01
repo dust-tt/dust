@@ -123,6 +123,6 @@ export abstract class ResourceWithVault<
   }
 
   acl() {
-    this.vault.acl();
+    return this.vault.acl();
   }
 }
