@@ -21,7 +21,6 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
-  DEFAULT_VISUALIZATION_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
@@ -120,10 +119,6 @@ export type AssistantBuilderActionConfiguration = (
       type: "WEB_NAVIGATION";
       configuration: AssistantBuilderWebNavigationConfiguration;
     }
-  | {
-      type: "VISUALIZATION";
-      configuration: AssistantBuilderVisualizationConfiguration;
-    }
 ) & {
   name: string;
   description: string;
@@ -174,6 +169,7 @@ export type AssistantBuilderState = {
   };
   actions: Array<AssistantBuilderActionConfiguration>;
   maxStepsPerRun: number | null;
+  visualizationEnabled: boolean;
   templateId: string | null;
 };
 
@@ -189,6 +185,7 @@ export type AssistantBuilderInitialState = {
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
   maxStepsPerRun: number | null;
+  visualizationEnabled: boolean;
   templateId: string | null;
 };
 
@@ -209,6 +206,7 @@ export function getDefaultAssistantState() {
       temperature: 0.7,
     },
     maxStepsPerRun: 3,
+    visualizationEnabled: false,
     templateId: null,
   } satisfies AssistantBuilderState;
 }
@@ -296,16 +294,6 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
-export function getDefaultVisualizationActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "VISUALIZATION",
-    configuration: {},
-    name: DEFAULT_VISUALIZATION_ACTION_NAME,
-    description: "Generate graphs to visualize your data.",
-    noConfigurationRequired: true,
-  };
-}
-
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfiguration | null {
@@ -324,8 +312,6 @@ export function getDefaultActionConfiguration(
       return getDefaultProcessActionConfiguration();
     case "WEB_NAVIGATION":
       return getDefaultWebsearchActionConfiguration();
-    case "VISUALIZATION":
-      return getDefaultVisualizationActionConfiguration();
     default:
       assertNever(actionType);
   }

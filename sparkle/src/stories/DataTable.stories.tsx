@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
 import React from "react";
 
@@ -10,7 +10,6 @@ const meta = {
 } satisfies Meta<typeof DataTable>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 type Data = {
   name: string;
@@ -23,9 +22,11 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   clickable?: boolean;
   onClick?: () => void;
+  showMore?: boolean;
+  onMoreClick?: () => void;
 };
 
-const DataTableExample = () => {
+export const DataTableExample = () => {
   const data: Data[] = [
     {
       name: "Marketing",
@@ -35,8 +36,8 @@ const DataTableExample = () => {
       lastUpdated: "July 8, 2023",
       size: "32kb",
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-      clickable: true,
       onClick: () => console.log("hehe"),
+      onMoreClick: () => console.log("show more"),
     },
     {
       name: "Design",
@@ -45,7 +46,6 @@ const DataTableExample = () => {
       lastUpdated: "2023-07-09",
       size: "64kb",
       icon: FolderIcon,
-      clickable: false,
     },
     {
       name: "Development",
@@ -115,11 +115,11 @@ const DataTableExample = () => {
 
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
-      <DataTable data={data} columns={columns} />
+      <DataTable
+        data={data}
+        columns={columns}
+        initialColumnOrder={[{ id: "name", desc: false }]}
+      />
     </div>
   );
-};
-
-export const Default: Story = {
-  render: () => <DataTableExample />,
 };

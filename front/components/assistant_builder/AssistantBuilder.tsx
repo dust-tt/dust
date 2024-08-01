@@ -115,6 +115,7 @@ export default function AssistantBuilder({
           maxStepsPerRun:
             initialBuilderState.maxStepsPerRun ??
             getDefaultAssistantState().maxStepsPerRun,
+          visualizationEnabled: initialBuilderState.visualizationEnabled,
           templateId: initialBuilderState.templateId,
         }
       : {

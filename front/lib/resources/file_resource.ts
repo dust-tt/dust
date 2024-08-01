@@ -9,7 +9,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -57,28 +57,26 @@ export class FileResource extends BaseResource<FileModel> {
     id: string
   ): Promise<FileResource | null> {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
-    }
+    const res = await FileResource.fetchByIds(auth, [id]);
+    return res.length > 0 ? res[0] : null;
+  }
 
-    const fileModelId = getResourceIdFromSId(id);
-    if (!fileModelId) {
-      return null;
-    }
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[]
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
 
-    const blob = await this.model.findOne({
+    const fileModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
+
+    const blobs = await this.model.findAll({
       where: {
         workspaceId: owner.id,
-        id: fileModelId,
+        id: fileModelIds,
       },
     });
-    if (!blob) {
-      return null;
-    }
 
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    return new this(this.model, blob.get());
+    return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
   static async deleteAllForWorkspace(
@@ -199,20 +197,13 @@ export class FileResource extends BaseResource<FileModel> {
 
   getPublicUrl(auth: Authenticator): string {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getPublicUrl`");
-    }
-
+    const owner = auth.getNonNullableWorkspace();
     return `${config.getClientFacingUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     return FileResource.getCloudStoragePathForId({
       fileId: this.sId,

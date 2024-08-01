@@ -22,6 +22,7 @@ interface DataTableProps<TData, TValue> {
   className?: string;
   filter?: string;
   filterColumn?: string;
+  initialColumnOrder?: SortingState;
 }
 
 export function DataTable<TData, TValue>({
@@ -30,8 +31,11 @@ export function DataTable<TData, TValue>({
   className,
   filter,
   filterColumn,
+  initialColumnOrder,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(
+    initialColumnOrder ?? []
+  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
@@ -79,8 +83,9 @@ export function DataTable<TData, TValue>({
                             ? ArrowDownIcon
                             : ArrowDownIcon
                       }
+                      size="xs"
                       className={classNames(
-                        "s-h-4 s-w-3 s-font-extralight",
+                        "s-ml-1",
                         header.column.getIsSorted()
                           ? "s-opacity-100"
                           : "s-opacity-0"
@@ -97,8 +102,8 @@ export function DataTable<TData, TValue>({
         {table.getRowModel().rows.map((row) => (
           <DataTable.Row
             key={row.id}
-            clickable={row.original.clickable}
             onClick={row.original.onClick}
+            onMoreClick={row.original.onMoreClick}
           >
             {row.getVisibleCells().map((cell) => (
               <DataTable.Cell key={cell.id}>
@@ -182,30 +187,35 @@ DataTable.Body = function Body({
 
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
-  clickable?: boolean;
   onClick?: () => void;
+  onMoreClick?: () => void;
 }
 
 DataTable.Row = function Row({
   children,
   className,
-  clickable = false,
   onClick,
+  onMoreClick,
   ...props
 }: RowProps) {
   return (
     <tr
       className={classNames(
         "s-border-b s-border-structure-200 s-text-sm",
+        onClick ? "s-cursor-pointer hover:s-bg-gray-50" : "",
         className || ""
       )}
+      onClick={onClick ? onClick : undefined}
       {...props}
     >
       {children}
-      {clickable && (
+      {onMoreClick && (
         <td
           className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
-          onClick={clickable ? onClick : undefined}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent row click event
+            onMoreClick?.();
+          }}
         >
           <Icon visual={MoreIcon} size="sm" />
         </td>
@@ -213,7 +223,6 @@ DataTable.Row = function Row({
     </tr>
   );
 };
-
 interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
