@@ -48,7 +48,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
     vault: VaultResource
   ) {
-    const key = await DataSourceViewResource.model.create(blob);
+    const key = await DataSourceViewResource.model.create({
+      ...blob,
+      vaultId: vault.id,
+    });
 
     return new this(DataSourceViewResource.model, key.get(), vault);
   }

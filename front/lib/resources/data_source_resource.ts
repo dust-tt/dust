@@ -54,7 +54,10 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     blob: Omit<CreationAttributes<DataSource>, "vaultId">,
     vault: VaultResource
   ) {
-    const datasource = await DataSource.create(blob);
+    const datasource = await DataSource.create({
+      ...blob,
+      vaultId: vault.id,
+    });
 
     return new this(DataSourceResource.model, datasource.get(), vault);
   }
