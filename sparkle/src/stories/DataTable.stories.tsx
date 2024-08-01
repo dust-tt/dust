@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
 import React from "react";
 
