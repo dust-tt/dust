@@ -211,6 +211,12 @@ export function AgentMessage({
             ...event.message,
           };
         });
+        // Mark the last viz as complete if it is not already.
+        setVisualizations((v) =>
+          v.map((item, index) =>
+            index === v.length - 1 ? { ...item, complete: true } : item
+          )
+        );
         break;
       }
 
