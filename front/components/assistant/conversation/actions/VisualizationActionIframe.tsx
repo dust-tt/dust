@@ -226,7 +226,6 @@ export function VisualizationActionIframe({
                 style={{
                   height: !isErrored ? `${contentHeight}px` : "100%",
                   minHeight: !isErrored ? "96" : undefined,
-                  maxHeight: "60vh",
                 }}
                 className={classNames("max-h-[60vh] w-full")}
               >
