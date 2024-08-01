@@ -22,6 +22,7 @@ interface DataTableProps<TData, TValue> {
   className?: string;
   filter?: string;
   filterColumn?: string;
+  initialColumnOrder?: SortingState;
 }
 
 export function DataTable<TData, TValue>({
@@ -30,8 +31,11 @@ export function DataTable<TData, TValue>({
   className,
   filter,
   filterColumn,
+  initialColumnOrder,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(
+    initialColumnOrder ?? []
+  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({

@@ -10,7 +10,6 @@ const meta = {
 } satisfies Meta<typeof DataTable>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 type Data = {
   name: string;
@@ -27,7 +26,7 @@ type Data = {
   onMoreClick?: () => void;
 };
 
-const DataTableExample = () => {
+export const DataTableExample = () => {
   const data: Data[] = [
     {
       name: "Marketing",
@@ -116,11 +115,11 @@ const DataTableExample = () => {
 
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
-      <DataTable data={data} columns={columns} />
+      <DataTable
+        data={data}
+        columns={columns}
+        initialColumnOrder={[{ id: "name", desc: false }]}
+      />
     </div>
   );
-};
-
-export const Default: Story = {
-  render: () => <DataTableExample />,
 };
