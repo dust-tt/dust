@@ -339,11 +339,11 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
   modelId: MISTRAL_LARGE_MODEL_ID,
   displayName: "Mistral Large",
-  contextSize: 32_000,
+  contextSize: 128_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 56, // 28_672
   largeModel: true,
-  description: "Mistral's `large` model (32k context).",
+  description: "Mistral's `large 2` model (128k context).",
   shortDescription: "Mistral's large model.",
   isLegacy: false,
   supportsVision: false,
