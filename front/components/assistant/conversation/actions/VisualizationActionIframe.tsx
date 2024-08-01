@@ -39,13 +39,13 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 function useVisualizationDataHandler({
   visualization,
   setContentHeight,
-  setErrored,
+  setIsErrored,
   vizIframeRef,
   workspaceId,
 }: {
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
-  setErrored: (v: SetStateAction<boolean>) => void;
+  setIsErrored: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
 }) {
@@ -103,7 +103,7 @@ function useVisualizationDataHandler({
           break;
 
         case "setErrored":
-          setErrored(true);
+          setIsErrored(true);
           break;
 
         default:
@@ -118,7 +118,7 @@ function useVisualizationDataHandler({
     code,
     getFileBlob,
     setContentHeight,
-    setErrored,
+    setIsErrored,
     vizIframeRef,
   ]);
 }
@@ -133,7 +133,7 @@ export function VisualizationActionIframe({
   onRetry: () => void;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
-  const [errored, setErrored] = useState(false);
+  const [isErrored, setIsErrored] = useState(false);
   const [activeIndex, setActiveIndex] = useState(1);
 
   const vizIframeRef = useRef<HTMLIFrameElement>(null);
@@ -147,7 +147,7 @@ export function VisualizationActionIframe({
     visualization,
     workspaceId,
     setContentHeight,
-    setErrored,
+    setIsErrored,
     vizIframeRef,
   });
 
@@ -156,7 +156,7 @@ export function VisualizationActionIframe({
   const iframeLoaded = contentHeight > 0;
   const showSpinner =
     ((!codeFullyGenerated && !code) || (codeFullyGenerated && !iframeLoaded)) &&
-    !errored;
+    !isErrored;
 
   useEffect(() => {
     if (!codeFullyGenerated) {
@@ -178,12 +178,14 @@ export function VisualizationActionIframe({
         ? `${codeRef.current?.scrollHeight}px`
         : "100%";
     } else if (activeIndex === 1) {
-      containerRef.current.style.height = !errored ? `${contentHeight}px` : "";
-      if (errored && errorRef.current) {
+      containerRef.current.style.height = !isErrored
+        ? `${contentHeight}px`
+        : "";
+      if (isErrored && errorRef.current) {
         containerRef.current.style.height = `${errorRef.current.scrollHeight}px`;
       }
     }
-  }, [activeIndex, contentHeight, codeFullyGenerated, errored]);
+  }, [activeIndex, contentHeight, codeFullyGenerated, isErrored]);
 
   return (
     <div className="relative flex flex-col">
@@ -201,8 +203,8 @@ export function VisualizationActionIframe({
       <div
         className={classNames(
           "transition-height relative w-full overflow-hidden duration-500 ease-in-out",
-          codeFullyGenerated && !errored ? "min-h-96" : "",
-          errored ? "h-full" : "",
+          codeFullyGenerated && !isErrored ? "min-h-96" : "",
+          isErrored ? "h-full" : "",
           activeIndex === 1 ? "max-h-[60vh]" : ""
         )}
         ref={containerRef}
@@ -220,11 +222,11 @@ export function VisualizationActionIframe({
             />
           </div>
           <div className="relative flex h-full w-full shrink-0 items-center justify-center">
-            {codeFullyGenerated && !errored && (
+            {codeFullyGenerated && !isErrored && (
               <div
                 style={{
-                  height: !errored ? `${contentHeight}px` : "100%",
-                  minHeight: !errored ? "96" : undefined,
+                  height: !isErrored ? `${contentHeight}px` : "100%",
+                  minHeight: !isErrored ? "96" : undefined,
                   maxHeight: "60vh",
                 }}
                 className={classNames("max-h-[60vh] w-full")}
@@ -234,14 +236,14 @@ export function VisualizationActionIframe({
                   // Set a min height so iframe can display error.
                   className={classNames(
                     "h-full w-full",
-                    !errored ? "min-h-96" : ""
+                    !isErrored ? "min-h-96" : ""
                   )}
                   src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
                   sandbox="allow-scripts"
                 />
               </div>
             )}
-            {errored && (
+            {isErrored && (
               <div
                 className="flex h-full w-full flex-col items-center gap-4 py-8"
                 ref={errorRef}
