@@ -1,108 +1,270 @@
-import React, { ReactNode } from "react";
+import {
+  type ColumnDef,
+  ColumnFiltersState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import React, { ReactNode, useEffect, useState } from "react";
 
-import { Page } from "@sparkle/index";
-import { ClipboardCheckIcon, ClipboardIcon, IconButton } from "@sparkle/index";
-import { useCopyToClipboard } from "@sparkle/lib/utils";
+import { Avatar, MoreIcon } from "@sparkle/index";
+import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
+import { classNames } from "@sparkle/lib/utils";
 
-type SupportedRowType = string | number;
+import { Icon } from "./Icon";
 
-interface DataTableProps {
-  name?: string;
-  columns: string[];
-  rows: SupportedRowType[][];
-  enableCopy?: boolean;
-  showLimit?: number;
-  downloadButton?: ReactNode;
+interface DataTableProps<TData, TValue> {
+  data: TData[];
+  columns: ColumnDef<TData, TValue>[];
+  className?: string;
+  filter?: string;
+  filterColumn?: string;
 }
 
-export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
-  (
-    {
-      name,
-      columns,
-      rows,
-      enableCopy,
-      showLimit,
-      downloadButton,
-    }: DataTableProps,
-    ref
-  ) => {
-    const [isCopied, copyToClipboard] = useCopyToClipboard();
+export function DataTable<TData, TValue>({
+  data,
+  columns,
+  className,
+  filter,
+  filterColumn,
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-    const handleCopyTable = async () => {
-      const columnHeaders = columns.join(",");
-      const data = rows.map((row) => row.join(",")).join("\n");
-      const clipboardText = `${columnHeaders}\n${data}`;
+  const table = useReactTable({
+    data,
+    columns,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    state: {
+      columnFilters,
+      sorting,
+    },
+  });
 
-      if (copyToClipboard) {
-        await copyToClipboard(
-          new ClipboardItem({
-            "text/plain": new Blob([clipboardText], {
-              type: "text/plain",
-            }),
-          })
-        );
-      }
-    };
+  useEffect(() => {
+    if (filterColumn) {
+      table.getColumn(filterColumn)?.setFilterValue(filter);
+    }
+  }, [filter, filterColumn]);
 
-    const maxRows = showLimit ?? -1;
+  return (
+    <DataTable.Root className={className}>
+      <DataTable.Header>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <DataTable.Row key={headerGroup.id}>
+            {headerGroup.headers.map((header) => (
+              <DataTable.Head
+                key={header.id}
+                onClick={header.column.getToggleSortingHandler()}
+                className={header.column.getCanSort() ? "s-cursor-pointer" : ""}
+              >
+                <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                  {header.column.getCanSort() && (
+                    <Icon
+                      visual={
+                        header.column.getIsSorted() === "asc"
+                          ? ArrowUpIcon
+                          : header.column.getIsSorted() === "desc"
+                            ? ArrowDownIcon
+                            : ArrowDownIcon
+                      }
+                      className={classNames(
+                        "s-h-4 s-w-3 s-font-extralight",
+                        header.column.getIsSorted()
+                          ? "s-opacity-100"
+                          : "s-opacity-0"
+                      )}
+                    />
+                  )}
+                </div>
+              </DataTable.Head>
+            ))}
+          </DataTable.Row>
+        ))}
+      </DataTable.Header>
+      <DataTable.Body>
+        {table.getRowModel().rows.map((row) => (
+          <DataTable.Row
+            key={row.id}
+            clickable={row.original.clickable}
+            onClick={row.original.onClick}
+          >
+            {row.getVisibleCells().map((cell) => (
+              <DataTable.Cell key={cell.id}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </DataTable.Cell>
+            ))}
+          </DataTable.Row>
+        ))}
+      </DataTable.Body>
+    </DataTable.Root>
+  );
+}
 
-    return (
-      <div className="s-mt-2 s-flex s-flex-col s-gap-2">
-        <div className="s-flex s-w-full s-items-center s-justify-between s-gap-1">
-          {name && <Page.H variant="h6">{name}</Page.H>}
-          {downloadButton}
-        </div>
-        <div className="s-relative">
-          <div className="relative overflow-x-auto s-dark:border-structure-200-dark s-w-auto s-rounded-lg s-border s-border-structure-200">
-            <table
-              ref={ref}
-              className="s-w-full s-table-auto s-divide-y s-divide-structure-200"
-            >
-              <thead className="s-dark:bg-structure-50-dark s-bg-structure-50 s-px-2 s-py-2">
-                <tr>
-                  <th className="s-px-4"></th>
-                  {columns.map((column, index) => (
-                    <th
-                      className="s-dark:text-element-700-dark s-whitespace-nowrap s-px-6 s-py-2 s-text-left s-text-xs s-font-semibold s-uppercase s-tracking-wider s-text-element-700"
-                      key={index}
-                    >
-                      {column}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="s-dark:divide-structure-600 s-divide-y s-divide-structure-100 s-bg-white">
-                {rows.slice(0, maxRows).map((row, index) => (
-                  <tr key={index}>
-                    <td className="s-dark:text-element-800-dark s-px-4 s-text-sm s-text-element-600">
-                      {index + 1}
-                    </td>
-                    {row.map((cell, cellIndex) => (
-                      <td
-                        className="s-dark:text-element-800-dark s-px-6 s-py-3 s-text-sm s-text-element-800"
-                        key={cellIndex}
-                      >
-                        {cell}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {enableCopy && (
-              <div className="s-absolute s-right-2 s-top-2 s-mx-2 s-rounded-xl s-bg-structure-50">
-                <IconButton
-                  variant="tertiary"
-                  size="xs"
-                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                  onClick={handleCopyTable}
-                />
-              </div>
-            )}
-          </div>
+interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
+  children: ReactNode;
+}
+
+DataTable.Root = function DataTableRoot({
+  children,
+  className,
+  ...props
+}: DataTableRootProps) {
+  return (
+    <table
+      className={classNames("s-w-full s-border-collapse", className || "")}
+      {...props}
+    >
+      {children}
+    </table>
+  );
+};
+
+interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
+  children: ReactNode;
+}
+
+DataTable.Header = function Header({
+  children,
+  className,
+  ...props
+}: HeaderProps) {
+  return (
+    <thead
+      className={classNames("s-text-xs s-capitalize", className || "")}
+      {...props}
+    >
+      {children}
+    </thead>
+  );
+};
+
+interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  children?: ReactNode;
+}
+
+DataTable.Head = function Head({ children, className, ...props }: HeadProps) {
+  return (
+    <th
+      className={classNames(
+        "s-w-full s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
+        className || ""
+      )}
+      {...props}
+    >
+      {children}
+    </th>
+  );
+};
+
+DataTable.Body = function Body({
+  children,
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return (
+    <tbody className={className} {...props}>
+      {children}
+    </tbody>
+  );
+};
+
+interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  children: ReactNode;
+  clickable?: boolean;
+  onClick?: () => void;
+}
+
+DataTable.Row = function Row({
+  children,
+  className,
+  clickable = false,
+  onClick,
+  ...props
+}: RowProps) {
+  return (
+    <tr
+      className={classNames(
+        "s-border-b s-border-structure-200 s-text-sm",
+        className || ""
+      )}
+      {...props}
+    >
+      {children}
+      {clickable && (
+        <td
+          className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
+          onClick={clickable ? onClick : undefined}
+        >
+          <Icon visual={MoreIcon} size="sm" />
+        </td>
+      )}
+    </tr>
+  );
+};
+
+interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  avatarUrl?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children?: ReactNode;
+  description?: string;
+}
+
+DataTable.Cell = function Cell({
+  children,
+  className,
+  avatarUrl,
+  icon,
+  description,
+  ...props
+}: CellProps) {
+  return (
+    <td
+      className={classNames(
+        "s-whitespace-nowrap s-py-2 s-pl-0.5 s-text-element-800",
+        className || ""
+      )}
+      {...props}
+    >
+      <div className="s-flex">
+        {avatarUrl && (
+          <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />
+        )}
+        {icon && (
+          <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
+        )}
+        <div className="s-flex">
+          <span className="s-text-sm s-text-element-800">{children}</span>
+          {description && (
+            <span className="s-pl-2 s-text-sm s-text-element-600">
+              {description}
+            </span>
+          )}
         </div>
       </div>
-    );
-  }
-);
+    </td>
+  );
+};
+
+DataTable.Caption = function Caption({
+  children,
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableCaptionElement>) {
+  return (
+    <caption className={className} {...props}>
+      {children}
+    </caption>
+  );
+};

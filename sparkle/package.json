@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.196",
+  "version": "0.2.197",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -81,6 +81,7 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.19",
+    "@tanstack/react-table": "^8.13.0",
     "emoji-mart": "^5.5.2",
     "esbuild": "^0.20.0",
     "eslint-plugin-import": "^2.29.1",
