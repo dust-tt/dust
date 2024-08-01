@@ -232,13 +232,14 @@ export default function DataSourcesView({
 
 function getTableColumns() {
   // to please typescript
-  type OriginalType = DataSourceType & {
-    icon: ComponentType;
-    usage: number;
+  type Info = {
+    row: {
+      original: DataSourceType & {
+        icon: ComponentType;
+        usage: number;
+      };
+    };
   };
-  interface Info {
-    row: { original: OriginalType };
-  }
   return [
     {
       header: "Name",
