@@ -232,7 +232,6 @@ export function VisualizationActionIframe({
               >
                 <iframe
                   ref={vizIframeRef}
-                  // Set a min height so iframe can display error.
                   className={classNames(
                     "h-full w-full",
                     !isErrored ? "min-h-96" : ""
