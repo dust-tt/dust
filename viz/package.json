@@ -17,7 +17,7 @@
     "react-dom": "^18",
     "react-resize-detector": "^11.0.1",
     "react-runner": "^1.0.5",
-    "recharts": "^2.12.7"
+    "recharts": "^2.13.0-alpha.4"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -119,11 +119,15 @@ The generated component should not have any required props / parameters.
 
    
 
-### Outermost div height and width    
+### Responsiveness
 
-The component's outermost JSX tag should have a fixed height and width in pixels, set using the \`style\` prop, e.g. \`<div style={{ height: '600px', width: '600px' }}>...</div>\`.
+The content should be responsive and should not have fixed widths or heights. The component should be able to adapt to different screen sizes.
+The content should never overflow the viewport and should never have horizontal or vertical scrollbars.
 
-The height and width should be set to a fixed value, not a percentage. This style should not use tailwind CSS or any type of custom class. There should be a few pixels of horizontal padding to ensure the content is fully visible by the user.
+If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
+Never use tailwind's specific values like \`h-[600px]\`.
+
+Always add padding to the content (both horizontal and vertical) to make it look better and make sure the labels are fully visible.
 
     
 
@@ -173,7 +177,7 @@ if (file) {
 
 - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
 
-- The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`. Support for defaultProps will be removed from function components in a future major release. JavaScript default parameters should be used instead.
+- The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
 
 - The papaparse library is available to be imported, e.g. \`import Papa from "papaparse"\` & \`const parsed = Papa.parse(fileContent, {header:true, skipEmptyLines: "greedy"});\`. The \`skipEmptyLines:"greedy"\` configuration should always be used.
 
