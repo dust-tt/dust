@@ -30,8 +30,8 @@ export function isGlobalGroupType(value: SupportedGroupType): boolean {
 
 export type GroupType = {
   id: ModelId;
+  name: string;
   sId: string;
   type: SupportedGroupType;
-  name: string;
   workspaceId: ModelId;
 };

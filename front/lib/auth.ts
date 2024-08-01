@@ -13,6 +13,7 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
+import type { BaseAuthenticator } from "@dust-tt/types";
 import {
   Err,
   groupHasPermission,
@@ -60,7 +61,7 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
  * It explicitely does not store a reference to the current user to make sure our permissions are
  * workspace oriented. Use `getUserFromSession` if needed.
  */
-export class Authenticator {
+export class Authenticator implements BaseAuthenticator {
   _flags: WhitelistableFeature[];
   _key?: KeyAuthType;
   _role: RoleType;

@@ -104,6 +104,13 @@ export function getResourceIdFromSId(sId: string): ModelId | null {
   return sIdsRes.value.resourceId;
 }
 
+export function isResourceSId(
+  resourceName: ResourceNameType,
+  sId: string
+): boolean {
+  return sId.startsWith(RESOURCES_PREFIX[resourceName]);
+}
+
 // Legacy behavior.
 
 /**

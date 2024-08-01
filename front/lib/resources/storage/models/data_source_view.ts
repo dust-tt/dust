@@ -3,6 +3,7 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
@@ -24,6 +25,9 @@ export class DataSourceViewModel extends Model<
   declare dataSourceId: ForeignKey<DataSource["id"]>;
   declare vaultId: ForeignKey<VaultModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare dataSource: NonAttribute<DataSource>;
+  declare vault: NonAttribute<VaultModel>;
 }
 DataSourceViewModel.init(
   {

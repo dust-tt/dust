@@ -1,16 +1,18 @@
 import type {
+  ACLType,
   ConnectorProvider,
   DataSourceType,
-  LightWorkspaceType,
   Result,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok } from "@dust-tt/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
   FindOptions,
+  Includeable,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -20,6 +22,7 @@ import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
@@ -36,22 +39,30 @@ export interface DataSourceResource
 export class DataSourceResource extends BaseResource<DataSource> {
   static model: ModelStatic<DataSource> = DataSource;
 
-  editedByUser: Attributes<User> | undefined;
+  readonly editedByUser: Attributes<User> | undefined;
+  readonly vault: VaultResource;
 
   constructor(
     model: ModelStatic<DataSource>,
     blob: Attributes<DataSource>,
+    vault: VaultResource,
     editedByUser?: Attributes<User>
   ) {
     super(DataSourceResource.model, blob);
     this.editedByUser = editedByUser;
+    this.vault = vault;
   }
 
-  static async makeNew(blob: CreationAttributes<DataSource>) {
+  static async makeNew(
+    blob: Omit<CreationAttributes<DataSource>, "vaultId">,
+    vault: VaultResource
+  ) {
     const datasource = await DataSource.create(blob);
 
-    return new this(DataSourceResource.model, datasource.get());
+    return new this(DataSourceResource.model, datasource.get(), vault);
   }
+
+  // Fetching.
 
   private static getOptions(options?: FetchDataSourceOptions) {
     const result: FindOptions<DataSourceResource["model"]> = {};
@@ -76,68 +87,75 @@ export class DataSourceResource extends BaseResource<DataSource> {
     return result;
   }
 
+  private static async baseFetch(
+    auth: Authenticator,
+    where: WhereOptions<DataSource>,
+    options?: FindOptions<typeof this.model>
+  ): Promise<DataSourceResource[]> {
+    const includeClauses: Includeable[] = [
+      {
+        model: VaultResource.model,
+        as: "vault",
+      },
+    ];
+
+    if (options?.include) {
+      if (Array.isArray(options.include)) {
+        includeClauses.push(...options.include);
+      } else {
+        includeClauses.push(options.include);
+      }
+    }
+
+    const blobs = await this.model.findAll({
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: includeClauses,
+    });
+
+    const dataSources = blobs.map((b) => {
+      const vault = new VaultResource(VaultResource.model, b.vault.get());
+
+      return new this(this.model, b.get(), vault, b.editedByUser?.get());
+    });
+
+    return removeNulls(dataSources);
+  }
+
   static async fetchByName(
     auth: Authenticator,
     name: string,
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
-    const owner = await auth.getNonNullableWorkspace();
-    const datasource = await this.model.findOne({
-      where: {
-        workspaceId: owner.id,
+    const [dataSource] = await this.baseFetch(
+      auth,
+      {
         name,
       },
-      ...this.getOptions(options),
-    });
-
-    if (!datasource) {
-      return null;
-    }
-    return new this(
-      DataSourceResource.model,
-      datasource.get(),
-      datasource.editedByUser?.get()
+      this.getOptions(options)
     );
+
+    return dataSource ?? null;
   }
 
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    const owner = await auth.getNonNullableWorkspace();
-    const datasources = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
-      },
-      ...this.getOptions(options),
-    });
-
-    return datasources.map(
-      (datasource) =>
-        new this(
-          DataSourceResource.model,
-          datasource.get(),
-          datasource.editedByUser?.get()
-        )
-    );
+    return this.baseFetch(auth, {}, this.getOptions(options));
   }
 
   static async listByWorkspaceIdAndNames(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     names: string[]
   ): Promise<DataSourceResource[]> {
-    const datasources = await this.model.findAll({
-      where: {
-        workspaceId: workspace.id,
-        name: {
-          [Op.in]: names,
-        },
+    return this.baseFetch(auth, {
+      name: {
+        [Op.in]: names,
       },
     });
-
-    return datasources.map(
-      (datasource) => new this(DataSourceResource.model, datasource.get())
-    );
   }
 
   static async listByConnectorProvider(
@@ -145,17 +163,12 @@ export class DataSourceResource extends BaseResource<DataSource> {
     connectorProvider: ConnectorProvider,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    const owner = await auth.getNonNullableWorkspace();
-    const datasources = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
+    return this.baseFetch(
+      auth,
+      {
         connectorProvider,
       },
-      ...this.getOptions(options),
-    });
-
-    return datasources.map(
-      (datasource) => new this(DataSourceResource.model, datasource.get())
+      this.getOptions(options)
     );
   }
 
@@ -220,6 +233,12 @@ export class DataSourceResource extends BaseResource<DataSource> {
       this.connectorProvider !== null &&
       this.connectorProvider !== "webcrawler"
     );
+  }
+
+  // Permissions.
+
+  acl(): ACLType {
+    return this.vault.acl();
   }
 
   // Serialization.

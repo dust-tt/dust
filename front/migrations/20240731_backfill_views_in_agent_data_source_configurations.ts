@@ -31,7 +31,7 @@ async function backfillViewsInAgentDataSourceConfigurationForWorkspace(
   // Retrieve data source views for managed data sources.
   const dataSourceViews =
     await DataSourceViewResource.listForDataSourcesInVault(
-      auth.getNonNullableWorkspace(),
+      auth,
       managedDataSources,
       globalVault
     );

@@ -32,6 +32,7 @@ export * from "./front/assistant/avatar";
 export * from "./front/assistant/builder";
 export * from "./front/assistant/conversation";
 export * from "./front/assistant/templates";
+export * from "./front/auth";
 export * from "./front/content_fragment";
 export * from "./front/data_source";
 export * from "./front/data_source_view";
