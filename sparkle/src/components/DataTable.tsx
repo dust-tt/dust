@@ -22,6 +22,7 @@ interface DataTableProps<TData, TValue> {
   className?: string;
   filter?: string;
   filterColumn?: string;
+  initialColumnOrder?: SortingState;
 }
 
 export function DataTable<TData, TValue>({
@@ -30,8 +31,11 @@ export function DataTable<TData, TValue>({
   className,
   filter,
   filterColumn,
+  initialColumnOrder,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(
+    initialColumnOrder ?? []
+  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
@@ -79,8 +83,9 @@ export function DataTable<TData, TValue>({
                             ? ArrowDownIcon
                             : ArrowDownIcon
                       }
+                      size="xs"
                       className={classNames(
-                        "s-ml-1 s-w-2.5 s-font-extralight",
+                        "s-ml-1",
                         header.column.getIsSorted()
                           ? "s-opacity-100"
                           : "s-opacity-0"
@@ -197,7 +202,7 @@ DataTable.Row = function Row({
     <tr
       className={classNames(
         "s-border-b s-border-structure-200 s-text-sm",
-        onClick ? "s-cursor-pointer" : "",
+        onClick ? "s-cursor-pointer hover:s-bg-gray-50" : "",
         className || ""
       )}
       onClick={onClick ? onClick : undefined}
