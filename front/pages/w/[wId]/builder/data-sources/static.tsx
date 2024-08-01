@@ -179,6 +179,7 @@ export default function DataSourcesView({
             columns={columns}
             filter={dataSourceSearch}
             filterColumn={"name"}
+            initialColumnOrder={[{ id: "name", desc: false }]}
           />
         )}
       </Page.Vertical>
