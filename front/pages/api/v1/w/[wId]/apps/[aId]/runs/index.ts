@@ -173,7 +173,7 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+  const { auth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
