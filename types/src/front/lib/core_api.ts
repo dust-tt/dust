@@ -22,7 +22,8 @@ import {
 } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
-import { BaseAuthenticator } from "../auth";
+import { GroupType } from "../groups";
+import { LightWorkspaceType } from "../user";
 
 export const MAX_CHUNK_SIZE = 512;
 
@@ -281,7 +282,8 @@ export class CoreAPI {
   }
 
   async createRun(
-    auth: BaseAuthenticator,
+    workspace: LightWorkspaceType,
+    groups: GroupType[],
     {
       projectId,
       runType,
@@ -300,11 +302,8 @@ export class CoreAPI {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-Workspace-Id": auth.getNonNullableWorkspace().sId,
-          "X-Dust-Group-Ids": auth
-            .groups()
-            .map((g) => g.sId)
-            .join(","),
+          "X-Dust-Workspace-Id": workspace.sId,
+          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
         },
         body: JSON.stringify({
           run_type: runType,
@@ -323,7 +322,8 @@ export class CoreAPI {
   }
 
   async createRunStream(
-    auth: BaseAuthenticator,
+    workspace: LightWorkspaceType,
+    groups: GroupType[],
     {
       projectId,
       runType,
@@ -347,11 +347,8 @@ export class CoreAPI {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-Workspace-Id": auth.getNonNullableWorkspace().sId,
-          "X-Dust-Group-Ids": auth
-            .groups()
-            .map((g) => g.sId)
-            .join(","),
+          "X-Dust-Workspace-Id": workspace.sId,
+          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
         },
         body: JSON.stringify({
           run_type: runType,

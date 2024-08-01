@@ -111,18 +111,22 @@ async function handler(
       );
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
 
-      const dustRun = await coreAPI.createRun(auth, {
-        projectId: app.dustAPIProjectId,
-        runType: "local",
-        specification: dumpSpecification(
-          JSON.parse(req.body.specification),
-          latestDatasets
-        ),
-        datasetId: inputDataset,
-        config: { blocks: config },
-        credentials: credentialsFromProviders(providers),
-        secrets,
-      });
+      const dustRun = await coreAPI.createRun(
+        auth.getNonNullableWorkspace(),
+        auth.groups(),
+        {
+          projectId: app.dustAPIProjectId,
+          runType: "local",
+          specification: dumpSpecification(
+            JSON.parse(req.body.specification),
+            latestDatasets
+          ),
+          datasetId: inputDataset,
+          config: { blocks: config },
+          credentials: credentialsFromProviders(providers),
+          secrets,
+        }
+      );
 
       if (dustRun.isErr()) {
         return apiError(req, res, {
