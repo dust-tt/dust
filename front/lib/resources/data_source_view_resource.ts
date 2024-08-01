@@ -16,7 +16,7 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -120,11 +120,11 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // Peer fetching.
 
-  // async fetchDataSource(
-  //   auth: Authenticator
-  // ): Promise<DataSourceResource | null> {
-  //   return DataSourceResource.fetchByModelId(auth, this.dataSourceId);
-  // }
+  async fetchDataSource(
+    auth: Authenticator
+  ): Promise<DataSourceResource | null> {
+    return DataSourceResource.fetchByModelIdWithAuth(auth, this.dataSourceId);
+  }
 
   // Deletion.
 
