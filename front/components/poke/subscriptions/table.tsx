@@ -1,7 +1,7 @@
 import {
-  CloudArrowDownIcon,
   ConfluenceLogo,
   GithubLogo,
+  GlobeAltIcon,
   GoogleLogo,
   IntercomLogo,
   Modal,
@@ -219,7 +219,7 @@ export function ActiveSubscriptionTable({
                         <ConfluenceLogo />
                       ) : null}
                       {activePlan.limits.connections.isWebCrawlerAllowed ? (
-                        <CloudArrowDownIcon />
+                        <GlobeAltIcon />
                       ) : null}
                     </div>
                   </PokeTableCell>

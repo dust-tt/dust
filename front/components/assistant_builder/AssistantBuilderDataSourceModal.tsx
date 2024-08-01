@@ -2,6 +2,7 @@ import {
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
   FolderIcon,
+  GlobeAltIcon,
   Item,
   Modal,
   Page,
@@ -373,7 +374,7 @@ function PickDataSource({
         {shouldDisplayWebsiteEntry && (
           <Item.Navigation
             label="Websites"
-            icon={CloudArrowDownIcon}
+            icon={GlobeAltIcon}
             onClick={onPickWebsites}
           />
         )}
@@ -504,7 +505,7 @@ function FolderOrWebsiteResourceSelector({
       <Page>
         <Page.Header
           title={type === "folder" ? "Select Folders" : "Select Websites"}
-          icon={type === "folder" ? FolderIcon : CloudArrowDownIcon}
+          icon={type === "folder" ? FolderIcon : GlobeAltIcon}
           description={`Select the ${
             type === "folder" ? "folders" : "websites"
           } that will be used by the assistant as a source for its answers.`}
@@ -580,7 +581,7 @@ function FolderOrWebsiteTree({
       type={type === "folder" ? "leaf" : "node"}
       label={dataSource.name}
       variant="folder"
-      visual={type === "folder" ? <FolderIcon /> : <CloudArrowDownIcon />}
+      visual={type === "folder" ? <FolderIcon /> : <GlobeAltIcon />}
       className="whitespace-nowrap"
       checkbox={{
         checked: currentConfig?.isSelectAll ?? false,
