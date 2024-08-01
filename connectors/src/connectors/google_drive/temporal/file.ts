@@ -111,7 +111,8 @@ async function handleFileExport(
   maxDocumentLen: number,
   localLogger: Logger,
   dataSourceConfig: DataSourceConfig,
-  connectorId: ModelId
+  connectorId: ModelId,
+  startSyncTs: number
 ): Promise<CoreAPIDataSourceDocumentSection | null> {
   const drive = await getDriveClient(oauth2client);
   let res;
@@ -157,6 +158,10 @@ async function handleFileExport(
   if (file.mimeType === "text/plain") {
     result = handleTextFile(res.data, maxDocumentLen);
   } else if (file.mimeType === "text/csv") {
+    const parents = (
+      await getFileParentsMemoized(connectorId, oauth2client, file, startSyncTs)
+    ).map((f) => f.id);
+
     result = await handleCsvFile({
       data: res.data,
       file,
@@ -164,6 +169,7 @@ async function handleFileExport(
       localLogger,
       dataSourceConfig,
       connectorId,
+      parents,
     });
   } else {
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
@@ -259,7 +265,8 @@ export async function syncOneFile(
           file,
           localLogger,
           dataSourceConfig,
-          maxDocumentLen
+          maxDocumentLen,
+          startSyncTs
         );
       } else {
         return syncOneFileTextDocument(
@@ -284,7 +291,8 @@ async function syncOneFileTable(
   file: GoogleDriveObjectType,
   localLogger: Logger,
   dataSourceConfig: DataSourceConfig,
-  maxDocumentLen: number
+  maxDocumentLen: number,
+  startSyncTs: number
 ) {
   let skipReason: string | undefined;
   const upsertTimestampMs = undefined;
@@ -292,7 +300,12 @@ async function syncOneFileTable(
   const documentId = getDocumentId(file.id);
 
   if (isGoogleDriveSpreadSheetFile(file)) {
-    const res = await syncSpreadSheet(oauth2client, connectorId, file);
+    const res = await syncSpreadSheet(
+      oauth2client,
+      connectorId,
+      file,
+      startSyncTs
+    );
     if (!res.isSupported) {
       return false;
     }
@@ -310,7 +323,8 @@ async function syncOneFileTable(
       maxDocumentLen,
       localLogger,
       dataSourceConfig,
-      connectorId
+      connectorId,
+      startSyncTs
     );
   }
   await updateGoogleDriveFiles(
@@ -357,7 +371,8 @@ async function syncOneFileTextDocument(
       maxDocumentLen,
       localLogger,
       dataSourceConfig,
-      connectorId
+      connectorId,
+      startSyncTs
     );
   }
   if (documentContent) {

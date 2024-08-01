@@ -157,6 +157,14 @@ export async function syncOneFile({
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
     const data = Buffer.from(downloadRes.data);
+
+    const parents = await getParents({
+      connectorId,
+      internalId: documentId,
+      parentInternalId,
+      startSyncTs,
+    });
+
     result = await handleCsvFile({
       dataSourceConfig,
       data,
@@ -164,6 +172,7 @@ export async function syncOneFile({
       localLogger,
       maxDocumentLen,
       connectorId,
+      parents,
     });
   } else if (
     mimeType ===
@@ -174,6 +183,7 @@ export async function syncOneFile({
       file,
       parentInternalId,
       localLogger,
+      startSyncTs,
     });
   } else if (mimeType === "text/plain") {
     result = handleTextFile(downloadRes.data, maxDocumentLen);

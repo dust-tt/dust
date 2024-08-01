@@ -12,6 +12,7 @@ import {
   getWorksheets,
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
@@ -65,6 +66,7 @@ async function upsertTable(
   internalId: string,
   spreadsheet: microsoftgraph.DriveItem,
   worksheet: microsoftgraph.WorkbookWorksheet,
+  parents: string[],
   rows: string[][],
   loggerArgs: object
 ) {
@@ -92,6 +94,7 @@ async function upsertTable(
       spreadsheetId: spreadsheet.id ?? "",
     },
     truncate: true,
+    parents,
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -104,7 +107,8 @@ async function processSheet(
   internalId: string,
   worksheet: microsoftgraph.WorkbookWorksheet,
   spreadsheetId: string,
-  localLogger: Logger
+  localLogger: Logger,
+  startSyncTs: number
 ): Promise<Result<null, Error>> {
   if (!worksheet.id) {
     return new Err(new Error("Worksheet has no id"));
@@ -165,11 +169,19 @@ async function processSheet(
   if (rawHeaders && rows.length > 1) {
     const headers = getSanitizedHeaders(rawHeaders);
 
+    const parents = await getParents({
+      connectorId: connector.id,
+      internalId: internalId,
+      parentInternalId: spreadsheetId,
+      startSyncTs,
+    });
+
     await upsertTable(
       connector,
       internalId,
       spreadsheet,
       worksheet,
+      parents,
       [headers, ...rest],
       loggerArgs
     );
@@ -192,11 +204,13 @@ export async function handleSpreadSheet({
   file,
   parentInternalId,
   localLogger,
+  startSyncTs,
 }: {
   connectorId: number;
   file: microsoftgraph.DriveItem;
   parentInternalId: string;
   localLogger: Logger;
+  startSyncTs: number;
 }): Promise<Result<null, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
@@ -249,7 +263,8 @@ export async function handleSpreadSheet({
         internalWorkSheetId,
         worksheet,
         documentId,
-        localLogger
+        localLogger,
+        startSyncTs
       );
       if (importResult.isOk()) {
         successfulSheetIdImports.push(internalWorkSheetId);

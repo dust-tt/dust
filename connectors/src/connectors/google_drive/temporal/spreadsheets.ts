@@ -12,6 +12,7 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
@@ -47,6 +48,7 @@ async function upsertSheetInDb(connector: ConnectorResource, sheet: Sheet) {
 async function upsertTable(
   connector: ConnectorResource,
   sheet: Sheet,
+  parents: string[],
   rows: string[][],
   loggerArgs: object
 ) {
@@ -77,6 +79,7 @@ async function upsertTable(
       spreadsheetId: spreadsheet.id,
     },
     truncate: true,
+    parents,
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -171,7 +174,8 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
 
 async function processSheet(
   connector: ConnectorResource,
-  sheet: Sheet
+  sheet: Sheet,
+  parents: string[]
 ): Promise<boolean> {
   if (!sheet.values) {
     return false;
@@ -196,7 +200,7 @@ async function processSheet(
   const rows = await getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    await upsertTable(connector, sheet, rows, loggerArgs);
+    await upsertTable(connector, sheet, parents, rows, loggerArgs);
 
     await upsertSheetInDb(connector, sheet);
 
@@ -365,7 +369,8 @@ async function getAllSheetsFromSpreadSheet(
 export async function syncSpreadSheet(
   oauth2client: OAuth2Client,
   connectorId: ModelId,
-  file: GoogleDriveObjectType
+  file: GoogleDriveObjectType,
+  startSyncTs: number
 ): Promise<
   | {
       isSupported: false;
@@ -474,9 +479,21 @@ export async function syncSpreadSheet(
         },
       });
 
+      const parents = [
+        file.id,
+        ...(
+          await getFileParentsMemoized(
+            connectorId,
+            oauth2client,
+            file,
+            startSyncTs
+          )
+        ).map((f) => f.id),
+      ];
+
       const successfulSheetIdImports: number[] = [];
       for (const sheet of sheets) {
-        const isImported = await processSheet(connector, sheet);
+        const isImported = await processSheet(connector, sheet, parents);
         if (isImported) {
           successfulSheetIdImports.push(sheet.id);
         }

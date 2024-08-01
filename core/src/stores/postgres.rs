@@ -2273,7 +2273,7 @@ impl Store for PostgresStore {
                     timestamp, tags_array, parents) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
-                   SET name = EXCLUDED.name, description = EXCLUDED.description \
+                   SET name = EXCLUDED.name, description = EXCLUDED.description, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents \
                    RETURNING id",
             )
             .await?;

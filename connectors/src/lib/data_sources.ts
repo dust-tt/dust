@@ -513,6 +513,7 @@ export async function upsertTableFromCsv({
   tableCsv,
   loggerArgs,
   truncate,
+  parents,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -521,6 +522,7 @@ export async function upsertTableFromCsv({
   tableCsv: string;
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
+  parents: string[];
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -541,6 +543,7 @@ export async function upsertTableFromCsv({
   const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/csv`;
   const dustRequestPayload = {
     name: tableName,
+    parents,
     description: tableDescription,
     csv: tableCsv,
     tableId,
