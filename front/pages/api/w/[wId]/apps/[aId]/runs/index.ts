@@ -111,9 +111,8 @@ async function handler(
       );
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
 
-      const dustRun = await coreAPI.createRun({
+      const dustRun = await coreAPI.createRun(auth, {
         projectId: app.dustAPIProjectId,
-        runAsWorkspaceId: owner.sId,
         runType: "local",
         specification: dumpSpecification(
           JSON.parse(req.body.specification),

@@ -285,9 +285,8 @@ async function handler(
         "App run creation"
       );
 
-      const runRes = await coreAPI.createRunStream({
+      const runRes = await coreAPI.createRunStream(auth, {
         projectId: app.dustAPIProjectId,
-        runAsWorkspaceId: keyWorkspaceId,
         runType: "deploy",
         specificationHash: specificationHash,
         config: { blocks: config },

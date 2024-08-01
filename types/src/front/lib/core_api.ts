@@ -22,6 +22,7 @@ import {
 } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
+import { BaseAuthenticator } from "../auth";
 
 export const MAX_CHUNK_SIZE = 512;
 
@@ -89,7 +90,6 @@ export type CoreAPITokenType = [number, string];
 
 type CoreAPICreateRunParams = {
   projectId: string;
-  runAsWorkspaceId: string;
   runType: RunRunType;
   specification?: string | null;
   specificationHash?: string | null;
@@ -280,28 +280,31 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async createRun({
-    projectId,
-    runAsWorkspaceId,
-    runType,
-    specification,
-    specificationHash,
-    datasetId,
-    inputs,
-    config,
-    credentials,
-    secrets,
-  }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    // TODO(GROUPS_INFRA): use the auth as argument of that method instead of `runAsWorkspaceId`
-    // and pass both X-Dust-Workspace-Id and X-Dust-Group-Ids.
-
+  async createRun(
+    auth: BaseAuthenticator,
+    {
+      projectId,
+      runType,
+      specification,
+      specificationHash,
+      datasetId,
+      inputs,
+      config,
+      credentials,
+      secrets,
+    }: CoreAPICreateRunParams
+  ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}/runs`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-Workspace-Id": runAsWorkspaceId,
+          "X-Dust-Workspace-Id": auth.getNonNullableWorkspace().sId,
+          "X-Dust-Group-Ids": auth
+            .groups()
+            .map((g) => g.sId)
+            .join(","),
         },
         body: JSON.stringify({
           run_type: runType,
@@ -319,33 +322,36 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async createRunStream({
-    projectId,
-    runAsWorkspaceId,
-    runType,
-    specification,
-    specificationHash,
-    datasetId,
-    inputs,
-    config,
-    credentials,
-    secrets,
-  }: CoreAPICreateRunParams): Promise<
+  async createRunStream(
+    auth: BaseAuthenticator,
+    {
+      projectId,
+      runType,
+      specification,
+      specificationHash,
+      datasetId,
+      inputs,
+      config,
+      credentials,
+      secrets,
+    }: CoreAPICreateRunParams
+  ): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
       dustRunId: Promise<string>;
     }>
   > {
-    // TODO(GROUPS_INFRA): use the auth as argument of that method instead of `runAsWorkspaceId`
-    // and pass both X-Dust-Workspace-Id and X-Dust-Group-Ids.
-
     const res = await this._fetchWithError(
       `${this._url}/projects/${projectId}/runs/stream`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Dust-Workspace-Id": runAsWorkspaceId,
+          "X-Dust-Workspace-Id": auth.getNonNullableWorkspace().sId,
+          "X-Dust-Group-Ids": auth
+            .groups()
+            .map((g) => g.sId)
+            .join(","),
         },
         body: JSON.stringify({
           run_type: runType,
