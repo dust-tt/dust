@@ -22,6 +22,7 @@ import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { Provider } from "@app/lib/models/apps";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
@@ -173,7 +174,7 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth } = await Authenticator.fromKey(
+  const { auth, keyWorkspace } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
@@ -285,7 +286,14 @@ async function handler(
         "App run creation"
       );
 
-      const runRes = await coreAPI.createRunStream(owner, auth.groups(), {
+      const isSameWorkspace = keyWorkspace.sId === owner.sId;
+      const runAsWorkspace = isSameWorkspace ? owner : keyWorkspace;
+
+      const groups = await GroupResource.listWorkspaceGroupsFromKey(
+        keyRes.value
+      );
+
+      const runRes = await coreAPI.createRunStream(runAsWorkspace, groups, {
         projectId: app.dustAPIProjectId,
         runType: "deploy",
         specificationHash: specificationHash,

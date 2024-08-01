@@ -289,7 +289,11 @@ export class Authenticator {
   static async fromKey(
     key: KeyResource,
     wId: string
-  ): Promise<{ auth: Authenticator; keyWorkspaceId: string }> {
+  ): Promise<{
+    auth: Authenticator;
+    keyWorkspaceId: string;
+    keyWorkspace: LightWorkspaceType;
+  }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
         return Workspace.findOne({
@@ -346,6 +350,7 @@ export class Authenticator {
         flags,
         key: key.toAuthJSON(),
       }),
+      keyWorkspace: keyWorkspace,
       keyWorkspaceId: keyWorkspace.sId,
     };
   }
