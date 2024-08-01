@@ -178,11 +178,10 @@ export function VisualizationActionIframe({
         ? `${codeRef.current?.scrollHeight}px`
         : "100%";
     } else if (activeIndex === 1) {
-      containerRef.current.style.height = !isErrored
-        ? `${contentHeight}px`
-        : "";
       if (isErrored && errorRef.current) {
         containerRef.current.style.height = `${errorRef.current.scrollHeight}px`;
+      } else if (!isErrored) {
+        containerRef.current.style.height = `${contentHeight}px`;
       }
     }
   }, [activeIndex, contentHeight, codeFullyGenerated, isErrored]);
