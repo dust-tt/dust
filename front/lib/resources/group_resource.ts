@@ -43,11 +43,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async makeDefaultsForWorkspace(workspace: LightWorkspaceType) {
-    const existingGroups = await GroupModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
+    const existingGroups = (
+      await GroupModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+        },
+      })
+    ).map((group) => new this(GroupModel, group.get()));
     const systemGroup =
       existingGroups.find((v) => v.type === "system") ||
       (await GroupResource.makeNew({
@@ -200,22 +202,25 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  static async fetchWorkspaceGroupsFromKey(
+  static async listWorkspaceGroupsFromKey(
     key: KeyResource
   ): Promise<GroupResource[]> {
     // TODO(GROUPS_INFRA): we need to pull the groups associated with the key once that's built.
-    const group = await this.model.findOne({
+    const groups = await this.model.findAll({
       where: {
         workspaceId: key.workspaceId,
-        type: key.isSystem ? "system" : "global",
+        [Op.or]: [
+          { type: key.isSystem ? "system" : "global" },
+          { id: key.groupId },
+        ],
       },
     });
 
-    if (!group) {
+    if (groups.length === 0) {
       throw new Error("Group for key not found.");
     }
 
-    return [new this(GroupModel, group.get())];
+    return groups.map((group) => new this(GroupModel, group.get()));
   }
 
   static async internalFetchWorkspaceGlobalGroup(
@@ -431,6 +436,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   toJSON(): GroupType {
     return {
       id: this.id,
+      sId: this.sId,
       name: this.name,
       workspaceId: this.workspaceId,
       type: this.type,

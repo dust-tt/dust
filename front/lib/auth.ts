@@ -323,7 +323,7 @@ export class Authenticator {
 
     if (workspace) {
       [groups, subscription, flags] = await Promise.all([
-        GroupResource.fetchWorkspaceGroupsFromKey(key),
+        GroupResource.listWorkspaceGroupsFromKey(key),
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         (async () => {
           return (

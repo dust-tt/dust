@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -18,6 +19,7 @@ export type PostKeysResponseBody = {
 
 const CreateKeyPostBodySchema = t.type({
   name: t.string,
+  group_id: t.union([t.string, t.undefined]),
 });
 
 async function handler(
@@ -58,11 +60,16 @@ async function handler(
         });
       }
 
-      const { name } = bodyValidation.right;
+      const { name, group_id } = bodyValidation.right;
+      const group = group_id
+        ? await GroupResource.fetchById(auth, group_id)
+        : await GroupResource.fetchWorkspaceGlobalGroup(auth);
+
       const key = await KeyResource.makeNew({
         name: name,
         status: "active",
         userId: user?.id,
+        groupId: group?.id,
         workspaceId: owner.id,
         isSystem: false,
       });

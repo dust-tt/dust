@@ -10,6 +10,7 @@ import { DataTypes, Model } from "sequelize";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 
 export class KeyModel extends Model<
   InferAttributes<KeyModel>,
@@ -25,6 +26,7 @@ export class KeyModel extends Model<
   declare isSystem: boolean;
 
   declare userId: ForeignKey<User["id"]>;
+  declare groupId: ForeignKey<GroupModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare name: string | null;
@@ -88,4 +90,10 @@ User.hasMany(KeyModel, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
+GroupModel.hasMany(KeyModel, {
+  // TODO(20240731 thomas) allowNull to false once backfilled
+  foreignKey: { allowNull: true },
+  onDelete: "SET NULL",
+});
+
 KeyModel.belongsTo(User);
