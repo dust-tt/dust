@@ -196,6 +196,7 @@ export interface TemplateAgentConfigurationType {
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
+  visualizationEnabled: boolean;
 }
 
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 8;

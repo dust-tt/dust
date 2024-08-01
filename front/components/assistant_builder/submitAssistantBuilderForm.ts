@@ -200,8 +200,7 @@ export async function submitAssistantBuilderForm({
           temperature: builderState.generationSettings.temperature,
         },
         maxStepsPerRun,
-        // TODO(@fontanierh): support viz in the builder
-        visualizationEnabled: false,
+        visualizationEnabled: builderState.visualizationEnabled,
         templateId: builderState.templateId,
       },
     };
