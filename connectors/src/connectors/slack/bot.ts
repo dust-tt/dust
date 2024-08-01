@@ -390,6 +390,9 @@ async function botAnswerMessage(
     }
   }
 
+  if (message.trim() === "") {
+    message = "?";
+  }
   const messageReqBody = {
     content: message,
     mentions: mentions.map((m) => {
