@@ -32,7 +32,16 @@ async function handler(
   auth: Authenticator,
   session: SessionWithUser
 ) {
-  let owner = auth.getNonNullableWorkspace();
+  let owner = auth.workspace();
+  if (!owner) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      },
+    });
+  }
 
   const app = await getApp(auth, req.query.aId as string);
 
@@ -111,22 +120,18 @@ async function handler(
       );
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
 
-      const dustRun = await coreAPI.createRun(
-        auth.getNonNullableWorkspace(),
-        auth.groups(),
-        {
-          projectId: app.dustAPIProjectId,
-          runType: "local",
-          specification: dumpSpecification(
-            JSON.parse(req.body.specification),
-            latestDatasets
-          ),
-          datasetId: inputDataset,
-          config: { blocks: config },
-          credentials: credentialsFromProviders(providers),
-          secrets,
-        }
-      );
+      const dustRun = await coreAPI.createRun(owner, auth.groups(), {
+        projectId: app.dustAPIProjectId,
+        runType: "local",
+        specification: dumpSpecification(
+          JSON.parse(req.body.specification),
+          latestDatasets
+        ),
+        datasetId: inputDataset,
+        config: { blocks: config },
+        credentials: credentialsFromProviders(providers),
+        secrets,
+      });
 
       if (dustRun.isErr()) {
         return apiError(req, res, {

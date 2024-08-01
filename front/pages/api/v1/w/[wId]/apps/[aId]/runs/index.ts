@@ -183,8 +183,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "app_not_found",
-        message: "The app you're trying to run was not found",
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
     });
   }
@@ -285,19 +285,15 @@ async function handler(
         "App run creation"
       );
 
-      const runRes = await coreAPI.createRunStream(
-        auth.getNonNullableWorkspace(),
-        auth.groups(),
-        {
-          projectId: app.dustAPIProjectId,
-          runType: "deploy",
-          specificationHash: specificationHash,
-          config: { blocks: config },
-          inputs,
-          credentials,
-          secrets,
-        }
-      );
+      const runRes = await coreAPI.createRunStream(owner, auth.groups(), {
+        projectId: app.dustAPIProjectId,
+        runType: "deploy",
+        specificationHash: specificationHash,
+        config: { blocks: config },
+        inputs,
+        credentials,
+        secrets,
+      });
 
       if (runRes.isErr()) {
         return apiError(req, res, {
