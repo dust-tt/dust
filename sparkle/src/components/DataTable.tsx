@@ -58,7 +58,7 @@ export function DataTable<TData, TValue>({
     <DataTable.Root className={className}>
       <DataTable.Header>
         {table.getHeaderGroups().map((headerGroup) => (
-          <DataTable.Row key={headerGroup.id}>
+          <DataTable.Row key={headerGroup.id} >
             {headerGroup.headers.map((header) => (
               <DataTable.Head
                 key={header.id}
@@ -99,6 +99,8 @@ export function DataTable<TData, TValue>({
             key={row.id}
             clickable={row.original.clickable}
             onClick={row.original.onClick}
+            showMore={row.original.showMore}
+            onMoreClick={row.original.onMoreClick}
           >
             {row.getVisibleCells().map((cell) => (
               <DataTable.Cell key={cell.id}>
@@ -184,6 +186,8 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   clickable?: boolean;
   onClick?: () => void;
+  showMore?: boolean;
+  onMoreClick?: () => void;
 }
 
 DataTable.Row = function Row({
@@ -191,29 +195,32 @@ DataTable.Row = function Row({
   className,
   clickable = false,
   onClick,
+  showMore = false,
+  onMoreClick,
   ...props
 }: RowProps) {
   return (
     <tr
       className={classNames(
         "s-border-b s-border-structure-200 s-text-sm",
+        clickable ? "s-cursor-pointer" : "",
         className || ""
       )}
+      onClick={clickable ? onClick : undefined}
       {...props}
     >
       {children}
-      {clickable && (
-        <td
-          className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
-          onClick={clickable ? onClick : undefined}
-        >
+      {showMore && (
+        <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600" onClick={(e) => {
+          e.stopPropagation(); // Prevent row click event
+          onMoreClick?.();
+        }}>
           <Icon visual={MoreIcon} size="sm" />
         </td>
       )}
     </tr>
   );
 };
-
 interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;

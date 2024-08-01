@@ -23,6 +23,8 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   clickable?: boolean;
   onClick?: () => void;
+  showMore?: boolean;
+  onMoreClick?: () => void;
 };
 
 const DataTableExample = () => {
@@ -37,6 +39,8 @@ const DataTableExample = () => {
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
       clickable: true,
       onClick: () => console.log("hehe"),
+      showMore: true,
+      onMoreClick: () => console.log("show more"),
     },
     {
       name: "Design",
