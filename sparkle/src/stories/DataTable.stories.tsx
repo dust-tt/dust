@@ -2,12 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
 import React from "react";
 
-import { FolderIcon, Table } from "../index_with_tw_base";
+import { DataTable, FolderIcon } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Table",
-  component: Table,
-} satisfies Meta<typeof Table>;
+  title: "Components/DataTable",
+  component: DataTable,
+} satisfies Meta<typeof DataTable>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -25,7 +25,7 @@ type Data = {
   onClick?: () => void;
 };
 
-const TableExample = () => {
+const DataTableExample = () => {
   const data: Data[] = [
     {
       name: "Marketing",
@@ -75,45 +75,51 @@ const TableExample = () => {
       accessorKey: "name",
       header: "Name",
       cell: (info) => (
-        <Table.Cell
+        <DataTable.Cell
           avatarUrl={info.row.original.avatarUrl}
           icon={info.row.original.icon}
           description={info.row.original.description}
         >
           {info.row.original.name}
-        </Table.Cell>
+        </DataTable.Cell>
       ),
     },
     {
       accessorKey: "usedBy",
       header: "Used by",
-      cell: (info) => <Table.Cell>{info.row.original.usedBy}</Table.Cell>,
+      cell: (info) => (
+        <DataTable.Cell>{info.row.original.usedBy}</DataTable.Cell>
+      ),
     },
     {
       accessorKey: "addedBy",
       header: "Added by",
-      cell: (info) => <Table.Cell>{info.row.original.addedBy}</Table.Cell>,
+      cell: (info) => (
+        <DataTable.Cell>{info.row.original.addedBy}</DataTable.Cell>
+      ),
     },
     {
       accessorKey: "lastUpdated",
       header: "Last updated",
-      cell: (info) => <Table.Cell>{info.row.original.lastUpdated}</Table.Cell>,
+      cell: (info) => (
+        <DataTable.Cell>{info.row.original.lastUpdated}</DataTable.Cell>
+      ),
       enableSorting: false,
     },
     {
       accessorKey: "size",
       header: "Size",
-      cell: (info) => <Table.Cell>{info.row.original.size}</Table.Cell>,
+      cell: (info) => <DataTable.Cell>{info.row.original.size}</DataTable.Cell>,
     },
   ];
 
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
-      <Table data={data} columns={columns} />
+      <DataTable data={data} columns={columns} />
     </div>
   );
 };
 
 export const Default: Story = {
-  render: () => <TableExample />,
+  render: () => <DataTableExample />,
 };

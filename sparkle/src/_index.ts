@@ -145,8 +145,8 @@ export { TextArea };
 import { Markdown } from "./components/Markdown";
 export { Markdown };
 
-import { Table } from "./components/Table";
-export { Table };
+import { DataTable } from "./components/DataTable";
+export { DataTable };
 
 import {
   LogoHorizontalColor as LogoHorizontalColorLogo,

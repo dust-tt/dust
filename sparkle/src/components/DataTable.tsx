@@ -16,7 +16,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-interface TableProps<TData, TValue> {
+interface DataTableProps<TData, TValue> {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
   className?: string;
@@ -24,13 +24,13 @@ interface TableProps<TData, TValue> {
   filterColumn?: string;
 }
 
-export function Table<TData, TValue>({
+export function DataTable<TData, TValue>({
   data,
   columns,
   className,
   filter,
   filterColumn,
-}: TableProps<TData, TValue>) {
+}: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -55,12 +55,12 @@ export function Table<TData, TValue>({
   }, [filter, filterColumn]);
 
   return (
-    <Table.Root className={className}>
-      <Table.Header>
+    <DataTable.Root className={className}>
+      <DataTable.Header>
         {table.getHeaderGroups().map((headerGroup) => (
-          <Table.Row key={headerGroup.id}>
+          <DataTable.Row key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
-              <Table.Head
+              <DataTable.Head
                 key={header.id}
                 onClick={header.column.getToggleSortingHandler()}
                 className={header.column.getCanSort() ? "s-cursor-pointer" : ""}
@@ -88,39 +88,39 @@ export function Table<TData, TValue>({
                     />
                   )}
                 </div>
-              </Table.Head>
+              </DataTable.Head>
             ))}
-          </Table.Row>
+          </DataTable.Row>
         ))}
-      </Table.Header>
-      <Table.Body>
+      </DataTable.Header>
+      <DataTable.Body>
         {table.getRowModel().rows.map((row) => (
-          <Table.Row
+          <DataTable.Row
             key={row.id}
             clickable={row.original.clickable}
             onClick={row.original.onClick}
           >
             {row.getVisibleCells().map((cell) => (
-              <Table.Cell key={cell.id}>
+              <DataTable.Cell key={cell.id}>
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </Table.Cell>
+              </DataTable.Cell>
             ))}
-          </Table.Row>
+          </DataTable.Row>
         ))}
-      </Table.Body>
-    </Table.Root>
+      </DataTable.Body>
+    </DataTable.Root>
   );
 }
 
-interface TableRootProps extends React.HTMLAttributes<HTMLTableElement> {
+interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
 }
 
-Table.Root = function TableRoot({
+DataTable.Root = function DataTableRoot({
   children,
   className,
   ...props
-}: TableRootProps) {
+}: DataTableRootProps) {
   return (
     <table
       className={classNames("s-w-full s-border-collapse", className || "")}
@@ -135,7 +135,11 @@ interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
   children: ReactNode;
 }
 
-Table.Header = function Header({ children, className, ...props }: HeaderProps) {
+DataTable.Header = function Header({
+  children,
+  className,
+  ...props
+}: HeaderProps) {
   return (
     <thead
       className={classNames("s-text-xs s-capitalize", className || "")}
@@ -150,7 +154,7 @@ interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
 }
 
-Table.Head = function Head({ children, className, ...props }: HeadProps) {
+DataTable.Head = function Head({ children, className, ...props }: HeadProps) {
   return (
     <th
       className={classNames(
@@ -164,7 +168,7 @@ Table.Head = function Head({ children, className, ...props }: HeadProps) {
   );
 };
 
-Table.Body = function Body({
+DataTable.Body = function Body({
   children,
   className,
   ...props
@@ -182,7 +186,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   onClick?: () => void;
 }
 
-Table.Row = function Row({
+DataTable.Row = function Row({
   children,
   className,
   clickable = false,
@@ -217,7 +221,7 @@ interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   description?: string;
 }
 
-Table.Cell = function Cell({
+DataTable.Cell = function Cell({
   children,
   className,
   avatarUrl,
@@ -253,7 +257,7 @@ Table.Cell = function Cell({
   );
 };
 
-Table.Caption = function Caption({
+DataTable.Caption = function Caption({
   children,
   className,
   ...props
