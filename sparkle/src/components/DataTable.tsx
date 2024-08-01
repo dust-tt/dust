@@ -202,9 +202,7 @@ DataTable.Row = function Row({
     <tr
       className={classNames(
         "s-border-b s-border-structure-200 s-text-sm",
-        onClick
-          ? "s-cursor-pointer hover:s-border-b-neutral-500 hover:s-bg-gray-50"
-          : "",
+        onClick ? "s-cursor-pointer hover:s-bg-gray-50" : "",
         className || ""
       )}
       onClick={onClick ? onClick : undefined}
