@@ -23,6 +23,8 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   clickable?: boolean;
   onClick?: () => void;
+  showMore?: boolean;
+  onMoreClick?: () => void;
 };
 
 const DataTableExample = () => {
@@ -35,8 +37,8 @@ const DataTableExample = () => {
       lastUpdated: "July 8, 2023",
       size: "32kb",
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-      clickable: true,
       onClick: () => console.log("hehe"),
+      onMoreClick: () => console.log("show more"),
     },
     {
       name: "Design",
@@ -45,7 +47,6 @@ const DataTableExample = () => {
       lastUpdated: "2023-07-09",
       size: "64kb",
       icon: FolderIcon,
-      clickable: false,
     },
     {
       name: "Development",
