@@ -14,10 +14,6 @@ import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
-import {
-  VisualizationActionType,
-  VisualizationConfigurationType,
-} from "../../../front/assistant/actions/visualization";
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { BrowseActionType, BrowseConfigurationType } from "./browse";
@@ -129,21 +125,4 @@ export function isBrowseActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "browse_action";
-}
-
-export function isVisualizationConfiguration(
-  arg: unknown
-): arg is VisualizationConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "visualization_configuration"
-  );
-}
-
-export function isVisualizationActionType(
-  arg: AgentActionType
-): arg is VisualizationActionType {
-  return arg.type === "visualization_action";
 }

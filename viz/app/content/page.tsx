@@ -1,7 +1,7 @@
 import { VisualizationWrapperWithErrorBoundary } from "@viz/app/components/VisualizationWrapper";
 
 type RenderVisualizationSearchParams = {
-  aId: string;
+  index: string;
 };
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
@@ -13,7 +13,7 @@ export default function RenderVisualization({
 }) {
   return (
     <VisualizationWrapperWithErrorBoundary
-      actionId={parseInt(searchParams.aId, 10)}
+      index={parseInt(searchParams.index, 10)}
       allowedVisualizationOrigin={ALLOWED_VISUALIZATION_ORIGIN}
     />
   );

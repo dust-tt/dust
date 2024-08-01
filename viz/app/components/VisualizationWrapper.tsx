@@ -116,19 +116,19 @@ interface RunnerParams {
 }
 
 export function VisualizationWrapperWithErrorBoundary({
-  actionId,
+  index,
   allowedVisualizationOrigin,
 }: {
-  actionId: number;
+  index: number;
   allowedVisualizationOrigin: string | undefined;
 }) {
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
-        actionId,
+        index,
         allowedVisualizationOrigin,
       }),
-    [actionId, allowedVisualizationOrigin]
+    [index, allowedVisualizationOrigin]
   );
   const api = useVisualizationAPI(sendCrossDocumentMessage);
 
@@ -235,10 +235,10 @@ export function VisualizationWrapper({
 }
 
 export function makeSendCrossDocumentMessage({
-  actionId,
+  index,
   allowedVisualizationOrigin,
 }: {
-  actionId: number;
+  index: number;
   allowedVisualizationOrigin: string | undefined;
 }) {
   return <T extends VisualizationRPCCommand>(
@@ -271,7 +271,7 @@ export function makeSendCrossDocumentMessage({
         {
           command,
           messageUniqueId,
-          actionId,
+          index,
           params,
         },
         "*"

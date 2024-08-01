@@ -51,6 +51,7 @@ export class AgentConfiguration extends Model<
   declare authorId: ForeignKey<User["id"]>;
 
   declare maxStepsPerRun: number;
+  declare visualizationEnabled: boolean;
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
@@ -121,6 +122,10 @@ AgentConfiguration.init(
     maxStepsPerRun: {
       type: DataTypes.INTEGER,
       allowNull: true,
+    },
+    visualizationEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
     },
     pictureUrl: {
       type: DataTypes.TEXT,

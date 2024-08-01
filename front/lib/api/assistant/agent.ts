@@ -16,9 +16,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  ModelConfigurationType,
   UserMessageType,
-  VisualizationGenerationTokensEvent,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -29,14 +27,16 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  isVisualizationConfiguration,
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import { escapeRegExp } from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
@@ -109,7 +109,6 @@ export async function* runMultiActionsAgentLoop(
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | VisualizationGenerationTokensEvent
 > {
   const now = Date.now();
 
@@ -244,7 +243,6 @@ export async function* runMultiActionsAgentLoop(
 
         // Generation events
         case "generation_tokens":
-        case "visualization_generation_tokens":
           yield event;
           break;
         case "generation_cancel":
@@ -321,7 +319,6 @@ export async function* runMultiActionsAgent(
   | AgentActionsEvent
   | AgentChainOfThoughtEvent
   | AgentContentEvent
-  | VisualizationGenerationTokensEvent
 > {
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -354,6 +351,7 @@ export async function* runMultiActionsAgent(
 
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
+    conversation,
     agentConfiguration,
     fallbackPrompt,
     model,
@@ -527,10 +525,11 @@ export async function* runMultiActionsAgent(
   let lastCheckCancellation = Date.now();
   const redis = await getRedisClient();
   let isGeneration = true;
+
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    model.delimitersConfiguration
+    getDelimitersConfiguration({ agentConfiguration })
   );
 
   let rawContent = "";
@@ -1130,269 +1129,7 @@ async function* runAction(
           assertNever(event);
       }
     }
-  } else if (isVisualizationConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "visualization_params":
-          yield event;
-          break;
-        case "visualization_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
-        case "visualization_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-        case "visualization_generation_tokens":
-          yield event;
-          break;
-        default:
-          assertNever(event);
-      }
-    }
   } else {
     assertNever(actionConfiguration);
-  }
-}
-
-export class AgentMessageContentParser {
-  private buffer: string = "";
-  private content: string = "";
-  private chainOfThought: string = "";
-  private chainOfToughtDelimitersOpened: number = 0;
-  private swallowDelimitersOpened: number = 0;
-  private pattern?: RegExp;
-  private incompleteDelimiterPattern?: RegExp;
-  private specByDelimiter: Record<
-    string,
-    {
-      type: "opening_delimiter" | "closing_delimiter";
-      isChainOfThought: boolean;
-      swallow: boolean;
-    }
-  >;
-
-  constructor(
-    private agentConfiguration: LightAgentConfigurationType,
-    private messageId: string,
-    delimitersConfiguration: ModelConfigurationType["delimitersConfiguration"]
-  ) {
-    this.buffer = "";
-    this.content = "";
-    this.chainOfThought = "";
-    this.chainOfToughtDelimitersOpened = 0;
-
-    // Ensure no duplicate delimiters.
-    const allDelimitersArray =
-      delimitersConfiguration?.delimiters.flatMap(
-        ({ openingPattern, closingPattern }) => [
-          escapeRegExp(openingPattern),
-          escapeRegExp(closingPattern),
-        ]
-      ) ?? [];
-
-    if (allDelimitersArray.length !== new Set(allDelimitersArray).size) {
-      throw new Error("Duplicate delimiters in the configuration");
-    }
-
-    // Store mapping of delimiters to their spec.
-    this.specByDelimiter =
-      delimitersConfiguration?.delimiters.reduce(
-        (
-          acc,
-          { openingPattern, closingPattern, isChainOfThought, swallow }
-        ) => {
-          acc[openingPattern] = {
-            type: "opening_delimiter" as const,
-            isChainOfThought,
-            swallow,
-          };
-          acc[closingPattern] = {
-            type: "closing_delimiter" as const,
-            isChainOfThought,
-            swallow,
-          };
-          return acc;
-        },
-        {} as AgentMessageContentParser["specByDelimiter"]
-      ) ?? {};
-
-    // Store the regex pattern that match any of the delimiters.
-    this.pattern = allDelimitersArray.length
-      ? new RegExp(allDelimitersArray.join("|"))
-      : undefined;
-
-    // Store the regex pattern that match incomplete delimiters.
-    this.incompleteDelimiterPattern =
-      delimitersConfiguration?.incompleteDelimiterRegex;
-  }
-
-  async *flushTokens({
-    upTo,
-  }: {
-    upTo?: number;
-  } = {}): AsyncGenerator<GenerationTokensEvent> {
-    if (!this.buffer.length) {
-      return;
-    }
-    if (!this.swallowDelimitersOpened) {
-      const text =
-        upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
-
-      yield {
-        type: "generation_tokens",
-        created: Date.now(),
-        configurationId: this.agentConfiguration.sId,
-        messageId: this.messageId,
-        text,
-        classification: this.chainOfToughtDelimitersOpened
-          ? "chain_of_thought"
-          : "tokens",
-      };
-
-      if (this.chainOfToughtDelimitersOpened) {
-        this.chainOfThought += text;
-      } else {
-        this.content += text;
-      }
-    }
-
-    this.buffer = upTo === undefined ? "" : this.buffer.substring(upTo);
-  }
-
-  async *emitTokens(text: string): AsyncGenerator<GenerationTokensEvent> {
-    // Add text of the new event to the buffer.
-    this.buffer += text;
-    if (!this.pattern) {
-      yield* this.flushTokens();
-      return;
-    }
-
-    if (this.incompleteDelimiterPattern?.test(this.buffer)) {
-      // Wait for the next event to complete the delimiter.
-      return;
-    }
-
-    let match: RegExpExecArray | null;
-    while ((match = this.pattern.exec(this.buffer))) {
-      const del = match[0];
-      const index = match.index;
-
-      // Emit text before the delimiter as 'text' or 'chain_of_thought'
-      if (index > 0) {
-        yield* this.flushTokens({ upTo: index });
-      }
-
-      const {
-        type: classification,
-        isChainOfThought,
-        swallow,
-      } = this.specByDelimiter[del];
-
-      if (!classification) {
-        throw new Error(`Unknown delimiter: ${del}`);
-      }
-
-      if (swallow) {
-        if (classification === "opening_delimiter") {
-          this.swallowDelimitersOpened += 1;
-        } else {
-          this.swallowDelimitersOpened -= 1;
-        }
-      }
-
-      if (isChainOfThought) {
-        if (classification === "opening_delimiter") {
-          this.chainOfToughtDelimitersOpened += 1;
-        } else {
-          this.chainOfToughtDelimitersOpened -= 1;
-          if (this.chainOfToughtDelimitersOpened === 0) {
-            // The chain of thought tag is closed.
-            // Yield a newline in the chain of thought to separate the different blocks.
-            const separator = "\n";
-            yield {
-              type: "generation_tokens",
-              created: Date.now(),
-              configurationId: this.agentConfiguration.sId,
-              messageId: this.messageId,
-              text: separator,
-              classification: "chain_of_thought",
-            };
-            this.chainOfThought += separator;
-          }
-        }
-      }
-
-      // Emit the delimiter.
-      yield {
-        type: "generation_tokens",
-        created: Date.now(),
-        configurationId: this.agentConfiguration.sId,
-        messageId: this.messageId,
-        text: del,
-        classification,
-      } satisfies GenerationTokensEvent;
-
-      // Update the buffer
-      this.buffer = this.buffer.substring(del.length);
-    }
-
-    // Emit the remaining text/chain_of_thought.
-    yield* this.flushTokens();
-  }
-
-  async parseContents(
-    contents: string[]
-  ): Promise<{ content: string | null; chainOfThought: string | null }> {
-    for (const content of contents) {
-      for await (const _event of this.emitTokens(content)) {
-        void _event;
-      }
-    }
-    for await (const _event of this.flushTokens()) {
-      void _event;
-    }
-
-    return {
-      content: this.content.length ? this.content : null,
-      chainOfThought: this.chainOfThought.length ? this.chainOfThought : null,
-    };
-  }
-
-  getContent(): string | null {
-    return this.content.length ? this.content : null;
-  }
-
-  getChainOfThought(): string | null {
-    return this.chainOfThought.length ? this.chainOfThought : null;
   }
 }

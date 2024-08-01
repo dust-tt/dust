@@ -35,7 +35,6 @@ import {
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
-  DEFAULT_VISUALIZATION_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
 import {
@@ -57,7 +56,6 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentVisualizationConfiguration } from "@app/lib/models/assistant/actions/visualization";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
@@ -389,7 +387,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     processConfigs,
     websearchConfigs,
     browseConfigs,
-    visualizationConfigs,
+
     agentUserRelations,
   ] = await Promise.all([
     variant === "full"
@@ -430,15 +428,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentBrowseConfiguration[]>),
-    variant === "full"
-      ? AgentVisualizationConfiguration.findAll({
-          where: {
-            agentConfigurationId: { [Op.in]: configurationIds },
-          },
-        }).then(groupByAgentConfigurationId)
-      : Promise.resolve(
-          {} as Record<number, AgentVisualizationConfiguration[]>
-        ),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -637,17 +626,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
         });
       }
 
-      const visualizationConfigurations = visualizationConfigs[agent.id] ?? [];
-      for (const visualizationConfig of visualizationConfigurations) {
-        actions.push({
-          id: visualizationConfig.id,
-          sId: visualizationConfig.sId,
-          type: "visualization_configuration",
-          name: visualizationConfig.name || DEFAULT_VISUALIZATION_ACTION_NAME,
-          description: visualizationConfig.description,
-        });
-      }
-
       const tablesQueryConfigurations = tablesQueryConfigs[agent.id] ?? [];
       for (const tablesQueryConfig of tablesQueryConfigurations) {
         const tablesQueryConfigTables =
@@ -725,6 +703,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       actions,
       versionAuthorId: agent.authorId,
       maxStepsPerRun: agent.maxStepsPerRun,
+      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
     };
 
@@ -917,6 +896,7 @@ export async function createAgentConfiguration(
     description,
     instructions,
     maxStepsPerRun,
+    visualizationEnabled,
     pictureUrl,
     status,
     scope,
@@ -928,6 +908,7 @@ export async function createAgentConfiguration(
     description: string;
     instructions: string | null;
     maxStepsPerRun: number;
+    visualizationEnabled: boolean;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -1040,6 +1021,7 @@ export async function createAgentConfiguration(
             modelId: model.modelId,
             temperature: model.temperature,
             maxStepsPerRun,
+            visualizationEnabled,
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,
@@ -1074,6 +1056,7 @@ export async function createAgentConfiguration(
       pictureUrl: agent.pictureUrl,
       status: agent.status,
       maxStepsPerRun: agent.maxStepsPerRun,
+      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
     };
 
@@ -1193,9 +1176,6 @@ export async function createAgentActionConfiguration(
       }
     | {
         type: "browse_configuration";
-      }
-    | {
-        type: "visualization_configuration";
       }
   ) & {
     name: string | null;
@@ -1374,22 +1354,6 @@ export async function createAgentActionConfiguration(
         sId: browseConfig.sId,
         type: "browse_configuration",
         name: action.name || DEFAULT_BROWSE_ACTION_NAME,
-        description: action.description,
-      });
-    }
-    case "visualization_configuration": {
-      const visualizationConfig = await AgentVisualizationConfiguration.create({
-        sId: generateLegacyModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        name: action.name,
-        description: action.description,
-      });
-
-      return new Ok({
-        id: visualizationConfig.id,
-        sId: visualizationConfig.sId,
-        type: "visualization_configuration",
-        name: action.name || DEFAULT_VISUALIZATION_ACTION_NAME,
         description: action.description,
       });
     }

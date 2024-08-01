@@ -1,56 +1,8 @@
-import * as t from "io-ts";
-
-import { ModelId } from "../../../shared/model_id";
-import { BaseAction } from "../../lib/api/assistant/actions";
-
-// Configuration
-export type VisualizationConfigurationType = {
-  id: ModelId; // AgentVisualizationConfiguration ID
-  sId: string;
-  type: "visualization_configuration";
-  name: string;
-  description: string | null;
-};
-
-// Action execution
-export interface VisualizationActionType extends BaseAction {
-  agentMessageId: ModelId;
-  generation: string | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-  type: "visualization_action";
-}
-
-export const VisualizationActionOutputSchema = t.type({
-  generation: t.string,
-});
-
-export function visualizationExtractCode(code: string): {
-  extractedCode: string;
-  isComplete: boolean;
-} {
-  const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*(<\/visualization>|$)/;
-  let extractedCode: string | null = null;
-  const match = code.match(regex);
-  if (match && match[1]) {
-    extractedCode = match[1];
-  }
-  if (!extractedCode) {
-    return { extractedCode: "", isComplete: false };
-  }
-
-  return {
-    extractedCode: extractedCode,
-    isComplete: code.includes("</visualization>"),
-  };
-}
-
 // This defines the commands that the iframe can send to the host window.
 
 // Common base interface.
 interface VisualizationRPCRequestBase {
-  actionId: number;
+  index: number;
   messageUniqueId: string;
 }
 
@@ -103,6 +55,8 @@ export interface CommandResultMap {
   setContentHeight: void;
 }
 
+// TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
+
 // Type guard for getFile.
 export function isGetFileRequest(
   value: unknown
@@ -118,7 +72,7 @@ export function isGetFileRequest(
 
   return (
     v.command === "getFile" &&
-    typeof v.actionId === "number" &&
+    typeof v.index === "number" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
@@ -141,7 +95,7 @@ export function isGetCodeToExecuteRequest(
 
   return (
     v.command === "getCodeToExecute" &&
-    typeof v.actionId === "number" &&
+    typeof v.index === "number" &&
     typeof v.messageUniqueId === "string"
   );
 }
@@ -161,7 +115,7 @@ export function isRetryRequest(
 
   return (
     v.command === "retry" &&
-    typeof v.actionId === "number" &&
+    typeof v.index === "number" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
@@ -184,7 +138,7 @@ export function isSetContentHeightRequest(
 
   return (
     v.command === "setContentHeight" &&
-    typeof v.actionId === "number" &&
+    typeof v.index === "number" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&

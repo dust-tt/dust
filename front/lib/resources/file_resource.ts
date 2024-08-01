@@ -9,7 +9,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -59,26 +59,31 @@ export class FileResource extends BaseResource<FileModel> {
     // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const owner = auth.workspace();
     if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `getUploadUrl`");
+      throw new Error("Unexpected unauthenticated call to `fetchById`");
+    }
+    const res = await FileResource.fetchByIds(auth, [id]);
+    return res.length > 0 ? res[0] : null;
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[]
+  ): Promise<FileResource[]> {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error("Unexpected unauthenticated call to `fetchByIds`");
     }
 
-    const fileModelId = getResourceIdFromSId(id);
-    if (!fileModelId) {
-      return null;
-    }
+    const fileModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
 
-    const blob = await this.model.findOne({
+    const blobs = await this.model.findAll({
       where: {
         workspaceId: owner.id,
-        id: fileModelId,
+        id: fileModelIds,
       },
     });
-    if (!blob) {
-      return null;
-    }
 
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    return new this(this.model, blob.get());
+    return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
   static async deleteAllForWorkspace(

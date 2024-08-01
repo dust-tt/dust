@@ -17,7 +17,6 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_VISUALIZATION_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
 
@@ -173,15 +172,6 @@ export async function submitAssistantBuilderForm({
           },
         ];
 
-      case "VISUALIZATION":
-        return [
-          {
-            type: "visualization_configuration",
-            name: DEFAULT_VISUALIZATION_ACTION_NAME,
-            description: "Generate client side javascript react code.",
-          },
-        ];
-
       default:
         assertNever(a);
     }
@@ -210,6 +200,8 @@ export async function submitAssistantBuilderForm({
           temperature: builderState.generationSettings.temperature,
         },
         maxStepsPerRun,
+        // TODO(@fontanierh): support viz in the builder
+        visualizationEnabled: false,
         templateId: builderState.templateId,
       },
     };

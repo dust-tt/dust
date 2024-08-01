@@ -101,10 +101,6 @@ const BrowseActionConfigurationSchema = t.type({
   type: t.literal("browse_configuration"),
 });
 
-const VisualizationConfigurationSchema = t.type({
-  type: t.literal("visualization_configuration"),
-});
-
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -162,7 +158,6 @@ const ActionConfigurationSchema = t.intersection([
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
-    VisualizationConfigurationSchema,
   ]),
   t.partial(multiActionsCommonFields),
 ]);
@@ -202,6 +197,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     actions: t.array(ActionConfigurationSchema),
     templateId: t.union([t.string, t.null, t.undefined]),
     maxStepsPerRun: t.union([t.number, t.undefined]),
+    visualizationEnabled: t.boolean,
   }),
 });
 

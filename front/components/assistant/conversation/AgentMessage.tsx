@@ -33,11 +33,9 @@ import type {
 import {
   assertNever,
   isRetrievalActionType,
-  isVisualizationActionType,
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
-import assert from "assert";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -88,8 +86,8 @@ export function AgentMessage({
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
-  const [streamedVisualizations, setStreamedVisualizations] = useState<
-    { actionId: number; visualization: string }[]
+  const [visualizations, setVisualizations] = useState<
+    { visualization: string; complete: boolean }[]
   >([]);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
@@ -102,6 +100,17 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
   >([]);
+
+  useEffect(() => {
+    if (message.status === "succeeded") {
+      setVisualizations(
+        message.visualizations.map((v) => ({
+          visualization: v,
+          complete: true,
+        }))
+      );
+    }
+  }, [message.status, message.visualizations]);
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -180,7 +189,6 @@ export function AgentMessage({
       case "process_params":
       case "websearch_params":
       case "browse_params":
-      case "visualization_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -203,13 +211,27 @@ export function AgentMessage({
             ...event.message,
           };
         });
-        setStreamedVisualizations([]);
         break;
       }
 
       case "generation_tokens": {
         switch (event.classification) {
           case "closing_delimiter":
+            if (event.delimiterClassification === "visualization") {
+              // If we receive a closing delimiter for a visualization, we can
+              // consider the last viz to be complete.
+              setVisualizations((v) => {
+                const lastViz = v[v.length - 1];
+                if (lastViz) {
+                  return [
+                    ...v.slice(0, v.length - 1),
+                    { ...lastViz, complete: true },
+                  ];
+                }
+                return v;
+              });
+            }
+            break;
           case "opening_delimiter":
             break;
           case "tokens":
@@ -229,29 +251,28 @@ export function AgentMessage({
               };
             });
             break;
+          case "visualization":
+            // Append new content to the last viz, or create a new one if there
+            // is none or the last one is complete.
+            setVisualizations((v) => {
+              const lastViz = v[v.length - 1];
+              if (lastViz && !lastViz.complete) {
+                return [
+                  ...v.slice(0, v.length - 1),
+                  {
+                    visualization: lastViz.visualization + event.text,
+                    complete: false,
+                  },
+                ];
+              }
+              return [...v, { visualization: event.text, complete: false }];
+            });
+            break;
           default:
-            assertNever(event.classification);
+            assertNever(event);
         }
         break;
       }
-
-      case "visualization_generation_tokens":
-        setStreamedVisualizations((m) => {
-          const actionId = event.actionId;
-          const tokens = event.text;
-          const index = m.findIndex((v) => v.actionId === actionId);
-          if (index === -1) {
-            return [...m, { actionId, visualization: tokens }];
-          } else {
-            return m.map((v) => {
-              if (v.actionId === actionId) {
-                return { ...v, visualization: v.visualization + tokens };
-              }
-              return v;
-            });
-          }
-        });
-        break;
 
       default:
         assertNever(event);
@@ -469,7 +490,7 @@ export function AgentMessage({
           references: references,
           streaming: shouldStream,
           lastTokenClassification: lastTokenClassification,
-          streamedVisualizations,
+          visualizations,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -482,13 +503,13 @@ export function AgentMessage({
     references,
     streaming,
     lastTokenClassification,
-    streamedVisualizations,
+    visualizations,
   }: {
     agentMessage: AgentMessageType;
     references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
-    streamedVisualizations: { actionId: number; visualization: string }[];
+    visualizations: { visualization: string; complete: boolean }[];
   }) {
     if (agentMessage.status === "failed") {
       return (
@@ -510,25 +531,16 @@ export function AgentMessage({
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />
         <>
-          {agentMessage.actions
-            .filter((a) => isVisualizationActionType(a))
-            .map((a, i) => {
-              const streamingViz = streamedVisualizations.find(
-                (sv) => sv.actionId === a.id
-              );
-              assert(isVisualizationActionType(a));
-              return (
-                <VisualizationActionIframe
-                  action={a}
-                  conversationId={conversationId}
-                  isStreaming={!!streamingViz}
-                  key={i}
-                  onRetry={() => retryHandler(agentMessage)}
-                  owner={owner}
-                  streamedCode={streamingViz?.visualization || null}
-                />
-              );
-            })}
+          {visualizations.map((v, i) => {
+            return (
+              <VisualizationActionIframe
+                visualization={{ ...v, index: i }}
+                key={i}
+                onRetry={() => retryHandler(agentMessage)}
+                owner={owner}
+              />
+            );
+          })}
         </>
 
         {agentMessage.chainOfThought?.length ? (
