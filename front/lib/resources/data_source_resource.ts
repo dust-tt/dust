@@ -1,28 +1,21 @@
-import type {
-  ACLType,
-  ConnectorProvider,
-  DataSourceType,
-  Result,
-} from "@dust-tt/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import type { ConnectorProvider, DataSourceType, Result } from "@dust-tt/types";
+import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
-  FindOptions,
-  Includeable,
   ModelStatic,
   Transaction,
-  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
-import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
+import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
@@ -36,21 +29,20 @@ export type FetchDataSourceOptions = {
 export interface DataSourceResource
   extends ReadonlyAttributesType<DataSource> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceResource extends BaseResource<DataSource> {
+export class DataSourceResource extends ResourceWithVault<DataSource> {
   static model: ModelStatic<DataSource> = DataSource;
 
   readonly editedByUser: Attributes<User> | undefined;
-  readonly vault: VaultResource;
 
   constructor(
     model: ModelStatic<DataSource>,
     blob: Attributes<DataSource>,
     vault: VaultResource,
-    editedByUser?: Attributes<User>
+    { editedByUser }: { editedByUser?: Attributes<User> } = {}
   ) {
-    super(DataSourceResource.model, blob);
+    super(DataSourceResource.model, blob, vault);
+
     this.editedByUser = editedByUser;
-    this.vault = vault;
   }
 
   static async makeNew(
@@ -64,11 +56,13 @@ export class DataSourceResource extends BaseResource<DataSource> {
 
   // Fetching.
 
-  private static getOptions(options?: FetchDataSourceOptions) {
-    const result: FindOptions<DataSourceResource["model"]> = {};
+  private static getOptions(
+    options?: FetchDataSourceOptions
+  ): ResourceFindOptions<DataSource> {
+    const result: ResourceFindOptions<DataSource> = {};
 
     if (options?.includeEditedBy) {
-      result.include = [
+      result.includes = [
         {
           model: User,
           as: "editedByUser",
@@ -87,55 +81,17 @@ export class DataSourceResource extends BaseResource<DataSource> {
     return result;
   }
 
-  private static async baseFetch(
-    auth: Authenticator,
-    where: WhereOptions<DataSource>,
-    options?: FindOptions<typeof this.model>
-  ): Promise<DataSourceResource[]> {
-    const includeClauses: Includeable[] = [
-      {
-        model: VaultResource.model,
-        as: "vault",
-      },
-    ];
-
-    if (options?.include) {
-      if (Array.isArray(options.include)) {
-        includeClauses.push(...options.include);
-      } else {
-        includeClauses.push(options.include);
-      }
-    }
-
-    const blobs = await this.model.findAll({
-      where: {
-        ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: includeClauses,
-    });
-
-    const dataSources = blobs.map((b) => {
-      const vault = new VaultResource(VaultResource.model, b.vault.get());
-
-      return new this(this.model, b.get(), vault, b.editedByUser?.get());
-    });
-
-    return removeNulls(dataSources);
-  }
-
   static async fetchByName(
     auth: Authenticator,
     name: string,
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
-    const [dataSource] = await this.baseFetch(
-      auth,
-      {
+    const [dataSource] = await this.baseFetch(auth, {
+      ...this.getOptions(options),
+      where: {
         name,
       },
-      this.getOptions(options)
-    );
+    });
 
     return dataSource ?? null;
   }
@@ -144,7 +100,7 @@ export class DataSourceResource extends BaseResource<DataSource> {
     auth: Authenticator,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    return this.baseFetch(auth, {}, this.getOptions(options));
+    return this.baseFetch(auth, this.getOptions(options));
   }
 
   static async listByWorkspaceIdAndNames(
@@ -152,8 +108,10 @@ export class DataSourceResource extends BaseResource<DataSource> {
     names: string[]
   ): Promise<DataSourceResource[]> {
     return this.baseFetch(auth, {
-      name: {
-        [Op.in]: names,
+      where: {
+        name: {
+          [Op.in]: names,
+        },
       },
     });
   }
@@ -163,13 +121,12 @@ export class DataSourceResource extends BaseResource<DataSource> {
     connectorProvider: ConnectorProvider,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    return this.baseFetch(
-      auth,
-      {
+    return this.baseFetch(auth, {
+      ...this.getOptions(options),
+      where: {
         connectorProvider,
       },
-      this.getOptions(options)
-    );
+    });
   }
 
   async delete(
@@ -233,12 +190,6 @@ export class DataSourceResource extends BaseResource<DataSource> {
       this.connectorProvider !== null &&
       this.connectorProvider !== "webcrawler"
     );
-  }
-
-  // Permissions.
-
-  acl(): ACLType {
-    return this.vault.acl();
   }
 
   // Serialization.

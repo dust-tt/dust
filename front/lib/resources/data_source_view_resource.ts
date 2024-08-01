@@ -2,7 +2,6 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
-  ACLType,
   DataSourceType,
   DataSourceViewType,
   ModelId,
@@ -14,12 +13,11 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
-  WhereOptions,
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { BaseResource } from "@app/lib/resources/base_resource";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -27,25 +25,21 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
+export class DataSourceViewResource extends ResourceWithVault<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
-
-  readonly vault: VaultResource;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
     vault: VaultResource
   ) {
-    super(DataSourceViewModel, blob);
-
-    this.vault = vault;
+    super(DataSourceViewModel, blob, vault);
   }
 
   // Creation.
@@ -92,30 +86,6 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
 
   // Fetching.
 
-  private static async baseFetch(
-    auth: Authenticator,
-    where: Omit<WhereOptions<DataSourceViewModel>, "workspaceId"> = {}
-  ) {
-    const blobs = await this.model.findAll({
-      where: {
-        ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: [
-        {
-          model: VaultResource.model,
-          as: "vault",
-        },
-      ],
-    });
-
-    return blobs.map((b) => {
-      const vault = new VaultResource(VaultResource.model, b.vault.get());
-
-      return new this(this.model, b.get(), vault);
-    });
-  }
-
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }
@@ -126,8 +96,10 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     vault: VaultResource
   ) {
     return this.baseFetch(auth, {
-      dataSourceId: dataSources.map((ds) => ds.id),
-      vaultId: vault.id,
+      where: {
+        dataSourceId: dataSources.map((ds) => ds.id),
+        vaultId: vault.id,
+      },
     });
   }
 
@@ -137,7 +109,11 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
       return null;
     }
 
-    const [dataSource] = await this.baseFetch(auth, { id: fileModelId });
+    const [dataSource] = await this.baseFetch(auth, {
+      where: {
+        id: fileModelId,
+      },
+    });
 
     return dataSource ?? null;
   }
@@ -219,12 +195,6 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
 
   static isDataSourceViewSId(sId: string): boolean {
     return isResourceSId("data_source_view", sId);
-  }
-
-  // Permissions.
-
-  acl(): ACLType {
-    return this.vault.acl();
   }
 
   // Serialization logic.
