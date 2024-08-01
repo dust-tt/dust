@@ -83,8 +83,9 @@ export function DataTable<TData, TValue>({
                             ? ArrowDownIcon
                             : ArrowDownIcon
                       }
+                      size="xs"
                       className={classNames(
-                        "s-ml-1 s-w-2.5 s-font-extralight",
+                        "s-ml-1",
                         header.column.getIsSorted()
                           ? "s-opacity-100"
                           : "s-opacity-0"
