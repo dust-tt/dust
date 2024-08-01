@@ -16,10 +16,6 @@ import {
   TablesQueryParamsEvent,
 } from "../../../../front/lib/api/assistant/actions/tables_query";
 import {
-  VisualizationGenerationTokensEvent,
-  VisualizationParamsEvent,
-} from "../../../../front/lib/api/assistant/actions/visualization";
-import {
   AgentActionConfigurationType,
   AgentActionSpecification,
 } from "../../../assistant/agent";
@@ -69,9 +65,7 @@ export type AgentActionSpecificEvent =
   | TablesQueryOutputEvent
   | ProcessParamsEvent
   | WebsearchParamsEvent
-  | BrowseParamsEvent
-  | VisualizationParamsEvent
-  | VisualizationGenerationTokensEvent;
+  | BrowseParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

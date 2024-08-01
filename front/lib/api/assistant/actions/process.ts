@@ -234,6 +234,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     };
 
     const prompt = await constructPromptMultiActions(auth, {
+      conversation,
       userMessage,
       agentConfiguration,
       fallbackPrompt:

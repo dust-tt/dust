@@ -1,21 +1,22 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
-  VisualizationActionType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  isVisualizationRPCRequest,
-  visualizationExtractCode,
-} from "@dust-tt/types";
+import { assertNever, isVisualizationRPCRequest } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { classNames } from "@app/lib/utils";
+
+type Visualization = {
+  code: string;
+  complete: boolean;
+  identifier: string;
+};
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -26,7 +27,7 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
     {
       command: "answer",
       messageUniqueId: request.messageUniqueId,
-      actionId: request.actionId,
+      identifier: request.identifier,
       result: response,
     },
     // TODO(2024-07-24 flav) Restrict origin.
@@ -35,28 +36,20 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 };
 
 // Custom hook to encapsulate the logic for handling visualization messages.
-function useVisualizationDataHandler(
-  action: VisualizationActionType,
-  {
-    onRetry,
-    setContentHeight,
-    vizIframeRef,
-    workspaceId,
-    streamedCode,
-  }: {
-    onRetry: () => void;
-    setContentHeight: (v: SetStateAction<number>) => void;
-    vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-    workspaceId: string;
-    streamedCode: string | null;
-  }
-) {
-  const code = action.generation ?? streamedCode ?? "";
-
-  const { extractedCode } = useMemo(
-    () => visualizationExtractCode(code),
-    [code]
-  );
+function useVisualizationDataHandler({
+  visualization,
+  onRetry,
+  setContentHeight,
+  vizIframeRef,
+  workspaceId,
+}: {
+  visualization: Visualization;
+  onRetry: () => void;
+  setContentHeight: (v: SetStateAction<number>) => void;
+  vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+  workspaceId: string;
+}) {
+  const code = visualization.code;
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -86,7 +79,7 @@ function useVisualizationDataHandler(
       if (
         !isVisualizationRPCRequest(data) ||
         !isOriginatingFromViz ||
-        data.actionId !== action.id
+        data.identifier !== visualization.identifier
       ) {
         return;
       }
@@ -99,8 +92,8 @@ function useVisualizationDataHandler(
           break;
 
         case "getCodeToExecute":
-          if (extractedCode) {
-            sendResponseToIframe(data, { code: extractedCode }, event.source);
+          if (code) {
+            sendResponseToIframe(data, { code }, event.source);
           }
 
           break;
@@ -121,9 +114,8 @@ function useVisualizationDataHandler(
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
   }, [
-    action.generation,
-    action.id,
-    extractedCode,
+    visualization.identifier,
+    code,
     getFileBlob,
     onRetry,
     setContentHeight,
@@ -133,16 +125,12 @@ function useVisualizationDataHandler(
 
 export function VisualizationActionIframe({
   owner,
-  action,
-  isStreaming,
-  streamedCode,
+  visualization,
   onRetry,
 }: {
-  conversationId: string;
   owner: WorkspaceType;
-  action: VisualizationActionType;
-  streamedCode: string | null;
-  isStreaming: boolean;
+  visualization: Visualization;
+
   onRetry: () => void;
 }) {
   const [contentHeight, setContentHeight] = useState(0);
@@ -156,21 +144,20 @@ export function VisualizationActionIframe({
 
   const workspaceId = owner.sId;
 
-  useVisualizationDataHandler(action, {
+  useVisualizationDataHandler({
+    visualization,
     workspaceId,
     onRetry,
     setContentHeight,
     vizIframeRef,
-    streamedCode,
   });
 
-  const { extractedCode, isComplete: codeFullyGenerated } =
-    visualizationExtractCode(action.generation ?? streamedCode ?? "");
+  const { code, complete: codeFullyGenerated } = visualization;
 
   useEffect(() => {
     if (!codeFullyGenerated) {
       // Display spinner over the code block while waiting for code generation.
-      setShowSpinner(!extractedCode);
+      setShowSpinner(!code);
       setActiveIndex(0);
     } else if (iframeLoaded) {
       // Display iframe if code is generated and iframe has loaded.
@@ -181,7 +168,7 @@ export function VisualizationActionIframe({
       setShowSpinner(true);
       setActiveIndex(1);
     }
-  }, [codeFullyGenerated, extractedCode, iframeLoaded]);
+  }, [codeFullyGenerated, code, iframeLoaded]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -213,7 +200,10 @@ export function VisualizationActionIframe({
         </div>
       )}
       <div
-        className="transition-height relative min-h-96 w-full overflow-hidden duration-500 ease-in-out"
+        className={classNames(
+          "transition-height relative w-full overflow-hidden duration-500 ease-in-out",
+          codeFullyGenerated ? "min-h-96" : ""
+        )}
         ref={containerRef}
       >
         <div
@@ -224,8 +214,8 @@ export function VisualizationActionIframe({
         >
           <div className="flex h-full w-full shrink-0" ref={codeRef}>
             <RenderMessageMarkdown
-              content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
-              isStreaming={!codeFullyGenerated && isStreaming}
+              content={"```javascript\n" + (code ?? "") + "\n```"}
+              isStreaming={!codeFullyGenerated}
             />
           </div>
           <div className="relative flex h-full w-full shrink-0 items-center justify-center">
@@ -238,7 +228,7 @@ export function VisualizationActionIframe({
                   ref={vizIframeRef}
                   // Set a min height so iframe can display error.
                   className="h-full min-h-96 w-full"
-                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
+                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
                   sandbox="allow-scripts"
                   onLoad={() => setIframeLoaded(true)}
                 />

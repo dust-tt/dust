@@ -4,7 +4,6 @@ import {
   MagnifyingGlassIcon,
   PlanetIcon,
   ScanIcon,
-  ShapesIcon,
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
@@ -64,12 +63,5 @@ export const ACTION_SPECIFICATIONS: Record<
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
     flag: null,
-  },
-  VISUALIZATION: {
-    label: "Visualization",
-    description: "Generate graphs to visualize your data",
-    cardIcon: ShapesIcon,
-    dropDownIcon: ShapesIcon,
-    flag: "visualization_action_flag",
   },
 };

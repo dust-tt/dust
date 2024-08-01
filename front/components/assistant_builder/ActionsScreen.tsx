@@ -38,10 +38,6 @@ import {
   hasErrorActionTablesQuery,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import {
-  ActionVisualization,
-  hasErrorActionVisualization,
-} from "@app/components/assistant_builder/actions/VisualizationAction";
-import {
   ActionWebNavigation,
   hasErrorActionWebNavigation,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
@@ -67,7 +63,6 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
 
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
-  "VISUALIZATION",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
@@ -100,8 +95,6 @@ export function hasActionError(
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
-    case "VISUALIZATION":
-      return hasErrorActionVisualization(action);
     default:
       assertNever(action);
   }
@@ -667,8 +660,6 @@ function ActionConfigEditor({
       );
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
-    case "VISUALIZATION":
-      return <ActionVisualization />;
     default:
       assertNever(action);
   }

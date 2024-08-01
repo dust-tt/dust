@@ -116,19 +116,19 @@ interface RunnerParams {
 }
 
 export function VisualizationWrapperWithErrorBoundary({
-  actionId,
+  identifier,
   allowedVisualizationOrigin,
 }: {
-  actionId: number;
+  identifier: string;
   allowedVisualizationOrigin: string | undefined;
 }) {
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
-        actionId,
+        identifier,
         allowedVisualizationOrigin,
       }),
-    [actionId, allowedVisualizationOrigin]
+    [identifier, allowedVisualizationOrigin]
   );
   const api = useVisualizationAPI(sendCrossDocumentMessage);
 
@@ -160,7 +160,6 @@ export function VisualizationWrapper({
   useEffect(() => {
     const loadCode = async () => {
       try {
-        console.log("Fetching visualization code");
         const fetchedCode = await fetchCode();
         if (!fetchedCode) {
           setErrored(new Error("No visualization code found"));
@@ -235,10 +234,10 @@ export function VisualizationWrapper({
 }
 
 export function makeSendCrossDocumentMessage({
-  actionId,
+  identifier,
   allowedVisualizationOrigin,
 }: {
-  actionId: number;
+  identifier: string;
   allowedVisualizationOrigin: string | undefined;
 }) {
   return <T extends VisualizationRPCCommand>(
@@ -271,7 +270,7 @@ export function makeSendCrossDocumentMessage({
         {
           command,
           messageUniqueId,
-          actionId,
+          identifier,
           params,
         },
         "*"

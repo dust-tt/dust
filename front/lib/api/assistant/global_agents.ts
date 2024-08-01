@@ -178,6 +178,7 @@ function _getHelperGlobalAgent({
       },
     ],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -208,6 +209,7 @@ function _getGPT35TurboGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -238,6 +240,7 @@ function _getGPT4GlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -268,6 +271,7 @@ function _getClaudeInstantGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -305,6 +309,7 @@ function _getClaude2GlobalAgent({
 
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -336,6 +341,7 @@ function _getClaude3HaikuGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -372,6 +378,7 @@ function _getClaude3OpusGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -409,6 +416,7 @@ function _getClaude3GlobalAgent({
 
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -445,6 +453,7 @@ function _getMistralLargeGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -481,6 +490,7 @@ function _getMistralMediumGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -511,6 +521,7 @@ function _getMistralSmallGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -546,6 +557,7 @@ function _getGeminiProGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -614,6 +626,7 @@ function _getManagedDataSourceAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -639,6 +652,7 @@ function _getManagedDataSourceAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -675,6 +689,7 @@ function _getManagedDataSourceAgent(
       },
     ],
     maxStepsPerRun: 1,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -872,6 +887,7 @@ function _getDustGlobalAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -897,6 +913,7 @@ function _getDustGlobalAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -997,6 +1014,7 @@ The assistant always respects the mardown format and generates spaces to nest co
     model,
     actions,
     maxStepsPerRun: 3,
+    visualizationEnabled: false,
     templateId: null,
   };
 }

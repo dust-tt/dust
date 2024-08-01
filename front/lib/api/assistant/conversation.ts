@@ -816,6 +816,7 @@ export async function* postUserMessage(
                   actions: [],
                   content: null,
                   chainOfThought: null,
+                  visualizations: [],
                   rawContents: [],
                   error: null,
                   configuration,
@@ -1287,6 +1288,7 @@ export async function* editUserMessage(
                 actions: [],
                 content: null,
                 chainOfThought: null,
+                visualizations: [],
                 rawContents: [],
                 error: null,
                 configuration,
@@ -1502,6 +1504,7 @@ export async function* retryAgentMessage(
         actions: [],
         content: null,
         chainOfThought: null,
+        visualizations: [],
         rawContents: [],
         error: null,
         configuration: message.configuration,
@@ -1748,23 +1751,8 @@ async function* streamRunAgentEvents(
       case "process_params":
       case "websearch_params":
       case "browse_params":
-      case "visualization_params":
-      case "visualization_generation_tokens":
-        yield event;
-        break;
       case "generation_tokens":
-        if (event.classification === "tokens") {
-          yield event;
-        } else if (event.classification === "chain_of_thought") {
-          yield event;
-        } else if (
-          event.classification === "opening_delimiter" ||
-          event.classification === "closing_delimiter"
-        ) {
-          yield event;
-        } else {
-          assertNever(event.classification);
-        }
+        yield event;
         break;
 
       default:

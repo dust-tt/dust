@@ -1,6 +1,7 @@
 import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
+import { GenerationTokensEvent } from "./api/assistant/generation";
 
 /**
  * PROVIDER IDS
@@ -141,12 +142,15 @@ export type ModelConfigurationType = {
     delimiters: Array<{
       openingPattern: string;
       closingPattern: string;
-      isChainOfThought: boolean;
+      classification: Exclude<
+        GenerationTokensEvent["classification"],
+        "opening_delimiter" | "closing_delimiter"
+      >;
       swallow: boolean;
     }>;
-    // If this pattern is found at the end of a model event, we'll wait for the
+    // If one of these patterns is found at the end of a model event, we'll wait for the
     // the next event before emitting tokens.
-    incompleteDelimiterRegex?: RegExp;
+    incompleteDelimiterPatterns: RegExp[];
   };
 
   // This meta-prompt is injected into the assistant's system instructions every time.
@@ -220,42 +224,42 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
-  incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
+  incompleteDelimiterPatterns: [/<\/?[a-zA-Z_]*$/],
   delimiters: [
     {
       openingPattern: "<thinking>",
       closingPattern: "</thinking>",
-      isChainOfThought: true,
+      classification: "chain_of_thought" as const,
       swallow: false,
     },
     {
       openingPattern: "<search_quality_reflection>",
       closingPattern: "</search_quality_reflection>",
-      isChainOfThought: true,
+      classification: "chain_of_thought" as const,
       swallow: false,
     },
     {
       openingPattern: "<reflecting>",
       closingPattern: "</reflecting>",
-      isChainOfThought: true,
+      classification: "chain_of_thought" as const,
       swallow: false,
     },
     {
       openingPattern: "<search_quality_score>",
       closingPattern: "</search_quality_score>",
-      isChainOfThought: true,
+      classification: "chain_of_thought" as const,
       swallow: true,
     },
     {
       openingPattern: "<result>",
       closingPattern: "</result>",
-      isChainOfThought: false,
+      classification: "tokens" as const,
       swallow: false,
     },
     {
       openingPattern: "<response>",
       closingPattern: "</response>",
-      isChainOfThought: false,
+      classification: "tokens" as const,
       swallow: false,
     },
   ],

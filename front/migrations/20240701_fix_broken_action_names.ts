@@ -199,8 +199,6 @@ makeScript({}, async ({ execute }) => {
             return AgentWebsearchConfiguration;
           case "dust_app_run_configuration":
             throw new Error("Unreachable");
-          case "visualization_configuration":
-            throw new Error("Unreachable");
           default:
             assertNever(a.action);
         }
