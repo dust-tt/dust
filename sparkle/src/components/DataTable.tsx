@@ -97,9 +97,7 @@ export function DataTable<TData, TValue>({
         {table.getRowModel().rows.map((row) => (
           <DataTable.Row
             key={row.id}
-            clickable={row.original.clickable}
             onClick={row.original.onClick}
-            showMore={row.original.showMore}
             onMoreClick={row.original.onMoreClick}
           >
             {row.getVisibleCells().map((cell) => (
