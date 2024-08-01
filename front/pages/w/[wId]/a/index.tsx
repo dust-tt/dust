@@ -261,15 +261,15 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
 
 export function APIKeys({
   owner,
-  // groups,
+  groups,
 }: {
   owner: WorkspaceType;
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  // const globalGroup = groups.find((group) => group.type === "global");
+  const globalGroup = groups.find((group) => group.type === "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  // const [newApiKeyGroup, setNewApiKeyGroup] = useState(globalGroup);
+  const [newApiKeyGroup] = useState(globalGroup);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
 
   const { keys } = useKeys(owner);
@@ -283,7 +283,6 @@ export function APIKeys({
           },
           body: JSON.stringify({ name, group_id: group?.sId }),
         });
-        // const data = await res.json();
         await mutate(`/api/w/${owner.sId}/keys`);
         setIsNewApiKeyPromptOpen(false);
         setNewApiKeyName("");
@@ -309,7 +308,7 @@ export function APIKeys({
         isOpen={isNewApiKeyPromptOpen}
         title="New API Key"
         onValidate={() =>
-          handleGenerate({ name: newApiKeyName /* group: newApiKeyGroup */ })
+          handleGenerate({ name: newApiKeyName, group: newApiKeyGroup })
         }
         onCancel={() => setIsNewApiKeyPromptOpen(false)}
       >
