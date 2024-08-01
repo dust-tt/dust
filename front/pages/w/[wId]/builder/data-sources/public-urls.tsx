@@ -144,7 +144,6 @@ export default function DataSourcesView({
   const clickableDataSources = useMemo(() => {
     return dataSources.map((dataSource) => ({
       ...dataSource,
-      clickable: true,
       onClick: () => {
         void router.push(
           `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
