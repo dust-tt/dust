@@ -65,6 +65,7 @@ VaultModel.hasMany(DataSourceViewModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
+DataSourceViewModel.belongsTo(VaultModel);
 DataSource.hasMany(DataSourceViewModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
