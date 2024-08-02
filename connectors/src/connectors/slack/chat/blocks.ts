@@ -52,6 +52,8 @@ function makeMarkdownBlock(text: string) {
 }
 
 function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
+  // We are limited to 10 blocks when posting a message on Slack,
+  // so we are posting 5 footnotes at most to leave rooms for other blocks (e.g. conversation link, divier, ...).
   const elements = footnotes.slice(0, 5).map((f) => ({
     type: "mrkdwn",
     text: `<${f.link}|[${f.index}] ${truncate(f.text, 20)}>`,
