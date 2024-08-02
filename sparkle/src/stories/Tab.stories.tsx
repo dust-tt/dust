@@ -41,7 +41,15 @@ export const TabExample = () => {
               current: currentTab === "build",
               icon: RobotIcon,
               sizing: "expand",
+            },
+            {
+              label: "Admin",
+              id: "admin",
+              current: currentTab === "admin",
+              icon: RobotIcon,
+              sizing: "expand",
               hasSeparator: true,
+              disabled: true,
             },
             {
               label: "Settings",

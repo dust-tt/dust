@@ -12,13 +12,14 @@ import { Icon } from "./Icon";
 import { Tooltip } from "./Tooltip";
 
 type TabType<E> = {
-  label: string;
-  id?: E;
-  hideLabel?: boolean;
   current: boolean;
-  sizing?: "hug" | "expand";
-  icon?: ComponentType<{ className?: string }>;
+  disabled?: boolean;
   hasSeparator?: boolean;
+  hideLabel?: boolean;
+  icon?: ComponentType<{ className?: string }>;
+  id?: E;
+  label: string;
+  sizing?: "hug" | "expand";
 } & (
   | { onClick?: (event: MouseEvent<HTMLAnchorElement>) => void; href?: never }
   | { onClick?: never; href: string }
@@ -137,7 +138,8 @@ export function Tab<E>({
         tabStateClasses.hover,
         tabStateClasses.dark.base,
         tabStateClasses.dark.hover,
-        tabClassName
+        tabClassName,
+        tab.disabled ? "s-opacity-50 s-pointer-events-none" : ""
       );
 
       const finalIconClasses = classNames(
