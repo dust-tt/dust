@@ -92,6 +92,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         (c) => c.id === ds.connectorId
       );
       if (!connector) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            connectorId: ds.connectorId,
+            dataSourceName: ds.name,
+            connectorProvider: ds.connectorProvider,
+          },
+          "Connector not found"
+        );
         throw new Error("Connector not found");
       }
       return {
