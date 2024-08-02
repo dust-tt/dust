@@ -171,7 +171,7 @@ async function handleDataSourceView(
 
     return new Ok({
       project_id: parseInt(dataSource.dustAPIProjectId),
-      data_source_id: dataSourceId,
+      data_source_id: dataSource.name,
       view_filter: {
         tags: null,
         parents: {
