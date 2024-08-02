@@ -350,7 +350,7 @@ export class Authenticator {
         flags,
         key: key.toAuthJSON(),
       }),
-      keyWorkspace: keyWorkspace,
+      keyWorkspace: renderLightWorkspaceType({ workspace: keyWorkspace }),
       keyWorkspaceId: keyWorkspace.sId,
     };
   }
