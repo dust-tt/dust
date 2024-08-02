@@ -172,15 +172,17 @@ async function handler(
       }
 
       const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-      const ds = await DataSourceResource.makeNew({
-        name: req.body.name,
-        description: description,
-        dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        workspaceId: owner.id,
-        assistantDefaultSelected: req.body.assistantDefaultSelected,
-        editedByUserId: user.id,
-        vaultId: globalVault.id,
-      });
+      const ds = await DataSourceResource.makeNew(
+        {
+          name: req.body.name,
+          description: description,
+          dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          workspaceId: owner.id,
+          assistantDefaultSelected: req.body.assistantDefaultSelected,
+          editedByUserId: user.id,
+        },
+        globalVault
+      );
 
       const dataSourceType = await getDataSource(auth, ds.name);
       if (dataSourceType) {

@@ -331,16 +331,18 @@ async function handler(
       const vault = await (provider === "webcrawler"
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
-      const dataSource = await DataSourceResource.makeNew({
-        assistantDefaultSelected,
-        connectorProvider: provider,
-        description: dataSourceDescription,
-        dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        editedByUserId: user.id,
-        name: dataSourceName,
-        vaultId: vault.id,
-        workspaceId: owner.id,
-      });
+      const dataSource = await DataSourceResource.makeNew(
+        {
+          assistantDefaultSelected,
+          connectorProvider: provider,
+          description: dataSourceDescription,
+          dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          editedByUserId: user.id,
+          name: dataSourceName,
+          workspaceId: owner.id,
+        },
+        vault
+      );
 
       // For managed data source, we create a default view in the workspace vault.
       if (dataSource.isManaged()) {

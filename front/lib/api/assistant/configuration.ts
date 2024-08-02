@@ -1405,6 +1405,21 @@ async function _createAgentDataSourcesConfigData(
     processConfigurationId: ModelId | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
+  // Although we have the capability to support multiple workspaces,
+  // currently, we only support one workspace, which is the one the user is in.
+  // This allows us to use the current authenticator to fetch resources.
+  const allWorkspaceIds = [
+    ...new Set(dataSourceConfigurations.map((dsc) => dsc.workspaceId)),
+  ];
+  const hasUniqueAccessibleWorkspace =
+    allWorkspaceIds.length === 1 &&
+    auth.getNonNullableWorkspace().sId === allWorkspaceIds[0];
+  if (!hasUniqueAccessibleWorkspace) {
+    throw new Error(
+      "Can't create AgentDataSourcesConfig for retrieval: Multiple workspaces."
+    );
+  }
+
   // dsConfig contains this format:
   // [
   //   { workspaceSId: s1o1u1p, dataSourceName: "managed-notion", filter: { tags: null, parents: null } },
@@ -1465,9 +1480,10 @@ async function _createAgentDataSourcesConfigData(
 
   // Then we get to do one findAllQuery per workspaceId, in a Promise.all.
   const getDataSourcesQueries = dsNamesPerWorkspaceId.map(
-    async ({ workspace, dataSourceNames }) => {
+    async ({ dataSourceNames }) => {
       const dataSources = await DataSourceResource.listByWorkspaceIdAndNames(
-        workspace,
+        // We can use `auth` because we limit to one workspace.
+        auth,
         dataSourceNames
       );
 
@@ -1478,7 +1494,8 @@ async function _createAgentDataSourcesConfigData(
       // and assign it to the agent data source configuration.
       const dataSourceViews =
         await DataSourceViewResource.listForDataSourcesInVault(
-          workspace,
+          // We can use `auth` because we limit to one workspace.
+          auth,
           uniqueDataSources.filter((ds) => ds.isManaged()),
           globalVault
         );
