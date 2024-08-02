@@ -291,7 +291,6 @@ export class Authenticator {
     wId: string
   ): Promise<{
     auth: Authenticator;
-    keyWorkspaceId: string;
     keyWorkspace: LightWorkspaceType;
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
@@ -351,7 +350,6 @@ export class Authenticator {
         key: key.toAuthJSON(),
       }),
       keyWorkspace: renderLightWorkspaceType({ workspace: keyWorkspace }),
-      keyWorkspaceId: keyWorkspace.sId,
     };
   }
 
