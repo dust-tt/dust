@@ -52,7 +52,9 @@ function makeMarkdownBlock(text: string) {
 }
 
 function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
-  const elements = footnotes.map((f) => ({
+  // We are limited to 10 blocks when posting a message on Slack,
+  // so we are posting 5 footnotes at most to leave rooms for other blocks (e.g. conversation link, divier, ...).
+  const elements = footnotes.slice(0, 5).map((f) => ({
     type: "mrkdwn",
     text: `<${f.link}|[${f.index}] ${truncate(f.text, 20)}>`,
   }));
@@ -87,8 +89,7 @@ function makeContextSectionBlocks(
 
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
-  // Slack limits the number of blocks to 10.
-  return resultBlocks.slice(0, 10);
+  return resultBlocks;
 }
 
 export type SlackMessageUpdate =
