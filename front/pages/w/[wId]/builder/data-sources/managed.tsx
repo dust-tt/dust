@@ -6,16 +6,16 @@ import {
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   ContentMessage,
-  ContextItem,
+  ContextItem, DataTable,
   Hoverable,
   InformationCircleIcon,
   Modal,
   Page,
-  Popup,
+  Popup, RobotIcon,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceType,
+  DataSourceType, ManageDataSourcesLimitsType,
   Result,
   WhitelistableFeature,
   WorkspaceType,
@@ -31,8 +31,8 @@ import {
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { useRouter } from "next/router";
-import { useContext, useEffect, useState } from "react";
+import { NextRouter, useRouter } from "next/router";
+import { type ComponentType, useContext, useEffect, useMemo, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -46,6 +46,7 @@ import { useAdmins } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
+import * as React from "react";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -398,13 +399,11 @@ export default function DataSourcesView({
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
-
-  const planConnectionsLimits = plan.limits.connections;
   const [localIntegrations, setLocalIntegrations] = useState(integrations);
-
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
+  const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showUpgradePopupForProvider, setShowUpgradePopupForProvider] =
     useState<ConnectorProvider | null>(null);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
@@ -412,8 +411,10 @@ export default function DataSourcesView({
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
 
-  const [showAdminsModal, setShowAdminsModal] = useState(false);
+
   const { admins, isAdminsLoading } = useAdmins(owner);
+
+  const planConnectionsLimits = plan.limits.connections;
 
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
@@ -499,6 +500,26 @@ export default function DataSourcesView({
 
   const router = useRouter();
 
+  const connectionRows = useMemo(() => {
+    const filteredRows = integrations
+      .filter((ds) =>
+        !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide &&
+        (isAdmin || ds.connector)
+      )
+    return filteredRows.map((integration) => getTableRow(
+      integration,
+      isAdmin,
+      isLoadingByProvider,
+      router,
+      owner,
+      readOnly,
+      planConnectionsLimits,
+      setShowUpgradePopupForProvider,
+      setShowConfirmConnection,
+      setShowPreviewPopupForProvider
+    ))
+  },[integrations, isAdmin, isLoadingByProvider, owner, planConnectionsLimits, readOnly, router])
+  console.log(integrations)
   return (
     <AppLayout
       subscription={subscription}
@@ -594,238 +615,207 @@ export default function DataSourcesView({
             </Hoverable>
           </ContentMessage>
         )}
-        <ContextItem.List>
-          {localIntegrations
-            .filter(
-              (ds) =>
-                !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide &&
-                (isAdmin || ds.connector)
-            )
-            .sort((a, b) => {
-              if (a.status === b.status) {
-                return a.name.localeCompare(b.name);
-              }
-
-              if (a.status === "built") {
-                return -1;
-              }
-
-              if (b.status === "built") {
-                return 1;
-              }
-
-              if (a.status === "rolling_out") {
-                return -1;
-              }
-
-              if (b.status === "rolling_out") {
-                return 1;
-              }
-
-              return 0;
-            })
-            .map((ds) => {
-              const isBuilt =
-                ds.status === "built" ||
-                (ds.status === "rolling_out" &&
-                  ds.rollingOutFlag &&
-                  owner.flags.includes(ds.rollingOutFlag));
-              return (
-                <ContextItem
-                  key={
-                    ds.dataSourceName ||
-                    `managed-to-connect-${ds.connectorProvider}`
-                  }
-                  title={ds.name}
-                  visual={
-                    <ContextItem.Visual
-                      visual={
-                        CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                          .logoComponent
-                      }
-                    />
-                  }
-                  action={
-                    <div className="relative">
-                      <Button.List>
-                        {(() => {
-                          const disabled =
-                            isLoadingByProvider[
-                              ds.connectorProvider as ConnectorProvider
-                            ] || !isAdmin;
-
-                          const onClick = async () => {
-                            let isDataSourceAllowedInPlan: boolean;
-
-                            switch (ds.connectorProvider) {
-                              case "confluence":
-                                isDataSourceAllowedInPlan =
-                                  planConnectionsLimits.isConfluenceAllowed;
-                                break;
-                              case "slack":
-                                isDataSourceAllowedInPlan =
-                                  planConnectionsLimits.isSlackAllowed;
-                                break;
-                              case "notion":
-                                isDataSourceAllowedInPlan =
-                                  planConnectionsLimits.isNotionAllowed;
-                                break;
-                              case "github":
-                                isDataSourceAllowedInPlan =
-                                  planConnectionsLimits.isGithubAllowed;
-                                break;
-                              case "google_drive":
-                                isDataSourceAllowedInPlan =
-                                  planConnectionsLimits.isGoogleDriveAllowed;
-                                break;
-                              case "intercom":
-                                isDataSourceAllowedInPlan =
-                                  planConnectionsLimits.isIntercomAllowed;
-                                break;
-                              case "microsoft":
-                                isDataSourceAllowedInPlan = true;
-                                break;
-                              case "webcrawler":
-                                // Web crawler connector is not displayed on this web page.
-                                isDataSourceAllowedInPlan = false;
-                                break;
-                              default:
-                                ((p: never) => {
-                                  throw new Error(
-                                    `Unknown connector provider ${p}`
-                                  );
-                                })(ds.connectorProvider);
-                            }
-
-                            if (!isDataSourceAllowedInPlan) {
-                              setShowUpgradePopupForProvider(
-                                ds.connectorProvider as ConnectorProvider
-                              );
-                            } else {
-                              if (isBuilt) {
-                                setShowConfirmConnection(ds);
-                              } else {
-                                setShowPreviewPopupForProvider(
-                                  ds.connectorProvider
-                                );
-                              }
-                            }
-                            return;
-                          };
-
-                          const label = !isBuilt
-                            ? "Preview"
-                            : !isLoadingByProvider[
-                                  ds.connectorProvider as ConnectorProvider
-                                ] && !ds.fetchConnectorError
-                              ? "Connect"
-                              : "Connecting...";
-
-                          if (!ds || !ds.connector) {
-                            return (
-                              <Button
-                                variant="primary"
-                                icon={
-                                  isBuilt
-                                    ? CloudArrowLeftRightIcon
-                                    : InformationCircleIcon
-                                }
-                                disabled={disabled}
-                                onClick={onClick}
-                                label={label}
-                              />
-                            );
-                          } else {
-                            return (
-                              <Button
-                                variant="secondary"
-                                icon={Cog6ToothIcon}
-                                disabled={
-                                  !isBuilt ||
-                                  isLoadingByProvider[
-                                    ds.connectorProvider as ConnectorProvider
-                                  ] ||
-                                  // Can't manage or view if not (admin or not readonly (ie builder)).
-                                  !(isAdmin || !readOnly)
-                                }
-                                onClick={() => {
-                                  void router.push(
-                                    `/w/${owner.sId}/builder/data-sources/${ds.dataSourceName}`
-                                  );
-                                }}
-                                label={isAdmin ? "Manage" : "View"}
-                              />
-                            );
-                          }
-                        })()}
-                      </Button.List>
-                      <Popup
-                        show={
-                          showUpgradePopupForProvider === ds.connectorProvider
-                        }
-                        className="absolute bottom-8 right-0"
-                        chipLabel={`${plan.name} plan`}
-                        description="Unlock this managed data source by upgrading your plan."
-                        buttonLabel="Check Dust plans"
-                        buttonClick={() => {
-                          void router.push(`/w/${owner.sId}/subscription`);
-                        }}
-                        onClose={() => {
-                          setShowUpgradePopupForProvider(null);
-                        }}
-                      />
-                      <Popup
-                        show={
-                          showPreviewPopupForProvider === ds.connectorProvider
-                        }
-                        className="absolute bottom-8 right-0"
-                        chipLabel="Coming Soon!"
-                        description="Please email us at support@dust.tt for early access."
-                        buttonLabel="Contact us"
-                        buttonClick={() => {
-                          window.open(
-                            `mailto:support@dust.tt?subject=Early access to the ${ds.name} connection`
-                          );
-                        }}
-                        onClose={() => {
-                          setShowPreviewPopupForProvider(null);
-                        }}
-                      />
-                    </div>
-                  }
-                >
-                  {ds && ds.connector && (
-                    <div className="mb-1 mt-2">
-                      {(() => {
-                        if (ds.fetchConnectorError) {
-                          return (
-                            <Chip color="warning">
-                              Error loading the connector. Try again in a few
-                              minutes.
-                            </Chip>
-                          );
-                        } else {
-                          return (
-                            <ConnectorSyncingChip
-                              initialState={ds.connector}
-                              workspaceId={ds.connector.workspaceId}
-                              dataSourceName={ds.connector.dataSourceName}
-                            />
-                          );
-                        }
-                      })()}
-                    </div>
-                  )}
-                  <ContextItem.Description>
-                    <div className="text-sm text-element-700">
-                      {ds.description}
-                    </div>
-                  </ContextItem.Description>
-                </ContextItem>
-              );
-            })}
-        </ContextItem.List>
+        <DataTable
+          data={connectionRows}
+          columns={getTableColumns()}
+        />
       </Page.Vertical>
     </AppLayout>
   );
+}
+
+function getTableColumns() {
+  return [
+    {
+      header: "Name",
+      accessorKey: "name",
+      cell: (info) => (
+        <DataTable.Cell icon={info.row.original.icon}>
+          {info.row.original.name}
+        </DataTable.Cell>
+      ),
+    },
+    {
+      header: "Used by",
+      accessorKey: "usage",
+      cell: (info) => (
+        <DataTable.Cell icon={RobotIcon}>
+          {info.row.original.usage}
+        </DataTable.Cell>
+      ),
+    },
+    {
+      header: "Managed by",
+      cell: (info) => (
+        <DataTable.Cell
+          avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+        />
+      ),
+    },
+    {
+      header: "Last sync",
+      accessorKey: "editedByUser.editedAt",
+      cell: (info) => (
+        <DataTable.Cell className="w-10">
+          {(() => {
+            if (!info.row.original.connector) {
+              return (
+                <Chip color="amber">
+                  Never
+                </Chip>
+              );
+            }
+            else if (info.row.original.fetchConnectorError) {
+              return (
+                <Chip color="warning">
+                  Error loading the connector. Try again in a few minutes.
+                </Chip>
+              );
+            } else {
+              return (
+                <ConnectorSyncingChip
+                  initialState={info.row.original.connector}
+                  workspaceId={info.row.original.workspaceId}
+                  dataSourceName={info.row.original.dataSourceName}
+                />
+              );
+            }
+          })()}
+        </DataTable.Cell>
+      ),
+    },
+    {
+      header: "Manage",
+      cell: (info) => {
+        const original = info.row.original;
+        const disabled = original.isLoading || (!original.isBuilt && !original.isAdmin);
+
+        if (!original.connector) {
+          return (
+            <DataTable.Cell>
+              <Button
+                variant="primary"
+                icon={original.isBuilt ? CloudArrowLeftRightIcon : InformationCircleIcon}
+                disabled={disabled}
+                onClick={original.buttonOnClick}
+                label={original.isBuilt ? (original.isLoading ? "Connecting..." : "Connect") : "Preview"}
+              />
+            </DataTable.Cell>
+          );
+        } else {
+          return (
+            <DataTable.Cell>
+              <Button
+                variant="secondary"
+                icon={Cog6ToothIcon}
+                disabled={disabled}
+                onClick={original.buttonOnClick}
+                label={original.isAdmin ? "Manage" : "View"}
+              />
+            </DataTable.Cell>
+          );
+        }
+      },
+    },
+  ];
+}
+
+function getTableRow(
+  integration: DataSourceIntegration,
+  isAdmin: boolean,
+  isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>,
+  router: NextRouter,
+  owner: WorkspaceType,
+  readOnly: boolean,
+  limits: ManageDataSourcesLimitsType,
+  setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void,
+  setShowConfirmConnection: (integration: DataSourceIntegration | null) => void,
+  setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void
+) {
+  const connectorProvider = integration.connectorProvider as ConnectorProvider;
+
+  const isBuilt =
+    integration.status === "built" ||
+    (integration.status === "rolling_out" &&
+      integration.rollingOutFlag &&
+      owner.flags.includes(integration.rollingOutFlag));
+  const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
+  const isProviderAllowed = isConnectorProviderAllowed(
+    integration.connectorProvider,
+    limits
+  )
+
+  const buttonOnClick = () => {
+    if (!integration || !integration.connector) {
+      if (!isProviderAllowed) {
+        setShowUpgradePopupForProvider(connectorProvider);
+      } else {
+        if (isBuilt) {
+          setShowConfirmConnection(integration);
+        } else {
+          setShowPreviewPopupForProvider(connectorProvider);
+        }
+      }
+    } else {
+      !isDisabled ?
+        void router.push(
+          `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
+        ): null
+    }
+  }
+
+  const LogoComponent = CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent;
+  return {
+    ...integration,
+    icon: LogoComponent,
+    usage: 0,
+    buttonOnClick,
+    workspaceId: integration.connector?.workspaceId,
+    connector: integration.connector,
+    dataSourceName: integration.connector?.dataSourceName,
+    fetchConnectorError: integration.fetchConnectorError,
+    dataSourceUrl: `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`,
+    isAdmin,
+    readOnly,
+    isBuilt,
+    disabled: isDisabled,
+    isLoading: isLoadingByProvider[connectorProvider]
+  }
+}
+
+function isConnectorProviderAllowed(
+  provider: ConnectorProvider,
+  limits: ManageDataSourcesLimitsType
+): boolean {
+  switch (provider) {
+    case "confluence": {
+      return limits.isConfluenceAllowed;
+    }
+    case "slack": {
+      return limits.isSlackAllowed;
+    }
+    case "notion": {
+      return limits.isNotionAllowed;
+    }
+    case "github": {
+      return limits.isGithubAllowed;
+    }
+    case "google_drive": {
+      return limits.isGoogleDriveAllowed;
+    }
+    case "intercom": {
+      return limits.isIntercomAllowed;
+    }
+    case "microsoft": {
+      return true;
+    }
+    case "webcrawler": {
+      return false;
+    }
+    default:
+      throw new Error(
+        `Unknown connector provider ${provider}`
+      );
+  }
+
 }
