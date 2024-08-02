@@ -121,8 +121,9 @@ async function handler(
               logger.info(
                 {
                   dataSourceViewId: dataSourceOrDataSourceViewId,
-                  workspaceId: dustWorkspaceId,
                   err: dataSourceViewRes.error,
+                  groups: dustGroupIds,
+                  workspaceId: dustWorkspaceId,
                 },
                 "Failed to lookup data source view."
               );
@@ -142,8 +143,9 @@ async function handler(
               logger.info(
                 {
                   dataSourceId: dataSourceOrDataSourceViewId,
-                  workspaceId: dustWorkspaceId,
                   err: dataSourceRes.error,
+                  groups: dustGroupIds,
+                  workspaceId: dustWorkspaceId,
                 },
                 "Failed to lookup data source."
               );
@@ -186,27 +188,39 @@ async function handleDataSourceView(
   const hasAccessToDataSourceView = groups.some((g) =>
     groupHasPermission(dataSourceView.acl(), "read", g.id)
   );
-  if (hasAccessToDataSourceView) {
-    const dataSource = await dataSourceView.fetchDataSource(auth);
-    if (!dataSource) {
-      return new Err(new Error("Data source not found for view."));
-    }
-
-    return new Ok({
-      project_id: parseInt(dataSource.dustAPIProjectId),
-      data_source_id: dataSource.name,
-      view_filter: {
-        tags: null,
-        parents: {
-          in: dataSourceView.parentsIn,
-          not: null,
-        },
-        timestamp: null,
+  if (!hasAccessToDataSourceView) {
+    logger.info(
+      {
+        acl: dataSourceView.acl(),
+        dataSourceViewId,
+        groups: groups.map((g) => g.id),
       },
-    });
+      "No access to data source view."
+    );
   }
 
-  return new Err(new Error("No access to data source view."));
+  // TODO(2024-08-02 flav) Uncomment.
+  // if (hasAccessToDataSourceView) {
+  const dataSource = await dataSourceView.fetchDataSource(auth);
+  if (!dataSource) {
+    return new Err(new Error("Data source not found for view."));
+  }
+
+  return new Ok({
+    project_id: parseInt(dataSource.dustAPIProjectId),
+    data_source_id: dataSource.name,
+    view_filter: {
+      tags: null,
+      parents: {
+        in: dataSourceView.parentsIn,
+        not: null,
+      },
+      timestamp: null,
+    },
+  });
+  // }
+
+  // return new Err(new Error("No access to data source view."));
 }
 
 async function handleDataSource(
@@ -236,13 +250,25 @@ async function handleDataSource(
   const hasAccessToDataSource = groups.some((g) =>
     groupHasPermission(dataSource.acl(), "read", g.id)
   );
-  if (hasAccessToDataSource) {
-    return new Ok({
-      project_id: parseInt(dataSource.dustAPIProjectId),
-      data_source_id: dataSource.name,
-      view_filter: null,
-    });
+  if (!hasAccessToDataSource) {
+    logger.info(
+      {
+        acl: dataSource.acl(),
+        dataSourceId,
+        groups: groups.map((g) => g.id),
+      },
+      "No access to data source."
+    );
   }
 
-  return new Err(new Error("No access to data source."));
+  // TODO(2024-08-02 flav) Uncomment.
+  // if (hasAccessToDataSource) {
+  return new Ok({
+    project_id: parseInt(dataSource.dustAPIProjectId),
+    data_source_id: dataSource.name,
+    view_filter: null,
+  });
+  // }
+
+  // return new Err(new Error("No access to data source."));
 }
