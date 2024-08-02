@@ -19,7 +19,7 @@ pub async fn get_data_source_project_and_view_filter(
     workspace_id: &String,
     data_source_id: &String,
     env: &Env,
-) -> Result<(Project, Option<SearchFilter>)> {
+) -> Result<(Project, Option<SearchFilter>, String)> {
     let dust_workspace_id = match env.credentials.get("DUST_WORKSPACE_ID") {
         None => Err(anyhow!(
             "DUST_WORKSPACE_ID credentials missing, but `workspace_id` \
@@ -89,5 +89,6 @@ pub async fn get_data_source_project_and_view_filter(
     Ok((
         Project::new_from_id(payload.project_id),
         payload.view_filter,
+        payload.data_source_id,
     ))
 }
