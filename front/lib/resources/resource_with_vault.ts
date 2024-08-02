@@ -60,7 +60,7 @@ export abstract class ResourceWithVault<
     super(model, blob);
   }
 
-  protected static async baseFetch<
+  protected static async baseFetchWithAuthorization<
     T extends ResourceWithVault<M>,
     M extends Model & ModelWithVault,
     IncludeType extends Partial<InferIncludeType<M>>,

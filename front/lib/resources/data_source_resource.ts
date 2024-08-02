@@ -94,7 +94,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     name: string,
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
-    const [dataSource] = await this.baseFetch(auth, {
+    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(options),
       where: {
         name,
@@ -108,14 +108,14 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     auth: Authenticator,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    return this.baseFetch(auth, this.getOptions(options));
+    return this.baseFetchWithAuthorization(auth, this.getOptions(options));
   }
 
   static async listByWorkspaceIdAndNames(
     auth: Authenticator,
     names: string[]
   ): Promise<DataSourceResource[]> {
-    return this.baseFetch(auth, {
+    return this.baseFetchWithAuthorization(auth, {
       where: {
         name: {
           [Op.in]: names,
@@ -129,7 +129,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     connectorProvider: ConnectorProvider,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    return this.baseFetch(auth, {
+    return this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(options),
       where: {
         connectorProvider,
@@ -139,7 +139,9 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
   // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
-    const [dataSource] = await this.baseFetch(auth, { where: { id } });
+    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
+      where: { id },
+    });
 
     return dataSource ?? null;
   }

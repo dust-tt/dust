@@ -90,7 +90,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Fetching.
 
   static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetch(auth);
+    return this.baseFetchWithAuthorization(auth);
   }
 
   static async listForDataSourcesInVault(
@@ -98,7 +98,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     dataSources: DataSourceResource[],
     vault: VaultResource
   ) {
-    return this.baseFetch(auth, {
+    return this.baseFetchWithAuthorization(auth, {
       where: {
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: vault.id,
@@ -112,7 +112,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       return null;
     }
 
-    const [dataSource] = await this.baseFetch(auth, {
+    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
       where: {
         id: fileModelId,
       },
