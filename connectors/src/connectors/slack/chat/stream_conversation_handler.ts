@@ -82,6 +82,8 @@ export async function streamConversationToSlack(
     if (response.error) {
       logger.error(
         {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
           err: response.error,
         },
         "Failed to update Slack message."
