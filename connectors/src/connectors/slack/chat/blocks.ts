@@ -87,8 +87,7 @@ function makeContextSectionBlocks(
 
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
-  // Slack limits the number of blocks to 10.
-  return resultBlocks.slice(0, 10);
+  return resultBlocks;
 }
 
 export type SlackMessageUpdate =
