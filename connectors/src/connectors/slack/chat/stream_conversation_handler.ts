@@ -17,6 +17,7 @@ import {
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 interface StreamConversationToSlackParams {
@@ -71,12 +72,21 @@ export async function streamConversationToSlack(
       backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
     }
 
-    await slackClient.chat.update({
+    const response = await slackClient.chat.update({
       ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
       channel: slackChannelId,
       thread_ts: slackMessageTs,
       ts: mainMessage.ts as string,
     });
+
+    if (response.error) {
+      logger.error(
+        {
+          err: response.error,
+        },
+        "Failed to update Slack message."
+      );
+    }
   };
 
   const conversationUrl = makeDustAppUrl(
