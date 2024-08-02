@@ -174,6 +174,10 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
+
+  // TODO(2024-08-02 flav) Refactor auth.fromKey logic.
+  // Confusingly, the auth workspace here is the the one from the URL, not the one from the key.
+  // Where as auth.groups are the groups associated with the the key.
   const { auth, keyWorkspace } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
