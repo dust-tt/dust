@@ -1,4 +1,10 @@
-import { Button, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  CommandLineIcon,
+  PlayStrokeIcon,
+  Spinner,
+  Tab,
+} from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
@@ -30,7 +36,6 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
       identifier: request.identifier,
       result: response,
     },
-    // TODO(2024-07-24 flav) Restrict origin.
     { targetOrigin: "*" }
   );
 };
@@ -188,8 +193,7 @@ export function VisualizationActionIframe({
 
   return (
     <div className="relative flex flex-col">
-      <Tabs
-        tabs={["Code", "Visualisation"]}
+      <ViewCodeSwitcher
         disabled={!codeFullyGenerated}
         activeIndex={activeIndex}
         onTabClick={setActiveIndex}
@@ -260,31 +264,41 @@ export function VisualizationActionIframe({
   );
 }
 
-const Tabs = ({
+const ViewCodeSwitcher = ({
   activeIndex,
   disabled,
   onTabClick,
-  tabs,
 }: {
   activeIndex: number;
   disabled: boolean;
   onTabClick: (tabIndex: number) => void;
-  tabs: string[];
 }) => {
   return (
-    <div className="flex justify-self-end pb-2">
-      <div className="rounded-lg bg-gray-100 p-2">
-        {tabs.map((tab, index) => (
-          <button
-            key={tab}
-            className={`font-small rounded-lg px-4 py-2 text-xs text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
-            onClick={() => onTabClick(index)}
-            disabled={disabled}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+    <div className="flex justify-end pb-2">
+      <Tab
+        tabs={[
+          {
+            label: "Code",
+            id: "code",
+            disabled,
+            current: activeIndex === 0,
+            icon: CommandLineIcon,
+            sizing: "expand",
+          },
+          {
+            label: "View",
+            id: "view",
+            disabled,
+            current: activeIndex === 1,
+            icon: PlayStrokeIcon,
+            sizing: "expand",
+          },
+        ]}
+        setCurrentTab={(tabId, event) => {
+          event.preventDefault();
+          onTabClick(tabId === "code" ? 0 : 1);
+        }}
+      />
     </div>
   );
 };
