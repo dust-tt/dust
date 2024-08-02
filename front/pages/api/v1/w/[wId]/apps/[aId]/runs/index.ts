@@ -286,14 +286,11 @@ async function handler(
         "App run creation"
       );
 
-      const isSameWorkspace = keyWorkspace.sId === owner.sId;
-      const runAsWorkspace = isSameWorkspace ? owner : keyWorkspace;
-
       const groups = await GroupResource.listWorkspaceGroupsFromKey(
         keyRes.value
       );
 
-      const runRes = await coreAPI.createRunStream(runAsWorkspace, groups, {
+      const runRes = await coreAPI.createRunStream(keyWorkspace, groups, {
         projectId: app.dustAPIProjectId,
         runType: "deploy",
         specificationHash: specificationHash,
