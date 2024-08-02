@@ -133,7 +133,11 @@ export async function streamConversationToSlack(
   for await (const event of streamRes.value.eventStream) {
     // This logger.info(Received event from Dust) is to be removed after august 30 2024.
     logger.info(
-      { connectorId: connector.id, conversationId: conversation.sId },
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        type: event.type,
+      },
       "Received event from Dust"
     );
     switch (event.type) {
