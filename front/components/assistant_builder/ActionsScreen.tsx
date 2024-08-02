@@ -353,7 +353,6 @@ export default function ActionsScreen({
           </div>
         </div>
         <Capabilities
-          owner={owner}
           builderState={builderState}
           setBuilderState={setBuilderState}
           setEdited={setEdited}
@@ -959,14 +958,12 @@ function AddAction({
 }
 
 function Capabilities({
-  owner,
   builderState,
   setBuilderState,
   setEdited,
   setAction,
   deleteAction,
 }: {
-  owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
@@ -1031,27 +1028,25 @@ function Capabilities({
         }}
       />
 
-      {owner.flags.includes("visualization_action_flag") && (
-        <Capability
-          name="Data Visualization"
-          description="can generate chats and graphs"
-          enabled={builderState.visualizationEnabled}
-          onEnable={() => {
-            setEdited(true);
-            setBuilderState((state) => ({
-              ...state,
-              visualizationEnabled: true,
-            }));
-          }}
-          onDisable={() => {
-            setEdited(true);
-            setBuilderState((state) => ({
-              ...state,
-              visualizationEnabled: false,
-            }));
-          }}
-        />
-      )}
+      <Capability
+        name="Data Visualization"
+        description="can generate chats and graphs"
+        enabled={builderState.visualizationEnabled}
+        onEnable={() => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            visualizationEnabled: true,
+          }));
+        }}
+        onDisable={() => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            visualizationEnabled: false,
+          }));
+        }}
+      />
     </div>
   );
 }
