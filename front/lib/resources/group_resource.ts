@@ -5,7 +5,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -162,11 +162,11 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async fetchById(
     auth: Authenticator,
-    id: string
+    sId: string
   ): Promise<GroupResource | null> {
     const owner = auth.getNonNullableWorkspace();
 
-    const groupModelId = getResourceIdFromSId(id);
+    const groupModelId = getResourceIdFromSId(sId);
     if (!groupModelId) {
       return null;
     }
@@ -183,32 +183,6 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
     return new this(this.model, blob.get());
-  }
-
-  static async fetchByIds(
-    auth: Authenticator,
-    ids: string[]
-  ): Promise<GroupResource[]> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const groupModelIds = removeNulls(
-      ids.map((id) => getResourceIdFromSId(id))
-    );
-    if (groupModelIds.length === 0) {
-      return [];
-    }
-
-    const blobs = await this.model.findAll({
-      where: {
-        id: {
-          [Op.in]: groupModelIds,
-        },
-        workspaceId: owner.id,
-      },
-    });
-
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    return blobs.map((b) => new this(this.model, b.get()));
   }
 
   static async superAdminFetchWorkspaceGroups(
@@ -314,6 +288,31 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     return groups.map((group) => new this(GroupModel, group.get()));
+  }
+
+  static async fetchWorkspaceGroup(
+    auth: Authenticator,
+    groupId: string
+  ): Promise<GroupResource | null> {
+    const owner = auth.getNonNullableWorkspace();
+    const groupModelId = getResourceIdFromSId(groupId);
+
+    if (!groupModelId) {
+      throw new Error("Invalid group ID.");
+    }
+
+    const group = await this.model.findOne({
+      where: {
+        workspaceId: owner.id,
+        id: groupModelId,
+      },
+    });
+
+    if (!group) {
+      return null;
+    }
+
+    return new this(GroupModel, group.get());
   }
 
   static async fetchActiveGroupsOfUserInWorkspace({
