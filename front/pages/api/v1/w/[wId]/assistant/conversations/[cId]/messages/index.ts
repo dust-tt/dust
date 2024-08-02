@@ -79,9 +79,9 @@ async function handler(
     req.query.wId as string
   );
   let { auth } = authenticator;
-  const { keyWorkspaceId } = authenticator;
+  const { keyWorkspace } = authenticator;
 
-  if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
+  if (!auth.isBuilder() || keyWorkspace.sId !== req.query.wId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
