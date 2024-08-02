@@ -52,7 +52,7 @@ function makeMarkdownBlock(text: string) {
 }
 
 function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
-  const elements = footnotes.map((f) => ({
+  const elements = footnotes.slice(0, 5).map((f) => ({
     type: "mrkdwn",
     text: `<${f.link}|[${f.index}] ${truncate(f.text, 20)}>`,
   }));
