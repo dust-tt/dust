@@ -199,6 +199,7 @@ async function handleDataSourceView(
     );
   }
 
+  // TODO(2024-08-02 flav) Uncomment.
   // if (hasAccessToDataSourceView) {
   const dataSource = await dataSourceView.fetchDataSource(auth);
   if (!dataSource) {
