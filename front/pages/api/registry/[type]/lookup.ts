@@ -8,6 +8,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
 
 const { DUST_REGISTRY_SECRET } = process.env;
@@ -74,12 +75,14 @@ async function handler(
     case "GET":
       switch (req.query.type) {
         case "data_sources":
-          const { data_source_id: dataSourceId, workspace_id: workspaceId } =
-            req.query;
+          const {
+            data_source_id: dataSourceOrDataSourceViewId,
+            workspace_id: workspaceId,
+          } = req.query;
 
           if (
             typeof workspaceId !== "string" ||
-            typeof dataSourceId !== "string"
+            typeof dataSourceOrDataSourceViewId !== "string"
           ) {
             res.status(400).end();
             return;
@@ -104,13 +107,25 @@ async function handler(
             return;
           }
 
-          if (DataSourceViewResource.isDataSourceViewSId(dataSourceId)) {
+          if (
+            DataSourceViewResource.isDataSourceViewSId(
+              dataSourceOrDataSourceViewId
+            )
+          ) {
             const dataSourceViewRes = await handleDataSourceView(
               auth,
               groups,
-              dataSourceId
+              dataSourceOrDataSourceViewId
             );
             if (dataSourceViewRes.isErr()) {
+              logger.info(
+                {
+                  dataSourceViewId: dataSourceOrDataSourceViewId,
+                  workspaceId: dustWorkspaceId,
+                  err: dataSourceViewRes.error,
+                },
+                "Failed to lookup data source view."
+              );
               res.status(404).end();
               return;
             }
@@ -121,9 +136,17 @@ async function handler(
             const dataSourceRes = await handleDataSource(
               auth,
               groups,
-              dataSourceId
+              dataSourceOrDataSourceViewId
             );
             if (dataSourceRes.isErr()) {
+              logger.info(
+                {
+                  dataSourceId: dataSourceOrDataSourceViewId,
+                  workspaceId: dustWorkspaceId,
+                  err: dataSourceRes.error,
+                },
+                "Failed to lookup data source."
+              );
               res.status(404).end();
               return;
             }
@@ -149,11 +172,11 @@ export default withLogging(handler);
 async function handleDataSourceView(
   auth: Authenticator,
   groups: GroupResource[],
-  dataSourceId: string
+  dataSourceViewId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
-    dataSourceId
+    dataSourceViewId
   );
   if (!dataSourceView) {
     return new Err(new Error("Data source view not found."));
