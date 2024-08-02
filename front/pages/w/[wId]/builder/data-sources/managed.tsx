@@ -6,16 +6,17 @@ import {
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   ContentMessage,
-  ContextItem, DataTable,
+  DataTable,
   Hoverable,
   InformationCircleIcon,
   Modal,
   Page,
-  Popup, RobotIcon,
+  RobotIcon,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceType, ManageDataSourcesLimitsType,
+  DataSourceType,
+  ManageDataSourcesLimitsType,
   Result,
   WhitelistableFeature,
   WorkspaceType,
@@ -31,8 +32,16 @@ import {
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { NextRouter, useRouter } from "next/router";
-import { type ComponentType, useContext, useEffect, useMemo, useState } from "react";
+import type { NextRouter} from "next/router";
+import { useRouter } from "next/router";
+import type {ComponentType} from "react";
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
+import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -46,7 +55,6 @@ import { useAdmins } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
-import * as React from "react";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -411,7 +419,6 @@ export default function DataSourcesView({
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
 
-
   const { admins, isAdminsLoading } = useAdmins(owner);
 
   const planConnectionsLimits = plan.limits.connections;
@@ -501,25 +508,35 @@ export default function DataSourcesView({
   const router = useRouter();
 
   const connectionRows = useMemo(() => {
-    const filteredRows = integrations
-      .filter((ds) =>
+    const filteredRows = integrations.filter(
+      (ds) =>
         !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide &&
         (isAdmin || ds.connector)
+    );
+    return filteredRows.map((integration) =>
+      getTableRow(
+        integration,
+        isAdmin,
+        isLoadingByProvider,
+        router,
+        owner,
+        readOnly,
+        planConnectionsLimits,
+        setShowUpgradePopupForProvider,
+        setShowConfirmConnection,
+        setShowPreviewPopupForProvider
       )
-    return filteredRows.map((integration) => getTableRow(
-      integration,
-      isAdmin,
-      isLoadingByProvider,
-      router,
-      owner,
-      readOnly,
-      planConnectionsLimits,
-      setShowUpgradePopupForProvider,
-      setShowConfirmConnection,
-      setShowPreviewPopupForProvider
-    ))
-  },[integrations, isAdmin, isLoadingByProvider, owner, planConnectionsLimits, readOnly, router])
-  console.log(integrations)
+    );
+  }, [
+    integrations,
+    isAdmin,
+    isLoadingByProvider,
+    owner,
+    planConnectionsLimits,
+    readOnly,
+    router,
+  ]);
+  console.log(integrations);
   return (
     <AppLayout
       subscription={subscription}
@@ -615,21 +632,40 @@ export default function DataSourcesView({
             </Hoverable>
           </ContentMessage>
         )}
-        <DataTable
-          data={connectionRows}
-          columns={getTableColumns()}
-        />
+        <DataTable data={connectionRows} columns={getTableColumns()} />
       </Page.Vertical>
     </AppLayout>
   );
 }
 
 function getTableColumns() {
+  type Info = {
+    row: {
+      original: {
+        icon: ComponentType;
+        name: string;
+        usage: number;
+        editedByUser: {
+          editedAt: number | null;
+          fullName: string | null;
+          imageUrl: string | null;
+        } | null;
+        connector: ConnectorType | null;
+        workspaceId: string;
+        dataSourceName: string;
+        isLoading: boolean;
+        isBuilt: boolean;
+        isAdmin: boolean;
+        fetchConnectorError: boolean;
+        buttonOnClick: () => void;
+      };
+    };
+  };
   return [
     {
       header: "Name",
       accessorKey: "name",
-      cell: (info) => (
+      cell: (info: Info) => (
         <DataTable.Cell icon={info.row.original.icon}>
           {info.row.original.name}
         </DataTable.Cell>
@@ -638,7 +674,7 @@ function getTableColumns() {
     {
       header: "Used by",
       accessorKey: "usage",
-      cell: (info) => (
+      cell: (info: Info) => (
         <DataTable.Cell icon={RobotIcon}>
           {info.row.original.usage}
         </DataTable.Cell>
@@ -646,7 +682,7 @@ function getTableColumns() {
     },
     {
       header: "Managed by",
-      cell: (info) => (
+      cell: (info: Info) => (
         <DataTable.Cell
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
         />
@@ -655,17 +691,12 @@ function getTableColumns() {
     {
       header: "Last sync",
       accessorKey: "editedByUser.editedAt",
-      cell: (info) => (
+      cell: (info: Info) => (
         <DataTable.Cell className="w-10">
           {(() => {
             if (!info.row.original.connector) {
-              return (
-                <Chip color="amber">
-                  Never
-                </Chip>
-              );
-            }
-            else if (info.row.original.fetchConnectorError) {
+              return <Chip color="amber">Never</Chip>;
+            } else if (info.row.original.fetchConnectorError) {
               return (
                 <Chip color="warning">
                   Error loading the connector. Try again in a few minutes.
@@ -686,19 +717,30 @@ function getTableColumns() {
     },
     {
       header: "Manage",
-      cell: (info) => {
+      cell: (info: Info) => {
         const original = info.row.original;
-        const disabled = original.isLoading || (!original.isBuilt && !original.isAdmin);
+        const disabled =
+          original.isLoading || (!original.isBuilt && !original.isAdmin);
 
         if (!original.connector) {
           return (
             <DataTable.Cell>
               <Button
                 variant="primary"
-                icon={original.isBuilt ? CloudArrowLeftRightIcon : InformationCircleIcon}
+                icon={
+                  original.isBuilt
+                    ? CloudArrowLeftRightIcon
+                    : InformationCircleIcon
+                }
                 disabled={disabled}
                 onClick={original.buttonOnClick}
-                label={original.isBuilt ? (original.isLoading ? "Connecting..." : "Connect") : "Preview"}
+                label={
+                  original.isBuilt
+                    ? original.isLoading
+                      ? "Connecting..."
+                      : "Connect"
+                    : "Preview"
+                }
               />
             </DataTable.Cell>
           );
@@ -743,7 +785,7 @@ function getTableRow(
   const isProviderAllowed = isConnectorProviderAllowed(
     integration.connectorProvider,
     limits
-  )
+  );
 
   const buttonOnClick = () => {
     if (!integration || !integration.connector) {
@@ -757,14 +799,16 @@ function getTableRow(
         }
       }
     } else {
-      !isDisabled ?
-        void router.push(
-          `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
-        ): null
+      !isDisabled
+        ? void router.push(
+            `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
+          )
+        : null;
     }
-  }
+  };
 
-  const LogoComponent = CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent;
+  const LogoComponent =
+    CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent;
   return {
     ...integration,
     icon: LogoComponent,
@@ -779,8 +823,8 @@ function getTableRow(
     readOnly,
     isBuilt,
     disabled: isDisabled,
-    isLoading: isLoadingByProvider[connectorProvider]
-  }
+    isLoading: isLoadingByProvider[connectorProvider],
+  };
 }
 
 function isConnectorProviderAllowed(
@@ -813,9 +857,6 @@ function isConnectorProviderAllowed(
       return false;
     }
     default:
-      throw new Error(
-        `Unknown connector provider ${provider}`
-      );
+      throw new Error(`Unknown connector provider ${provider}`);
   }
-
 }
