@@ -12,10 +12,12 @@ import {
   Modal,
   Page,
   RobotIcon,
+  Searchbar,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceType,
+  EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
   WhitelistableFeature,
@@ -32,21 +34,21 @@ import {
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import type { NextRouter} from "next/router";
+import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import type {ComponentType} from "react";
-import {
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from "react";
+import type { ComponentType} from "react";
+import { useRef } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import {
+  getDataSourcesUsageByAgents,
+  getDataSourceUsage,
+} from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -135,7 +137,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
 
-  const allDataSources = await getDataSources(auth);
+  const allDataSources = await getDataSources(auth, { includeEditedBy: true });
   const managedDataSources = allDataSources
     .filter((ds) => ds.connectorId)
     .filter((ds) => ds.connectorProvider !== "webcrawler");
@@ -146,6 +148,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     connector: ConnectorType | null;
     fetchConnectorError: boolean;
     fetchConnectorErrorMessage: string | null;
+    editedByUser: string | null;
+    usage: number | null;
   }[] = await Promise.all(
     managedDataSources.map(async (mds) => {
       if (!mds.connectorId || !mds.connectorProvider) {
@@ -167,6 +171,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
             connector: null,
             fetchConnectorError: true,
             fetchConnectorErrorMessage: statusRes.error.message,
+            editedByUser: mds.editedByUser?.imageUrl ?? null,
+            usage: await getDataSourceUsage({
+              auth,
+              dataSource: mds,
+            }),
           };
         }
         return {
@@ -175,6 +184,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: statusRes.value,
           fetchConnectorError: false,
           fetchConnectorErrorMessage: null,
+          editedByUser: mds.editedByUser?.imageUrl ?? null,
+          usage: await getDataSourceUsage({
+            auth,
+            dataSource: mds,
+          }),
         };
       } catch (e) {
         // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
@@ -186,6 +200,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: null,
           fetchConnectorError: true,
           fetchConnectorErrorMessage: "Synchonization service is down",
+          editedByUser: mds.editedByUser?.imageUrl ?? null,
+          usage: null,
         };
       }
     })
@@ -209,6 +225,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         ? timeAgoFrom(mc.connector.lastSyncSuccessfulTime)
         : null,
       setupWithSuffix: null,
+      editedByUser: mc.editedByUser,
+      usage: mc.usage,
     };
   });
 
@@ -412,6 +430,7 @@ export default function DataSourcesView({
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
   const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showUpgradePopupForProvider, setShowUpgradePopupForProvider] =
     useState<ConnectorProvider | null>(null);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
@@ -422,7 +441,6 @@ export default function DataSourcesView({
   const { admins, isAdminsLoading } = useAdmins(owner);
 
   const planConnectionsLimits = plan.limits.connections;
-
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -505,8 +523,9 @@ export default function DataSourcesView({
     setLocalIntegrations(localIntegrations);
   }, [localIntegrations]);
 
-  const router = useRouter();
+  const searchBarRef = useRef<HTMLInputElement>(null);
 
+  const router = useRouter();
   const connectionRows = useMemo(() => {
     const filteredRows = integrations.filter(
       (ds) =>
@@ -536,7 +555,6 @@ export default function DataSourcesView({
     readOnly,
     router,
   ]);
-  console.log(integrations);
   return (
     <AppLayout
       subscription={subscription}
@@ -632,7 +650,21 @@ export default function DataSourcesView({
             </Hoverable>
           </ContentMessage>
         )}
-        <DataTable data={connectionRows} columns={getTableColumns()} />
+        <Searchbar
+          ref={searchBarRef}
+          name="search"
+          placeholder="Search (Name)"
+          value={dataSourceSearch}
+          onChange={(s) => {
+            setDataSourceSearch(s);
+          }}
+        />
+        <DataTable
+          data={connectionRows}
+          columns={getTableColumns()}
+          filter={dataSourceSearch}
+          filterColumn={"name"}
+        />
       </Page.Vertical>
     </AppLayout>
   );
@@ -645,11 +677,7 @@ function getTableColumns() {
         icon: ComponentType;
         name: string;
         usage: number;
-        editedByUser: {
-          editedAt: number | null;
-          fullName: string | null;
-          imageUrl: string | null;
-        } | null;
+        editedByUser: string | null;
         connector: ConnectorType | null;
         workspaceId: string;
         dataSourceName: string;
@@ -675,17 +703,19 @@ function getTableColumns() {
       header: "Used by",
       accessorKey: "usage",
       cell: (info: Info) => (
-        <DataTable.Cell icon={RobotIcon}>
-          {info.row.original.usage}
-        </DataTable.Cell>
+        <>
+          {info.row.original.usage ? (
+            <DataTable.Cell icon={RobotIcon}>
+              {info.row.original.usage}
+            </DataTable.Cell>
+          ) : null}
+        </>
       ),
     },
     {
       header: "Managed by",
       cell: (info: Info) => (
-        <DataTable.Cell
-          avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
-        />
+        <DataTable.Cell avatarUrl={info.row.original.editedByUser ?? ""} />
       ),
     },
     {
@@ -812,12 +842,9 @@ function getTableRow(
   return {
     ...integration,
     icon: LogoComponent,
-    usage: 0,
     buttonOnClick,
     workspaceId: integration.connector?.workspaceId,
-    connector: integration.connector,
     dataSourceName: integration.connector?.dataSourceName,
-    fetchConnectorError: integration.fetchConnectorError,
     dataSourceUrl: `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`,
     isAdmin,
     readOnly,
