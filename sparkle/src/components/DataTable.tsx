@@ -25,7 +25,12 @@ interface DataTableProps<TData, TValue> {
   initialColumnOrder?: SortingState;
 }
 
-export function DataTable<TData, TValue>({
+interface TBaseData {
+  onClick?: () => void;
+  onMoreClick?: () => void;
+}
+
+export function DataTable<TData extends TBaseData, TValue>({
   data,
   columns,
   className,
