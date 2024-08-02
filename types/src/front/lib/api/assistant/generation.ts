@@ -89,18 +89,22 @@ export type ModelConversationTypeMultiActions = {
  */
 
 // Event sent when tokens are streamed as the the agent is generating a message.
+type TokensClassification = "tokens" | "chain_of_thought" | "visualization";
 export type GenerationTokensEvent = {
   type: "generation_tokens";
   created: number;
   configurationId: string;
   messageId: string;
   text: string;
-  classification:
-    | "tokens"
-    | "chain_of_thought"
-    | "opening_delimiter"
-    | "closing_delimiter";
-};
+} & (
+  | {
+      classification: TokensClassification;
+    }
+  | {
+      classification: "opening_delimiter" | "closing_delimiter";
+      delimiterClassification: TokensClassification;
+    }
+);
 
 export type GenerationErrorEvent = {
   type: "generation_error";

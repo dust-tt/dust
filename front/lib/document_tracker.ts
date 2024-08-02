@@ -1,7 +1,7 @@
 import { CoreAPI } from "@dust-tt/types";
 import { literal, Op } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { TrackedDocument } from "@app/lib/models/doc_tracker";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -12,14 +12,19 @@ import logger from "@app/logger/logger";
 import config from "./api/config";
 
 export async function updateTrackedDocuments(
+  auth: Authenticator,
   dataSourceId: number,
   documentId: string,
   documentContent: string
 ) {
-  const dataSource = await DataSourceResource.fetchByModelId(dataSourceId);
+  const dataSource = await DataSourceResource.fetchByModelIdWithAuth(
+    auth,
+    dataSourceId
+  );
   if (!dataSource) {
     throw new Error(`Could not find data source with id ${dataSourceId}`);
   }
+
   if (!dataSource.workspaceId) {
     throw new Error(
       `Data source with id ${dataSourceId} has no workspace id set`
@@ -31,9 +36,7 @@ export async function updateTrackedDocuments(
       `Could not find workspace with id ${dataSource.workspaceId}`
     );
   }
-  const auth = await Authenticator.internalBuilderForWorkspace(
-    workspaceModel.sId
-  );
+
   const owner = auth.workspace();
   if (!owner) {
     throw new Error(

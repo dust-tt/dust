@@ -22,6 +22,7 @@ import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { Provider } from "@app/lib/models/apps";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
@@ -173,7 +174,11 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+
+  // TODO(2024-08-02 flav) Refactor auth.fromKey logic.
+  // Confusingly, the auth workspace here is the the one from the URL, not the one from the key.
+  // Where as auth.groups are the groups associated with the the key.
+  const { auth, keyWorkspace } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
@@ -183,8 +188,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "app_not_found",
-        message: "The app you're trying to run was not found",
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
     });
   }
@@ -285,9 +290,12 @@ async function handler(
         "App run creation"
       );
 
-      const runRes = await coreAPI.createRunStream({
+      const groups = await GroupResource.listWorkspaceGroupsFromKey(
+        keyRes.value
+      );
+
+      const runRes = await coreAPI.createRunStream(keyWorkspace, groups, {
         projectId: app.dustAPIProjectId,
-        runAsWorkspaceId: keyWorkspaceId,
         runType: "deploy",
         specificationHash: specificationHash,
         config: { blocks: config },

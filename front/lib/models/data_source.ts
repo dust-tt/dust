@@ -34,8 +34,9 @@ export class DataSource extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare vaultId: ForeignKey<VaultModel["id"]>;
 
-  declare workspace: NonAttribute<Workspace>;
   declare editedByUser: NonAttribute<User>;
+  declare vault: NonAttribute<VaultModel>;
+  declare workspace: NonAttribute<Workspace>;
 }
 
 DataSource.init(

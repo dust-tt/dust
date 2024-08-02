@@ -1,14 +1,13 @@
 import type {
   ConnectorProvider,
   DataSourceType,
-  LightWorkspaceType,
+  ModelId,
   Result,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
-  FindOptions,
   ModelStatic,
   Transaction,
 } from "sequelize";
@@ -17,9 +16,11 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
-import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
+import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
@@ -33,31 +34,43 @@ export type FetchDataSourceOptions = {
 export interface DataSourceResource
   extends ReadonlyAttributesType<DataSource> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceResource extends BaseResource<DataSource> {
+export class DataSourceResource extends ResourceWithVault<DataSource> {
   static model: ModelStatic<DataSource> = DataSource;
 
-  editedByUser: Attributes<User> | undefined;
+  readonly editedByUser: Attributes<User> | undefined;
 
   constructor(
     model: ModelStatic<DataSource>,
     blob: Attributes<DataSource>,
-    editedByUser?: Attributes<User>
+    vault: VaultResource,
+    { editedByUser }: { editedByUser?: Attributes<User> } = {}
   ) {
-    super(DataSourceResource.model, blob);
+    super(DataSourceResource.model, blob, vault);
+
     this.editedByUser = editedByUser;
   }
 
-  static async makeNew(blob: CreationAttributes<DataSource>) {
-    const datasource = await DataSource.create(blob);
+  static async makeNew(
+    blob: Omit<CreationAttributes<DataSource>, "vaultId">,
+    vault: VaultResource
+  ) {
+    const datasource = await DataSource.create({
+      ...blob,
+      vaultId: vault.id,
+    });
 
-    return new this(DataSourceResource.model, datasource.get());
+    return new this(DataSourceResource.model, datasource.get(), vault);
   }
 
-  private static getOptions(options?: FetchDataSourceOptions) {
-    const result: FindOptions<DataSourceResource["model"]> = {};
+  // Fetching.
+
+  private static getOptions(
+    options?: FetchDataSourceOptions
+  ): ResourceFindOptions<DataSource> {
+    const result: ResourceFindOptions<DataSource> = {};
 
     if (options?.includeEditedBy) {
-      result.include = [
+      result.includes = [
         {
           model: User,
           as: "editedByUser",
@@ -81,63 +94,34 @@ export class DataSourceResource extends BaseResource<DataSource> {
     name: string,
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
-    const owner = await auth.getNonNullableWorkspace();
-    const datasource = await this.model.findOne({
+    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
+      ...this.getOptions(options),
       where: {
-        workspaceId: owner.id,
         name,
       },
-      ...this.getOptions(options),
     });
 
-    if (!datasource) {
-      return null;
-    }
-    return new this(
-      DataSourceResource.model,
-      datasource.get(),
-      datasource.editedByUser?.get()
-    );
+    return dataSource ?? null;
   }
 
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    const owner = await auth.getNonNullableWorkspace();
-    const datasources = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
-      },
-      ...this.getOptions(options),
-    });
-
-    return datasources.map(
-      (datasource) =>
-        new this(
-          DataSourceResource.model,
-          datasource.get(),
-          datasource.editedByUser?.get()
-        )
-    );
+    return this.baseFetchWithAuthorization(auth, this.getOptions(options));
   }
 
   static async listByWorkspaceIdAndNames(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     names: string[]
   ): Promise<DataSourceResource[]> {
-    const datasources = await this.model.findAll({
+    return this.baseFetchWithAuthorization(auth, {
       where: {
-        workspaceId: workspace.id,
         name: {
           [Op.in]: names,
         },
       },
     });
-
-    return datasources.map(
-      (datasource) => new this(DataSourceResource.model, datasource.get())
-    );
   }
 
   static async listByConnectorProvider(
@@ -145,18 +129,21 @@ export class DataSourceResource extends BaseResource<DataSource> {
     connectorProvider: ConnectorProvider,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    const owner = await auth.getNonNullableWorkspace();
-    const datasources = await this.model.findAll({
+    return this.baseFetchWithAuthorization(auth, {
+      ...this.getOptions(options),
       where: {
-        workspaceId: owner.id,
         connectorProvider,
       },
-      ...this.getOptions(options),
+    });
+  }
+
+  // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
+  static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
+    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
+      where: { id },
     });
 
-    return datasources.map(
-      (datasource) => new this(DataSourceResource.model, datasource.get())
-    );
+    return dataSource ?? null;
   }
 
   async delete(

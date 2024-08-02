@@ -17,12 +17,13 @@ import { Op, Sequelize } from "sequelize";
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
-import { visualizationActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/visualization";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
-import { AgentMessageContentParser } from "@app/lib/api/assistant/agent";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
@@ -120,7 +121,6 @@ export async function batchRenderAgentMessages(
     agentProcessActions,
     agentWebsearchActions,
     agentBrowseActions,
-    agentVisualizationActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -148,8 +148,6 @@ export async function batchRenderAgentMessages(
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () =>
-      visualizationActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
@@ -170,7 +168,6 @@ export async function batchRenderAgentMessages(
         agentProcessActions,
         agentWebsearchActions,
         agentBrowseActions,
-        agentVisualizationActions,
       ]
         .flat()
         .filter((a) => a.agentMessageId === agentMessage.id)
@@ -203,11 +200,10 @@ export async function batchRenderAgentMessages(
       const rawContents =
         agentMessage.agentMessageContents?.sort((a, b) => a.step - b.step) ??
         [];
-      const model = getSupportedModelConfig(agentConfiguration.model);
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
         message.sId,
-        model.delimitersConfiguration
+        getDelimitersConfiguration({ agentConfiguration })
       );
       const parsedContent = await contentParser.parseContents(
         rawContents.map((r) => r.content)
@@ -227,6 +223,7 @@ export async function batchRenderAgentMessages(
         actions: actions,
         content: parsedContent.content,
         chainOfThought: parsedContent.chainOfThought,
+        visualizations: parsedContent.visualizations,
         rawContents:
           agentMessage.agentMessageContents?.map((rc) => ({
             step: rc.step,

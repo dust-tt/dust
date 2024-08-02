@@ -1,21 +1,28 @@
-import { Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  CommandLineIcon,
+  PlayStrokeIcon,
+  Spinner,
+  Tab,
+} from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
-  VisualizationActionType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  isVisualizationRPCRequest,
-  visualizationExtractCode,
-} from "@dust-tt/types";
+import { assertNever, isVisualizationRPCRequest } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { classNames } from "@app/lib/utils";
+
+type Visualization = {
+  code: string;
+  complete: boolean;
+  identifier: string;
+};
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -26,37 +33,28 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
     {
       command: "answer",
       messageUniqueId: request.messageUniqueId,
-      actionId: request.actionId,
+      identifier: request.identifier,
       result: response,
     },
-    // TODO(2024-07-24 flav) Restrict origin.
     { targetOrigin: "*" }
   );
 };
 
 // Custom hook to encapsulate the logic for handling visualization messages.
-function useVisualizationDataHandler(
-  action: VisualizationActionType,
-  {
-    onRetry,
-    setContentHeight,
-    vizIframeRef,
-    workspaceId,
-    streamedCode,
-  }: {
-    onRetry: () => void;
-    setContentHeight: (v: SetStateAction<number>) => void;
-    vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-    workspaceId: string;
-    streamedCode: string | null;
-  }
-) {
-  const code = action.generation ?? streamedCode ?? "";
-
-  const { extractedCode } = useMemo(
-    () => visualizationExtractCode(code),
-    [code]
-  );
+function useVisualizationDataHandler({
+  visualization,
+  setContentHeight,
+  setIsErrored,
+  vizIframeRef,
+  workspaceId,
+}: {
+  visualization: Visualization;
+  setContentHeight: (v: SetStateAction<number>) => void;
+  setIsErrored: (v: SetStateAction<boolean>) => void;
+  vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
+  workspaceId: string;
+}) {
+  const code = visualization.code;
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
@@ -86,7 +84,7 @@ function useVisualizationDataHandler(
       if (
         !isVisualizationRPCRequest(data) ||
         !isOriginatingFromViz ||
-        data.actionId !== action.id
+        data.identifier !== visualization.identifier
       ) {
         return;
       }
@@ -99,18 +97,18 @@ function useVisualizationDataHandler(
           break;
 
         case "getCodeToExecute":
-          if (extractedCode) {
-            sendResponseToIframe(data, { code: extractedCode }, event.source);
+          if (code) {
+            sendResponseToIframe(data, { code }, event.source);
           }
 
           break;
 
-        case "retry":
-          onRetry();
-          break;
-
         case "setContentHeight":
           setContentHeight(data.params.height);
+          break;
+
+        case "setErrored":
+          setIsErrored(true);
           break;
 
         default:
@@ -121,67 +119,57 @@ function useVisualizationDataHandler(
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
   }, [
-    action.generation,
-    action.id,
-    extractedCode,
+    visualization.identifier,
+    code,
     getFileBlob,
-    onRetry,
     setContentHeight,
+    setIsErrored,
     vizIframeRef,
   ]);
 }
 
 export function VisualizationActionIframe({
   owner,
-  action,
-  isStreaming,
-  streamedCode,
+  visualization,
   onRetry,
 }: {
-  conversationId: string;
   owner: WorkspaceType;
-  action: VisualizationActionType;
-  streamedCode: string | null;
-  isStreaming: boolean;
+  visualization: Visualization;
   onRetry: () => void;
 }) {
-  const [contentHeight, setContentHeight] = useState(0);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [showSpinner, setShowSpinner] = useState(true);
+  const [contentHeight, setContentHeight] = useState<number>(0);
+  const [isErrored, setIsErrored] = useState(false);
   const [activeIndex, setActiveIndex] = useState(1);
 
   const vizIframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   const workspaceId = owner.sId;
 
-  useVisualizationDataHandler(action, {
+  useVisualizationDataHandler({
+    visualization,
     workspaceId,
-    onRetry,
     setContentHeight,
+    setIsErrored,
     vizIframeRef,
-    streamedCode,
   });
 
-  const { extractedCode, isComplete: codeFullyGenerated } =
-    visualizationExtractCode(action.generation ?? streamedCode ?? "");
+  const { code, complete: codeFullyGenerated } = visualization;
+
+  const iframeLoaded = contentHeight > 0;
+  const showSpinner =
+    ((!codeFullyGenerated && !code) || (codeFullyGenerated && !iframeLoaded)) &&
+    !isErrored;
 
   useEffect(() => {
     if (!codeFullyGenerated) {
-      // Display spinner over the code block while waiting for code generation.
-      setShowSpinner(!extractedCode);
       setActiveIndex(0);
-    } else if (iframeLoaded) {
-      // Display iframe if code is generated and iframe has loaded.
-      setShowSpinner(false);
-      setActiveIndex(1);
     } else {
-      // Show spinner while iframe is loading.
-      setShowSpinner(true);
       setActiveIndex(1);
     }
-  }, [codeFullyGenerated, extractedCode, iframeLoaded]);
+  }, [codeFullyGenerated, code]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -195,14 +183,17 @@ export function VisualizationActionIframe({
         ? `${codeRef.current?.scrollHeight}px`
         : "100%";
     } else if (activeIndex === 1) {
-      containerRef.current.style.height = `${contentHeight}px`;
+      if (isErrored && errorRef.current) {
+        containerRef.current.style.height = `${errorRef.current.scrollHeight}px`;
+      } else if (!isErrored) {
+        containerRef.current.style.height = `${contentHeight}px`;
+      }
     }
-  }, [activeIndex, contentHeight, codeFullyGenerated]);
+  }, [activeIndex, contentHeight, codeFullyGenerated, isErrored]);
 
   return (
     <div className="relative flex flex-col">
-      <Tabs
-        tabs={["Code", "Visualisation"]}
+      <ViewCodeSwitcher
         disabled={!codeFullyGenerated}
         activeIndex={activeIndex}
         onTabClick={setActiveIndex}
@@ -213,7 +204,12 @@ export function VisualizationActionIframe({
         </div>
       )}
       <div
-        className="transition-height relative min-h-96 w-full overflow-hidden duration-500 ease-in-out"
+        className={classNames(
+          "transition-height relative w-full overflow-hidden duration-500 ease-in-out",
+          codeFullyGenerated && !isErrored ? "min-h-96" : "",
+          isErrored ? "h-full" : "",
+          activeIndex === 1 ? "max-h-[60vh]" : ""
+        )}
         ref={containerRef}
       >
         <div
@@ -224,24 +220,41 @@ export function VisualizationActionIframe({
         >
           <div className="flex h-full w-full shrink-0" ref={codeRef}>
             <RenderMessageMarkdown
-              content={"```javascript\n" + (extractedCode ?? "") + "\n```"}
-              isStreaming={!codeFullyGenerated && isStreaming}
+              content={"```javascript\n" + (code ?? "") + "\n```"}
+              isStreaming={!codeFullyGenerated}
             />
           </div>
           <div className="relative flex h-full w-full shrink-0 items-center justify-center">
-            {codeFullyGenerated && (
+            {codeFullyGenerated && !isErrored && (
               <div
-                style={{ height: `${contentHeight}px` }}
+                style={{
+                  height: !isErrored ? `${contentHeight}px` : "100%",
+                  minHeight: !isErrored ? "96" : undefined,
+                }}
                 className={classNames("max-h-[60vh] w-full")}
               >
                 <iframe
                   ref={vizIframeRef}
-                  // Set a min height so iframe can display error.
-                  className="h-full min-h-96 w-full"
-                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?aId=${action.id}`}
+                  className={classNames(
+                    "h-full w-full",
+                    !isErrored ? "min-h-96" : ""
+                  )}
+                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
                   sandbox="allow-scripts"
-                  onLoad={() => setIframeLoaded(true)}
                 />
+              </div>
+            )}
+            {isErrored && (
+              <div
+                className="flex h-full w-full flex-col items-center gap-4 py-8"
+                ref={errorRef}
+              >
+                <div className="text-sm text-element-800">
+                  An error occured while rendering the visualization.
+                </div>
+                <div>
+                  <Button label="Retry" onClick={onRetry} size="sm" />
+                </div>
               </div>
             )}
           </div>
@@ -251,31 +264,41 @@ export function VisualizationActionIframe({
   );
 }
 
-const Tabs = ({
+const ViewCodeSwitcher = ({
   activeIndex,
   disabled,
   onTabClick,
-  tabs,
 }: {
   activeIndex: number;
   disabled: boolean;
   onTabClick: (tabIndex: number) => void;
-  tabs: string[];
 }) => {
   return (
-    <div className="flex justify-self-end pb-2">
-      <div className="rounded-lg bg-gray-100 p-2">
-        {tabs.map((tab, index) => (
-          <button
-            key={tab}
-            className={`font-small rounded-lg px-4 py-2 text-xs text-gray-800 focus:outline-none ${activeIndex === index ? "bg-white shadow" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
-            onClick={() => onTabClick(index)}
-            disabled={disabled}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+    <div className="flex justify-end pb-2">
+      <Tab
+        tabs={[
+          {
+            label: "Code",
+            id: "code",
+            disabled,
+            current: activeIndex === 0,
+            icon: CommandLineIcon,
+            sizing: "expand",
+          },
+          {
+            label: "View",
+            id: "view",
+            disabled,
+            current: activeIndex === 1,
+            icon: PlayStrokeIcon,
+            sizing: "expand",
+          },
+        ]}
+        setCurrentTab={(tabId, event) => {
+          event.preventDefault();
+          onTabClick(tabId === "code" ? 0 : 1);
+        }}
+      />
     </div>
   );
 };

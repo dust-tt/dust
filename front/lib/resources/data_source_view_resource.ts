@@ -4,7 +4,6 @@
 import type {
   DataSourceType,
   DataSourceViewType,
-  LightWorkspaceType,
   ModelId,
   Result,
 } from "@dust-tt/types";
@@ -17,33 +16,44 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { BaseResource } from "@app/lib/resources/base_resource";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
+export class DataSourceViewResource extends ResourceWithVault<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
-    blob: Attributes<DataSourceViewModel>
+    blob: Attributes<DataSourceViewModel>,
+    vault: VaultResource
   ) {
-    super(DataSourceViewModel, blob);
+    super(DataSourceViewModel, blob, vault);
   }
 
   // Creation.
 
-  private static async makeNew(blob: CreationAttributes<DataSourceViewModel>) {
-    const key = await DataSourceViewResource.model.create(blob);
+  private static async makeNew(
+    blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
+    vault: VaultResource
+  ) {
+    const key = await DataSourceViewResource.model.create({
+      ...blob,
+      vaultId: vault.id,
+    });
 
-    return new this(DataSourceViewResource.model, key.get());
+    return new this(DataSourceViewResource.model, key.get(), vault);
   }
 
   static async createViewInVaultFromDataSource(
@@ -51,11 +61,14 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     dataSource: DataSourceType,
     parentsIn: string[]
   ) {
-    return this.makeNew({
-      dataSourceId: dataSource.id,
-      parentsIn,
-      workspaceId: vault.workspaceId,
-    });
+    return this.makeNew(
+      {
+        dataSourceId: dataSource.id,
+        parentsIn,
+        workspaceId: vault.workspaceId,
+      },
+      vault
+    );
   }
 
   // For now, we create a default view for all data sources in the global vault.
@@ -64,42 +77,33 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     vault: VaultResource,
     dataSource: DataSourceResource
   ) {
-    return this.makeNew({
-      dataSourceId: dataSource.id,
-      parentsIn: null,
-      vaultId: vault.id,
-      workspaceId: vault.workspaceId,
-    });
+    return this.makeNew(
+      {
+        dataSourceId: dataSource.id,
+        parentsIn: null,
+        workspaceId: vault.workspaceId,
+      },
+      vault
+    );
   }
 
   // Fetching.
 
   static async listByWorkspace(auth: Authenticator) {
-    const blobs = await this.model.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-
-    return blobs.map((b) => new this(this.model, b.get()));
+    return this.baseFetchWithAuthorization(auth);
   }
 
   static async listForDataSourcesInVault(
-    owner: LightWorkspaceType,
+    auth: Authenticator,
     dataSources: DataSourceResource[],
-    vault: VaultResource,
-    { transaction }: { transaction?: Transaction } = {}
+    vault: VaultResource
   ) {
-    const blobs = await this.model.findAll({
+    return this.baseFetchWithAuthorization(auth, {
       where: {
-        workspaceId: owner.id,
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: vault.id,
       },
-      transaction,
     });
-
-    return blobs.map((b) => new this(this.model, b.get()));
   }
 
   static async fetchById(auth: Authenticator, id: string) {
@@ -108,18 +112,21 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
       return null;
     }
 
-    const blob = await this.model.findOne({
+    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
         id: fileModelId,
       },
     });
-    if (!blob) {
-      return null;
-    }
 
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    return new this(this.model, blob.get());
+    return dataSource ?? null;
+  }
+
+  // Peer fetching.
+
+  async fetchDataSource(
+    auth: Authenticator
+  ): Promise<DataSourceResource | null> {
+    return DataSourceResource.fetchByModelIdWithAuth(auth, this.dataSourceId);
   }
 
   // Deletion.
@@ -167,6 +174,8 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
     });
   }
 
+  // sId logic.
+
   get sId(): string {
     return DataSourceViewResource.modelIdToSId({
       id: this.id,
@@ -185,6 +194,10 @@ export class DataSourceViewResource extends BaseResource<DataSourceViewModel> {
       id,
       workspaceId,
     });
+  }
+
+  static isDataSourceViewSId(sId: string): boolean {
+    return isResourceSId("data_source_view", sId);
   }
 
   // Serialization logic.

@@ -16,7 +16,6 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  isVisualizationConfiguration,
   isWebsearchConfiguration,
   slugify,
 } from "@dust-tt/types";
@@ -32,7 +31,6 @@ import {
   getDefaultRetrievalExhaustiveActionConfiguration,
   getDefaultRetrievalSearchActionConfiguration,
   getDefaultTablesQueryActionConfiguration,
-  getDefaultVisualizationActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import config from "@app/lib/api/config";
@@ -216,10 +214,6 @@ export async function buildInitialActions({
       continue;
     } else if (isBrowseConfiguration(action)) {
       // Ignore browse actions
-      continue;
-    } else if (isVisualizationConfiguration(action)) {
-      builderAction = getDefaultVisualizationActionConfiguration();
-      builderActions.push(builderAction);
       continue;
     } else {
       assertNever(action);

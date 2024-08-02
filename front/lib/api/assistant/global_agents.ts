@@ -6,6 +6,7 @@ const readFileAsync = promisify(fs.readFile);
 
 import type {
   AgentActionConfigurationType,
+  AgentConfigurationStatus,
   AgentConfigurationType,
   AgentModelConfigurationType,
   ConnectorProvider,
@@ -178,6 +179,7 @@ function _getHelperGlobalAgent({
       },
     ],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -208,16 +210,27 @@ function _getGPT35TurboGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
 
 function _getGPT4GlobalAgent({
   auth,
+  settings,
 }: {
   auth: Authenticator;
+  settings: GlobalAgentSettings | null;
 }): AgentConfigurationType {
-  const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.GPT4,
@@ -238,6 +251,7 @@ function _getGPT4GlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -268,6 +282,7 @@ function _getClaudeInstantGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -305,6 +320,7 @@ function _getClaude2GlobalAgent({
 
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -336,6 +352,7 @@ function _getClaude3HaikuGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -372,6 +389,7 @@ function _getClaude3OpusGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -409,6 +427,7 @@ function _getClaude3GlobalAgent({
 
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -445,6 +464,7 @@ function _getMistralLargeGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -481,6 +501,7 @@ function _getMistralMediumGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -511,6 +532,7 @@ function _getMistralSmallGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -546,6 +568,7 @@ function _getGeminiProGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: 0,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -614,6 +637,7 @@ function _getManagedDataSourceAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -639,6 +663,7 @@ function _getManagedDataSourceAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -675,6 +700,7 @@ function _getManagedDataSourceAgent(
       },
     ],
     maxStepsPerRun: 1,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -872,6 +898,7 @@ function _getDustGlobalAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -897,6 +924,7 @@ function _getDustGlobalAgent(
       model,
       actions: [],
       maxStepsPerRun: 0,
+      visualizationEnabled: false,
       templateId: null,
     };
   }
@@ -997,6 +1025,7 @@ The assistant always respects the mardown format and generates spaces to nest co
     model,
     actions,
     maxStepsPerRun: 3,
+    visualizationEnabled: false,
     templateId: null,
   };
 }
@@ -1026,7 +1055,7 @@ function getGlobalAgent(
       agentConfiguration = _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
-      agentConfiguration = _getGPT4GlobalAgent({ auth });
+      agentConfiguration = _getGPT4GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });

@@ -83,12 +83,12 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+  const { auth, keyWorkspace } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
+  if (!auth.isBuilder() || keyWorkspace.sId !== req.query.wId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

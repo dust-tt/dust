@@ -2,6 +2,7 @@ import {
   BookOpenIcon,
   Button,
   CardButton,
+  Checkbox,
   ContentMessage,
   DropdownMenu,
   Icon,
@@ -38,10 +39,6 @@ import {
   hasErrorActionTablesQuery,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import {
-  ActionVisualization,
-  hasErrorActionVisualization,
-} from "@app/components/assistant_builder/actions/VisualizationAction";
-import {
   ActionWebNavigation,
   hasErrorActionWebNavigation,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
@@ -67,7 +64,6 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
 
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
-  "VISUALIZATION",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
@@ -100,8 +96,6 @@ export function hasActionError(
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
-    case "VISUALIZATION":
-      return hasErrorActionVisualization(action);
     default:
       assertNever(action);
   }
@@ -352,6 +346,31 @@ export default function ActionsScreen({
             ))}
           </div>
         </div>
+      </div>
+      <div className="flex flex-col gap-8">
+        {owner.flags.includes("visualization_action_flag") && (
+          <div className="flex flex-row gap-2">
+            <Checkbox
+              checked={builderState.visualizationEnabled}
+              onChange={() => {
+                setEdited(true);
+                setBuilderState((state) => ({
+                  ...state,
+                  visualizationEnabled: !state.visualizationEnabled,
+                }));
+              }}
+              variant="checkable"
+            />
+            <div>
+              <div className="flex w-full gap-1 font-medium text-element-900">
+                Visualization
+              </div>
+              <div className="w-full truncate text-base text-element-700">
+                The assistant can create graphs and charts
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -667,8 +686,6 @@ function ActionConfigEditor({
       );
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
-    case "VISUALIZATION":
-      return <ActionVisualization />;
     default:
       assertNever(action);
   }

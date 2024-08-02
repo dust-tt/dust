@@ -88,7 +88,8 @@ export async function updateDataSourceEditedBy(
     });
   }
 
-  const dataSourceResource = await DataSourceResource.fetchByModelId(
+  const dataSourceResource = await DataSourceResource.fetchByModelIdWithAuth(
+    auth,
     dataSource.id
   );
 

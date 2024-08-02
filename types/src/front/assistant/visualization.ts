@@ -1,56 +1,8 @@
-import * as t from "io-ts";
-
-import { ModelId } from "../../../shared/model_id";
-import { BaseAction } from "../../lib/api/assistant/actions";
-
-// Configuration
-export type VisualizationConfigurationType = {
-  id: ModelId; // AgentVisualizationConfiguration ID
-  sId: string;
-  type: "visualization_configuration";
-  name: string;
-  description: string | null;
-};
-
-// Action execution
-export interface VisualizationActionType extends BaseAction {
-  agentMessageId: ModelId;
-  generation: string | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-  type: "visualization_action";
-}
-
-export const VisualizationActionOutputSchema = t.type({
-  generation: t.string,
-});
-
-export function visualizationExtractCode(code: string): {
-  extractedCode: string;
-  isComplete: boolean;
-} {
-  const regex = /<visualization[^>]*>\s*([\s\S]*?)\s*(<\/visualization>|$)/;
-  let extractedCode: string | null = null;
-  const match = code.match(regex);
-  if (match && match[1]) {
-    extractedCode = match[1];
-  }
-  if (!extractedCode) {
-    return { extractedCode: "", isComplete: false };
-  }
-
-  return {
-    extractedCode: extractedCode,
-    isComplete: code.includes("</visualization>"),
-  };
-}
-
 // This defines the commands that the iframe can send to the host window.
 
 // Common base interface.
 interface VisualizationRPCRequestBase {
-  actionId: number;
+  identifier: string;
   messageUniqueId: string;
 }
 
@@ -58,10 +10,6 @@ interface VisualizationRPCRequestBase {
 
 interface GetFileParams {
   fileId: string;
-}
-
-interface RetryParams {
-  errorMessage: string;
 }
 
 interface SetContentHeightParams {
@@ -72,8 +20,8 @@ interface SetContentHeightParams {
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
-  retry: RetryParams;
   setContentHeight: SetContentHeightParams;
+  setErrored: void;
 };
 
 // Derive the command type from the keys of the request map
@@ -90,8 +38,8 @@ export type VisualizationRPCRequest = {
 export const validCommands: VisualizationRPCCommand[] = [
   "getFile",
   "getCodeToExecute",
-  "retry",
   "setContentHeight",
+  "setErrored",
 ];
 
 // Command results.
@@ -99,9 +47,11 @@ export const validCommands: VisualizationRPCCommand[] = [
 export interface CommandResultMap {
   getFile: { fileBlob: Blob | null };
   getCodeToExecute: { code: string };
-  retry: void;
   setContentHeight: void;
+  setErrored: void;
 }
+
+// TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
 
 // Type guard for getFile.
 export function isGetFileRequest(
@@ -118,7 +68,7 @@ export function isGetFileRequest(
 
   return (
     v.command === "getFile" &&
-    typeof v.actionId === "number" &&
+    typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
@@ -141,31 +91,8 @@ export function isGetCodeToExecuteRequest(
 
   return (
     v.command === "getCodeToExecute" &&
-    typeof v.actionId === "number" &&
+    typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string"
-  );
-}
-
-// Type guard for retry.
-export function isRetryRequest(
-  value: unknown
-): value is VisualizationRPCRequest & {
-  command: "retry";
-  params: RetryParams;
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "retry" &&
-    typeof v.actionId === "number" &&
-    typeof v.messageUniqueId === "string" &&
-    typeof v.params === "object" &&
-    v.params !== null &&
-    typeof (v.params as RetryParams).errorMessage === "string"
   );
 }
 
@@ -184,11 +111,29 @@ export function isSetContentHeightRequest(
 
   return (
     v.command === "setContentHeight" &&
-    typeof v.actionId === "number" &&
+    typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
     typeof (v.params as SetContentHeightParams).height === "number"
+  );
+}
+
+export function isSetErroredRequest(
+  value: unknown
+): value is VisualizationRPCRequest & {
+  command: "setErrored";
+} {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const v = value as Partial<VisualizationRPCRequest>;
+
+  return (
+    v.command === "setErrored" &&
+    typeof v.identifier === "string" &&
+    typeof v.messageUniqueId === "string"
   );
 }
 
@@ -202,7 +147,7 @@ export function isVisualizationRPCRequest(
   return (
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
-    isRetryRequest(value) ||
-    isSetContentHeightRequest(value)
+    isSetContentHeightRequest(value) ||
+    isSetErroredRequest(value)
   );
 }
