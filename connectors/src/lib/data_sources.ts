@@ -249,19 +249,58 @@ export const updateDocumentParentsField = withRetries(
 );
 
 async function _updateDocumentParentsField({
-  dataSourceConfig,
   documentId,
-  parents,
-  loggerArgs = {},
+  ...params
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
   loggerArgs?: Record<string, string | number>;
 }) {
-  const localLogger = logger.child({ ...loggerArgs, documentId });
+  return _updateDocumentOrTableParentsField({
+    ...params,
+    tableOrDocument: "document",
+    id: documentId,
+  });
+}
+
+export const updateTableParentsField = withRetries(_updateTableParentsField);
+
+async function _updateTableParentsField({
+  tableId,
+  ...params
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  parents: string[];
+  loggerArgs?: Record<string, string | number>;
+}) {
+  return _updateDocumentOrTableParentsField({
+    ...params,
+    tableOrDocument: "table",
+    id: tableId,
+  });
+}
+
+async function _updateDocumentOrTableParentsField({
+  dataSourceConfig,
+  id,
+  parents,
+  loggerArgs = {},
+  tableOrDocument,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  id: string;
+  parents: string[];
+  loggerArgs?: Record<string, string | number>;
+  tableOrDocument: "document" | "table";
+}) {
+  const localLogger =
+    tableOrDocument === "document"
+      ? logger.child({ ...loggerArgs, documentId: id })
+      : logger.child({ ...loggerArgs, tableId: id });
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}/parents`;
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -278,7 +317,10 @@ async function _updateDocumentParentsField({
       dustRequestConfig
     );
   } catch (e) {
-    localLogger.error({ error: e }, "Error updating document parents field.");
+    localLogger.error(
+      { error: e },
+      `Error updating ${tableOrDocument} parents field.`
+    );
     throw e;
   }
 
@@ -290,10 +332,10 @@ async function _updateDocumentParentsField({
         status: dustRequestResult.status,
         data: dustRequestResult.data,
       },
-      "Error updating document parents field."
+      `Error updating ${tableOrDocument} parents field.`
     );
     throw new Error(
-      `Error updating document parents field: ${dustRequestResult}`
+      `Error updating ${tableOrDocument} parents field: ${dustRequestResult}`
     );
   }
 }

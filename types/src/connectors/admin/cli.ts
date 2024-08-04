@@ -9,6 +9,7 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("full-resync"),
     t.literal("set-error"),
     t.literal("restart"),
+    t.literal("get-parents"),
   ]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });
@@ -184,13 +185,14 @@ export const MicrosoftCommandSchema = t.type({
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
+    t.literal("get-parents"),
   ]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });
 
 export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 
-export const MicrosoftCheckFileResponseSchema = t.type({
+export const CustomDataResponseSchema = t.type({
   status: t.number,
   // all literals from js `typeof`
   type: t.union([
@@ -206,9 +208,7 @@ export const MicrosoftCheckFileResponseSchema = t.type({
   content: t.unknown, // google drive type, can't be iots'd
 });
 
-export type MicrosoftCheckFileResponseType = t.TypeOf<
-  typeof MicrosoftCheckFileResponseSchema
->;
+export type CustomDataResponseType = t.TypeOf<typeof CustomDataResponseSchema>;
 
 export const AdminCommandSchema = t.union([
   ConnectorsCommandSchema,
@@ -283,26 +283,6 @@ export const NotionMeResponseSchema = t.type({
 
 export type NotionMeResponseType = t.TypeOf<typeof NotionMeResponseSchema>;
 
-export const GoogleDriveCheckFileResponseSchema = t.type({
-  status: t.number,
-  // all literals from js `typeof`
-  type: t.union([
-    t.literal("undefined"),
-    t.literal("object"),
-    t.literal("boolean"),
-    t.literal("number"),
-    t.literal("string"),
-    t.literal("function"),
-    t.literal("symbol"),
-    t.literal("bigint"),
-  ]),
-  content: t.unknown, // google drive type, can't be iots'd
-});
-
-export type GoogleDriveCheckFileResponseType = t.TypeOf<
-  typeof GoogleDriveCheckFileResponseSchema
->;
-
 export const TemporalCheckQueueResponseSchema = t.type({
   taskQueue: t.UnknownRecord, // temporal type, can't be iots'd
 });
@@ -327,7 +307,7 @@ export const AdminResponseSchema = t.union([
   NotionSearchPagesResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionMeResponseSchema,
-  GoogleDriveCheckFileResponseSchema,
+  CustomDataResponseSchema,
   TemporalCheckQueueResponseSchema,
   TemporalUnprocessedWorkflowsResponseSchema,
   IntercomCheckConversationResponseSchema,

@@ -1116,6 +1116,37 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async updateTableParents({
+    projectId,
+    dataSourceName,
+    tableId,
+    parents,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    tableId: string;
+    parents: string[];
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}/parents`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          parents: parents,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async upsertTableRows({
     projectId,
     dataSourceName,

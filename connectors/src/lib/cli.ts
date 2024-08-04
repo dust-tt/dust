@@ -4,6 +4,7 @@ import type {
   BatchCommandType,
   BatchRestartAllResponseType,
   ConnectorsCommandType,
+  CustomDataResponseType,
   Result,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
@@ -27,6 +28,7 @@ import {
   terminateAllWorkflowsForConnectorId,
 } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { INTERACTIVE_CLI } = process.env;
@@ -94,7 +96,9 @@ export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
 export const connectors = async ({
   command,
   args,
-}: ConnectorsCommandType): Promise<AdminSuccessResponseType> => {
+}: ConnectorsCommandType): Promise<
+  AdminSuccessResponseType | CustomDataResponseType
+> => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
@@ -161,6 +165,22 @@ export const connectors = async ({
       await throwOnError(manager.resume());
       return { success: true };
     }
+
+    case "get-parents": {
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+      const parents = await manager.retrieveContentNodeParents({
+        internalId: args.fileId,
+      });
+
+      if (parents.isErr()) {
+        throw new Error(`Cannot fetch parents: ${parents.error}`);
+      }
+
+      return { status: 200, content: parents.value, type: typeof parents };
+    }
+
     default:
       throw new Error(`Unknown workspace command: ${command}`);
   }
