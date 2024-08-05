@@ -1,4 +1,5 @@
 import {
+  BookOpenIcon,
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
@@ -22,7 +23,11 @@ import { UsersIcon } from "@heroicons/react/20/solid";
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId = "conversations" | "assistants" | "admin";
+export type TopNavigationId =
+  | "conversations"
+  | "assistants"
+  | "admin"
+  | "data_sources";
 
 export type SubNavigationConversationsId =
   | "conversation"
@@ -118,6 +123,19 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       sizing: "expand",
     });
   }
+
+  if (owner.flags.includes("vault_data_sources")) {
+    nav.push({
+      id: "data_sources",
+      label: "Data sources",
+      icon: BookOpenIcon,
+      href: `/w/${owner.sId}/data-sources/vaults/global`,
+      isCurrent: (currentRoute: string) =>
+        currentRoute.startsWith("/w/[wId]/data-sources/vaults/"),
+      sizing: "expand",
+    });
+  }
+
   if (isAdmin(owner)) {
     nav.push({
       id: "settings",
