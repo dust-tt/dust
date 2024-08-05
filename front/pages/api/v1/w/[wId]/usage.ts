@@ -27,7 +27,7 @@ const GetWorkspaceUsageSchema = t.intersection([
  * /api/v1/w/{wId}/usage:
  *   get:
  *     summary: Get workspace usage data (deprecated)
- *     description: Get usage data for the workspace identified by {wId} in CSV format. Note: this endpoint is deprecated in favour of `/api/v1/w/{wId}/workspace-usage
+ *     description: Get usage data for the workspace identified by {wId} in CSV format. Note: this endpoint is deprecated in favour of `/api/v1/w/{wId}/workspace-usage`
  *     tags:
  *       - Workspace
  *     security:
