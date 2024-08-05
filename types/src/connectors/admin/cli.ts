@@ -21,6 +21,7 @@ export const GithubCommandSchema = t.type({
     t.literal("resync-repo"),
     t.literal("code-sync"),
     t.literal("sync-issue"),
+    t.literal("force-daily-code-sync"),
   ]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });
