@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { getLocalParents as getGoogleParents } from "@connectors/connectors/google_drive/lib";
 import { getParents as getMicrosoftParents } from "@connectors/connectors/microsoft/temporal/file";
-import { getParents as getNotionParents } from "@connectors/connectors/notion/lib/parents";
+import { getParents as getNotionParentsWithSelf } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateTableParentsField } from "@connectors/lib/data_sources";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -97,7 +97,7 @@ export async function notionTables(
     }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    const [, ...parents] = await getNotionParents(
+    const [, ...parents] = await getNotionParentsWithSelf(
       connectorId as number,
       parentId as string,
       new Set<string>(),
