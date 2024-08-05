@@ -601,16 +601,12 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const id = internalId.startsWith("notion-")
-      ? internalId.substring("notion-".length)
-      : internalId;
-
     const memo = memoizationKey || uuidv4();
 
     try {
       const parents = await getParents(
         this.connectorId,
-        id,
+        internalId,
         new Set<string>(),
         memo
       );
