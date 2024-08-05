@@ -82,6 +82,10 @@ const _getConnectorPermissions = async (
     viewType,
   });
 
+  if (pRes.isOk()) {
+    console.log("================nodes", pRes.value);
+  }
+
   if (pRes.isErr()) {
     return apiError(req, res, {
       status_code: 500,

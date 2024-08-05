@@ -1,5 +1,7 @@
-import { CoreAPI, getGoogleSheetTableId } from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
+import { assertNever, CoreAPI, getGoogleSheetTableId } from "@dust-tt/types";
 import { table } from "console";
+import { connect } from "http2";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
@@ -17,47 +19,44 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // Deleting all existing Google Drive CSV files
 export async function googleTables(
+  connector: ConnectorResource,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
+  logger.info(`Processing Google Drive connector ${connector.id}`);
   const memo = uuidv4();
-  const csvGoogleSheets = await GoogleDriveSheet.findAll({});
+  const csvGoogleSheets = await GoogleDriveSheet.findAll({
+    where: { connectorId: connector.id },
+  });
   for (const sheet of csvGoogleSheets) {
     const { driveFileId, driveSheetId, connectorId } = sheet;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      throw new Error(
-        `Could not find connector for connectorId ${connectorId}`
-      );
-    }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     const tableId = getGoogleSheetTableId(driveFileId, driveSheetId);
 
     const [, ...parents] = await getGoogleParents(connectorId, tableId, memo);
-
-    await updateTableParentsField({ tableId, parents, dataSourceConfig });
+    logger.info(`Parents for ${tableId}: ${parents}`);
+    if (execute) {
+      await updateTableParentsField({ tableId, parents, dataSourceConfig });
+    }
   }
 }
 
 export async function microsoftTables(
+  connector: ConnectorResource,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
+  logger.info(`Processing Microsoft connector ${connector.id}`);
   const microsoftSheets = await MicrosoftNodeModel.findAll({
     where: {
       nodeType: "worksheet",
+      connectorId: connector.id,
     },
   });
   for (const sheet of microsoftSheets) {
     const { internalId, parentInternalId, connectorId } = sheet;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      throw new Error(
-        `Could not find connector for connectorId ${connectorId}`
-      );
-    }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -67,21 +66,26 @@ export async function microsoftTables(
       parentInternalId,
       startSyncTs: 0,
     });
-
-    await updateTableParentsField({
-      tableId: internalId,
-      parents,
-      dataSourceConfig,
-    });
+    logger.info(`Parents for ${internalId}: ${parents}`);
+    if (execute) {
+      await updateTableParentsField({
+        tableId: internalId,
+        parents,
+        dataSourceConfig,
+      });
+    }
   }
 }
 
 export async function notionTables(
+  connector: ConnectorResource,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
+  logger.info(`Processing Notion connector ${connector.id}`);
   const notionDatabases = await NotionDatabase.findAll({
     where: {
+      connectorId: connector.id,
       structuredDataUpsertedTs: {
         [Op.not]: null,
       },
@@ -96,13 +100,6 @@ export async function notionTables(
       continue;
     }
 
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      throw new Error(
-        `Could not find connector for connectorId ${connectorId}`
-      );
-    }
-
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     const [, ...parents] = await getNotionParents(
       connectorId as number,
@@ -110,17 +107,59 @@ export async function notionTables(
       new Set<string>(),
       memo
     );
-
-    await updateTableParentsField({
-      tableId: "notion-" + notionDatabaseId,
-      parents,
-      dataSourceConfig,
-    });
+    logger.info(`Parents for notion-${notionDatabaseId}: ${parents}`);
+    if (execute) {
+      await updateTableParentsField({
+        tableId: "notion-" + notionDatabaseId,
+        parents,
+        dataSourceConfig,
+      });
+    }
   }
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  await googleTables(execute, logger);
-  await microsoftTables(execute, logger);
-  await notionTables(execute, logger);
-});
+export async function handleConnector(
+  connector: ConnectorResource,
+  execute: boolean,
+  logger: Logger
+): Promise<void> {
+  switch (connector.type) {
+    case "google_drive":
+      return googleTables(connector, execute, logger);
+    case "microsoft":
+      return microsoftTables(connector, execute, logger);
+    case "notion":
+      return notionTables(connector, execute, logger);
+  }
+}
+
+makeScript(
+  {
+    connectorId: { type: "number", demandOption: false },
+  },
+  async ({ connectorId, execute }, logger) => {
+    if (connectorId) {
+      const connector = await ConnectorResource.fetchById(connectorId);
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for connectorId ${connectorId}`
+        );
+      }
+      await handleConnector(connector, execute, logger);
+    } else {
+      for (const connectorType of [
+        "google_drive",
+        "microsoft",
+        "notion",
+      ] as const) {
+        const connectors = await ConnectorResource.listByType(
+          connectorType,
+          {}
+        );
+        for (const connector of connectors) {
+          await handleConnector(connector, execute, logger);
+        }
+      }
+    }
+  }
+);
