@@ -59,7 +59,7 @@ async function _getLocalParents(
   contentNodeInternalId: string,
   memoizationKey: string
 ): Promise<string[]> {
-  const parents: string[] = [contentNodeInternalId];
+  const parents: string[] = [];
 
   let parentId: string | null = null;
 
@@ -84,9 +84,10 @@ async function _getLocalParents(
     return parents;
   }
 
-  return parents.concat(
-    await getLocalParents(connectorId, parentId, memoizationKey)
-  );
+  return [
+    parentId,
+    ...(await getLocalParents(connectorId, parentId, memoizationKey)),
+  ];
 }
 
 export const getLocalParents = cacheWithRedis(

@@ -32,7 +32,7 @@ export async function googleTables(
 
     const tableId = getGoogleSheetTableId(driveFileId, driveSheetId);
 
-    const [, ...parents] = await getGoogleParents(connectorId, tableId, memo);
+    const parents = await getGoogleParents(connectorId, tableId, memo);
     logger.info(`Parents for ${tableId}: ${parents}`);
     if (execute) {
       await updateTableParentsField({ tableId, parents, dataSourceConfig });

@@ -720,7 +720,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     const memo = memoizationKey || uuidv4();
     try {
       const parents = await getLocalParents(this.connectorId, internalId, memo);
-      return new Ok(parents);
+      return new Ok([internalId, ...parents]);
     } catch (err) {
       return new Err(err as Error);
     }
