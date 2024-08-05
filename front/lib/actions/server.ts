@@ -92,7 +92,12 @@ export async function runActionStreamed(
     logger
   );
 
-  const res = await api.runAppStreamed(action.app, config, inputs);
+  const res = await api.runAppStreamed(
+    auth.getNonNullableUser(),
+    action.app,
+    config,
+    inputs
+  );
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);
@@ -204,7 +209,12 @@ export async function runAction(
     logger
   );
 
-  const res = await api.runApp(action.app, config, inputs);
+  const res = await api.runApp(
+    auth.getNonNullableUser(),
+    action.app,
+    config,
+    inputs
+  );
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);

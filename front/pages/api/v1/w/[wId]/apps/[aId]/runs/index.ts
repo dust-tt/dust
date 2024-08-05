@@ -1,6 +1,7 @@
 import type {
   BlockType,
   CredentialsType,
+  LightWorkspaceType,
   ModelIdType,
   ModelProviderIdType,
   TraceType,
@@ -11,6 +12,7 @@ import {
   assertNever,
   credentialsFromProviders,
   dustManagedCredentials,
+  DustUserIdHeader,
   rateLimiter,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
@@ -23,6 +25,7 @@ import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { Provider } from "@app/lib/models/apps";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import type { KeyResource } from "@app/lib/resources/key_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
@@ -178,12 +181,12 @@ async function handler(
   // TODO(2024-08-02 flav) Refactor auth.fromKey logic.
   // Confusingly, the auth workspace here is the the one from the URL, not the one from the key.
   // Where as auth.groups are the groups associated with the the key.
-  const { auth, keyWorkspace } = await Authenticator.fromKey(
+  const { auth: appAuth, keyWorkspace } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
+  const owner = appAuth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -195,13 +198,13 @@ async function handler(
   }
 
   const [app, providers, secrets] = await Promise.all([
-    getApp(auth, req.query.aId as string),
+    getApp(appAuth, req.query.aId as string),
     Provider.findAll({
       where: {
         workspaceId: keyRes.value.workspaceId,
       },
     }),
-    getDustAppSecrets(auth, true),
+    getDustAppSecrets(appAuth, true),
   ]);
 
   if (!app) {
@@ -290,11 +293,9 @@ async function handler(
         "App run creation"
       );
 
-      const groups = await GroupResource.listWorkspaceGroupsFromKey(
-        keyRes.value
-      );
+      const keyGroups = await getGroupsForKey(req, keyRes.value, keyWorkspace);
 
-      const runRes = await coreAPI.createRunStream(keyWorkspace, groups, {
+      const runRes = await coreAPI.createRunStream(keyWorkspace, keyGroups, {
         projectId: app.dustAPIProjectId,
         runType: "deploy",
         specificationHash: specificationHash,
@@ -503,3 +504,26 @@ async function handler(
 }
 
 export default withLogging(handler);
+
+async function getGroupsForKey(
+  req: NextApiRequest,
+  key: KeyResource,
+  keyWorkspace: LightWorkspaceType
+) {
+  // If the key is a system key, we first used the headers to get the user.
+  if (key.isSystem) {
+    const userId = req.headers[DustUserIdHeader];
+    if (typeof userId === "string") {
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        userId,
+        keyWorkspace.sId
+      );
+
+      return auth.groups();
+    }
+  }
+
+  // Otherwise, we use the key to get the groups.
+  const groups = await GroupResource.listWorkspaceGroupsFromKey(key);
+  return groups;
+}
