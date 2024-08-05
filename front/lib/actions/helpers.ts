@@ -65,7 +65,7 @@ export async function callAction<V extends t.Mixed>({
     logger
   );
 
-  const r = await prodAPI.runApp(auth.user(), app, config, [input]);
+  const r = await prodAPI.runApp(user, app, config, [input]);
 
   if (r.isErr()) {
     return r;
