@@ -2481,7 +2481,7 @@ export async function upsertDatabaseStructuredDataFromCache({
 
   const upsertAt = new Date();
 
-  const [, ...parents] = await getParents(
+  const parents = await getParents(
     connector.id,
     databaseId,
     new Set<string>(),
