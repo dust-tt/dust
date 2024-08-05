@@ -279,14 +279,6 @@ export class Authenticator {
   }
 
   /**
-   * Get an Authenticator from an API key for a given workspace. Why? because by API you may want to
-   * access a workspace that is not the API key's workspace (eg include running another's workspace
-   * app (dust-apps))
-   * @param key Key the API key
-   * @param wId string the target workspaceId
-   * @returns an Authenticator for wId and the key's own workspaceId
-   */
-  /**
    * Returns two Authenticators, one for the workspace associated with the key and one for the
    * workspace provided as an argument.
    *
