@@ -71,6 +71,8 @@ type DataSourceIntegration = {
   guideLink: string | null;
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
+  usage: number | null;
+  editedByUser: string | null;
 };
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
@@ -197,7 +199,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: null,
           fetchConnectorError: true,
           fetchConnectorErrorMessage: "Synchonization service is down",
-          editedByUser: mds.editedByUser?.imageUrl ?? null,
+          editedByUser: mds.editedByUser?.imageUrl ?? "",
           usage: null,
         };
       }
@@ -267,6 +269,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         synchronizedAgo: null,
         setupWithSuffix:
           setupWithSuffix?.connector === key ? setupWithSuffix.suffix : null,
+        usage: 0,
+        editedByUser: null,
       });
     }
   }
@@ -679,11 +683,11 @@ function getTableColumns() {
       original: {
         icon: ComponentType;
         name: string;
-        usage: number;
+        usage: number | null;
         editedByUser: string | null;
         connector: ConnectorType | null;
-        workspaceId: string;
-        dataSourceName: string;
+        workspaceId: string | undefined;
+        dataSourceName: string | undefined;
         isLoading: boolean;
         isBuilt: boolean;
         isAdmin: boolean;
@@ -739,11 +743,14 @@ function getTableColumns() {
               );
             } else {
               return (
-                <ConnectorSyncingChip
-                  initialState={info.row.original.connector}
-                  workspaceId={info.row.original.workspaceId}
-                  dataSourceName={info.row.original.dataSourceName}
-                />
+                info.row.original.workspaceId &&
+                info.row.original.dataSourceName && (
+                  <ConnectorSyncingChip
+                    initialState={info.row.original.connector}
+                    workspaceId={info.row.original.workspaceId}
+                    dataSourceName={info.row.original.dataSourceName}
+                  />
+                )
               );
             }
           })()}
@@ -819,7 +826,7 @@ function getTableRow(
   const isBuilt =
     integration.status === "built" ||
     (integration.status === "rolling_out" &&
-      integration.rollingOutFlag &&
+      !!integration.rollingOutFlag &&
       owner.flags.includes(integration.rollingOutFlag));
   const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
   const isProviderAllowed = isConnectorProviderAllowed(
@@ -880,6 +887,7 @@ function getTableRow(
 
   const LogoComponent =
     CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent;
+
   return {
     ...integration,
     icon: LogoComponent,
@@ -891,7 +899,7 @@ function getTableRow(
     readOnly,
     isBuilt,
     disabled: isDisabled,
-    isLoading: isLoadingByProvider[connectorProvider],
+    isLoading: isLoadingByProvider[connectorProvider] ?? false,
     upgradeDialog,
     comingSoonDialog,
   };
