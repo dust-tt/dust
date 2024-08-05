@@ -428,7 +428,10 @@ export default function AppView({
                   icon={DocumentTextIcon}
                   label="Follow the QuickStart Guide"
                   onClick={() => {
-                    window.open("https://docs.dust.tt/quickstart", "_blank");
+                    window.open(
+                      "https://docs.dust.tt/reference/developer-platform-overview",
+                      "_blank"
+                    );
                   }}
                 />
               </p>
