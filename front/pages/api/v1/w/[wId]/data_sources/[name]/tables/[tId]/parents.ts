@@ -1,5 +1,8 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -7,6 +10,10 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+
+const ParentsBodySchema = t.type({
+  parents: t.array(t.string),
+});
 
 export type PostParentsResponseBody = {
   updated: true;
@@ -106,26 +113,25 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (
-        !req.body ||
-        !Array.isArray(req.body.parents) ||
-        !req.body.parents.every((p: any) => typeof p === "string")
-      ) {
+      const bodyValidation = ParentsBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
-          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid request body, `parents` (string[]) is required.",
+            message: `Invalid request body: ${pathError}`,
           },
+          status_code: 400,
         });
       }
+      const { parents } = bodyValidation.right;
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const updateRes = await coreAPI.updateTableParents({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         tableId: req.query.tId as string,
-        parents: req.body.parents,
+        parents,
       });
 
       if (updateRes.isErr()) {
