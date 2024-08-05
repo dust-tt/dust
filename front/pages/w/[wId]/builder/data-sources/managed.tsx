@@ -862,7 +862,7 @@ function getTableRow(
 
   const comingSoonDialog = (
     <Dialog
-      isOpen={showPreviewPopupForProvider !== connectorProvider}
+      isOpen={showPreviewPopupForProvider === connectorProvider}
       title="Coming Soon!"
       validateLabel="Contact us"
       onValidate={() => {
