@@ -150,6 +150,10 @@ export async function setupConnection({
   return new Ok(connectionId);
 }
 
+function getUserImageUrl(dataSource: DataSourceType) {
+  return dataSource.editedByUser?.imageUrl ?? null;
+}
+
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -207,7 +211,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
             connector: null,
             fetchConnectorError: true,
             fetchConnectorErrorMessage: statusRes.error.message,
-            editedByUser: mds.editedByUser?.imageUrl ?? null,
+            editedByUser: getUserImageUrl(mds),
             usage: await getDataSourceUsage({
               auth,
               dataSource: mds,
@@ -220,7 +224,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: statusRes.value,
           fetchConnectorError: false,
           fetchConnectorErrorMessage: null,
-          editedByUser: mds.editedByUser?.imageUrl ?? null,
+          editedByUser: getUserImageUrl(mds),
           usage: await getDataSourceUsage({
             auth,
             dataSource: mds,
@@ -236,7 +240,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: null,
           fetchConnectorError: true,
           fetchConnectorErrorMessage: "Synchonization service is down",
-          editedByUser: mds.editedByUser?.imageUrl ?? "",
+          editedByUser: getUserImageUrl(mds),
           usage: null,
         };
       }
