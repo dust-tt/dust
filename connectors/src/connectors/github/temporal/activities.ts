@@ -932,6 +932,7 @@ export async function githubCodeSyncActivity({
       updatedAt: codeSyncStartedAt,
       lastSeenAt: codeSyncStartedAt,
       sourceUrl: `https://github.com/${repoLogin}/${repoName}`,
+      forceDailySync: false,
     });
   }
 
