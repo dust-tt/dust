@@ -1,5 +1,7 @@
 import * as t from "io-ts";
 
+import { NumberAsStringCodec } from "../../shared/utils/iots_utils";
+
 export const ConnectorsCommandSchema = t.type({
   majorCommand: t.literal("connectors"),
   command: t.union([
@@ -10,7 +12,10 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("set-error"),
     t.literal("restart"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
@@ -23,7 +28,10 @@ export const GithubCommandSchema = t.type({
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
@@ -43,7 +51,10 @@ export const NotionCommandSchema = t.type({
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type NotionCommandType = t.TypeOf<typeof NotionCommandSchema>;
@@ -60,7 +71,10 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type GoogleDriveCommandType = t.TypeOf<typeof GoogleDriveCommandSchema>;
@@ -75,7 +89,10 @@ export const SlackCommandSchema = t.type({
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
@@ -83,7 +100,10 @@ export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
 export const BatchCommandSchema = t.type({
   majorCommand: t.literal("batch"),
   command: t.union([t.literal("full-resync"), t.literal("restart-all")]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type BatchCommandType = t.TypeOf<typeof BatchCommandSchema>;
@@ -109,7 +129,10 @@ export const TemporalCommandSchema = t.type({
     t.literal("find-unprocessed-workflows"),
     t.literal("check-queue"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
@@ -186,7 +209,10 @@ export const MicrosoftCommandSchema = t.type({
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 
 export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
