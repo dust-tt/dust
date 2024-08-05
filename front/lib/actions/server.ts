@@ -105,9 +105,10 @@ export async function runActionStreamed(
     .then((runId) => {
       logger.info(
         {
-          runId,
           loggerArgs,
+          runId,
           tracingRecords,
+          userId: auth.user()?.sId,
         },
         "Got runId for runActionStreamed"
       );
