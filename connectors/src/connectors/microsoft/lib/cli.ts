@@ -1,6 +1,7 @@
 import type {
   AdminSuccessResponseType,
   CustomDataResponseType,
+  MicrosoftCheckFileResponseType,
   MicrosoftCommandType,
 } from "@dust-tt/types";
 import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
@@ -52,7 +53,7 @@ export const microsoft = async ({
   command,
   args,
 }: MicrosoftCommandType): Promise<
-  AdminSuccessResponseType | CustomDataResponseType
+  AdminSuccessResponseType | MicrosoftCheckFileResponseType
 > => {
   switch (command) {
     case "garbage-collect-all": {

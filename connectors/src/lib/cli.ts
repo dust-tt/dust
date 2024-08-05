@@ -5,6 +5,7 @@ import type {
   BatchRestartAllResponseType,
   ConnectorsCommandType,
   CustomDataResponseType,
+  GetParentsResponseType,
   Result,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
@@ -96,7 +97,7 @@ export const connectors = async ({
   command,
   args,
 }: ConnectorsCommandType): Promise<
-  AdminSuccessResponseType | CustomDataResponseType
+  AdminSuccessResponseType | GetParentsResponseType
 > => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
@@ -177,7 +178,7 @@ export const connectors = async ({
         throw new Error(`Cannot fetch parents: ${parents.error}`);
       }
 
-      return { status: 200, content: parents.value, type: typeof parents };
+      return { parents: parents.value };
     }
 
     default:

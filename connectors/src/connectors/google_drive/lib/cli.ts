@@ -1,6 +1,6 @@
 import type {
   AdminSuccessResponseType,
-  CustomDataResponseType,
+  GoogleDriveCheckFileResponseType,
   GoogleDriveCommandType,
 } from "@dust-tt/types";
 import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
@@ -24,7 +24,7 @@ export const google_drive = async ({
   command,
   args,
 }: GoogleDriveCommandType): Promise<
-  AdminSuccessResponseType | CustomDataResponseType
+  AdminSuccessResponseType | GoogleDriveCheckFileResponseType
 > => {
   const logger = topLogger.child({
     majorCommand: "google_drive",

@@ -65,6 +65,26 @@ export const GoogleDriveCommandSchema = t.type({
 
 export type GoogleDriveCommandType = t.TypeOf<typeof GoogleDriveCommandSchema>;
 
+export const GoogleDriveCheckFileResponseSchema = t.type({
+  status: t.number,
+  // all literals from js `typeof`
+  type: t.union([
+    t.literal("undefined"),
+    t.literal("object"),
+    t.literal("boolean"),
+    t.literal("number"),
+    t.literal("string"),
+    t.literal("function"),
+    t.literal("symbol"),
+    t.literal("bigint"),
+  ]),
+  content: t.unknown, // google drive type, can't be iots'd
+});
+
+export type GoogleDriveCheckFileResponseType = t.TypeOf<
+  typeof GoogleDriveCheckFileResponseSchema
+>;
+
 export const SlackCommandSchema = t.type({
   majorCommand: t.literal("slack"),
   command: t.union([
@@ -192,7 +212,7 @@ export const MicrosoftCommandSchema = t.type({
 
 export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 
-export const CustomDataResponseSchema = t.type({
+export const MicrosoftCheckFileResponseSchema = t.type({
   status: t.number,
   // all literals from js `typeof`
   type: t.union([
@@ -208,19 +228,21 @@ export const CustomDataResponseSchema = t.type({
   content: t.unknown, // google drive type, can't be iots'd
 });
 
-export type CustomDataResponseType = t.TypeOf<typeof CustomDataResponseSchema>;
+export type MicrosoftCheckFileResponseType = t.TypeOf<
+  typeof MicrosoftCheckFileResponseSchema
+>;
 
 export const AdminCommandSchema = t.union([
+  BatchCommandSchema,
   ConnectorsCommandSchema,
   GithubCommandSchema,
-  NotionCommandSchema,
   GoogleDriveCommandSchema,
-  SlackCommandSchema,
-  BatchCommandSchema,
-  WebcrawlerCommandSchema,
-  TemporalCommandSchema,
   IntercomCommandSchema,
   MicrosoftCommandSchema,
+  NotionCommandSchema,
+  SlackCommandSchema,
+  TemporalCommandSchema,
+  WebcrawlerCommandSchema,
 ]);
 
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
@@ -232,6 +254,12 @@ export const AdminSuccessResponseSchema = t.type({
 export type AdminSuccessResponseType = t.TypeOf<
   typeof AdminSuccessResponseSchema
 >;
+
+export const GetParentsResponseSchema = t.type({
+  parents: t.array(t.string),
+});
+
+export type GetParentsResponseType = t.TypeOf<typeof GetParentsResponseSchema>;
 
 export const NotionUpsertResponseSchema = t.type({
   workflowId: t.string,
@@ -303,17 +331,19 @@ export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
 export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
   BatchRestartAllResponseSchema,
-  NotionUpsertResponseSchema,
-  NotionSearchPagesResponseSchema,
+  GetParentsResponseSchema,
+  GoogleDriveCheckFileResponseSchema,
+  IntercomCheckConversationResponseSchema,
+  IntercomCheckMissingConversationsResponseSchema,
+  IntercomCheckTeamsResponseSchema,
+  IntercomFetchConversationResponseSchema,
+  MicrosoftCheckFileResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionMeResponseSchema,
-  CustomDataResponseSchema,
+  NotionSearchPagesResponseSchema,
+  NotionUpsertResponseSchema,
   TemporalCheckQueueResponseSchema,
   TemporalUnprocessedWorkflowsResponseSchema,
-  IntercomCheckConversationResponseSchema,
-  IntercomFetchConversationResponseSchema,
-  IntercomCheckTeamsResponseSchema,
-  IntercomCheckMissingConversationsResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
