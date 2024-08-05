@@ -24,7 +24,7 @@ const GetWorkspaceUsageSchema = t.intersection([
 
 /**
  * @swagger
- * /api/v1/w/{wId}/usage:
+ * /api/v1/w/{wId}/workspace-usage:
  *   get:
  *     summary: Get workspace usage data
  *     description: Get usage data for the workspace identified by {wId} in CSV format.
