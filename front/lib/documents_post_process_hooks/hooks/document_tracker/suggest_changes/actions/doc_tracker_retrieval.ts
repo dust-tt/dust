@@ -20,11 +20,12 @@ export async function callDocTrackerRetrievalAction(
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
 
   const res = await callAction({
-    owner,
-    input: { input_text: inputText },
     action,
     config,
+    input: { input_text: inputText },
+    owner,
     responseValueSchema: DocTrackerRetrievalActionValueSchema,
+    user: null,
   });
 
   if (res.isErr()) {

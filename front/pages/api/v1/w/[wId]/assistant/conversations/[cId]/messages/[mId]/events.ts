@@ -83,12 +83,15 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { auth, keyWorkspace } = await Authenticator.fromKey(
+  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  if (!auth.isBuilder() || keyWorkspace.sId !== req.query.wId) {
+  if (
+    !workspaceAuth.isBuilder() ||
+    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -98,7 +101,7 @@ async function handler(
     });
   }
 
-  const owner = auth.workspace();
+  const owner = workspaceAuth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -110,7 +113,7 @@ async function handler(
   }
 
   const conversation = await getConversationWithoutContent(
-    auth,
+    workspaceAuth,
     req.query.cId as string
   );
 
@@ -137,7 +140,7 @@ async function handler(
   const messageId = req.query.mId;
 
   const messageType = await getConversationMessageType(
-    auth,
+    workspaceAuth,
     conversation,
     messageId
   );

@@ -56,12 +56,15 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { auth, keyWorkspace } = await Authenticator.fromKey(
+  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  if (!auth.isBuilder() || keyWorkspace.sId !== req.query.wId) {
+  if (
+    !workspaceAuth.isBuilder() ||
+    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -71,7 +74,10 @@ async function handler(
     });
   }
 
-  const conversation = await getConversation(auth, req.query.cId as string);
+  const conversation = await getConversation(
+    workspaceAuth,
+    req.query.cId as string
+  );
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,

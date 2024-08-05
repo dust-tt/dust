@@ -22,14 +22,14 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth } = await Authenticator.fromKey(
+  const { workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
+  const owner = workspaceAuth.workspace();
   const isSystemKey = keyRes.value.isSystem;
-  if (!owner || !isSystemKey || !auth.isBuilder()) {
+  if (!owner || !isSystemKey || !workspaceAuth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

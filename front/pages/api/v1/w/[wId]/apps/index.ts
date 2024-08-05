@@ -86,12 +86,12 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth } = await Authenticator.fromKey(
+  const { workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  const apps = await getApps(auth);
+  const apps = await getApps(workspaceAuth);
 
   switch (req.method) {
     case "GET":

@@ -26,15 +26,15 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { auth } = await Authenticator.fromKey(
+  const { workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
-  const plan = auth.plan();
+  const owner = workspaceAuth.workspace();
+  const plan = workspaceAuth.plan();
   const isSystemKey = keyRes.value.isSystem;
-  if (!owner || !plan || !auth.isBuilder() || !isSystemKey) {
+  if (!owner || !plan || !workspaceAuth.isBuilder() || !isSystemKey) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -46,7 +46,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      return handlePostTableCsvUpsertRequest(auth, req, res);
+      return handlePostTableCsvUpsertRequest(workspaceAuth, req, res);
 
     default:
       return apiError(req, res, {

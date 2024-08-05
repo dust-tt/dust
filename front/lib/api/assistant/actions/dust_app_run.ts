@@ -315,6 +315,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     // As we run the app (using a system API key here), we do force using the workspace credentials so
     // that the app executes in the exact same conditions in which they were developed.
     const runRes = await api.runAppStreamed(
+      auth.getNonNullableUser(),
       {
         workspaceId: actionConfiguration.appWorkspaceId,
         appId: actionConfiguration.appId,

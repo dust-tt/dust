@@ -53,12 +53,15 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { auth, keyWorkspace } = await Authenticator.fromKey(
+  const { workspaceAuth, keyAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  if (!auth.isBuilder() || keyWorkspace.sId !== req.query.wId) {
+  if (
+    !workspaceAuth.isBuilder() ||
+    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -71,7 +74,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const agentConfigurations = await getAgentConfigurations({
-        auth,
+        auth: workspaceAuth,
         agentsGetView: "all",
         variant: "light",
       });
