@@ -28,7 +28,6 @@ import {
   terminateAllWorkflowsForConnectorId,
 } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { INTERACTIVE_CLI } = process.env;

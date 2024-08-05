@@ -1,7 +1,4 @@
-import type { ConnectorType } from "@dust-tt/types";
-import { assertNever, CoreAPI, getGoogleSheetTableId } from "@dust-tt/types";
-import { table } from "console";
-import { connect } from "http2";
+import { getGoogleSheetTableId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
