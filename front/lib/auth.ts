@@ -502,12 +502,17 @@ export class Authenticator {
       return null;
     }
 
+    const groups = await GroupResource.fetchActiveGroupsOfUserInWorkspace({
+      user,
+      workspace: renderLightWorkspaceType({ workspace: owner }),
+    });
+
     return new Authenticator({
       flags: auth._flags,
       key: auth._key,
       // We limit scope to a user role.
       role: "user",
-      groups: auth._groups,
+      groups,
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
