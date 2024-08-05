@@ -213,6 +213,25 @@ export async function processTranscriptActivity(
       fileName: transcriptTitle,
       conversationId: null,
     });
+    const msg = {
+      from: {
+        name: "Dust team",
+        email: "team@dust.help",
+      },
+      subject: `[DUST] - Unable to Generate Your Meeting Transcript Summary`,
+      html: `<p>Dear ${user.fullName()},</p>
+        <p>We encountered an issue while trying to generate a summary for your recent Google Meet session. Unfortunately, the transcript provided by Google was either too short or empty, which prevented us from creating a meaningful summary.</p>
+        <p>What you can do:</p>
+        <ul>
+        <li>Check your Google Meet settings to ensure transcription is properly enabled;</li>
+        <li>If this issue persists, you may want to contact Google Meet support for assistance with their transcription service.</li>
+        </ul>
+        <p>We apologize for any inconvenience this may have caused. If you have any questions or need further assistance, please don't hesitate to reach out to our support team at <a href="mailto:support@dust.tt">support@dust.tt</a>.</p>
+        <p>Thank you for your understanding,</p>
+        <p>Best regards,</p>
+        <p>The Team at Dust</p>`,
+    };
+    await sendEmail(user.email, msg);
     return;
   }
 
