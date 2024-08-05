@@ -503,8 +503,11 @@ export class Authenticator {
       return null;
     }
 
-    // Take the first user with an active membership in the workspace.
-    const [activeMembership] = activeMemberships;
+    // Take the oldest active membership.
+    const [activeMembership] = activeMemberships.sort(
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    );
+    // Find the user associated with the active membership.
     const user = users.find((u) => u.id === activeMembership.userId);
     if (!user) {
       return null;
