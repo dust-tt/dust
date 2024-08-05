@@ -182,7 +182,7 @@ export const github = async ({
       const githubCodeRepository = await GithubCodeRepository.findOne({
         where: {
           connectorId: connector.id,
-          repoId: parseInt(`${args.repoId}`),
+          repoId: args.repoId,
         },
       });
       if (!githubCodeRepository) {
