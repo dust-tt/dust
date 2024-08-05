@@ -25,22 +25,22 @@ export const usageTables = [
 ];
 type usageTableType = (typeof usageTables)[number];
 
-const DateString = t.refinement(
+const MonthSchema = t.refinement(
   t.string,
-  (s): s is string => /^\d{4}-\d{2}-\d{2}$/.test(s),
-  "YYYY-MM-DD"
+  (s): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s),
+  "YYYY-MM"
 );
 
 const GetWorkspaceUsageSchema = t.union([
   t.type({
-    start: DateString,
+    start: MonthSchema,
     end: t.undefined,
     mode: t.literal("month"),
     table: getSupportedUsageTablesCodec(),
   }),
   t.type({
-    start: DateString,
-    end: DateString,
+    start: MonthSchema,
+    end: MonthSchema,
     mode: t.literal("range"),
     table: getSupportedUsageTablesCodec(),
   }),
