@@ -96,6 +96,22 @@ type Info = {
   };
 };
 
+type GetTableRowParams = {
+  integration: DataSourceIntegration;
+  isAdmin: boolean;
+  isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
+  router: NextRouter;
+  owner: WorkspaceType;
+  readOnly: boolean;
+  plan: PlanType;
+  limits: ManageDataSourcesLimitsType;
+  showPreviewPopupForProvider: ConnectorProvider | null;
+  showUpgradePopupForProvider: ConnectorProvider | null;
+  setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void;
+  setShowConfirmConnection: (integration: DataSourceIntegration | null) => void;
+  setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void;
+};
+
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
   "google_drive",
@@ -555,7 +571,7 @@ export default function DataSourcesView({
         (isAdmin || ds.connector)
     );
     return filteredRows.map((integration) =>
-      getTableRow(
+      getTableRow({
         integration,
         isAdmin,
         isLoadingByProvider,
@@ -563,13 +579,13 @@ export default function DataSourcesView({
         owner,
         readOnly,
         plan,
-        planConnectionsLimits,
+        limits: planConnectionsLimits,
         showPreviewPopupForProvider,
         showUpgradePopupForProvider,
         setShowUpgradePopupForProvider,
         setShowConfirmConnection,
-        setShowPreviewPopupForProvider
-      )
+        setShowPreviewPopupForProvider,
+      })
     );
   }, [
     integrations,
@@ -807,21 +823,21 @@ function getTableColumns() {
   ];
 }
 
-function getTableRow(
-  integration: DataSourceIntegration,
-  isAdmin: boolean,
-  isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>,
-  router: NextRouter,
-  owner: WorkspaceType,
-  readOnly: boolean,
-  plan: PlanType,
-  limits: ManageDataSourcesLimitsType,
-  showPreviewPopupForProvider: ConnectorProvider | null,
-  showUpgradePopupForProvider: ConnectorProvider | null,
-  setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void,
-  setShowConfirmConnection: (integration: DataSourceIntegration | null) => void,
-  setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void
-) {
+function getTableRow({
+  integration,
+  isAdmin,
+  isLoadingByProvider,
+  router,
+  owner,
+  readOnly,
+  plan,
+  limits,
+  showPreviewPopupForProvider,
+  showUpgradePopupForProvider,
+  setShowUpgradePopupForProvider,
+  setShowConfirmConnection,
+  setShowPreviewPopupForProvider,
+}: GetTableRowParams) {
   const connectorProvider = integration.connectorProvider as ConnectorProvider;
 
   const isBuilt =
