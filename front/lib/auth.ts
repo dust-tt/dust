@@ -356,11 +356,12 @@ export class Authenticator {
 
     return {
       workspaceAuth: new Authenticator({
-        workspace,
-        role,
-        groups: [],
-        subscription: workspaceSubscription,
         flags: workspaceFlags,
+        groups: [],
+        key: key.toAuthJSON(),
+        role,
+        subscription: workspaceSubscription,
+        workspace,
       }),
       keyAuth: new Authenticator({
         flags: keyFlags,
