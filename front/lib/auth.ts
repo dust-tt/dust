@@ -470,6 +470,7 @@ export class Authenticator {
    * @param param1
    * @returns
    */
+  // TODO(2024-08-05 flav) Use user-id instead of email to avoid ambiguity.
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
     { userEmail }: { userEmail: string }
@@ -483,22 +484,32 @@ export class Authenticator {
       throw new Error("Workspace not found.");
     }
 
-    const user = await UserResource.fetchByEmail(userEmail);
-    // If the user does not exist (e.g., whitelisted email addresses),
+    // The same email address might be linked to multiple users.
+    const users = await UserResource.listByEmail(userEmail);
+    // If no user exist (e.g., whitelisted email addresses),
     // simply ignore and return null.
-    if (!user) {
+    if (users.length === 0) {
       return null;
     }
 
-    // Verify that the user has an active membership in the specified workspace.
-    const activeMembership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user,
-        workspace: owner,
-      });
-    // If the user does not have an active membership in the workspace,
+    // Verify that one of the user has an active membership in the specified workspace.
+    const activeMemberships = await MembershipResource.getActiveMemberships({
+      users,
+      workspace: owner,
+    });
+    // If none of the user has an active membership in the workspace,
     // simply ignore and return null.
-    if (!activeMembership) {
+    if (activeMemberships.length === 0) {
+      return null;
+    }
+
+    // Take the oldest active membership.
+    const [activeMembership] = activeMemberships.sort(
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    );
+    // Find the user associated with the active membership.
+    const user = users.find((u) => u.id === activeMembership.userId);
+    if (!user) {
       return null;
     }
 
