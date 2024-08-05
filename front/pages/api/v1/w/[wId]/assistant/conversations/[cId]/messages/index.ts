@@ -78,9 +78,10 @@ async function handler(
     keyRes.value,
     req.query.wId as string
   );
-  let { workspaceAuth } = authenticator;
-  const { keyAuth } = authenticator;
+  const { workspaceAuth } = authenticator;
+  let { keyAuth } = authenticator;
 
+  // If wId is not the workspace associated with the key, return an error.
   if (
     !workspaceAuth.isBuilder() ||
     keyAuth.getNonNullableWorkspace().sId !== req.query.wId
@@ -94,10 +95,7 @@ async function handler(
     });
   }
 
-  const conversation = await getConversation(
-    workspaceAuth,
-    req.query.cId as string
-  );
+  const conversation = await getConversation(keyAuth, req.query.cId as string);
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
@@ -141,17 +139,14 @@ async function handler(
       // associate the message with the provided user email if it belongs to the same workspace.
       const userEmailFromHeader = req.headers["x-api-user-email"];
       if (typeof userEmailFromHeader === "string") {
-        workspaceAuth =
-          (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
-            workspaceAuth,
-            {
-              userEmail: userEmailFromHeader,
-            }
-          )) ?? workspaceAuth;
+        keyAuth =
+          (await keyAuth.exchangeSystemKeyForUserAuthByEmail(keyAuth, {
+            userEmail: userEmailFromHeader,
+          })) ?? keyAuth;
       }
 
       const messageRes = await postUserMessageWithPubSub(
-        workspaceAuth,
+        keyAuth,
         {
           conversation,
           content,
