@@ -790,7 +790,6 @@ async function updateParentsField({
   const parents = await getParents({
     connectorId: file.connectorId,
     internalId: file.internalId,
-    parentInternalId: file.parentInternalId,
     startSyncTs,
   });
 

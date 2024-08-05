@@ -161,7 +161,6 @@ export async function syncOneFile({
     const parents = await getParents({
       connectorId,
       internalId: documentId,
-      parentInternalId,
       startSyncTs,
     });
 
@@ -257,7 +256,6 @@ export async function syncOneFile({
       const parents = await getParents({
         connectorId,
         internalId: documentId,
-        parentInternalId,
         startSyncTs,
       });
       parents.reverse();
@@ -305,55 +303,48 @@ export async function syncOneFile({
 export async function getParents({
   connectorId,
   internalId,
-  parentInternalId,
   startSyncTs,
 }: {
   connectorId: ModelId;
   internalId: string;
-  parentInternalId: string | null;
   startSyncTs: number;
 }): Promise<string[]> {
-  if (!parentInternalId) {
-    return [internalId];
-  }
-
-  const parentParentInternalId = await getParentParentId(
+  const parentInternalId = await getParentId(
     connectorId,
-    parentInternalId,
+    internalId,
     startSyncTs
   );
 
-  return parentParentInternalId
+  return parentInternalId
     ? [
-        internalId,
+        parentInternalId,
         ...(await getParents({
           connectorId,
           internalId: parentInternalId,
-          parentInternalId: parentParentInternalId,
           startSyncTs,
         })),
       ]
-    : [internalId, parentInternalId];
+    : [];
 }
 
 /* Fetching parent's parent id queries the db for a resource; since those
  * fetches can be made a lot of times during a sync, cache for a while in a
  * per-sync basis (given by startSyncTs) */
-const getParentParentId = cacheWithRedis(
+const getParentId = cacheWithRedis(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (connectorId, parentInternalId, startSyncTs) => {
-    const parent = await MicrosoftNodeResource.fetchByInternalId(
+  async (connectorId, internalId, startSyncTs) => {
+    const node = await MicrosoftNodeResource.fetchByInternalId(
       connectorId,
-      parentInternalId
+      internalId
     );
-    if (!parent) {
+    if (!node) {
       return "";
     }
 
-    return parent.parentInternalId;
+    return node.parentInternalId;
   },
-  (connectorId, parentInternalId, startSyncTs) =>
-    `microsoft-${connectorId}-parent-${parentInternalId}-syncms-${startSyncTs}`,
+  (connectorId, internalId, startSyncTs) =>
+    `microsoft-${connectorId}-parent-${internalId}-syncms-${startSyncTs}`,
   PARENT_SYNC_CACHE_TTL_MS
 );
 

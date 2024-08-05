@@ -4,7 +4,6 @@ import type {
   BatchCommandType,
   BatchRestartAllResponseType,
   ConnectorsCommandType,
-  CustomDataResponseType,
   GetParentsResponseType,
   Result,
   TemporalCheckQueueResponseType,

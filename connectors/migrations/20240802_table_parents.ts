@@ -53,14 +53,13 @@ export async function microsoftTables(
     },
   });
   for (const sheet of microsoftSheets) {
-    const { internalId, parentInternalId, connectorId } = sheet;
+    const { internalId, connectorId } = sheet;
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
     const [, ...parents] = await getMicrosoftParents({
       connectorId,
       internalId,
-      parentInternalId,
       startSyncTs: 0,
     });
     logger.info(`Parents for ${internalId}: ${parents}`);

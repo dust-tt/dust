@@ -169,10 +169,9 @@ async function processSheet(
   if (rawHeaders && rows.length > 1) {
     const headers = getSanitizedHeaders(rawHeaders);
 
-    const [, ...parents] = await getParents({
+    const parents = await getParents({
       connectorId: connector.id,
       internalId: internalId,
-      parentInternalId: spreadsheetId,
       startSyncTs,
     });
 
