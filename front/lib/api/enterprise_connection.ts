@@ -1,24 +1,10 @@
 import type { SupportedEnterpriseConnectionStrategies } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { Connection } from "auth0";
-import { ManagementClient } from "auth0";
 
+import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-
-let auth0ManagemementClient: ManagementClient | null = null;
-
-function getAuth0ManagemementClient(): ManagementClient {
-  if (!auth0ManagemementClient) {
-    auth0ManagemementClient = new ManagementClient({
-      domain: config.getAuth0TenantUrl(),
-      clientId: config.getAuth0M2MClientId(),
-      clientSecret: config.getAuth0M2MClientSecret(),
-    });
-  }
-
-  return auth0ManagemementClient;
-}
 
 function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
