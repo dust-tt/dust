@@ -17,6 +17,13 @@ export function getCodeSyncWorkflowId(
   return `workflow-github-code-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}`;
 }
 
+export function getCodeSyncDailyCronWorkflowId(
+  dataSourceInfo: DataSourceInfo,
+  repoId: number
+) {
+  return `workflow-github-code-sync-daily-cron-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}`;
+}
+
 export function getIssueSyncWorkflowId(
   dataSourceInfo: DataSourceInfo,
   repoId: number,

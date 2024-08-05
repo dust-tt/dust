@@ -2,14 +2,19 @@ import type {
   AdminSuccessResponseType,
   GithubCommandType,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import {
+  launchGithubCodeSyncDailyCronWorkflow,
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
   launchGithubIssueSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
-import { GithubConnectorState } from "@connectors/lib/models/github";
+import {
+  GithubCodeRepository,
+  GithubConnectorState,
+} from "@connectors/lib/models/github";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -154,7 +159,52 @@ export const github = async ({
 
       return { success: true };
     }
+    case "force-daily-code-sync": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
+      }
+      if (!args.repoId) {
+        throw new Error("Missing --repoId argument");
+      }
+
+      const connector = await ConnectorResource.findByDataSource({
+        workspaceId: args.wId,
+        dataSourceName: args.dataSourceName,
+      });
+      if (!connector) {
+        throw new Error(
+          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+        );
+      }
+      const githubCodeRepository = await GithubCodeRepository.findOne({
+        where: {
+          connectorId: connector.id,
+          repoId: parseInt(`${args.repoId}`),
+        },
+      });
+      if (!githubCodeRepository) {
+        throw new Error(
+          `Could not find github code repository for connector ${connector.id}, repoId ${args.repoId}`
+        );
+      }
+
+      await githubCodeRepository.update({
+        forceDailySync: true,
+      });
+
+      await launchGithubCodeSyncDailyCronWorkflow(
+        connector.id,
+        githubCodeRepository.repoLogin,
+        githubCodeRepository.repoName,
+        parseInt(githubCodeRepository.repoId)
+      );
+
+      return { success: true };
+    }
     default:
-      throw new Error("Unknown github command: " + command);
+      assertNever(command);
   }
 };

@@ -15,10 +15,13 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import { newWebhookSignal } from "./signals";
 import { getFullSyncWorkflowId, getReposSyncWorkflowId } from "./utils";
 
-const { githubSaveStartSyncActivity, githubSaveSuccessSyncActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-  });
+const {
+  githubSaveStartSyncActivity,
+  githubSaveSuccessSyncActivity,
+  githubCodeSyncDailyCronActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
 
 const {
   githubGetReposResultPageActivity,
@@ -437,6 +440,24 @@ export async function githubCodeSyncWorkflow(
     });
     await githubSaveSuccessSyncActivity(dataSourceConfig);
   }
+}
+
+// This workflow simply signals `githubCodeSyncWorkflow` for repos that have `forceDailySync` set to
+// true.
+// This is used for repos that don't use pull requests, and thus don't have a webhook to trigger
+// the sync.
+export async function githubCodeSyncDailyCronWorkflow(
+  connectorId: ModelId,
+  repoName: string,
+  repoId: number,
+  repoLogin: string
+) {
+  await githubCodeSyncDailyCronActivity({
+    connectorId,
+    repoLogin,
+    repoName,
+    repoId,
+  });
 }
 
 export async function githubIssueSyncWorkflow(
