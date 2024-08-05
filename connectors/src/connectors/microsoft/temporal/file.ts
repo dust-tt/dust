@@ -317,14 +317,14 @@ export async function getParents({
 
   return parentInternalId
     ? [
-        parentInternalId,
+        internalId,
         ...(await getParents({
           connectorId,
           internalId: parentInternalId,
           startSyncTs,
         })),
       ]
-    : [];
+    : [internalId];
 }
 
 /* Fetching parent's parent id queries the db for a resource; since those
