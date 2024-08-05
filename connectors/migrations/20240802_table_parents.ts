@@ -7,7 +7,10 @@ import { getLocalParents as getGoogleParents } from "@connectors/connectors/goog
 import { getParents as getMicrosoftParents } from "@connectors/connectors/microsoft/temporal/file";
 import { getParents as getNotionParentsWithSelf } from "@connectors/connectors/notion/lib/parents";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { updateTableParentsField } from "@connectors/lib/data_sources";
+import {
+  getTable,
+  updateTableParentsField,
+} from "@connectors/lib/data_sources";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { NotionDatabase } from "@connectors/lib/models/notion";
@@ -17,6 +20,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 // Deleting all existing Google Drive CSV files
 export async function googleTables(
   connector: ConnectorResource,
+  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
@@ -34,6 +38,18 @@ export async function googleTables(
 
     const parents = await getGoogleParents(connectorId, tableId, memo);
     logger.info(`Parents for ${tableId}: ${parents}`);
+    if (check) {
+      const table = await getTable({
+        dataSourceConfig,
+        tableId,
+      });
+      if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
+        logger.warn(
+          `Table ${tableId} has parents ${table.parents} but should have ${parents}`
+        );
+      }
+    }
+
     if (execute) {
       await updateTableParentsField({ tableId, parents, dataSourceConfig });
     }
@@ -42,6 +58,7 @@ export async function googleTables(
 
 export async function microsoftTables(
   connector: ConnectorResource,
+  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
@@ -63,6 +80,20 @@ export async function microsoftTables(
       startSyncTs: 0,
     });
     logger.info(`Parents for ${internalId}: ${parents}`);
+
+    if (check) {
+      const table = await getTable({
+        dataSourceConfig,
+        tableId: internalId,
+      });
+
+      if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
+        logger.warn(
+          `Table ${internalId} has parents ${table.parents} but should have ${parents}`
+        );
+      }
+    }
+
     if (execute) {
       await updateTableParentsField({
         tableId: internalId,
@@ -75,6 +106,7 @@ export async function microsoftTables(
 
 export async function notionTables(
   connector: ConnectorResource,
+  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
@@ -104,6 +136,17 @@ export async function notionTables(
       memo
     );
     logger.info(`Parents for notion-${notionDatabaseId}: ${parents}`);
+    if (check) {
+      const table = await getTable({
+        dataSourceConfig,
+        tableId: "notion-" + notionDatabaseId,
+      });
+      if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
+        logger.warn(
+          `Table notion-${notionDatabaseId} has parents ${table.parents} but should have ${parents}`
+        );
+      }
+    }
     if (execute) {
       await updateTableParentsField({
         tableId: "notion-" + notionDatabaseId,
@@ -116,24 +159,26 @@ export async function notionTables(
 
 export async function handleConnector(
   connector: ConnectorResource,
+  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
   switch (connector.type) {
     case "google_drive":
-      return googleTables(connector, execute, logger);
+      return googleTables(connector, check, execute, logger);
     case "microsoft":
-      return microsoftTables(connector, execute, logger);
+      return microsoftTables(connector, check, execute, logger);
     case "notion":
-      return notionTables(connector, execute, logger);
+      return notionTables(connector, check, execute, logger);
   }
 }
 
 makeScript(
   {
     connectorId: { type: "number", demandOption: false },
+    check: { type: "boolean", demandOption: false },
   },
-  async ({ connectorId, execute }, logger) => {
+  async ({ connectorId, check, execute }, logger) => {
     if (connectorId) {
       const connector = await ConnectorResource.fetchById(connectorId);
       if (!connector) {
@@ -141,7 +186,7 @@ makeScript(
           `Could not find connector for connectorId ${connectorId}`
         );
       }
-      await handleConnector(connector, execute, logger);
+      await handleConnector(connector, check, execute, logger);
     } else {
       for (const connectorType of [
         "google_drive",
@@ -153,7 +198,7 @@ makeScript(
           {}
         );
         for (const connector of connectors) {
-          await handleConnector(connector, execute, logger);
+          await handleConnector(connector, check, execute, logger);
         }
       }
     }

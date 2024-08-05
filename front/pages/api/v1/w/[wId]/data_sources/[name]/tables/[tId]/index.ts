@@ -175,6 +175,9 @@ async function handler(
           table_id: table.table_id,
           description: table.description,
           schema: table.schema,
+          timestamp: table.timestamp,
+          tags: table.tags,
+          parents: table.parents,
         },
       });
 

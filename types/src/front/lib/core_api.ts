@@ -123,6 +123,9 @@ export type CoreAPITable = {
   name: string;
   description: string;
   schema: CoreAPITableSchema | null;
+  timestamp: number;
+  tags: string[];
+  parents: string[];
 };
 
 export type CoreAPIRowValue =

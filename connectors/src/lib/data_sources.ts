@@ -1,5 +1,6 @@
 import type {
   CoreAPIDataSourceDocumentSection,
+  CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import {
@@ -790,6 +791,41 @@ export async function deleteTableRow({
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
+}
+
+export async function getTable({
+  dataSourceConfig,
+  tableId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+}): Promise<CoreAPITable | undefined> {
+  const localLogger = logger.child({
+    tableId,
+  });
+
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error getting structured data from Dust.");
+    throw e;
+  }
+
+  if (dustRequestResult.status === 404) {
+    localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+    return;
+  }
+
+  return dustRequestResult.data.table;
 }
 
 export async function deleteTable({
