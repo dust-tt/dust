@@ -290,11 +290,11 @@ async function handler(
         "App run creation"
       );
 
-      const keyGroups = await getGroupsForKey(req, keyAuth, keyRes.value);
+      const auth = await getAuthToUse(req, keyAuth, keyRes.value);
 
       const runRes = await coreAPI.createRunStream(
-        keyAuth.getNonNullableWorkspace(),
-        keyGroups,
+        auth.getNonNullableWorkspace(),
+        auth.groups(),
         {
           projectId: app.dustAPIProjectId,
           runType: "deploy",
@@ -506,12 +506,12 @@ async function handler(
 
 export default withLogging(handler);
 
-async function getGroupsForKey(
+async function getAuthToUse(
   req: NextApiRequest,
   keyAuth: Authenticator,
   key: KeyResource
-) {
-  // If the key is a system key, we first used the headers to get the user.
+): Promise<Authenticator> {
+  // If the key is a system key, and the x-dust-user-id is set, return an auth representing the user.
   if (key.isSystem) {
     const userId = req.headers[DustUserIdHeader];
     if (typeof userId === "string") {
@@ -520,10 +520,9 @@ async function getGroupsForKey(
         keyAuth.getNonNullableWorkspace().sId
       );
 
-      return auth.groups();
+      return auth;
     }
   }
 
-  // Otherwise, we use the groups associated with the key.
-  return keyAuth.groups();
+  return keyAuth;
 }
