@@ -286,12 +286,20 @@ export class Authenticator {
    * @param wId string the target workspaceId
    * @returns an Authenticator for wId and the key's own workspaceId
    */
+  /**
+   * Returns two Authenticators, one for the workspace associated with the key and one for the
+   * workspace provided as an argument.
+   *
+   * @param key Key the API key
+   * @param wId the target workspaceId
+   * @returns Promise<{ workspaceAuth: Authenticator, keyAuth: Authenticator }>
+   */
   static async fromKey(
     key: KeyResource,
     wId: string
   ): Promise<{
-    auth: Authenticator;
-    keyWorkspace: LightWorkspaceType;
+    workspaceAuth: Authenticator;
+    keyAuth: Authenticator;
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
@@ -310,46 +318,66 @@ export class Authenticator {
       })(),
     ]);
 
-    let role = "none" as RoleType;
     if (!keyWorkspace) {
       throw new Error("Key workspace not found");
     }
+
+    let role = "none" as RoleType;
     if (workspace) {
       if (keyWorkspace.id === workspace.id) {
         role = "builder";
       }
     }
 
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
+    const getSubscriptionForWorkspace = (workspace: Workspace) =>
+      subscriptionForWorkspace(renderLightWorkspaceType({ workspace }));
+
+    const getFeatureFlags = async (workspace: Workspace) =>
+      (await FeatureFlag.findAll({ where: { workspaceId: workspace.id } })).map(
+        (flag) => flag.name
+      );
+
+    let keyGroups: GroupResource[] = [];
+    let keyFlags: WhitelistableFeature[] = [];
+    let workspaceFlags: WhitelistableFeature[] = [];
+
+    let workspaceSubscription: SubscriptionType | null = null;
+    let keySubscription: SubscriptionType | null = null;
 
     if (workspace) {
-      [groups, subscription, flags] = await Promise.all([
+      [
+        keyGroups,
+        keySubscription,
+        keyFlags,
+        workspaceSubscription,
+        workspaceFlags,
+      ] = await Promise.all([
+        // Key related attributes.
         GroupResource.listWorkspaceGroupsFromKey(key),
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-        (async () => {
-          return (
-            await FeatureFlag.findAll({
-              where: {
-                workspaceId: workspace?.id,
-              },
-            })
-          ).map((flag) => flag.name);
-        })(),
+        getSubscriptionForWorkspace(keyWorkspace),
+        getFeatureFlags(keyWorkspace),
+        // Workspace related attributes.
+        getSubscriptionForWorkspace(workspace),
+        getFeatureFlags(workspace),
       ]);
     }
 
     return {
-      auth: new Authenticator({
+      workspaceAuth: new Authenticator({
         workspace,
         role,
-        groups,
-        subscription,
-        flags,
-        key: key.toAuthJSON(),
+        groups: [],
+        subscription: workspaceSubscription,
+        flags: workspaceFlags,
       }),
-      keyWorkspace: renderLightWorkspaceType({ workspace: keyWorkspace }),
+      keyAuth: new Authenticator({
+        flags: keyFlags,
+        groups: keyGroups,
+        key: key.toAuthJSON(),
+        role: "builder",
+        subscription: keySubscription,
+        workspace: keyWorkspace,
+      }),
     };
   }
 

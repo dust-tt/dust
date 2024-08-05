@@ -52,12 +52,12 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth } = await Authenticator.fromKey(
+  const { workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  if (!auth.isBuilder()) {
+  if (!workspaceAuth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -67,7 +67,7 @@ async function handler(
     });
   }
 
-  const dataSources = await getDataSources(auth);
+  const dataSources = await getDataSources(workspaceAuth);
 
   switch (req.method) {
     case "GET":

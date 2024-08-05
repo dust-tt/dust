@@ -67,12 +67,12 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth } = await Authenticator.fromKey(
+  const { workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
+  const owner = workspaceAuth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -83,7 +83,7 @@ async function handler(
     });
   }
 
-  const app = await getApp(auth, req.query.aId as string);
+  const app = await getApp(workspaceAuth, req.query.aId as string);
 
   if (!app) {
     return apiError(req, res, {
