@@ -463,7 +463,8 @@ export default function DataSourcesView({
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
-  const [localIntegrations, setLocalIntegrations] = useState(integrations);
+  const [dataSourceIntegrations, setDataSourceIntegrations] =
+    useState(integrations);
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Record<ConnectorProvider, boolean | undefined>
   >({} as Record<ConnectorProvider, boolean | undefined>);
@@ -521,7 +522,7 @@ export default function DataSourcesView({
           dataSource: DataSourceType;
           connector: ConnectorType;
         } = await res.json();
-        setLocalIntegrations((prev) =>
+        setDataSourceIntegrations((prev) =>
           prev.map((ds) => {
             return ds.connector === null && ds.connectorProvider == provider
               ? {
@@ -558,8 +559,8 @@ export default function DataSourcesView({
   };
 
   useEffect(() => {
-    setLocalIntegrations(localIntegrations);
-  }, [localIntegrations]);
+    setDataSourceIntegrations(dataSourceIntegrations);
+  }, [dataSourceIntegrations]);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
