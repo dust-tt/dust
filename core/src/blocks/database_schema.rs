@@ -129,7 +129,7 @@ pub async fn load_tables_from_identifiers(
     let project_ids_view_filters = try_join_all(
         data_source_identifiers
             .iter()
-            .map(|(w, d)| get_data_source_project_and_view_filter(w, d, env)),
+            .map(|(w, d)| get_data_source_project_and_view_filter(w, d, env, "database_schema")),
     )
     .await?;
 

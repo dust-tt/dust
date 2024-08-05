@@ -69,6 +69,12 @@ async function handler(
     return;
   }
 
+  // Temporary instrumentation to track the origin of the request.
+  const dustOrigin =
+    typeof req.headers["x-dust-origin"] === "string"
+      ? req.headers["x-dust-origin"]
+      : null;
+
   const dustGroupIds = rawDustGroupIds.split(",");
 
   switch (req.method) {
@@ -115,7 +121,8 @@ async function handler(
             const dataSourceViewRes = await handleDataSourceView(
               auth,
               groups,
-              dataSourceOrDataSourceViewId
+              dataSourceOrDataSourceViewId,
+              dustOrigin
             );
             if (dataSourceViewRes.isErr()) {
               logger.info(
@@ -137,7 +144,8 @@ async function handler(
             const dataSourceRes = await handleDataSource(
               auth,
               groups,
-              dataSourceOrDataSourceViewId
+              dataSourceOrDataSourceViewId,
+              dustOrigin
             );
             if (dataSourceRes.isErr()) {
               logger.info(
@@ -174,7 +182,8 @@ export default withLogging(handler);
 async function handleDataSourceView(
   auth: Authenticator,
   groups: GroupResource[],
-  dataSourceViewId: string
+  dataSourceViewId: string,
+  dustOrigin: string | null
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
@@ -193,6 +202,7 @@ async function handleDataSourceView(
       {
         acl: dataSourceView.acl(),
         dataSourceViewId,
+        dustOrigin,
         groups: groups.map((g) => g.id),
       },
       "No access to data source view."
@@ -226,7 +236,8 @@ async function handleDataSourceView(
 async function handleDataSource(
   auth: Authenticator,
   groups: GroupResource[],
-  dataSourceId: string
+  dataSourceId: string,
+  dustOrigin: string | null
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSource = await DataSourceResource.fetchByName(auth, dataSourceId);
   if (!dataSource) {
@@ -244,7 +255,12 @@ async function handleDataSource(
         globalVault
       );
 
-    return handleDataSourceView(auth, groups, dataSourceView[0].sId);
+    return handleDataSourceView(
+      auth,
+      groups,
+      dataSourceView[0].sId,
+      dustOrigin
+    );
   }
 
   const hasAccessToDataSource = groups.some((g) =>
@@ -255,6 +271,7 @@ async function handleDataSource(
       {
         acl: dataSource.acl(),
         dataSourceId,
+        dustOrigin,
         groups: groups.map((g) => g.id),
       },
       "No access to data source."
