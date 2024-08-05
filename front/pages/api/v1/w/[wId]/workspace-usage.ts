@@ -66,28 +66,33 @@ const GetWorkspaceUsageSchema = t.union([
  *       - in: query
  *         name: start_date
  *         required: true
- *         description: The start date in YYYY-MM-DD format
+ *         description: The start date in YYYY-MM format
  *         schema:
  *           type: string
- *           format: date
  *       - in: query
  *         name: end_date
  *         required: false
- *         description: The end date in YYYY-MM-DD format
+ *         description: The end date in YYYY-MM format
  *         schema:
  *           type: string
- *           format: date
+ *        - in: query
+ *         name: table
+ *         required: true
+ *         description: | The name of the table usage table to retrieve:
+ *         - "users": The list of users categorized by their activity level.
+ *         - "assistant_messages": The list of messages sent by users including the mentioned assistants.
+ *         - "builders": The list of builders categorized by their activity level.
+ *         - "assistants": The list of workspace assistants and their corresponding usage.
+ *         - "all": A concatenation of all the above tables.
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: The usage data in CSV format
+ *         description: The usage data in CSV format or a ZIP of multiple CSVs if table is equal to "all"
  *         content:
  *           text/csv:
  *             schema:
  *               type: string
- *             example: |
- *               createdAt,conversationInternalId,messageId,parentMessageId,messageType,userFullName,userEmail,assistantId,assistantName,actionType,source
- *               YYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>
- *               YYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>
  *       404:
  *         description: The workspace was not found
  *       405:
@@ -163,11 +168,23 @@ async function handler(
         }
       }
 
-      const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+      if (query.table === "all") {
+        const zipContent = await zip.generateAsync({ type: "nodebuffer" });
 
-      res.setHeader("Content-Type", "application/zip");
-      res.setHeader("Content-Disposition", `attachment; filename="usage.zip"`);
-      res.status(200).send(zipContent);
+        res.setHeader("Content-Type", "application/zip");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="usage.zip"`
+        );
+        res.status(200).send(zipContent);
+      } else {
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${query.table}.csv"`
+        );
+        res.status(200).send(csvData[query.table]);
+      }
       return;
 
     default:
