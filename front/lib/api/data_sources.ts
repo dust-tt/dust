@@ -63,7 +63,6 @@ export async function getDataSources(
   const dataSources = await DataSourceResource.listByWorkspace(auth, {
     includeEditedBy,
   });
-
   return dataSources.map((dataSource) => dataSource.toJSON());
 }
 

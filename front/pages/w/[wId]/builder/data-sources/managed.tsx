@@ -7,6 +7,7 @@ import {
   Cog6ToothIcon,
   ContentMessage,
   DataTable,
+  Dialog,
   Hoverable,
   InformationCircleIcon,
   Modal,
@@ -17,7 +18,6 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
-  EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
   WhitelistableFeature,
@@ -36,7 +36,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import type { ComponentType} from "react";
+import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
@@ -45,10 +45,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  getDataSourcesUsageByAgents,
-  getDataSourceUsage,
-} from "@app/lib/api/agent_data_sources";
+import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -540,7 +537,10 @@ export default function DataSourcesView({
         router,
         owner,
         readOnly,
+        plan,
         planConnectionsLimits,
+        showPreviewPopupForProvider,
+        showUpgradePopupForProvider,
         setShowUpgradePopupForProvider,
         setShowConfirmConnection,
         setShowPreviewPopupForProvider
@@ -551,9 +551,12 @@ export default function DataSourcesView({
     isAdmin,
     isLoadingByProvider,
     owner,
+    plan,
     planConnectionsLimits,
     readOnly,
     router,
+    showPreviewPopupForProvider,
+    showUpgradePopupForProvider,
   ]);
   return (
     <AppLayout
@@ -686,6 +689,8 @@ function getTableColumns() {
         isAdmin: boolean;
         fetchConnectorError: boolean;
         buttonOnClick: () => void;
+        upgradeDialog: React.JSX.Element;
+        comingSoonDialog: React.JSX.Element;
       };
     };
   };
@@ -776,7 +781,7 @@ function getTableColumns() {
           );
         } else {
           return (
-            <DataTable.Cell>
+            <DataTable.Cell className="relative">
               <Button
                 variant="secondary"
                 icon={Cog6ToothIcon}
@@ -784,6 +789,8 @@ function getTableColumns() {
                 onClick={original.buttonOnClick}
                 label={original.isAdmin ? "Manage" : "View"}
               />
+              {original.upgradeDialog}
+              {original.comingSoonDialog}
             </DataTable.Cell>
           );
         }
@@ -799,7 +806,10 @@ function getTableRow(
   router: NextRouter,
   owner: WorkspaceType,
   readOnly: boolean,
+  plan: PlanType,
   limits: ManageDataSourcesLimitsType,
+  showPreviewPopupForProvider: ConnectorProvider | null,
+  showUpgradePopupForProvider: ConnectorProvider | null,
   setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void,
   setShowConfirmConnection: (integration: DataSourceIntegration | null) => void,
   setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void
@@ -837,6 +847,37 @@ function getTableRow(
     }
   };
 
+  const upgradeDialog = (
+    <Dialog
+      isOpen={showUpgradePopupForProvider === connectorProvider}
+      onCancel={() => setShowUpgradePopupForProvider(null)}
+      title={`${plan.name} plan`}
+      onValidate={() => {
+        void router.push(`/w/${owner.sId}/subscription`);
+      }}
+    >
+      <p>Unlock this managed data source by upgrading your plan.</p>
+    </Dialog>
+  );
+
+  const comingSoonDialog = (
+    <Dialog
+      isOpen={showPreviewPopupForProvider !== connectorProvider}
+      title="Coming Soon!"
+      validateLabel="Contact us"
+      onValidate={() => {
+        window.open(
+          `mailto:support@dust.tt?subject=Early access to the ${integration.name} connection`
+        );
+      }}
+      onCancel={() => {
+        setShowPreviewPopupForProvider(null);
+      }}
+    >
+      Please email us at support@dust.tt for early access.
+    </Dialog>
+  );
+
   const LogoComponent =
     CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent;
   return {
@@ -851,6 +892,8 @@ function getTableRow(
     isBuilt,
     disabled: isDisabled,
     isLoading: isLoadingByProvider[connectorProvider],
+    upgradeDialog,
+    comingSoonDialog,
   };
 }
 
