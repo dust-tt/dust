@@ -75,6 +75,27 @@ type DataSourceIntegration = {
   editedByUser: string | null;
 };
 
+type Info = {
+  row: {
+    original: {
+      icon: ComponentType;
+      name: string;
+      usage: number | null;
+      editedByUser: string | null;
+      connector: ConnectorType | null;
+      workspaceId: string | undefined;
+      dataSourceName: string | undefined;
+      isLoading: boolean;
+      isBuilt: boolean;
+      isAdmin: boolean;
+      fetchConnectorError: boolean;
+      buttonOnClick: () => void;
+      upgradeDialog: React.JSX.Element;
+      comingSoonDialog: React.JSX.Element;
+    };
+  };
+};
+
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
   "google_drive",
@@ -678,26 +699,6 @@ export default function DataSourcesView({
 }
 
 function getTableColumns() {
-  type Info = {
-    row: {
-      original: {
-        icon: ComponentType;
-        name: string;
-        usage: number | null;
-        editedByUser: string | null;
-        connector: ConnectorType | null;
-        workspaceId: string | undefined;
-        dataSourceName: string | undefined;
-        isLoading: boolean;
-        isBuilt: boolean;
-        isAdmin: boolean;
-        fetchConnectorError: boolean;
-        buttonOnClick: () => void;
-        upgradeDialog: React.JSX.Element;
-        comingSoonDialog: React.JSX.Element;
-      };
-    };
-  };
   return [
     {
       header: "Name",
