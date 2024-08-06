@@ -16,6 +16,34 @@ export async function getSites(
   const res = nextLink
     ? await client.api(nextLink).get()
     : await client.api("/sites?search=*").get();
+
+  const results = res.value.filter((site: MicrosoftGraph.Site) => site.root);
+  if ("@odata.nextLink" in res) {
+    return {
+      results,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+  return { results };
+}
+
+export async function getSubSites(
+  client: Client,
+  parentInternalId: string,
+  nextLink?: string
+): Promise<{ results: MicrosoftGraph.Site[]; nextLink?: string }> {
+  const { nodeType, itemAPIPath: parentResourcePath } =
+    typeAndPathFromInternalId(parentInternalId);
+
+  if (nodeType !== "site") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getSubSites, expected site`
+    );
+  }
+
+  const res = nextLink
+    ? await client.api(nextLink).get()
+    : await client.api(`${parentResourcePath}/sites`).get();
   if ("@odata.nextLink" in res) {
     return {
       results: res.value,
@@ -506,9 +534,9 @@ export async function wrapMicrosoftGraphAPIWithResult<T>(
 export function extractSiteName(item: MicrosoftGraph.BaseItem) {
   const webUrl = item.webUrl;
   if (webUrl) {
-    const siteName = webUrl.match(/\/sites\/([^/]+)\//);
-    if (siteName) {
-      return siteName[1];
+    const siteName = webUrl.match(/\/sites\/(.+)/);
+    if (siteName && siteName[1]) {
+      return decodeURI(siteName[1]);
     }
   }
 }
