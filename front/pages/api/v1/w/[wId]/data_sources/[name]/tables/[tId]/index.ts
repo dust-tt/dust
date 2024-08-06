@@ -15,6 +15,9 @@ export type GetTableResponseBody = {
     table_id: string;
     description: string;
     schema: CoreAPITableSchema | null;
+    timestamp: number;
+    tags: string[];
+    parents: string[];
   };
 };
 
