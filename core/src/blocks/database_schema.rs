@@ -142,6 +142,15 @@ pub async fn load_tables_from_identifiers(
         .map(|((w, d), p)| ((*w, *d), p.0.clone()))
         .collect::<std::collections::HashMap<_, _>>();
 
+    let filters_by_project = project_ids_view_filters
+        .iter()
+        .filter_map(|(_, filter, data_source_name)| {
+            filter
+                .as_ref()
+                .map(|filter| (data_source_name.as_str(), filter.clone()))
+        })
+        .collect::<std::collections::HashMap<_, _>>();
+
     let store = env.store.clone();
 
     // Concurrently load all tables.
@@ -154,6 +163,11 @@ pub async fn load_tables_from_identifiers(
     .await?)
         // Unwrap the results.
         .into_iter()
+        .filter(|t| {
+            t.as_ref().map_or(true, |table| {
+                table.match_filter(&filters_by_project.get(&table.data_source_id()).cloned())
+            })
+        })
         .map(|t| t.ok_or_else(|| anyhow!("Table not found.")))
         .collect()
 }

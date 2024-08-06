@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use super::table_schema::TableSchema;
 use crate::{
+    data_sources::data_source::SearchFilter,
     databases_store::store::DatabasesStore,
     project::Project,
     sqlite_workers::client::{SqliteWorker, SqliteWorkerError, HEARTBEAT_INTERVAL_MS},
@@ -211,6 +212,65 @@ impl Table {
     }
     pub fn unique_id(&self) -> String {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
+    }
+
+    pub fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
+        match &filter {
+            Some(filter) => {
+                let mut m = true;
+                match &filter.tags {
+                    Some(tags) => {
+                        m = m
+                            && match &tags.is_in {
+                                Some(is_in) => is_in.iter().any(|tag| self.tags.contains(tag)),
+                                None => true,
+                            };
+                        m = m
+                            && match &tags.is_not {
+                                Some(is_not) => is_not.iter().all(|tag| !self.tags.contains(tag)),
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                match &filter.parents {
+                    Some(parents) => {
+                        m = m
+                            && match &parents.is_in {
+                                Some(is_in) => {
+                                    is_in.iter().any(|parent| self.parents.contains(parent))
+                                }
+                                None => true,
+                            };
+                        m = m
+                            && match &parents.is_not {
+                                Some(is_not) => {
+                                    is_not.iter().all(|parent| !self.parents.contains(parent))
+                                }
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                match &filter.timestamp {
+                    Some(timestamp) => {
+                        m = m
+                            && match timestamp.gt {
+                                Some(gt) => self.timestamp as i64 >= gt,
+                                None => true,
+                            };
+                        m = m
+                            && match timestamp.lt {
+                                Some(lt) => self.timestamp as i64 <= lt,
+                                None => true,
+                            };
+                    }
+                    None => (),
+                }
+                m
+            }
+            None => true,
+        }
     }
 
     pub fn render_dbml(&self, name: Option<&str>) -> String {
