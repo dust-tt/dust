@@ -28,7 +28,7 @@ async function sendRequestDataSourceEmail({
   emailRequester?: string;
   owner: WorkspaceType;
 }) {
-  const res = await fetch(`/api/w/${owner.sId}/data_sources/request-email`, {
+  const res = await fetch(`/api/w/${owner.sId}/data_sources/request-access`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
