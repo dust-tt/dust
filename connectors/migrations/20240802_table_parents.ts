@@ -17,10 +17,8 @@ import { NotionDatabase } from "@connectors/lib/models/notion";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-// Deleting all existing Google Drive CSV files
 export async function googleTables(
   connector: ConnectorResource,
-  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
@@ -37,28 +35,22 @@ export async function googleTables(
     const tableId = getGoogleSheetTableId(driveFileId, driveSheetId);
 
     const parents = await getGoogleParents(connectorId, tableId, memo);
-    logger.info(`Parents for ${tableId}: ${parents}`);
-    if (check) {
-      const table = await getTable({
-        dataSourceConfig,
-        tableId,
-      });
-      if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
-        logger.warn(
-          `Table ${tableId} has parents ${table.parents} but should have ${parents}`
-        );
-      }
-    }
 
-    if (execute) {
-      await updateTableParentsField({ tableId, parents, dataSourceConfig });
+    const table = await getTable({
+      dataSourceConfig,
+      tableId,
+    });
+    if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
+      logger.info(`Parents for ${tableId}: ${parents}`);
+      if (execute) {
+        await updateTableParentsField({ tableId, parents, dataSourceConfig });
+      }
     }
   }
 }
 
 export async function microsoftTables(
   connector: ConnectorResource,
-  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
@@ -79,34 +71,27 @@ export async function microsoftTables(
       internalId,
       startSyncTs: 0,
     });
-    logger.info(`Parents for ${internalId}: ${parents}`);
 
-    if (check) {
-      const table = await getTable({
-        dataSourceConfig,
-        tableId: internalId,
-      });
+    const table = await getTable({
+      dataSourceConfig,
+      tableId: internalId,
+    });
 
-      if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
-        logger.warn(
-          `Table ${internalId} has parents ${table.parents} but should have ${parents}`
-        );
+    if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
+      logger.info(`Parents for ${internalId}: ${parents}`);
+      if (execute) {
+        await updateTableParentsField({
+          tableId: internalId,
+          parents,
+          dataSourceConfig,
+        });
       }
-    }
-
-    if (execute) {
-      await updateTableParentsField({
-        tableId: internalId,
-        parents,
-        dataSourceConfig,
-      });
     }
   }
 }
 
 export async function notionTables(
   connector: ConnectorResource,
-  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
@@ -123,7 +108,7 @@ export async function notionTables(
   const memo = uuidv4();
 
   for (const database of notionDatabases) {
-    const { notionDatabaseId, parentId, connectorId } = database;
+    const { notionDatabaseId, connectorId } = database;
     if (!connectorId) {
       continue;
     }
@@ -131,54 +116,47 @@ export async function notionTables(
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     const parents = await getNotionParents(
       connectorId as number,
-      parentId as string,
+      notionDatabaseId as string,
       new Set<string>(),
       memo
     );
-    logger.info(`Parents for notion-${notionDatabaseId}: ${parents}`);
-    if (check) {
-      const table = await getTable({
-        dataSourceConfig,
-        tableId: "notion-" + notionDatabaseId,
-      });
-      if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
-        logger.warn(
-          `Table notion-${notionDatabaseId} has parents ${table.parents} but should have ${parents}`
-        );
+    const table = await getTable({
+      dataSourceConfig,
+      tableId: "notion-" + notionDatabaseId,
+    });
+    if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
+      logger.info(`Parents for notion-${notionDatabaseId}: ${parents}`);
+      if (execute) {
+        await updateTableParentsField({
+          tableId: "notion-" + notionDatabaseId,
+          parents,
+          dataSourceConfig,
+        });
       }
-    }
-    if (execute) {
-      await updateTableParentsField({
-        tableId: "notion-" + notionDatabaseId,
-        parents,
-        dataSourceConfig,
-      });
     }
   }
 }
 
 export async function handleConnector(
   connector: ConnectorResource,
-  check: boolean,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
   switch (connector.type) {
     case "google_drive":
-      return googleTables(connector, check, execute, logger);
+      return googleTables(connector, execute, logger);
     case "microsoft":
-      return microsoftTables(connector, check, execute, logger);
+      return microsoftTables(connector, execute, logger);
     case "notion":
-      return notionTables(connector, check, execute, logger);
+      return notionTables(connector, execute, logger);
   }
 }
 
 makeScript(
   {
     connectorId: { type: "number", demandOption: false },
-    check: { type: "boolean", demandOption: false },
   },
-  async ({ connectorId, check, execute }, logger) => {
+  async ({ connectorId, execute }, logger) => {
     if (connectorId) {
       const connector = await ConnectorResource.fetchById(connectorId);
       if (!connector) {
@@ -186,7 +164,7 @@ makeScript(
           `Could not find connector for connectorId ${connectorId}`
         );
       }
-      await handleConnector(connector, check, execute, logger);
+      await handleConnector(connector, execute, logger);
     } else {
       for (const connectorType of [
         "google_drive",
@@ -198,7 +176,7 @@ makeScript(
           {}
         );
         for (const connector of connectors) {
-          await handleConnector(connector, check, execute, logger);
+          await handleConnector(connector, execute, logger);
         }
       }
     }

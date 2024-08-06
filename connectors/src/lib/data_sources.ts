@@ -10,7 +10,7 @@ import {
   sectionFullText,
 } from "@dust-tt/types";
 import { MAX_CHUNK_SIZE } from "@dust-tt/types";
-import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
@@ -816,13 +816,13 @@ export async function getTable({
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {
+    const axiosError = e as AxiosError;
+    if (axiosError?.response?.status === 404) {
+      localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+      return;
+    }
     localLogger.error({ error: e }, "Error getting structured data from Dust.");
     throw e;
-  }
-
-  if (dustRequestResult.status === 404) {
-    localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
-    return;
   }
 
   return dustRequestResult.data.table;

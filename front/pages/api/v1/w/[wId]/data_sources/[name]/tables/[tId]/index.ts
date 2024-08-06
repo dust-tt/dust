@@ -150,6 +150,15 @@ async function handler(
         tableId,
       });
       if (tableRes.isErr()) {
+        if (tableRes.error.code === "table_not_found") {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "table_not_found",
+              message: "Failed to get table.",
+            },
+          });
+        }
         logger.error(
           {
             dataSourcename: dataSource.name,

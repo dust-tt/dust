@@ -79,7 +79,7 @@ async function upsertTable(
       spreadsheetId: spreadsheet.id,
     },
     truncate: true,
-    parents,
+    parents: [tableId, ...parents],
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
