@@ -107,6 +107,7 @@ async function handleGoogleDriveExport(
 
 async function handleFileExport(
   oauth2client: OAuth2Client,
+  documentId: string,
   file: GoogleDriveObjectType,
   maxDocumentLen: number,
   localLogger: Logger,
@@ -164,12 +165,13 @@ async function handleFileExport(
 
     result = await handleCsvFile({
       data: res.data,
-      file,
+      tableId: documentId,
+      fileName: file.name || "",
       maxDocumentLen,
       localLogger,
       dataSourceConfig,
       connectorId,
-      parents,
+      parents: [file.id, ...parents],
     });
   } else {
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
@@ -319,6 +321,7 @@ async function syncOneFileTable(
   } else {
     await handleFileExport(
       oauth2client,
+      documentId,
       file,
       maxDocumentLen,
       localLogger,
@@ -367,6 +370,7 @@ async function syncOneFileTextDocument(
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
     documentContent = await handleFileExport(
       oauth2client,
+      documentId,
       file,
       maxDocumentLen,
       localLogger,
