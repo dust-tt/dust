@@ -707,11 +707,13 @@ export default function DataSourcesView({
           </ContentMessage>
         )}
         <div className="flex gap-2">
-          <Button
-            label="Request"
-            icon={PlusIcon}
-            onClick={() => setIsRequestDataSourceModalOpen(true)}
-          />
+          {!isAdmin && (
+            <Button
+              label="Request"
+              icon={PlusIcon}
+              onClick={() => setIsRequestDataSourceModalOpen(true)}
+            />
+          )}
           <Searchbar
             ref={searchBarRef}
             name="search"
