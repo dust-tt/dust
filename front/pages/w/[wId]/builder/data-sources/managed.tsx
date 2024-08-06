@@ -18,6 +18,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
+  EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
   WhitelistableFeature,
@@ -42,6 +43,7 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -57,7 +59,7 @@ import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/da
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-type DataSourceIntegration = {
+export type DataSourceIntegration = {
   name: string;
   dataSourceName: string | null;
   connector: ConnectorType | null;
@@ -72,7 +74,7 @@ type DataSourceIntegration = {
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
   usage: number | null;
-  editedByUser: string | null;
+  editedByUser?: EditedByUser | null;
 };
 
 type Info = {
@@ -81,7 +83,7 @@ type Info = {
       icon: ComponentType;
       name: string;
       usage: number | null;
-      editedByUser: string | null;
+      editedByUser?: EditedByUser | null;
       connector: ConnectorType | null;
       workspaceId: string | undefined;
       dataSourceName: string | undefined;
@@ -110,6 +112,16 @@ type GetTableRowParams = {
   setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void;
   setShowConfirmConnection: (integration: DataSourceIntegration | null) => void;
   setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void;
+};
+
+type ManagedConnector = {
+  dataSourceName: string;
+  provider: ConnectorProvider;
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
+  fetchConnectorErrorMessage: string | null;
+  editedByUser?: EditedByUser | null;
+  usage: number | null;
 };
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
@@ -150,10 +162,6 @@ export async function setupConnection({
   return new Ok(connectionId);
 }
 
-function getUserImageUrl(dataSource: DataSourceType) {
-  return dataSource.editedByUser?.imageUrl ?? null;
-}
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -182,15 +190,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     .filter((ds) => ds.connectorId)
     .filter((ds) => ds.connectorProvider !== "webcrawler");
 
-  const managedConnector: {
-    dataSourceName: string;
-    provider: ConnectorProvider;
-    connector: ConnectorType | null;
-    fetchConnectorError: boolean;
-    fetchConnectorErrorMessage: string | null;
-    editedByUser: string | null;
-    usage: number | null;
-  }[] = await Promise.all(
+  const managedConnector: ManagedConnector[] = await Promise.all(
     managedDataSources.map(async (mds) => {
       if (!mds.connectorId || !mds.connectorProvider) {
         throw new Error(
@@ -211,7 +211,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
             connector: null,
             fetchConnectorError: true,
             fetchConnectorErrorMessage: statusRes.error.message,
-            editedByUser: getUserImageUrl(mds),
+            editedByUser: mds.editedByUser,
             usage: await getDataSourceUsage({
               auth,
               dataSource: mds,
@@ -224,7 +224,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: statusRes.value,
           fetchConnectorError: false,
           fetchConnectorErrorMessage: null,
-          editedByUser: getUserImageUrl(mds),
+          editedByUser: mds.editedByUser,
           usage: await getDataSourceUsage({
             auth,
             dataSource: mds,
@@ -240,7 +240,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: null,
           fetchConnectorError: true,
           fetchConnectorErrorMessage: "Synchonization service is down",
-          editedByUser: getUserImageUrl(mds),
+          editedByUser: mds.editedByUser,
           usage: null,
         };
       }
@@ -714,6 +714,11 @@ export default function DataSourcesView({
           filter={dataSourceSearch}
           filterColumn={"name"}
         />
+        <RequestDataSourcesModal
+          isOpen={true}
+          onClose={() => console.log()}
+          dataSourceIntegrations={dataSourceIntegrations}
+        />
       </Page.Vertical>
     </AppLayout>
   );
@@ -746,7 +751,9 @@ function getTableColumns() {
     {
       header: "Managed by",
       cell: (info: Info) => (
-        <DataTable.Cell avatarUrl={info.row.original.editedByUser ?? ""} />
+        <DataTable.Cell
+          avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+        />
       ),
     },
     {
