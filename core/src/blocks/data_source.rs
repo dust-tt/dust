@@ -2,8 +2,9 @@ use crate::blocks::block::{
     parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::blocks::helpers::get_data_source_project_and_view_filter;
-use crate::data_sources::data_source::{Document, SearchFilter};
+use crate::data_sources::data_source::Document;
 use crate::deno::js_executor::JSExecutor;
+use crate::filter::SearchFilter;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -11,7 +12,6 @@ use pest::iterators::Pair;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
-
 #[derive(Clone)]
 pub struct DataSource {
     query: String,

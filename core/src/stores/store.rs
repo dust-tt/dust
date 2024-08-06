@@ -1,11 +1,10 @@
 use crate::blocks::block::BlockType;
 use crate::cached_request::CachedRequest;
-use crate::data_sources::data_source::{
-    DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
-};
+use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
 use crate::databases::database::{Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
+use crate::filter::SearchFilter;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};

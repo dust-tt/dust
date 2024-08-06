@@ -15,13 +15,14 @@ use dust::{
     app,
     blocks::block::BlockType,
     data_sources::{
-        data_source::{self, SearchFilter, Section},
+        data_source::{self, Section},
         qdrant::QdrantClients,
     },
     databases::database::{query_database, QueryDatabaseError, Row, Table},
     databases_store::store::{self as databases_store, DatabasesStore},
     dataset,
     deno::js_executor::JSExecutor,
+    filter::{Filterable, SearchFilter},
     project,
     providers::provider::{provider, ProviderID},
     run,
@@ -1972,10 +1973,21 @@ async fn tables_upsert(
     }
 }
 
+/// Retrieve table from a data source.
+#[derive(serde::Deserialize)]
+struct TableRetrieveQuery {
+    view_filter: Option<String>, // Parsed as JSON.
+}
+
 async fn tables_retrieve(
     Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
     State(state): State<Arc<APIState>>,
+    Query(query): Query<TableRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
+    let view_filter = query
+        .view_filter
+        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
+
     let project = project::Project::new_from_id(project_id);
 
     match state
@@ -1989,7 +2001,7 @@ async fn tables_retrieve(
             "Failed to retrieve table",
             Some(e),
         ),
-        Ok(table) => match table {
+        Ok(table) => match table.filter(|table| table.match_filter(&view_filter)) {
             None => error_response(
                 StatusCode::NOT_FOUND,
                 "table_not_found",
@@ -2012,8 +2024,12 @@ async fn tables_retrieve(
 async fn tables_list(
     Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
+    Query(query): Query<TableRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+    let view_filter = query
+        .view_filter
+        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
 
     match state
         .store
@@ -2031,7 +2047,7 @@ async fn tables_list(
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
-                    "tables": tables,
+                    "tables": tables.into_iter().filter(|table| table.match_filter(&view_filter)).collect::<Vec<Table>>(),
                 })),
             }),
         ),
@@ -2201,8 +2217,12 @@ async fn tables_rows_upsert(
 async fn tables_rows_retrieve(
     Path((project_id, data_source_id, table_id, row_id)): Path<(i64, String, String, String)>,
     State(state): State<Arc<APIState>>,
+    Query(query): Query<TableRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+    let view_filter = query
+        .view_filter
+        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
 
     match state
         .store
@@ -2217,39 +2237,41 @@ async fn tables_rows_retrieve(
                 Some(e),
             )
         }
-        Ok(None) => {
-            return error_response(
-                StatusCode::NOT_FOUND,
-                "table_not_found",
-                &format!("No table found for id `{}`", table_id),
-                None,
-            )
-        }
-        Ok(Some(table)) => match table
-            .retrieve_row(state.databases_store.clone(), &row_id)
-            .await
-        {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to load row",
-                Some(e),
-            ),
-            Ok(None) => error_response(
-                StatusCode::NOT_FOUND,
-                "table_row_not_found",
-                &format!("No table row found for id `{}`", row_id),
-                None,
-            ),
-            Ok(Some(row)) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "row": row,
-                    })),
-                }),
-            ),
+        Ok(table) => match table.filter(|table| table.match_filter(&view_filter)) {
+            None => {
+                return error_response(
+                    StatusCode::NOT_FOUND,
+                    "table_not_found",
+                    &format!("No table found for id `{}`", table_id),
+                    None,
+                )
+            }
+            Some(table) => match table
+                .retrieve_row(state.databases_store.clone(), &row_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to load row",
+                    Some(e),
+                ),
+                Ok(None) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "table_row_not_found",
+                    &format!("No table row found for id `{}`", row_id),
+                    None,
+                ),
+                Ok(Some(row)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "row": row,
+                        })),
+                    }),
+                ),
+            },
         },
     }
 }
@@ -2312,6 +2334,7 @@ async fn tables_rows_delete(
 struct DatabasesRowsListQuery {
     offset: usize,
     limit: usize,
+    view_filter: Option<String>,
 }
 
 async fn tables_rows_list(
@@ -2320,6 +2343,9 @@ async fn tables_rows_list(
     Query(query): Query<DatabasesRowsListQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+    let view_filter = query
+        .view_filter
+        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
 
     match state
         .store
@@ -2334,39 +2360,41 @@ async fn tables_rows_list(
                 Some(e),
             )
         }
-        Ok(None) => {
-            return error_response(
-                StatusCode::NOT_FOUND,
-                "table_not_found",
-                &format!("No table found for id `{}`", table_id),
-                None,
-            )
-        }
-        Ok(Some(table)) => match table
-            .list_rows(
-                state.databases_store.clone(),
-                Some((query.limit, query.offset)),
-            )
-            .await
-        {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to list rows",
-                Some(e),
-            ),
-            Ok((rows, total)) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "offset": query.offset,
-                        "limit": query.limit,
-                        "total": total,
-                        "rows": rows,
-                    })),
-                }),
-            ),
+        Ok(table) => match table.filter(|table| table.match_filter(&view_filter)) {
+            None => {
+                return error_response(
+                    StatusCode::NOT_FOUND,
+                    "table_not_found",
+                    &format!("No table found for id `{}`", table_id),
+                    None,
+                )
+            }
+            Some(table) => match table
+                .list_rows(
+                    state.databases_store.clone(),
+                    Some((query.limit, query.offset)),
+                )
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to list rows",
+                    Some(e),
+                ),
+                Ok((rows, total)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "offset": query.offset,
+                            "limit": query.limit,
+                            "total": total,
+                            "rows": rows,
+                        })),
+                    }),
+                ),
+            },
         },
     }
 }

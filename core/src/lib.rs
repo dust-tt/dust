@@ -21,6 +21,7 @@ pub mod databases {
     pub mod database;
     pub mod table_schema;
 }
+pub mod filter;
 pub mod project;
 pub mod run;
 pub mod utils;

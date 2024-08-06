@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use super::table_schema::TableSchema;
 use crate::{
-    data_sources::data_source::{Filterable, SearchFilter},
     databases_store::store::DatabasesStore,
+    filter::{Filterable, SearchFilter},
     project::Project,
     sqlite_workers::client::{SqliteWorker, SqliteWorkerError, HEARTBEAT_INTERVAL_MS},
     stores::store::Store,
