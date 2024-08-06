@@ -135,6 +135,8 @@ export function RequestDataSourcesModal({
                   selectedDataSourceIntegration?.editedByUser?.email ??
                     undefined
                 );
+                setMessage("");
+                setSelectedDataSourceIntegration(null);
                 onClose();
               }}
             />
