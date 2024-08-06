@@ -21,6 +21,7 @@ import type {
   EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
+  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -171,12 +172,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+  const user = auth.user();
 
-  if (!owner || !plan || !subscription) {
+  if (!owner || !plan || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -319,6 +322,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
+      user,
       subscription,
       readOnly,
       isAdmin,
@@ -458,6 +462,7 @@ function ConfirmationModal({
 
 export default function DataSourcesView({
   owner,
+  user,
   subscription,
   readOnly,
   isAdmin,
@@ -482,7 +487,6 @@ export default function DataSourcesView({
     useState<DataSourceIntegration | null>(null);
 
   const { admins, isAdminsLoading } = useAdmins(owner);
-
   const planConnectionsLimits = plan.limits.connections;
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
@@ -718,6 +722,7 @@ export default function DataSourcesView({
           isOpen={true}
           onClose={() => console.log()}
           dataSourceIntegrations={dataSourceIntegrations}
+          currentUserEmail={user.email}
         />
       </Page.Vertical>
     </AppLayout>

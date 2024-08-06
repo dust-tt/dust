@@ -2,18 +2,37 @@ import { Button, DropdownMenu, Modal, TextArea } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { sendEmail } from "@app/lib/email";
 import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 type RequestDataSourceProps = {
   isOpen: boolean;
   onClose: () => void;
   dataSourceIntegrations: DataSourceIntegration[];
+  currentUserEmail: string;
 };
+
+async function sendRequestDataSourceEmail(
+  email: string,
+  emailContent: string,
+  ccEmail: string
+) {
+  const mail = {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[Dust] Request Data source`,
+    text: emailContent,
+  };
+  await sendEmail(email, mail, [ccEmail]);
+}
 
 export function RequestDataSourcesModal({
   isOpen,
   onClose,
   dataSourceIntegrations,
+  currentUserEmail,
 }: RequestDataSourceProps) {
   const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
     useState<DataSourceIntegration | null>(null);
@@ -22,7 +41,6 @@ export function RequestDataSourcesModal({
   const filteredDataSourceIntegrations = dataSourceIntegrations.filter(
     (ds) => ds.connector
   );
-  console.log(filteredDataSourceIntegrations);
   return (
     <Modal
       isOpen={isOpen}
@@ -107,9 +125,12 @@ export function RequestDataSourcesModal({
               label="Send"
               variant="primary"
               size="sm"
-              onClick={() => {
-                // Handle sending the message
-                console.log("Sending message:", message);
+              onClick={async () => {
+                await sendRequestDataSourceEmail(
+                  currentUserEmail,
+                  message,
+                  selectedDataSourceIntegration?.editedByUser?.email
+                );
                 onClose();
               }}
             />

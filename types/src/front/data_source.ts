@@ -28,7 +28,8 @@ export type EditedByUser = {
   editedAt: number | null;
   fullName: string | null;
   imageUrl: string | null;
-}
+  email: string | null;
+};
 
 export type DataSourceType = {
   id: ModelId;
