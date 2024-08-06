@@ -12,6 +12,7 @@ import {
   InformationCircleIcon,
   Modal,
   Page,
+  PlusIcon,
   RobotIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
@@ -485,6 +486,8 @@ export default function DataSourcesView({
     useState<ConnectorProvider | null>(null);
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
+  const [isRequestDataSourceModalOpen, setIsRequestDataSourceModalOpen] =
+    useState(false);
 
   const { admins, isAdminsLoading } = useAdmins(owner);
   const planConnectionsLimits = plan.limits.connections;
@@ -703,15 +706,22 @@ export default function DataSourcesView({
             </Hoverable>
           </ContentMessage>
         )}
-        <Searchbar
-          ref={searchBarRef}
-          name="search"
-          placeholder="Search (Name)"
-          value={dataSourceSearch}
-          onChange={(s) => {
-            setDataSourceSearch(s);
-          }}
-        />
+        <div className="flex gap-2">
+          <Button
+            label="Request"
+            icon={PlusIcon}
+            onClick={() => setIsRequestDataSourceModalOpen(true)}
+          />
+          <Searchbar
+            ref={searchBarRef}
+            name="search"
+            placeholder="Search (Name)"
+            value={dataSourceSearch}
+            onChange={(s) => {
+              setDataSourceSearch(s);
+            }}
+          />
+        </div>
         <DataTable
           data={connectionRows}
           columns={getTableColumns()}
@@ -719,8 +729,8 @@ export default function DataSourcesView({
           filterColumn={"name"}
         />
         <RequestDataSourcesModal
-          isOpen={true}
-          onClose={() => console.log()}
+          isOpen={isRequestDataSourceModalOpen}
+          onClose={() => setIsRequestDataSourceModalOpen(false)}
           dataSourceIntegrations={dataSourceIntegrations}
           currentUserEmail={user.email}
         />

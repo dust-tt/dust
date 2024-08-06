@@ -64,7 +64,6 @@ export function RequestDataSourcesModal({
                 {selectedDataSourceIntegration ? (
                   <Button
                     variant="tertiary"
-                    size="xs"
                     label={
                       CONNECTOR_CONFIGURATIONS[
                         selectedDataSourceIntegration.connectorProvider
@@ -85,7 +84,7 @@ export function RequestDataSourcesModal({
                   />
                 )}
               </DropdownMenu.Button>
-              <DropdownMenu.Items>
+              <DropdownMenu.Items width={180}>
                 {filteredDataSourceIntegrations.map((ds) => (
                   <DropdownMenu.Item
                     key={ds.dataSourceName}
