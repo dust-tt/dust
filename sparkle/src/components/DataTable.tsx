@@ -28,7 +28,7 @@ interface DataTableProps<TData extends TBaseData, TValue> {
   filter?: string;
   filterColumn?: string;
   initialColumnOrder?: SortingState;
-  responsiveHiddenColumns?: string[];
+  mobileHiddenColumns?: string[];
 }
 
 export function DataTable<TData extends TBaseData, TValue>({
@@ -38,7 +38,7 @@ export function DataTable<TData extends TBaseData, TValue>({
   filter,
   filterColumn,
   initialColumnOrder,
-  responsiveHiddenColumns = [],
+  mobileHiddenColumns = [],
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialColumnOrder ?? []
@@ -76,7 +76,7 @@ export function DataTable<TData extends TBaseData, TValue>({
                 onClick={header.column.getToggleSortingHandler()}
                 className={classNames(
                   header.column.getCanSort() ? "s-cursor-pointer" : "",
-                  responsiveHiddenColumns.includes(header.id)
+                  mobileHiddenColumns.includes(header.id)
                     ? "s-hidden sm:s-block"
                     : ""
                 )}
@@ -121,7 +121,7 @@ export function DataTable<TData extends TBaseData, TValue>({
               <DataTable.Cell
                 key={cell.id}
                 className={classNames(
-                  responsiveHiddenColumns.includes(cell.column.id)
+                  mobileHiddenColumns.includes(cell.column.id)
                     ? "s-hidden sm:s-block"
                     : ""
                 )}
