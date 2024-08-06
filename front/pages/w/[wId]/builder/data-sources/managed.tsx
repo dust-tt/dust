@@ -12,14 +12,17 @@ import {
   InformationCircleIcon,
   Modal,
   Page,
+  PlusIcon,
   RobotIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceType,
+  EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
+  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -42,6 +45,7 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -57,7 +61,7 @@ import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/da
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-type DataSourceIntegration = {
+export type DataSourceIntegration = {
   name: string;
   dataSourceName: string | null;
   connector: ConnectorType | null;
@@ -72,7 +76,7 @@ type DataSourceIntegration = {
   synchronizedAgo: string | null;
   setupWithSuffix: string | null;
   usage: number | null;
-  editedByUser: string | null;
+  editedByUser?: EditedByUser | null;
 };
 
 type Info = {
@@ -81,7 +85,7 @@ type Info = {
       icon: ComponentType;
       name: string;
       usage: number | null;
-      editedByUser: string | null;
+      editedByUser?: EditedByUser | null;
       connector: ConnectorType | null;
       workspaceId: string | undefined;
       dataSourceName: string | undefined;
@@ -110,6 +114,16 @@ type GetTableRowParams = {
   setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void;
   setShowConfirmConnection: (integration: DataSourceIntegration | null) => void;
   setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void;
+};
+
+type ManagedConnector = {
+  dataSourceName: string;
+  provider: ConnectorProvider;
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
+  fetchConnectorErrorMessage: string | null;
+  editedByUser?: EditedByUser | null;
+  usage: number | null;
 };
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
@@ -150,10 +164,6 @@ export async function setupConnection({
   return new Ok(connectionId);
 }
 
-function getUserImageUrl(dataSource: DataSourceType) {
-  return dataSource.editedByUser?.imageUrl ?? null;
-}
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -163,12 +173,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+  const user = auth.user();
 
-  if (!owner || !plan || !subscription) {
+  if (!owner || !plan || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -182,15 +194,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     .filter((ds) => ds.connectorId)
     .filter((ds) => ds.connectorProvider !== "webcrawler");
 
-  const managedConnector: {
-    dataSourceName: string;
-    provider: ConnectorProvider;
-    connector: ConnectorType | null;
-    fetchConnectorError: boolean;
-    fetchConnectorErrorMessage: string | null;
-    editedByUser: string | null;
-    usage: number | null;
-  }[] = await Promise.all(
+  const managedConnector: ManagedConnector[] = await Promise.all(
     managedDataSources.map(async (mds) => {
       if (!mds.connectorId || !mds.connectorProvider) {
         throw new Error(
@@ -211,7 +215,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
             connector: null,
             fetchConnectorError: true,
             fetchConnectorErrorMessage: statusRes.error.message,
-            editedByUser: getUserImageUrl(mds),
+            editedByUser: mds.editedByUser,
             usage: await getDataSourceUsage({
               auth,
               dataSource: mds,
@@ -224,7 +228,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: statusRes.value,
           fetchConnectorError: false,
           fetchConnectorErrorMessage: null,
-          editedByUser: getUserImageUrl(mds),
+          editedByUser: mds.editedByUser,
           usage: await getDataSourceUsage({
             auth,
             dataSource: mds,
@@ -240,7 +244,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           connector: null,
           fetchConnectorError: true,
           fetchConnectorErrorMessage: "Synchonization service is down",
-          editedByUser: getUserImageUrl(mds),
+          editedByUser: mds.editedByUser,
           usage: null,
         };
       }
@@ -319,6 +323,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
+      user,
       subscription,
       readOnly,
       isAdmin,
@@ -458,6 +463,7 @@ function ConfirmationModal({
 
 export default function DataSourcesView({
   owner,
+  user,
   subscription,
   readOnly,
   isAdmin,
@@ -480,9 +486,10 @@ export default function DataSourcesView({
     useState<ConnectorProvider | null>(null);
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
+  const [isRequestDataSourceModalOpen, setIsRequestDataSourceModalOpen] =
+    useState(false);
 
   const { admins, isAdminsLoading } = useAdmins(owner);
-
   const planConnectionsLimits = plan.limits.connections;
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
@@ -699,20 +706,33 @@ export default function DataSourcesView({
             </Hoverable>
           </ContentMessage>
         )}
-        <Searchbar
-          ref={searchBarRef}
-          name="search"
-          placeholder="Search (Name)"
-          value={dataSourceSearch}
-          onChange={(s) => {
-            setDataSourceSearch(s);
-          }}
-        />
+        <div className="flex gap-2">
+          <Button
+            label="Request"
+            icon={PlusIcon}
+            onClick={() => setIsRequestDataSourceModalOpen(true)}
+          />
+          <Searchbar
+            ref={searchBarRef}
+            name="search"
+            placeholder="Search (Name)"
+            value={dataSourceSearch}
+            onChange={(s) => {
+              setDataSourceSearch(s);
+            }}
+          />
+        </div>
         <DataTable
           data={connectionRows}
           columns={getTableColumns()}
           filter={dataSourceSearch}
           filterColumn={"name"}
+        />
+        <RequestDataSourcesModal
+          isOpen={isRequestDataSourceModalOpen}
+          onClose={() => setIsRequestDataSourceModalOpen(false)}
+          dataSourceIntegrations={dataSourceIntegrations}
+          currentUserEmail={user.email}
         />
       </Page.Vertical>
     </AppLayout>
@@ -746,7 +766,9 @@ function getTableColumns() {
     {
       header: "Managed by",
       cell: (info: Info) => (
-        <DataTable.Cell avatarUrl={info.row.original.editedByUser ?? ""} />
+        <DataTable.Cell
+          avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+        />
       ),
     },
     {
