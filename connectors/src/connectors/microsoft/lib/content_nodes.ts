@@ -28,6 +28,7 @@ export function getSitesRootAsContentNode(): ContentNode {
     sourceUrl: "",
     dustDocumentId: null,
     lastUpdatedAt: null,
+    preventSelection: true,
     expandable: true,
     permission: "none",
   };
@@ -46,6 +47,7 @@ export function getTeamsRootAsContentNode(): ContentNode {
     sourceUrl: "",
     dustDocumentId: null,
     lastUpdatedAt: null,
+    preventSelection: true,
     expandable: true,
     permission: "none",
   };
@@ -63,12 +65,16 @@ export function getTeamAsContentNode(team: microsoftgraph.Team): ContentNode {
     sourceUrl: "",
     dustDocumentId: null,
     lastUpdatedAt: null,
+    preventSelection: true,
     expandable: true,
     permission: "none",
   };
 }
 
-export function getSiteAsContentNode(site: microsoftgraph.Site): ContentNode {
+export function getSiteAsContentNode(
+  site: microsoftgraph.Site,
+  parentInternalId?: string
+): ContentNode {
   if (!site.id) {
     // Unexpected, unreachable
     throw new Error("Site id is required");
@@ -79,12 +85,13 @@ export function getSiteAsContentNode(site: microsoftgraph.Site): ContentNode {
       itemAPIPath: getSiteAPIPath(site),
       nodeType: "site",
     }),
-    parentInternalId: null,
+    parentInternalId: parentInternalId || null,
     type: "folder",
     title: site.displayName || site.name || "unnamed",
     sourceUrl: "",
     dustDocumentId: null,
     lastUpdatedAt: null,
+    preventSelection: true,
     expandable: true,
     permission: "none",
   };

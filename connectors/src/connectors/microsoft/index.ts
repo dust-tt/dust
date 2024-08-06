@@ -23,6 +23,7 @@ import {
   getDrives,
   getFilesAndFolders,
   getSites,
+  getSubSites,
   getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
@@ -267,10 +268,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         break;
       }
       case "site": {
+        const subSites = await getAllPaginatedEntities((nextLink) =>
+          getSubSites(client, parentInternalId, nextLink)
+        );
         const drives = await getAllPaginatedEntities((nextLink) =>
           getDrives(client, parentInternalId, nextLink)
         );
         nodes.push(
+          ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
           ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
         );
         break;
