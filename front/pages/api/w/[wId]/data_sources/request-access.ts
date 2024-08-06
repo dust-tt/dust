@@ -11,7 +11,7 @@ async function handler(
   res: NextApiResponse,
   auth: Authenticator
 ) {
-  const owner = auth.getNonNullableWorkspace();
+  const owner = auth.workspace();
   const user = auth.user();
 
   if (!user || !owner) {

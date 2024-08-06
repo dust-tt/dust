@@ -117,7 +117,7 @@ type HandleConnectionClickParams = {
   }) => void;
 };
 
-type ManagedConnector = {
+type ManagedSourceType = {
   dataSourceName: string;
   provider: ConnectorProvider;
   connector: ConnectorType | null;
@@ -195,7 +195,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     .filter((ds) => ds.connectorId)
     .filter((ds) => ds.connectorProvider !== "webcrawler");
 
-  const managedConnector: ManagedConnector[] = await Promise.all(
+  const managedSources: ManagedSourceType[] = await Promise.all(
     managedDataSources.map(async (mds) => {
       if (!mds.connectorId || !mds.connectorProvider) {
         throw new Error(
@@ -252,7 +252,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     })
   );
 
-  const integrations: DataSourceIntegration[] = managedConnector.map((mc) => {
+  const integrations: DataSourceIntegration[] = managedSources.map((mc) => {
     const integration = CONNECTOR_CONFIGURATIONS[mc.provider];
     return {
       name: integration.name,
