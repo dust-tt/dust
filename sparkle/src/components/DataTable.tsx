@@ -21,6 +21,10 @@ interface TBaseData {
   onMoreClick?: () => void;
 }
 
+interface ColumnBreakpoint {
+  [columnId: string]: "xs" | "sm" | "md" | "lg" | "xl";
+}
+
 interface DataTableProps<TData extends TBaseData, TValue> {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
@@ -28,7 +32,7 @@ interface DataTableProps<TData extends TBaseData, TValue> {
   filter?: string;
   filterColumn?: string;
   initialColumnOrder?: SortingState;
-  mobileHiddenColumns?: string[];
+  columnsBreakpoints?: ColumnBreakpoint;
 }
 
 export function DataTable<TData extends TBaseData, TValue>({
@@ -38,7 +42,7 @@ export function DataTable<TData extends TBaseData, TValue>({
   filter,
   filterColumn,
   initialColumnOrder,
-  mobileHiddenColumns = [],
+  columnsBreakpoints = {},
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialColumnOrder ?? []
@@ -76,8 +80,8 @@ export function DataTable<TData extends TBaseData, TValue>({
                 onClick={header.column.getToggleSortingHandler()}
                 className={classNames(
                   header.column.getCanSort() ? "s-cursor-pointer" : "",
-                  mobileHiddenColumns.includes(header.id)
-                    ? "s-hidden sm:s-block"
+                  columnsBreakpoints[header.id]
+                    ? `s-hidden ${columnsBreakpoints[header.id]}:s-block`
                     : ""
                 )}
               >
@@ -121,8 +125,8 @@ export function DataTable<TData extends TBaseData, TValue>({
               <DataTable.Cell
                 key={cell.id}
                 className={classNames(
-                  mobileHiddenColumns.includes(cell.column.id)
-                    ? "s-hidden sm:s-block"
+                  columnsBreakpoints[cell.column.id]
+                    ? `s-hidden ${columnsBreakpoints[cell.column.id]}:s-block`
                     : ""
                 )}
               >

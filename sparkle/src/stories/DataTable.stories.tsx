@@ -117,7 +117,7 @@ export const DataTableExample = () => {
         data={data}
         columns={columns}
         initialColumnOrder={[{ id: "name", desc: false }]}
-        mobileHiddenColumns={["lastUpdated"]}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
       />
     </div>
   );
