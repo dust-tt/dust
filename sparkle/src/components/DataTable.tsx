@@ -28,6 +28,7 @@ interface DataTableProps<TData extends TBaseData, TValue> {
   filter?: string;
   filterColumn?: string;
   initialColumnOrder?: SortingState;
+  responsiveHiddenColumns?: string[];
 }
 
 export function DataTable<TData extends TBaseData, TValue>({
@@ -37,6 +38,7 @@ export function DataTable<TData extends TBaseData, TValue>({
   filter,
   filterColumn,
   initialColumnOrder,
+  responsiveHiddenColumns = [],
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialColumnOrder ?? []
@@ -72,7 +74,12 @@ export function DataTable<TData extends TBaseData, TValue>({
               <DataTable.Head
                 key={header.id}
                 onClick={header.column.getToggleSortingHandler()}
-                className={header.column.getCanSort() ? "s-cursor-pointer" : ""}
+                className={classNames(
+                  header.column.getCanSort() ? "s-cursor-pointer" : "",
+                  responsiveHiddenColumns.includes(header.id)
+                    ? "s-hidden sm:s-block"
+                    : ""
+                )}
               >
                 <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
                   {flexRender(
@@ -111,7 +118,14 @@ export function DataTable<TData extends TBaseData, TValue>({
             onMoreClick={row.original.onMoreClick}
           >
             {row.getVisibleCells().map((cell) => (
-              <DataTable.Cell key={cell.id}>
+              <DataTable.Cell
+                key={cell.id}
+                className={classNames(
+                  responsiveHiddenColumns.includes(cell.column.id)
+                    ? "s-hidden sm:s-block"
+                    : ""
+                )}
+              >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </DataTable.Cell>
             ))}

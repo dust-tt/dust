@@ -117,6 +117,7 @@ export const DataTableExample = () => {
         data={data}
         columns={columns}
         initialColumnOrder={[{ id: "name", desc: false }]}
+        responsiveHiddenColumns={["lastUpdated"]}
       />
     </div>
   );
