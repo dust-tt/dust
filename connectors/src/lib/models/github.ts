@@ -176,6 +176,7 @@ export class GithubCodeRepository extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
   declare codeUpdatedAt: CreationOptional<Date>;
+  declare forceDailySync: boolean;
 
   declare repoId: string;
   declare repoLogin: string;
@@ -211,6 +212,11 @@ GithubCodeRepository.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    forceDailySync: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     repoId: {
       type: DataTypes.STRING,

@@ -20,6 +20,7 @@ import { WhitelistableFeature } from "../../shared/feature_flags";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 import { ContentFragmentType } from "../content_fragment";
+import { UserType } from "../user";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -30,9 +31,9 @@ import { GenerationTokensEvent } from "./api/assistant/generation";
 import { APIError, isAPIError } from "./error";
 
 export type DustAppType = {
-  workspaceId: string;
-  appId: string;
   appHash: string;
+  appId: string;
+  workspaceId: string;
 };
 
 export type DustAppConfigType = {
@@ -137,6 +138,8 @@ export type DustAPICredentials = {
   apiKey: string;
   workspaceId: string;
 };
+
+export const DustUserIdHeader = "x-dust-user-id";
 
 type PublicPostContentFragmentRequestBody = t.TypeOf<
   typeof PublicPostContentFragmentRequestBodySchema
@@ -357,6 +360,7 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runApp(
+    user: UserType | null,
     app: DustAppType,
     config: DustAppConfigType,
     inputs: unknown[],
@@ -370,12 +374,18 @@ export class DustAPI {
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
+
+    const headers: RequestInit["headers"] = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+    if (user) {
+      headers[DustUserIdHeader] = user.sId;
+    }
+
     const res = await this._fetchWithError(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         specification_hash: app.appHash,
         config: config,
@@ -402,6 +412,7 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runAppStreamed(
+    user: UserType | null,
     app: DustAppType,
     config: DustAppConfigType,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -416,12 +427,18 @@ export class DustAPI {
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
+
+    const headers: RequestInit["headers"] = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+    if (user) {
+      headers[DustUserIdHeader] = user.sId;
+    }
+
     const res = await this._fetchWithError(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         specification_hash: app.appHash,
         config: config,

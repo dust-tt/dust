@@ -8,6 +8,7 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import {
+  getCodeSyncDailyCronWorkflowId,
   getCodeSyncWorkflowId,
   getDiscussionGarbageCollectWorkflowId,
   getDiscussionSyncWorkflowId,
@@ -18,6 +19,7 @@ import {
   getReposSyncWorkflowId,
 } from "@connectors/connectors/github/temporal/utils";
 import {
+  githubCodeSyncDailyCronWorkflow,
   githubCodeSyncWorkflow,
   githubDiscussionGarbageCollectWorkflow,
   githubDiscussionSyncWorkflow,
@@ -135,7 +137,8 @@ export async function launchGithubCodeSyncWorkflow(
   connectorId: ModelId,
   repoLogin: string,
   repoName: string,
-  repoId: number
+  repoId: number,
+  cronSchedule?: string
 ) {
   const client = await getTemporalClient();
 
@@ -152,6 +155,38 @@ export async function launchGithubCodeSyncWorkflow(
     searchAttributes: {
       connectorId: [connectorId],
     },
+    cronSchedule,
+    signal: newWebhookSignal,
+    signalArgs: undefined,
+    memo: {
+      connectorId: connectorId,
+    },
+  });
+}
+
+export async function launchGithubCodeSyncDailyCronWorkflow(
+  connectorId: ModelId,
+  repoLogin: string,
+  repoName: string,
+  repoId: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await client.workflow.signalWithStart(githubCodeSyncDailyCronWorkflow, {
+    args: [connectorId, repoName, repoId, repoLogin],
+    taskQueue: QUEUE_NAME,
+    workflowId: getCodeSyncDailyCronWorkflowId(dataSourceConfig, repoId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    // every day
+    cronSchedule: "0 0 * * *",
     signal: newWebhookSignal,
     signalArgs: undefined,
     memo: {

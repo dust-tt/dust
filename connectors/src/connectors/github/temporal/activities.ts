@@ -22,6 +22,10 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
+import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
+import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -38,6 +42,7 @@ import {
   GithubIssue,
 } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -932,6 +937,7 @@ export async function githubCodeSyncActivity({
       updatedAt: codeSyncStartedAt,
       lastSeenAt: codeSyncStartedAt,
       sourceUrl: `https://github.com/${repoLogin}/${repoName}`,
+      forceDailySync: false,
     });
   }
 
@@ -1205,4 +1211,41 @@ export async function githubCodeSyncActivity({
       "Cleaned-up Github repository post sync"
     );
   }
+}
+
+// This activity simply signalWithStart the main githubCodeSyncWorkflow for a repo.
+// This is used for repos that are flagged with `forceDailyCodeSync`, which we use for
+// specific repos that do not use pull requests.
+export async function githubCodeSyncDailyCronActivity({
+  connectorId,
+  repoId,
+  repoLogin,
+  repoName,
+}: {
+  connectorId: ModelId;
+  repoLogin: string;
+  repoName: string;
+  repoId: number;
+}) {
+  const client = await getTemporalClient();
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await client.workflow.signalWithStart("githubCodeSyncWorkflow", {
+    args: [dataSourceConfig, connectorId, repoName, repoId, repoLogin],
+    taskQueue: QUEUE_NAME,
+    workflowId: getCodeSyncWorkflowId(dataSourceConfig, repoId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    signal: newWebhookSignal,
+    signalArgs: undefined,
+    memo: {
+      connectorId: connectorId,
+    },
+  });
 }

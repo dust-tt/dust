@@ -92,7 +92,7 @@ export async function runActionStreamed(
     logger
   );
 
-  const res = await api.runAppStreamed(action.app, config, inputs);
+  const res = await api.runAppStreamed(auth.user(), action.app, config, inputs);
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);
@@ -153,7 +153,7 @@ export async function runActionStreamed(
 
 /**
  * This function is intended to be used server-side to run an action without streaming.
- * @param owner WorkspaceType
+ * @param auth Authenticator
  * @param actionName string Action name as per DustProdActionRegistry
  * @param config DustAppConfigType
  * @param inputs Array<any> the action inputs
@@ -204,7 +204,7 @@ export async function runAction(
     logger
   );
 
-  const res = await api.runApp(action.app, config, inputs);
+  const res = await api.runApp(auth.user(), action.app, config, inputs);
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);

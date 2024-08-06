@@ -20,9 +20,7 @@ type Data = {
   size: string;
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
-  clickable?: boolean;
   onClick?: () => void;
-  showMore?: boolean;
   onMoreClick?: () => void;
 };
 

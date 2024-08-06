@@ -17,6 +17,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
+import assert from "assert";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -62,13 +63,16 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const CAPABILITIES_ACTION_CATEGORIES = [
-  "WEB_NAVIGATION",
-] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
-
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
   AssistantBuilderActionConfiguration["type"]
 >;
+
+// Actions in this list are not configurable via the "add tool" menu.
+// Instead, they should be handled in the `Capabilities` component.
+// Note: not all capabilities are actions (eg: visualization)
+const CAPABILITIES_ACTION_CATEGORIES = [
+  "WEB_NAVIGATION",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 function ActionModeSection({
   children,
@@ -122,6 +126,10 @@ export default function ActionsScreen({
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
 }) {
+  const configurableActions = builderState.actions.filter(
+    (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
+  );
+
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
   const updateAction = useCallback(
@@ -265,10 +273,9 @@ export default function ActionsScreen({
             )}
           </div>
           <div className="flex flex-row gap-2">
-            {builderState.actions.length > 0 && !isLegacyConfig && (
+            {configurableActions.length > 0 && !isLegacyConfig && (
               <div>
                 <AddAction
-                  owner={owner}
                   onAddAction={(action) => {
                     setAction({
                       type: action.noConfigurationRequired
@@ -308,14 +315,13 @@ export default function ActionsScreen({
         </div>
 
         <div className="flex h-full min-h-40 flex-col gap-4">
-          {builderState.actions.length === 0 && (
+          {configurableActions.length === 0 && (
             <div
               className={
                 "flex h-full items-center justify-center rounded-lg border border-structure-100 bg-structure-50"
               }
             >
               <AddAction
-                owner={owner}
                 onAddAction={(action) => {
                   setAction({
                     type: action.noConfigurationRequired ? "insert" : "pending",
@@ -326,7 +332,7 @@ export default function ActionsScreen({
             </div>
           )}
           <div className="mx-auto grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {builderState.actions.map((a) => (
+            {configurableActions.map((a) => (
               <div className="flex w-full" key={a.name}>
                 <ActionCard
                   action={a}
@@ -346,31 +352,13 @@ export default function ActionsScreen({
             ))}
           </div>
         </div>
-      </div>
-      <div className="flex flex-col gap-8">
-        {owner.flags.includes("visualization_action_flag") && (
-          <div className="flex flex-row gap-2">
-            <Checkbox
-              checked={builderState.visualizationEnabled}
-              onChange={() => {
-                setEdited(true);
-                setBuilderState((state) => ({
-                  ...state,
-                  visualizationEnabled: !state.visualizationEnabled,
-                }));
-              }}
-              variant="checkable"
-            />
-            <div>
-              <div className="flex w-full gap-1 font-medium text-element-900">
-                Visualization
-              </div>
-              <div className="w-full truncate text-base text-element-700">
-                The assistant can create graphs and charts
-              </div>
-            </div>
-          </div>
-        )}
+        <Capabilities
+          builderState={builderState}
+          setBuilderState={setBuilderState}
+          setEdited={setEdited}
+          setAction={setAction}
+          deleteAction={deleteAction}
+        />
       </div>
     </>
   );
@@ -426,7 +414,12 @@ function NewActionModal({
     (initialAction && initialAction?.name === newAction?.name) ||
     ((newAction?.name?.trim() ?? "").length > 0 &&
       !builderState.actions.some((a) => a.name === newAction?.name) &&
-      /^[a-z0-9_]+$/.test(newAction?.name ?? ""));
+      /^[a-z0-9_]+$/.test(newAction?.name ?? "") &&
+      // We reserve the name we use for capability actions, as these aren't
+      // configurable via the "add tool" menu.
+      !CAPABILITIES_ACTION_CATEGORIES.some(
+        (c) => getDefaultActionConfiguration(c)?.name === newAction?.name
+      ));
 
   const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
 
@@ -730,15 +723,11 @@ function ActionEditor({
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
 
-  const shouldDisplayAdvancedSettings = ![
-    "DUST_APP_RUN",
-    "WEB_NAVIGATION",
-  ].includes(action.type);
-  const shouldDisplayDescription = ![
-    "DUST_APP_RUN",
-    "PROCESS",
-    "WEB_NAVIGATION",
-  ].includes(action.type);
+  const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
+
+  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS"].includes(
+    action.type
+  );
 
   return (
     <>
@@ -916,17 +905,10 @@ function AdvancedSettings({
 }
 
 function AddAction({
-  owner,
   onAddAction,
 }: {
-  owner: WorkspaceType;
   onAddAction: (action: AssistantBuilderActionConfiguration) => void;
 }) {
-  const filteredCapabilities = CAPABILITIES_ACTION_CATEGORIES.filter((key) => {
-    const flag = ACTION_SPECIFICATIONS[key].flag;
-    return !flag || owner.flags.includes(flag);
-  });
-
   return (
     <DropdownMenu>
       <DropdownMenu.Button>
@@ -935,26 +917,6 @@ function AddAction({
       <DropdownMenu.Items origin="topLeft" width={320} overflow="visible">
         <DropdownMenu.SectionHeader label="DATA SOURCES" />
         {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
-        {filteredCapabilities.length > 0 && (
-          <DropdownMenu.SectionHeader label="CAPABILITIES" />
-        )}
-        {filteredCapabilities.map((key) => {
           const spec = ACTION_SPECIFICATIONS[key];
           const defaultAction = getDefaultActionConfiguration(key);
           if (!defaultAction) {
@@ -992,5 +954,99 @@ function AddAction({
         })}
       </DropdownMenu.Items>
     </DropdownMenu>
+  );
+}
+
+function Capabilities({
+  builderState,
+  setBuilderState,
+  setEdited,
+  setAction,
+  deleteAction,
+}: {
+  builderState: AssistantBuilderState;
+  setBuilderState: (
+    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  ) => void;
+  setEdited: (edited: boolean) => void;
+  setAction: (action: AssistantBuilderSetActionType) => void;
+  deleteAction: (name: string) => void;
+}) {
+  const Capability = ({
+    name,
+    description,
+    enabled,
+    onEnable,
+    onDisable,
+  }: {
+    name: string;
+    description: string;
+    enabled: boolean;
+    onEnable: () => void;
+    onDisable: () => void;
+  }) => {
+    return (
+      <div className="flex flex-row gap-2">
+        <Checkbox
+          checked={enabled}
+          onChange={enabled ? onDisable : onEnable}
+          variant="checkable"
+        />
+        <div>
+          <div className="flex text-base font-semibold text-element-900">
+            {name}
+          </div>
+          <div className="text-base text-element-700">{description}</div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
+      <Capability
+        name="Web Navigation"
+        description="can search and browse the web"
+        enabled={
+          !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
+        }
+        onEnable={() => {
+          setEdited(true);
+          const defaultWebNavigationAction =
+            getDefaultActionConfiguration("WEB_NAVIGATION");
+          assert(defaultWebNavigationAction);
+          setAction({
+            type: "insert",
+            action: defaultWebNavigationAction,
+          });
+        }}
+        onDisable={() => {
+          const defaultWebNavigationAction =
+            getDefaultActionConfiguration("WEB_NAVIGATION");
+          assert(defaultWebNavigationAction);
+          deleteAction(defaultWebNavigationAction.name);
+        }}
+      />
+
+      <Capability
+        name="Data Visualization"
+        description="can generate chats and graphs"
+        enabled={builderState.visualizationEnabled}
+        onEnable={() => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            visualizationEnabled: true,
+          }));
+        }}
+        onDisable={() => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            visualizationEnabled: false,
+          }));
+        }}
+      />
+    </div>
   );
 }

@@ -16,7 +16,12 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-interface DataTableProps<TData, TValue> {
+interface TBaseData {
+  onClick?: () => void;
+  onMoreClick?: () => void;
+}
+
+interface DataTableProps<TData extends TBaseData, TValue> {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
   className?: string;
@@ -25,7 +30,7 @@ interface DataTableProps<TData, TValue> {
   initialColumnOrder?: SortingState;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends TBaseData, TValue>({
   data,
   columns,
   className,

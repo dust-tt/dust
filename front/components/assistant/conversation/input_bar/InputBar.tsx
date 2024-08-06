@@ -152,7 +152,7 @@ export function AssistantInputBar({
     textAndMentions,
     resetEditorText
   ) => {
-    if (isEmpty) {
+    if (isEmpty || fileUploaderService.isProcessingFiles) {
       return;
     }
 

@@ -17,6 +17,7 @@ import {
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 interface StreamConversationToSlackParams {
@@ -71,12 +72,23 @@ export async function streamConversationToSlack(
       backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
     }
 
-    await slackClient.chat.update({
+    const response = await slackClient.chat.update({
       ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
       channel: slackChannelId,
       thread_ts: slackMessageTs,
       ts: mainMessage.ts as string,
     });
+
+    if (response.error) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          err: response.error,
+        },
+        "Failed to update Slack message."
+      );
+    }
   };
 
   const conversationUrl = makeDustAppUrl(
@@ -119,6 +131,15 @@ export async function streamConversationToSlack(
   let answer = botIdentity;
   const actions: AgentActionType[] = [];
   for await (const event of streamRes.value.eventStream) {
+    // This logger.info(Received event from Dust) is to be removed after august 30 2024.
+    logger.info(
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        type: event.type,
+      },
+      "Received event from Dust"
+    );
     switch (event.type) {
       case "user_message_error": {
         return new Err(

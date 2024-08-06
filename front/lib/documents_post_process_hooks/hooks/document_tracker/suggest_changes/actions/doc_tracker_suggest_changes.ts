@@ -29,11 +29,12 @@ export async function callDocTrackerSuggestChangesAction(
   config.SUGGEST_CHANGES.model_id = model.modelId;
 
   const res = await callAction({
-    owner,
-    input: { source_document: sourceDocument, target_document: targetDocument },
     action,
     config,
+    input: { source_document: sourceDocument, target_document: targetDocument },
+    owner,
     responseValueSchema: DocTrackerSuggestChangesActionValueSchema,
+    user: null,
   });
 
   if (res.isErr()) {

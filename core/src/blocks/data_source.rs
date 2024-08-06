@@ -76,13 +76,19 @@ impl DataSource {
         &self,
         env: &Env,
         workspace_id: String,
-        data_source_id: String,
+        data_source_or_data_source_view_id: String,
         top_k: usize,
         filter: Option<SearchFilter>,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
-        let (data_source_project, view_filter) =
-            get_data_source_project_and_view_filter(&workspace_id, &data_source_id, env).await?;
+        let (data_source_project, view_filter, data_source_id) =
+            get_data_source_project_and_view_filter(
+                &workspace_id,
+                &data_source_or_data_source_view_id,
+                env,
+                "data_source",
+            )
+            .await?;
 
         let ds = match env
             .store

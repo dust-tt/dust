@@ -279,19 +279,19 @@ export class Authenticator {
   }
 
   /**
-   * Get an Authenticator from an API key for a given workspace. Why? because by API you may want to
-   * access a workspace that is not the API key's workspace (eg include running another's workspace
-   * app (dust-apps))
+   * Returns two Authenticators, one for the workspace associated with the key and one for the
+   * workspace provided as an argument.
+   *
    * @param key Key the API key
-   * @param wId string the target workspaceId
-   * @returns an Authenticator for wId and the key's own workspaceId
+   * @param wId the target workspaceId
+   * @returns Promise<{ workspaceAuth: Authenticator, keyAuth: Authenticator }>
    */
   static async fromKey(
     key: KeyResource,
     wId: string
   ): Promise<{
-    auth: Authenticator;
-    keyWorkspace: LightWorkspaceType;
+    workspaceAuth: Authenticator;
+    keyAuth: Authenticator;
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
@@ -310,46 +310,67 @@ export class Authenticator {
       })(),
     ]);
 
-    let role = "none" as RoleType;
     if (!keyWorkspace) {
       throw new Error("Key workspace not found");
     }
+
+    let role = "none" as RoleType;
     if (workspace) {
       if (keyWorkspace.id === workspace.id) {
         role = "builder";
       }
     }
 
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
+    const getSubscriptionForWorkspace = (workspace: Workspace) =>
+      subscriptionForWorkspace(renderLightWorkspaceType({ workspace }));
+
+    const getFeatureFlags = async (workspace: Workspace) =>
+      (await FeatureFlag.findAll({ where: { workspaceId: workspace.id } })).map(
+        (flag) => flag.name
+      );
+
+    let keyGroups: GroupResource[] = [];
+    let keyFlags: WhitelistableFeature[] = [];
+    let workspaceFlags: WhitelistableFeature[] = [];
+
+    let workspaceSubscription: SubscriptionType | null = null;
+    let keySubscription: SubscriptionType | null = null;
 
     if (workspace) {
-      [groups, subscription, flags] = await Promise.all([
+      [
+        keyGroups,
+        keySubscription,
+        keyFlags,
+        workspaceSubscription,
+        workspaceFlags,
+      ] = await Promise.all([
+        // Key related attributes.
         GroupResource.listWorkspaceGroupsFromKey(key),
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-        (async () => {
-          return (
-            await FeatureFlag.findAll({
-              where: {
-                workspaceId: workspace?.id,
-              },
-            })
-          ).map((flag) => flag.name);
-        })(),
+        getSubscriptionForWorkspace(keyWorkspace),
+        getFeatureFlags(keyWorkspace),
+        // Workspace related attributes.
+        getSubscriptionForWorkspace(workspace),
+        getFeatureFlags(workspace),
       ]);
     }
 
     return {
-      auth: new Authenticator({
-        workspace,
-        role,
-        groups,
-        subscription,
-        flags,
+      workspaceAuth: new Authenticator({
+        flags: workspaceFlags,
+        groups: [],
         key: key.toAuthJSON(),
+        role,
+        subscription: workspaceSubscription,
+        workspace,
       }),
-      keyWorkspace: renderLightWorkspaceType({ workspace: keyWorkspace }),
+      keyAuth: new Authenticator({
+        flags: keyFlags,
+        groups: keyGroups,
+        key: key.toAuthJSON(),
+        role: "builder",
+        subscription: keySubscription,
+        workspace: keyWorkspace,
+      }),
     };
   }
 
@@ -449,6 +470,7 @@ export class Authenticator {
    * @param param1
    * @returns
    */
+  // TODO(2024-08-05 flav) Use user-id instead of email to avoid ambiguity.
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
     { userEmail }: { userEmail: string }
@@ -462,31 +484,46 @@ export class Authenticator {
       throw new Error("Workspace not found.");
     }
 
-    const user = await UserResource.fetchByEmail(userEmail);
-    // If the user does not exist (e.g., whitelisted email addresses),
+    // The same email address might be linked to multiple users.
+    const users = await UserResource.listByEmail(userEmail);
+    // If no user exist (e.g., whitelisted email addresses),
     // simply ignore and return null.
+    if (users.length === 0) {
+      return null;
+    }
+
+    // Verify that one of the user has an active membership in the specified workspace.
+    const activeMemberships = await MembershipResource.getActiveMemberships({
+      users,
+      workspace: owner,
+    });
+    // If none of the user has an active membership in the workspace,
+    // simply ignore and return null.
+    if (activeMemberships.length === 0) {
+      return null;
+    }
+
+    // Take the oldest active membership.
+    const [activeMembership] = activeMemberships.sort(
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    );
+    // Find the user associated with the active membership.
+    const user = users.find((u) => u.id === activeMembership.userId);
     if (!user) {
       return null;
     }
 
-    // Verify that the user has an active membership in the specified workspace.
-    const activeMembership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user,
-        workspace: owner,
-      });
-    // If the user does not have an active membership in the workspace,
-    // simply ignore and return null.
-    if (!activeMembership) {
-      return null;
-    }
+    const groups = await GroupResource.fetchActiveGroupsOfUserInWorkspace({
+      user,
+      workspace: renderLightWorkspaceType({ workspace: owner }),
+    });
 
     return new Authenticator({
       flags: auth._flags,
       key: auth._key,
       // We limit scope to a user role.
       role: "user",
-      groups: auth._groups,
+      groups,
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,

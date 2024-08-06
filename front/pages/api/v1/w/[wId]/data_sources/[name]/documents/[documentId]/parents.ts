@@ -76,13 +76,13 @@ async function handler(
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
-  const { auth } = await Authenticator.fromKey(
+  const { workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
-  if (!owner || !auth.isBuilder()) {
+  const owner = workspaceAuth.workspace();
+  if (!owner || !workspaceAuth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -92,7 +92,10 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, req.query.name as string);
+  const dataSource = await getDataSource(
+    workspaceAuth,
+    req.query.name as string
+  );
 
   if (!dataSource) {
     return apiError(req, res, {

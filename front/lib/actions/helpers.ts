@@ -1,4 +1,9 @@
-import type { Action, DustAPIResponse, WorkspaceType } from "@dust-tt/types";
+import type {
+  Action,
+  DustAPIResponse,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { DustAppConfigType } from "@dust-tt/types";
 import { cloneBaseConfig } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
@@ -17,6 +22,7 @@ import logger from "@app/logger/logger";
 
 interface CallActionParams<V extends t.Mixed> {
   owner: WorkspaceType;
+  user: UserType | null;
   input: { [key: string]: unknown };
   action: Action;
   config: DustAppConfigType;
@@ -41,6 +47,7 @@ interface CallActionParams<V extends t.Mixed> {
  */
 export async function callAction<V extends t.Mixed>({
   owner,
+  user,
   input,
   action,
   config,
@@ -58,7 +65,7 @@ export async function callAction<V extends t.Mixed>({
     logger
   );
 
-  const r = await prodAPI.runApp(app, config, [input]);
+  const r = await prodAPI.runApp(user, app, config, [input]);
 
   if (r.isErr()) {
     return r;
