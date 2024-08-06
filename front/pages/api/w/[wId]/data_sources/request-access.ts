@@ -1,3 +1,6 @@
+import { isLeft } from "fp-ts/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 import sanitizeHtml from "sanitize-html";
 
@@ -5,6 +8,17 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { apiError } from "@app/logger/withlogging";
+
+export const PostRequestAccessBodySchema = t.type({
+  email: t.string,
+  emailMessage: t.string,
+  emailRequester: t.string,
+  dataSourceName: t.string
+})
+
+export type PostRequestAccessBody = t.TypeOf<
+  typeof PostRequestAccessBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
@@ -36,21 +50,26 @@ async function handler(
     });
   }
 
-  const { email, emailMessage, emailRequester, dataSourceName } = req.body;
-  const html = `<p>${emailRequester} has sent you a request regarding the connection ${dataSourceName}</p>
-    <p>Message:</p>
-    ${emailMessage}`;
+  const bodyValidation = PostRequestAccessBodySchema.decode(
+    req.body
+  );
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
-  if (!email || !emailMessage || !emailRequester || !dataSourceName) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
-        type: "unexpected_error_format",
-        message:
-          "Missing required fields: email, emailContent, dataSourceName or emailRequester",
+        type: "invalid_request_error",
+        message: `Invalid request body: ${pathError}`,
       },
     });
   }
+
+  const { email, emailMessage, emailRequester, dataSourceName } = bodyValidation.right;
+
+  const html = `<p>${emailRequester} has sent you a request regarding the connection ${dataSourceName}</p>
+    <p>Message:</p>
+    ${emailMessage}`;
 
   try {
     const message = {

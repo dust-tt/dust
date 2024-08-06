@@ -6,6 +6,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import logger from "@app/logger/logger";
 import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
+import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request-access";
 
 type RequestDataSourceProps = {
   isOpen: boolean;
@@ -25,7 +26,7 @@ async function sendRequestDataSourceEmail({
   email: string;
   emailMessage: string;
   dataSourceName: string;
-  emailRequester?: string;
+  emailRequester: string;
   owner: WorkspaceType;
 }) {
   const res = await fetch(`/api/w/${owner.sId}/data_sources/request-access`, {
@@ -38,7 +39,7 @@ async function sendRequestDataSourceEmail({
       emailMessage,
       dataSourceName,
       emailRequester,
-    }),
+    } satisfies PostRequestAccessBody),
   });
 
   if (!res.ok) {
