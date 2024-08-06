@@ -1,9 +1,9 @@
 import { Button, DropdownMenu, Modal, TextArea } from "@dust-tt/sparkle";
+import type { WorkspaceType } from "@dust-tt/types";
 import React, { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { sendEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
 import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
@@ -12,31 +12,41 @@ type RequestDataSourceProps = {
   onClose: () => void;
   dataSourceIntegrations: DataSourceIntegration[];
   currentUserEmail: string;
+  owner: WorkspaceType;
 };
 
 async function sendRequestDataSourceEmail({
   email,
-  emailContent,
+  emailMessage,
   dataSourceName,
-  ccEmail,
+  emailRequester,
+  owner,
 }: {
   email: string;
-  emailContent: string;
+  emailMessage: string;
   dataSourceName: string;
-  ccEmail?: string;
+  emailRequester?: string;
+  owner: WorkspaceType;
 }) {
-  const mail = {
-    from: {
-      name: "Dust team",
-      email: "team@dust.tt",
+  const res = await fetch(`/api/w/${owner.sId}/data_sources/request-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
     },
-    subject: `[Dust] Request Data source - ${dataSourceName}`,
-    html: `<p>${ccEmail} has sent you a request regarding the connection ${dataSourceName}</p>
-    <p>Message:</p>
-    <p>${emailContent}</p>
-    <p>Email to: ${email}</p>`,
-  };
-  return sendEmail("belvezejules@gmail.com", mail);
+    body: JSON.stringify({
+      email,
+      emailMessage,
+      dataSourceName,
+      emailRequester,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || "Failed to send email");
+  }
+
+  return res.json();
 }
 
 export function RequestDataSourcesModal({
@@ -44,6 +54,7 @@ export function RequestDataSourcesModal({
   onClose,
   dataSourceIntegrations,
   currentUserEmail,
+  owner,
 }: RequestDataSourceProps) {
   const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
     useState<DataSourceIntegration | null>(null);
@@ -154,9 +165,10 @@ export function RequestDataSourcesModal({
                   try {
                     await sendRequestDataSourceEmail({
                       email: userEmail,
-                      emailContent: message,
+                      emailMessage: message,
                       dataSourceName: selectedDataSourceIntegration.name,
-                      ccEmail: currentUserEmail,
+                      emailRequester: currentUserEmail,
+                      owner,
                     });
                   } catch (e) {
                     logger.error(
