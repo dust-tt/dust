@@ -116,7 +116,7 @@ export async function microsoftTables(
         },
         {
           nodeType: "file",
-          mimeType: "application/vnd.ms-excel",
+          mimeType: ["application/vnd.ms-excel", "text/csv"],
           connectorId: connector.id,
         },
       ],
