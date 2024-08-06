@@ -24,7 +24,7 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
 
 export const PROVIDERS_WITH_SETTINGS: ConnectorProvider[] = ["webcrawler"];
 
-interface EditedByUser {
+export interface EditedByUser {
   editedAt: number | null;
   fullName: string | null;
   imageUrl: string | null;
