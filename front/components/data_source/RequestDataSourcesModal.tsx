@@ -17,6 +17,7 @@ type RequestDataSourceProps = {
 async function sendRequestDataSourceEmail(
   email: string,
   emailContent: string,
+  dataSourceName: string,
   ccEmail?: string
 ) {
   const mail = {
@@ -24,14 +25,10 @@ async function sendRequestDataSourceEmail(
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Request Data source`,
+    subject: `[Dust] Request Data source - ${dataSourceName}`,
     text: emailContent,
   };
-  if (ccEmail) {
-    return sendEmail(email, mail, [ccEmail]);
-  } else {
-    return sendEmail(email, mail);
-  }
+  return sendEmail(email, mail, ccEmail);
 }
 
 export function RequestDataSourcesModal({
@@ -51,7 +48,11 @@ export function RequestDataSourcesModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        onClose();
+        setMessage("");
+        setSelectedDataSourceIntegration(null);
+      }}
       hasChanged={false}
       variant="side-md"
       title="Requesting Data sources"
@@ -134,7 +135,7 @@ export function RequestDataSourcesModal({
               onClick={async () => {
                 const userEmail =
                   selectedDataSourceIntegration?.editedByUser?.email;
-                if (!userEmail) {
+                if (!userEmail || !selectedDataSourceIntegration) {
                   sendNotification({
                     type: "error",
                     title: "Error sending email",
@@ -146,7 +147,8 @@ export function RequestDataSourcesModal({
                     await sendRequestDataSourceEmail(
                       userEmail,
                       message,
-                      currentUserEmail
+                      currentUserEmail,
+                      selectedDataSourceIntegration.name
                     );
                   } catch (e) {
                     logger.error(

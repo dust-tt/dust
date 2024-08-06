@@ -10,8 +10,12 @@ const { SENDGRID_API_KEY = "" } = process.env;
 
 sgMail.setApiKey(SENDGRID_API_KEY);
 
-export async function sendEmail(email: string, message: any, cc?: string[]) {
-  const msg = { ...message, to: email, cc };
+export async function sendEmail(email: string, message: any, cc?: string) {
+  const msg = { ...message, to: email };
+
+  if (cc) {
+    msg.cc = cc;
+  }
   try {
     await sgMail.send(msg);
     logger.info({ email, cc, subject: message.subject }, "Sending email");
