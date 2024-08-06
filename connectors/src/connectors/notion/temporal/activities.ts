@@ -1820,6 +1820,14 @@ export async function renderAndUpsertPageFromCache({
           cellSeparator: ",",
           rowBoundary: "",
         });
+
+        const parents = await getParents(
+          connector.id,
+          parentDb.notionDatabaseId,
+          new Set<string>(),
+          runTimestamp.toString()
+        );
+
         await upsertTableFromCsv({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
           tableId,
@@ -1829,6 +1837,7 @@ export async function renderAndUpsertPageFromCache({
           loggerArgs,
           // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
           truncate: false,
+          parents,
         });
       } else {
         localLogger.info(
@@ -2472,6 +2481,13 @@ export async function upsertDatabaseStructuredDataFromCache({
 
   const upsertAt = new Date();
 
+  const parents = await getParents(
+    connector.id,
+    databaseId,
+    new Set<string>(),
+    runTimestamp.toString()
+  );
+
   localLogger.info("Upserting Notion Database as Table.");
   await upsertTableFromCsv({
     dataSourceConfig,
@@ -2482,6 +2498,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     loggerArgs,
     // We overwrite the whole table since we just fetched all child pages.
     truncate: true,
+    parents,
   });
   // Same as above, but without the `dustId` column
   const csvForDocument = await renderDatabaseFromPages({
@@ -2502,12 +2519,6 @@ export async function upsertDatabaseStructuredDataFromCache({
       "Skipping document upsert as body is too long."
     );
   } else {
-    const parents = await getParents(
-      connector.id,
-      databaseId,
-      new Set<string>(),
-      runTimestamp.toString()
-    );
     localLogger.info("Upserting Notion Database as Document.");
     const prefix = `${databaseName}\n${csvHeader}`;
     const prefixSection = await renderPrefixSection({

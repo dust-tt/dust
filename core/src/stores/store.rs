@@ -207,6 +207,13 @@ pub trait Store {
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
+    async fn update_table_parents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+        parents: &Vec<String>,
+    ) -> Result<()>;
     async fn invalidate_table_schema(
         &self,
         project: &Project,

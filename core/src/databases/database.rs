@@ -401,6 +401,22 @@ impl Table {
             .await
     }
 
+    pub async fn update_parents(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        parents: Vec<String>,
+    ) -> Result<()> {
+        store
+            .update_table_parents(
+                &self.project,
+                &self.data_source_id,
+                &&self.table_id,
+                &parents,
+            )
+            .await?;
+        Ok(())
+    }
+
     async fn compute_schema(
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,

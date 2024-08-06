@@ -50,6 +50,7 @@ export async function handleCsvFile({
   localLogger,
   dataSourceConfig,
   connectorId,
+  parents,
 }: {
   data: ArrayBuffer;
   file: GoogleDriveObjectType | DriveItem;
@@ -57,6 +58,7 @@ export async function handleCsvFile({
   localLogger: Logger;
   dataSourceConfig: DataSourceConfig;
   connectorId: ModelId;
+  parents: string[];
 }): Promise<Result<null, Error>> {
   if (data.byteLength > 4 * maxDocumentLen) {
     localLogger.info({}, "File too big to be chunked. Skipping");
@@ -84,6 +86,7 @@ export async function handleCsvFile({
         fileName: tableName,
       },
       truncate: true,
+      parents,
     });
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");

@@ -1,5 +1,6 @@
 import type {
   CoreAPIDataSourceDocumentSection,
+  CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import {
@@ -9,7 +10,7 @@ import {
   sectionFullText,
 } from "@dust-tt/types";
 import { MAX_CHUNK_SIZE } from "@dust-tt/types";
-import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
@@ -249,19 +250,58 @@ export const updateDocumentParentsField = withRetries(
 );
 
 async function _updateDocumentParentsField({
-  dataSourceConfig,
   documentId,
-  parents,
-  loggerArgs = {},
+  ...params
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
   parents: string[];
   loggerArgs?: Record<string, string | number>;
 }) {
-  const localLogger = logger.child({ ...loggerArgs, documentId });
+  return _updateDocumentOrTableParentsField({
+    ...params,
+    tableOrDocument: "document",
+    id: documentId,
+  });
+}
+
+export const updateTableParentsField = withRetries(_updateTableParentsField);
+
+async function _updateTableParentsField({
+  tableId,
+  ...params
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  parents: string[];
+  loggerArgs?: Record<string, string | number>;
+}) {
+  return _updateDocumentOrTableParentsField({
+    ...params,
+    tableOrDocument: "table",
+    id: tableId,
+  });
+}
+
+async function _updateDocumentOrTableParentsField({
+  dataSourceConfig,
+  id,
+  parents,
+  loggerArgs = {},
+  tableOrDocument,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  id: string;
+  parents: string[];
+  loggerArgs?: Record<string, string | number>;
+  tableOrDocument: "document" | "table";
+}) {
+  const localLogger =
+    tableOrDocument === "document"
+      ? logger.child({ ...loggerArgs, documentId: id })
+      : logger.child({ ...loggerArgs, tableId: id });
   const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}/parents`;
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -278,7 +318,10 @@ async function _updateDocumentParentsField({
       dustRequestConfig
     );
   } catch (e) {
-    localLogger.error({ error: e }, "Error updating document parents field.");
+    localLogger.error(
+      { error: e },
+      `Error updating ${tableOrDocument} parents field.`
+    );
     throw e;
   }
 
@@ -290,10 +333,10 @@ async function _updateDocumentParentsField({
         status: dustRequestResult.status,
         data: dustRequestResult.data,
       },
-      "Error updating document parents field."
+      `Error updating ${tableOrDocument} parents field.`
     );
     throw new Error(
-      `Error updating document parents field: ${dustRequestResult}`
+      `Error updating ${tableOrDocument} parents field: ${dustRequestResult}`
     );
   }
 }
@@ -513,6 +556,7 @@ export async function upsertTableFromCsv({
   tableCsv,
   loggerArgs,
   truncate,
+  parents,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -521,6 +565,7 @@ export async function upsertTableFromCsv({
   tableCsv: string;
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
+  parents: string[];
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -528,7 +573,7 @@ export async function upsertTableFromCsv({
     `workspace_id:${dataSourceConfig.workspaceId}`,
   ];
 
-  localLogger.info("Attempting to upload structured data to Dust.");
+  localLogger.info("Attempting to upload table to Dust.");
   statsDClient.increment(
     "data_source_structured_data_upserts_attempt.count",
     1,
@@ -541,6 +586,7 @@ export async function upsertTableFromCsv({
   const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/csv`;
   const dustRequestPayload = {
     name: tableName,
+    parents,
     description: tableDescription,
     csv: tableCsv,
     tableId,
@@ -586,7 +632,7 @@ export async function upsertTableFromCsv({
             csv: dustRequestPayload.csv.substring(0, 100),
           },
         },
-        "Axios error uploading structured data to Dust."
+        "Axios error uploading table to Dust."
       );
     } else if (e instanceof Error) {
       localLogger.error(
@@ -597,13 +643,13 @@ export async function upsertTableFromCsv({
             csv: dustRequestPayload.csv.substring(0, 100),
           },
         },
-        "Error uploading structured data to Dust."
+        "Error uploading table to Dust."
       );
     } else {
-      localLogger.error("Unknown error uploading structured data to Dust.");
+      localLogger.error("Unknown error uploading table to Dust.");
     }
 
-    throw new Error("Error uploading structured data to Dust.");
+    throw new Error("Error uploading table to Dust.");
   }
 
   const elapsed = new Date().getTime() - now.getTime();
@@ -619,7 +665,7 @@ export async function upsertTableFromCsv({
       elapsed,
       statsDTags
     );
-    localLogger.info("Successfully uploaded structured data to Dust.");
+    localLogger.info("Successfully uploaded table to Dust.");
   } else {
     statsDClient.increment(
       "data_source_structured_data_upserts_error.count",
@@ -636,7 +682,7 @@ export async function upsertTableFromCsv({
         status: dustRequestResult.status,
         elapsed,
       },
-      "Error uploading structured data to Dust."
+      "Error uploading table to Dust."
     );
     throw new Error(
       `Error uploading to dust, got ${
@@ -667,7 +713,7 @@ export async function deleteTableRow({
     `workspace_id:${dataSourceConfig.workspaceId}`,
   ];
 
-  localLogger.info("Attempting to delete structured data from Dust.");
+  localLogger.info("Attempting to delete table from Dust.");
   statsDClient.increment(
     "data_source_structured_data_deletes_attempt.count",
     1,
@@ -703,17 +749,14 @@ export async function deleteTableRow({
       elapsed,
       statsDTags
     );
-    localLogger.error(
-      { error: e },
-      "Error deleting structured data from Dust."
-    );
+    localLogger.error({ error: e }, "Error deleting table from Dust.");
     throw e;
   }
 
   const elapsed = new Date().getTime() - now.getTime();
 
   if (dustRequestResult.status === 404) {
-    localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+    localLogger.info("Table doesn't exist on Dust. Ignoring.");
     return;
   }
 
@@ -724,7 +767,7 @@ export async function deleteTableRow({
       statsDTags
     );
 
-    localLogger.info("Successfully deleted structured data from Dust.");
+    localLogger.info("Successfully deleted table from Dust.");
   } else {
     statsDClient.increment(
       "data_source_structured_data_deletes_error.count",
@@ -741,10 +784,45 @@ export async function deleteTableRow({
         status: dustRequestResult.status,
         elapsed,
       },
-      "Error deleting structured data from Dust."
+      "Error deleting table from Dust."
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
+}
+
+export async function getTable({
+  dataSourceConfig,
+  tableId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+}): Promise<CoreAPITable | undefined> {
+  const localLogger = logger.child({
+    tableId,
+  });
+
+  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
+  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    const axiosError = e as AxiosError;
+    if (axiosError?.response?.status === 404) {
+      localLogger.info("Table doesn't exist on Dust. Ignoring.");
+      return;
+    }
+    localLogger.error({ error: e }, "Error getting table from Dust.");
+    throw e;
+  }
+
+  return dustRequestResult.data.table;
 }
 
 export async function deleteTable({
@@ -765,7 +843,7 @@ export async function deleteTable({
     `workspace_id:${dataSourceConfig.workspaceId}`,
   ];
 
-  localLogger.info("Attempting to delete structured data from Dust.");
+  localLogger.info("Attempting to delete table from Dust.");
   statsDClient.increment(
     "data_source_structured_data_deletes_attempt.count",
     1,
@@ -801,17 +879,14 @@ export async function deleteTable({
       elapsed,
       statsDTags
     );
-    localLogger.error(
-      { error: e },
-      "Error deleting structured data from Dust."
-    );
+    localLogger.error({ error: e }, "Error deleting table from Dust.");
     throw e;
   }
 
   const elapsed = new Date().getTime() - now.getTime();
 
   if (dustRequestResult.status === 404) {
-    localLogger.info("Structured data doesn't exist on Dust. Ignoring.");
+    localLogger.info("Table doesn't exist on Dust. Ignoring.");
     return;
   }
 
@@ -822,7 +897,7 @@ export async function deleteTable({
       statsDTags
     );
 
-    localLogger.info("Successfully deleted structured data from Dust.");
+    localLogger.info("Successfully deleted table from Dust.");
   } else {
     statsDClient.increment(
       "data_source_structured_data_deletes_error.count",
@@ -839,7 +914,7 @@ export async function deleteTable({
         status: dustRequestResult.status,
         elapsed,
       },
-      "Error deleting structured data from Dust."
+      "Error deleting table from Dust."
     );
     throw new Error(`Error deleting from dust: ${dustRequestResult}`);
   }
