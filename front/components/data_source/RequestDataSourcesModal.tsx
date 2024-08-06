@@ -15,7 +15,7 @@ type RequestDataSourceProps = {
 async function sendRequestDataSourceEmail(
   email: string,
   emailContent: string,
-  ccEmail: string
+  ccEmail?: string
 ) {
   const mail = {
     from: {
@@ -25,7 +25,11 @@ async function sendRequestDataSourceEmail(
     subject: `[Dust] Request Data source`,
     text: emailContent,
   };
-  await sendEmail(email, mail, [ccEmail]);
+  if (ccEmail) {
+    await sendEmail(email, mail, [ccEmail]);
+  } else {
+    await sendEmail(email, mail);
+  }
 }
 
 export function RequestDataSourcesModal({
@@ -128,7 +132,8 @@ export function RequestDataSourcesModal({
                 await sendRequestDataSourceEmail(
                   currentUserEmail,
                   message,
-                  selectedDataSourceIntegration?.editedByUser?.email
+                  selectedDataSourceIntegration?.editedByUser?.email ??
+                    undefined
                 );
                 onClose();
               }}
