@@ -13,8 +13,8 @@ export const PostRequestAccessBodySchema = t.type({
   email: t.string,
   emailMessage: t.string,
   emailRequester: t.string,
-  dataSourceName: t.string
-})
+  dataSourceName: t.string,
+});
 
 export type PostRequestAccessBody = t.TypeOf<
   typeof PostRequestAccessBodySchema
@@ -50,9 +50,7 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostRequestAccessBodySchema.decode(
-    req.body
-  );
+  const bodyValidation = PostRequestAccessBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
@@ -65,7 +63,8 @@ async function handler(
     });
   }
 
-  const { email, emailMessage, emailRequester, dataSourceName } = bodyValidation.right;
+  const { email, emailMessage, emailRequester, dataSourceName } =
+    bodyValidation.right;
 
   const html = `<p>${emailRequester} has sent you a request regarding the connection ${dataSourceName}</p>
     <p>Message:</p>

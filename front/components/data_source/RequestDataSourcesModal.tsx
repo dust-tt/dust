@@ -5,8 +5,8 @@ import React, { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import logger from "@app/logger/logger";
-import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request-access";
+import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 type RequestDataSourceProps = {
   isOpen: boolean;
