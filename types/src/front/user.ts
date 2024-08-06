@@ -44,10 +44,6 @@ export type LightWorkspaceType = {
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
 };
 
-export type LightWorkpaceWithSubscriptionType = LightWorkspaceType & {
-  subscription: SubscriptionType | null;
-};
-
 export type WorkspaceType = LightWorkspaceType & {
   flags: WhitelistableFeature[];
   ssoEnforced?: boolean;

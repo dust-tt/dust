@@ -1,25 +1,35 @@
 import type {
-  LightWorkpaceWithSubscriptionType,
+  LightWorkspaceType,
+  MembershipRoleType,
   SubscriptionType,
   WithAPIErrorResponse,
+  WorkspaceDomain,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import type { FindOptions, WhereOptions } from "sequelize";
+import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
+import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { isEmailValid } from "@app/lib/utils";
+import { isADomain, isEmailValid } from "@app/lib/utils";
 import { apiError } from "@app/logger/withlogging";
 
+export type PokeWorkspaceType = LightWorkspaceType & {
+  subscription: SubscriptionType | null;
+  adminEmail: string | null;
+  membersCount: number;
+  workspaceDomain: WorkspaceDomain | null;
+};
+
 export type GetPokeWorkspacesResponseBody = {
-  workspaces: LightWorkpaceWithSubscriptionType[];
+  workspaces: PokeWorkspaceType[];
 };
 
 async function handler(
@@ -41,11 +51,13 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let upgraded: boolean | undefined;
-      const search = req.query.search
+      let listUpgraded: boolean | undefined;
+      const searchTerm = req.query.search
         ? (req.query.search as string).trim()
         : undefined;
-      let limit: number | undefined;
+      let limit: number = 0;
+      let originalLimit: number = 0;
+      const order: Order = [["createdAt", "DESC"]];
 
       if (req.query.upgraded !== undefined) {
         if (
@@ -62,10 +74,10 @@ async function handler(
           });
         }
 
-        upgraded = req.query.upgraded === "true";
+        listUpgraded = req.query.upgraded === "true";
       }
 
-      if (search !== undefined && typeof search !== "string") {
+      if (searchTerm !== undefined && typeof searchTerm !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -91,12 +103,13 @@ async function handler(
           });
         }
 
-        limit = parseInt(req.query.limit, 10);
+        originalLimit = parseInt(req.query.limit, 10);
+        limit = originalLimit;
       }
 
       const conditions: WhereOptions<Workspace>[] = [];
 
-      if (upgraded !== undefined) {
+      if (listUpgraded !== undefined) {
         const subscriptions = await Subscription.findAll({
           where: {
             status: "active",
@@ -113,7 +126,7 @@ async function handler(
           ],
         });
         const workspaceIds = subscriptions.map((s) => s.workspaceId);
-        if (upgraded) {
+        if (listUpgraded) {
           conditions.push({
             id: {
               [Op.in]: workspaceIds,
@@ -128,11 +141,11 @@ async function handler(
         }
       }
 
-      if (search) {
+      if (searchTerm) {
         let isSearchByEmail = false;
-        if (isEmailValid(search)) {
+        if (isEmailValid(searchTerm)) {
           // We can have 2 users with the same email if a Google user and a Github user have the same email.
-          const users = await UserResource.listByEmail(search);
+          const users = await UserResource.listByEmail(searchTerm);
           if (users.length) {
             const memberships = await MembershipResource.getLatestMemberships({
               users,
@@ -148,22 +161,40 @@ async function handler(
           }
         }
 
-        if (!isSearchByEmail) {
+        let isSearchByDomain = false;
+        if (isADomain(searchTerm)) {
+          const workspaceDomain = await WorkspaceHasDomain.findOne({
+            where: { domain: searchTerm },
+          });
+
+          if (workspaceDomain) {
+            isSearchByDomain = true;
+            conditions.push({
+              id: workspaceDomain.workspaceId,
+            });
+          }
+        }
+
+        if (!isSearchByEmail && !isSearchByDomain) {
           conditions.push({
             [Op.or]: [
               {
                 sId: {
-                  [Op.iLike]: `${search}%`,
+                  [Op.iLike]: `${searchTerm}%`,
                 },
               },
               {
                 name: {
-                  [Op.iLike]: `${search}%`,
+                  [Op.iLike]: `${searchTerm}%`,
                 },
               },
             ],
           });
         }
+
+        // In case of search, we increase the limit for the sql query to 100 because we'll sort manually (until a better solution is found).
+        // Note from seb: I tried ordering directly in the query but I stumbled into sequelize behaviors that I don't understand.
+        limit = 100;
       }
 
       const where: FindOptions<Workspace>["where"] = conditions.length
@@ -189,11 +220,44 @@ async function handler(
             ],
           },
         ],
+        order: order,
+        logging: console.log,
       });
 
+      // if limit is above originalLimit, sort manually and then slice
+      if (limit > originalLimit) {
+        // Check out the plan code prefix and sort by arbitrary order
+        const prefixesOrder = [
+          "ENT_",
+          "PRO_",
+          "FREE_UPGRADED_",
+          "FREE_FRIENDSAMILY",
+          "FREE_",
+        ];
+
+        workspaces.sort((a, b) => {
+          const aPrefix = prefixesOrder.findIndex((p) =>
+            a.subscriptions?.[0].plan.code.startsWith(p)
+          );
+          const bPrefix = prefixesOrder.findIndex((p) =>
+            b.subscriptions?.[0].plan.code.startsWith(p)
+          );
+
+          if (aPrefix !== bPrefix) {
+            return aPrefix - bPrefix;
+          }
+
+          return a.subscriptions?.[0].plan.code.localeCompare(
+            b.subscriptions?.[0].plan.code
+          );
+        });
+
+        workspaces.splice(originalLimit);
+      }
+
       return res.status(200).json({
-        workspaces: workspaces
-          .map((ws): LightWorkpaceWithSubscriptionType => {
+        workspaces: await Promise.all(
+          workspaces.map(async (ws): Promise<PokeWorkspaceType> => {
             let subscription: SubscriptionType | null = null;
             if (ws.subscriptions && ws.subscriptions.length > 0) {
               subscription = renderSubscriptionFromModels({
@@ -202,7 +266,7 @@ async function handler(
               });
             }
 
-            return {
+            const lightWorkspace: LightWorkspaceType = {
               id: ws.id,
               sId: ws.sId,
               name: ws.name,
@@ -210,23 +274,39 @@ async function handler(
               segmentation: ws.segmentation,
               whiteListedProviders: ws.whiteListedProviders,
               defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
+            };
+
+            const memberships = await MembershipResource.getActiveMemberships({
+              workspace: lightWorkspace,
+              roles: ["admin" as MembershipRoleType],
+            });
+
+            const firstAdmin = memberships.length
+              ? await UserResource.fetchByModelId(
+                  memberships.sort(
+                    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+                  )[0].userId
+                )
+              : null;
+
+            const membersCount =
+              await MembershipResource.getMembersCountForWorkspace({
+                workspace: lightWorkspace,
+                activeOnly: true,
+              });
+
+            const verifiedDomain =
+              await getWorkspaceVerifiedDomain(lightWorkspace);
+
+            return {
+              ...lightWorkspace,
               subscription,
+              adminEmail: firstAdmin?.email ?? null,
+              membersCount,
+              workspaceDomain: verifiedDomain,
             };
           })
-          .sort((a, b) => {
-            const aStartsWithENT =
-              a.subscription?.plan?.code?.startsWith("ENT_") || false;
-            const bStartsWithENT =
-              b.subscription?.plan?.code?.startsWith("ENT_") || false;
-
-            if (aStartsWithENT && !bStartsWithENT) {
-              return -1;
-            } else if (!aStartsWithENT && bStartsWithENT) {
-              return 1;
-            } else {
-              return 0;
-            }
-          }),
+        ),
       });
 
     default:
