@@ -120,7 +120,7 @@ AgentDataSourceConfiguration.belongsTo(DataSource, {
 // Data source config <> Data source view
 DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { allowNull: true },
-  onDelete: "RESTRICT",
+  onDelete: "CASCADE",
 });
 AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
   foreignKey: { allowNull: false },
