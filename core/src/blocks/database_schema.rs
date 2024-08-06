@@ -1,6 +1,5 @@
 use super::helpers::get_data_source_project_and_view_filter;
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::data_sources::data_source::Filterable;
 use crate::databases::database::{get_unique_table_names_for_database, Table};
 use crate::Rule;
 use anyhow::{anyhow, Ok, Result};
