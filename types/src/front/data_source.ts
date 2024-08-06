@@ -24,12 +24,11 @@ export function isConnectorProvider(val: string): val is ConnectorProvider {
 
 export const PROVIDERS_WITH_SETTINGS: ConnectorProvider[] = ["webcrawler"];
 
-export type EditedByUser = {
+export interface EditedByUser {
   editedAt: number | null;
   fullName: string | null;
   imageUrl: string | null;
-  email: string | null;
-};
+}
 
 export type DataSourceType = {
   id: ModelId;
