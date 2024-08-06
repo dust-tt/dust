@@ -167,7 +167,8 @@ export async function syncOneFile({
     result = await handleCsvFile({
       dataSourceConfig,
       data,
-      file,
+      tableId: documentId,
+      fileName: file.name || "",
       localLogger,
       maxDocumentLen,
       connectorId,

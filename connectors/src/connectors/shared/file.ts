@@ -10,13 +10,11 @@ import {
   TextExtraction,
 } from "@dust-tt/types";
 import { parseAndStringifyCsv, slugify } from "@dust-tt/types";
-import type { DriveItem } from "@microsoft/microsoft-graph-types";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import { upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 const pagePrefixesPerMimeType: Record<string, string> = {
   "application/pdf": "$pdfPage",
@@ -45,7 +43,8 @@ export function handleTextFile(
 
 export async function handleCsvFile({
   data,
-  file,
+  tableId,
+  fileName,
   maxDocumentLen,
   localLogger,
   dataSourceConfig,
@@ -53,7 +52,8 @@ export async function handleCsvFile({
   parents,
 }: {
   data: ArrayBuffer;
-  file: GoogleDriveObjectType | DriveItem;
+  tableId: string;
+  fileName: string;
   maxDocumentLen: number;
   localLogger: Logger;
   dataSourceConfig: DataSourceConfig;
@@ -65,12 +65,9 @@ export async function handleCsvFile({
     return new Err(new Error("file_too_big"));
   }
 
-  const fileName = file.name ?? "";
-
   const tableCsv = Buffer.from(data).toString("utf-8").trim();
-  const tableId = file.id ?? "";
   const tableName = slugify(fileName.substring(0, 32));
-  const tableDescription = `Structured data from ${dataSourceNameToConnectorName[dataSourceConfig.dataSourceName]} (${file.name})`;
+  const tableDescription = `Structured data from ${dataSourceNameToConnectorName[dataSourceConfig.dataSourceName]} (${fileName})`;
 
   try {
     const stringifiedContent = await parseAndStringifyCsv(tableCsv);

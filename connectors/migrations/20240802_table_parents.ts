@@ -11,11 +11,44 @@ import {
   getTable,
   updateTableParentsField,
 } from "@connectors/lib/data_sources";
-import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveFiles,
+  GoogleDriveSheet,
+} from "@connectors/lib/models/google_drive";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { NotionDatabase } from "@connectors/lib/models/notion";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+async function updateParents({
+  dataSourceConfig,
+  tableId,
+  parents,
+  execute,
+  logger,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  parents: string[];
+  execute: boolean;
+  logger: Logger;
+}): Promise<void> {
+  const table = await getTable({
+    dataSourceConfig,
+    tableId,
+  });
+  if (
+    table &&
+    (table.parents.length !== parents.length ||
+      table.parents.some((p) => parents.indexOf(p) === -1))
+  ) {
+    logger.info(`Update parents for ${tableId}, new value: ${parents}`);
+    if (execute) {
+      await updateTableParentsField({ tableId, parents, dataSourceConfig });
+    }
+  }
+}
 
 export async function googleTables(
   connector: ConnectorResource,
@@ -27,6 +60,7 @@ export async function googleTables(
   const csvGoogleSheets = await GoogleDriveSheet.findAll({
     where: { connectorId: connector.id },
   });
+
   for (const sheet of csvGoogleSheets) {
     const { driveFileId, driveSheetId, connectorId } = sheet;
 
@@ -36,16 +70,34 @@ export async function googleTables(
 
     const parents = await getGoogleParents(connectorId, tableId, memo);
 
-    const table = await getTable({
+    await updateParents({
       dataSourceConfig,
       tableId,
+      parents,
+      execute,
+      logger,
     });
-    if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
-      logger.info(`Parents for ${tableId}: ${parents}`);
-      if (execute) {
-        await updateTableParentsField({ tableId, parents, dataSourceConfig });
-      }
-    }
+  }
+
+  const csvFiles = await GoogleDriveFiles.findAll({
+    where: {
+      mimeType: "text/csv",
+      connectorId: connector.id,
+    },
+  });
+  for (const file of csvFiles) {
+    const { driveFileId, dustFileId, connectorId } = file;
+
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+    const parents = await getGoogleParents(connectorId, driveFileId, memo);
+    await updateParents({
+      dataSourceConfig,
+      tableId: dustFileId,
+      parents,
+      execute,
+      logger,
+    });
   }
 }
 
@@ -57,8 +109,17 @@ export async function microsoftTables(
   logger.info(`Processing Microsoft connector ${connector.id}`);
   const microsoftSheets = await MicrosoftNodeModel.findAll({
     where: {
-      nodeType: "worksheet",
-      connectorId: connector.id,
+      [Op.or]: [
+        {
+          nodeType: "worksheet",
+          connectorId: connector.id,
+        },
+        {
+          nodeType: "file",
+          mimeType: "application/vnd.ms-excel",
+          connectorId: connector.id,
+        },
+      ],
     },
   });
   for (const sheet of microsoftSheets) {
@@ -72,21 +133,13 @@ export async function microsoftTables(
       startSyncTs: 0,
     });
 
-    const table = await getTable({
+    await updateParents({
       dataSourceConfig,
       tableId: internalId,
+      parents,
+      execute,
+      logger,
     });
-
-    if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
-      logger.info(`Parents for ${internalId}: ${parents}`);
-      if (execute) {
-        await updateTableParentsField({
-          tableId: internalId,
-          parents,
-          dataSourceConfig,
-        });
-      }
-    }
   }
 }
 
@@ -120,20 +173,14 @@ export async function notionTables(
       new Set<string>(),
       memo
     );
-    const table = await getTable({
+
+    await updateParents({
       dataSourceConfig,
       tableId: "notion-" + notionDatabaseId,
+      parents,
+      execute,
+      logger,
     });
-    if (table && JSON.stringify(table.parents) !== JSON.stringify(parents)) {
-      logger.info(`Parents for notion-${notionDatabaseId}: ${parents}`);
-      if (execute) {
-        await updateTableParentsField({
-          tableId: "notion-" + notionDatabaseId,
-          parents,
-          dataSourceConfig,
-        });
-      }
-    }
   }
 }
 
