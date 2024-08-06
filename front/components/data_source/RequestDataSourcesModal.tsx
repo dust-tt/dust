@@ -16,11 +16,11 @@ interface RequestDataSourceProps {
 }
 
 async function sendRequestDataSourceEmail({
-                                            userTo,
-                                            emailMessage,
-                                            dataSourceName,
-                                            owner,
-                                          }: {
+  userTo,
+  emailMessage,
+  dataSourceName,
+  owner,
+}: {
   userTo: string;
   emailMessage: string;
   dataSourceName: string;
@@ -47,11 +47,11 @@ async function sendRequestDataSourceEmail({
 }
 
 export function RequestDataSourcesModal({
-                                          isOpen,
-                                          onClose,
-                                          dataSourceIntegrations,
-                                          owner,
-                                        }: RequestDataSourceProps) {
+  isOpen,
+  onClose,
+  dataSourceIntegrations,
+  owner,
+}: RequestDataSourceProps) {
   const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
     useState<DataSourceIntegration | null>(null);
   const [message, setMessage] = useState("");
@@ -90,12 +90,12 @@ export function RequestDataSourcesModal({
                     label={
                       CONNECTOR_CONFIGURATIONS[
                         selectedDataSourceIntegration.connectorProvider
-                        ].name
+                      ].name
                     }
                     icon={
                       CONNECTOR_CONFIGURATIONS[
                         selectedDataSourceIntegration.connectorProvider
-                        ].logoComponent
+                      ].logoComponent
                     }
                   />
                 ) : (
@@ -131,7 +131,7 @@ export function RequestDataSourcesModal({
               {
                 CONNECTOR_CONFIGURATIONS[
                   selectedDataSourceIntegration.connectorProvider
-                  ].name
+                ].name
               }{" "}
               is {selectedDataSourceIntegration.editedByUser?.fullName}. Send an
               email to {selectedDataSourceIntegration.editedByUser?.fullName},
