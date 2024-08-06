@@ -37,9 +37,13 @@ pub async fn forward_middleware(req: Request<Body>, next: Next) -> Result<Respon
     if should_forward(&req) {
         let client = Client::new();
         let (parts, body) = req.into_parts();
-        let body_bytes: Bytes = axum::body::to_bytes(body, usize::MAX)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let body_bytes: Bytes = match axum::body::to_bytes(body, usize::MAX).await {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                error!("Error reading request body: {:?}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
 
         let new_url = format!(
             "{}{}",
@@ -57,20 +61,30 @@ pub async fn forward_middleware(req: Request<Body>, next: Next) -> Result<Respon
             Ok(response) => {
                 let status = response.status();
                 let headers = response.headers().clone();
-                let body = response
-                    .bytes()
-                    .await
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                let body = match response.bytes().await {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        error!("Error reading response body: {:?}", e);
+                        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                    }
+                };
 
                 let mut builder = Response::builder().status(status);
                 let headers_mut = builder.headers_mut().unwrap();
                 headers_mut.extend(headers);
 
-                builder
-                    .body(Body::from(body))
-                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+                match builder.body(Body::from(body)) {
+                    Ok(response) => Ok(response),
+                    Err(e) => {
+                        error!("Error creating response: {:?}", e);
+                        Err(StatusCode::INTERNAL_SERVER_ERROR)
+                    }
+                }
             }
-            Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+            Err(e) => {
+                error!("Error forwarding request: {:?}", e);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
         }
     } else {
         Ok(next.run(req).await)
