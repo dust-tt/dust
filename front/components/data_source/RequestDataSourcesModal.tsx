@@ -26,9 +26,11 @@ async function sendRequestDataSourceEmail(
       email: "team@dust.tt",
     },
     subject: `[Dust] Request Data source - ${dataSourceName}`,
-    text: emailContent,
+    html: `<p>${ccEmail} has sent you a request regarding the connection ${dataSourceName}</p><br /> 
+    <p>Message:</p><br/> 
+    ${emailContent}`,
   };
-  return sendEmail(email, mail, ccEmail);
+  return sendEmail(email, mail);
 }
 
 export function RequestDataSourcesModal({
