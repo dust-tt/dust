@@ -1,8 +1,10 @@
 import { Button, DropdownMenu, Modal, TextArea } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { sendEmail } from "@app/lib/email";
+import logger from "@app/logger/logger";
 import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 type RequestDataSourceProps = {
@@ -26,9 +28,9 @@ async function sendRequestDataSourceEmail(
     text: emailContent,
   };
   if (ccEmail) {
-    await sendEmail(email, mail, [ccEmail]);
+    return sendEmail(email, mail, [ccEmail]);
   } else {
-    await sendEmail(email, mail);
+    return sendEmail(email, mail);
   }
 }
 
@@ -41,6 +43,7 @@ export function RequestDataSourcesModal({
   const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
     useState<DataSourceIntegration | null>(null);
   const [message, setMessage] = useState("");
+  const sendNotification = useContext(SendNotificationsContext);
 
   const filteredDataSourceIntegrations = dataSourceIntegrations.filter(
     (ds) => ds.connector
@@ -129,15 +132,41 @@ export function RequestDataSourcesModal({
               variant="primary"
               size="sm"
               onClick={async () => {
-                await sendRequestDataSourceEmail(
-                  currentUserEmail,
-                  message,
-                  selectedDataSourceIntegration?.editedByUser?.email ??
-                    undefined
-                );
-                setMessage("");
-                setSelectedDataSourceIntegration(null);
-                onClose();
+                const userEmail =
+                  selectedDataSourceIntegration?.editedByUser?.email;
+                if (!userEmail) {
+                  sendNotification({
+                    type: "error",
+                    title: "Error sending email",
+                    description:
+                      "An unexpected error occurred while sending email.",
+                  });
+                } else {
+                  try {
+                    await sendRequestDataSourceEmail(
+                      userEmail,
+                      message,
+                      currentUserEmail
+                    );
+                  } catch (e) {
+                    logger.error(
+                      {
+                        userEmail,
+                        currentUserEmail,
+                        dataSourceName: selectedDataSourceIntegration.name,
+                      },
+                      "Error sending email"
+                    );
+                  }
+                  setMessage("");
+                  setSelectedDataSourceIntegration(null);
+                  onClose();
+                  sendNotification({
+                    type: "success",
+                    title: "Email sent!",
+                    description: `Your request was sent to ${userEmail}.`,
+                  });
+                }
               }}
             />
           </div>
