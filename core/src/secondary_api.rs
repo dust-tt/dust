@@ -34,59 +34,59 @@ fn should_forward(req: &Request<Body>) -> bool {
 }
 
 pub async fn forward_middleware(req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
-    if should_forward(&req) {
-        let client = Client::new();
-        let (parts, body) = req.into_parts();
-        let body_bytes: Bytes = match axum::body::to_bytes(body, usize::MAX).await {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                error!("Error reading request body: {:?}", e);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        };
+    if !should_forward(&req) {
+        return Ok(next.run(req).await);
+    }
 
-        let new_url = format!(
-            "{}{}",
-            *CORE_SECONDARY_API_URL,
-            parts.uri.path_and_query().map_or("", |x| x.as_str())
-        );
-
-        let mut new_req = client.request(parts.method, new_url).body(body_bytes);
-
-        for (name, value) in parts.headers.iter() {
-            new_req = new_req.header(name, value);
+    let client = Client::new();
+    let (parts, body) = req.into_parts();
+    let body_bytes: Bytes = match axum::body::to_bytes(body, usize::MAX).await {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            error!("Error reading request body: {:?}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
+    };
 
-        match new_req.send().await {
-            Ok(response) => {
-                let status = response.status();
-                let headers = response.headers().clone();
-                let body = match response.bytes().await {
-                    Ok(bytes) => bytes,
-                    Err(e) => {
-                        error!("Error reading response body: {:?}", e);
-                        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                    }
-                };
+    let new_url = format!(
+        "{}{}",
+        *CORE_SECONDARY_API_URL,
+        parts.uri.path_and_query().map_or("", |x| x.as_str())
+    );
 
-                let mut builder = Response::builder().status(status);
-                let headers_mut = builder.headers_mut().unwrap();
-                headers_mut.extend(headers);
+    let mut new_req = client.request(parts.method, new_url).body(body_bytes);
 
-                match builder.body(Body::from(body)) {
-                    Ok(response) => Ok(response),
-                    Err(e) => {
-                        error!("Error creating response: {:?}", e);
-                        Err(StatusCode::INTERNAL_SERVER_ERROR)
-                    }
+    for (name, value) in parts.headers.iter() {
+        new_req = new_req.header(name, value);
+    }
+
+    match new_req.send().await {
+        Ok(response) => {
+            let status = response.status();
+            let headers = response.headers().clone();
+            let body = match response.bytes().await {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    error!("Error reading response body: {:?}", e);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            };
+
+            let mut builder = Response::builder().status(status);
+            let headers_mut = builder.headers_mut().unwrap();
+            headers_mut.extend(headers);
+
+            match builder.body(Body::from(body)) {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    error!("Error creating response: {:?}", e);
+                    Err(StatusCode::INTERNAL_SERVER_ERROR)
                 }
             }
-            Err(e) => {
-                error!("Error forwarding request: {:?}", e);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
         }
-    } else {
-        Ok(next.run(req).await)
+        Err(e) => {
+            error!("Error forwarding request: {:?}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
