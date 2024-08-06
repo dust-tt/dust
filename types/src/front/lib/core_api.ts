@@ -123,6 +123,9 @@ export type CoreAPITable = {
   name: string;
   description: string;
   schema: CoreAPITableSchema | null;
+  timestamp: number;
+  tags: string[];
+  parents: string[];
 };
 
 export type CoreAPIRowValue =
@@ -1110,6 +1113,37 @@ export class CoreAPI {
       )}/tables/${encodeURIComponent(tableId)}`,
       {
         method: "DELETE",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async updateTableParents({
+    projectId,
+    dataSourceName,
+    tableId,
+    parents,
+  }: {
+    projectId: string;
+    dataSourceName: string;
+    tableId: string;
+    parents: string[];
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables/${encodeURIComponent(tableId)}/parents`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          parents: parents,
+        }),
       }
     );
 

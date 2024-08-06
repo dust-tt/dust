@@ -15,6 +15,9 @@ export type GetTableResponseBody = {
     table_id: string;
     description: string;
     schema: CoreAPITableSchema | null;
+    timestamp: number;
+    tags: string[];
+    parents: string[];
   };
 };
 
@@ -153,6 +156,15 @@ async function handler(
         tableId,
       });
       if (tableRes.isErr()) {
+        if (tableRes.error.code === "table_not_found") {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "table_not_found",
+              message: "Failed to get table.",
+            },
+          });
+        }
         logger.error(
           {
             dataSourcename: dataSource.name,
@@ -178,6 +190,9 @@ async function handler(
           table_id: table.table_id,
           description: table.description,
           schema: table.schema,
+          timestamp: table.timestamp,
+          tags: table.tags,
+          parents: table.parents,
         },
       });
 

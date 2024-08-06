@@ -2273,7 +2273,8 @@ impl Store for PostgresStore {
                     timestamp, tags_array, parents) \
                    VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
-                   SET name = EXCLUDED.name, description = EXCLUDED.description \
+                   SET name = EXCLUDED.name, description = EXCLUDED.description, \
+                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents \
                    RETURNING id",
             )
             .await?;
@@ -2351,6 +2352,43 @@ impl Store for PostgresStore {
             ],
         )
         .await?;
+
+        Ok(())
+    }
+
+    async fn update_table_parents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+        parents: &Vec<String>,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Get the data source row id.
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Update parents.
+        let stmt = c
+            .prepare("UPDATE tables SET parents = $1 WHERE data_source = $2 AND table_id = $3")
+            .await?;
+        c.query(&stmt, &[&parents, &data_source_row_id, &table_id])
+            .await?;
 
         Ok(())
     }

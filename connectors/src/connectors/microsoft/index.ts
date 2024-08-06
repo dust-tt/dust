@@ -315,7 +315,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         nodesWithPermissions.filter((n) => n.permission === filterPermission)
       );
     }
-
     return new Ok(nodesWithPermissions);
   }
 

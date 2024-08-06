@@ -2084,6 +2084,53 @@ async fn tables_delete(
     }
 }
 
+async fn tables_update_parents(
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesDocumentsUpdateParentsPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "table_not_found",
+            &format!("No table found for id `{}`", table_id),
+            None,
+        ),
+        Ok(Some(table)) => match table
+            .update_parents(state.store.clone(), payload.parents.clone())
+            .await
+        {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to update table parents",
+                Some(e),
+            ),
+            Ok(_) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "success": true,
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct TablesRowsUpsertPayload {
     rows: Vec<Row>,
@@ -2724,6 +2771,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables",
             post(tables_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/parents",
+            patch(tables_update_parents),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id",

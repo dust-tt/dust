@@ -4,6 +4,7 @@ import type {
   BatchCommandType,
   BatchRestartAllResponseType,
   ConnectorsCommandType,
+  GetParentsResponseType,
   Result,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
@@ -94,7 +95,9 @@ export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
 export const connectors = async ({
   command,
   args,
-}: ConnectorsCommandType): Promise<AdminSuccessResponseType> => {
+}: ConnectorsCommandType): Promise<
+  AdminSuccessResponseType | GetParentsResponseType
+> => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
@@ -161,6 +164,22 @@ export const connectors = async ({
       await throwOnError(manager.resume());
       return { success: true };
     }
+
+    case "get-parents": {
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+      const parents = await manager.retrieveContentNodeParents({
+        internalId: args.fileId,
+      });
+
+      if (parents.isErr()) {
+        throw new Error(`Cannot fetch parents: ${parents.error}`);
+      }
+
+      return { parents: parents.value };
+    }
+
     default:
       throw new Error(`Unknown workspace command: ${command}`);
   }
