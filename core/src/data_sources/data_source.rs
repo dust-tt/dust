@@ -27,6 +27,13 @@ use uuid::Uuid;
 use super::file_storage_document::FileStorageDocument;
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 
+pub trait Filterable {
+    fn match_filter(&self, filter: &Option<SearchFilter>) -> bool;
+    fn get_timestamp(&self) -> u64;
+    fn get_tags(&self) -> Vec<String>;
+    fn get_parents(&self) -> Vec<String>;
+}
+
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
 /// one tag in `is_in` and none of the tags in `is_not`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -194,6 +201,60 @@ impl SearchFilter {
                 }
             },
         }
+    }
+
+    pub fn match_filter(&self, resource: &dyn Filterable) -> bool {
+        let mut m = true;
+        match &self.tags {
+            Some(tags) => {
+                m = m
+                    && match &tags.is_in {
+                        Some(is_in) => is_in.iter().any(|tag| resource.get_tags().contains(tag)),
+                        None => true,
+                    };
+                m = m
+                    && match &tags.is_not {
+                        Some(is_not) => is_not.iter().all(|tag| !resource.get_tags().contains(tag)),
+                        None => true,
+                    };
+            }
+            None => (),
+        }
+        match &self.parents {
+            Some(parents) => {
+                m = m
+                    && match &parents.is_in {
+                        Some(is_in) => is_in
+                            .iter()
+                            .any(|parent| resource.get_parents().contains(parent)),
+                        None => true,
+                    };
+                m = m
+                    && match &parents.is_not {
+                        Some(is_not) => is_not
+                            .iter()
+                            .all(|parent| !resource.get_parents().contains(parent)),
+                        None => true,
+                    };
+            }
+            None => (),
+        }
+        match &self.timestamp {
+            Some(timestamp) => {
+                m = m
+                    && match timestamp.gt {
+                        Some(gt) => resource.get_timestamp() as i64 >= gt,
+                        None => true,
+                    };
+                m = m
+                    && match timestamp.lt {
+                        Some(lt) => resource.get_timestamp() as i64 <= lt,
+                        None => true,
+                    };
+            }
+            None => (),
+        }
+        m
     }
 
     // We postprocess `parents.is_in_map` if it is set to augment or set `parents.is_in` based on
@@ -403,64 +464,26 @@ impl Document {
             token_count: None,
         })
     }
+}
 
-    pub fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
+impl Filterable for Document {
+    fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
         match &filter {
-            Some(filter) => {
-                let mut m = true;
-                match &filter.tags {
-                    Some(tags) => {
-                        m = m
-                            && match &tags.is_in {
-                                Some(is_in) => is_in.iter().any(|tag| self.tags.contains(tag)),
-                                None => true,
-                            };
-                        m = m
-                            && match &tags.is_not {
-                                Some(is_not) => is_not.iter().all(|tag| !self.tags.contains(tag)),
-                                None => true,
-                            };
-                    }
-                    None => (),
-                }
-                match &filter.parents {
-                    Some(parents) => {
-                        m = m
-                            && match &parents.is_in {
-                                Some(is_in) => {
-                                    is_in.iter().any(|parent| self.parents.contains(parent))
-                                }
-                                None => true,
-                            };
-                        m = m
-                            && match &parents.is_not {
-                                Some(is_not) => {
-                                    is_not.iter().all(|parent| !self.parents.contains(parent))
-                                }
-                                None => true,
-                            };
-                    }
-                    None => (),
-                }
-                match &filter.timestamp {
-                    Some(timestamp) => {
-                        m = m
-                            && match timestamp.gt {
-                                Some(gt) => self.timestamp as i64 >= gt,
-                                None => true,
-                            };
-                        m = m
-                            && match timestamp.lt {
-                                Some(lt) => self.timestamp as i64 <= lt,
-                                None => true,
-                            };
-                    }
-                    None => (),
-                }
-                m
-            }
+            Some(filter) => filter.match_filter(self),
             None => true,
         }
+    }
+
+    fn get_timestamp(&self) -> u64 {
+        self.timestamp
+    }
+
+    fn get_tags(&self) -> Vec<String> {
+        self.tags.clone()
+    }
+
+    fn get_parents(&self) -> Vec<String> {
+        self.parents.clone()
     }
 }
 

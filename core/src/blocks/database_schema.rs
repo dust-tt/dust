@@ -1,5 +1,6 @@
 use super::helpers::get_data_source_project_and_view_filter;
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
+use crate::data_sources::data_source::Filterable;
 use crate::databases::database::{get_unique_table_names_for_database, Table};
 use crate::Rule;
 use anyhow::{anyhow, Ok, Result};
@@ -9,7 +10,6 @@ use itertools::Itertools;
 use pest::iterators::Pair;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
-
 #[derive(Clone)]
 pub struct DatabaseSchema {}
 
@@ -165,7 +165,9 @@ pub async fn load_tables_from_identifiers(
         .into_iter()
         .filter(|t| {
             t.as_ref().map_or(true, |table| {
-                table.match_filter(&filters_by_project.get(&table.data_source_id()).cloned())
+                filters_by_project
+                    .get(&table.data_source_id())
+                    .map_or(true, |filter| filter.match_filter(table))
             })
         })
         .map(|t| t.ok_or_else(|| anyhow!("Table not found.")))
