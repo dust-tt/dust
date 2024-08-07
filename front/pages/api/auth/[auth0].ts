@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { isEmailValid } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
@@ -64,6 +65,11 @@ export default handleAuth({
             reason = err ?? null;
           }
         }
+
+        logger.info(
+          { cause: error.cause?.message, reason },
+          "login error in auth0 callback"
+        );
 
         return res.redirect(`/login-error?reason=${reason}`);
       }

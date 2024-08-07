@@ -535,6 +535,9 @@ function StrategyModalContent({
         />
       );
 
+    case "samlp":
+      return <>Not implemented</>;
+
     default:
       assertNever(strategy);
   }
