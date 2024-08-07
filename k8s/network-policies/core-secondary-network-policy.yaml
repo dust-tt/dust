@@ -1,11 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: core-sqlite-worker-network-policy
+  name: core-secondary-network-policy
 spec:
   podSelector:
     matchLabels:
-      app: core-sqlite-worker
+      app: core-secondary
   policyTypes:
     - Ingress
   ingress:
@@ -13,9 +13,10 @@ spec:
         - podSelector:
             matchLabels:
               app: core
+
         - podSelector:
             matchLabels:
-              app: core-secondary
+              app: prodbox
       ports:
         - protocol: TCP
-          port: 3005
+          port: 3001
