@@ -1,6 +1,5 @@
 import type { CoreAPIRow, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI, getFilterFromQuery } from "@dust-tt/types";
-import { get } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
