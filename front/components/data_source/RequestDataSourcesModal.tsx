@@ -5,16 +5,16 @@ import React, { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import logger from "@app/logger/logger";
-import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request-access";
+import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request_access";
 import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
-type RequestDataSourceProps = {
+interface RequestDataSourceProps {
   isOpen: boolean;
   onClose: () => void;
   dataSourceIntegrations: DataSourceIntegration[];
   currentUserEmail: string;
   owner: WorkspaceType;
-};
+}
 
 async function sendRequestDataSourceEmail({
   email,
@@ -29,7 +29,7 @@ async function sendRequestDataSourceEmail({
   emailRequester: string;
   owner: WorkspaceType;
 }) {
-  const res = await fetch(`/api/w/${owner.sId}/data_sources/request-access`, {
+  const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

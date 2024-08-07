@@ -28,6 +28,16 @@ async function handler(
   const owner = auth.workspace();
   const user = auth.user();
 
+  if (!auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only the workspace users can send data sources requests.",
+      },
+    });
+  }
+
   if (!user || !owner) {
     return apiError(req, res, {
       status_code: 404,
