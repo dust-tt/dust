@@ -86,7 +86,12 @@ export function Citation({
     <>
       {type === "image" && imgSrc && (
         <div
-          className="s-absolute s-left-0 s-top-0 s-brightness-90 s-filter s-transition s-duration-200 s-ease-out hover:s-brightness-110 active:s-brightness-100 group-hover:s-brightness-110 group-hover:s-filter group-active:s-brightness-100"
+          className={classNames(
+            "s-absolute s-left-0 s-top-0 s-brightness-90 s-filter s-transition s-duration-200 s-ease-out active:s-brightness-100 group-active:s-brightness-100",
+            href
+              ? "hover:s-brightness-110 group-hover:s-brightness-110 group-hover:s-filter"
+              : ""
+          )}
           style={{
             backgroundImage: `url(${imgSrc})`,
             backgroundSize: "cover",
@@ -146,27 +151,32 @@ export function Citation({
     </>
   );
 
-  return (
+  const cardButton = (
+    <CardButton
+      variant="secondary"
+      size="sm"
+      className={classNames(
+        "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+        sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
+        size === "sm" ? "sm:s-w-64" : "",
+        isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
+        type === "image" ? "s-min-h-20" : ""
+      )}
+      {...(href && { href, target: "_blank", rel: "noopener noreferrer" })}
+    >
+      {isLoading && (
+        <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
+          <Spinner size="xs" variant="color" />
+        </div>
+      )}
+      <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
+    </CardButton>
+  );
+  return href ? (
     <Tooltip label={title} position="above">
-      <CardButton
-        variant="secondary"
-        size="sm"
-        className={classNames(
-          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
-          sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
-          size === "sm" ? "sm:s-w-64" : "",
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
-          type === "image" ? "s-min-h-20" : ""
-        )}
-        {...(href && { href, target: "_blank", rel: "noopener noreferrer" })}
-      >
-        {isLoading && (
-          <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
-            <Spinner size="xs" variant="color" />
-          </div>
-        )}
-        <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
-      </CardButton>
+      {cardButton}
     </Tooltip>
+  ) : (
+    cardButton
   );
 }
