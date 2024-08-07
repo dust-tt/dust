@@ -7,7 +7,6 @@ import {
 import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
-import { SubscriptionType } from "./plan";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
