@@ -51,7 +51,8 @@ const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
 
 export async function getRootNodesToSync(
-  connectorId: ModelId
+  connectorId: ModelId,
+  rootResources?: MicrosoftRootResource[]
 ): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
@@ -61,8 +62,9 @@ export async function getRootNodesToSync(
 
   const client = await getClient(connector.connectionId);
 
-  const rootResources =
-    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+  rootResources =
+    rootResources ||
+    (await MicrosoftRootResource.listRootsByConnectorId(connectorId));
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
@@ -185,21 +187,34 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
 
   const client = await getClient(connector.connectionId);
 
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    nodeIds
+  );
+
   for (const [driveId, nodeIds] of Object.entries(groupedItems)) {
-    const { deltaLink } = await getDeltaResults({
-      client,
-      parentInternalId: driveId,
-      token: "latest",
-    });
+    const nodesForDrive = nodeIds.map((id) =>
+      nodes.find((node) => node.internalId === id)
+    );
 
-    for (const nodeId of nodeIds) {
-      const node = await MicrosoftNodeResource.fetchByInternalId(
-        connectorId,
-        nodeId
-      );
+    const existingDeltas = nodesForDrive
+      .map((n) => n?.deltaLink)
+      .filter(Boolean);
 
+    const deltaLink =
+      existingDeltas.length > 0
+        ? existingDeltas[0]
+        : (
+            await getDeltaResults({
+              client,
+              parentInternalId: driveId,
+              token: "latest",
+            })
+          ).deltaLink;
+
+    for (const node of nodesForDrive) {
       if (!node) {
-        throw new Error(`Node ${nodeId} not found`);
+        throw new Error(`Node not found`);
       }
 
       await node.update({ deltaLink });

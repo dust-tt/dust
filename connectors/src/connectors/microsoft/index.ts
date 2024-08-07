@@ -335,15 +335,15 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    await MicrosoftRootResource.batchDelete({
-      resourceIds: Object.keys(permissions),
-      connectorId: connector.id,
-    });
-
     const nodeIdsToDelete = Object.keys(permissions).filter(
       (key) => permissions[key] === "none"
     );
     if (nodeIdsToDelete.length > 0) {
+      await MicrosoftRootResource.batchDelete({
+        resourceIds: nodeIdsToDelete,
+        connectorId: connector.id,
+      });
+
       const gcRes = await launchMicrosoftDeletionWorkflow(
         this.connectorId,
         nodeIdsToDelete
@@ -362,9 +362,13 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         internalId: id,
       }));
 
-    await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
+    const newResources =
+      await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
-    const nodesToSync = await getRootNodesToSync(this.connectorId);
+    const nodesToSync = await getRootNodesToSync(
+      this.connectorId,
+      newResources
+    );
 
     // poupulates deltas for the nodes so that if incremental sync starts before
     // fullsync populated, there's no error
