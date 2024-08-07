@@ -132,8 +132,6 @@ pub async fn load_tables_from_identifiers(
     )
     .await?;
 
-    // TODO(GROUPS_INFRA): enforce view_filter as returned above.
-
     // Create a hashmap of (workspace_id, data_source_id) -> project_id.
     let project_by_data_source = data_source_identifiers
         .iter()
