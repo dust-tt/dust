@@ -76,9 +76,7 @@ async function handler(
   const { email, emailMessage, emailRequester, dataSourceName } =
     bodyValidation.right;
 
-  const body = `<p>${emailRequester} has sent you a request regarding your connection ${dataSourceName}</p>
-    <p>Message:</p>
-    ${emailMessage}`;
+  const body = `${emailRequester} has sent you a request regarding your connection ${dataSourceName}:g ${emailMessage}`;
 
   try {
     const message = {
