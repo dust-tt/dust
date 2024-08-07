@@ -1076,21 +1076,18 @@ export class CoreAPI {
   async getTables({
     projectId,
     dataSourceName,
-    filter,
   }: {
     projectId: string;
     dataSourceName: string;
-    filter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
       tables: CoreAPITable[];
     }>
   > {
-    const qs = filter ? `?view_filter=${JSON.stringify(filter)}` : "";
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}/tables${qs}`,
+      )}/data_sources/${encodeURIComponent(dataSourceName)}/tables`,
       {
         method: "GET",
       }
@@ -1192,15 +1189,12 @@ export class CoreAPI {
     dataSourceName,
     tableId,
     rowId,
-    filter,
   }: {
     projectId: string;
     dataSourceName: string;
     tableId: string;
     rowId: string;
-    filter?: CoreAPISearchFilter | null;
   }): Promise<CoreAPIResponse<{ row: CoreAPIRow }>> {
-    const qs = filter ? `?view_filter=${JSON.stringify(filter)}` : "";
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -1208,7 +1202,7 @@ export class CoreAPI {
         dataSourceName
       )}/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(
         rowId
-      )}${qs}`,
+      )}`,
       {
         method: "GET",
       }
@@ -1223,14 +1217,12 @@ export class CoreAPI {
     tableId,
     limit,
     offset,
-    filter,
   }: {
     projectId: string;
     dataSourceName: string;
     tableId: string;
     limit: number;
     offset: number;
-    filter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
       rows: CoreAPIRow[];
@@ -1239,7 +1231,6 @@ export class CoreAPI {
       total: number;
     }>
   > {
-    const qs = filter ? `&view_filter=${JSON.stringify(filter)}` : "";
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -1247,7 +1238,7 @@ export class CoreAPI {
         dataSourceName
       )}/tables/${encodeURIComponent(
         tableId
-      )}/rows?limit=${limit}&offset=${offset}${qs}`,
+      )}/rows?limit=${limit}&offset=${offset}`,
       {
         method: "GET",
       }
@@ -1286,7 +1277,6 @@ export class CoreAPI {
   async queryDatabase({
     tables,
     query,
-    filter,
   }: {
     tables: Array<{
       project_id: string;
@@ -1294,7 +1284,6 @@ export class CoreAPI {
       table_id: string;
     }>;
     query: string;
-    filter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
       schema: CoreAPITableSchema;
@@ -1309,7 +1298,6 @@ export class CoreAPI {
       body: JSON.stringify({
         query,
         tables,
-        filter,
       }),
     });
 
