@@ -275,34 +275,40 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     stepActions: AgentActionConfigurationType[];
   }): number {
     const actionCount = stepActions.filter(
-      (a) => a.sId === this.actionConfiguration.sId
+      (a) => a.type === this.actionConfiguration.type
     ).length;
 
     if (actionCount === 0) {
       throw new Error("Unexpected: found 0 retrieval actions");
     }
 
-    const { actionConfiguration } = this;
     const model = getSupportedModelConfig(agentConfiguration.model);
 
-    let topK = 16;
-    if (actionConfiguration.topK === "auto") {
-      if (actionConfiguration.query === "none") {
-        topK = model.recommendedExhaustiveTopK;
-      } else {
-        topK = model.recommendedTopK;
-      }
-    } else {
-      topK = actionConfiguration.topK;
-    }
+    // We find the retrieval action in the step with the highest topK.
+    const maxTopK = (() => {
+      return stepActions
+        .filter((a) => a.type === this.actionConfiguration.type)
+        .map((a) => {
+          if (a.topK === "auto") {
+            if (a.query === "none") {
+              return model.recommendedExhaustiveTopK;
+            } else {
+              return model.recommendedTopK;
+            }
+          } else {
+            return a.topK;
+          }
+        })
+        .reduce((acc, topK) => Math.max(acc, topK), 0);
+    })();
 
-    // We split the topK among the actions that are uses of the same action configuration.
-    return Math.ceil(topK / actionCount);
+    // We split the topK evenly among all retrieval actions of the step.
+    return Math.ceil(maxTopK / actionCount);
   }
 
   // stepTopKAndRefsOffsetForAction returns the references offset and the number of documents an
-  // action will use as part of the current step. We share topK among multiple instances of a same
-  // retrieval action so that we don't overflow the context when the model asks for many retrievals
+  // action will use as part of the current step. We share topK among all retrieval actions of a step
+  // so that we don't overflow the context when the model asks for many retrievals
   // at the same time. Based on the nature of the retrieval actions (query being `auto` or `null`),
   // the topK can vary (exhaustive or not). So we need all the actions of the current step to
   // properly split the topK among them and decide which slice of references we will allocate to the
@@ -318,12 +324,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     stepActions: AgentActionConfigurationType[];
     refsOffset: number;
   }): { topK: number; refsOffset: number } {
-    const actionCounts: Record<string, number> = {};
-    stepActions.forEach((a) => {
-      actionCounts[a.sId] = actionCounts[a.sId] ?? 0;
-      actionCounts[a.sId]++;
-    });
-
     for (let i = 0; i < stepActionIndex; i++) {
       const r = stepActions[i];
       refsOffset += getRunnerforActionConfiguration(r).getCitationsCount({
