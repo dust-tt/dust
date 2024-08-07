@@ -1,15 +1,11 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { sendEmail } from "@app/lib/email";
-import logger from "@app/logger/logger";
+import { sendEmailWithTemplate } from "@app/lib/email";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestAccessBodySchema = t.type({
@@ -21,40 +17,6 @@ export const PostRequestAccessBodySchema = t.type({
 export type PostRequestAccessBody = t.TypeOf<
   typeof PostRequestAccessBodySchema
 >;
-
-async function sendEmailWithTemplate(
-  to: string,
-  from: { name: string; email: string },
-  subject: string,
-  body: string
-): Promise<Result<void, Error>> {
-  const templateId = config.getGenericEmailTemplate();
-  const message = {
-    to,
-    from,
-    templateId,
-    dynamic_template_data: {
-      subject,
-      body,
-    },
-  };
-
-  try {
-    await sendEmail(to, message);
-    logger.info({ email: to, subject }, "Sending email");
-    return new Ok(undefined);
-  } catch (e) {
-    logger.error(
-      {
-        error: e,
-        to,
-        subject,
-      },
-      "Error sending email."
-    );
-    return new Err(e as Error);
-  }
-}
 
 async function handler(
   req: NextApiRequest,
