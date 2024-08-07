@@ -111,7 +111,7 @@ export const isEmailValid = (email: string | null): boolean => {
 const DOMAIN_REGEX =
   /^(((?!-))(xn--|_)?[a-z0-9-]{0,61}[a-z0-9]{1,1}\.)*(xn--)?([a-z0-9][a-z0-9-]{0,60}|[a-z0-9-]{1,30}\.[a-z]{2,})$/;
 
-export const isADomain = (domain: string | null): boolean => {
+export const isDomain = (domain: string | null): boolean => {
   if (!domain) {
     return false;
   }

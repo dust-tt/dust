@@ -25,7 +25,7 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { isADomain, isEmailValid } from "@app/lib/utils";
+import { isDomain, isEmailValid } from "@app/lib/utils";
 import { apiError } from "@app/logger/withlogging";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
@@ -192,7 +192,7 @@ async function handler(
         }
 
         let isSearchByDomain = false;
-        if (isADomain(searchTerm)) {
+        if (isDomain(searchTerm)) {
           const workspaceDomain = await WorkspaceHasDomain.findOne({
             where: { domain: searchTerm },
           });
