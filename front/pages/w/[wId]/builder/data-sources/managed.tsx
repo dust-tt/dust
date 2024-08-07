@@ -711,15 +711,18 @@ export default function DataSourcesView({
           </ContentMessage>
         )}
         <div className="flex gap-2">
-          <Searchbar
-            ref={searchBarRef}
-            name="search"
-            placeholder="Search (Name)"
-            value={dataSourceSearch}
-            onChange={(s) => {
-              setDataSourceSearch(s);
-            }}
-          />
+          {isAdmin && setUpIntegrations.length > 0 && (
+            <Searchbar
+              ref={searchBarRef}
+              name="search"
+              placeholder="Search (Name)"
+              value={dataSourceSearch}
+              onChange={(s) => {
+                setDataSourceSearch(s);
+              }}
+            />
+          )}
+
           {isAdmin && nonSetUpIntegrations.length > 0 && (
             <DropdownMenu>
               <DropdownMenu.Button>
@@ -758,12 +761,14 @@ export default function DataSourcesView({
             </DropdownMenu>
           )}
         </div>
-        <DataTable
-          data={connectionRows}
-          columns={getTableColumns()}
-          filter={dataSourceSearch}
-          filterColumn={"name"}
-        />
+        {isAdmin && setUpIntegrations.length > 0 && (
+          <DataTable
+            data={connectionRows}
+            columns={getTableColumns()}
+            filter={dataSourceSearch}
+            filterColumn={"name"}
+          />
+        )}
       </Page.Vertical>
       {showUpgradePopup && (
         <Dialog
