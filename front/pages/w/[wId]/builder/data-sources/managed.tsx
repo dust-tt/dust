@@ -51,7 +51,7 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAdmins } from "@app/lib/swr";
-import { timeAgoFrom } from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 
@@ -710,7 +710,14 @@ export default function DataSourcesView({
             </Hoverable>
           </ContentMessage>
         )}
-        <div className="flex gap-2">
+        <div
+          className={classNames(
+            "flex gap-2",
+            connectionRows.length === 0 && isAdmin
+              ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
+              : ""
+          )}
+        >
           {connectionRows.length > 0 && (
             <Searchbar
               ref={searchBarRef}
@@ -768,10 +775,12 @@ export default function DataSourcesView({
             filter={dataSourceSearch}
             filterColumn={"name"}
           />
-        ) : (
+        ) : !isAdmin ? (
           <div className="flex items-center justify-center text-sm font-normal text-element-700">
             No available connection
           </div>
+        ) : (
+          <></>
         )}
       </Page.Vertical>
       {showUpgradePopup && (
