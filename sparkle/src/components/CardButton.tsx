@@ -24,12 +24,18 @@ interface CardButtonProps {
 }
 
 const variantClasses = {
+  primary: "s-bg-structure-50 s-border s-border-structure-200",
+  secondary: "s-bg-structure-0 s-border s-border-structure-100",
+  tertiary: "s-border-structure-100/0 s-border s-border-structure-0",
+};
+
+const hoverVariantClasses = {
   primary:
-    "s-bg-structure-50 s-border s-border-structure-200 hover:s-bg-white hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200",
+    "hover:s-bg-white hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
   secondary:
-    "s-bg-structure-0 s-border s-border-structure-100 hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300",
+    "hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300 s-cursor-pointer",
   tertiary:
-    "s-border-structure-100/0 s-border s-border-structure-0 hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200",
+    "hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
 };
 
 const sizeClasses = {
@@ -57,7 +63,8 @@ export function CardButton({
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
   const commonClasses = classNames(
-    "s-flex s-group s-cursor-pointer s-transition s-duration-200 s-overflow-hidden",
+    "s-flex s-group s-transition s-duration-200 s-overflow-hidden",
+    onClick ? hoverVariantClasses[variant] : "",
     variantClasses[variant],
     sizeClasses[size],
     className
