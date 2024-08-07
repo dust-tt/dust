@@ -16,20 +16,12 @@ interface RequestDataSourceProps {
 }
 
 async function sendRequestDataSourceEmail({
-<<<<<<< HEAD
-                                            userTo,
-                                            emailMessage,
-                                            dataSourceName,
-                                            owner,
-                                          }: {
-  userTo: string;
-=======
+  userTo,
   emailMessage,
   dataSourceName,
-  emailRequester,
   owner,
 }: {
->>>>>>> 81381559b ([data_source] - refactor: remove redundant email parameter from request access function)
+  userTo: string;
   emailMessage: string;
   dataSourceName: string;
   owner: WorkspaceType;
@@ -55,11 +47,11 @@ async function sendRequestDataSourceEmail({
 }
 
 export function RequestDataSourcesModal({
-                                          isOpen,
-                                          onClose,
-                                          dataSourceIntegrations,
-                                          owner,
-                                        }: RequestDataSourceProps) {
+  isOpen,
+  onClose,
+  dataSourceIntegrations,
+  owner,
+}: RequestDataSourceProps) {
   const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
     useState<DataSourceIntegration | null>(null);
   const [message, setMessage] = useState("");
@@ -98,12 +90,12 @@ export function RequestDataSourcesModal({
                     label={
                       CONNECTOR_CONFIGURATIONS[
                         selectedDataSourceIntegration.connectorProvider
-                        ].name
+                      ].name
                     }
                     icon={
                       CONNECTOR_CONFIGURATIONS[
                         selectedDataSourceIntegration.connectorProvider
-                        ].logoComponent
+                      ].logoComponent
                     }
                   />
                 ) : (
@@ -139,7 +131,7 @@ export function RequestDataSourcesModal({
               {
                 CONNECTOR_CONFIGURATIONS[
                   selectedDataSourceIntegration.connectorProvider
-                  ].name
+                ].name
               }{" "}
               is {selectedDataSourceIntegration.editedByUser?.fullName}. Send an
               email to {selectedDataSourceIntegration.editedByUser?.fullName},
@@ -168,10 +160,7 @@ export function RequestDataSourcesModal({
                 } else {
                   try {
                     await sendRequestDataSourceEmail({
-<<<<<<< HEAD
                       userTo: userToId,
-=======
->>>>>>> 81381559b ([data_source] - refactor: remove redundant email parameter from request access function)
                       emailMessage: message,
                       dataSourceName: selectedDataSourceIntegration.name,
                       owner,
