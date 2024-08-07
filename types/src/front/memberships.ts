@@ -5,3 +5,10 @@ export function isMembershipRoleType(
 ): value is MembershipRoleType {
   return MEMBERSHIP_ROLE_TYPES.includes(value as MembershipRoleType);
 }
+
+export type PublicListMembersResponseBody = {
+  members: {
+    id: string;
+    email: string;
+  }[];
+};

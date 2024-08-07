@@ -12,9 +12,7 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
-async function getActiveMemberEmails(
-  connector: ConnectorResource
-): Promise<string[]> {
+async function getActiveMembersInWorkspace(connector: ConnectorResource) {
   const ds = dataSourceConfigFromConnector(connector);
 
   // List the emails of all active members in the workspace.
@@ -28,23 +26,22 @@ async function getActiveMemberEmails(
     { useLocalInDev: true }
   );
 
-  const activeMemberEmailsRes =
-    await dustAPI.getActiveMemberEmailsInWorkspace();
-  if (activeMemberEmailsRes.isErr()) {
+  const activeMembersRes = await dustAPI.getActiveMembersInWorkspace();
+  if (activeMembersRes.isErr()) {
     logger.error("Error getting all members in workspace.", {
-      error: activeMemberEmailsRes.error,
+      error: activeMembersRes.error,
     });
 
     throw new Error("Error getting all members in workspace.");
   }
 
-  return activeMemberEmailsRes.value;
+  return activeMembersRes.value;
 }
 
-export const getActiveMemberEmailsMemoized = cacheWithRedis(
-  getActiveMemberEmails,
+const getActiveMembersInWorkspaceMemoized = cacheWithRedis(
+  getActiveMembersInWorkspace,
   (connector: ConnectorResource) => {
-    return `active-member-emails-connector-${connector.id}`;
+    return `active-members-connector-${connector.id}`;
   },
   // Caches data for 2 minutes to limit frequent API calls.
   // Note: Updates (e.g., new members added by an admin) may take up to 2 minutes to be reflected.
@@ -188,7 +185,7 @@ async function postMessageForUnhautorizedUser(
   });
 }
 
-export async function isActiveMemberOfWorkspace(
+async function isActiveMemberOfWorkspace(
   connector: ConnectorResource,
   slackUserEmail: string | undefined
 ) {
@@ -196,10 +193,10 @@ export async function isActiveMemberOfWorkspace(
     return false;
   }
 
-  const workspaceActiveMemberEmails =
-    await getActiveMemberEmailsMemoized(connector);
+  const workspaceActiveMembers =
+    await getActiveMembersInWorkspaceMemoized(connector);
 
-  return workspaceActiveMemberEmails.includes(slackUserEmail);
+  return workspaceActiveMembers.find((m) => m.email === slackUserEmail);
 }
 
 export async function isBotAllowed(

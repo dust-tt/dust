@@ -20,6 +20,7 @@ import { WhitelistableFeature } from "../../shared/feature_flags";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 import { ContentFragmentType } from "../content_fragment";
+import { PublicListMembersResponseBody } from "../memberships";
 import { UserType } from "../user";
 import {
   AgentActionSuccessEvent,
@@ -785,8 +786,10 @@ export class DustAPI {
     return new Ok(r.value.tokens);
   }
 
-  async getActiveMemberEmailsInWorkspace(): Promise<DustAPIResponse<string[]>> {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members/emails?activeOnly=true`;
+  async getActiveMembersInWorkspace(): Promise<
+    DustAPIResponse<PublicListMembersResponseBody["members"]>
+  > {
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members?activeOnly=true`;
 
     const res = await this._fetchWithError(endpoint, {
       method: "GET",
@@ -796,13 +799,13 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ emails: string[] }> =
+    const r: DustAPIResponse<PublicListMembersResponseBody> =
       await this._resultFromResponse(res);
     if (r.isErr()) {
       return r;
     }
 
-    return new Ok(r.value.emails);
+    return new Ok(r.value.members);
   }
 
   async getWorkspaceVerifiedDomains(): Promise<
