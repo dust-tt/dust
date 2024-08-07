@@ -25,7 +25,7 @@ use dust::{
     project,
     providers::provider::{provider, ProviderID},
     run,
-    search_filter::{Filterable, SearchFilter},
+    search_filter::SearchFilter,
     secondary_api::forward_middleware,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
