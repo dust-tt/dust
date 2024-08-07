@@ -1,12 +1,8 @@
-<<<<<<< HEAD
 import { rateLimiter } from "@dust-tt/types";
-=======
->>>>>>> d54afafae ([data_source] - refactor: update RequestDataSourcesModal typing and API endpoint)
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-<<<<<<< HEAD
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -18,19 +14,6 @@ import { apiError } from "@app/logger/withlogging";
 export const PostRequestAccessBodySchema = t.type({
   emailMessage: t.string,
   userTo: t.string,
-=======
-import sanitizeHtml from "sanitize-html";
-
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { sendEmail } from "@app/lib/email";
-import { apiError } from "@app/logger/withlogging";
-
-export const PostRequestAccessBodySchema = t.type({
-  email: t.string,
-  emailMessage: t.string,
-  emailRequester: t.string,
->>>>>>> d54afafae ([data_source] - refactor: update RequestDataSourcesModal typing and API endpoint)
   dataSourceName: t.string,
 });
 
@@ -38,11 +21,8 @@ export type PostRequestAccessBody = t.TypeOf<
   typeof PostRequestAccessBodySchema
 >;
 
-<<<<<<< HEAD
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
-=======
->>>>>>> d54afafae ([data_source] - refactor: update RequestDataSourcesModal typing and API endpoint)
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -96,7 +76,6 @@ async function handler(
     });
   }
 
-<<<<<<< HEAD
   const emailRequester = user.email;
   const { emailMessage, userTo, dataSourceName } = bodyValidation.right;
 
@@ -140,28 +119,6 @@ async function handler(
   });
 
   if (result.isErr()) {
-=======
-  const { email, emailMessage, emailRequester, dataSourceName } =
-    bodyValidation.right;
-
-  const html = `<p>${emailRequester} has sent you a request regarding the connection ${dataSourceName}</p>
-    <p>Message:</p>
-    ${emailMessage}`;
-
-  try {
-    const message = {
-      to: email,
-      from: {
-        name: "Dust team",
-        email: "team@dust.tt",
-      },
-      subject: `[Dust] Request Data source from ${emailRequester}`,
-      html: sanitizeHtml(html),
-    };
-    await sendEmail(email, message);
-    return res.status(200).json({ success: true, email });
-  } catch (error) {
->>>>>>> d54afafae ([data_source] - refactor: update RequestDataSourcesModal typing and API endpoint)
     return apiError(req, res, {
       status_code: 500,
       api_error: {
@@ -170,10 +127,7 @@ async function handler(
       },
     });
   }
-<<<<<<< HEAD
   return res.status(200).json({ success: true, emailTo: userReceipent.email });
-=======
->>>>>>> d54afafae ([data_source] - refactor: update RequestDataSourcesModal typing and API endpoint)
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
