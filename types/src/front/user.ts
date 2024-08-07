@@ -7,7 +7,6 @@ import {
 import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
-import { SubscriptionType } from "./plan";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
@@ -42,10 +41,6 @@ export type LightWorkspaceType = {
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
-};
-
-export type LightWorkpaceWithSubscriptionType = LightWorkspaceType & {
-  subscription: SubscriptionType | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {

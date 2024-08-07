@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 
-export function classNames(...classes: string[]) {
+export function classNames(...classes: (string | null | boolean)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
@@ -106,6 +106,16 @@ export const isEmailValid = (email: string | null): boolean => {
     return false;
   }
   return EMAIL_REGEX.test(email);
+};
+
+const DOMAIN_REGEX =
+  /^(((?!-))(xn--|_)?[a-z0-9-]{0,61}[a-z0-9]{1,1}\.)*(xn--)?([a-z0-9][a-z0-9-]{0,60}|[a-z0-9-]{1,30}\.[a-z]{2,})$/;
+
+export const isDomain = (domain: string | null): boolean => {
+  if (!domain) {
+    return false;
+  }
+  return DOMAIN_REGEX.test(domain);
 };
 
 export const objectToMarkdown = (obj: any, indent = 0) => {

@@ -12,17 +12,31 @@ import logger from "@app/logger/logger";
 export async function createWorkspace(session: SessionWithUser) {
   const { user: externalUser } = session;
 
-  const [, emailDomain] = externalUser.email.split("@");
+  return createWorkspaceInternal({
+    email: externalUser.email,
+    name: externalUser.nickname,
+    isVerified: externalUser.email_verified,
+  });
+}
+
+export async function createWorkspaceInternal({
+  email,
+  name,
+  isVerified,
+}: {
+  email: string;
+  name: string;
+  isVerified: boolean;
+}) {
+  const [, emailDomain] = email.split("@");
 
   // Use domain only when email is verified and non-disposable.
   const verifiedDomain =
-    externalUser.email_verified && !isDisposableEmailDomain(emailDomain)
-      ? emailDomain
-      : null;
+    isVerified && !isDisposableEmailDomain(emailDomain) ? emailDomain : null;
 
   const workspace = await Workspace.create({
     sId: generateLegacyModelSId(),
-    name: externalUser.nickname,
+    name: name,
   });
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -36,7 +50,7 @@ export async function createWorkspace(session: SessionWithUser) {
   });
 
   sendUserOperationMessage({
-    message: `<@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,
+    message: `<@U055XEGPR4L> +signupRadar User ${email} has created a new workspace.`,
     logger,
     channel: "C075LJ6PUFQ",
   }).catch((err) => {
