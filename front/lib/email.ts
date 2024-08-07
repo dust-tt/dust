@@ -219,12 +219,22 @@ export async function sendProactiveTrialCancelledEmail(
   return sendEmail(email, message);
 }
 
-export async function sendEmailWithTemplate(
-  to: string,
-  from: { name: string; email: string },
-  subject: string,
-  body: string
-): Promise<Result<void, Error>> {
+type sendEmailWithTemplateParams = {
+  to: string;
+  from: {
+    email: string;
+    name: string;
+  };
+  subject: string;
+  body: string;
+};
+
+export async function sendEmailWithTemplate({
+  to,
+  from,
+  subject,
+  body,
+}: sendEmailWithTemplateParams): Promise<Result<void, Error>> {
   const templateId = config.getGenericEmailTemplate();
   const message = {
     to,

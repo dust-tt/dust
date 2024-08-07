@@ -29,6 +29,7 @@ export type EditedByUser = {
   fullName: string | null;
   imageUrl: string | null;
   email: string | null;
+  userId: string | null;
 };
 
 export type DataSourceType = {

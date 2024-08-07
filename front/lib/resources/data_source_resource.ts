@@ -198,6 +198,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
         fullName: formatUserFullName(editedByUser),
         imageUrl: editedByUser.imageUrl,
         email: editedByUser.email,
+        userId: editedByUser.sId,
       },
     };
   }

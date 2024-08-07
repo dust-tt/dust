@@ -16,12 +16,12 @@ interface RequestDataSourceProps {
 }
 
 async function sendRequestDataSourceEmail({
-  email,
+  userTo,
   emailMessage,
   dataSourceName,
   owner,
 }: {
-  email: string;
+  userTo: string;
   emailMessage: string;
   dataSourceName: string;
   owner: WorkspaceType;
@@ -34,7 +34,7 @@ async function sendRequestDataSourceEmail({
     body: JSON.stringify({
       emailMessage,
       dataSourceName,
-      email,
+      userTo,
     } satisfies PostRequestAccessBody),
   });
 
@@ -148,9 +148,9 @@ export function RequestDataSourcesModal({
               variant="primary"
               size="sm"
               onClick={async () => {
-                const userEmail =
-                  selectedDataSourceIntegration?.editedByUser?.email;
-                if (!userEmail || !selectedDataSourceIntegration) {
+                const userToId =
+                  selectedDataSourceIntegration?.editedByUser?.userId;
+                if (!userToId || !selectedDataSourceIntegration) {
                   sendNotification({
                     type: "error",
                     title: "Error sending email",
@@ -160,7 +160,7 @@ export function RequestDataSourcesModal({
                 } else {
                   try {
                     await sendRequestDataSourceEmail({
-                      email: userEmail,
+                      userTo: userToId,
                       emailMessage: message,
                       dataSourceName: selectedDataSourceIntegration.name,
                       owner,
@@ -168,7 +168,7 @@ export function RequestDataSourcesModal({
                   } catch (e) {
                     logger.error(
                       {
-                        userEmail,
+                        userToId,
                         dataSourceName: selectedDataSourceIntegration.name,
                       },
                       "Error sending email"
@@ -180,7 +180,7 @@ export function RequestDataSourcesModal({
                   sendNotification({
                     type: "success",
                     title: "Email sent!",
-                    description: `Your request was sent to ${userEmail}.`,
+                    description: `Your request was sent to ${selectedDataSourceIntegration?.editedByUser?.fullName}.`,
                   });
                 }
               }}

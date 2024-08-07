@@ -6,11 +6,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { sendEmailWithTemplate } from "@app/lib/email";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestAccessBodySchema = t.type({
   emailMessage: t.string,
-  email: t.string,
+  userTo: t.string,
   dataSourceName: t.string,
 });
 
@@ -72,16 +73,28 @@ async function handler(
   }
 
   const emailRequester = user.email;
-  const { emailMessage, email, dataSourceName } = bodyValidation.right;
+  const { emailMessage, userTo, dataSourceName } = bodyValidation.right;
+
+  const userReceipent = await UserResource.fetchById(userTo);
+
+  if (!userReceipent) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "The user was not found.",
+      },
+    });
+  }
 
   const body = `${emailRequester} has sent you a request regarding your connection ${dataSourceName}:g ${emailMessage}`;
 
-  const result = await sendEmailWithTemplate(
-    email,
-    { name: "Dust team", email: "team@dust.tt" },
-    `[Dust] Request Data source from ${emailRequester}`,
-    body
-  );
+  const result = await sendEmailWithTemplate({
+    to: userReceipent.email,
+    from: { name: "Dust team", email: "team@dust.tt" },
+    subject: `[Dust] Request Data source from ${emailRequester}`,
+    body,
+  });
 
   if (result.isErr()) {
     return apiError(req, res, {
@@ -92,7 +105,7 @@ async function handler(
       },
     });
   }
-  return res.status(200).json({ success: true, email });
+  return res.status(200).json({ success: true, emailTo: userReceipent.email });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
