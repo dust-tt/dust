@@ -14,17 +14,27 @@ import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_TEST_PLAN_CODE,
+  isEntreprisePlan,
+  isFreePlan,
+  isOldFreePlan,
+  isProPlan,
+} from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isADomain, isEmailValid } from "@app/lib/utils";
 import { apiError } from "@app/logger/withlogging";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
-  subscription: SubscriptionType | null;
+  createdAt: string;
+  upgradedAt: string | null;
+  subscription: SubscriptionType;
   adminEmail: string | null;
   membersCount: number;
+  dataSourcesCount: number;
   workspaceDomain: WorkspaceDomain | null;
 };
 
@@ -53,7 +63,7 @@ async function handler(
     case "GET":
       let listUpgraded: boolean | undefined;
       const searchTerm = req.query.search
-        ? (req.query.search as string).trim()
+        ? decodeURIComponent(req.query.search as string).trim()
         : undefined;
       let limit: number = 0;
       let originalLimit: number = 0;
@@ -211,7 +221,7 @@ async function handler(
             model: Subscription,
             as: "subscriptions",
             where: { status: "active" },
-            required: false,
+            required: true,
             include: [
               {
                 model: Plan,
@@ -221,35 +231,41 @@ async function handler(
           },
         ],
         order: order,
-        logging: console.log,
       });
 
-      // if limit is above originalLimit, sort manually and then slice
+      // if limit is above originalLimit, sort manually and then splice
       if (limit > originalLimit) {
-        // Check out the plan code prefix and sort by arbitrary order
-        const prefixesOrder = [
-          "ENT_",
-          "PRO_",
-          "FREE_UPGRADED_",
-          "FREE_FRIENDSAMILY",
-          "FREE_",
-        ];
-
+        // Order by plan, entreprise first, then pro, then free and old free using isEntreprisePlan, isProPlan and isFreePlan, isOldFreePlan methods
         workspaces.sort((a, b) => {
-          const aPrefix = prefixesOrder.findIndex((p) =>
-            a.subscriptions?.[0].plan.code.startsWith(p)
-          );
-          const bPrefix = prefixesOrder.findIndex((p) =>
-            b.subscriptions?.[0].plan.code.startsWith(p)
-          );
+          const planACode = a.subscriptions[0].plan.code;
+          const planBCode = b.subscriptions[0].plan.code;
 
-          if (aPrefix !== bPrefix) {
-            return aPrefix - bPrefix;
+          if (isEntreprisePlan(planACode) && !isEntreprisePlan(planBCode)) {
+            return -1;
+          }
+          if (!isEntreprisePlan(planACode) && isEntreprisePlan(planBCode)) {
+            return 1;
+          }
+          if (isProPlan(planACode) && !isProPlan(planBCode)) {
+            return -1;
+          }
+          if (!isProPlan(planACode) && isProPlan(planBCode)) {
+            return 1;
+          }
+          if (isFreePlan(planACode) && !isFreePlan(planBCode)) {
+            return -1;
+          }
+          if (!isFreePlan(planACode) && isFreePlan(planBCode)) {
+            return 1;
+          }
+          if (!isOldFreePlan(planACode) && isOldFreePlan(planBCode)) {
+            return -1;
+          }
+          if (isOldFreePlan(planACode) && !isOldFreePlan(planBCode)) {
+            return 1;
           }
 
-          return a.subscriptions?.[0].plan.code.localeCompare(
-            b.subscriptions?.[0].plan.code
-          );
+          return planACode.localeCompare(planBCode);
         });
 
         workspaces.splice(originalLimit);
@@ -258,13 +274,12 @@ async function handler(
       return res.status(200).json({
         workspaces: await Promise.all(
           workspaces.map(async (ws): Promise<PokeWorkspaceType> => {
-            let subscription: SubscriptionType | null = null;
-            if (ws.subscriptions && ws.subscriptions.length > 0) {
-              subscription = renderSubscriptionFromModels({
+            const subscription: SubscriptionType = renderSubscriptionFromModels(
+              {
                 plan: ws.subscriptions[0].plan,
                 activeSubscription: ws.subscriptions[0],
-              });
-            }
+              }
+            );
 
             const lightWorkspace: LightWorkspaceType = {
               id: ws.id,
@@ -275,6 +290,10 @@ async function handler(
               whiteListedProviders: ws.whiteListedProviders,
               defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
             };
+
+            const auth = await Authenticator.internalAdminForWorkspace(ws.sId);
+            const dataSources = await DataSourceResource.listByWorkspace(auth);
+            const dataSourcesCount = dataSources.length;
 
             const memberships = await MembershipResource.getActiveMemberships({
               workspace: lightWorkspace,
@@ -300,9 +319,12 @@ async function handler(
 
             return {
               ...lightWorkspace,
+              createdAt: ws.createdAt.toISOString(),
+              upgradedAt: ws.upgradedAt?.toISOString() ?? null,
               subscription,
               adminEmail: firstAdmin?.email ?? null,
               membersCount,
+              dataSourcesCount,
               workspaceDomain: verifiedDomain,
             };
           })

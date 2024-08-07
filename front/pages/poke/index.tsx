@@ -1,4 +1,6 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { CloudArrowLeftRightIcon, Icon, Spinner } from "@dust-tt/sparkle";
+import { UsersIcon } from "lucide-react";
+import moment from "moment";
 import Link from "next/link";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
@@ -11,10 +13,15 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import {
+  isEntreprisePlan,
+  isOldFreePlan,
+  isProPlan,
+} from "@app/lib/plans/plan_codes";
 import { usePokeWorkspaces } from "@app/lib/swr";
 import type { PokeWorkspaceType } from "@app/pages/api/poke/workspaces";
 
-const limit: number = 12;
+const limit: number = 20;
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -32,9 +39,21 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
       {workspaces.map((ws) => (
         <Link href={`/poke/${ws.sId}`} key={ws.id}>
           <li className="border-material-100 s-w-[320px] rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
-            <h2 className="text-md flex-grow pb-4 font-bold">{ws.name}</h2>
+            <h2 className="text-md flex-grow pb-2 font-bold">{ws.name}</h2>
             <PokeTable>
               <PokeTableBody>
+                <PokeTableRow>
+                  <PokeTableCell colSpan={3}>
+                    <label>
+                      Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
+                    </label>
+                    {ws.upgradedAt && (
+                      <label>
+                        Upgraded: {moment(ws.upgradedAt).format("DD-MM-YYYY")}
+                      </label>
+                    )}
+                  </PokeTableCell>
+                </PokeTableRow>
                 <PokeTableRow>
                   <PokeTableCell>
                     {ws.adminEmail}{" "}
@@ -42,22 +61,39 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                       <label>({ws.workspaceDomain.domain})</label>
                     )}
                   </PokeTableCell>
-                  <PokeTableCell>
+                  <PokeTableCell align="center">
                     {ws.membersCount && ws.membersCount > 1 ? (
-                      <label>{ws.membersCount} members</label>
+                      <label>
+                        <Icon visual={UsersIcon} /> {ws.membersCount}
+                      </label>
                     ) : (
-                      <label>{ws.membersCount} member</label>
+                      <label>
+                        <Icon visual={UsersIcon} /> {ws.membersCount}
+                      </label>
+                    )}
+                  </PokeTableCell>
+                  <PokeTableCell align="center">
+                    {ws.dataSourcesCount && ws.dataSourcesCount > 1 ? (
+                      <label>
+                        <Icon visual={CloudArrowLeftRightIcon} />{" "}
+                        {ws.dataSourcesCount}
+                      </label>
+                    ) : (
+                      <label>
+                        <Icon visual={CloudArrowLeftRightIcon} />{" "}
+                        {ws.dataSourcesCount}
+                      </label>
                     )}
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
-                  <PokeTableCell className="space-x-2">
+                  <PokeTableCell className="space-x-2" colSpan={3}>
                     <label className="rounded bg-green-500 px-1 text-sm text-white">
                       {ws.sId}
                     </label>
                     {ws.subscription && (
                       <label
-                        className={`rounded px-1 text-sm text-gray-500 text-white ${ws.subscription.plan.code.startsWith("ENT_") ? "bg-red-500" : "bg-blue-500"}`}
+                        className={`rounded px-1 text-sm text-gray-500 text-white ${isEntreprisePlan(ws.subscription.plan.code) ? "bg-red-500" : isProPlan(ws.subscription.plan.code) ? "bg-orange-500" : isOldFreePlan(ws.subscription.plan.code) ? "bg-gray-300" : "bg-blue-500"}`}
                       >
                         {ws.subscription.plan.name}
                       </label>

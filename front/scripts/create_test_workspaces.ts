@@ -1,12 +1,12 @@
-import type { WorkspaceSegmentationType } from "@dust-tt/types";
-import type { ActiveRoleType } from "@dust-tt/types";
-
-import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { frontSequelize } from "@app/lib/resources/storage";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { Authenticator } from "@app/lib/auth";
+import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
+import { Plan } from "@app/lib/models/plan";
+import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { pokeUpgradeWorkspaceToPlan } from "@app/lib/plans/subscription";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
+import { createAndLogMembership } from "@app/pages/api/login";
 import { makeScript } from "@app/scripts/helpers";
 
 async function createTestWorkspaces(
@@ -29,58 +29,73 @@ async function createTestWorkspaces(
     throw new Error("User ID must be greater than 0.");
   }
 
-  logger.info(`About to create ${count} test workspaces for user ${userId}.`);
+  const user = await UserResource.fetchByModelId(userId);
+  if (!user) {
+    throw new Error(`User with ID ${userId} not found.`);
+  }
 
-  const workspaces: Workspace[] = [];
+  if (!user.isDustSuperUser) {
+    throw new Error(`User with ID ${userId} is not a super user.`);
+  }
 
-  await frontSequelize.transaction(async (t) => {
-    for (let i = 0; i < count; i++) {
-      const segmentations: WorkspaceSegmentationType[] = ["interesting", null];
-      const workspace = await Workspace.create(
-        {
-          sId: generateLegacyModelSId(),
-          name: `Test Workspace ${i + 1}`,
-          description: `This is a test workspace ${i + 1}`,
-          segmentation: segmentations[i % segmentations.length],
-          whiteListedProviders: null,
-          defaultEmbeddingProvider: null,
-        },
-        { transaction: t }
-      );
+  if (!execute) {
+    logger.info(
+      `Would have created ${count} test workspaces for user ${user?.fullName()}.`
+    );
+    return;
+  }
 
-      logger.info(`Workspace ${workspace.id} created.`);
+  logger.info(
+    `About to create ${count} test workspaces for user ${user?.fullName()}.`
+  );
 
-      // Randomly select a plan
-      const randomPlan = plans[Math.floor(Math.random() * plans.length)];
+  for (let i = 0; i < count; i++) {
+    const name = `${user.firstName} ${generateLegacyModelSId()}`;
+    const workspace = await createWorkspaceInternal({
+      email: user.email,
+      name: name,
+      isVerified: true,
+    });
 
-      // Create a subscription for the workspace
-      await Subscription.create(
-        {
-          sId: generateLegacyModelSId(),
-          workspaceId: workspace.id,
-          planId: randomPlan.id,
-          status: "active",
-          startDate: new Date(),
-          stripeSubscriptionId: `test_stripe_sub_${i}`,
-        },
-        { transaction: t }
-      );
+    logger.info(`Workspace ${name} created.`);
 
-      // Create a new membership
-      await MembershipModel.create(
-        {
-          startAt: new Date(),
-          userId: userId,
-          workspaceId: workspace.id,
-          role: "admin" as ActiveRoleType,
-        },
-        { transaction: t }
-      );
-      workspaces.push(workspace);
-    }
+    await createAndLogMembership({
+      user,
+      workspace,
+      role: "admin",
+    });
+
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await pokeUpgradeWorkspaceToPlan(authenticator, FREE_UPGRADED_PLAN_CODE);
+  }
+  /*
+  workspaces.forEach(async (workspace) => {
+    // Randomly select a plan
+    const randomPlan = plans[Math.floor(Math.random() * plans.length)];
+
+    // Create a subscription for the workspace
+    await Subscription.create({
+      sId: generateLegacyModelSId(),
+      workspaceId: workspace.id,
+      planId: randomPlan.id,
+      status: "active",
+      startDate: new Date(),
+      stripeSubscriptionId: `test_stripe_sub_${workspace.sId}`,
+    });
+
+    // Create a new membership
+    await MembershipModel.create({
+      startAt: new Date(),
+      userId: userId,
+      workspaceId: workspace.id,
+      role: "admin" as ActiveRoleType,
+    });
   });
-
-  return workspaces;
+*/
 }
 
 makeScript(

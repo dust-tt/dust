@@ -15,6 +15,21 @@ export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
  */
 export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
 
+// If the plan code starts with ENT_, it's an entreprise plan
+export const isEntreprisePlan = (planCode: string) =>
+  planCode.startsWith("ENT_");
+
+// If the plan code starts with PRO_, it's a pro plan
+export const isProPlan = (planCode: string) => planCode.startsWith("PRO_");
+
+// Everything else is free
+export const isFreePlan = (planCode: string) =>
+  !isEntreprisePlan(planCode) && !isProPlan(planCode);
+
+// Early plan when anyone could create a dust account
+export const isOldFreePlan = (planCode: string) =>
+  planCode === "FREE_TEST_PLAN";
+
 /**
  * `isUpgraded` returns true if the plan has access to all features of Dust, including large
  * language models (meaning it's either a paid plan or free plan with (eg friends and family, or

@@ -13,7 +13,11 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import {
+  isEntreprisePlan,
+  isProPlan,
+  PRO_PLAN_SEAT_29_CODE,
+} from "@app/lib/plans/plan_codes";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
@@ -307,11 +311,8 @@ export const pokeUpgradeWorkspaceToPlan = async (
     );
   }
 
-  const isUgradeToEnterprise = newPlan.code.startsWith("ENT_");
-  const isUpgradeToPro = newPlan.code.startsWith("PRO_");
-
   // Ugrade to Enterprise is not allowed through this function.
-  if (isUgradeToEnterprise) {
+  if (isEntreprisePlan(newPlan.code)) {
     throw new Error(
       `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
     );
@@ -319,7 +320,7 @@ export const pokeUpgradeWorkspaceToPlan = async (
 
   // Upgrade to Pro is allowed only if the workspace is already subscribed to a Pro plan.
   // This is a way to change the plan limitations but stay on Pro.
-  if (isUpgradeToPro) {
+  if (isProPlan(newPlan.code)) {
     if (
       !activeSubscription ||
       !activeSubscription.sId ||
