@@ -274,23 +274,21 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     agentConfiguration: AgentConfigurationType;
     stepActions: AgentActionConfigurationType[];
   }): number {
-    const actionCount = stepActions.filter(
-      (a) => a.type === this.actionConfiguration.type
-    ).length;
-
-    if (actionCount === 0) {
-      throw new Error("Unexpected: found 0 retrieval actions");
-    }
-
-    const model = getSupportedModelConfig(agentConfiguration.model);
-
-    // We find the retrieval action in the step with the highest topK.
     const retrievalActions: RetrievalConfigurationType[] = [];
     for (const a of stepActions) {
       if (a.type === "retrieval_configuration") {
         retrievalActions.push(a);
       }
     }
+    const retrievalActionsCount = retrievalActions.length;
+
+    if (retrievalActionsCount === 0) {
+      throw new Error("Unexpected: found 0 retrieval actions");
+    }
+
+    const model = getSupportedModelConfig(agentConfiguration.model);
+
+    // We find the retrieval action in the step with the highest topK.
     const maxTopK = (() => {
       return retrievalActions
         .map((a) => {
@@ -308,7 +306,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     })();
 
     // We split the topK evenly among all retrieval actions of the step.
-    return Math.ceil(maxTopK / actionCount);
+    return Math.ceil(maxTopK / retrievalActionsCount);
   }
 
   // stepTopKAndRefsOffsetForAction returns the references offset and the number of documents an
