@@ -14,7 +14,12 @@ async function createTestWorkspaces(
   execute: boolean,
   logger: Logger
 ) {
+  if (process.env.NODE_ENV !== "development") {
+    throw new Error("This script can only be run in development.");
+  }
+
   const plans = await Plan.findAll();
+
   if (plans.length === 0) {
     throw new Error(
       "No plans found in the database. Please create some plans first."

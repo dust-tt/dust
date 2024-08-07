@@ -42,6 +42,26 @@ export type GetPokeWorkspacesResponseBody = {
   workspaces: PokeWorkspaceType[];
 };
 
+const getPlanPriority = (planCode: string) => {
+  if (isEntreprisePlan(planCode)) {
+    return 1;
+  }
+
+  if (isProPlan(planCode)) {
+    return 2;
+  }
+
+  if (isFreePlan(planCode)) {
+    return 3;
+  }
+
+  if (isOldFreePlan(planCode)) {
+    return 4;
+  }
+
+  return 5;
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetPokeWorkspacesResponseBody>>
@@ -237,35 +257,10 @@ async function handler(
       if (limit > originalLimit) {
         // Order by plan, entreprise first, then pro, then free and old free using isEntreprisePlan, isProPlan and isFreePlan, isOldFreePlan methods
         workspaces.sort((a, b) => {
-          const planACode = a.subscriptions[0].plan.code;
-          const planBCode = b.subscriptions[0].plan.code;
+          const planAPriority = getPlanPriority(a.subscriptions[0].plan.code);
+          const planBPriority = getPlanPriority(b.subscriptions[0].plan.code);
 
-          if (isEntreprisePlan(planACode) && !isEntreprisePlan(planBCode)) {
-            return -1;
-          }
-          if (!isEntreprisePlan(planACode) && isEntreprisePlan(planBCode)) {
-            return 1;
-          }
-          if (isProPlan(planACode) && !isProPlan(planBCode)) {
-            return -1;
-          }
-          if (!isProPlan(planACode) && isProPlan(planBCode)) {
-            return 1;
-          }
-          if (isFreePlan(planACode) && !isFreePlan(planBCode)) {
-            return -1;
-          }
-          if (!isFreePlan(planACode) && isFreePlan(planBCode)) {
-            return 1;
-          }
-          if (!isOldFreePlan(planACode) && isOldFreePlan(planBCode)) {
-            return -1;
-          }
-          if (isOldFreePlan(planACode) && !isOldFreePlan(planBCode)) {
-            return 1;
-          }
-
-          return planACode.localeCompare(planBCode);
+          return planAPriority - planBPriority;
         });
 
         workspaces.splice(originalLimit);

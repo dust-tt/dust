@@ -19,6 +19,7 @@ import {
   isProPlan,
 } from "@app/lib/plans/plan_codes";
 import { usePokeWorkspaces } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceType } from "@app/pages/api/poke/workspaces";
 
 const limit: number = 20;
@@ -38,7 +39,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
       {workspaces.length === 0 && <p>No workspaces found.</p>}
       {workspaces.map((ws) => (
         <Link href={`/poke/${ws.sId}`} key={ws.id}>
-          <li className="border-material-100 s-w-[320px] rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
+          <li className="border-material-100 w-80 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
             <h2 className="text-md flex-grow pb-2 font-bold">{ws.name}</h2>
             <PokeTable>
               <PokeTableBody>
@@ -62,28 +63,15 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                     )}
                   </PokeTableCell>
                   <PokeTableCell align="center">
-                    {ws.membersCount && ws.membersCount > 1 ? (
-                      <label>
-                        <Icon visual={UsersIcon} /> {ws.membersCount}
-                      </label>
-                    ) : (
-                      <label>
-                        <Icon visual={UsersIcon} /> {ws.membersCount}
-                      </label>
-                    )}
+                    <label>
+                      <Icon visual={UsersIcon} /> {ws.membersCount}
+                    </label>
                   </PokeTableCell>
                   <PokeTableCell align="center">
-                    {ws.dataSourcesCount && ws.dataSourcesCount > 1 ? (
-                      <label>
-                        <Icon visual={CloudArrowLeftRightIcon} />{" "}
-                        {ws.dataSourcesCount}
-                      </label>
-                    ) : (
-                      <label>
-                        <Icon visual={CloudArrowLeftRightIcon} />{" "}
-                        {ws.dataSourcesCount}
-                      </label>
-                    )}
+                    <label>
+                      <Icon visual={CloudArrowLeftRightIcon} />{" "}
+                      {ws.dataSourcesCount}
+                    </label>
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
@@ -93,7 +81,15 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                     </label>
                     {ws.subscription && (
                       <label
-                        className={`rounded px-1 text-sm text-gray-500 text-white ${isEntreprisePlan(ws.subscription.plan.code) ? "bg-red-500" : isProPlan(ws.subscription.plan.code) ? "bg-orange-500" : isOldFreePlan(ws.subscription.plan.code) ? "bg-gray-300" : "bg-blue-500"}`}
+                        className={classNames(
+                          "rounded px-1 text-sm text-gray-500 text-white",
+                          isEntreprisePlan(ws.subscription.plan.code) &&
+                            "bg-red-500",
+                          isProPlan(ws.subscription.plan.code) &&
+                            "bg-orange-500",
+                          isOldFreePlan(ws.subscription.plan.code) &&
+                            "bg-gray-300"
+                        )}
                       >
                         {ws.subscription.plan.name}
                       </label>
