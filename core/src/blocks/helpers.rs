@@ -1,6 +1,6 @@
 use super::block::Env;
-use crate::filter::SearchFilter;
 use crate::project::Project;
+use crate::search_filter::SearchFilter;
 use anyhow::{anyhow, Result};
 use hyper::body::Buf;
 use reqwest::StatusCode;

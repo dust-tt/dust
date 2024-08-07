@@ -5,12 +5,12 @@ use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, D
 use crate::databases::database::{get_table_unique_id, Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
-use crate::filter::SearchFilter;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
+use crate::search_filter::SearchFilter;
 use crate::sqlite_workers::client::SqliteWorker;
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;

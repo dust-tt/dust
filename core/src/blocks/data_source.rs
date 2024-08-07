@@ -4,7 +4,7 @@ use crate::blocks::block::{
 use crate::blocks::helpers::get_data_source_project_and_view_filter;
 use crate::data_sources::data_source::Document;
 use crate::deno::js_executor::JSExecutor;
-use crate::filter::SearchFilter;
+use crate::search_filter::SearchFilter;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;

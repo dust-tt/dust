@@ -4,12 +4,12 @@ use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, D
 use crate::databases::database::{Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
-use crate::filter::SearchFilter;
 use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{Run, RunStatus, RunType};
+use crate::search_filter::SearchFilter;
 use crate::sqlite_workers::client::SqliteWorker;
 
 use anyhow::Result;

@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use super::table_schema::TableSchema;
 use crate::{
     databases_store::store::DatabasesStore,
-    filter::{Filterable, SearchFilter},
     project::Project,
+    search_filter::{Filterable, SearchFilter},
     sqlite_workers::client::{SqliteWorker, SqliteWorkerError, HEARTBEAT_INTERVAL_MS},
     stores::store::Store,
     utils,
