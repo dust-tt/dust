@@ -159,9 +159,11 @@ export type CoreAPISearchFilter = {
   } | null;
 };
 
-export const getFilterFromQuery = (query: {
-  [key: string]: string | string[];
-}): CoreAPISearchFilter => {
+export const getFilterFromQuery = (
+  query: Partial<{
+    [key: string]: string | string[];
+  }>
+): CoreAPISearchFilter => {
   const toArray = (value: string | string[] | undefined): string[] | null => {
     if (typeof value === "string") {
       return [value];
