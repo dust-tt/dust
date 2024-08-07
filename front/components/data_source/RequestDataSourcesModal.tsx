@@ -16,12 +16,20 @@ interface RequestDataSourceProps {
 }
 
 async function sendRequestDataSourceEmail({
+<<<<<<< HEAD
                                             userTo,
                                             emailMessage,
                                             dataSourceName,
                                             owner,
                                           }: {
   userTo: string;
+=======
+  emailMessage,
+  dataSourceName,
+  emailRequester,
+  owner,
+}: {
+>>>>>>> 81381559b ([data_source] - refactor: remove redundant email parameter from request access function)
   emailMessage: string;
   dataSourceName: string;
   owner: WorkspaceType;
@@ -160,7 +168,10 @@ export function RequestDataSourcesModal({
                 } else {
                   try {
                     await sendRequestDataSourceEmail({
+<<<<<<< HEAD
                       userTo: userToId,
+=======
+>>>>>>> 81381559b ([data_source] - refactor: remove redundant email parameter from request access function)
                       emailMessage: message,
                       dataSourceName: selectedDataSourceIntegration.name,
                       owner,
