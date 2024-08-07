@@ -711,7 +711,7 @@ export default function DataSourcesView({
           </ContentMessage>
         )}
         <div className="flex gap-2">
-          {isAdmin && setUpIntegrations.length > 0 && (
+          {connectionRows.length > 0 && (
             <Searchbar
               ref={searchBarRef}
               name="search"
@@ -761,13 +761,17 @@ export default function DataSourcesView({
             </DropdownMenu>
           )}
         </div>
-        {isAdmin && setUpIntegrations.length > 0 && (
+        {connectionRows.length > 0 ? (
           <DataTable
             data={connectionRows}
             columns={getTableColumns()}
             filter={dataSourceSearch}
             filterColumn={"name"}
           />
+        ) : (
+          <div className="flex items-center justify-center text-sm font-normal text-element-700">
+            No available connection
+          </div>
         )}
       </Page.Vertical>
       {showUpgradePopup && (
