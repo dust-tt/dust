@@ -29,7 +29,12 @@ import type { SubscriptionsDisplayType } from "@app/components/poke/subscription
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_NO_PLAN_CODE,
+  isEntreprisePlan,
+  isFreePlan,
+  isProPlan,
+} from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr";
 
 interface SubscriptionsDataTableProps {
@@ -381,7 +386,7 @@ function UpgradeDowngradeModal({
         />
         <div>
           {plans
-            .filter((p) => p.code.startsWith("FREE_")) // Hack to exclude The Pro and Enteprise plans
+            .filter((p) => isFreePlan(p.code)) // Hack to exclude The Pro and Enteprise plans
             .map((p) => {
               return (
                 <div key={p.code} className="pt-2">
@@ -403,11 +408,11 @@ function UpgradeDowngradeModal({
         />
         <div>
           <EnterpriseUpgradeDialog
-            disabled={subscription.plan.code.startsWith("ENT_")}
+            disabled={isEntreprisePlan(subscription.plan.code)}
             owner={owner}
           />
         </div>
-        {subscription.plan.code.startsWith("PRO_") && (
+        {isProPlan(subscription.plan.code) && (
           <>
             <Page.SectionHeader
               title="Change the Pro Plan of this workspace"
@@ -415,7 +420,7 @@ function UpgradeDowngradeModal({
             />
             <div>
               {plans
-                .filter((p) => p.code.startsWith("PRO_"))
+                .filter((p) => isProPlan(p.code))
                 .map((p) => {
                   return (
                     <div key={p.code} className="pt-2">

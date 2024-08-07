@@ -1,10 +1,28 @@
+import { CloudArrowLeftRightIcon, Icon, Spinner } from "@dust-tt/sparkle";
+import { UsersIcon } from "lucide-react";
+import moment from "moment";
 import Link from "next/link";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import {
+  PokeTable,
+  PokeTableBody,
+  PokeTableCell,
+  PokeTableRow,
+} from "@app/components/poke/shadcn/ui/table";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import {
+  isEntreprisePlan,
+  isOldFreePlan,
+  isProPlan,
+} from "@app/lib/plans/plan_codes";
 import { usePokeWorkspaces } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
+import type { PokeWorkspaceType } from "@app/pages/api/poke/workspaces";
+
+const limit: number = 20;
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -14,12 +32,85 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
+const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
+  <>
+    <h1 className="mb-4 mt-8 text-2xl font-bold">{title}</h1>
+    <ul className="flex flex-wrap gap-4">
+      {workspaces.length === 0 && <p>No workspaces found.</p>}
+      {workspaces.map((ws) => (
+        <Link href={`/poke/${ws.sId}`} key={ws.id}>
+          <li className="border-material-100 w-80 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
+            <h2 className="text-md flex-grow pb-2 font-bold">{ws.name}</h2>
+            <PokeTable>
+              <PokeTableBody>
+                <PokeTableRow>
+                  <PokeTableCell colSpan={3}>
+                    <label>
+                      Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
+                    </label>
+                    {ws.upgradedAt && (
+                      <label>
+                        Upgraded: {moment(ws.upgradedAt).format("DD-MM-YYYY")}
+                      </label>
+                    )}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>
+                    {ws.adminEmail}{" "}
+                    {ws.workspaceDomain && (
+                      <label>({ws.workspaceDomain.domain})</label>
+                    )}
+                  </PokeTableCell>
+                  <PokeTableCell align="center">
+                    <label>
+                      <Icon visual={UsersIcon} /> {ws.membersCount}
+                    </label>
+                  </PokeTableCell>
+                  <PokeTableCell align="center">
+                    <label>
+                      <Icon visual={CloudArrowLeftRightIcon} />{" "}
+                      {ws.dataSourcesCount}
+                    </label>
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell className="space-x-2" colSpan={3}>
+                    <label className="rounded bg-green-500 px-1 text-sm text-white">
+                      {ws.sId}
+                    </label>
+                    {ws.subscription && (
+                      <label
+                        className={classNames(
+                          "rounded px-1 text-sm text-gray-500 text-white",
+                          isEntreprisePlan(ws.subscription.plan.code) &&
+                            "bg-red-500",
+                          isProPlan(ws.subscription.plan.code) &&
+                            "bg-orange-500",
+                          isOldFreePlan(ws.subscription.plan.code) &&
+                            "bg-gray-300"
+                        )}
+                      >
+                        {ws.subscription.plan.name}
+                      </label>
+                    )}
+                  </PokeTableCell>
+                </PokeTableRow>
+              </PokeTableBody>
+            </PokeTable>
+          </li>
+        </Link>
+      ))}
+    </ul>
+  </>
+);
+
 const Dashboard = () => {
   const {
     workspaces: upgradedWorkspaces,
     isWorkspacesLoading: isUpgradedWorkspacesLoading,
     isWorkspacesError: isUpgradedWorkspacesError,
-  } = usePokeWorkspaces({ upgraded: true });
+  } = usePokeWorkspaces({ upgraded: true, limit });
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -32,7 +123,7 @@ const Dashboard = () => {
   } = usePokeWorkspaces({
     search: searchTerm,
     disabled: searchDisabled,
-    limit: 10,
+    limit,
   });
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -52,48 +143,22 @@ const Dashboard = () => {
             value={searchTerm}
             onChange={handleSearchChange}
           />
-          {isSearchResultsLoading && !searchDisabled && (
-            <p>Loading search results...</p>
-          )}
           {isSearchResultsError && (
             <p>An error occurred while fetching search results.</p>
           )}
-          {!isSearchResultsLoading && !isSearchResultsError && (
-            <ul className="mt-4 space-y-4">
-              {searchResults.map((ws) => (
-                <Link href={`/poke/${ws.sId}`} key={ws.id}>
-                  <li className="border-material-100 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
-                    <h2 className="text-xl font-semibold">{ws.name}</h2>
-                    <div className="flex items-center space-x-2">
-                      <label className="rounded bg-green-500 px-1 text-sm text-white">
-                        {ws.sId}
-                      </label>
-                      {ws.subscription && (
-                        <label
-                          className={`rounded px-1 text-sm text-gray-500 text-white ${ws.subscription.plan.code.startsWith("ENT_") ? "bg-red-500" : "bg-blue-500"}`}
-                        >
-                          {ws.subscription.plan.name}
-                        </label>
-                      )}
-                    </div>
-                  </li>
-                </Link>
-              ))}
-            </ul>
+          {!isSearchResultsLoading &&
+            !isSearchResultsError &&
+            renderWorkspaces("Search Results", searchResults)}
+          {isSearchResultsLoading && !searchDisabled && (
+            <Spinner size="xl" variant="color" />
           )}
-          <h1 className="mb-4 mt-8 text-2xl font-bold">Upgraded Workspaces</h1>
-          <ul className="space-y-4">
-            {!isUpgradedWorkspacesLoading &&
-              !isUpgradedWorkspacesError &&
-              upgradedWorkspaces.map((ws) => (
-                <Link href={`/poke/${ws.sId}`} key={ws.id}>
-                  <li className="border-material-100 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
-                    <h2 className="text-xl font-semibold">{ws.name}</h2>
-                    <p className="text-sm text-gray-500">sId: {ws.sId}</p>
-                  </li>
-                </Link>
-              ))}
-          </ul>
+          {!isUpgradedWorkspacesLoading &&
+            !isUpgradedWorkspacesError &&
+            renderWorkspaces(
+              `Last ${limit} Upgraded Workspaces`,
+              upgradedWorkspaces
+            )}
+          {isUpgradedWorkspacesLoading && <Spinner size="xl" variant="color" />}
         </>
       </div>
     </div>

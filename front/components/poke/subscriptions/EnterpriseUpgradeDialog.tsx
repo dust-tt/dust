@@ -21,6 +21,7 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
+import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr";
 
 export default function EnterpriseUpgradeDialog({
@@ -122,7 +123,7 @@ export default function EnterpriseUpgradeDialog({
                     name="planCode"
                     title="Enterprise Plan"
                     options={plans
-                      .filter((plan) => plan.code.startsWith("ENT_"))
+                      .filter((plan) => isEntreprisePlan(plan.code))
                       .map((plan) => ({
                         value: plan.code,
                         display: `${plan.name} (${plan.code})`,
