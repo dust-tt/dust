@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: core-deployment
+  name: core-secondary-deployment
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: core
+      app: core-secondary
   template:
     metadata:
       labels:
-        app: core
-        name: core-pod
+        app: core-secondary
+        name: core-secondary-pod
         admission.datadoghq.com/enabled: "true"
       annotations:
-        ad.datadoghq.com/web.logs: '[{"source": "core","service": "core","tags": ["env:prod"]}]'
+        ad.datadoghq.com/web.logs: '[{"source": "core-secondary","service": "core-secondary","tags": ["env:prod"]}]'
     spec:
       terminationGracePeriodSeconds: 180
       containers:
@@ -43,7 +43,7 @@ spec:
                   fieldPath: status.hostIP
 
             - name: IS_SECONDARY
-              value: "false"
+              value: "true"
 
           volumeMounts:
             - name: service-account-volume

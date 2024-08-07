@@ -158,11 +158,14 @@ export async function syncOneFile({
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
     const data = Buffer.from(downloadRes.data);
 
-    const parents = await getParents({
-      connectorId,
-      internalId: documentId,
-      startSyncTs,
-    });
+    const parents = [
+      documentId,
+      ...(await getParents({
+        connectorId,
+        internalId: parentInternalId,
+        startSyncTs,
+      })),
+    ];
 
     result = await handleCsvFile({
       dataSourceConfig,
@@ -254,11 +257,14 @@ export async function syncOneFile({
 
       const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
 
-      const parents = await getParents({
-        connectorId,
-        internalId: documentId,
-        startSyncTs,
-      });
+      const parents = [
+        documentId,
+        ...(await getParents({
+          connectorId,
+          internalId: parentInternalId,
+          startSyncTs,
+        })),
+      ];
       parents.reverse();
 
       await upsertToDatasource({

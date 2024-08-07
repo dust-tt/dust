@@ -130,7 +130,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const groups = await this.model.findAll({
-      include: ["id"],
+      attributes: ["id"],
       where: {
         workspaceId,
         type: {

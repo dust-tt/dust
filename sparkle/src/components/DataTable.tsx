@@ -21,6 +21,10 @@ interface TBaseData {
   onMoreClick?: () => void;
 }
 
+interface ColumnBreakpoint {
+  [columnId: string]: "xs" | "sm" | "md" | "lg" | "xl";
+}
+
 interface DataTableProps<TData extends TBaseData, TValue> {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
@@ -28,6 +32,7 @@ interface DataTableProps<TData extends TBaseData, TValue> {
   filter?: string;
   filterColumn?: string;
   initialColumnOrder?: SortingState;
+  columnsBreakpoints?: ColumnBreakpoint;
 }
 
 export function DataTable<TData extends TBaseData, TValue>({
@@ -37,6 +42,7 @@ export function DataTable<TData extends TBaseData, TValue>({
   filter,
   filterColumn,
   initialColumnOrder,
+  columnsBreakpoints = {},
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialColumnOrder ?? []
@@ -72,7 +78,12 @@ export function DataTable<TData extends TBaseData, TValue>({
               <DataTable.Head
                 key={header.id}
                 onClick={header.column.getToggleSortingHandler()}
-                className={header.column.getCanSort() ? "s-cursor-pointer" : ""}
+                className={classNames(
+                  header.column.getCanSort() ? "s-cursor-pointer" : "",
+                  columnsBreakpoints[header.id]
+                    ? `s-hidden ${columnsBreakpoints[header.id]}:s-block`
+                    : ""
+                )}
               >
                 <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
                   {flexRender(
@@ -111,7 +122,14 @@ export function DataTable<TData extends TBaseData, TValue>({
             onMoreClick={row.original.onMoreClick}
           >
             {row.getVisibleCells().map((cell) => (
-              <DataTable.Cell key={cell.id}>
+              <DataTable.Cell
+                key={cell.id}
+                className={classNames(
+                  columnsBreakpoints[cell.column.id]
+                    ? `s-hidden ${columnsBreakpoints[cell.column.id]}:s-block`
+                    : ""
+                )}
+              >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </DataTable.Cell>
             ))}

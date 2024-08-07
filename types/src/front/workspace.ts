@@ -10,9 +10,9 @@ export interface WorkspaceEnterpriseConnection {
   strategy: SupportedEnterpriseConnectionStrategies;
 }
 
-export type SupportedEnterpriseConnectionStrategies = "okta" | "waad";
+export type SupportedEnterpriseConnectionStrategies = "okta" | "samlp" | "waad";
 export const supportedEnterpriseConnectionStrategies: SupportedEnterpriseConnectionStrategies[] =
-  ["okta", "waad"];
+  ["okta", "samlp", "waad"];
 
 export function connectionStrategyToHumanReadable(
   strategy: SupportedEnterpriseConnectionStrategies
@@ -20,6 +20,9 @@ export function connectionStrategyToHumanReadable(
   switch (strategy) {
     case "okta":
       return "Okta";
+
+    case "samlp":
+      return "SAML";
 
     case "waad":
       return "Microsoft Entra ID";

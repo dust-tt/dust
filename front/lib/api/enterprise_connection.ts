@@ -94,6 +94,9 @@ function getCreateConnectionPayloadFromConnectionDetails(
         should_trust_email_verified_connection: "always_set_emails_as_verified",
       };
 
+    case "samlp":
+      throw new Error("SAML connections creation is not supported.");
+
     default:
       assertNever(connectionDetails.strategy);
   }

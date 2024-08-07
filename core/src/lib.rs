@@ -99,3 +99,5 @@ pub mod oauth {
 }
 
 pub mod api_keys;
+
+pub mod secondary_api;

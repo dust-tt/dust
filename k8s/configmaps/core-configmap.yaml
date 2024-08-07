@@ -7,3 +7,5 @@ data:
   DD_SERVICE: "core"
   DD_LOGS_INJECTION: "true"
   DD_RUNTIME_METRICS_ENABLED: "true"
+  CORE_SECONDARY_API: "http://core-secondary-service"
+  SECONDARY_API_FORWARDING_ENABLED: "true"
