@@ -10,7 +10,6 @@ import {
   Dialog,
   DropdownMenu,
   Hoverable,
-  InformationCircleIcon,
   Modal,
   Page,
   RobotIcon,
@@ -110,9 +109,12 @@ type HandleConnectionClickParams = {
   router: NextRouter;
   owner: WorkspaceType;
   limits: ManageDataSourcesLimitsType;
-  setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void;
+  setShowUpgradePopup: (show: boolean) => void;
   setShowConfirmConnection: (integration: DataSourceIntegration | null) => void;
-  setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void;
+  setShowPreviewPopupForProvider: (providerPreview: {
+    show: boolean;
+    connector: ConnectorProvider | null;
+  }) => void;
 };
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
@@ -477,10 +479,12 @@ export default function DataSourcesView({
   >({} as Record<ConnectorProvider, boolean | undefined>);
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [showUpgradePopupForProvider, setShowUpgradePopupForProvider] =
-    useState<ConnectorProvider | null>(null);
+  const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
-    useState<ConnectorProvider | null>(null);
+    useState<{ show: boolean; connector: ConnectorProvider | null }>({
+      show: false,
+      connector: null,
+    });
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
 
@@ -743,7 +747,7 @@ export default function DataSourcesView({
                         router,
                         owner,
                         limits: planConnectionsLimits,
-                        setShowUpgradePopupForProvider,
+                        setShowUpgradePopup,
                         setShowConfirmConnection,
                         setShowPreviewPopupForProvider,
                       });
@@ -761,6 +765,38 @@ export default function DataSourcesView({
           filterColumn={"name"}
         />
       </Page.Vertical>
+      {showUpgradePopup && (
+        <Dialog
+          isOpen={showUpgradePopup}
+          onCancel={() => setShowUpgradePopup(false)}
+          title={`${plan.name} plan`}
+          onValidate={() => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          }}
+        >
+          <p>Unlock this managed data source by upgrading your plan.</p>
+        </Dialog>
+      )}
+      {showPreviewPopupForProvider && (
+        <Dialog
+          isOpen={showPreviewPopupForProvider.show}
+          title="Coming Soon!"
+          validateLabel="Contact us"
+          onValidate={() => {
+            window.open(
+              `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`
+            );
+          }}
+          onCancel={() => {
+            setShowPreviewPopupForProvider({
+              show: false,
+              connector: null,
+            });
+          }}
+        >
+          Please email us at support@dust.tt for early access.
+        </Dialog>
+      )}
     </AppLayout>
   );
 }
@@ -936,7 +972,7 @@ function handleConnectionClick({
   limits,
   isAdmin,
   isLoadingByProvider,
-  setShowUpgradePopupForProvider,
+  setShowUpgradePopup,
   setShowConfirmConnection,
   setShowPreviewPopupForProvider,
   router,
@@ -955,12 +991,15 @@ function handleConnectionClick({
   );
   if (!integration || !integration.connector) {
     if (!isProviderAllowed) {
-      setShowUpgradePopupForProvider(connectorProvider);
+      setShowUpgradePopup(true);
     } else {
       if (isBuilt) {
         setShowConfirmConnection(integration);
       } else {
-        setShowPreviewPopupForProvider(connectorProvider);
+        setShowPreviewPopupForProvider({
+          show: true,
+          connector: connectorProvider,
+        });
       }
     }
   } else {
