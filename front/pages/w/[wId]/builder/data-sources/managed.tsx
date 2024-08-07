@@ -720,7 +720,7 @@ export default function DataSourcesView({
               setDataSourceSearch(s);
             }}
           />
-          {isAdmin && (
+          {isAdmin && nonSetUpIntegrations.length > 0 && (
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
