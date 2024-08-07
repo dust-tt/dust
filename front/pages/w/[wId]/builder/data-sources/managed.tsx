@@ -8,6 +8,7 @@ import {
   ContentMessage,
   DataTable,
   Dialog,
+  DropdownMenu,
   Hoverable,
   InformationCircleIcon,
   Modal,
@@ -86,12 +87,9 @@ type Info = {
       workspaceId: string | undefined;
       dataSourceName: string | undefined;
       isLoading: boolean;
-      isBuilt: boolean;
       isAdmin: boolean;
       fetchConnectorError: boolean;
       buttonOnClick: () => void;
-      upgradeDialog: React.JSX.Element;
-      comingSoonDialog: React.JSX.Element;
     };
   };
 };
@@ -103,10 +101,15 @@ type GetTableRowParams = {
   router: NextRouter;
   owner: WorkspaceType;
   readOnly: boolean;
-  plan: PlanType;
+};
+
+type HandleConnectionClickParams = {
+  integration: DataSourceIntegration;
+  isAdmin: boolean;
+  isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
+  router: NextRouter;
+  owner: WorkspaceType;
   limits: ManageDataSourcesLimitsType;
-  showPreviewPopupForProvider: ConnectorProvider | null;
-  showUpgradePopupForProvider: ConnectorProvider | null;
   setShowUpgradePopupForProvider: (provider: ConnectorProvider | null) => void;
   setShowConfirmConnection: (integration: DataSourceIntegration | null) => void;
   setShowPreviewPopupForProvider: (provider: ConnectorProvider | null) => void;
@@ -569,8 +572,23 @@ export default function DataSourcesView({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   const router = useRouter();
+
+  const [setUpIntegrations, nonSetUpIntegrations] = useMemo(() => {
+    return integrations.reduce(
+      ([setUpIntegrations, nonSetUpIntegrations], integration) => {
+        if (integration.connector) {
+          setUpIntegrations.push(integration);
+        } else if (integration.connectorProvider !== "webcrawler") {
+          nonSetUpIntegrations.push(integration);
+        }
+        return [setUpIntegrations, nonSetUpIntegrations];
+      },
+      [[] as DataSourceIntegration[], [] as DataSourceIntegration[]]
+    );
+  }, [integrations]);
+
   const connectionRows = useMemo(() => {
-    const filteredRows = integrations.filter(
+    const filteredRows = setUpIntegrations.filter(
       (ds) =>
         !CONNECTOR_CONFIGURATIONS[ds.connectorProvider].hide &&
         (isAdmin || ds.connector)
@@ -583,26 +601,15 @@ export default function DataSourcesView({
         router,
         owner,
         readOnly,
-        plan,
-        limits: planConnectionsLimits,
-        showPreviewPopupForProvider,
-        showUpgradePopupForProvider,
-        setShowUpgradePopupForProvider,
-        setShowConfirmConnection,
-        setShowPreviewPopupForProvider,
       })
     );
   }, [
-    integrations,
     isAdmin,
     isLoadingByProvider,
     owner,
-    plan,
-    planConnectionsLimits,
     readOnly,
     router,
-    showPreviewPopupForProvider,
-    showUpgradePopupForProvider,
+    setUpIntegrations,
   ]);
   return (
     <AppLayout
@@ -699,15 +706,54 @@ export default function DataSourcesView({
             </Hoverable>
           </ContentMessage>
         )}
-        <Searchbar
-          ref={searchBarRef}
-          name="search"
-          placeholder="Search (Name)"
-          value={dataSourceSearch}
-          onChange={(s) => {
-            setDataSourceSearch(s);
-          }}
-        />
+        <div className="flex gap-2">
+          <Searchbar
+            ref={searchBarRef}
+            name="search"
+            placeholder="Search (Name)"
+            value={dataSourceSearch}
+            onChange={(s) => {
+              setDataSourceSearch(s);
+            }}
+          />
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  label="Add Connection"
+                  variant="primary"
+                  icon={CloudArrowLeftRightIcon}
+                  size="sm"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items width={180}>
+                {nonSetUpIntegrations.map((integration) => (
+                  <DropdownMenu.Item
+                    key={integration.dataSourceName}
+                    label={integration.name}
+                    icon={
+                      CONNECTOR_CONFIGURATIONS[integration.connectorProvider]
+                        .logoComponent
+                    }
+                    onClick={() => {
+                      handleConnectionClick({
+                        integration,
+                        isAdmin,
+                        isLoadingByProvider,
+                        router,
+                        owner,
+                        limits: planConnectionsLimits,
+                        setShowUpgradePopupForProvider,
+                        setShowConfirmConnection,
+                        setShowPreviewPopupForProvider,
+                      });
+                    }}
+                  />
+                ))}
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          )}
+        </div>
         <DataTable
           data={connectionRows}
           columns={getTableColumns()}
@@ -783,28 +829,17 @@ function getTableColumns() {
       header: "Manage",
       cell: (info: Info) => {
         const original = info.row.original;
-        const disabled =
-          original.isLoading || (!original.isBuilt && !original.isAdmin);
+        const disabled = original.isLoading || !original.isAdmin;
 
         if (!original.connector) {
           return (
             <DataTable.Cell>
               <Button
                 variant="primary"
-                icon={
-                  original.isBuilt
-                    ? CloudArrowLeftRightIcon
-                    : InformationCircleIcon
-                }
+                icon={CloudArrowLeftRightIcon}
                 disabled={disabled}
                 onClick={original.buttonOnClick}
-                label={
-                  original.isBuilt
-                    ? original.isLoading
-                      ? "Connecting..."
-                      : "Connect"
-                    : "Preview"
-                }
+                label={original.isLoading ? "Connecting..." : "Connect"}
               />
             </DataTable.Cell>
           );
@@ -818,8 +853,6 @@ function getTableColumns() {
                 onClick={original.buttonOnClick}
                 label={original.isAdmin ? "Manage" : "View"}
               />
-              {original.upgradeDialog}
-              {original.comingSoonDialog}
             </DataTable.Cell>
           );
         }
@@ -835,77 +868,17 @@ function getTableRow({
   router,
   owner,
   readOnly,
-  plan,
-  limits,
-  showPreviewPopupForProvider,
-  showUpgradePopupForProvider,
-  setShowUpgradePopupForProvider,
-  setShowConfirmConnection,
-  setShowPreviewPopupForProvider,
 }: GetTableRowParams) {
   const connectorProvider = integration.connectorProvider as ConnectorProvider;
-
-  const isBuilt =
-    integration.status === "built" ||
-    (integration.status === "rolling_out" &&
-      !!integration.rollingOutFlag &&
-      owner.flags.includes(integration.rollingOutFlag));
   const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
-  const isProviderAllowed = isConnectorProviderAllowed(
-    integration.connectorProvider,
-    limits
-  );
 
   const buttonOnClick = () => {
-    if (!integration || !integration.connector) {
-      if (!isProviderAllowed) {
-        setShowUpgradePopupForProvider(connectorProvider);
-      } else {
-        if (isBuilt) {
-          setShowConfirmConnection(integration);
-        } else {
-          setShowPreviewPopupForProvider(connectorProvider);
-        }
-      }
-    } else {
-      !isDisabled
-        ? void router.push(
-            `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
-          )
-        : null;
-    }
+    !isDisabled
+      ? void router.push(
+          `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
+        )
+      : null;
   };
-
-  const upgradeDialog = (
-    <Dialog
-      isOpen={showUpgradePopupForProvider === connectorProvider}
-      onCancel={() => setShowUpgradePopupForProvider(null)}
-      title={`${plan.name} plan`}
-      onValidate={() => {
-        void router.push(`/w/${owner.sId}/subscription`);
-      }}
-    >
-      <p>Unlock this managed data source by upgrading your plan.</p>
-    </Dialog>
-  );
-
-  const comingSoonDialog = (
-    <Dialog
-      isOpen={showPreviewPopupForProvider === connectorProvider}
-      title="Coming Soon!"
-      validateLabel="Contact us"
-      onValidate={() => {
-        window.open(
-          `mailto:support@dust.tt?subject=Early access to the ${integration.name} connection`
-        );
-      }}
-      onCancel={() => {
-        setShowPreviewPopupForProvider(null);
-      }}
-    >
-      Please email us at support@dust.tt for early access.
-    </Dialog>
-  );
 
   const LogoComponent =
     CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent;
@@ -919,11 +892,8 @@ function getTableRow({
     dataSourceUrl: `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`,
     isAdmin,
     readOnly,
-    isBuilt,
     disabled: isDisabled,
     isLoading: isLoadingByProvider[connectorProvider] ?? false,
-    upgradeDialog,
-    comingSoonDialog,
   };
 }
 
@@ -958,5 +928,46 @@ function isConnectorProviderAllowed(
     }
     default:
       throw new Error(`Unknown connector provider ${provider}`);
+  }
+}
+
+function handleConnectionClick({
+  integration,
+  limits,
+  isAdmin,
+  isLoadingByProvider,
+  setShowUpgradePopupForProvider,
+  setShowConfirmConnection,
+  setShowPreviewPopupForProvider,
+  router,
+  owner,
+}: HandleConnectionClickParams) {
+  const connectorProvider = integration.connectorProvider as ConnectorProvider;
+  const isBuilt =
+    integration.status === "built" ||
+    (integration.status === "rolling_out" &&
+      !!integration.rollingOutFlag &&
+      owner.flags.includes(integration.rollingOutFlag));
+  const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
+  const isProviderAllowed = isConnectorProviderAllowed(
+    integration.connectorProvider,
+    limits
+  );
+  if (!integration || !integration.connector) {
+    if (!isProviderAllowed) {
+      setShowUpgradePopupForProvider(connectorProvider);
+    } else {
+      if (isBuilt) {
+        setShowConfirmConnection(integration);
+      } else {
+        setShowPreviewPopupForProvider(connectorProvider);
+      }
+    }
+  } else {
+    !isDisabled
+      ? void router.push(
+          `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
+        )
+      : null;
   }
 }
