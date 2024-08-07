@@ -27,6 +27,7 @@ const PostCreateEnterpriseConnectionRequestBodySchema = t.type({
   clientId: t.string,
   clientSecret: t.string,
   domain: t.string,
+  // SAML creation is not supported yet.
   strategy: t.union([t.literal("okta"), t.literal("waad")]),
 });
 
