@@ -22,6 +22,10 @@ export const isEntreprisePlan = (planCode: string) =>
 // If the plan code starts with PRO_, it's a pro plan
 export const isProPlan = (planCode: string) => planCode.startsWith("PRO_");
 
+// If the plan code is FREE_FRIENDSAMILY, it's a free friends and family plan
+export const isFriendsAndFamilyPlan = (planCode: string) =>
+  planCode === "FREE_FRIENDSAMILY";
+
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
   !isEntreprisePlan(planCode) && !isProPlan(planCode);
