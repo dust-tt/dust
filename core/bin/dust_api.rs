@@ -1736,7 +1736,7 @@ async fn data_sources_documents_list(
 #[derive(serde::Deserialize)]
 struct DataSourcesDocumentsRetrieveQuery {
     version_hash: Option<String>,
-    view_filter: Option<SearchFilter>,
+    view_filter: Option<String>, // Parsed as JSON.
 }
 
 async fn data_sources_documents_retrieve(
@@ -1744,6 +1744,22 @@ async fn data_sources_documents_retrieve(
     State(state): State<Arc<APIState>>,
     Query(query): Query<DataSourcesDocumentsRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
+    let view_filter: Option<SearchFilter> = match query
+        .view_filter
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
     let project = project::Project::new_from_id(project_id);
     match state
         .store
@@ -1767,7 +1783,7 @@ async fn data_sources_documents_retrieve(
                 .retrieve(
                     state.store.clone(),
                     &document_id,
-                    &match query.view_filter {
+                    &match view_filter {
                         Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                         None => None,
                     },
@@ -1984,9 +2000,22 @@ async fn tables_retrieve(
     State(state): State<Arc<APIState>>,
     Query(query): Query<TableRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let view_filter = query
+    let view_filter: Option<SearchFilter> = match query
         .view_filter
-        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
 
     let project = project::Project::new_from_id(project_id);
 
@@ -2027,9 +2056,22 @@ async fn tables_list(
     Query(query): Query<TableRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let view_filter = query
+    let view_filter: Option<SearchFilter> = match query
         .view_filter
-        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
 
     match state
         .store
@@ -2220,9 +2262,22 @@ async fn tables_rows_retrieve(
     Query(query): Query<TableRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let view_filter = query
+    let view_filter: Option<SearchFilter> = match query
         .view_filter
-        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
 
     match state
         .store
@@ -2343,9 +2398,22 @@ async fn tables_rows_list(
     Query(query): Query<DatabasesRowsListQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let view_filter = query
+    let view_filter: Option<SearchFilter> = match query
         .view_filter
-        .and_then(|filter| SearchFilter::from_json_str(&filter).ok());
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
 
     match state
         .store

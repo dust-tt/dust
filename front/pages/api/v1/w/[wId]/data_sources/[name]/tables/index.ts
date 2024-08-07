@@ -1,5 +1,5 @@
 import type { CoreAPITableSchema, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { CoreAPI, getFilterFromQuery } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -169,6 +169,7 @@ async function handler(
       const tablesRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
+        filter: getFilterFromQuery(req.query),
       });
 
       if (tablesRes.isErr()) {

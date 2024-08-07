@@ -159,6 +159,40 @@ export type CoreAPISearchFilter = {
   } | null;
 };
 
+export const getFilterFromQuery = (query: {
+  [key: string]: string | string[];
+}): CoreAPISearchFilter => {
+  const toArray = (value: string | string[] | undefined): string[] | null => {
+    if (typeof value === "string") {
+      return [value];
+    }
+    return value ?? null;
+  };
+  const toNumber = (value: string | string[] | undefined): number | null => {
+    if (typeof value === "string") {
+      return Number(value);
+    }
+    return null;
+  };
+
+  const filter = {
+    tags: {
+      in: toArray(query.tags_in),
+      not: toArray(query.tags_not),
+    },
+    parents: {
+      in: toArray(query.parents_in),
+      not: toArray(query.parents_not),
+    },
+    timestamp: {
+      gt: toNumber(query.timestamp_gt),
+      lt: toNumber(query.timestamp_lt),
+    },
+  };
+
+  return filter;
+};
+
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
