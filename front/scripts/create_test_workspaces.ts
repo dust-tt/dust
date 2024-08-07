@@ -72,30 +72,6 @@ async function createTestWorkspaces(
 
     await pokeUpgradeWorkspaceToPlan(authenticator, FREE_UPGRADED_PLAN_CODE);
   }
-  /*
-  workspaces.forEach(async (workspace) => {
-    // Randomly select a plan
-    const randomPlan = plans[Math.floor(Math.random() * plans.length)];
-
-    // Create a subscription for the workspace
-    await Subscription.create({
-      sId: generateLegacyModelSId(),
-      workspaceId: workspace.id,
-      planId: randomPlan.id,
-      status: "active",
-      startDate: new Date(),
-      stripeSubscriptionId: `test_stripe_sub_${workspace.sId}`,
-    });
-
-    // Create a new membership
-    await MembershipModel.create({
-      startAt: new Date(),
-      userId: userId,
-      workspaceId: workspace.id,
-      role: "admin" as ActiveRoleType,
-    });
-  });
-*/
 }
 
 makeScript(
