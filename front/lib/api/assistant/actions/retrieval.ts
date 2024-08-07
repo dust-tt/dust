@@ -289,21 +289,19 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     const model = getSupportedModelConfig(agentConfiguration.model);
 
     // We find the retrieval action in the step with the highest topK.
-    const maxTopK = (() => {
-      return retrievalActions
-        .map((a) => {
-          if (a.topK === "auto") {
-            if (a.query === "none") {
-              return model.recommendedExhaustiveTopK;
-            } else {
-              return model.recommendedTopK;
-            }
+    const maxTopK = retrievalActions
+      .map((a) => {
+        if (a.topK === "auto") {
+          if (a.query === "none") {
+            return model.recommendedExhaustiveTopK;
           } else {
-            return a.topK;
+            return model.recommendedTopK;
           }
-        })
-        .reduce((acc, topK) => Math.max(acc, topK), 0);
-    })();
+        } else {
+          return a.topK;
+        }
+      })
+      .reduce((acc, topK) => Math.max(acc, topK), 0);
 
     // We split the topK evenly among all retrieval actions of the step.
     return Math.ceil(maxTopK / retrievalActionsCount);
