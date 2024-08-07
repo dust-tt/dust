@@ -2,8 +2,8 @@ import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-import sanitizeHtml from "sanitize-html";
 
+import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
@@ -76,7 +76,7 @@ async function handler(
   const { email, emailMessage, emailRequester, dataSourceName } =
     bodyValidation.right;
 
-  const html = `<p>${emailRequester} has sent you a request regarding the connection ${dataSourceName}</p>
+  const body = `<p>${emailRequester} has sent you a request regarding your connection ${dataSourceName}</p>
     <p>Message:</p>
     ${emailMessage}`;
 
@@ -87,8 +87,11 @@ async function handler(
         name: "Dust team",
         email: "team@dust.tt",
       },
-      subject: `[Dust] Request Data source from ${emailRequester}`,
-      html: sanitizeHtml(html),
+      templateId: config.getGenericEmailTemplate(),
+      dynamic_template_data: {
+        subject: `[Dust] Request Data source from ${emailRequester}`,
+        body,
+      },
     };
     await sendEmail(email, message);
     return res.status(200).json({ success: true, email });
