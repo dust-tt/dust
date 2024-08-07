@@ -1,3 +1,5 @@
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -7,6 +9,7 @@ import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestAccessBodySchema = t.type({
@@ -19,6 +22,40 @@ export const PostRequestAccessBodySchema = t.type({
 export type PostRequestAccessBody = t.TypeOf<
   typeof PostRequestAccessBodySchema
 >;
+
+async function sendEmailWithTemplate(
+  to: string,
+  from: { name: string; email: string },
+  subject: string,
+  body: string
+): Promise<Result<void, Error>> {
+  const templateId = config.getGenericEmailTemplate();
+  const message = {
+    to,
+    from,
+    templateId,
+    dynamic_template_data: {
+      subject,
+      body,
+    },
+  };
+
+  try {
+    await sendEmail(to, message);
+    logger.info({ email: to, subject }, "Sending email");
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+        to,
+        subject,
+      },
+      "Error sending email."
+    );
+    return new Err(e as Error);
+  }
+}
 
 async function handler(
   req: NextApiRequest,
@@ -78,22 +115,14 @@ async function handler(
 
   const body = `${emailRequester} has sent you a request regarding your connection ${dataSourceName}:g ${emailMessage}`;
 
-  try {
-    const message = {
-      to: email,
-      from: {
-        name: "Dust team",
-        email: "team@dust.tt",
-      },
-      templateId: config.getGenericEmailTemplate(),
-      dynamic_template_data: {
-        subject: `[Dust] Request Data source from ${emailRequester}`,
-        body,
-      },
-    };
-    await sendEmail(email, message);
-    return res.status(200).json({ success: true, email });
-  } catch (error) {
+  const result = await sendEmailWithTemplate(
+    email,
+    { name: "Dust team", email: "team@dust.tt" },
+    `[Dust] Request Data source from ${emailRequester}`,
+    body
+  );
+
+  if (result.isErr()) {
     return apiError(req, res, {
       status_code: 500,
       api_error: {
@@ -102,6 +131,7 @@ async function handler(
       },
     });
   }
+  return res.status(200).json({ success: true, email });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
