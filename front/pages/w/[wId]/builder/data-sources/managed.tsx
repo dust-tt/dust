@@ -22,7 +22,6 @@ import type {
   EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
-  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -47,6 +46,7 @@ import * as React from "react";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import {RequestDataSourcesModal} from "@app/components/data_source/RequestDataSourcesModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
@@ -174,14 +174,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
-  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
-  const user = auth.user();
 
-  if (!owner || !plan || !subscription || !user) {
+  if (!owner || !plan || !subscription) {
     return {
       notFound: true,
     };
@@ -324,7 +322,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
-      user,
       subscription,
       readOnly,
       isAdmin,
@@ -464,7 +461,6 @@ function ConfirmationModal({
 
 export default function DataSourcesView({
   owner,
-  user,
   subscription,
   readOnly,
   isAdmin,
@@ -792,6 +788,12 @@ export default function DataSourcesView({
         ) : (
           <></>
         )}
+        <RequestDataSourcesModal
+          isOpen={isRequestDataSourceModalOpen}
+          onClose={() => setIsRequestDataSourceModalOpen(false)}
+          dataSourceIntegrations={dataSourceIntegrations}
+          owner={owner}
+        />
       </Page.Vertical>
       {showUpgradePopup && (
         <Dialog

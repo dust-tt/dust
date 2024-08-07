@@ -14,7 +14,7 @@ import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestAccessBodySchema = t.type({
   emailMessage: t.string,
-  emailRequester: t.string,
+  email: t.string,
   dataSourceName: t.string,
 });
 
@@ -109,8 +109,8 @@ async function handler(
     });
   }
 
-  const email = user.email;
-  const { emailMessage, emailRequester, dataSourceName } = bodyValidation.right;
+  const emailRequester = user.email;
+  const { emailMessage, email, dataSourceName } = bodyValidation.right;
 
   const body = `${emailRequester} has sent you a request regarding your connection ${dataSourceName}:g ${emailMessage}`;
 

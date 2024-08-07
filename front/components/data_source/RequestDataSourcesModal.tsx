@@ -12,19 +12,18 @@ interface RequestDataSourceProps {
   isOpen: boolean;
   onClose: () => void;
   dataSourceIntegrations: DataSourceIntegration[];
-  currentUserEmail: string;
   owner: WorkspaceType;
 }
 
 async function sendRequestDataSourceEmail({
+  email,
   emailMessage,
   dataSourceName,
-  emailRequester,
   owner,
 }: {
+  email: string;
   emailMessage: string;
   dataSourceName: string;
-  emailRequester: string;
   owner: WorkspaceType;
 }) {
   const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {
@@ -35,7 +34,7 @@ async function sendRequestDataSourceEmail({
     body: JSON.stringify({
       emailMessage,
       dataSourceName,
-      emailRequester,
+      email,
     } satisfies PostRequestAccessBody),
   });
 
@@ -51,7 +50,6 @@ export function RequestDataSourcesModal({
   isOpen,
   onClose,
   dataSourceIntegrations,
-  currentUserEmail,
   owner,
 }: RequestDataSourceProps) {
   const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
@@ -162,16 +160,15 @@ export function RequestDataSourcesModal({
                 } else {
                   try {
                     await sendRequestDataSourceEmail({
+                      email: userEmail,
                       emailMessage: message,
                       dataSourceName: selectedDataSourceIntegration.name,
-                      emailRequester: currentUserEmail,
                       owner,
                     });
                   } catch (e) {
                     logger.error(
                       {
                         userEmail,
-                        currentUserEmail,
                         dataSourceName: selectedDataSourceIntegration.name,
                       },
                       "Error sending email"
