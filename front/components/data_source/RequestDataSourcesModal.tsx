@@ -17,13 +17,11 @@ interface RequestDataSourceProps {
 }
 
 async function sendRequestDataSourceEmail({
-  email,
   emailMessage,
   dataSourceName,
   emailRequester,
   owner,
 }: {
-  email: string;
   emailMessage: string;
   dataSourceName: string;
   emailRequester: string;
@@ -35,7 +33,6 @@ async function sendRequestDataSourceEmail({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      email,
       emailMessage,
       dataSourceName,
       emailRequester,
@@ -165,7 +162,6 @@ export function RequestDataSourcesModal({
                 } else {
                   try {
                     await sendRequestDataSourceEmail({
-                      email: userEmail,
                       emailMessage: message,
                       dataSourceName: selectedDataSourceIntegration.name,
                       emailRequester: currentUserEmail,
