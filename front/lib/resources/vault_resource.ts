@@ -216,28 +216,6 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
-  // async updateName(
-  //   auth: Authenticator,
-  //   name: string
-  // ): Promise<Result<undefined, Error>> {
-  //   const owner = auth.getNonNullableWorkspace();
-  //   try {
-  //     await this.model.update(
-  //       {
-  //         name,
-  //       },
-  //       {
-  //         where: {
-  //           workspaceId: owner.id,
-  //         },
-  //       }
-  //     );
-  //     return new Ok(undefined);
-  //   } catch (err) {
-  //     return new Err(err as Error);
-  //   }
-  // }
-
   acl(): ACLType {
     return {
       aclEntries: [
