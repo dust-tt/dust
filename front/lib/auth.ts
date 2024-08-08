@@ -470,10 +470,9 @@ export class Authenticator {
    * @param param1
    * @returns
    */
-  // TODO(2024-08-05 flav) Use user-id instead of email to avoid ambiguity.
-  async exchangeSystemKeyForUserAuthByEmail(
+  async exchangeSystemKeyForUserAuthById(
     auth: Authenticator,
-    { userEmail }: { userEmail: string }
+    { userId }: { userId: string }
   ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
       throw new Error("Provided authenticator does not have a system key.");
@@ -484,50 +483,13 @@ export class Authenticator {
       throw new Error("Workspace not found.");
     }
 
-    // The same email address might be linked to multiple users.
-    const users = await UserResource.listByEmail(userEmail);
-    // If no user exist (e.g., whitelisted email addresses),
-    // simply ignore and return null.
-    if (users.length === 0) {
-      return null;
-    }
-
-    // Verify that one of the user has an active membership in the specified workspace.
-    const activeMemberships = await MembershipResource.getActiveMemberships({
-      users,
-      workspace: owner,
-    });
-    // If none of the user has an active membership in the workspace,
-    // simply ignore and return null.
-    if (activeMemberships.length === 0) {
-      return null;
-    }
-
-    // Take the oldest active membership.
-    const [activeMembership] = activeMemberships.sort(
-      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-    );
-    // Find the user associated with the active membership.
-    const user = users.find((u) => u.id === activeMembership.userId);
+    // If not user exists, simply ignore and return null.
+    const user = await UserResource.fetchById(userId);
     if (!user) {
       return null;
     }
 
-    const groups = await GroupResource.fetchActiveGroupsOfUserInWorkspace({
-      user,
-      workspace: renderLightWorkspaceType({ workspace: owner }),
-    });
-
-    return new Authenticator({
-      flags: auth._flags,
-      key: auth._key,
-      // We limit scope to a user role.
-      role: "user",
-      groups,
-      user,
-      subscription: auth._subscription,
-      workspace: auth._workspace,
-    });
+    return Authenticator.fromUserIdAndWorkspaceId(userId, owner.sId);
   }
 
   role(): RoleType {

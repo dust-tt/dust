@@ -117,6 +117,30 @@ async function isAutoJoinEnabledForDomain(
   return isDomainAutoJoinEnabled?.domainAutoJoinEnabled ?? false;
 }
 
+export async function getDustUserOrBotId(
+  connector: ConnectorResource,
+  slackUserInfo: SlackUserInfo
+) {
+  // If it's a bot, we can use the real name to identify it.
+  if (slackUserInfo.is_bot) {
+    return `x-dust-slack-bot-${slackUserInfo.real_name?.toLowerCase()}`;
+  }
+
+  // If it's a user, we can use the email to identify them.
+  const userEmail = getSlackUserEmailFromProfile(slackUserInfo);
+  if (userEmail) {
+    const workspaceUsers = await getActiveMembersInWorkspaceMemoized(connector);
+    const dustUser = workspaceUsers.find((m) => m.email === userEmail)?.id;
+
+    if (dustUser) {
+      return dustUser;
+    }
+  }
+
+  // Otherwise, we assume it's a guest from a whitelisted domain.
+  return `x-dust-slack-guest-${getSlackUserEmailDomainFromProfile(slackUserInfo)}`;
+}
+
 function makeSlackMembershipAccessBlocksForConnector(
   connector: ConnectorResource
 ) {

@@ -26,6 +26,7 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
+  getDustUserOrBotId,
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
@@ -412,6 +413,11 @@ async function botAnswerMessage(
   if (buildContentFragmentRes.isErr()) {
     return new Err(new Error(buildContentFragmentRes.error.message));
   }
+
+  // Best effort, we try to get the Dust user id or the bot id associated to the message.
+  // TODO(GROUPS_INFRA) update the logic here once we know how to handle groups for Slack workflows.
+  const dustUserOrBotId = await getDustUserOrBotId(connector, slackUserInfo);
+
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
   if (lastSlackChatBotMessage?.conversationId) {
@@ -427,10 +433,7 @@ async function botAnswerMessage(
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
-      userEmailHeader:
-        slackChatBotMessage.slackEmail !== "unknown"
-          ? slackChatBotMessage.slackEmail
-          : undefined,
+      dustUserId: dustUserOrBotId,
     });
     if (mesasgeRes.isErr()) {
       return new Err(new Error(mesasgeRes.error.message));
@@ -449,10 +452,7 @@ async function botAnswerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragment: buildContentFragmentRes.value || undefined,
-      userEmailHeader:
-        slackChatBotMessage.slackEmail !== "unknown"
-          ? slackChatBotMessage.slackEmail
-          : undefined,
+      dustUserId: dustUserOrBotId,
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));

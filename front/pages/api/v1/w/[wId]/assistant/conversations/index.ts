@@ -5,6 +5,7 @@ import type {
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
+  DustUserIdHeader,
   isEmptyString,
   PublicPostConversationsRequestBodySchema,
 } from "@dust-tt/types";
@@ -20,6 +21,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostConversationsResponseBody = {
@@ -178,17 +180,24 @@ async function handler(
       }
 
       // /!\ This is reserved for internal use!
-      // If the header "x-api-user-email" is present and valid,
-      // associate the message with the provided user email if it belongs to the same workspace.
-      const userEmailFromHeader = req.headers["x-api-user-email"];
-      if (typeof userEmailFromHeader === "string") {
-        workspaceAuth =
-          (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
-            workspaceAuth,
-            {
-              userEmail: userEmailFromHeader,
-            }
-          )) ?? workspaceAuth;
+      // If the header "x-dust-user-id" is present and valid,
+      // associate the message with the provided user id if it belongs to the same workspace.
+      if (keyRes.value.isSystem) {
+        const userOrBotId = req.headers[DustUserIdHeader];
+        if (typeof userOrBotId !== "string") {
+          logger.warn(
+            { userOrBotId },
+            "No user or bot id provided in the header for system key"
+          );
+        } else {
+          workspaceAuth =
+            (await workspaceAuth.exchangeSystemKeyForUserAuthById(
+              workspaceAuth,
+              { userId: userOrBotId }
+            )) ?? workspaceAuth;
+
+          console.log(">> workspaceAuth:", workspaceAuth.user()?.sId);
+        }
       }
 
       let conversation = await createConversation(workspaceAuth, {
