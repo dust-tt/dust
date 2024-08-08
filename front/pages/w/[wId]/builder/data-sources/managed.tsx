@@ -43,6 +43,7 @@ import { useRef } from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
 
+import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEdition";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -793,6 +794,15 @@ export default function DataSourcesView({
           onClose={() => setIsRequestDataSourceModalOpen(false)}
           dataSourceIntegrations={dataSourceIntegrations}
           owner={owner}
+        />
+        <DataSourceEditionModal
+          isOpen={true}
+          connectorProvider={integrations[0].connectorProvider}
+          onClose={() => console.log()}
+          dataSourceIntegration={integrations[0]}
+          owner={owner}
+          router={router}
+          dustClientFacingUrl={dustClientFacingUrl}
         />
       </Page.Vertical>
       {showUpgradePopup && (

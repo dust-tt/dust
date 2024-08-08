@@ -18,16 +18,17 @@ import {
   SliderToggle,
   Tab,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
+import type {   ConnectorProvider,
   DataSourceType,
-  PostDataSourceDocumentRequestBody,
+PlanType,   PostDataSourceDocumentRequestBody,
+SubscriptionType ,
   UpdateConnectorRequestBody,
-  WorkspaceType,
-} from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
+  WorkspaceType} from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
+import {
+  CONNECTOR_TYPE_TO_MISMATCH_ERROR
+} from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -907,21 +908,6 @@ function IntercomConfigView({
     </ContextItem.List>
   );
 }
-
-const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
-  confluence: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
-  slack: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
-  notion:
-    "You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
-  github:
-    "You cannot create a new Github app installation.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.",
-  google_drive:
-    "You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.",
-  intercom:
-    "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
-  microsoft: `Microsoft / mismatch error.`,
-  webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
-};
 
 interface ConnectorUiConfig {
   displayDataSourceDetailsModal: boolean;
