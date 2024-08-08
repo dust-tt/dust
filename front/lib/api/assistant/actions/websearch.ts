@@ -27,14 +27,13 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import logger from "@app/logger/logger";
 
 import { getRunnerforActionConfiguration } from "./runners";
-
-const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
 interface WebsearchActionBlob {
   id: ModelId; // AgentWebsearchAction
@@ -124,25 +123,22 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
   // WebSearch shares results count across web search actions of a same step and uses citations for
   // these.
   getCitationsCount({
+    agentConfiguration,
     stepActions,
   }: {
+    agentConfiguration: AgentConfigurationType;
     stepActions: AgentActionConfigurationType[];
   }): number {
-    const actionCount = stepActions.filter(
-      (a) => a.sId === this.actionConfiguration.sId
-    ).length;
-
-    if (actionCount === 0) {
-      throw new Error("Unexpected: found 0 websearch actions");
-    }
-
-    return Math.ceil(WEBSEARCH_ACTION_NUM_RESULTS / actionCount);
+    return getCitationsCount({
+      agentConfiguration,
+      stepActions,
+    });
   }
 
   // stepTopKAndRefsOffsetForAction returns the references offset and the number of search results
-  // an action will use as part of the current step. We share number of results among multiple
-  // instances of a same websearch action from the same step so that we don't overflow the context
-  // when the model asks for many web searches at the same time.
+  // an action will use as part of the current step. We share number of results among all actions
+  // that use citations within a step so that we don't overflow the context when the model asks for
+  // many web searches or retrievals at the same time.
   stepNumResultsAndRefsOffsetForAction({
     agentConfiguration,
     stepActionIndex,
@@ -169,7 +165,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     }
 
     return {
-      numResults: this.getCitationsCount({ stepActions }),
+      numResults: this.getCitationsCount({ agentConfiguration, stepActions }),
       refsOffset,
     };
   }

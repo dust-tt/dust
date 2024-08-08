@@ -7,9 +7,19 @@ import {
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
-import type { WhitelistableFeature } from "@dust-tt/types";
+import type {
+  AgentActionConfigurationType,
+  AgentConfigurationType,
+  RetrievalConfigurationType,
+  WebsearchConfigurationType,
+  WhitelistableFeature,
+} from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import { getSupportedModelConfig } from "@app/lib/assistant";
+
+export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 
 export const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
@@ -65,3 +75,55 @@ export const ACTION_SPECIFICATIONS: Record<
     flag: null,
   },
 };
+
+export function getCitationsCount({
+  agentConfiguration,
+  stepActions,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  stepActions: AgentActionConfigurationType[];
+}): number {
+  const actionsWithCitations: (
+    | RetrievalConfigurationType
+    | WebsearchConfigurationType
+  )[] = [];
+  for (const a of stepActions) {
+    if (
+      a.type === "retrieval_configuration" ||
+      a.type === "websearch_configuration"
+    ) {
+      actionsWithCitations.push(a);
+    }
+  }
+  const actionsWithCitationsCount = actionsWithCitations.length;
+
+  if (actionsWithCitationsCount === 0) {
+    throw new Error("Unexpected: found 0 actions with citations");
+  }
+
+  const model = getSupportedModelConfig(agentConfiguration.model);
+
+  // We find the retrieval action in the step with the highest topK.
+  const maxTopK = actionsWithCitations
+    .map((a) => {
+      if (a.type === "retrieval_configuration") {
+        if (a.topK === "auto") {
+          if (a.query === "none") {
+            return model.recommendedExhaustiveTopK;
+          } else {
+            return model.recommendedTopK;
+          }
+        } else {
+          return a.topK;
+        }
+      } else if (a.type === "websearch_configuration") {
+        return WEBSEARCH_ACTION_NUM_RESULTS;
+      } else {
+        assertNever(a);
+      }
+    })
+    .reduce((acc, topK) => Math.max(acc, topK), 0);
+
+  // We split the topK evenly among all retrieval actions of the step.
+  return Math.ceil(maxTopK / actionsWithCitationsCount);
+}
