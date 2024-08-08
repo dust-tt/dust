@@ -44,9 +44,9 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import {RequestDataSourcesModal} from "@app/components/data_source/RequestDataSourcesModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
@@ -89,7 +89,7 @@ type RowData = DataSourceIntegration & {
   buttonOnClick: () => void;
   onClick?: () => void;
   onMoreClick?: () => void;
-}
+};
 
 type Info = CellContext<RowData, unknown>;
 
