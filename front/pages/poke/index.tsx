@@ -1,4 +1,4 @@
-import { CloudArrowLeftRightIcon, Icon, Spinner } from "@dust-tt/sparkle";
+import { BookOpenIcon, Icon, Spinner } from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
@@ -58,13 +58,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
-                  <PokeTableCell
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      maxWidth: "200px",
-                    }}
-                  >
+                  <PokeTableCell className="max-w-[200px] overflow-hidden text-ellipsis">
                     {ws.adminEmail}{" "}
                     {ws.workspaceDomain && (
                       <label>({ws.workspaceDomain.domain})</label>
@@ -77,8 +71,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                   </PokeTableCell>
                   <PokeTableCell align="center">
                     <label>
-                      <Icon visual={CloudArrowLeftRightIcon} />{" "}
-                      {ws.dataSourcesCount}
+                      <Icon visual={BookOpenIcon} /> {ws.dataSourcesCount}
                     </label>
                   </PokeTableCell>
                 </PokeTableRow>
