@@ -151,9 +151,11 @@ export async function processTranscriptActivity(
   }
 
   const localLogger = mainLogger.child({
-    userId: user.id,
     fileId,
     transcriptsConfigurationId,
+    type: "transcript",
+    userId: user.id,
+    workspaceId: workspace.sId,
   });
 
   localLogger.info(
@@ -204,7 +206,7 @@ export async function processTranscriptActivity(
   // Short transcripts are likely not useful to process.
   if (transcriptContent.length < minTranscriptsSize) {
     localLogger.info(
-      {},
+      { contentLength: transcriptContent.length },
       "[processTranscriptActivity] Transcript content too short or empty. Skipping."
     );
     await transcriptsConfiguration.recordHistory({
