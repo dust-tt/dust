@@ -106,6 +106,17 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
+  static async listForDataSource(
+    auth: Authenticator,
+    dataSource: DataSourceResource
+  ) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        dataSourceId: dataSource.id,
+      },
+    });
+  }
+
   static async fetchById(auth: Authenticator, id: string) {
     const fileModelId = getResourceIdFromSId(id);
     if (!fileModelId) {
@@ -164,13 +175,15 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   static async deleteForDataSource(
     auth: Authenticator,
-    dataSource: DataSourceResource
+    dataSource: DataSourceResource,
+    transaction?: Transaction
   ) {
     return this.model.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: dataSource.id,
       },
+      transaction,
     });
   }
 
