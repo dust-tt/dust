@@ -11,6 +11,7 @@ import {
 import type {
   ConnectorProvider,
   ConnectorType,
+  DataSourceType,
   EditedByUser,
   UpdateConnectorRequestBody,
   UserType,
@@ -25,6 +26,7 @@ import React, { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 export type DataSourceIntegration = {
@@ -55,7 +57,23 @@ interface DataSourceEditionModalProps {
   dustClientFacingUrl: string;
   user: UserType;
   setIsRequestDataSourceModalOpen: (show: boolean) => void;
+  setDataSourceIntegrations: (
+    integrations: (prev: DataSourceIntegration[]) => DataSourceIntegration[]
+  ) => void;
+  setIsLoadingByProvider: (
+    providers: (
+      prev: Record<ConnectorProvider, boolean | undefined>
+    ) => Record<ConnectorProvider, boolean | undefined>
+  ) => void;
 }
+
+const REDIRECT_TO_EDIT_PERMISSIONS = [
+  "confluence",
+  "google_drive",
+  "microsoft",
+  "slack",
+  "intercom",
+];
 
 export function DataSourceEditionModal({
   isOpen,
@@ -67,16 +85,18 @@ export function DataSourceEditionModal({
   dustClientFacingUrl,
   user,
   setIsRequestDataSourceModalOpen,
+  setDataSourceIntegrations,
+  setIsLoadingByProvider,
 }: DataSourceEditionModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  if (!connectorProvider) {
+  if (!connectorProvider || !dataSourceIntegration) {
     return;
   }
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
-  const isSetup = !!dataSourceIntegration;
+  const isSetup = !!dataSourceIntegration?.connector;
 
   let dataSourceOwner: EditedByUser | null | undefined = null;
   let isDataSourceOwner: boolean = false;
@@ -85,6 +105,87 @@ export function DataSourceEditionModal({
     isDataSourceOwner =
       dataSourceIntegration?.editedByUser?.userId === user.sId;
   }
+
+  const handleEnableManagedDataSource = async (
+    dataSourceIntegration: DataSourceIntegration
+  ) => {
+    try {
+      const provider = dataSourceIntegration.connectorProvider;
+      const suffix = dataSourceIntegration.setupWithSuffix;
+      const connectionIdRes = await setupConnection({
+        dustClientFacingUrl,
+        owner,
+        provider,
+      });
+      if (connectionIdRes.isErr()) {
+        throw connectionIdRes.error;
+      }
+      onClose();
+      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
+
+      const res = await fetch(
+        suffix
+          ? `/api/w/${
+              owner.sId
+            }/data_sources/managed?suffix=${encodeURIComponent(suffix)}`
+          : `/api/w/${owner.sId}/data_sources/managed`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider,
+            connectionId: connectionIdRes.value,
+            name: undefined,
+            configuration: null,
+          } satisfies PostManagedDataSourceRequestBody),
+        }
+      );
+
+      if (res.ok) {
+        const createdManagedDataSource: {
+          dataSource: DataSourceType;
+          connector: ConnectorType;
+        } = await res.json();
+        setDataSourceIntegrations((prev) =>
+          prev.map((ds) => {
+            return ds.connector === null && ds.connectorProvider == provider
+              ? {
+                  ...ds,
+                  connector: createdManagedDataSource.connector,
+                  setupWithSuffix: null,
+                  dataSourceName: createdManagedDataSource.dataSource.name,
+                }
+              : ds;
+          })
+        );
+        if (REDIRECT_TO_EDIT_PERMISSIONS.includes(provider)) {
+          void router.push(
+            `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
+          );
+        }
+      } else {
+        const responseText = await res.text();
+        sendNotification({
+          type: "error",
+          title: `Failed to enable connection (${provider})`,
+          description: `Got: ${responseText}`,
+        });
+      }
+    } catch (e) {
+      onClose();
+      sendNotification({
+        type: "error",
+        title: `Failed to enable connection (${dataSourceIntegration.connectorProvider})`,
+      });
+    } finally {
+      setIsLoadingByProvider((prev) => ({
+        ...prev,
+        [dataSourceIntegration.connectorProvider]: false,
+      }));
+    }
+  };
 
   const updateConnectorConnectionId = async (
     newConnectionId: string,
@@ -228,6 +329,9 @@ export function DataSourceEditionModal({
                 size="md"
                 icon={CloudArrowLeftRightIcon}
                 label="Make Connection"
+                onClick={async () => {
+                  await handleEnableManagedDataSource(dataSourceIntegration);
+                }}
               />
             )}
           </div>
