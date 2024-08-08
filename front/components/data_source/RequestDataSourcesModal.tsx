@@ -2,11 +2,11 @@ import { Button, DropdownMenu, Modal, TextArea } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import React, { useContext, useState } from "react";
 
+import type { DataSourceIntegration } from "@app/components/data_source/DataSourceEdition";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import logger from "@app/logger/logger";
 import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request_access";
-import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 interface RequestDataSourceProps {
   isOpen: boolean;
