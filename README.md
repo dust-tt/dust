@@ -6,8 +6,8 @@ Amplify your team's potential with customizable and secure AI assistants.
 
 ## :book: Developer Documentation
 
-- [LLM apps Primer](https://docs.dust.tt/introduction)
-- [Developer Platform overview](https://docs.dust.tt/overview)
-- [Blocks documentation](https://docs.dust.tt/core-blocks)
-- [Getting started guide](https://docs.dust.tt/quickstart)
-- [Runs API Reference](https://docs.dust.tt/runs)
+- [LLM apps Primer](https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants)
+- [Developer Platform overview](https://docs.dust.tt/reference/developer-platform-overview)
+- [Blocks documentation](https://docs.dust.tt/reference/core-blocks)
+- [Getting started guide](https://docs.dust.tt/docs/getting-started#quick-start-guide)
+- [Runs API Reference](https://docs.dust.tt/reference/get_api-v1-w-wid-apps-aid-runs-runid)
