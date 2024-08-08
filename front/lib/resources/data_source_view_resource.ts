@@ -93,6 +93,14 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return this.baseFetchWithAuthorization(auth);
   }
 
+  static async listByVault(auth: Authenticator, vault: VaultResource) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        vaultId: vault.id,
+      },
+    });
+  }
+
   static async listForDataSourcesInVault(
     auth: Authenticator,
     dataSources: DataSourceResource[],
@@ -127,6 +135,32 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator
   ): Promise<DataSourceResource | null> {
     return DataSourceResource.fetchByModelIdWithAuth(auth, this.dataSourceId);
+  }
+
+  // Updating.
+  async updateParents(
+    auth: Authenticator,
+    parentsIn: string[],
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
+    try {
+      await this.model.update(
+        {
+          parentsIn,
+        },
+        {
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            id: this.id,
+          },
+          transaction,
+        }
+      );
+
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
   }
 
   // Deletion.

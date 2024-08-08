@@ -4,6 +4,7 @@ import type {
   LightWorkspaceType,
   ModelId,
   Result,
+  VaultType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
@@ -215,6 +216,28 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
+  // async updateName(
+  //   auth: Authenticator,
+  //   name: string
+  // ): Promise<Result<undefined, Error>> {
+  //   const owner = auth.getNonNullableWorkspace();
+  //   try {
+  //     await this.model.update(
+  //       {
+  //         name,
+  //       },
+  //       {
+  //         where: {
+  //           workspaceId: owner.id,
+  //         },
+  //       }
+  //     );
+  //     return new Ok(undefined);
+  //   } catch (err) {
+  //     return new Err(err as Error);
+  //   }
+  // }
+
   acl(): ACLType {
     return {
       aclEntries: [
@@ -228,5 +251,13 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   isGlobal() {
     return this.kind === "global";
+  }
+
+  toJSON(): VaultType {
+    return {
+      sId: this.sId,
+      name: this.name,
+      kind: this.kind,
+    };
   }
 }
