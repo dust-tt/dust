@@ -22,6 +22,7 @@ import type {
   EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
+  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -98,7 +99,7 @@ type GetTableRowParams = {
   integration: DataSourceIntegration;
   isAdmin: boolean;
   isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
-  router: NextRouter;
+  onClick: () => void;
   owner: WorkspaceType;
   readOnly: boolean;
 };
@@ -175,12 +176,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+  const user = auth.user();
 
-  if (!owner || !plan || !subscription) {
+  if (!owner || !plan || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -330,6 +333,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       gaTrackingId: GA_TRACKING_ID,
       dustClientFacingUrl: config.getClientFacingUrl(),
+      user,
     },
   };
 });
@@ -469,6 +473,7 @@ export default function DataSourcesView({
   plan,
   gaTrackingId,
   dustClientFacingUrl,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
   const [dataSourceIntegrations, setDataSourceIntegrations] =
@@ -486,6 +491,8 @@ export default function DataSourcesView({
     });
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
+  const [showEditionDataSourceModalOpen, setShowEditionDataSourceModalOpen] =
+    useState(false);
   const [isRequestDataSourceModalOpen, setIsRequestDataSourceModalOpen] =
     useState(false);
 
@@ -602,19 +609,12 @@ export default function DataSourcesView({
         integration,
         isAdmin,
         isLoadingByProvider,
-        router,
         owner,
         readOnly,
+        onClick: () => setShowEditionDataSourceModalOpen(true),
       })
     );
-  }, [
-    isAdmin,
-    isLoadingByProvider,
-    owner,
-    readOnly,
-    router,
-    setUpIntegrations,
-  ]);
+  }, [isAdmin, isLoadingByProvider, owner, readOnly, setUpIntegrations]);
   return (
     <AppLayout
       subscription={subscription}
@@ -796,13 +796,14 @@ export default function DataSourcesView({
           owner={owner}
         />
         <DataSourceEditionModal
-          isOpen={true}
+          isOpen={showEditionDataSourceModalOpen}
           connectorProvider={integrations[0].connectorProvider}
-          onClose={() => console.log()}
+          onClose={() => setShowEditionDataSourceModalOpen(false)}
           dataSourceIntegration={integrations[0]}
           owner={owner}
           router={router}
           dustClientFacingUrl={dustClientFacingUrl}
+          user={user}
         />
       </Page.Vertical>
       {showUpgradePopup && (
@@ -943,19 +944,15 @@ function getTableRow({
   integration,
   isAdmin,
   isLoadingByProvider,
-  router,
   owner,
   readOnly,
+  onClick,
 }: GetTableRowParams): RowData {
   const connectorProvider = integration.connectorProvider as ConnectorProvider;
   const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
 
   const buttonOnClick = () => {
-    !isDisabled
-      ? void router.push(
-          `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
-        )
-      : null;
+    !isDisabled ? onClick() : null;
   };
 
   const LogoComponent =

@@ -13,11 +13,11 @@ import type {
   ConnectorType,
   EditedByUser,
   UpdateConnectorRequestBody,
+  UserType,
   WhitelistableFeature,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  CONNECTOR_TYPE_TO_MISMATCH_ERROR
+  WorkspaceType,
 } from "@dust-tt/types";
+import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { NextRouter } from "next/router";
 import React, { useContext, useState } from "react";
@@ -53,6 +53,7 @@ interface DataSourceEditionModalProps {
   onClose: () => void;
   router: NextRouter;
   dustClientFacingUrl: string;
+  user: UserType;
 }
 
 export function DataSourceEditionModal({
@@ -63,18 +64,21 @@ export function DataSourceEditionModal({
   onClose,
   router,
   dustClientFacingUrl,
+  user,
 }: DataSourceEditionModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
   const isSetup = !!dataSourceIntegration;
+
   let dataSourceOwner: EditedByUser | null | undefined = null;
+  let isDataSourceOwner: boolean = false;
   if (isSetup) {
     dataSourceOwner = dataSourceIntegration.editedByUser;
+    isDataSourceOwner =
+      dataSourceIntegration?.editedByUser?.userId === user.sId;
   }
-
-  const isDataSourceOwner = false;
 
   const updateConnectorConnectionId = async (
     newConnectionId: string,

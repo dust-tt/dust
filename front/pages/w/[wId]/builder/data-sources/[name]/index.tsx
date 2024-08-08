@@ -18,17 +18,18 @@ import {
   SliderToggle,
   Tab,
 } from "@dust-tt/sparkle";
-import type {   ConnectorProvider,
+import type {
+  ConnectorProvider,
   DataSourceType,
-PlanType,   PostDataSourceDocumentRequestBody,
-SubscriptionType ,
+  PlanType,
+  PostDataSourceDocumentRequestBody,
+  SubscriptionType,
   UpdateConnectorRequestBody,
-  WorkspaceType} from "@dust-tt/types";
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
-import {
-  CONNECTOR_TYPE_TO_MISMATCH_ERROR
-} from "@dust-tt/types";
+import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
