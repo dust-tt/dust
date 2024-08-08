@@ -128,7 +128,10 @@ export async function retrieveGoogleTranscriptContent(
 
     return { transcriptTitle, transcriptContent };
   } catch (error) {
-    localLogger.error({ fileId }, "Error exporting Google document. Skipping.");
+    localLogger.error(
+      { fileId, error },
+      "Error exporting Google document. Skipping."
+    );
     return { transcriptTitle: "", transcriptContent: "" };
   }
 }
