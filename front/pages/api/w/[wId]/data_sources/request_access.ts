@@ -21,7 +21,7 @@ export type PostRequestAccessBody = t.TypeOf<
   typeof PostRequestAccessBodySchema
 >;
 
-const MAX_ACCESS_REQUESTS_PER_DAY = 1;
+const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
 async function handler(
   req: NextApiRequest,
