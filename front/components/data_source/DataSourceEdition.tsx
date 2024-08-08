@@ -48,8 +48,8 @@ export type DataSourceIntegration = {
 interface DataSourceEditionModalProps {
   isOpen: boolean;
   owner: WorkspaceType;
-  connectorProvider: ConnectorProvider;
-  dataSourceIntegration?: DataSourceIntegration;
+  connectorProvider: ConnectorProvider | null | undefined;
+  dataSourceIntegration: DataSourceIntegration | null;
   onClose: () => void;
   router: NextRouter;
   dustClientFacingUrl: string;
@@ -70,6 +70,10 @@ export function DataSourceEditionModal({
 }: DataSourceEditionModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  if (!connectorProvider) {
+    return;
+  }
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
   const isSetup = !!dataSourceIntegration;

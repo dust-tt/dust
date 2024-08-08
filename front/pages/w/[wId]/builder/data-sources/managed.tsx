@@ -492,7 +492,13 @@ export default function DataSourcesView({
   const [showConfirmConnection, setShowConfirmConnection] =
     useState<DataSourceIntegration | null>(null);
   const [showEditionDataSourceModalOpen, setShowEditionDataSourceModalOpen] =
-    useState(false);
+    useState<{
+      show: boolean;
+      dataSourceIntegration: DataSourceIntegration | null;
+    }>({
+      show: false,
+      dataSourceIntegration: null,
+    });
   const [isRequestDataSourceModalOpen, setIsRequestDataSourceModalOpen] =
     useState(false);
 
@@ -611,7 +617,12 @@ export default function DataSourcesView({
         isLoadingByProvider,
         owner,
         readOnly,
-        onClick: () => setShowEditionDataSourceModalOpen(true),
+        onClick: () => {
+          setShowEditionDataSourceModalOpen({
+            show: true,
+            dataSourceIntegration: integration,
+          });
+        },
       })
     );
   }, [isAdmin, isLoadingByProvider, owner, readOnly, setUpIntegrations]);
@@ -796,10 +807,20 @@ export default function DataSourcesView({
           owner={owner}
         />
         <DataSourceEditionModal
-          isOpen={showEditionDataSourceModalOpen}
-          connectorProvider={integrations[0].connectorProvider}
-          onClose={() => setShowEditionDataSourceModalOpen(false)}
-          dataSourceIntegration={integrations[0]}
+          isOpen={showEditionDataSourceModalOpen.show}
+          connectorProvider={
+            showEditionDataSourceModalOpen.dataSourceIntegration
+              ?.connectorProvider
+          }
+          onClose={() =>
+            setShowEditionDataSourceModalOpen({
+              show: false,
+              dataSourceIntegration: null,
+            })
+          }
+          dataSourceIntegration={
+            showEditionDataSourceModalOpen.dataSourceIntegration
+          }
           owner={owner}
           router={router}
           dustClientFacingUrl={dustClientFacingUrl}
