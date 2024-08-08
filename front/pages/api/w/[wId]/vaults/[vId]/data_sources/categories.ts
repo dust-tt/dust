@@ -7,14 +7,14 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 import { getDataSourceInfos } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
-type CategoryInfo = {
+type VaultCategoryInfo = {
   category: DataSourceCategory;
   usage: number;
   count: number;
 };
 
 export type GetVaultDataSourceCategoriesResponseBody = {
-  categories: CategoryInfo[];
+  categories: VaultCategoryInfo[];
 };
 
 async function handler(
@@ -64,7 +64,7 @@ async function handler(
           });
         }
         return acc;
-      }, [] as CategoryInfo[]);
+      }, [] as VaultCategoryInfo[]);
 
       res.status(200).json({
         categories,
