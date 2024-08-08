@@ -32,6 +32,10 @@ export type EditedByUser = {
   userId: string | null;
 };
 
+export interface DataSourceOrViewType {
+  sId: string;
+}
+
 export type DataSourceType = {
   id: ModelId;
   createdAt: number;

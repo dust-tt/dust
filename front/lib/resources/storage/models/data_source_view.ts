@@ -26,8 +26,9 @@ export class DataSourceViewModel extends Model<
   declare vaultId: ForeignKey<VaultModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare dataSource: NonAttribute<DataSource>;
+  declare dataSourceForView: NonAttribute<DataSource>;
   declare vault: NonAttribute<VaultModel>;
+  declare workspace: NonAttribute<Workspace>;
 }
 DataSourceViewModel.init(
   {
@@ -65,13 +66,20 @@ Workspace.hasMany(DataSourceViewModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
+DataSourceViewModel.belongsTo(Workspace);
+
 VaultModel.hasMany(DataSourceViewModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
 DataSourceViewModel.belongsTo(VaultModel);
+
 DataSource.hasMany(DataSourceViewModel, {
-  foreignKey: { allowNull: false },
+  as: "dataSourceForView",
+  foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "RESTRICT",
 });
-DataSourceViewModel.belongsTo(DataSource);
+DataSourceViewModel.belongsTo(DataSource, {
+  as: "dataSourceForView",
+  foreignKey: { name: "dataSourceId", allowNull: false },
+});

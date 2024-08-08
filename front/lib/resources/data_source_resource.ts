@@ -104,6 +104,14 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return dataSource ?? null;
   }
 
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        id: ids,
+      },
+    });
+  }
+
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions
