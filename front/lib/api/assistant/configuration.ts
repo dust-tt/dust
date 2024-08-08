@@ -37,7 +37,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
-import { renderRetrievalTimeframeType } from "@app/lib/api/assistant/configuration/helpers";
+import { fetchAgentProcessConfigurationsActions } from "@app/lib/api/assistant/configuration/process";
 import { fetchAgentRetrievalConfigurationsActions } from "@app/lib/api/assistant/configuration/retrieval";
 import {
   getGlobalAgents,
@@ -68,7 +68,6 @@ import {
   Mention,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -385,7 +384,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const [
     dustAppRunConfigs,
     tablesQueryConfigs,
-    processConfigs,
     websearchConfigs,
     browseConfigs,
     agentUserRelations,
@@ -402,13 +400,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentTablesQueryConfiguration[]>),
-    variant === "full"
-      ? AgentProcessConfiguration.findAll({
-          where: {
-            agentConfigurationId: { [Op.in]: configurationIds },
-          },
-        }).then(groupByAgentConfigurationId)
-      : Promise.resolve({} as Record<number, AgentProcessConfiguration[]>),
     variant === "full"
       ? AgentWebsearchConfiguration.findAll({
           where: {
@@ -441,32 +432,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       : Promise.resolve({} as Record<string, AgentUserRelation>),
   ]);
 
-  const processDatasourceConfigurationsPromise = (
-    Object.values(processConfigs).length
-      ? AgentDataSourceConfiguration.findAll({
-          where: {
-            processConfigurationId: {
-              [Op.in]: Object.values(processConfigs).flatMap((r) =>
-                r.map((c) => c.id)
-              ),
-            },
-          },
-          include: [
-            {
-              model: DataSource,
-              as: "dataSource",
-              include: [
-                {
-                  model: Workspace,
-                  as: "workspace",
-                },
-              ],
-            },
-          ],
-        })
-      : Promise.resolve([])
-  ).then((dsConfigs) => _.groupBy(dsConfigs, "processConfigurationId"));
-
   const agentTablesQueryConfigurationTablesPromise = (
     Object.values(tablesQueryConfigs).length
       ? AgentTablesQueryConfigurationTable.findAll({
@@ -497,12 +462,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   const [
     retrievalConfigurationsActions,
-    processDatasourceConfigurations,
+    processConfigurationsActions,
     agentTablesConfigurationTables,
     dustApps,
   ] = await Promise.all([
     fetchAgentRetrievalConfigurationsActions({ configurationIds, variant }),
-    processDatasourceConfigurationsPromise,
+    fetchAgentProcessConfigurationsActions({ configurationIds, variant }),
     agentTablesQueryConfigurationTablesPromise,
     dustAppsPromise,
   ]);
@@ -579,38 +544,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
         });
       }
 
-      const processConfigurations = processConfigs[agent.id] ?? [];
-      for (const processConfig of processConfigurations) {
-        const dataSourcesConfig =
-          processDatasourceConfigurations[processConfig.id] ?? [];
-        actions.push({
-          id: processConfig.id,
-          sId: processConfig.sId,
-          type: "process_configuration",
-          dataSources: dataSourcesConfig.map((dsConfig) => {
-            return {
-              dataSourceId: dsConfig.dataSource.name,
-              workspaceId: dsConfig.dataSource.workspace.sId,
-              filter: {
-                parents:
-                  dsConfig.parentsIn && dsConfig.parentsNotIn
-                    ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
-                    : null,
-              },
-            };
-          }),
-          relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
-          tagsFilter:
-            processConfig.tagsIn !== null
-              ? {
-                  in: processConfig.tagsIn,
-                }
-              : null,
-          schema: processConfig.schema,
-          name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
-          description: processConfig.description,
-        });
-      }
+      const processActions = processConfigurationsActions.get(agent.id) ?? [];
+
+      actions.push(...processActions);
     }
 
     let template: TemplateResource | null = null;

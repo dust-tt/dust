@@ -690,8 +690,10 @@ function _getManagedDataSourceAgent(
         query: "auto",
         relativeTimeFrame: "auto",
         topK: "auto",
+        // TODO(GROUPS_INFRA) Prefetch data source views for managed data sources.
         dataSources: filteredDataSources.map((ds) => ({
           dataSourceId: ds.name,
+          dataSourceViewId: null,
           workspaceId: preFetchedDataSources.workspaceId,
           filter: { tags: null, parents: null },
         })),
@@ -948,8 +950,10 @@ The assistant always respects the mardown format and generates spaces to nest co
       query: "auto",
       relativeTimeFrame: "auto",
       topK: "auto",
+      // TODO(GROUPS_INFRA) Prefetch data source views for managed data sources.
       dataSources: dataSources.map((ds) => ({
         dataSourceId: ds.name,
+        dataSourceViewId: null,
         workspaceId: preFetchedDataSources.workspaceId,
         filter: { parents: null },
       })),
@@ -980,7 +984,9 @@ The assistant always respects the mardown format and generates spaces to nest co
           topK: "auto",
           dataSources: [
             {
+              // TODO(GROUPS_INFRA) Prefetch data source views for managed data sources.
               dataSourceId: ds.name,
+              dataSourceViewId: null,
               workspaceId: preFetchedDataSources.workspaceId,
               filter: { parents: null },
             },

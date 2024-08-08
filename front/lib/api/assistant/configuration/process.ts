@@ -1,46 +1,46 @@
 import type {
   DataSourceConfiguration,
   ModelId,
-  RetrievalConfigurationType,
+  ProcessConfigurationType,
 } from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import { renderRetrievalTimeframeType } from "@app/lib/api/assistant/configuration/helpers";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
-export async function fetchAgentRetrievalConfigurationsActions({
+export async function fetchAgentProcessConfigurationsActions({
   configurationIds,
   variant,
 }: {
   configurationIds: ModelId[];
   variant: "light" | "full";
-}): Promise<Map<ModelId, RetrievalConfigurationType[]>> {
+}): Promise<Map<ModelId, ProcessConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
 
-  // Find the retrieval configurations for the given agent configurations.
-  const retrievalConfigurationIds = await AgentRetrievalConfiguration.findAll({
+  // Find the process configurations for the given agent configurations.
+  const processConfigurationIds = await AgentProcessConfiguration.findAll({
     where: { agentConfigurationId: { [Op.in]: configurationIds } },
   });
 
-  if (retrievalConfigurationIds.length === 0) {
+  if (processConfigurationIds.length === 0) {
     return new Map();
   }
 
   // Find the associated data sources configurations.
-  const retrievalDatasourceConfigurations =
+  const processDatasourceConfigurations =
     await AgentDataSourceConfiguration.findAll({
       where: {
-        retrievalConfigurationId: {
-          [Op.in]: retrievalConfigurationIds.map((r) => r.id),
+        processConfigurationId: {
+          [Op.in]: processConfigurationIds.map((r) => r.id),
         },
       },
       include: [
@@ -71,48 +71,41 @@ export async function fetchAgentRetrievalConfigurationsActions({
       ],
     });
 
-  const groupedRetrievalDatasourceConfigurations = _.groupBy(
-    retrievalDatasourceConfigurations,
-    "retrievalConfigurationId"
+  const groupedProcessDatasourceConfigurations = _.groupBy(
+    processDatasourceConfigurations,
+    "processConfigurationId"
   );
 
-  const groupedAgentRetrievalConfigurations = _.groupBy(
-    retrievalConfigurationIds,
+  const groupedAgentProcessConfigurations = _.groupBy(
+    processConfigurationIds,
     "agentConfigurationId"
   );
 
-  const actionsByConfigurationId: Map<ModelId, RetrievalConfigurationType[]> =
+  const actionsByConfigurationId: Map<ModelId, ProcessConfigurationType[]> =
     new Map();
-  for (const [agentConfigurationId, retrievalConfiguration] of Object.entries(
-    groupedAgentRetrievalConfigurations
+  for (const [agentConfigurationId, processConfiguration] of Object.entries(
+    groupedAgentProcessConfigurations
   )) {
-    const actions: RetrievalConfigurationType[] = [];
-    for (const retrievalConfig of retrievalConfiguration) {
+    const actions: ProcessConfigurationType[] = [];
+    for (const processConfig of processConfiguration) {
       const dataSourceConfig =
-        groupedRetrievalDatasourceConfigurations[retrievalConfig.id] ?? [];
-
-      let topK: number | "auto" = "auto";
-      if (retrievalConfig.topKMode === "custom") {
-        if (!retrievalConfig.topK) {
-          // unreachable
-          throw new Error(
-            `Couldn't find topK for retrieval configuration ${retrievalConfig.id}} with 'custom' topK mode`
-          );
-        }
-
-        topK = retrievalConfig.topK;
-      }
+        groupedProcessDatasourceConfigurations[processConfig.id] ?? [];
 
       actions.push({
-        id: retrievalConfig.id,
-        sId: retrievalConfig.sId,
-        type: "retrieval_configuration",
-        query: retrievalConfig.query,
-        relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
-        topK,
+        id: processConfig.id,
+        sId: processConfig.sId,
+        type: "process_configuration",
         dataSources: dataSourceConfig.map(getDataSource),
-        name: retrievalConfig.name || DEFAULT_RETRIEVAL_ACTION_NAME,
-        description: retrievalConfig.description,
+        relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
+        tagsFilter:
+          processConfig.tagsIn !== null
+            ? {
+                in: processConfig.tagsIn,
+              }
+            : null,
+        schema: processConfig.schema,
+        name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
+        description: processConfig.description,
       });
     }
 

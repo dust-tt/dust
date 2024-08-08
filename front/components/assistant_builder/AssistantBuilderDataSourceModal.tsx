@@ -225,6 +225,8 @@ export default function AssistantBuilderDataSourceModal({
                         ...currentConfigurations,
                         [ds.name]: {
                           dataSource: ds,
+                          // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
+                          dataSourceViewId: null,
                           selectedResources: [],
                           isSelectAll: true,
                         },
