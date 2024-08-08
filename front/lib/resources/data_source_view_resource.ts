@@ -122,7 +122,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   static async listByVault(auth: Authenticator, vault: VaultResource) {
-    return this.baseFetchWithAuthorization(auth, {
+    return this.baseFetch(auth, {
       where: {
         vaultId: vault.id,
       },

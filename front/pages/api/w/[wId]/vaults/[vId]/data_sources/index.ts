@@ -37,6 +37,11 @@ export const getDataSourceInfos = async (
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
   const dataSources = await DataSourceResource.listByVault(auth, vault);
 
+  dataSourceViews.forEach((view) => {
+    console.log(view);
+    console.log(view.dataSource);
+  });
+
   return [
     ...dataSourceViews.map((view) => {
       return {
