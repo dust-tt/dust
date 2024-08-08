@@ -1,6 +1,6 @@
 import type {
   AgentModelConfigurationType,
-  DataSourceType,
+  DataSourceOrViewType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
@@ -153,7 +153,9 @@ export function compareAgentsForSort(
 }
 
 // Order in the following format : connectorProvider > empty > webcrawler
-export function orderDatasourceByImportance(dataSources: DataSourceType[]) {
+export function orderDatasourceByImportance(
+  dataSources: DataSourceOrViewType[]
+) {
   return dataSources.sort((a, b) => {
     const aConnector = a.connectorProvider;
     const bConnector = b.connectorProvider;

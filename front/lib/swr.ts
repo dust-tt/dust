@@ -7,6 +7,7 @@ import type {
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
+  DataSourceOrViewType,
   DataSourceType,
   RunRunType,
   WorkspaceEnterpriseConnection,
@@ -296,6 +297,7 @@ export function useDocuments(
   };
 }
 
+// Check where it's being used.
 export function useDataSources(
   owner: WorkspaceType,
   options = { disabled: false }
@@ -435,7 +437,7 @@ export function useConnectorPermissions({
   viewType = "documents",
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceOrViewType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;

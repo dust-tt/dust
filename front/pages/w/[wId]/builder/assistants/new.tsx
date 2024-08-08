@@ -1,7 +1,7 @@
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceType,
+  DataSourceOrViewType,
   PlanType,
   SubscriptionType,
   TemplateAgentConfigurationType,
@@ -25,7 +25,7 @@ import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
+import { getDataSourcesOrViews } from "@app/lib/api/data_sources_or_views";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr";
 
@@ -44,7 +44,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
@@ -64,12 +64,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const allDataSources = await getDataSources(auth);
+  const allDataSources = await getDataSourcesOrViews(auth);
   const allDustApps = await getApps(auth);
 
-  const dataSourcesByName = allDataSources.reduce(
+  const dataSourcesByIds = allDataSources.reduce(
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
-    {} as Record<string, DataSourceType>
+    {} as Record<string, DataSourceOrViewType>
   );
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
@@ -110,7 +110,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const actions = configuration
     ? await buildInitialActions({
-        dataSourcesByName,
+        dataSourcesByIds,
         dustApps: allDustApps,
         configuration,
       })

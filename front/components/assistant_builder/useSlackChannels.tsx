@@ -1,4 +1,4 @@
-import type { DataSourceType } from "@dust-tt/types";
+import type { DataSourceOrViewType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
@@ -13,7 +13,7 @@ export function useSlackChannel({
   isEdited,
   agentConfigurationId,
 }: {
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   initialChannels: SlackChannel[];
   workspaceId: string;
   isPrivateAssistant: boolean;

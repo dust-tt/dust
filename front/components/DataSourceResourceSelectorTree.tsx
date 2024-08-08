@@ -6,7 +6,7 @@ import {
 import type {
   ContentNode,
   ContentNodesViewType,
-  DataSourceType,
+  DataSourceOrViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
@@ -27,7 +27,7 @@ export default function DataSourceResourceSelectorTree({
   viewType = "documents",
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceOrViewType;
   showExpand: boolean;
   parentIsSelected?: boolean;
   selectedParents?: string[];
@@ -98,7 +98,7 @@ function DataSourceResourceSelectorChildren({
   viewType = "documents",
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceOrViewType;
   parentId: string | null;
   parents: string[];
   parentIsSelected?: boolean;

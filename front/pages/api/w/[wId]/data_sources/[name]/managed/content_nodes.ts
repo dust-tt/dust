@@ -6,7 +6,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
+import { getDataSourceOrView } from "@app/lib/api/data_sources_or_views";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -35,7 +35,7 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, req.query.name as string);
+  const dataSource = await getDataSourceOrView(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

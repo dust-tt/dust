@@ -1439,12 +1439,12 @@ async function _createAgentDataSourcesConfigData(
   // Now will want to group the datasource names by workspaceId to do only one query per workspace.
   // We want this:
   // [
-  //   { workspaceId: 1, dataSourceNames: ["managed-notion", "managed-slack"] },
-  //   { workspaceId: 2, dataSourceNames: ["managed-notion"] }
+  //   { workspaceId: 1, dataSourceNamesOrIds: ["managed-notion", "managed-slack"] },
+  //   { workspaceId: 2, dataSourceNamesOrIds: ["managed-notion"] }
   // ]
   type _DsNamesPerWorkspaceIdType = {
     workspace: LightWorkspaceType;
-    dataSourceNames: string[];
+    dataSourceNamesOrIds: string[];
   };
   const dsNamesPerWorkspaceId = dataSourceConfigurations.reduce(
     (acc: _DsNamesPerWorkspaceIdType[], curr: DataSourceConfiguration) => {
@@ -1463,12 +1463,12 @@ async function _createAgentDataSourcesConfigData(
       );
       if (existingEntry) {
         // Append dataSourceName to existing entry
-        existingEntry.dataSourceNames.push(curr.dataSourceId);
+        existingEntry.dataSourceNamesOrIds.push(curr.dataSourceId);
       } else {
         // Add a new entry for this workspaceId
         acc.push({
           workspace: renderLightWorkspaceType({ workspace }),
-          dataSourceNames: [curr.dataSourceId],
+          dataSourceNamesOrIds: [curr.dataSourceId],
         });
       }
       return acc;
@@ -1480,28 +1480,54 @@ async function _createAgentDataSourcesConfigData(
 
   // Then we get to do one findAllQuery per workspaceId, in a Promise.all.
   const getDataSourcesQueries = dsNamesPerWorkspaceId.map(
-    async ({ dataSourceNames }) => {
-      const dataSources = await DataSourceResource.listByWorkspaceIdAndNames(
-        // We can use `auth` because we limit to one workspace.
-        auth,
-        dataSourceNames
+    async ({ dataSourceNamesOrIds }) => {
+      // Partition the dataSourceNamesOrIds into two arrays.
+      const [dataSourceViewIds, dataSourceNames] = _.partition(
+        dataSourceNamesOrIds,
+        DataSourceViewResource.isDataSourceViewSId
       );
 
-      const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
+      // Handle data sources.
 
-      // Since the UI does not currently provide the data source view,
+      const dataSources =
+        dataSourceNames.length > 0
+          ? await DataSourceResource.listByWorkspaceIdAndNames(
+              // We can use `auth` because we limit to one workspace.
+              auth,
+              dataSourceNames
+            )
+          : [];
+
+      // If the UI does not provide the data source view,
       // we try to retrieve the view associated with the data from the global vault
       // and assign it to the agent data source configuration.
+      const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
+      const managedDataSources = uniqueDataSources.filter((ds) =>
+        ds.isManaged()
+      );
+
+      const associatedDataSourceViews =
+        managedDataSources.length > 0
+          ? await DataSourceViewResource.listForDataSourcesInVault(
+              // We can use `auth` because we limit to one workspace.
+              auth,
+              managedDataSources,
+              globalVault
+            )
+          : [];
+
+      // Handle data source views.
+
       const dataSourceViews =
-        await DataSourceViewResource.listForDataSourcesInVault(
-          // We can use `auth` because we limit to one workspace.
-          auth,
-          uniqueDataSources.filter((ds) => ds.isManaged()),
-          globalVault
-        );
+        dataSourceViewIds.length > 0
+          ? await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
+          : [];
 
       // Create a mapping of data source ID to data source view.
-      const dataSourceViewMap = dataSourceViews.reduce(
+      const dataSourceViewMap = [
+        ...associatedDataSourceViews,
+        ...dataSourceViews,
+      ].reduce(
         (map, view) => {
           map[view.dataSourceId] = view;
           return map;
@@ -1517,7 +1543,16 @@ async function _createAgentDataSourcesConfigData(
         })
       );
 
-      return dataSourcesWithViews;
+      // Include data source views directly by their IDs.
+      const dataSourceViewsDirectly: DataSourceWithView[] = dataSourceViews.map(
+        (view) => ({
+          // TODO(GROUPS_INFRA) Improve resource fetching logic.
+          ds: view.dataSource as DataSourceResource,
+          view,
+        })
+      );
+
+      return [...dataSourcesWithViews, ...dataSourceViewsDirectly];
     }
   );
   const results = await Promise.all(getDataSourcesQueries);
@@ -1528,7 +1563,8 @@ async function _createAgentDataSourcesConfigData(
       dataSourceConfigurations.map(async (dsConfig) => {
         const dataSourceWithView = dataSourcesWithView.find(
           (d) =>
-            d.ds.name === dsConfig.dataSourceId &&
+            (d.ds.name === dsConfig.dataSourceId ||
+              d.view?.sId === dsConfig.dataSourceId) &&
             d.ds.workspaceId ===
               workspaces.find((w) => w.sId === dsConfig.workspaceId)?.id
         );

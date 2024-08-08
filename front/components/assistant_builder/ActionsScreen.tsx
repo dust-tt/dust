@@ -15,7 +15,11 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  AppType,
+  DataSourceOrViewType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -117,7 +121,7 @@ export default function ActionsScreen({
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   dustApps: AppType[];
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
@@ -388,7 +392,7 @@ function NewActionModal({
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   dustApps: AppType[];
 }) {
   const [newAction, setNewAction] =
@@ -582,7 +586,7 @@ function ActionConfigEditor({
   owner: WorkspaceType;
   action: AssistantBuilderActionConfiguration;
   dustApps: AppType[];
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   instructions: string | null;
   updateAction: (args: {
     actionName: string;
@@ -713,7 +717,7 @@ function ActionEditor({
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   dustApps: AppType[];
   builderState: AssistantBuilderState;
 }) {

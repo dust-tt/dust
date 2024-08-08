@@ -3,7 +3,7 @@ import type {
   AgentConfigurationScope,
   AppType,
   ContentNode,
-  DataSourceType,
+  DataSourceOrViewType,
   PlanType,
   ProcessSchemaPropertyType,
   SubscriptionType,
@@ -37,7 +37,7 @@ export const ACTION_MODES = [
 // Retrieval configuration
 
 export type AssistantBuilderDataSourceConfiguration = {
-  dataSource: DataSourceType;
+  dataSource: DataSourceOrViewType;
   selectedResources: ContentNode[];
   isSelectAll: boolean;
 };
@@ -328,7 +328,7 @@ export type AssistantBuilderProps = {
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   dustApps: AppType[];
   initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;

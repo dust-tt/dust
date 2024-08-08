@@ -18,7 +18,7 @@ import {
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-  DataSourceType,
+  DataSourceOrViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
@@ -119,7 +119,7 @@ export function SharingButton({
   setNewScope: (scope: NonGlobalScope) => void;
   baseUrl: string;
   showSlackIntegration: boolean;
-  slackDataSource: DataSourceType | null;
+  slackDataSource: DataSourceOrViewType | null;
   slackChannelSelected: SlackChannel[];
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
 }) {
@@ -464,7 +464,7 @@ function SlackIntegrationDrawer({
 }: {
   show: boolean;
   onClose: () => void;
-  slackDataSource: DataSourceType;
+  slackDataSource: DataSourceOrViewType;
   owner: WorkspaceType;
   existingSelection: SlackChannel[];
   onSave: (channels: SlackChannel[]) => void;

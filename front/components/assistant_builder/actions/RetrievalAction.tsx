@@ -1,5 +1,5 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceOrViewType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -66,7 +66,7 @@ export function ActionRetrievalSearch({
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
@@ -139,7 +139,7 @@ export function ActionRetrievalExhaustive({
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
