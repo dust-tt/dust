@@ -1,10 +1,11 @@
 import type { DataSourceCategory, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import { getDataSourceInfos } from "@app/pages/api/v1/w/[wId]/vaults/[vId]/data_sources";
+import { apiError } from "@app/logger/withlogging";
+import { getDataSourceInfos } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 type CategoryInfo = {
   category: DataSourceCategory;
@@ -16,26 +17,14 @@ export type GetVaultDataSourceCategoriesResponseBody = {
   categories: CategoryInfo[];
 };
 
-/**
- * @swagger
- */
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<GetVaultDataSourceCategoriesResponseBody>
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -46,12 +35,9 @@ async function handler(
     });
   }
 
-  const vault = await VaultResource.fetchById(
-    workspaceAuth,
-    req.query.vId as string
-  );
+  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
-  if (!vault) {
+  if (!vault || !auth.hasPermission([vault.acl()], "read")) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -63,7 +49,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const all = await getDataSourceInfos(workspaceAuth, vault);
+      const all = await getDataSourceInfos(auth, vault);
 
       const categories = all.reduce((acc, dataSource) => {
         const value = acc.find((i) => i.category === dataSource.category);
@@ -95,4 +81,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthenticationForWorkspace(handler);

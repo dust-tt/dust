@@ -5,11 +5,12 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourcesResponseBody = {
   dataSources: DataSourceInfo[];
@@ -30,36 +31,19 @@ export const getDataSourceCategory = (
 };
 
 export const getDataSourceInfos = async (
-  workspaceAuth: Authenticator,
+  auth: Authenticator,
   vault: VaultResource
 ) => {
-  const dataSourceViews = await DataSourceViewResource.listByVault(
-    workspaceAuth,
-    vault
-  );
-
-  const dataSourceByName: { [key: number]: DataSourceResource } = {};
-
-  const dataSources = await DataSourceResource.listByVault(
-    workspaceAuth,
-    vault
-  );
-
-  for (const view of dataSourceViews) {
-    const dataSource = await view.fetchDataSource(workspaceAuth);
-    if (dataSource) {
-      dataSourceByName[dataSource.id] = dataSource;
-    }
-  }
+  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
+  const dataSources = await DataSourceResource.listByVault(auth, vault);
 
   return [
     ...dataSourceViews.map((view) => {
-      const dataSource = dataSourceByName[view.dataSourceId];
       return {
-        ...dataSource.toJSON(),
+        ...view.dataSource?.toJSON(),
         ...view.toJSON(),
         usage: 0,
-        category: getDataSourceCategory(dataSource),
+        category: getDataSourceCategory(view.dataSource as DataSourceResource),
       };
     }),
     ...dataSources.map((dataSource) => ({
@@ -70,24 +54,12 @@ export const getDataSourceInfos = async (
   ];
 };
 
-/**
- * @swagger
- */
-
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetVaultDataSourcesResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetVaultDataSourcesResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -98,12 +70,9 @@ async function handler(
     });
   }
 
-  const vault = await VaultResource.fetchById(
-    workspaceAuth,
-    req.query.vId as string
-  );
+  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
-  if (!vault) {
+  if (!vault || !auth.hasPermission([vault.acl()], "read")) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -120,7 +89,7 @@ async function handler(
           ? req.query.category
           : null;
 
-      const all = await getDataSourceInfos(workspaceAuth, vault);
+      const all = await getDataSourceInfos(auth, vault);
 
       res.status(200).json({
         dataSources: all.filter(
@@ -139,4 +108,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthenticationForWorkspace(handler);

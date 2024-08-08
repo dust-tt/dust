@@ -4,112 +4,25 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultResponseBody = {
   vault: VaultType;
 };
 
-/**
- * @swagger
- * /api/v1/w/{wId}/vaults:
- *   get:
- *     summary: Get vault info
- *     description: Get the list of all vaults for the workspace identified by {wId}.
- *     tags:
- *       - Vaults
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: Unique string identifier for the workspace
- *         schema:
- *           type: string
- *       - in: path
- *         name: vId
- *         required: true
- *         description: Unique string identifier for the vault
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: The vault
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Vault'
- *   patch:
- *     summary: Patch a vault
- *     description: Patch an existing vault with new members / datasources
- *     tags:
- *       - Vaults
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: wId
- *         required: true
- *         description: Unique string identifier for the workspace
- *         schema:
- *           type: string
- *       - in: path
- *         name: vId
- *         required: true
- *         description: Unique string identifier for the vault
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: Name of the vault
- *               members:
- *                 type: array
- *                 items:
- *                   type: string
- *                   description: List of allowed authentication providers
- *     responses:
- *       200:
- *         description: The vault
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Vault'
- *       400:
- *         description: Invalid request
- *       405:
- *         description: Method not supported
-
-
-*/
-
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetVaultResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetVaultResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -120,12 +33,9 @@ async function handler(
     });
   }
 
-  const vault = await VaultResource.fetchById(
-    workspaceAuth,
-    req.query.vId as string
-  );
+  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
-  if (!vault) {
+  if (!vault || !auth.hasPermission([vault.acl()], "read")) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -151,6 +61,16 @@ async function handler(
       res.status(200).json({ vault: vault.toJSON() });
       return;
     case "PATCH":
+      if (!auth.isAdmin() || !auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `admins` or `builder` can administrate vaults.",
+          },
+        });
+      }
       const bodyValidation = PatchVaultRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
@@ -168,7 +88,7 @@ async function handler(
       const { members, content } = bodyValidation.right;
 
       if (members) {
-        const currentMembers = await group.getActiveMembers(workspaceAuth);
+        const currentMembers = await group.getActiveMembers(auth);
         await Promise.all(
           members
             .filter(
@@ -177,7 +97,7 @@ async function handler(
             .map(async (member) => {
               const user = await UserResource.fetchById(member);
               if (user) {
-                return group.addMember(workspaceAuth, user?.toJSON());
+                return group.addMember(auth, user?.toJSON());
               }
             })
         );
@@ -185,36 +105,36 @@ async function handler(
           currentMembers
             .filter((currentMember) => !members.includes(currentMember.sId))
             .map(async (member) => {
-              return group.removeMember(workspaceAuth, member.toJSON());
+              return group.removeMember(auth, member.toJSON());
             })
         );
       }
 
       if (content) {
         const currentViews = await DataSourceViewResource.listByVault(
-          workspaceAuth,
+          auth,
           vault
         );
 
-        const viewByDataSourceName: { [key: string]: DataSourceViewResource } =
-          {};
-
-        for (const view of currentViews) {
-          const dataSource = await view.fetchDataSource(workspaceAuth);
-          if (dataSource) {
-            viewByDataSourceName[dataSource.name] = view;
-          }
-        }
+        const viewByDataSourceName = currentViews.reduce(
+          (acc, view) => {
+            if (view.dataSource) {
+              acc[view.dataSource.name] = view;
+            }
+            return acc;
+          },
+          {} as { [key: string]: DataSourceViewResource }
+        );
 
         for (const dataSourceConfig of content) {
           const view = viewByDataSourceName[dataSourceConfig.dataSource];
           if (view) {
             // Update existing view
-            await view.updateParents(workspaceAuth, dataSourceConfig.parentsIn);
+            await view.updateParents(auth, dataSourceConfig.parentsIn);
           } else {
             // Create a new view
             const dataSource = await DataSourceResource.fetchByName(
-              workspaceAuth,
+              auth,
               dataSourceConfig.dataSource
             );
             if (dataSource) {
@@ -230,7 +150,7 @@ async function handler(
         for (const dataSourceName of Object.keys(viewByDataSourceName)) {
           if (!content.map((c) => c.dataSource).includes(dataSourceName)) {
             const view = viewByDataSourceName[dataSourceName];
-            await view.delete(workspaceAuth);
+            await view.delete(auth);
           }
         }
       }
@@ -248,4 +168,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withSessionAuthenticationForWorkspace(handler);
