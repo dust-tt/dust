@@ -262,7 +262,7 @@ async function handler(
       if (!keyRes.value.isSystem) {
         const remaining = await rateLimiter({
           key: `app_run:w:${owner.sId}:a:${app.sId}`,
-          maxPerTimeframe: 2000,
+          maxPerTimeframe: 10000,
           timeframeSeconds: 60 * 60 * 24,
           logger: logger,
         });
@@ -271,7 +271,7 @@ async function handler(
             status_code: 429,
             api_error: {
               type: "rate_limit_error",
-              message: `You have reached the maximum number of 2000 runs over the last 24 hours.`,
+              message: `You have reached the maximum number of 10000 runs over the last 24 hours.`,
             },
           });
         }
