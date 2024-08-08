@@ -32,11 +32,11 @@ import {
   Ok,
   setupOAuthConnection,
 } from "@dust-tt/types";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
@@ -75,23 +75,20 @@ type DataSourceIntegration = {
   editedByUser: string | null;
 };
 
-type Info = {
-  row: {
-    original: {
-      icon: ComponentType;
-      name: string;
-      usage: number | null;
-      editedByUser: string | null;
-      connector: ConnectorType | null;
-      workspaceId: string | undefined;
-      dataSourceName: string | undefined;
-      isLoading: boolean;
-      isAdmin: boolean;
-      fetchConnectorError: boolean;
-      buttonOnClick: () => void;
-    };
-  };
+type RowData = DataSourceIntegration & {
+  isAdmin: boolean;
+  disabled: boolean;
+  isLoading: boolean;
+  readOnly: boolean;
+  dataSourceUrl: string;
+  workspaceId: string | undefined;
+  icon: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  buttonOnClick: () => void;
+  onClick?: () => void;
+  onMoreClick?: () => void;
 };
+
+type Info = CellContext<RowData, unknown>;
 
 type GetTableRowParams = {
   integration: DataSourceIntegration;
@@ -819,7 +816,7 @@ export default function DataSourcesView({
   );
 }
 
-function getTableColumns() {
+function getTableColumns(): ColumnDef<RowData, unknown>[] {
   return [
     {
       header: "Name",
@@ -922,7 +919,7 @@ function getTableRow({
   router,
   owner,
   readOnly,
-}: GetTableRowParams) {
+}: GetTableRowParams): RowData {
   const connectorProvider = integration.connectorProvider as ConnectorProvider;
   const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
 
@@ -942,7 +939,7 @@ function getTableRow({
     icon: LogoComponent,
     buttonOnClick,
     workspaceId: integration.connector?.workspaceId,
-    dataSourceName: integration.connector?.dataSourceName,
+    dataSourceName: integration.connector?.dataSourceName ?? null,
     dataSourceUrl: `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`,
     isAdmin,
     readOnly,
