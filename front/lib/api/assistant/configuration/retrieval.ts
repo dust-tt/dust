@@ -1,4 +1,8 @@
-import type { AgentActionConfigurationType, ModelId } from "@dust-tt/types";
+import type {
+  AgentActionConfigurationType,
+  DataSourceConfiguration,
+  ModelId,
+} from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
@@ -64,6 +68,10 @@ export async function fetchAgentRetrievalConfigurationsActions({
               model: Workspace,
               as: "workspace",
             },
+            {
+              model: DataSource,
+              as: "dataSourceForView",
+            },
           ],
         },
       ],
@@ -119,15 +127,18 @@ export async function fetchAgentRetrievalConfigurationsActions({
   return actionsByConfigurationId;
 }
 
-function getDataSource(dataSourceConfig: AgentDataSourceConfiguration) {
+function getDataSource(
+  dataSourceConfig: AgentDataSourceConfiguration
+): DataSourceConfiguration {
   const { dataSourceView, dataSource } = dataSourceConfig;
 
   if (dataSourceView) {
     return {
-      dataSourceId: DataSourceViewResource.modelIdToSId({
+      dataSourceViewId: DataSourceViewResource.modelIdToSId({
         id: dataSourceView.id,
         workspaceId: dataSourceView.workspaceId,
       }),
+      dataSourceId: dataSourceView.dataSourceForView.name,
       workspaceId: dataSourceView.workspace.sId,
       filter: {
         parents:
@@ -143,6 +154,7 @@ function getDataSource(dataSourceConfig: AgentDataSourceConfiguration) {
 
   return {
     dataSourceId: dataSource.name,
+    dataSourceViewId: null,
     workspaceId: dataSource.workspace.sId,
     filter: {
       parents:
