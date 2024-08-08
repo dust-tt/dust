@@ -63,24 +63,6 @@ async function handler(
     });
   }
 
-  const rateLimitKey = `access_requests:${user.sId}`;
-  const remaining = await rateLimiter({
-    key: rateLimitKey,
-    maxPerTimeframe: MAX_ACCESS_REQUESTS_PER_DAY,
-    timeframeSeconds: 24 * 60 * 60, // 1 day
-    logger,
-  });
-
-  if (remaining === 0) {
-    return apiError(req, res, {
-      status_code: 429,
-      api_error: {
-        type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests per day. Please try again tomorrow.`,
-      },
-    });
-  }
-
   const bodyValidation = PostRequestAccessBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -105,6 +87,24 @@ async function handler(
       api_error: {
         type: "user_not_found",
         message: "The user was not found.",
+      },
+    });
+  }
+
+  const rateLimitKey = `access_requests:${user.sId}`;
+  const remaining = await rateLimiter({
+    key: rateLimitKey,
+    maxPerTimeframe: MAX_ACCESS_REQUESTS_PER_DAY,
+    timeframeSeconds: 24 * 60 * 60, // 1 day
+    logger,
+  });
+
+  if (remaining === 0) {
+    return apiError(req, res, {
+      status_code: 429,
+      api_error: {
+        type: "rate_limit_error",
+        message: `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests per day. Please try again tomorrow.`,
       },
     });
   }
