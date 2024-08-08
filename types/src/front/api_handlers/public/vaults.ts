@@ -1,7 +1,6 @@
 import * as t from "io-ts";
 
-import { DataSourceType } from "../../data_source";
-import { DataSourceViewType } from "../../data_source_view";
+import { ConnectorProvider, EditedByUser } from "../../data_source";
 
 export const ContentSchema = t.type({
   dataSource: t.string,
@@ -27,10 +26,15 @@ export type PatchVaultRequestBodyType = t.TypeOf<
   typeof PostVaultRequestBodySchema
 >;
 
-export type DataSourceCategory = "managed" | "files" | "webfolder" | "apps";
+export type ResourceCategory = "managed" | "files" | "webfolder" | "apps";
 
-export type DataSourceInfo = Partial<DataSourceType> &
-  Partial<DataSourceViewType> & {
-    usage: number;
-    category: DataSourceCategory;
-  };
+export type ResourceInfo = {
+  createdAt: number;
+  sId: string;
+  parentsIn?: string[] | null;
+  connectorId?: string | null;
+  connectorProvider?: ConnectorProvider | null;
+  editedByUser?: EditedByUser | null;
+  category: ResourceCategory;
+  usage: number;
+};

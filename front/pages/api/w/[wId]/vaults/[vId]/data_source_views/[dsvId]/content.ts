@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
@@ -43,13 +42,13 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(
+  const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
-    req.query.dsId as string
+    req.query.dsvId as string
   );
+  const dataSource = dataSourceView?.dataSource;
 
-  // TODO Handle cases where dsId is actually a DataSource, not a DataSourceView
-  if (!dataSource || dataSource.vaultId !== vault.id) {
+  if (!dataSourceView || !dataSource || dataSourceView.vaultId !== vault.id) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -76,15 +75,64 @@ async function handler(
         });
       }
 
-      let parentId: string;
+      let parentIds: string[] | null = dataSourceView.parentsIn;
       if (req.query.parentId && typeof req.query.parentId === "string") {
-        parentId = [req.query.parentId];
+        parentIds = [req.query.parentId];
       }
 
-      // To be implemented
+      if (!dataSource.connectorId) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "data_source_error",
+            message: "Invalid datasource.",
+          },
+        });
+      }
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
 
-      res.status(200).json({ resources: [] });
+      const contentNodes = [];
+      if (!parentIds) {
+        contentNodes.push(
+          await connectorsAPI.getConnectorPermissions({
+            connectorId: dataSource.connectorId,
+            filterPermission: "read",
+            viewType,
+          })
+        );
+      } else {
+        for (const parentId of parentIds) {
+          contentNodes.push(
+            await connectorsAPI.getConnectorPermissions({
+              connectorId: dataSource.connectorId,
+              parentId,
+              filterPermission: "read",
+              viewType,
+            })
+          );
+        }
+      }
+      if (contentNodes.some((r) => r.isErr())) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `An error occurred while retrieving the data source permissions.`,
+          },
+        });
+      }
+      const permissions = contentNodes.flatMap((r) =>
+        r.isOk() ? r.value.resources : []
+      );
+
+      res.status(200).json({
+        resources: permissions,
+      });
       return;
+
     default:
       return apiError(req, res, {
         status_code: 405,

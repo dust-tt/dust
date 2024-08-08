@@ -7,7 +7,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -29,18 +30,20 @@ export const getDataSourceCategory = (
   return "managed";
 };
 
-export const getDataSourceInfos = async (
+export const getDataSourceViewsInfo = async (
   auth: Authenticator,
   vault: VaultResource
 ): Promise<ResourceInfo[]> => {
-  const dataSources = await DataSourceResource.listByVault(auth, vault);
+  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
 
-  return dataSources.map((dataSource) => ({
-    ...dataSource.toJSON(),
-    sId: dataSource.name,
-    usage: 0,
-    category: getDataSourceCategory(dataSource),
-  }));
+  return dataSourceViews.map((view) => {
+    return {
+      ...view.dataSource?.toJSON(),
+      ...view.toJSON(),
+      usage: 0,
+      category: getDataSourceCategory(view.dataSource as DataSourceResource),
+    };
+  });
 };
 
 async function handler(
@@ -78,7 +81,7 @@ async function handler(
           ? req.query.category
           : null;
 
-      const all = await getDataSourceInfos(auth, vault);
+      const all = await getDataSourceViewsInfo(auth, vault);
 
       res.status(200).json({
         dataSources: all.filter(

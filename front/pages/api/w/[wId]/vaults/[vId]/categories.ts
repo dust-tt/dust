@@ -1,14 +1,15 @@
-import type { DataSourceCategory, WithAPIErrorResponse } from "@dust-tt/types";
+import type { ResourceCategory, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
+import { getDataSourceViewsInfo } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
 import { getDataSourceInfos } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 type VaultCategoryInfo = {
-  category: DataSourceCategory;
+  category: ResourceCategory;
   usage: number;
   count: number;
 };
@@ -49,7 +50,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const all = await getDataSourceInfos(auth, vault);
+      const all = [
+        ...(await getDataSourceInfos(auth, vault)),
+        ...(await getDataSourceViewsInfo(auth, vault)),
+      ];
 
       const categories = all.reduce((acc, dataSource) => {
         const value = acc.find((i) => i.category === dataSource.category);
