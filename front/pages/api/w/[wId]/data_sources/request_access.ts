@@ -1,3 +1,4 @@
+import { rateLimiter } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -7,6 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { sendEmailWithTemplate } from "@app/lib/email";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostRequestAccessBodySchema = t.type({
@@ -18,6 +20,8 @@ export const PostRequestAccessBodySchema = t.type({
 export type PostRequestAccessBody = t.TypeOf<
   typeof PostRequestAccessBodySchema
 >;
+
+const MAX_ACCESS_REQUESTS_PER_DAY = 1;
 
 async function handler(
   req: NextApiRequest,
@@ -59,6 +63,24 @@ async function handler(
     });
   }
 
+  const rateLimitKey = `access_requests:${user.sId}`;
+  const remaining = await rateLimiter({
+    key: rateLimitKey,
+    maxPerTimeframe: MAX_ACCESS_REQUESTS_PER_DAY,
+    timeframeSeconds: 24 * 60 * 60, // 1 day
+    logger,
+  });
+
+  if (remaining === 0) {
+    return apiError(req, res, {
+      status_code: 429,
+      api_error: {
+        type: "rate_limit_error",
+        message: `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests per day. Please try again tomorrow.`,
+      },
+    });
+  }
+
   const bodyValidation = PostRequestAccessBodySchema.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -87,7 +109,7 @@ async function handler(
     });
   }
 
-  const body = `${emailRequester} has sent you a request regarding your connection ${dataSourceName}:g ${emailMessage}`;
+  const body = `${emailRequester} has sent you a request regarding your connection ${dataSourceName}: ${emailMessage}`;
 
   const result = await sendEmailWithTemplate({
     to: userReceipent.email,

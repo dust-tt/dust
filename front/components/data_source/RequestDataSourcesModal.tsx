@@ -165,11 +165,23 @@ export function RequestDataSourcesModal({
                       dataSourceName: selectedDataSourceIntegration.name,
                       owner,
                     });
+                    sendNotification({
+                      type: "success",
+                      title: "Email sent!",
+                      description: `Your request was sent to ${selectedDataSourceIntegration?.editedByUser?.fullName}.`,
+                    });
                   } catch (e) {
+                    sendNotification({
+                      type: "error",
+                      title: "Error sending email",
+                      description:
+                        "An unexpected error occurred while sending the request.",
+                    });
                     logger.error(
                       {
                         userToId,
                         dataSourceName: selectedDataSourceIntegration.name,
+                        error: e,
                       },
                       "Error sending email"
                     );
@@ -177,11 +189,6 @@ export function RequestDataSourcesModal({
                   setMessage("");
                   setSelectedDataSourceIntegration(null);
                   onClose();
-                  sendNotification({
-                    type: "success",
-                    title: "Email sent!",
-                    description: `Your request was sent to ${selectedDataSourceIntegration?.editedByUser?.fullName}.`,
-                  });
                 }
               }}
             />
