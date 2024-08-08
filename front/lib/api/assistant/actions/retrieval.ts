@@ -28,8 +28,8 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/development";
 import {
@@ -274,41 +274,11 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     agentConfiguration: AgentConfigurationType;
     stepActions: AgentActionConfigurationType[];
   }): number {
-    const retrievalActions: RetrievalConfigurationType[] = [];
-    for (const a of stepActions) {
-      if (a.type === "retrieval_configuration") {
-        retrievalActions.push(a);
-      }
-    }
-    const retrievalActionsCount = retrievalActions.length;
-
-    if (retrievalActionsCount === 0) {
-      throw new Error("Unexpected: found 0 retrieval actions");
-    }
-
-    const model = getSupportedModelConfig(agentConfiguration.model);
-
-    // We find the retrieval action in the step with the highest topK.
-    const maxTopK = retrievalActions
-      .map((a) => {
-        if (a.topK === "auto") {
-          if (a.query === "none") {
-            return model.recommendedExhaustiveTopK;
-          } else {
-            return model.recommendedTopK;
-          }
-        } else {
-          return a.topK;
-        }
-      })
-      .reduce((acc, topK) => Math.max(acc, topK), 0);
-
-    // We split the topK evenly among all retrieval actions of the step.
-    return Math.ceil(maxTopK / retrievalActionsCount);
+    return getCitationsCount({ agentConfiguration, stepActions });
   }
 
   // stepTopKAndRefsOffsetForAction returns the references offset and the number of documents an
-  // action will use as part of the current step. We share topK among all retrieval actions of a step
+  // action will use as part of the current step. We share topK among all actions that use citations of a step
   // so that we don't overflow the context when the model asks for many retrievals
   // at the same time. Based on the nature of the retrieval actions (query being `auto` or `null`),
   // the topK can vary (exhaustive or not). So we need all the actions of the current step to
