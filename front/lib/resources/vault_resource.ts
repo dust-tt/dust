@@ -6,7 +6,7 @@ import type {
   Result,
   VaultType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
