@@ -173,6 +173,26 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new this(VaultModel, vault.get());
   }
 
+  static async fetchByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<VaultResource | null> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const vault = await this.model.findOne({
+      where: {
+        name,
+        workspaceId: owner.id,
+      },
+    });
+
+    if (!vault) {
+      return null;
+    }
+
+    return new this(VaultModel, vault.get());
+  }
+
   async delete(
     auth: Authenticator,
     transaction?: Transaction

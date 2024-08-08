@@ -87,6 +87,7 @@ export type APIErrorType =
   // Runs:
   | "run_not_found"
   // Vaults:
+  | "vault_already_exists"
   | "vault_not_found";
 
 export type APIError = {

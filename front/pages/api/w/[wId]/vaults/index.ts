@@ -74,6 +74,17 @@ async function handler(
 
       const { name, members } = bodyValidation.right;
 
+      const existingVault = await VaultResource.fetchByName(auth, name);
+      if (existingVault) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "vault_already_exists",
+            message: "This vault name is already used.",
+          },
+        });
+      }
+
       const group = await GroupResource.makeNew({
         name: `Group for vault ${name}`,
         workspaceId: owner.id,
