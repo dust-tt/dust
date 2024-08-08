@@ -310,20 +310,7 @@ export function DataSourceEditionModal({
           )}
 
           <div className="mt-4 flex items-center justify-center">
-            {isSetup ? (
-              isDataSourceOwner ? (
-                <Button
-                  label="Edit Connection"
-                  onClick={() =>
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSourceIntegration.dataSourceName}`
-                    )
-                  }
-                />
-              ) : (
-                <></>
-              )
-            ) : (
+            {!isSetup && (
               <Button
                 variant="primary"
                 size="md"
@@ -340,10 +327,7 @@ export function DataSourceEditionModal({
           <div className="flex flex-col gap-2 border-t pb-4 pt-4">
             <Page.SectionHeader title="Connection Owner" />
             <div className="flex items-center gap-2">
-              <Avatar
-                visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg"
-                size="sm"
-              />
+              <Avatar visual={dataSourceOwner?.imageUrl} size="sm" />
               <div>
                 <span className="font-bold">
                   {isDataSourceOwner
@@ -404,6 +388,18 @@ export function DataSourceEditionModal({
                 }}
               />
             </div>
+          </div>
+        )}
+        {isSetup && isDataSourceOwner && (
+          <div className="flex items-center justify-center">
+            <Button
+              label="Edit Connection"
+              onClick={() =>
+                void router.push(
+                  `/w/${owner.sId}/builder/data-sources/${dataSourceIntegration.dataSourceName}`
+                )
+              }
+            />
           </div>
         )}
         <Dialog
