@@ -1,5 +1,6 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import { GoogleDriveCastKnownErrorsInterceptor } from "@connectors/connectors/google_drive/temporal/cast_known_errors";
@@ -31,6 +32,15 @@ export async function runGoogleWorkers() {
         },
         () => new GoogleDriveCastKnownErrorsInterceptor(),
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 

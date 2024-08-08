@@ -7,6 +7,8 @@ import {
   GDRIVE_FULL_SYNC_QUEUE_NAME,
   GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
 } from "@connectors/connectors/google_drive/temporal/config";
+import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
+import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -24,7 +26,8 @@ const logger = mainLogger.child({ provider: "google" });
 export async function launchGoogleDriveFullSyncWorkflow(
   connectorId: ModelId,
   fromTs: number | null,
-  mimeTypeFilter?: string[]
+  mimeTypeFilter?: string[],
+  addedFolderIds?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -41,16 +44,21 @@ export async function launchGoogleDriveFullSyncWorkflow(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  const signalArgs: FolderUpdatesSignal[] =
+    addedFolderIds?.map((sId) => ({
+      action: "added",
+      folderId: sId,
+    })) ?? [];
+
   const workflowId = googleDriveFullSyncWorkflowId(connectorId);
   try {
-    await terminateWorkflow(workflowId);
-    await client.workflow.start(googleDriveFullSync, {
+    await client.workflow.signalWithStart(googleDriveFullSync, {
       args: [
         {
           connectorId: connectorId,
           garbageCollect: true,
           startSyncTs: undefined,
-          foldersToBrowse: undefined,
+          foldersToBrowse: addedFolderIds,
           totalCount: 0,
           mimeTypeFilter: mimeTypeFilter,
         },
@@ -63,6 +71,8 @@ export async function launchGoogleDriveFullSyncWorkflow(
       memo: {
         connectorId: connectorId,
       },
+      signal: folderUpdatesSignal,
+      signalArgs: [signalArgs],
     });
     logger.info(
       {

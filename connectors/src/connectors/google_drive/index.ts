@@ -517,9 +517,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    let shouldFullSync = false;
+    const addedFolderIds: string[] = [];
     for (const [id, permission] of Object.entries(permissions)) {
-      shouldFullSync = true;
       if (permission === "none") {
         await GoogleDriveFolders.destroy({
           where: {
@@ -528,6 +527,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           },
         });
       } else if (permission === "read") {
+        addedFolderIds.push(id);
         await GoogleDriveFolders.upsert({
           connectorId: this.connectorId,
           folderId: id,
@@ -539,10 +539,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    if (shouldFullSync) {
+    if (addedFolderIds.length > 0) {
       const res = await launchGoogleDriveFullSyncWorkflow(
         this.connectorId,
-        null
+        null,
+        addedFolderIds
       );
       if (res.isErr()) {
         return res;

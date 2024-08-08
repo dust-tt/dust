@@ -1,16 +1,20 @@
 import type { ModelId } from "@dust-tt/types";
+import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   continueAsNew,
   executeChild,
   proxyActivities,
+  setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
+import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as sync_status from "@connectors/lib/sync_status";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
+import { folderUpdatesSignal } from "./signals";
 
 const {
   getDrivesToSync,
@@ -67,6 +71,25 @@ export async function googleDriveFullSync({
   if (foldersToBrowse === undefined) {
     foldersToBrowse = await getFoldersToSync(connectorId);
   }
+
+  setHandler(folderUpdatesSignal, (folderUpdates: FolderUpdatesSignal[]) => {
+    // If we get a signal, update the workflow state by adding/removing folder ids.
+    for (const { action, folderId } of folderUpdates) {
+      switch (action) {
+        case "added":
+          foldersToBrowse!.push(folderId);
+          break;
+        case "removed":
+          foldersToBrowse!.splice(foldersToBrowse!.indexOf(folderId), 1);
+          break;
+        default:
+          assertNever(
+            "You must handle all values of the variable: action",
+            action
+          );
+      }
+    }
+  });
 
   while (foldersToBrowse.length > 0) {
     const folder = foldersToBrowse.pop();
