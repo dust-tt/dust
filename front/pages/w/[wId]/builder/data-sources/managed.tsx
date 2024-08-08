@@ -23,7 +23,6 @@ import type {
   ManageDataSourcesLimitsType,
   Result,
   UserType,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
@@ -44,7 +43,11 @@ import { useRef } from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import * as React from "react";
 
-import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEdition";
+import type {
+  DataSourceIntegration} from "@app/components/data_source/DataSourceEdition";
+import {
+  DataSourceEditionModal
+} from "@app/components/data_source/DataSourceEdition";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -61,24 +64,6 @@ import logger from "@app/logger/logger";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 
 const { GA_TRACKING_ID = "" } = process.env;
-
-export type DataSourceIntegration = {
-  name: string;
-  dataSourceName: string | null;
-  connector: ConnectorType | null;
-  fetchConnectorError: boolean;
-  fetchConnectorErrorMessage?: string | null;
-  status: "preview" | "built" | "rolling_out";
-  rollingOutFlag: WhitelistableFeature | null;
-  connectorProvider: ConnectorProvider;
-  description: string;
-  limitations: string | null;
-  guideLink: string | null;
-  synchronizedAgo: string | null;
-  setupWithSuffix: string | null;
-  usage: number | null;
-  editedByUser?: EditedByUser | null;
-};
 
 type RowData = DataSourceIntegration & {
   isAdmin: boolean;
