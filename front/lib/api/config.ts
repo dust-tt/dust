@@ -27,6 +27,11 @@ const config = {
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
     );
   },
+  getGenericEmailTemplate: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "SENDGRID_GENERIC_EMAIL_TEMPLATE_ID"
+    );
+  },
   getStripeSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_KEY");
   },

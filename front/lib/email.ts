@@ -2,8 +2,11 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
+import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 
 const { SENDGRID_API_KEY = "" } = process.env;
@@ -214,4 +217,48 @@ export async function sendProactiveTrialCancelledEmail(
   };
 
   return sendEmail(email, message);
+}
+
+type sendEmailWithTemplateParams = {
+  to: string;
+  from: {
+    email: string;
+    name: string;
+  };
+  subject: string;
+  body: string;
+};
+
+export async function sendEmailWithTemplate({
+  to,
+  from,
+  subject,
+  body,
+}: sendEmailWithTemplateParams): Promise<Result<void, Error>> {
+  const templateId = config.getGenericEmailTemplate();
+  const message = {
+    to,
+    from,
+    templateId,
+    dynamic_template_data: {
+      subject,
+      body,
+    },
+  };
+
+  try {
+    await sendEmail(to, message);
+    logger.info({ email: to, subject }, "Sending email");
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+        to,
+        subject,
+      },
+      "Error sending email."
+    );
+    return new Err(e as Error);
+  }
 }
