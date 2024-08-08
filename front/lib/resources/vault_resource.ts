@@ -177,18 +177,14 @@ export class VaultResource extends BaseResource<VaultModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
+    await this.model.destroy({
+      where: {
+        id: this.id,
+      },
+      transaction,
+    });
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    return new Ok(undefined);
   }
 
   static async deleteAllForWorkspace(

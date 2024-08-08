@@ -384,24 +384,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     user: UserType,
     transaction?: Transaction
-  ): Promise<
-    Result<
-      undefined,
-      | Error
-      | {
-          type:
-            | "user_not_found"
-            | "user_not_workspace_member"
-            | "group_not_regular"
-            | "user_already_group_member";
-        }
-    >
-  > {
+  ): Promise<Result<undefined, Error>> {
     // Checking that the user is a member of the workspace.
     const owner = auth.getNonNullableWorkspace();
     const userResource = await UserResource.fetchById(user.sId);
     if (!userResource) {
-      return new Err({ type: "user_not_found" });
+      return new Err(new Error("The user was not found."));
     }
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -411,12 +399,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
 
     if (!workspaceMembership) {
-      return new Err({ type: "user_not_workspace_member" });
+      return new Err(new Error("The user is not member of the workspace."));
     }
 
     // Users can only be added to regular groups.
     if (this.type !== "regular") {
-      return new Err({ type: "group_not_regular" });
+      return new Err(new Error("Not a regular group, cannot be updated."));
     }
 
     // Check if the user is already a member of the group.
@@ -432,23 +420,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (existingMembership) {
-      return new Err({ type: "user_already_group_member" });
+      return new Err(new Error("User already member."));
     }
 
-    try {
-      // Create a new membership.
-      await GroupMembershipModel.create(
-        {
-          groupId: this.id,
-          userId: user.id,
-          workspaceId: owner.id,
-          startAt: new Date(),
-        },
-        { transaction }
-      );
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    // Create a new membership.
+    await GroupMembershipModel.create(
+      {
+        groupId: this.id,
+        userId: user.id,
+        workspaceId: owner.id,
+        startAt: new Date(),
+      },
+      { transaction }
+    );
 
     return new Ok(undefined);
   }
@@ -457,24 +441,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     user: UserType,
     transaction?: Transaction
-  ): Promise<
-    Result<
-      undefined,
-      | Error
-      | {
-          type:
-            | "user_not_found"
-            | "user_not_workspace_member"
-            | "group_not_regular"
-            | "user_not_group_member";
-        }
-    >
-  > {
+  ): Promise<Result<undefined, Error>> {
     // Checking that the user is a member of the workspace.
     const owner = auth.getNonNullableWorkspace();
     const userResource = await UserResource.fetchById(user.sId);
     if (!userResource) {
-      return new Err({ type: "user_not_found" });
+      return new Err(new Error("The user was not found."));
     }
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -484,12 +456,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
 
     if (!workspaceMembership) {
-      return new Err({ type: "user_not_workspace_member" });
+      return new Err(new Error("The user is not member of the workspace."));
     }
 
     // Users can only be added to regular groups.
     if (this.type !== "regular") {
-      return new Err({ type: "group_not_regular" });
+      return new Err(new Error("Not a regular group, cannot be updated."));
     }
 
     // Check if the user is already a member of the group.
@@ -505,15 +477,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (!existingMembership) {
-      return new Err({ type: "user_not_group_member" });
+      return new Err(new Error("User not a member."));
     }
 
-    try {
-      // Create a new membership.
-      await existingMembership.destroy({ transaction });
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    // Remove group membership.
+    await existingMembership.destroy({ transaction });
 
     return new Ok(undefined);
   }

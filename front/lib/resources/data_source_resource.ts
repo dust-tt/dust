@@ -145,6 +145,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       },
     });
   }
+
   static async listByVault(auth: Authenticator, vault: VaultResource) {
     return this.baseFetchWithAuthorization(auth, {
       where: {

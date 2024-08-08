@@ -168,8 +168,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Updating.
   async updateParents(
     auth: Authenticator,
-    parentsIn: string[],
-    transaction?: Transaction
+    parentsIn: string[]
   ): Promise<Result<undefined, Error>> {
     try {
       await this.model.update(
@@ -181,7 +180,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
             workspaceId: auth.getNonNullableWorkspace().id,
             id: this.id,
           },
-          transaction,
         }
       );
 
