@@ -54,6 +54,7 @@ interface DataSourceEditionModalProps {
   router: NextRouter;
   dustClientFacingUrl: string;
   user: UserType;
+  setIsRequestDataSourceModalOpen: (show: boolean) => void;
 }
 
 export function DataSourceEditionModal({
@@ -65,6 +66,7 @@ export function DataSourceEditionModal({
   router,
   dustClientFacingUrl,
   user,
+  setIsRequestDataSourceModalOpen,
 }: DataSourceEditionModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -250,6 +252,7 @@ export function DataSourceEditionModal({
               <div className="flex items-center justify-center gap-2">
                 <Button
                   label={`Request from ${dataSourceOwner?.fullName ?? ""}`}
+                  onClick={() => setIsRequestDataSourceModalOpen(true)}
                 />
               </div>
             )}

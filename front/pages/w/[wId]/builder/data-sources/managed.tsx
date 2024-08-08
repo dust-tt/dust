@@ -804,6 +804,7 @@ export default function DataSourcesView({
           router={router}
           dustClientFacingUrl={dustClientFacingUrl}
           user={user}
+          setIsRequestDataSourceModalOpen={setIsRequestDataSourceModalOpen}
         />
       </Page.Vertical>
       {showUpgradePopup && (
