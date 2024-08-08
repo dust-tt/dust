@@ -7,7 +7,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -17,6 +17,7 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -33,6 +34,8 @@ export interface DataSourceViewResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithVault<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
+
+  private ds?: DataSourceResource;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
@@ -89,8 +92,33 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // Fetching.
 
+  private static async baseFetch(
+    auth: Authenticator,
+    options?: ResourceFindOptions<DataSourceViewModel>
+  ) {
+    const dataSourceViews = await this.baseFetchWithAuthorization(
+      auth,
+      options
+    );
+
+    const dataSourceIds = removeNulls(
+      dataSourceViews.map((ds) => ds.dataSourceId)
+    );
+
+    const dataSources = await DataSourceResource.fetchByModelIds(
+      auth,
+      dataSourceIds
+    );
+
+    for (const dsv of dataSourceViews) {
+      dsv.ds = dataSources.find((ds) => ds.id === dsv.dataSourceId);
+    }
+
+    return dataSourceViews;
+  }
+
   static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetchWithAuthorization(auth);
+    return this.baseFetch(auth);
   }
 
   static async listByVault(auth: Authenticator, vault: VaultResource) {
@@ -106,7 +134,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     dataSources: DataSourceResource[],
     vault: VaultResource
   ) {
-    return this.baseFetchWithAuthorization(auth, {
+    return this.baseFetch(auth, {
       where: {
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: vault.id,
@@ -120,7 +148,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       return null;
     }
 
-    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
+    const [dataSource] = await this.baseFetch(auth, {
       where: {
         id: fileModelId,
       },
@@ -210,6 +238,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
+  // Getters.
+
+  get dataSource(): DataSourceResource | undefined {
+    return this.ds;
+  }
+
   // sId logic.
 
   get sId(): string {
@@ -236,7 +270,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return isResourceSId("data_source_view", sId);
   }
 
-  // Serialization logic.
+  // Serialization.
 
   toJSON(): DataSourceViewType {
     return {
