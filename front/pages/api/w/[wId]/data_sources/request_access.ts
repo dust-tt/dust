@@ -116,7 +116,6 @@ async function handler(
     from: { name: "Dust team", email: "team@dust.tt" },
     subject: `[Dust] Request Data source from ${emailRequester}`,
     body,
-    gs,
   });
 
   if (result.isErr()) {
