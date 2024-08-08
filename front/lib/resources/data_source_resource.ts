@@ -14,6 +14,7 @@ import type {
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -104,6 +105,14 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return dataSource ?? null;
   }
 
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        id: ids,
+      },
+    });
+  }
+
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions
@@ -150,8 +159,15 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        dataSourceId: this.id,
+      },
+      transaction,
+    });
+
     if (this.isManaged()) {
-      await DataSourceViewResource.deleteForDataSource(auth, this);
+      await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
     }
 
     try {
