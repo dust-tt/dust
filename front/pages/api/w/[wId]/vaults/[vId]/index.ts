@@ -156,13 +156,13 @@ async function handler(
       }
 
       return res.status(200).json({ vault: vault.toJSON() });
-
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or PATCH is expected.",
         },
       });
   }

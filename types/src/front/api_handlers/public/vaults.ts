@@ -29,7 +29,7 @@ export type PatchVaultRequestBodyType = t.TypeOf<
 
 export type DataSourceCategory = "managed" | "files" | "webfolder" | "apps";
 
-export type DataSourceInfo = DataSourceType &
+export type DataSourceInfo = Partial<DataSourceType> &
   Partial<DataSourceViewType> & {
     usage: number;
     category: DataSourceCategory;

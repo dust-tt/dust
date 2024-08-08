@@ -272,6 +272,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   toJSON(): DataSourceViewType {
     return {
+      id: this.id,
       createdAt: this.createdAt.getTime(),
       parentsIn: this.parentsIn,
       sId: this.sId,
