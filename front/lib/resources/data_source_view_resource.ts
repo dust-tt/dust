@@ -106,17 +106,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
-  static async listForDataSource(
-    auth: Authenticator,
-    dataSource: DataSourceResource
-  ) {
-    return this.baseFetchWithAuthorization(auth, {
-      where: {
-        dataSourceId: dataSource.id,
-      },
-    });
-  }
-
   static async fetchById(auth: Authenticator, id: string) {
     const fileModelId = getResourceIdFromSId(id);
     if (!fileModelId) {
