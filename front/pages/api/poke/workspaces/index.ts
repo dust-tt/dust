@@ -18,6 +18,7 @@ import {
   FREE_TEST_PLAN_CODE,
   isEntreprisePlan,
   isFreePlan,
+  isFriendsAndFamilyPlan,
   isOldFreePlan,
   isProPlan,
 } from "@app/lib/plans/plan_codes";
@@ -47,19 +48,23 @@ const getPlanPriority = (planCode: string) => {
     return 1;
   }
 
-  if (isProPlan(planCode)) {
+  if (isFriendsAndFamilyPlan(planCode)) {
     return 2;
   }
 
-  if (isFreePlan(planCode)) {
+  if (isProPlan(planCode)) {
     return 3;
   }
 
-  if (isOldFreePlan(planCode)) {
+  if (isFreePlan(planCode)) {
     return 4;
   }
 
-  return 5;
+  if (isOldFreePlan(planCode)) {
+    return 5;
+  }
+
+  return 6;
 };
 
 async function handler(
@@ -286,18 +291,20 @@ async function handler(
               defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
             };
 
-            const auth = await Authenticator.internalAdminForWorkspace(ws.sId);
+            const auth = await Authenticator.internalBuilderForWorkspace(
+              ws.sId
+            );
             const dataSources = await DataSourceResource.listByWorkspace(auth);
             const dataSourcesCount = dataSources.length;
 
-            const memberships = await MembershipResource.getActiveMemberships({
+            const admins = await MembershipResource.getActiveMemberships({
               workspace: lightWorkspace,
               roles: ["admin" as MembershipRoleType],
             });
 
-            const firstAdmin = memberships.length
+            const firstAdmin = admins.length
               ? await UserResource.fetchByModelId(
-                  memberships.sort(
+                  admins.sort(
                     (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
                   )[0].userId
                 )
