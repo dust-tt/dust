@@ -1,8 +1,4 @@
-import type {
-  ContentNode,
-  VaultType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { ContentNodeType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -12,12 +8,19 @@ import {
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetVaultResponseBody = {
-  vault: VaultType;
+export type LightContentNode = {
+  internalId: string;
+  parentInternalId: string | null;
+  type: ContentNodeType;
+  title: string;
+  expandable: boolean;
+  preventSelection?: boolean;
+  dustDocumentId: string | null;
+  lastUpdatedAt: number | null;
 };
 
 export type GetDataSourceContentResponseBody = {
-  resources: ContentNode[];
+  nodes: LightContentNode[];
 };
 
 export const getContentHandler = async (
@@ -45,6 +48,9 @@ export const getContentHandler = async (
     parentIds = [req.query.parentId];
   }
 
+  const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+  const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
   const content = dataSource.connectorId
     ? await getManagedDataSourceContent(
         dataSource.connectorId,
@@ -52,7 +58,13 @@ export const getContentHandler = async (
         parentIds,
         viewType
       )
-    : await getUnmanagedDataSourceContent(dataSource, parentIds, viewType);
+    : await getUnmanagedDataSourceContent(
+        dataSource,
+        parentIds,
+        viewType,
+        limit,
+        offset
+      );
 
   if (content.isErr()) {
     return apiError(req, res, {
@@ -65,7 +77,7 @@ export const getContentHandler = async (
   }
 
   res.status(200).json({
-    resources: content.value,
+    nodes: content.value,
   });
   return;
 };
