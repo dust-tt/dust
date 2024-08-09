@@ -37,7 +37,7 @@ export const getManagedDataSourceContent = async (
     }
   }
   const err = contentNodes.find((r) => r.isErr());
-  if (err) {
+  if (err?.isErr()) {
     return err;
   }
 
