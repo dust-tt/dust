@@ -212,6 +212,7 @@ function getTableColumns() {
     {
       header: "Name",
       id: "name",
+      accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.Cell icon={info.row.original.icon}>
           <span className="hidden sm:inline">{info.row.original.name}</span>

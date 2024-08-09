@@ -842,6 +842,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
   return [
     {
       header: "Name",
+      accessorKey: "name",
       id: "name",
       cell: (info: Info) => (
         <DataTable.Cell icon={info.row.original.icon}>
@@ -852,6 +853,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
     {
       header: "Used by",
       id: "usedBy",
+      accessorKey: "usage",
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
@@ -867,7 +869,6 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       id: "managedBy",
       cell: (info: Info) => (
         <DataTable.Cell
-          className="w-10"
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
         />
       ),
@@ -875,6 +876,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
     {
       header: "Last sync",
       id: "lastSync",
+      accessorKey: "editedByUser.editedAt",
       cell: (info: Info) => (
         <DataTable.Cell className="w-10">
           {(() => {
