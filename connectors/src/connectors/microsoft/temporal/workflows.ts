@@ -1,7 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
+  defineSignal,
   proxyActivities,
+  setHandler,
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
@@ -49,6 +51,22 @@ export async function fullSyncWorkflow({
   if (nodeIdsToSync === undefined) {
     nodeIdsToSync = await getRootNodesToSync(connectorId);
   }
+
+  setHandler(fullSyncAddNodes, ({ nodeIdsToAdd }: FullSyncAddNodes) => {
+    nodeIdsToSync?.unshift(...nodeIdsToAdd);
+  });
+
+  setHandler(
+    fullSyncRemoveNodes,
+    ({ nodeIdsToDelete }: FullSyncRemoveNodes) => {
+      // Should cancel the current activity if node being indexed is removed
+      nodeIdsToDelete.forEach((id) => {
+        if (nodeIdsToSync?.indexOf(id) !== -1) {
+          nodeIdsToSync?.splice(nodeIdsToSync.indexOf(id), 1);
+        }
+      });
+    }
+  );
 
   if (startSyncTs === undefined) {
     startSyncTs = new Date().getTime();
@@ -185,3 +203,18 @@ export function microsoftDeletionWorkflowId(
 
   return `microsoft-deletion-${connectorId}-${concatenatedLast4Chars}`;
 }
+
+interface FullSyncAddNodes {
+  nodeIdsToAdd: string[];
+}
+
+export const fullSyncAddNodes =
+  defineSignal<[FullSyncAddNodes]>("fullSyncAddNodes");
+
+interface FullSyncRemoveNodes {
+  nodeIdsToDelete: string[];
+}
+
+export const fullSyncRemoveNodes = defineSignal<[FullSyncRemoveNodes]>(
+  "fullSyncRemoveNodes"
+);

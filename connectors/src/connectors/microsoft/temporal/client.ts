@@ -4,7 +4,11 @@ import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/common";
 
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
-import { microsoftGarbageCollectionWorkflow } from "@connectors/connectors/microsoft/temporal/workflows";
+import {
+  fullSyncAddNodes,
+  fullSyncRemoveNodes,
+  microsoftGarbageCollectionWorkflow,
+} from "@connectors/connectors/microsoft/temporal/workflows";
 import {
   fullSyncWorkflow,
   incrementalSyncWorkflow,
@@ -33,6 +37,24 @@ export async function launchMicrosoftFullSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const workflowId = microsoftFullSyncWorkflowId(connectorId);
+
+  if (nodeIdsToSync) {
+    // Only adding nodes to sync if the workflow is already running
+    try {
+      const workflowHandle = client.workflow.getHandle(workflowId);
+      if (workflowHandle) {
+        await workflowHandle.signal(fullSyncAddNodes, {
+          nodeIdsToAdd: nodeIdsToSync,
+        });
+
+        return new Ok(workflowHandle.workflowId);
+      }
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+  }
 
   try {
     await terminateWorkflow(workflowId);
@@ -199,6 +221,20 @@ export async function launchMicrosoftDeletionWorkflow(
   const workflowId = microsoftDeletionWorkflowId(connectorId, nodeIdsToDelete);
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  try {
+    const fullSyncWorkflowId = microsoftFullSyncWorkflowId(connectorId);
+    const workflowHandle = client.workflow.getHandle(fullSyncWorkflowId);
+    if (workflowHandle) {
+      await workflowHandle.signal(fullSyncRemoveNodes, {
+        nodeIdsToDelete: nodeIdsToDelete || [],
+      });
+    }
+  } catch (e) {
+    if (!(e instanceof WorkflowNotFoundError)) {
+      throw e;
+    }
+  }
 
   try {
     await terminateWorkflow(workflowId);
