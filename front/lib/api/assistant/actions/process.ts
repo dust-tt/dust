@@ -247,18 +247,32 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       DustProdActionRegistry["assistant-v2-process"].config
     );
 
+    // Transform each data source in actionConfiguration.dataSources by adding a
+    // `dataSourceOrViewId` field. This field will hold the value of `dataSourceViewId`
+    // if it exists; otherwise, it will fall back to `dataSourceId`
+    const actionConfigurationDataSources = actionConfiguration.dataSources.map(
+      (d) => {
+        const { dataSourceViewId, dataSourceId, ...rest } = d;
+        return {
+          ...rest,
+          // We use dataSourceViewId if it exists, otherwise dataSourceId.
+          dataSourceOrViewId: dataSourceViewId ?? dataSourceId,
+        };
+      }
+    );
+
     // Set the process action model configuration to the assistant model configuration.
     config.MODEL.provider_id = model.providerId;
     config.MODEL.model_id = model.modelId;
     config.MODEL.temperature = model.temperature;
 
     // Handle data sources list and parents/tags filtering.
-    config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
+    config.DATASOURCE.data_sources = actionConfigurationDataSources.map(
       (d) => ({
         workspace_id: isDevelopment()
           ? PRODUCTION_DUST_WORKSPACE_ID
           : d.workspaceId,
-        data_source_id: d.dataSourceId,
+        data_source_id: d.dataSourceOrViewId,
       })
     );
 
@@ -275,7 +289,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       config.DATASOURCE.filter.tags.in = actionConfiguration.tagsFilter.in;
     }
 
-    for (const ds of actionConfiguration.dataSources) {
+    for (const ds of actionConfigurationDataSources) {
       if (!config.DATASOURCE.filter.parents) {
         config.DATASOURCE.filter.parents = {};
       }
@@ -283,7 +297,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         if (!config.DATASOURCE.filter.parents.in_map) {
           config.DATASOURCE.filter.parents.in_map = {};
         }
-        config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
+        config.DATASOURCE.filter.parents.in_map[ds.dataSourceOrViewId] =
           ds.filter.parents.in;
       }
       if (ds.filter.parents?.not) {
