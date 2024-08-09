@@ -682,7 +682,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       ),
     },
     {
-      header: "Manage",
+      id: "manage",
       cell: (info: Info) => {
         const original = info.row.original;
         const disabled = original.isLoading || !original.isAdmin;
@@ -700,17 +700,18 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
             </DataTable.Cell>
           );
         } else {
+          if (original.isAdmin) {
           return (
             <DataTable.Cell className="relative">
               <Button
                 variant="secondary"
                 icon={Cog6ToothIcon}
-                disabled={disabled}
                 onClick={original.buttonOnClick}
-                label={original.isAdmin ? "Manage" : "View"}
+                label="Manage"
               />
             </DataTable.Cell>
           );
+          }
         }
       },
     },

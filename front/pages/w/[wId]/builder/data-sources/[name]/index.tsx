@@ -39,7 +39,6 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
-import DataSourceDetailsModal from "@app/components/data_source/DataSourceDetailsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -1000,8 +999,6 @@ function ManagedDataSourceView({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [showDataSourceDetailsModal, setShowDataSourceDetailsModal] =
-    useState(false);
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -1096,7 +1093,6 @@ function ManagedDataSourceView({
   };
 
   const {
-    displayDataSourceDetailsModal,
     displayManagePermissionButton,
     addDataButtonLabel,
     displaySettingsButton,
@@ -1123,19 +1119,6 @@ function ManagedDataSourceView({
           <span>{postPermissionsUpdateMessage}</span>
         </Dialog>
       )}
-      <DataSourceDetailsModal
-        dataSource={dataSource}
-        visible={showDataSourceDetailsModal}
-        onClose={() => {
-          setShowDataSourceDetailsModal(false);
-        }}
-        onClick={() => {
-          void handleUpdatePermissions().then(() => {
-            postPermissionsUpdateMessage &&
-              setPostPermissionsUpdateDialogIsOpen(true);
-          });
-        }}
-      />
       <ConnectorPermissionsModal
         owner={owner}
         connector={connector}
@@ -1164,24 +1147,6 @@ function ManagedDataSourceView({
             })()}
             icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
           />
-          {isAdmin && displayManagePermissionButton ? (
-            <Button
-              className="ml-auto"
-              label="Manage permissions"
-              variant="tertiary"
-              icon={LockIcon}
-              disabled={readOnly || !isAdmin}
-              onClick={() => {
-                if (displayDataSourceDetailsModal) {
-                  setShowDataSourceDetailsModal(true);
-                } else {
-                  void handleUpdatePermissions();
-                }
-              }}
-            />
-          ) : (
-            <></>
-          )}
           {isBuilder && displaySettingsButton ? (
             <Link
               className="ml-auto"
@@ -1217,14 +1182,9 @@ function ManagedDataSourceView({
                     label={addDataButtonLabel}
                     variant="primary"
                     icon={ListCheckIcon}
-                    disabled={readOnly || !isAdmin}
+                    disabled={readOnly}
                     onClick={() => {
-                      if (
-                        !displayManagePermissionButton &&
-                        displayDataSourceDetailsModal
-                      ) {
-                        setShowDataSourceDetailsModal(true);
-                      } else if (displayManagePermissionButton) {
+                      if (displayManagePermissionButton) {
                         setShowPermissionModal(true);
                       } else {
                         void handleUpdatePermissions();
@@ -1232,7 +1192,6 @@ function ManagedDataSourceView({
                     }}
                   />
                 )}
-
                 {guideLink && (
                   <Button
                     label="Read our guide"
