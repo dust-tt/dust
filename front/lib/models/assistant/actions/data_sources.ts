@@ -40,6 +40,7 @@ export class AgentDataSourceConfiguration extends Model<
   > | null;
 
   declare dataSource: NonAttribute<DataSource>;
+  declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 AgentDataSourceConfiguration.init(
   {
@@ -119,9 +120,11 @@ AgentDataSourceConfiguration.belongsTo(DataSource, {
 
 // Data source config <> Data source view
 DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
+  as: "dataSourceView",
   foreignKey: { allowNull: true },
   onDelete: "CASCADE",
 });
 AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
+  as: "dataSourceView",
   foreignKey: { allowNull: false },
 });

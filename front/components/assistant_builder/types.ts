@@ -38,6 +38,8 @@ export const ACTION_MODES = [
 
 export type AssistantBuilderDataSourceConfiguration = {
   dataSource: DataSourceType;
+  // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
+  dataSourceViewId: null;
   selectedResources: ContentNode[];
   isSelectAll: boolean;
 };

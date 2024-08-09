@@ -73,7 +73,9 @@ export async function buildInitialActions({
             const dataSource = dataSourcesByName[ds.dataSourceName];
             if (!dataSource.connectorId || !ds.resources) {
               return {
-                dataSource: dataSource,
+                dataSource,
+                // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
+                dataSourceViewId: null,
                 selectedResources: [],
                 isSelectAll: ds.isSelectAll,
               };
@@ -92,7 +94,9 @@ export async function buildInitialActions({
             }
 
             return {
-              dataSource: dataSource,
+              dataSource,
+              // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
+              dataSourceViewId: null,
               selectedResources: response.value.nodes,
               isSelectAll: ds.isSelectAll,
             };
