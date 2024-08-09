@@ -378,7 +378,7 @@ export default function AssistantBuilder({
   ]);
 
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
-    template !== null && builderState.instructions
+    Boolean(template !== null && builderState.instructions)
   );
 
   const modalTitle = agentConfigurationId
