@@ -701,16 +701,16 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
           );
         } else {
           if (original.isAdmin) {
-          return (
-            <DataTable.Cell className="relative">
-              <Button
-                variant="secondary"
-                icon={Cog6ToothIcon}
-                onClick={original.buttonOnClick}
-                label="Manage"
-              />
-            </DataTable.Cell>
-          );
+            return (
+              <DataTable.Cell className="relative">
+                <Button
+                  variant="secondary"
+                  icon={Cog6ToothIcon}
+                  onClick={original.buttonOnClick}
+                  label="Manage"
+                />
+              </DataTable.Cell>
+            );
           }
         }
       },
