@@ -35,7 +35,10 @@ async function handler(
 
   const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
-  if (!vault || !auth.hasPermission([vault.acl()], "read")) {
+  if (
+    !vault ||
+    (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

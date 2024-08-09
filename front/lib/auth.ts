@@ -631,9 +631,6 @@ export class Authenticator {
   }
 
   hasPermission(acls: ACLType[], permission: Permission): boolean {
-    if (this.isAdmin()) {
-      return true;
-    }
     // Does the user belongs to a group which has the required permission on all ACLs ?
     return this.groups().some((group) =>
       acls.every((acl) => groupHasPermission(acl, permission, group.id))

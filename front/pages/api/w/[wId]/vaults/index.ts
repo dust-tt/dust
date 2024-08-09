@@ -43,7 +43,10 @@ async function handler(
 
       res.status(200).json({
         vaults: vaults
-          .filter((vault) => auth.hasPermission([vault.acl()], "read"))
+          .filter(
+            (vault) =>
+              auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
+          )
           .map((vault) => vault.toJSON()),
       });
       return;
