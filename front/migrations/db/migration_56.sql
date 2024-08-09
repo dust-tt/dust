@@ -1,0 +1,2 @@
+ALTER TABLE "agent_data_source_configurations"
+DROP CONSTRAINT "agent_data_source_configurations_dataSourceViewId_fkey";
