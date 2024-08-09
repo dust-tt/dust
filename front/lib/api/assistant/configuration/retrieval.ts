@@ -15,7 +15,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
-export async function fetchAgentRetrievalConfigurationsActions({
+export async function fetchAgentRetrievalActionsConfigurations({
   configurationIds,
   variant,
 }: {

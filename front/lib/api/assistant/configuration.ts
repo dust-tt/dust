@@ -37,8 +37,8 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
-import { fetchAgentProcessConfigurationsActions } from "@app/lib/api/assistant/configuration/process";
-import { fetchAgentRetrievalConfigurationsActions } from "@app/lib/api/assistant/configuration/retrieval";
+import { fetchAgentProcessActionsConfigurations } from "@app/lib/api/assistant/configuration/process";
+import { fetchAgentRetrievalActionsConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
 import {
   getGlobalAgents,
   isGlobalAgentId,
@@ -461,13 +461,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
     : Promise.resolve([]);
 
   const [
-    retrievalConfigurationsActions,
-    processConfigurationsActions,
+    retrievalActionsConfigurationsPerAgent,
+    processActionsConfigurationsPerAgent,
     agentTablesConfigurationTables,
     dustApps,
   ] = await Promise.all([
-    fetchAgentRetrievalConfigurationsActions({ configurationIds, variant }),
-    fetchAgentProcessConfigurationsActions({ configurationIds, variant }),
+    fetchAgentRetrievalActionsConfigurations({ configurationIds, variant }),
+    fetchAgentProcessActionsConfigurations({ configurationIds, variant }),
     agentTablesQueryConfigurationTablesPromise,
     dustAppsPromise,
   ]);
@@ -477,10 +477,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
     const actions: AgentActionConfigurationType[] = [];
 
     if (variant === "full") {
-      const retrievalActions =
-        retrievalConfigurationsActions.get(agent.id) ?? [];
+      const retrievalActionsConfigurations =
+        retrievalActionsConfigurationsPerAgent.get(agent.id) ?? [];
 
-      actions.push(...retrievalActions);
+      actions.push(...retrievalActionsConfigurations);
 
       const dustAppRunConfigurations = dustAppRunConfigs[agent.id] ?? [];
       for (const dustAppRunConfig of dustAppRunConfigurations) {
@@ -544,9 +544,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
         });
       }
 
-      const processActions = processConfigurationsActions.get(agent.id) ?? [];
+      const processActionConfigurations =
+        processActionsConfigurationsPerAgent.get(agent.id) ?? [];
 
-      actions.push(...processActions);
+      actions.push(...processActionConfigurations);
     }
 
     let template: TemplateResource | null = null;
