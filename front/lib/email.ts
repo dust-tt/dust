@@ -2,12 +2,13 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
-import type { Result } from "@dust-tt/types";
+import type { Result, WorkspaceType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request_access";
 
 const { SENDGRID_API_KEY = "" } = process.env;
 
@@ -261,4 +262,35 @@ export async function sendEmailWithTemplate({
     );
     return new Err(e as Error);
   }
+}
+
+export async function sendRequestDataSourceEmail({
+  userTo,
+  emailMessage,
+  dataSourceName,
+  owner,
+}: {
+  userTo: string;
+  emailMessage: string;
+  dataSourceName: string;
+  owner: WorkspaceType;
+}) {
+  const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      emailMessage,
+      dataSourceName,
+      userTo,
+    } satisfies PostRequestAccessBody),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || "Failed to send email");
+  }
+
+  return res.json();
 }
