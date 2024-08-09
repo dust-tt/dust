@@ -1,5 +1,7 @@
+import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
+import { ConnectorType } from "./lib/connectors_api";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -59,6 +61,24 @@ export type DataSourceType = {
   dustAPIProjectId: string;
   connectorId: string | null;
   connectorProvider: ConnectorProvider | null;
+  editedByUser?: EditedByUser | null;
+};
+
+export type DataSourceIntegration = {
+  name: string;
+  dataSourceName: string | null;
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
+  fetchConnectorErrorMessage?: string | null;
+  status: "preview" | "built" | "rolling_out";
+  rollingOutFlag: WhitelistableFeature | null;
+  connectorProvider: ConnectorProvider;
+  description: string;
+  limitations: string | null;
+  guideLink: string | null;
+  synchronizedAgo: string | null;
+  setupWithSuffix: string | null;
+  usage: number | null;
   editedByUser?: EditedByUser | null;
 };
 

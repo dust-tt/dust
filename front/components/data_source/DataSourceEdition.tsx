@@ -11,11 +11,11 @@ import {
 import type {
   ConnectorProvider,
   ConnectorType,
+  DataSourceIntegration,
   DataSourceType,
   EditedByUser,
   UpdateConnectorRequestBody,
   UserType,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
@@ -28,24 +28,6 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
-
-export type DataSourceIntegration = {
-  name: string;
-  dataSourceName: string | null;
-  connector: ConnectorType | null;
-  fetchConnectorError: boolean;
-  fetchConnectorErrorMessage?: string | null;
-  status: "preview" | "built" | "rolling_out";
-  rollingOutFlag: WhitelistableFeature | null;
-  connectorProvider: ConnectorProvider;
-  description: string;
-  limitations: string | null;
-  guideLink: string | null;
-  synchronizedAgo: string | null;
-  setupWithSuffix: string | null;
-  usage: number | null;
-  editedByUser?: EditedByUser | null;
-};
 
 interface DataSourceEditionModalProps {
   isOpen: boolean;
