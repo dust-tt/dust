@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import { App } from "@app/lib/models/apps";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 
-export async function fetchDustAppRunActionsConfigurations({
+export async function fetchDustAppRunActionConfigurations({
   configurationIds,
   variant,
 }: {

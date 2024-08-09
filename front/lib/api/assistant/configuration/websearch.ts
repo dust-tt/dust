@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 
-export async function fetchWebsearchActionsConfigurations({
+export async function fetchWebsearchActionConfigurations({
   configurationIds,
   variant,
 }: {

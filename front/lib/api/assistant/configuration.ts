@@ -37,12 +37,12 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
-import { fetchBrowseActionsConfigurations } from "@app/lib/api/assistant/configuration/browse";
-import { fetchDustAppRunActionsConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
-import { fetchAgentProcessActionsConfigurations } from "@app/lib/api/assistant/configuration/process";
-import { fetchAgentRetrievalActionsConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
-import { fetchTableQueryActionsConfigurations } from "@app/lib/api/assistant/configuration/table_query";
-import { fetchWebsearchActionsConfigurations } from "@app/lib/api/assistant/configuration/websearch";
+import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
+import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
+import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
+import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
+import { fetchTableQueryActionConfigurations } from "@app/lib/api/assistant/configuration/table_query";
+import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
 import {
   getGlobalAgents,
   isGlobalAgentId,
@@ -387,12 +387,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
     browseActionsConfigurationsPerAgent,
     agentUserRelations,
   ] = await Promise.all([
-    fetchAgentRetrievalActionsConfigurations({ configurationIds, variant }),
-    fetchAgentProcessActionsConfigurations({ configurationIds, variant }),
-    fetchDustAppRunActionsConfigurations({ configurationIds, variant }),
-    fetchTableQueryActionsConfigurations({ configurationIds, variant }),
-    fetchWebsearchActionsConfigurations({ configurationIds, variant }),
-    fetchBrowseActionsConfigurations({ configurationIds, variant }),
+    fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
+    fetchAgentProcessActionConfigurations({ configurationIds, variant }),
+    fetchDustAppRunActionConfigurations({ configurationIds, variant }),
+    fetchTableQueryActionConfigurations({ configurationIds, variant }),
+    fetchWebsearchActionConfigurations({ configurationIds, variant }),
+    fetchBrowseActionConfigurations({ configurationIds, variant }),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {

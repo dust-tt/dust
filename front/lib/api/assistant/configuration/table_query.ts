@@ -8,7 +8,7 @@ import {
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 
-export async function fetchTableQueryActionsConfigurations({
+export async function fetchTableQueryActionConfigurations({
   configurationIds,
   variant,
 }: {

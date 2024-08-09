@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 
-export async function fetchBrowseActionsConfigurations({
+export async function fetchBrowseActionConfigurations({
   configurationIds,
   variant,
 }: {
