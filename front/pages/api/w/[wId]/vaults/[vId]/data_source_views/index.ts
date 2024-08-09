@@ -12,8 +12,8 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetVaultDataSourcesResponseBody = {
-  dataSources: ResourceInfo[];
+export type GetVaultDataSourceViewsResponseBody = {
+  dataSourceViews: ResourceInfo[];
 };
 
 export const getDataSourceCategory = (
@@ -38,7 +38,7 @@ export const getDataSourceViewsInfo = async (
 
   return dataSourceViews.map((view) => {
     return {
-      ...view.dataSource?.toJSON(),
+      ...(view.dataSource as DataSourceResource).toJSON(),
       ...view.toJSON(),
       usage: 0,
       category: getDataSourceCategory(view.dataSource as DataSourceResource),
@@ -48,7 +48,9 @@ export const getDataSourceViewsInfo = async (
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetVaultDataSourcesResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetVaultDataSourceViewsResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.workspace();
@@ -87,7 +89,7 @@ async function handler(
       const all = await getDataSourceViewsInfo(auth, vault);
 
       res.status(200).json({
-        dataSources: all.filter(
+        dataSourceViews: all.filter(
           (dataSourceInfo) => !category || dataSourceInfo.category === category
         ),
       });

@@ -8,7 +8,7 @@ import { apiError } from "@app/logger/withlogging";
 import { getDataSourceViewsInfo } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
 import { getDataSourceInfos } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
-type VaultCategoryInfo = {
+export type VaultCategoryInfo = {
   category: ResourceCategory;
   usage: number;
   count: number;
