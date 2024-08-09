@@ -10,6 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+
 use dust::{
     api_keys::validate_api_key,
     app,
@@ -25,7 +26,7 @@ use dust::{
     project,
     providers::provider::{provider, ProviderID},
     run,
-    search_filter::SearchFilter,
+    search_filter::{Filterable, SearchFilter},
     secondary_api::forward_middleware,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
