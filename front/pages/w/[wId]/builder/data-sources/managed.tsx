@@ -725,15 +725,17 @@ export default function DataSourcesView({
             />
           )}
           {connectionRows.length > 0 && (
-            <Searchbar
-              ref={searchBarRef}
-              name="search"
-              placeholder="Search (Name)"
-              value={dataSourceSearch}
-              onChange={(s) => {
-                setDataSourceSearch(s);
-              }}
-            />
+            <div className="hidden w-full sm:block">
+              <Searchbar
+                ref={searchBarRef}
+                name="search"
+                placeholder="Search (Name)"
+                value={dataSourceSearch}
+                onChange={(s) => {
+                  setDataSourceSearch(s);
+                }}
+              />
+            </div>
           )}
 
           {isAdmin && nonSetUpIntegrations.length > 0 && (
@@ -780,6 +782,11 @@ export default function DataSourcesView({
             columns={getTableColumns()}
             filter={dataSourceSearch}
             filterColumn={"name"}
+            columnsBreakpoints={{
+              // "managedBy": "sm",
+              usedBy: "sm",
+              lastSync: "sm",
+            }}
           />
         ) : !isAdmin ? (
           <div className="flex items-center justify-center text-sm font-normal text-element-700">
@@ -835,7 +842,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
   return [
     {
       header: "Name",
-      accessorKey: "name",
+      id: "name",
       cell: (info: Info) => (
         <DataTable.Cell icon={info.row.original.icon}>
           {info.row.original.name}
@@ -844,7 +851,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
+      id: "usedBy",
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
@@ -857,15 +864,17 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
     },
     {
       header: "Managed by",
+      id: "managedBy",
       cell: (info: Info) => (
         <DataTable.Cell
+          className="w-10"
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
         />
       ),
     },
     {
       header: "Last sync",
-      accessorKey: "editedByUser.editedAt",
+      id: "lastSync",
       cell: (info: Info) => (
         <DataTable.Cell className="w-10">
           {(() => {
@@ -894,7 +903,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       ),
     },
     {
-      header: "Manage",
+      id: "action",
       cell: (info: Info) => {
         const original = info.row.original;
         const disabled = original.isLoading || !original.isAdmin;
