@@ -432,17 +432,31 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       DustProdActionRegistry["assistant-v2-retrieval"].config
     );
 
+    // Transform each data source in actionConfiguration.dataSources by adding a
+    // `dataSourceOrViewId` field. This field will hold the value of `dataSourceViewId`
+    // if it exists; otherwise, it will fall back to `dataSourceId`
+    const actionConfigurationDataSources = actionConfiguration.dataSources.map(
+      (d) => {
+        const { dataSourceViewId, dataSourceId, ...rest } = d;
+        return {
+          ...rest,
+          // We use dataSourceViewId if it exists, otherwise dataSourceId.
+          dataSourceOrViewId: dataSourceViewId ?? dataSourceId,
+        };
+      }
+    );
+
     // Handle data sources list and parents/tags filtering.
-    config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
+    config.DATASOURCE.data_sources = actionConfigurationDataSources.map(
       (d) => ({
         workspace_id: isDevelopment()
           ? PRODUCTION_DUST_WORKSPACE_ID
           : d.workspaceId,
-        data_source_id: d.dataSourceId,
+        data_source_id: d.dataSourceOrViewId,
       })
     );
 
-    for (const ds of actionConfiguration.dataSources) {
+    for (const ds of actionConfigurationDataSources) {
       // Not: empty array in parents/tags.in means "no document match" since no documents has any
       // tags/parents that is in the empty array.
       if (!config.DATASOURCE.filter.parents) {
@@ -452,7 +466,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         if (!config.DATASOURCE.filter.parents.in_map) {
           config.DATASOURCE.filter.parents.in_map = {};
         }
-        config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
+        config.DATASOURCE.filter.parents.in_map[ds.dataSourceOrViewId] =
           ds.filter.parents.in;
       }
       if (ds.filter.parents?.not) {
@@ -520,8 +534,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     // want `core` to return the `workspace_id` that was used eventualy.
     // TODO(spolu): make `core` return data source workspace id.
     const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
-    for (const ds of actionConfiguration.dataSources) {
-      dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
+    for (const ds of actionConfigurationDataSources) {
+      dataSourcesIdToWorkspaceId[ds.dataSourceOrViewId] = ds.workspaceId;
     }
 
     for await (const event of eventStream) {
@@ -571,6 +585,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           return;
         }
 
+        // TODO(GROUPS_INFRA): Map the data source of the retrieved documents to the data source view.
         if (event.content.block_name === "DATASOURCE" && e.value) {
           const v = e.value as {
             data_source_id: string;
