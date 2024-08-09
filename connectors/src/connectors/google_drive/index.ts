@@ -517,10 +517,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    let shouldFullSync = false;
+    const addedFolderIds: string[] = [];
+    const removedFolderIds: string[] = [];
     for (const [id, permission] of Object.entries(permissions)) {
-      shouldFullSync = true;
       if (permission === "none") {
+        removedFolderIds.push(id);
         await GoogleDriveFolders.destroy({
           where: {
             connectorId: this.connectorId,
@@ -528,6 +529,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           },
         });
       } else if (permission === "read") {
+        addedFolderIds.push(id);
         await GoogleDriveFolders.upsert({
           connectorId: this.connectorId,
           folderId: id,
@@ -539,11 +541,19 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    if (shouldFullSync) {
+    if (addedFolderIds.length > 0) {
       const res = await launchGoogleDriveFullSyncWorkflow(
         this.connectorId,
-        null
+        null,
+        addedFolderIds
       );
+      if (res.isErr()) {
+        return res;
+      }
+    } else if (removedFolderIds.length > 0) {
+      // If we have added folders, the garbage collector will be automatically at the end of the full sync,
+      // but if we only removed folders, we need launch it manually.
+      const res = await launchGoogleGarbageCollector(this.connectorId);
       if (res.isErr()) {
         return res;
       }
@@ -763,7 +773,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null
+          null,
+          []
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -776,7 +787,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null
+          null,
+          []
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -789,7 +801,8 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null
+          null,
+          []
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -870,7 +883,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
     await connector.markAsUnpaused();
-    const r = await launchGoogleDriveFullSyncWorkflow(this.connectorId, null);
+    const r = await launchGoogleDriveFullSyncWorkflow(
+      this.connectorId,
+      null,
+      []
+    );
     if (r.isErr()) {
       return r;
     }
@@ -904,7 +921,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs);
+    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs, []);
   }
 
   async configure(): Promise<Result<void, Error>> {
