@@ -51,16 +51,16 @@ interface DataSourceEditionModalProps {
   isOpen: boolean;
   owner: WorkspaceType;
   connectorProvider: ConnectorProvider | null | undefined;
-  dataSourceIntegration: DataSourceIntegration | null;
+  dataSourceIntegration: DataSourceIntegration | DataSourceType | null;
   onClose: () => void;
   router: NextRouter;
   dustClientFacingUrl: string;
   user: UserType;
-  setIsRequestDataSourceModalOpen: (show: boolean) => void;
-  setDataSourceIntegrations: (
+  setIsRequestDataSourceModalOpen?: (show: boolean) => void;
+  setDataSourceIntegrations?: (
     integrations: (prev: DataSourceIntegration[]) => DataSourceIntegration[]
   ) => void;
-  setIsLoadingByProvider: (
+  setIsLoadingByProvider?: (
     providers: (
       prev: Record<ConnectorProvider, boolean | undefined>
     ) => Record<ConnectorProvider, boolean | undefined>
@@ -74,6 +74,18 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "slack",
   "intercom",
 ];
+
+function isDataSourceIntegration(
+  integration: DataSourceIntegration | DataSourceType | null
+): integration is DataSourceIntegration {
+  return (
+    integration !== null &&
+    "id" in integration &&
+    "name" in integration &&
+    "type" in integration &&
+    "config" in integration
+  );
+}
 
 export function DataSourceEditionModal({
   isOpen,
@@ -96,7 +108,16 @@ export function DataSourceEditionModal({
   }
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
-  const isSetup = !!dataSourceIntegration?.connector;
+
+  let isSetup: boolean | null = null;
+  let dataSourceName: string | null = null;
+  if (isDataSourceIntegration(dataSourceIntegration)) {
+    isSetup = !!dataSourceIntegration?.connector;
+    dataSourceName = dataSourceIntegration.dataSourceName;
+  } else {
+    isSetup = true;
+    dataSourceName = dataSourceIntegration.name;
+  }
 
   let dataSourceOwner: EditedByUser | null | undefined = null;
   let isDataSourceOwner: boolean = false;
@@ -109,6 +130,9 @@ export function DataSourceEditionModal({
   const handleEnableManagedDataSource = async (
     dataSourceIntegration: DataSourceIntegration
   ) => {
+    if (!setIsLoadingByProvider || !setDataSourceIntegrations) {
+      return;
+    }
     try {
       const provider = dataSourceIntegration.connectorProvider;
       const suffix = dataSourceIntegration.setupWithSuffix;
@@ -192,7 +216,7 @@ export function DataSourceEditionModal({
     provider: string
   ) => {
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSourceIntegration?.dataSourceName}/managed/update`,
+      `/api/w/${owner.sId}/data_sources/${dataSourceName}/managed/update`,
       {
         method: "POST",
         headers: {
@@ -317,7 +341,9 @@ export function DataSourceEditionModal({
                 icon={CloudArrowLeftRightIcon}
                 label="Make Connection"
                 onClick={async () => {
-                  await handleEnableManagedDataSource(dataSourceIntegration);
+                  await handleEnableManagedDataSource(
+                    dataSourceIntegration as DataSourceIntegration
+                  );
                 }}
               />
             )}
@@ -344,7 +370,11 @@ export function DataSourceEditionModal({
               <div className="flex items-center justify-center gap-2">
                 <Button
                   label={`Request from ${dataSourceOwner?.fullName ?? ""}`}
-                  onClick={() => setIsRequestDataSourceModalOpen(true)}
+                  onClick={() => {
+                    if (setIsRequestDataSourceModalOpen) {
+                      setIsRequestDataSourceModalOpen(true);
+                    }
+                  }}
                 />
               </div>
             )}
@@ -352,7 +382,7 @@ export function DataSourceEditionModal({
         )}
         {isSetup && !isDataSourceOwner && (
           <div className="item flex flex-col gap-2 border-t pb-4 pt-4">
-            <Page.SectionHeader title="Editing data & permissions" />
+            <Page.SectionHeader title="Editing permissions" />
             <div className="mb-4 w-full rounded-lg border-pink-200 bg-pink-50 p-3">
               <div className="flex items-center gap-2 font-medium text-pink-900">
                 <Icon visual={InformationCircleIcon} />
@@ -380,7 +410,7 @@ export function DataSourceEditionModal({
             </div>
             <div className="flex items-center justify-center">
               <Button
-                label={"Edit Data & Permission"}
+                label={"Edit Permissions"}
                 icon={LockIcon}
                 variant="primaryWarning"
                 onClick={() => {
@@ -388,18 +418,6 @@ export function DataSourceEditionModal({
                 }}
               />
             </div>
-          </div>
-        )}
-        {isSetup && isDataSourceOwner && (
-          <div className="flex items-center justify-center">
-            <Button
-              label="Edit Connection"
-              onClick={() =>
-                void router.push(
-                  `/w/${owner.sId}/builder/data-sources/${dataSourceIntegration.dataSourceName}`
-                )
-              }
-            />
           </div>
         )}
         <Dialog

@@ -25,6 +25,7 @@ import type {
   PostDataSourceDocumentRequestBody,
   SubscriptionType,
   UpdateConnectorRequestBody,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
@@ -36,10 +37,13 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import * as React from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEdition";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { RequestDataSourceDialog } from "@app/components/data_source/RequestDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -72,12 +76,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   standardView: boolean;
   dustClientFacingUrl: string;
   gaTrackingId: string;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+  const user = auth.user();
 
-  if (!owner || !plan || !subscription) {
+  if (!owner || !plan || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -128,6 +134,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       standardView,
       dustClientFacingUrl: config.getClientFacingUrl(),
       gaTrackingId: GA_TRACKING_ID,
+      user,
     },
   };
 });
@@ -984,6 +991,7 @@ function ManagedDataSourceView({
   connector,
   dustClientFacingUrl,
   plan,
+  user,
 }: {
   owner: WorkspaceType;
   readOnly: boolean;
@@ -993,12 +1001,15 @@ function ManagedDataSourceView({
   connector: ConnectorType;
   dustClientFacingUrl: string;
   plan: PlanType;
+  user: UserType;
 }) {
   const router = useRouter();
 
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showEditionModal, setShowEditionModal] = useState(false);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -1093,6 +1104,7 @@ function ManagedDataSourceView({
   };
 
   const {
+    displayDataSourceDetailsModal,
     displayManagePermissionButton,
     addDataButtonLabel,
     displaySettingsButton,
@@ -1147,6 +1159,24 @@ function ManagedDataSourceView({
             })()}
             icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
           />
+          {isAdmin && displayManagePermissionButton ? (
+            <Button
+              className="ml-auto"
+              label="Manage permissions"
+              variant="tertiary"
+              icon={LockIcon}
+              disabled={readOnly || !isAdmin}
+              onClick={() => {
+                if (displayDataSourceDetailsModal) {
+                  setShowEditionModal(true);
+                } else {
+                  void handleUpdatePermissions();
+                }
+              }}
+            />
+          ) : (
+            <></>
+          )}
           {isBuilder && displaySettingsButton ? (
             <Link
               className="ml-auto"
@@ -1265,6 +1295,23 @@ function ManagedDataSourceView({
             />
           </div>
         </div>
+        <DataSourceEditionModal
+          isOpen={showEditionModal}
+          connectorProvider={dataSource.connectorProvider}
+          onClose={() => setShowEditionModal(false)}
+          dataSourceIntegration={dataSource}
+          owner={owner}
+          router={router}
+          user={user}
+          dustClientFacingUrl={dustClientFacingUrl}
+          setIsRequestDataSourceModalOpen={() => setShowRequestDialog(true)}
+        />
+        <RequestDataSourceDialog
+          isOpen={showRequestDialog}
+          onClose={() => setShowRequestDialog(false)}
+          dataSource={dataSource}
+          owner={owner}
+        />
       </div>
     </>
   );
@@ -1282,6 +1329,7 @@ export default function DataSourceView({
   standardView,
   dustClientFacingUrl,
   gaTrackingId,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -1329,6 +1377,7 @@ export default function DataSourceView({
             connector,
             dustClientFacingUrl,
             plan,
+            user,
           }}
         />
       ) : (

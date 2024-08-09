@@ -22,7 +22,6 @@ import type {
   EditedByUser,
   ManageDataSourcesLimitsType,
   Result,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
