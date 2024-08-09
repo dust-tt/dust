@@ -146,6 +146,14 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     });
   }
 
+  static async listByVault(auth: Authenticator, vault: VaultResource) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        vaultId: vault.id,
+      },
+    });
+  }
+
   // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
     const [dataSource] = await this.baseFetchWithAuthorization(auth, {
