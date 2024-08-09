@@ -1,6 +1,6 @@
 import type {
   ContentNode,
-  DataSourceType,
+  DataSourceOrViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
@@ -13,7 +13,7 @@ export function useParentResourcesById({
   selectedResources,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType | null;
+  dataSource: DataSourceOrViewType | null;
   selectedResources: ContentNode[];
 }) {
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(

@@ -12,7 +12,7 @@ import type {
   ConnectorProvider,
   ContentNode,
   CoreAPITable,
-  DataSourceType,
+  DataSourceOrViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { getMicrosoftSheetContentNodeInternalIdFromTableId } from "@dust-tt/types";
@@ -51,10 +51,10 @@ export default function AssistantBuilderTablesModal({
   setOpen: (isOpen: boolean) => void;
   onSave: (
     params: AssistantBuilderTableConfiguration[],
-    dataSource: DataSourceType
+    dataSource: DataSourceOrViewType
   ) => void;
   owner: WorkspaceType;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
 }) {
   const supportedDataSources = useMemo(
@@ -69,7 +69,7 @@ export default function AssistantBuilderTablesModal({
   );
 
   const [selectedDataSource, setSelectedDataSource] =
-    useState<DataSourceType | null>(null);
+    useState<DataSourceOrViewType | null>(null);
   const [internalIds, setInternalIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -183,7 +183,7 @@ export default function AssistantBuilderTablesModal({
         ) : !selectedDataSource ? (
           <PickDataSource
             dataSources={supportedDataSources}
-            onPick={(ds: DataSourceType) => {
+            onPick={(ds: DataSourceOrViewType) => {
               setSelectedDataSource(ds);
             }}
           />
@@ -275,8 +275,8 @@ function PickDataSource({
   dataSources,
   onPick,
 }: {
-  dataSources: DataSourceType[];
-  onPick: (dataSource: DataSourceType) => void;
+  dataSources: DataSourceOrViewType[];
+  onPick: (dataSource: DataSourceOrViewType) => void;
 }) {
   const [query, setQuery] = useState<string>("");
 
@@ -321,7 +321,7 @@ const PickTable = ({
   tablesQueryConfiguration,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceOrViewType;
   onPick: (table: CoreAPITable) => void;
   onBack?: () => void;
   tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
@@ -414,7 +414,7 @@ const PickTablesManaged = ({
   parentsById,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceOrViewType;
   onSelectionChange: (
     resource: ContentNode,
     parents: string[],

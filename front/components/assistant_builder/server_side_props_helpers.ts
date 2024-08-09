@@ -2,7 +2,7 @@ import type {
   AgentConfigurationType,
   AppType,
   CoreAPITable,
-  DataSourceType,
+  DataSourceOrViewType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
   TemplateAgentConfigurationType,
@@ -38,11 +38,11 @@ import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";
 
 export async function buildInitialActions({
-  dataSourcesByName,
+  dataSourcesByIds,
   dustApps,
   configuration,
 }: {
-  dataSourcesByName: Record<string, DataSourceType>;
+  dataSourcesByIds: Record<string, DataSourceOrViewType>;
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
@@ -70,7 +70,7 @@ export async function buildInitialActions({
       await Promise.all(
         selectedResources.map(
           async (ds): Promise<AssistantBuilderDataSourceConfiguration> => {
-            const dataSource = dataSourcesByName[ds.dataSourceName];
+            const dataSource = dataSourcesByIds[ds.dataSourceName];
             if (!dataSource.connectorId || !ds.resources) {
               return {
                 dataSource: dataSource,
@@ -154,7 +154,7 @@ export async function buildInitialActions({
 
       const coreAPITables: CoreAPITable[] = await Promise.all(
         action.tables.map(async (t) => {
-          const dataSource = dataSourcesByName[t.dataSourceId];
+          const dataSource = dataSourcesByIds[t.dataSourceId];
           const coreAPITable = await coreAPI.getTable({
             projectId: dataSource.dustAPIProjectId,
             dataSourceName: dataSource.name,

@@ -1,7 +1,7 @@
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceType,
+  DataSourceOrViewType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
@@ -22,7 +22,7 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
+import { getDataSourcesOrViews } from "@app/lib/api/data_sources_or_views";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -30,7 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
@@ -52,11 +52,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const allDataSources = await getDataSources(auth);
+  const allDataSources = await getDataSourcesOrViews(auth);
 
-  const dataSourcesByName = allDataSources.reduce(
+  const dataSourcesByIds = allDataSources.reduce(
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
-    {} as Record<string, DataSourceType>
+    {} as Record<string, DataSourceOrViewType>
   );
   const configuration = await getAgentConfiguration(
     auth,
@@ -92,7 +92,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSources: allDataSources,
       dustApps: allDustApps,
       actions: await buildInitialActions({
-        dataSourcesByName,
+        dataSourcesByIds,
         dustApps: allDustApps,
         configuration,
       }),

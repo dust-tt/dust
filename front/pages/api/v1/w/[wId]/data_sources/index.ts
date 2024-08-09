@@ -67,6 +67,7 @@ async function handler(
     });
   }
 
+  // TODO(GROUPS_INFRA) Should we expose views in the Public API?
   const dataSources = await getDataSources(workspaceAuth);
 
   switch (req.method) {

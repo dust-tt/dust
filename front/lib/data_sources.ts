@@ -1,4 +1,4 @@
-import type { CoreAPIDocument, DataSourceType } from "@dust-tt/types";
+import type { CoreAPIDocument, DataSourceOrViewType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -12,7 +12,7 @@ export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   return titleTag.substring(titleTagPrefix.length);
 }
 
-export function getDisplayNameForDataSource(ds: DataSourceType) {
+export function getDisplayNameForDataSource(ds: DataSourceOrViewType) {
   if (ds.connectorProvider) {
     switch (ds.connectorProvider) {
       case "confluence":

@@ -1,8 +1,7 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import { Modal, Page } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { DataSourceType } from "@dust-tt/types";
+import type { DataSourceOrViewType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 import React from "react";
 
@@ -20,7 +19,7 @@ export function SlackIntegration({
   onSave,
   onClose,
 }: {
-  slackDataSource: DataSourceType;
+  slackDataSource: DataSourceOrViewType;
   owner: WorkspaceType;
   existingSelection: SlackChannel[];
   show: boolean;

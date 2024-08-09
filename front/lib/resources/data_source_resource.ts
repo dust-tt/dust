@@ -1,5 +1,6 @@
 import type {
   ConnectorProvider,
+  DataSourceOrViewType,
   DataSourceType,
   ModelId,
   Result,
@@ -240,6 +241,31 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       connectorProvider: this.connectorProvider,
       assistantDefaultSelected: this.assistantDefaultSelected,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
+    };
+  }
+
+  toDataSourceOrViewJSON(): DataSourceOrViewType {
+    const {
+      connectorId,
+      connectorProvider,
+      createdAt,
+      description,
+      dustAPIProjectId,
+      editedByUser,
+      id,
+    } = this.toJSON();
+
+    return {
+      connectorId,
+      connectorProvider,
+      createdAt,
+      description,
+      dustAPIProjectId,
+      editedByUser: editedByUser ?? null,
+      id,
+      // TODO(GROUPS_INFRA) rename name to `sId` once data source has a `sId` field.
+      name: this.name,
+      updatedAt: this.updatedAt.getTime(),
     };
   }
 }

@@ -1,5 +1,5 @@
 import { Hoverable } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceOrViewType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
@@ -34,7 +34,7 @@ export function ActionTablesQuery({
     ) => AssistantBuilderTablesQueryConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
 }) {
   const [showTableModal, setShowTableModal] = useState(false);
 

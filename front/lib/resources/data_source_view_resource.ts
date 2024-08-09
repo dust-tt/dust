@@ -2,6 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
+  DataSourceOrViewType,
   DataSourceType,
   DataSourceViewType,
   ModelId,
@@ -134,19 +135,28 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
-  static async fetchById(auth: Authenticator, id: string) {
-    const fileModelId = getResourceIdFromSId(id);
-    if (!fileModelId) {
-      return null;
+  static async fetchById(
+    auth: Authenticator,
+    id: string
+  ): Promise<DataSourceViewResource | null> {
+    const [dataSource] = await this.fetchByIds(auth, [id]);
+
+    return dataSource;
+  }
+
+  static async fetchByIds(auth: Authenticator, ids: string[]) {
+    const modelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
+    if (modelIds.length === 0) {
+      return [];
     }
 
-    const [dataSource] = await this.baseFetch(auth, {
+    const dataSources = await this.baseFetch(auth, {
       where: {
-        id: fileModelId,
+        id: modelIds,
       },
     });
 
-    return dataSource ?? null;
+    return dataSources;
   }
 
   // Peer fetching.
@@ -244,6 +254,30 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  toDataSourceOrViewJSON(): DataSourceOrViewType {
+    const {
+      connectorId = null,
+      connectorProvider = null,
+      description = null,
+      dustAPIProjectId = "",
+    } = this.dataSource?.toJSON() ?? {};
+
+    const { createdAt, updatedAt } = this.toJSON();
+
+    return {
+      connectorId,
+      connectorProvider,
+      createdAt,
+      description,
+      dustAPIProjectId,
+      editedByUser: null,
+      id: this.id,
+      // TODO(GROUPS_INFRA) rename name to `sId` once data source has a `sId` field.
+      name: this.sId,
+      updatedAt,
     };
   }
 }

@@ -86,7 +86,10 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
-  const { dataSources } = useDataSources(owner);
+  const { dataSources } = useDataSources(owner, {
+    disabled: false,
+    includeDataSourceView: true,
+  });
 
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 

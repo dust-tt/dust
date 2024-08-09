@@ -12,10 +12,11 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { Result, TimeframeUnit } from "@dust-tt/types";
 import type {
-  DataSourceType,
+  DataSourceOrViewType,
   ProcessSchemaPropertyType,
+  Result,
+  TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -277,7 +278,7 @@ export function ActionProcess({
     ) => AssistantBuilderProcessConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
 } & (
   | {
       description: string;

@@ -13,7 +13,7 @@ import {
 import type {
   ConnectorProvider,
   ContentNode,
-  DataSourceType,
+  DataSourceOrViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -50,7 +50,7 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
 
 function getUpdatedConfigurations(
   currentConfigurations: AssistantBuilderDataSourceConfigurations,
-  dataSource: DataSourceType,
+  dataSource: DataSourceOrViewType,
   selected: boolean,
   node: ContentNode
 ) {
@@ -101,7 +101,7 @@ export default function AssistantBuilderDataSourceModal({
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   onSave: (dsConfigs: AssistantBuilderDataSourceConfigurations) => void;
   initialDataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
 }) {
@@ -112,7 +112,7 @@ export default function AssistantBuilderDataSourceModal({
 
   // Navigation state
   const [selectedDataSource, setSelectedDataSource] =
-    useState<DataSourceType | null>(null);
+    useState<DataSourceOrViewType | null>(null);
   // Hack to filter out Folders from the list of data sources
   const [shouldDisplayFoldersScreen, setShouldDisplayFoldersScreen] =
     useState(false);
@@ -324,9 +324,9 @@ function PickDataSource({
   onPickFolders,
   onPickWebsites,
 }: {
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   show: boolean;
-  onPick: (dataSource: DataSourceType) => void;
+  onPick: (dataSource: DataSourceOrViewType) => void;
   onPickFolders: () => void;
   onPickWebsites: () => void;
 }) {
@@ -391,7 +391,7 @@ function DataSourceResourceSelector({
   onSelectChange,
   toggleSelectAll,
 }: {
-  dataSource: DataSourceType | null;
+  dataSource: DataSourceOrViewType | null;
   owner: WorkspaceType;
   selectedResources: ContentNode[];
   isSelectAll: boolean;
@@ -486,10 +486,10 @@ function FolderOrWebsiteResourceSelector({
 }: {
   owner: WorkspaceType;
   type: "folder" | "website";
-  dataSources: DataSourceType[];
+  dataSources: DataSourceOrViewType[];
   selectedNodes: AssistantBuilderDataSourceConfiguration[];
   onSelectChange: (
-    ds: DataSourceType,
+    ds: DataSourceOrViewType,
     selected: boolean,
     resource?: ContentNode
   ) => void;
@@ -555,11 +555,11 @@ function FolderOrWebsiteTree({
   onSelectChange,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceOrViewType;
   type: "folder" | "website";
   currentConfig: AssistantBuilderDataSourceConfiguration | undefined;
   onSelectChange: (
-    ds: DataSourceType,
+    ds: DataSourceOrViewType,
     selected: boolean,
     resource?: ContentNode
   ) => void;
@@ -621,7 +621,7 @@ function FolderOrWebsiteTree({
   );
 }
 
-function getDisplayNameForDataSource(ds: DataSourceType) {
+function getDisplayNameForDataSource(ds: DataSourceOrViewType) {
   if (ds.connectorProvider) {
     switch (ds.connectorProvider) {
       case "confluence":

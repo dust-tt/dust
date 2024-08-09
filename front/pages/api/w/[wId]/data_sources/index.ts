@@ -1,4 +1,8 @@
-import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceOrViewType,
+  DataSourceType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import {
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
@@ -9,7 +13,8 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
+import { getDataSource } from "@app/lib/api/data_sources";
+import { getDataSourcesOrViews } from "@app/lib/api/data_sources_or_views";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -19,7 +24,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetDataSourcesResponseBody = {
-  dataSources: Array<DataSourceType>;
+  dataSources: Array<DataSourceOrViewType>;
 };
 
 export type PostDataSourceResponseBody = {
@@ -48,11 +53,11 @@ async function handler(
     });
   }
 
-  const dataSources = await getDataSources(auth);
+  const dataSourcesOrViews = await getDataSourcesOrViews(auth);
 
   switch (req.method) {
     case "GET":
-      res.status(200).json({ dataSources });
+      res.status(200).json({ dataSources: dataSourcesOrViews });
       return;
 
     case "POST":
@@ -104,10 +109,10 @@ async function handler(
         });
       }
 
-      // Enforce plan limits: DataSources count.
+      // Enforce plan limits: DataSources and DataSourceViews count.
       if (
         plan.limits.dataSources.count != -1 &&
-        dataSources.length >= plan.limits.dataSources.count
+        dataSourcesOrViews.length >= plan.limits.dataSources.count
       ) {
         return apiError(req, res, {
           status_code: 401,
