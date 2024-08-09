@@ -27,11 +27,11 @@ export async function fetchAgentRetrievalActionsConfigurations({
   }
 
   // Find the retrieval configurations for the given agent configurations.
-  const retrievalConfigurationIds = await AgentRetrievalConfiguration.findAll({
+  const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
     where: { agentConfigurationId: { [Op.in]: configurationIds } },
   });
 
-  if (retrievalConfigurationIds.length === 0) {
+  if (retrievalConfigurations.length === 0) {
     return new Map();
   }
 
@@ -40,7 +40,7 @@ export async function fetchAgentRetrievalActionsConfigurations({
     await AgentDataSourceConfiguration.findAll({
       where: {
         retrievalConfigurationId: {
-          [Op.in]: retrievalConfigurationIds.map((r) => r.id),
+          [Op.in]: retrievalConfigurations.map((r) => r.id),
         },
       },
       include: [
@@ -77,7 +77,7 @@ export async function fetchAgentRetrievalActionsConfigurations({
   );
 
   const groupedAgentRetrievalConfigurations = _.groupBy(
-    retrievalConfigurationIds,
+    retrievalConfigurations,
     "agentConfigurationId"
   );
 

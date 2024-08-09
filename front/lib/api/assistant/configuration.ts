@@ -37,6 +37,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
+import { fetchDustAppRunActionsConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
 import { fetchAgentProcessActionsConfigurations } from "@app/lib/api/assistant/configuration/process";
 import { fetchAgentRetrievalActionsConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
 import {
@@ -48,7 +49,6 @@ import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
-import { App } from "@app/lib/models/apps";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
@@ -382,17 +382,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
   }
 
   const [
-    dustAppRunConfigs,
     tablesQueryConfigs,
     websearchConfigs,
     browseConfigs,
     agentUserRelations,
   ] = await Promise.all([
-    variant === "full"
-      ? AgentDustAppRunConfiguration.findAll({
-          where: { agentConfigurationId: { [Op.in]: configurationIds } },
-        }).then(groupByAgentConfigurationId)
-      : Promise.resolve({} as Record<number, AgentDustAppRunConfiguration[]>),
     variant === "full"
       ? AgentTablesQueryConfiguration.findAll({
           where: {
@@ -448,28 +442,16 @@ async function fetchWorkspaceAgentConfigurationsForView(
     _.groupBy(tablesConfigs, "tablesQueryConfigurationId")
   );
 
-  const dustAppsPromise = Object.values(dustAppRunConfigs).length
-    ? App.findAll({
-        where: {
-          sId: {
-            [Op.in]: Object.values(dustAppRunConfigs).flatMap((r) =>
-              r.map((c) => c.appId)
-            ),
-          },
-        },
-      })
-    : Promise.resolve([]);
-
   const [
     retrievalActionsConfigurationsPerAgent,
     processActionsConfigurationsPerAgent,
+    dustAppRunActionsConfigurationsPerAgent,
     agentTablesConfigurationTables,
-    dustApps,
   ] = await Promise.all([
     fetchAgentRetrievalActionsConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionsConfigurations({ configurationIds, variant }),
+    fetchDustAppRunActionsConfigurations({ configurationIds, variant }),
     agentTablesQueryConfigurationTablesPromise,
-    dustAppsPromise,
   ]);
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -477,32 +459,17 @@ async function fetchWorkspaceAgentConfigurationsForView(
     const actions: AgentActionConfigurationType[] = [];
 
     if (variant === "full") {
+      // Retrieval configurations.
       const retrievalActionsConfigurations =
         retrievalActionsConfigurationsPerAgent.get(agent.id) ?? [];
 
       actions.push(...retrievalActionsConfigurations);
 
-      const dustAppRunConfigurations = dustAppRunConfigs[agent.id] ?? [];
-      for (const dustAppRunConfig of dustAppRunConfigurations) {
-        const dustApp = dustApps.find(
-          (app) => app.sId === dustAppRunConfig.appId
-        );
-        if (!dustApp) {
-          // unreachable
-          throw new Error(
-            `Couldn't find dust app for dust app run configuration ${dustAppRunConfig.id}`
-          );
-        }
-        actions.push({
-          id: dustAppRunConfig.id,
-          sId: dustAppRunConfig.sId,
-          type: "dust_app_run_configuration",
-          appWorkspaceId: dustAppRunConfig.appWorkspaceId,
-          appId: dustAppRunConfig.appId,
-          name: dustApp.name,
-          description: dustApp.description,
-        });
-      }
+      // DustAppRun configurations.
+      const dustAppRunActionsConfigurations =
+        dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
+
+      actions.push(...dustAppRunActionsConfigurations);
 
       const websearchConfigurations = websearchConfigs[agent.id] ?? [];
       for (const websearchConfig of websearchConfigurations) {
