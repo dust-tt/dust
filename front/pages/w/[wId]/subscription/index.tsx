@@ -424,31 +424,30 @@ export default function Subscription({
               plan.code
             ) && (
               <>
-                <div className="pt-2">
-                  <Page.H variant="h5">Manage my plan</Page.H>
-                  <div className="s-h-full s-w-full pt-2">
-                    <PricePlans
-                      size="xs"
-                      className="lg:hidden"
-                      isTabs
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                      display="subscribe"
-                    />
-                    <PricePlans
-                      size="xs"
-                      flexCSS="gap-3"
-                      className="hidden lg:flex"
-                      plan={plan}
-                      onClickProPlan={onClickProPlan}
-                      onClickEnterprisePlan={onClickEnterprisePlan}
-                      isProcessing={isProcessing}
-                      display="subscribe"
-                    />
-                  </div>
+                <Page.H variant="h5">Manage my plan</Page.H>
+                <div className="s-h-full s-w-full pt-2">
+                  <PricePlans
+                    size="xs"
+                    className="lg:hidden"
+                    isTabs
+                    plan={plan}
+                    onClickProPlan={onClickProPlan}
+                    onClickEnterprisePlan={onClickEnterprisePlan}
+                    isProcessing={isProcessing}
+                    display="subscribe"
+                  />
+                  <PricePlans
+                    size="xs"
+                    flexCSS="gap-3"
+                    className="hidden lg:flex"
+                    plan={plan}
+                    onClickProPlan={onClickProPlan}
+                    onClickEnterprisePlan={onClickEnterprisePlan}
+                    isProcessing={isProcessing}
+                    display="subscribe"
+                  />
                 </div>
+
                 <Link href="/terms" target="_blank" className="text-sm">
                   Terms of use apply to all plans.
                 </Link>

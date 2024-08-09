@@ -167,15 +167,12 @@ export default function AppLayout({
           )}
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
-            className={classNames(
-              "flex h-full w-full flex-col items-center overflow-y-auto",
-              titleChildren ? "" : "lg:pt-8"
-            )}
+            className="flex h-full w-full flex-col items-center overflow-y-auto"
           >
             {/* TODO: This should be moved to a TopBar component. */}
             <div
               className={classNames(
-                "sticky left-0 top-0 z-30 mb-4 flex w-full flex-col pl-12 lg:pl-0",
+                "sticky left-0 top-0 z-30 flex w-full flex-col pl-12 lg:pl-0",
                 !hideSidebar
                   ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
                   : "",
@@ -190,8 +187,8 @@ export default function AppLayout({
 
             <div
               className={classNames(
-                "flex h-[calc(100%-5rem)] w-full flex-col",
-                isWideMode ? "items-center" : "max-w-4xl px-6"
+                "flex w-full flex-col",
+                isWideMode ? "items-center" : "max-w-4xl px-6 pt-8"
               )}
             >
               {loaded && children}
