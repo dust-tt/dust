@@ -150,6 +150,8 @@ export function InstructionScreen({
 
   const [letterIndex, setLetterIndex] = useState(0);
 
+  // Beware that using this useEffect will cause a lot of re-rendering until we finished the visual effect
+  // We must be careful to avoid any heavy rendering in this component
   useEffect(() => {
     if (doTypewriterEffect && editor && builderState.instructions) {
       // Get the text from content and strip HTML tags for simplicity and being able to write letter by letter
