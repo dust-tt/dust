@@ -377,6 +377,10 @@ export default function AssistantBuilder({
     screen,
   ]);
 
+  const [doTypewriterEffect, setDoTypewriterEffect] = useState(
+    Boolean(template !== null && builderState.instructions)
+  );
+
   const modalTitle = agentConfigurationId
     ? `Edit @${builderState.handle}`
     : "New Assistant";
@@ -454,6 +458,8 @@ export default function AssistantBuilder({
                         resetAt={instructionsResetAt}
                         isUsingTemplate={template !== null}
                         instructionsError={instructionsError}
+                        doTypewriterEffect={doTypewriterEffect}
+                        setDoTypewriterEffect={setDoTypewriterEffect}
                       />
                     );
                   case "actions":
