@@ -1296,8 +1296,8 @@ export class CoreAPI {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        query: query,
-        tables: tables,
+        query,
+        tables,
       }),
     });
 

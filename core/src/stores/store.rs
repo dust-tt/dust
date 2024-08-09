@@ -1,8 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::cached_request::CachedRequest;
-use crate::data_sources::data_source::{
-    DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
-};
+use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
 use crate::databases::database::{Database, Table};
 use crate::databases::table_schema::TableSchema;
 use crate::dataset::Dataset;
@@ -11,6 +9,7 @@ use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
 use crate::run::{Run, RunStatus, RunType};
+use crate::search_filter::SearchFilter;
 use crate::sqlite_workers::client::SqliteWorker;
 
 use anyhow::Result;

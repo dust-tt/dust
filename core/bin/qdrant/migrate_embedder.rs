@@ -4,7 +4,6 @@ use dust::{
     data_sources::{
         data_source::{
             make_document_id_hash, DataSource, EmbedderConfig, EmbedderDataSourceConfig,
-            SearchFilter, TimestampFilter,
         },
         qdrant::QdrantClients,
     },
@@ -13,6 +12,7 @@ use dust::{
         provider::ProviderID,
     },
     run::Credentials,
+    search_filter::{SearchFilter, TimestampFilter},
     stores::{postgres, store::Store},
     utils,
 };

@@ -15,7 +15,7 @@ use dust::{
     app,
     blocks::block::BlockType,
     data_sources::{
-        data_source::{self, SearchFilter, Section},
+        data_source::{self, Section},
         qdrant::QdrantClients,
     },
     databases::database::{query_database, QueryDatabaseError, Row, Table},
@@ -25,6 +25,7 @@ use dust::{
     project,
     providers::provider::{provider, ProviderID},
     run,
+    search_filter::SearchFilter,
     secondary_api::forward_middleware,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
@@ -1736,7 +1737,7 @@ async fn data_sources_documents_list(
 #[derive(serde::Deserialize)]
 struct DataSourcesDocumentsRetrieveQuery {
     version_hash: Option<String>,
-    view_filter: Option<SearchFilter>,
+    view_filter: Option<String>, // Parsed as JSON.
 }
 
 async fn data_sources_documents_retrieve(
@@ -1744,6 +1745,22 @@ async fn data_sources_documents_retrieve(
     State(state): State<Arc<APIState>>,
     Query(query): Query<DataSourcesDocumentsRetrieveQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
+    let view_filter: Option<SearchFilter> = match query
+        .view_filter
+        .as_ref()
+        .and_then(|f| Some(serde_json::from_str(f)))
+    {
+        Some(Ok(f)) => Some(f),
+        None => None,
+        Some(Err(e)) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_view_filter",
+                "Failed to parse view_filter query parameter",
+                Some(e.into()),
+            )
+        }
+    };
     let project = project::Project::new_from_id(project_id);
     match state
         .store
@@ -1767,7 +1784,7 @@ async fn data_sources_documents_retrieve(
                 .retrieve(
                     state.store.clone(),
                     &document_id,
-                    &match query.view_filter {
+                    &match view_filter {
                         Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                         None => None,
                     },
@@ -2015,7 +2032,6 @@ async fn tables_list(
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-
     match state
         .store
         .list_tables(&project, &data_source_id, None)
