@@ -438,7 +438,9 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         workspace_id: isDevelopment()
           ? PRODUCTION_DUST_WORKSPACE_ID
           : d.workspaceId,
-        data_source_id: d.dataSourceId,
+        // Use dataSourceViewId if it exists; otherwise, use dataSourceId.
+        // Note: This value is passed to the registry for lookup.
+        data_source_id: d.dataSourceViewId ?? d.dataSourceId,
       })
     );
 
@@ -452,6 +454,9 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         if (!config.DATASOURCE.filter.parents.in_map) {
           config.DATASOURCE.filter.parents.in_map = {};
         }
+
+        // Note: We use dataSourceId here because after the registry lookup,
+        // it returns either the data source itself or the data source associated with the data source view.
         config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
           ds.filter.parents.in;
       }
