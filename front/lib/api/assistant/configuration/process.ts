@@ -27,11 +27,11 @@ export async function fetchAgentProcessActionsConfigurations({
   }
 
   // Find the process configurations for the given agent configurations.
-  const processConfigurationIds = await AgentProcessConfiguration.findAll({
+  const processConfiguration = await AgentProcessConfiguration.findAll({
     where: { agentConfigurationId: { [Op.in]: configurationIds } },
   });
 
-  if (processConfigurationIds.length === 0) {
+  if (processConfiguration.length === 0) {
     return new Map();
   }
 
@@ -40,7 +40,7 @@ export async function fetchAgentProcessActionsConfigurations({
     await AgentDataSourceConfiguration.findAll({
       where: {
         processConfigurationId: {
-          [Op.in]: processConfigurationIds.map((r) => r.id),
+          [Op.in]: processConfiguration.map((r) => r.id),
         },
       },
       include: [
@@ -77,7 +77,7 @@ export async function fetchAgentProcessActionsConfigurations({
   );
 
   const groupedAgentProcessConfigurations = _.groupBy(
-    processConfigurationIds,
+    processConfiguration,
     "agentConfigurationId"
   );
 
