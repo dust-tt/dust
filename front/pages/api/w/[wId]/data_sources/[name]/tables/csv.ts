@@ -157,7 +157,7 @@ export async function handlePostTableCsvUpsertRequest(
   }
 
   const tableId = bodyValidation.right.tableId ?? generateLegacyModelSId();
-  const tableParents: string[] = bodyValidation.right.parents || [];
+  const tableParents: string[] = bodyValidation.right.parents ?? [];
 
   if (!tableParents.includes(tableId)) {
     tableParents.push(tableId);
@@ -185,7 +185,7 @@ export async function handlePostTableCsvUpsertRequest(
         tableName: name,
         tableDescription: description,
         tableTimestamp: bodyValidation.right.timestamp ?? null,
-        tableTags: bodyValidation.right.tags || [],
+        tableTags: bodyValidation.right.tags ?? [],
         tableParents,
         csv: csv ?? null,
         truncate,
