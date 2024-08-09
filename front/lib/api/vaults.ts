@@ -7,61 +7,57 @@ import logger from "@app/logger/logger";
 export const getManagedDataSourceContent = async (
   connectorId: string,
   permission: "read" | "write" | "read_write" | "none",
-  parentIds: string[] | null,
+  rootIds: string[] | null,
+  parentId: string | null,
   viewType: "tables" | "documents"
 ) => {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
   );
-
   const contentNodes = [];
-  if (!parentIds) {
-    contentNodes.push(
-      await connectorsAPI.getConnectorPermissions({
-        connectorId,
-        filterPermission: permission,
-        viewType,
-      })
-    );
-  } else {
-    for (const parentId of parentIds) {
-      contentNodes.push(
-        await connectorsAPI.getConnectorPermissions({
-          connectorId,
-          parentId,
-          filterPermission: permission,
-          viewType,
-        })
-      );
+  if (parentId || !rootIds) {
+    const nodesResults = await connectorsAPI.getConnectorPermissions({
+      connectorId,
+      filterPermission: permission,
+      parentId: parentId ?? undefined,
+      viewType,
+    });
+
+    if (nodesResults.isErr()) {
+      return nodesResults;
     }
-  }
-  const err = contentNodes.find((r) => r.isErr());
-  if (err?.isErr()) {
-    return err;
+
+    contentNodes.push(...nodesResults.value.resources);
+  } else {
+    const nodesResults = await connectorsAPI.getContentNodes({
+      connectorId,
+      internalIds: rootIds,
+      viewType,
+    });
+
+    if (nodesResults.isErr()) {
+      return nodesResults;
+    }
+    contentNodes.push(...nodesResults.value.nodes);
   }
 
-  const results = contentNodes.flatMap((r) =>
-    r.isOk()
-      ? r.value.resources.map((r) => ({
-          internalId: r.internalId,
-          parentInternalId: r.parentInternalId,
-          type: r.type,
-          title: r.title,
-          expandable: r.expandable,
-          preventSelection: r.preventSelection,
-          dustDocumentId: r.dustDocumentId,
-          lastUpdatedAt: r.lastUpdatedAt,
-        }))
-      : []
-  );
+  const results = contentNodes.map((r) => ({
+    internalId: r.internalId,
+    parentInternalId: r.parentInternalId,
+    type: r.type,
+    title: r.title,
+    expandable: r.expandable,
+    preventSelection: r.preventSelection,
+    dustDocumentId: r.dustDocumentId,
+    lastUpdatedAt: r.lastUpdatedAt,
+  }));
 
   return new Ok(results);
 };
 
 export const getUnmanagedDataSourceContent = async (
   dataSource: DataSourceResource,
-  parentIds: string[] | null,
   viewType: "tables" | "documents",
   limit: number,
   offset: number

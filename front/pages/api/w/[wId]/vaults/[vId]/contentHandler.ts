@@ -27,7 +27,7 @@ export const getContentHandler = async (
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceContentResponseBody>>,
   dataSource: DataSourceResource,
-  parentIds: string[] | null
+  rootNodes: string[] | null
 ): Promise<void> => {
   const viewType = req.query.viewType;
   if (
@@ -44,8 +44,9 @@ export const getContentHandler = async (
     });
   }
 
+  let parentId: string | null = null;
   if (req.query.parentId && typeof req.query.parentId === "string") {
-    parentIds = [req.query.parentId];
+    parentId = req.query.parentId;
   }
 
   const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -55,16 +56,11 @@ export const getContentHandler = async (
     ? await getManagedDataSourceContent(
         dataSource.connectorId,
         "read",
-        parentIds,
+        rootNodes,
+        parentId,
         viewType
       )
-    : await getUnmanagedDataSourceContent(
-        dataSource,
-        parentIds,
-        viewType,
-        limit,
-        offset
-      );
+    : await getUnmanagedDataSourceContent(dataSource, viewType, limit, offset);
 
   if (content.isErr()) {
     return apiError(req, res, {
