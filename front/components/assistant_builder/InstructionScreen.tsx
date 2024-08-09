@@ -104,6 +104,8 @@ export function InstructionScreen({
   resetAt,
   isUsingTemplate,
   instructionsError,
+  doTypewriterEffect,
+  setDoTypewriterEffect,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
@@ -115,6 +117,8 @@ export function InstructionScreen({
   resetAt: number | null;
   isUsingTemplate: boolean;
   instructionsError: string | null;
+  doTypewriterEffect: boolean;
+  setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
 }) {
   const editor = useEditor({
     extensions: [
@@ -126,18 +130,62 @@ export function InstructionScreen({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
       }),
     ],
-    content: tipTapContentFromPlainText(builderState.instructions || ""),
+    editable: !doTypewriterEffect,
+    content: tipTapContentFromPlainText(
+      (!doTypewriterEffect && builderState.instructions) || ""
+    ),
     onUpdate: ({ editor }) => {
-      const json = editor.getJSON();
-      const plainText = plainTextFromTipTapContent(json);
-      setEdited(true);
-      setBuilderState((state) => ({
-        ...state,
-        instructions: plainText,
-      }));
+      if (!doTypewriterEffect) {
+        const json = editor.getJSON();
+        const plainText = plainTextFromTipTapContent(json);
+        setEdited(true);
+        setBuilderState((state) => ({
+          ...state,
+          instructions: plainText,
+        }));
+      }
     },
   });
   const editorService = useInstructionEditorService(editor);
+
+  const [letterIndex, setLetterIndex] = useState(0);
+
+  useEffect(() => {
+    if (doTypewriterEffect && editor && builderState.instructions) {
+      // Get the text from content and strip HTML tags for simplicity and being able to write letter by letter
+      const textContent = builderState.instructions.replace(/<[^>]*>?/gm, "");
+      const delay = 2; // Typing delay in milliseconds
+      if (letterIndex < textContent.length) {
+        const timeoutId = setTimeout(() => {
+          // Append next character
+          editor
+            .chain()
+            .focus("end")
+            .insertContent(textContent[letterIndex], {
+              updateSelection: false,
+            })
+            .run();
+          setLetterIndex(letterIndex + 1);
+        }, delay);
+        return () => clearTimeout(timeoutId);
+      } else {
+        // We reset the content at the end otherwise we lose all carriage returns (i'm not sure why)
+        editor
+          .chain()
+          .setContent(tipTapContentFromPlainText(builderState.instructions))
+          .focus("end")
+          .run();
+        editor.setEditable(true);
+        setDoTypewriterEffect(false);
+      }
+    }
+  }, [
+    editor,
+    letterIndex,
+    builderState.instructions,
+    doTypewriterEffect,
+    setDoTypewriterEffect,
+  ]);
 
   const currentCharacterCount = editor?.storage.characterCount.characters();
 
