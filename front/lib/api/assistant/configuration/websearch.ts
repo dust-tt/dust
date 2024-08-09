@@ -1,5 +1,4 @@
 import type { ModelId, WebsearchConfigurationType } from "@dust-tt/types";
-import _ from "lodash";
 import { Op } from "sequelize";
 
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -24,29 +23,27 @@ export async function fetchWebsearchActionsConfigurations({
     return new Map();
   }
 
-  const groupedWebsearchConfigurations = _.groupBy(
-    websearchConfigurations,
-    "agentConfigurationId"
+  const actionsByConfigurationId = websearchConfigurations.reduce(
+    (acc, config) => {
+      const { agentConfigurationId, id, sId, name, description } = config;
+      if (!acc.has(agentConfigurationId)) {
+        acc.set(agentConfigurationId, []);
+      }
+
+      const actions = acc.get(agentConfigurationId);
+      if (actions) {
+        actions.push({
+          id,
+          sId,
+          type: "websearch_configuration",
+          name: name || DEFAULT_WEBSEARCH_ACTION_NAME,
+          description,
+        });
+      }
+      return acc;
+    },
+    new Map<ModelId, WebsearchConfigurationType[]>()
   );
-
-  const actionsByConfigurationId: Map<ModelId, WebsearchConfigurationType[]> =
-    new Map();
-  for (const [agentConfigurationId, configs] of Object.entries(
-    groupedWebsearchConfigurations
-  )) {
-    const actions: WebsearchConfigurationType[] = [];
-    for (const c of configs) {
-      actions.push({
-        id: c.id,
-        sId: c.sId,
-        type: "websearch_configuration",
-        name: c.name || DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: c.description,
-      });
-    }
-
-    actionsByConfigurationId.set(parseInt(agentConfigurationId, 10), actions);
-  }
 
   return actionsByConfigurationId;
 }

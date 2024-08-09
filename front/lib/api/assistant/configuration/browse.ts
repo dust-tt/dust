@@ -1,5 +1,4 @@
 import type { BrowseConfigurationType, ModelId } from "@dust-tt/types";
-import _ from "lodash";
 import { Op } from "sequelize";
 
 import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -24,29 +23,27 @@ export async function fetchBrowseActionsConfigurations({
     return new Map();
   }
 
-  const groupedBrowseConfigurations = _.groupBy(
-    browseConfigurations,
-    "agentConfigurationId"
+  const actionsByConfigurationId = browseConfigurations.reduce(
+    (acc, config) => {
+      const { agentConfigurationId, id, sId, name, description } = config;
+      if (!acc.has(agentConfigurationId)) {
+        acc.set(agentConfigurationId, []);
+      }
+
+      const actions = acc.get(agentConfigurationId);
+      if (actions) {
+        actions.push({
+          id,
+          sId,
+          type: "browse_configuration",
+          name: name || DEFAULT_BROWSE_ACTION_NAME,
+          description,
+        });
+      }
+      return acc;
+    },
+    new Map<ModelId, BrowseConfigurationType[]>()
   );
-
-  const actionsByConfigurationId: Map<ModelId, BrowseConfigurationType[]> =
-    new Map();
-  for (const [agentConfigurationId, configs] of Object.entries(
-    groupedBrowseConfigurations
-  )) {
-    const actions: BrowseConfigurationType[] = [];
-    for (const c of configs) {
-      actions.push({
-        id: c.id,
-        sId: c.sId,
-        type: "browse_configuration",
-        name: c.name || DEFAULT_BROWSE_ACTION_NAME,
-        description: c.description,
-      });
-    }
-
-    actionsByConfigurationId.set(parseInt(agentConfigurationId, 10), actions);
-  }
 
   return actionsByConfigurationId;
 }
