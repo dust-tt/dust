@@ -155,7 +155,13 @@ export async function handlePostTableCsvUpsertRequest(
       status_code: 400,
     });
   }
+
   const tableId = bodyValidation.right.tableId ?? generateLegacyModelSId();
+  const tableParents: string[] = bodyValidation.right.parents || [];
+
+  if (!tableParents.includes(tableId)) {
+    tableParents.push(tableId);
+  }
 
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
@@ -180,7 +186,7 @@ export async function handlePostTableCsvUpsertRequest(
         tableDescription: description,
         tableTimestamp: bodyValidation.right.timestamp ?? null,
         tableTags: bodyValidation.right.tags || [],
-        tableParents: bodyValidation.right.parents || [],
+        tableParents,
         csv: csv ?? null,
         truncate,
       },
@@ -216,7 +222,7 @@ export async function handlePostTableCsvUpsertRequest(
     tableDescription: description,
     tableTimestamp: bodyValidation.right.timestamp ?? null,
     tableTags: bodyValidation.right.tags || [],
-    tableParents: bodyValidation.right.parents || [],
+    tableParents,
     csv: csv ?? null,
     truncate,
   });
