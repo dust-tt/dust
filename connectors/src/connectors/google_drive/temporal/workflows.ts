@@ -48,14 +48,14 @@ const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
 export async function googleDriveFullSync({
   connectorId,
   garbageCollect = true,
-  foldersToBrowse = undefined,
+  foldersToBrowse = [],
   totalCount = 0,
   startSyncTs = undefined,
   mimeTypeFilter,
 }: {
   connectorId: ModelId;
   garbageCollect: boolean;
-  foldersToBrowse: string[] | undefined;
+  foldersToBrowse: string[];
   totalCount: number;
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
@@ -68,7 +68,7 @@ export async function googleDriveFullSync({
   if (startSyncTs === undefined) {
     startSyncTs = new Date().getTime();
   }
-  if (foldersToBrowse === undefined) {
+  if (!foldersToBrowse) {
     foldersToBrowse = await getFoldersToSync(connectorId);
   }
 
@@ -77,14 +77,14 @@ export async function googleDriveFullSync({
     for (const { action, folderId } of folderUpdates) {
       switch (action) {
         case "added":
-          foldersToBrowse!.push(folderId);
+          foldersToBrowse.push(folderId);
           break;
         case "removed":
-          foldersToBrowse!.splice(foldersToBrowse!.indexOf(folderId), 1);
+          foldersToBrowse.splice(foldersToBrowse.indexOf(folderId), 1);
           break;
         default:
           assertNever(
-            "You must handle all values of the variable: action",
+            `Unexpected signal action ${action} received for Google Drive full sync workflow.`,
             action
           );
       }

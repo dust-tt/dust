@@ -26,8 +26,8 @@ const logger = mainLogger.child({ provider: "google" });
 export async function launchGoogleDriveFullSyncWorkflow(
   connectorId: ModelId,
   fromTs: number | null,
-  mimeTypeFilter?: string[],
-  addedFolderIds?: string[]
+  addedFolderIds: string[],
+  mimeTypeFilter?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -45,7 +45,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const signalArgs: FolderUpdatesSignal[] =
-    addedFolderIds?.map((sId) => ({
+    addedFolderIds.map((sId) => ({
       action: "added",
       folderId: sId,
     })) ?? [];
