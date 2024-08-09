@@ -94,6 +94,13 @@ async function handler(
         type: "regular",
       });
 
+      const vault = await VaultResource.makeNew({
+        name,
+        kind: "regular",
+        workspaceId: owner.id,
+        groupId: group.id,
+      });
+
       if (members) {
         await Promise.all(
           members?.map(async (member) => {
@@ -105,14 +112,7 @@ async function handler(
         );
       }
 
-      const vault = await VaultResource.makeNew({
-        name,
-        kind: "regular",
-        workspaceId: owner.id,
-        groupId: group.id,
-      });
       return res.status(200).json({ vault: vault.toJSON() });
-
     default:
       return apiError(req, res, {
         status_code: 405,

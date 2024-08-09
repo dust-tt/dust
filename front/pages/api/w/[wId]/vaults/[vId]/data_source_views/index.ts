@@ -1,10 +1,7 @@
-import type {
-  ResourceCategory,
-  ResourceInfo,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { ResourceInfo, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getDataSourceCategory } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -14,20 +11,6 @@ import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourceViewsResponseBody = {
   dataSourceViews: ResourceInfo[];
-};
-
-export const getDataSourceCategory = (
-  dataSource: DataSourceResource
-): ResourceCategory => {
-  if (!dataSource.connectorProvider) {
-    return "files";
-  }
-
-  if (dataSource.connectorProvider === "webcrawler") {
-    return "webfolder";
-  }
-
-  return "managed";
 };
 
 export const getDataSourceViewsInfo = async (

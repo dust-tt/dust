@@ -12,9 +12,16 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
+import { getDataSourceViewsInfo } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import { getDataSourceInfos } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+
+export type VaultCategoryInfo = {
+  usage: number;
+  count: number;
+};
 
 export type GetVaultResponseBody = {
-  vault: VaultType;
+  vault: VaultType & { categories: { [key: string]: VaultCategoryInfo } };
 };
 
 async function handler(
@@ -61,7 +68,34 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      res.status(200).json({ vault: vault.toJSON() });
+      const all = [
+        ...(await getDataSourceInfos(auth, vault)),
+        ...(await getDataSourceViewsInfo(auth, vault)),
+      ];
+
+      const categories = all.reduce(
+        (acc, dataSource) => {
+          const value = acc[dataSource.category];
+          if (value) {
+            value.count += 1;
+            value.usage += dataSource.usage;
+          } else {
+            acc[dataSource.category] = {
+              count: 1,
+              usage: dataSource.usage,
+            };
+          }
+          return acc;
+        },
+        {} as { [key: string]: VaultCategoryInfo }
+      );
+
+      res.status(200).json({
+        vault: {
+          ...vault.toJSON(),
+          categories,
+        },
+      });
       return;
     case "PATCH":
       if (!auth.isAdmin() || !auth.isBuilder()) {

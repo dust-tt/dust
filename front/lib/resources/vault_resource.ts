@@ -173,10 +173,10 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new this(VaultModel, vault.get());
   }
 
-  static async fetchByName(
+  static async isNameAvailable(
     auth: Authenticator,
     name: string
-  ): Promise<VaultResource | null> {
+  ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
 
     const vault = await this.model.findOne({
@@ -186,11 +186,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       },
     });
 
-    if (!vault) {
-      return null;
-    }
-
-    return new this(VaultModel, vault.get());
+    return !vault;
   }
 
   async delete(
