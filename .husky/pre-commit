@@ -10,6 +10,29 @@ if [ "$current_branch" = "main" ]; then
     fi
 fi
 
-# Allow commit
-exit 0
+# If env var DUST_LINT_ON_COMMIT = 1, run the linter
+if [ -z "$DUST_LINT_ON_COMMIT" ]; then
+    exit 0
+fi
 
+
+# Get the root path of the git repository
+root_path=$(git rev-parse --show-toplevel)
+
+# List the directories to check for changes
+directories=("front" "connectors")
+
+# For each directory, check if any files have changed
+for directory in "${directories[@]}"; do
+    if git diff --cached --name-only | grep -qE "^$directory/"; then
+        # Run the linter on root_path concatenated with the directory
+        if ! npm run lint --prefix $root_path/$directory; then
+            echo "Linting failed. Please fix the issues before committing."
+            exit 1
+        fi
+        break
+    fi
+done
+
+# Proceed with the commit
+exit 0
