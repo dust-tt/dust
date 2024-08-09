@@ -37,10 +37,12 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
+import { fetchBrowseActionsConfigurations } from "@app/lib/api/assistant/configuration/browse";
 import { fetchDustAppRunActionsConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
 import { fetchAgentProcessActionsConfigurations } from "@app/lib/api/assistant/configuration/process";
 import { fetchAgentRetrievalActionsConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
 import { fetchTableQueryActionsConfigurations } from "@app/lib/api/assistant/configuration/table_query";
+import { fetchWebsearchActionsConfigurations } from "@app/lib/api/assistant/configuration/websearch";
 import {
   getGlobalAgents,
   isGlobalAgentId,
@@ -376,56 +378,37 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const configurationIds = agentConfigurations.map((a) => a.id);
   const configurationSIds = agentConfigurations.map((a) => a.sId);
 
-  function groupByAgentConfigurationId<
-    T extends { agentConfigurationId: number },
-  >(list: T[]): Record<number, T[]> {
-    return _.groupBy(list, "agentConfigurationId");
-  }
-
-  const [websearchConfigs, browseConfigs, agentUserRelations] =
-    await Promise.all([
-      variant === "full"
-        ? AgentWebsearchConfiguration.findAll({
-            where: {
-              agentConfigurationId: { [Op.in]: configurationIds },
-            },
-          }).then(groupByAgentConfigurationId)
-        : Promise.resolve({} as Record<number, AgentWebsearchConfiguration[]>),
-      variant === "full"
-        ? AgentBrowseConfiguration.findAll({
-            where: {
-              agentConfigurationId: { [Op.in]: configurationIds },
-            },
-          }).then(groupByAgentConfigurationId)
-        : Promise.resolve({} as Record<number, AgentBrowseConfiguration[]>),
-      user && configurationIds.length > 0
-        ? AgentUserRelation.findAll({
-            where: {
-              agentConfiguration: { [Op.in]: configurationSIds },
-              userId: user.id,
-            },
-          }).then((relations) =>
-            relations.reduce(
-              (acc, relation) => {
-                acc[relation.agentConfiguration] = relation;
-                return acc;
-              },
-              {} as Record<string, AgentUserRelation>
-            )
-          )
-        : Promise.resolve({} as Record<string, AgentUserRelation>),
-    ]);
-
   const [
     retrievalActionsConfigurationsPerAgent,
     processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
     tableQueryActionsConfigurationsPerAgent,
+    websearchActionsConfigurationsPerAgent,
+    browseActionsConfigurationsPerAgent,
+    agentUserRelations,
   ] = await Promise.all([
     fetchAgentRetrievalActionsConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionsConfigurations({ configurationIds, variant }),
     fetchDustAppRunActionsConfigurations({ configurationIds, variant }),
     fetchTableQueryActionsConfigurations({ configurationIds, variant }),
+    fetchWebsearchActionsConfigurations({ configurationIds, variant }),
+    fetchBrowseActionsConfigurations({ configurationIds, variant }),
+    user && configurationIds.length > 0
+      ? AgentUserRelation.findAll({
+          where: {
+            agentConfiguration: { [Op.in]: configurationSIds },
+            userId: user.id,
+          },
+        }).then((relations) =>
+          relations.reduce(
+            (acc, relation) => {
+              acc[relation.agentConfiguration] = relation;
+              return acc;
+            },
+            {} as Record<string, AgentUserRelation>
+          )
+        )
+      : Promise.resolve({} as Record<string, AgentUserRelation>),
   ]);
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -445,27 +428,17 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
       actions.push(...dustAppRunActionsConfigurations);
 
-      const websearchConfigurations = websearchConfigs[agent.id] ?? [];
-      for (const websearchConfig of websearchConfigurations) {
-        actions.push({
-          id: websearchConfig.id,
-          sId: websearchConfig.sId,
-          type: "websearch_configuration",
-          name: websearchConfig.name || DEFAULT_WEBSEARCH_ACTION_NAME,
-          description: websearchConfig.description,
-        });
-      }
+      // Websearch configurations.
+      const websearchActionsConfigurations =
+        websearchActionsConfigurationsPerAgent.get(agent.id) ?? [];
 
-      const browseConfigurations = browseConfigs[agent.id] ?? [];
-      for (const browseConfig of browseConfigurations) {
-        actions.push({
-          id: browseConfig.id,
-          sId: browseConfig.sId,
-          type: "browse_configuration",
-          name: browseConfig.name || DEFAULT_BROWSE_ACTION_NAME,
-          description: browseConfig.description,
-        });
-      }
+      actions.push(...websearchActionsConfigurations);
+
+      // Browse configurations.
+      const browseActionsConfigurations =
+        browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
+
+      actions.push(...browseActionsConfigurations);
 
       // Table query configurations.
       const tableQueryActionsConfigurations =
