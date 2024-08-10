@@ -659,19 +659,26 @@ export async function confluenceGetReportPersonalActionActivity(
   });
 
   if (oldestPageSync) {
-    const client = await getConfluenceClient({}, connector);
+    try {
+      const client = await getConfluenceClient({}, connector);
 
-    const result = await client.reportAccount({
-      accountId: userAccountId,
-      updatedAt: oldestPageSync.lastVisitedAt,
-    });
+      const result = await client.reportAccount({
+        accountId: userAccountId,
+        updatedAt: oldestPageSync.lastVisitedAt,
+      });
 
-    if (result && result.status === "closed") {
-      logger.info(
-        { connectorId, userAccountId },
-        "Confluence report accounts API, account closed."
+      if (result && result.status === "closed") {
+        logger.info(
+          { connectorId, userAccountId },
+          "Confluence report accounts API, account closed."
+        );
+        return true;
+      }
+    } catch (err) {
+      logger.error(
+        { connectorId, userAccountId, err },
+        "Error while reporting Confluence account."
       );
-      return true;
     }
   }
 
