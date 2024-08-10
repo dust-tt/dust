@@ -679,6 +679,7 @@ export async function confluenceGetReportPersonalActionActivity(
         { connectorId, userAccountId, err },
         "Error while reporting Confluence account."
       );
+      throw err;
     }
   }
 
