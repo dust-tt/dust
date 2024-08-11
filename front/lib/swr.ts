@@ -18,6 +18,7 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import type { GetDataSourceOrViewContentResponseBody } from "@app/lib/api/vaults";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
@@ -1328,18 +1329,49 @@ export function useVaultDataSourceOrViews({
     vaultsDataSourcesFetcher
   );
 
-  console.log(data, error);
-  if (data && data.dataSources) {
-    return {
-      vaultDataSources: data ? data.dataSources : null,
-      isVaultDataSourcesLoading: !error && !data,
-      isVaultDataSourcesError: error,
-    };
-  } else {
-    return {
-      vaultDataSources: data ? data.dataSourceViews : null,
-      isVaultDataSourcesLoading: !error && !data,
-      isVaultDataSourcesError: error,
-    };
-  }
+  const vaultDataSourceOrViews =
+    type === "data_sources"
+      ? (data as GetVaultDataSourcesResponseBody)?.dataSources
+      : (data as GetVaultDataSourceViewsResponseBody)?.dataSourceViews;
+
+  return {
+    vaultDataSourceOrViews,
+    isVaultDataSourceOrViewsLoading: !error && !data,
+    isVaultDataSourceOrViewsError: error,
+  };
+}
+
+export function useVaultDataSourceOrViewContent({
+  workspaceId,
+  vaultId,
+  type,
+  dataSourceOrViewId,
+  viewType,
+  parentId,
+  disabled,
+}: {
+  workspaceId: string;
+  vaultId: string;
+  type: "data_sources" | "data_source_views";
+  dataSourceOrViewId: string;
+  viewType: ContentNodesViewType;
+  parentId: string | undefined;
+  disabled?: boolean;
+}) {
+  const vaultsDataSourcesFetcher: Fetcher<GetDataSourceOrViewContentResponseBody> =
+    fetcher;
+  const qs =
+    `?viewType=${viewType}` + (parentId ? `&parentId=${parentId}` : "");
+  const { data, error } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/vaults/${vaultId}/${type}/${dataSourceOrViewId}/content${qs}`,
+    vaultsDataSourcesFetcher
+  );
+
+  return {
+    vaultContent: data?.nodes,
+    isVaultContentLoading: !error && !data,
+    isVaultContentError: error,
+  };
 }

@@ -9,13 +9,13 @@ export const ContentSchema = t.type({
 
 export const PostDataSourceViewSchema = t.type({
   name: t.string,
-  parentsIn: t.array(t.string),
+  parentsIn: t.union([t.array(t.string), t.null]),
 });
 
 export type PostDataSourceViewType = t.TypeOf<typeof PostDataSourceViewSchema>;
 
 export const PatchDataSourceViewSchema = t.type({
-  parentsIn: t.array(t.string),
+  parentsIn: t.union([t.array(t.string), t.null]),
 });
 
 export type PatchDataSourceViewType = t.TypeOf<
@@ -41,11 +41,19 @@ export type PatchVaultRequestBodyType = t.TypeOf<
   typeof PostVaultRequestBodySchema
 >;
 
-export type ResourceCategory = "managed" | "files" | "webfolder" | "apps";
+export const RESOURCE_CATEGORIES = [
+  "managed",
+  "files",
+  "webfolder",
+  "apps",
+] as const;
+
+export type ResourceCategory = (typeof RESOURCE_CATEGORIES)[number];
 
 export type ResourceInfo = {
   createdAt: number;
   sId: string;
+  name: string;
   parentsIn?: string[] | null;
   connectorId?: string | null;
   connectorProvider?: ConnectorProvider | null;

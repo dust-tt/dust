@@ -30,7 +30,7 @@ export type LightContentNode = {
   lastUpdatedAt: number | null;
 };
 
-export type GetDataSourceContentResponseBody = {
+export type GetDataSourceOrViewContentResponseBody = {
   nodes: LightContentNode[];
 };
 
@@ -92,7 +92,9 @@ export const getDataSourceCategory = (
 
 export const getContentHandler = async (
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDataSourceContentResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetDataSourceOrViewContentResponseBody>
+  >,
   dataSource: DataSourceResource,
   rootIds: string[] | null
 ): Promise<void> => {
