@@ -35,11 +35,9 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
-    vault: VaultResource,
-    dataSource: DataSourceResource
+    vault: VaultResource
   ) {
     super(DataSourceViewModel, blob, vault);
-    this.ds = dataSource;
   }
 
   // Creation.
@@ -53,13 +51,15 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       ...blob,
       vaultId: vault.id,
     });
-    return new this(DataSourceViewResource.model, key.get(), vault, dataSource);
+    const dsv = new this(DataSourceViewResource.model, key.get(), vault);
+    dsv.ds = dataSource;
+    return dsv;
   }
 
   static async createViewInVaultFromDataSource(
     vault: VaultResource,
     dataSource: DataSourceResource,
-    parentsIn: string[]
+    parentsIn: string[] | null
   ) {
     return this.makeNew(
       {
@@ -167,7 +167,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Updating.
   async updateParents(
     auth: Authenticator,
-    parentsIn: string[]
+    parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
     try {
       const [, affectedRows] = await this.model.update(

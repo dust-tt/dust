@@ -1,7 +1,7 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { GetDataSourceContentResponseBody } from "@app/lib/api/vaults";
+import type { GetDataSourceOrViewContentResponseBody } from "@app/lib/api/vaults";
 import { getContentHandler } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,7 +10,9 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDataSourceContentResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetDataSourceOrViewContentResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.workspace();
