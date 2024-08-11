@@ -32,6 +32,8 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
 
+  private activeMembers?: UserResource[];
+
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
     super(GroupModel, blob);
   }
@@ -368,38 +370,58 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
-    const memberships = await GroupMembershipModel.findAll({
-      where: {
-        groupId: this.id,
-        workspaceId: owner.id,
-        startAt: { [Op.lte]: new Date() },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-      },
-    });
+    if (!this.activeMembers) {
+      const memberships = await GroupMembershipModel.findAll({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+      });
 
-    return UserResource.listByModelIds(memberships.map((m) => m.userId));
+      this.activeMembers = await UserResource.listByModelIds(
+        memberships.map((m) => m.userId)
+      );
+    }
+    return this.activeMembers;
   }
 
-  async addMember(
+  async addMembers(
     auth: Authenticator,
-    user: UserType,
+    users: UserType[],
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     // Checking that the user is a member of the workspace.
     const owner = auth.getNonNullableWorkspace();
-    const userResource = await UserResource.fetchById(user.sId);
-    if (!userResource) {
-      return new Err(new Error("The user was not found."));
-    }
-    const workspaceMembership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user: userResource,
-        workspace: owner,
-        transaction,
-      });
 
-    if (!workspaceMembership) {
-      return new Err(new Error("The user is not member of the workspace."));
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const userIds = users.map((u) => u.sId);
+    const userResources = await UserResource.listByIds(userIds);
+    if (userResources.length !== userIds.length) {
+      return new Err(
+        userIds.length === 1
+          ? new Error("The user was not found.")
+          : new Error("Some users were not found.")
+      );
+    }
+    const workspaceMemberships = await MembershipResource.getActiveMemberships({
+      users: userResources,
+      workspace: owner,
+      transaction,
+    });
+
+    if (
+      new Set(workspaceMemberships.map((m) => m.userId)).size !== userIds.length
+    ) {
+      return new Err(
+        userIds.length === 1
+          ? new Error("The user is not member of the workspace.")
+          : new Error("Some users are not member of the workspace.")
+      );
     }
 
     // Users can only be added to regular groups.
@@ -408,80 +430,145 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Check if the user is already a member of the group.
-    const existingMembership = await GroupMembershipModel.findOne({
-      where: {
-        groupId: this.id,
-        userId: user.id,
-        workspaceId: owner.id,
-        startAt: { [Op.lte]: new Date() },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-      },
-      transaction,
-    });
-
-    if (existingMembership) {
-      return new Err(new Error("User already member."));
+    const activeMembers = await this.getActiveMembers(auth);
+    const activeMembersIds = activeMembers.map((m) => m.sId);
+    const alreadyActive = userIds.filter((userId) =>
+      activeMembersIds.includes(userId)
+    );
+    if (alreadyActive.length > 0) {
+      return new Err(new Error(`User ${alreadyActive} already member.`));
     }
 
     // Create a new membership.
-    await GroupMembershipModel.create(
-      {
+    await GroupMembershipModel.bulkCreate(
+      users.map((user) => ({
         groupId: this.id,
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
-      },
+      })),
       { transaction }
     );
 
+    // Add user into active members local list.
+    this.activeMembers = [...activeMembers, ...userResources];
+
+    return new Ok(undefined);
+  }
+
+  async addMember(
+    auth: Authenticator,
+    user: UserType
+  ): Promise<Result<undefined, Error>> {
+    return this.addMembers(auth, [user]);
+  }
+
+  async removeMembers(
+    auth: Authenticator,
+    users: UserType[],
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
+    // Checking that the user is a member of the workspace.
+    const owner = auth.getNonNullableWorkspace();
+
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const userIds = users.map((u) => u.sId);
+    const userResources = await UserResource.listByIds(userIds);
+    if (userResources.length !== userIds.length) {
+      return new Err(
+        userIds.length === 1
+          ? new Error("The user was not found.")
+          : new Error("Some users were not found.")
+      );
+    }
+    const workspaceMemberships = await MembershipResource.getActiveMemberships({
+      users: userResources,
+      workspace: owner,
+      transaction,
+    });
+
+    if (workspaceMemberships.length !== userIds.length) {
+      return new Err(
+        userIds.length === 1
+          ? new Error("The user is not member of the workspace.")
+          : new Error("Some users are not member of the workspace.")
+      );
+    }
+
+    // Users can only be added to regular groups.
+    if (this.type !== "regular") {
+      return new Err(new Error("Not a regular group, cannot be updated."));
+    }
+
+    // Check if the user is already a member of the group.
+    const activeMembers = await this.getActiveMembers(auth);
+    const activeMembersIds = activeMembers.map((m) => m.sId);
+    const notActive = userIds.filter(
+      (userId) => !activeMembersIds.includes(userId)
+    );
+    if (notActive.length > 0) {
+      return new Err(new Error(`User ${notActive} not a member.`));
+    }
+
+    // Remove group membership.
+    await GroupMembershipModel.update(
+      { endAt: new Date() },
+      {
+        where: {
+          groupId: this.id,
+          userId: users.map((u) => u.id),
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+
+    // Remove user from active members local list.
+    this.activeMembers = activeMembers.filter((m) => !userIds.includes(m.sId));
     return new Ok(undefined);
   }
 
   async removeMember(
     auth: Authenticator,
-    user: UserType,
-    transaction?: Transaction
+    users: UserType
   ): Promise<Result<undefined, Error>> {
-    // Checking that the user is a member of the workspace.
-    const owner = auth.getNonNullableWorkspace();
-    const userResource = await UserResource.fetchById(user.sId);
-    if (!userResource) {
-      return new Err(new Error("The user was not found."));
-    }
-    const workspaceMembership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user: userResource,
-        workspace: owner,
-        transaction,
-      });
+    return this.removeMembers(auth, [users]);
+  }
 
-    if (!workspaceMembership) {
-      return new Err(new Error("The user is not member of the workspace."));
-    }
+  async setMembers(
+    auth: Authenticator,
+    users: UserType[]
+  ): Promise<Result<undefined, Error>> {
+    const userIds = users.map((u) => u.sId);
+    const currentMembers = await this.getActiveMembers(auth);
+    const currentMemberIds = currentMembers.map((member) => member.sId);
 
-    // Users can only be added to regular groups.
-    if (this.type !== "regular") {
-      return new Err(new Error("Not a regular group, cannot be updated."));
-    }
-
-    // Check if the user is already a member of the group.
-    const existingMembership = await GroupMembershipModel.findOne({
-      where: {
-        groupId: this.id,
-        userId: user.id,
-        workspaceId: owner.id,
-        startAt: { [Op.lte]: new Date() },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-      },
-      transaction,
-    });
-
-    if (!existingMembership) {
-      return new Err(new Error("User not a member."));
+    // Add new members.
+    const usersToAdd = users.filter(
+      (user) => !currentMemberIds.includes(user.sId)
+    );
+    if (usersToAdd.length > 0) {
+      const addResult = await this.addMembers(auth, usersToAdd);
+      if (addResult.isErr()) {
+        return addResult;
+      }
     }
 
-    // Remove group membership.
-    await existingMembership.destroy({ transaction });
+    // Remove users that are not in the new list.
+    const usersToRemove = currentMembers
+      .filter((currentMember) => !userIds.includes(currentMember.sId))
+      .map((m) => m.toJSON());
+    if (usersToRemove.length > 0) {
+      const removeResult = await this.removeMembers(auth, usersToRemove);
+      if (removeResult.isErr()) {
+        return removeResult;
+      }
+    }
 
     return new Ok(undefined);
   }

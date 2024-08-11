@@ -1,29 +1,14 @@
 import type { ResourceInfo, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSourceCategory } from "@app/lib/api/vaults";
+import { getDataSourceInfos } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourcesResponseBody = {
   dataSources: ResourceInfo[];
-};
-
-export const getDataSourceInfos = async (
-  auth: Authenticator,
-  vault: VaultResource
-): Promise<ResourceInfo[]> => {
-  const dataSources = await DataSourceResource.listByVault(auth, vault);
-
-  return dataSources.map((dataSource) => ({
-    ...dataSource.toJSON(),
-    sId: dataSource.name,
-    usage: 0,
-    category: getDataSourceCategory(dataSource),
-  }));
 };
 
 async function handler(
@@ -66,12 +51,11 @@ async function handler(
 
       const all = await getDataSourceInfos(auth, vault);
 
-      res.status(200).json({
+      return res.status(200).json({
         dataSources: all.filter(
           (dataSourceInfo) => !category || dataSourceInfo.category === category
         ),
       });
-      return;
     default:
       return apiError(req, res, {
         status_code: 405,

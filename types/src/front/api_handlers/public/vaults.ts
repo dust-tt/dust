@@ -7,6 +7,21 @@ export const ContentSchema = t.type({
   parentsIn: t.array(t.string),
 });
 
+export const PostDataSourceViewSchema = t.type({
+  name: t.string,
+  parentsIn: t.array(t.string),
+});
+
+export type PostDataSourceViewType = t.TypeOf<typeof PostDataSourceViewSchema>;
+
+export const PatchDataSourceViewSchema = t.type({
+  parentsIn: t.array(t.string),
+});
+
+export type PatchDataSourceViewType = t.TypeOf<
+  typeof PatchDataSourceViewSchema
+>;
+
 export const PostVaultRequestBodySchema = t.type({
   name: t.string,
   members: t.union([t.array(t.string), t.undefined]),

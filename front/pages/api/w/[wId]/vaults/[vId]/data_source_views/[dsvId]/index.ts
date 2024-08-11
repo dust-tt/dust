@@ -1,35 +1,22 @@
 import type { ResourceInfo, WithAPIErrorResponse } from "@dust-tt/types";
-import { PostDataSourceViewSchema } from "@dust-tt/types";
+import { PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getDataSourceViewInfo,
-  getDataSourceViewsInfo,
-} from "@app/lib/api/vaults";
+import { getDataSourceViewInfo } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetVaultDataSourceViewsResponseBody = {
-  dataSourceViews: ResourceInfo[];
-};
-
-export type PostVaultDataSourceViewsResponseBody = {
+export type GetDataSourceViewResponseBody = {
   dataSourceView: ResourceInfo;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<
-      GetVaultDataSourceViewsResponseBody | PostVaultDataSourceViewsResponseBody
-    >
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.workspace();
@@ -43,39 +30,38 @@ async function handler(
     });
   }
 
-  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
+  const dataSourceView = await DataSourceViewResource.fetchById(
+    auth,
+    req.query.dsvId as string
+  );
+
+  const dataSource = dataSourceView?.dataSource;
+  const vault = dataSourceView?.vault;
 
   if (
+    !dataSourceView ||
+    !dataSource ||
     !vault ||
+    req.query.vId !== vault.sId ||
     (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
   ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "vault_not_found",
-        message: "The vault you requested was not found.",
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
-
   switch (req.method) {
     case "GET": {
-      const category =
-        req.query.category && typeof req.query.category === "string"
-          ? req.query.category
-          : null;
-
-      const all = await getDataSourceViewsInfo(auth, vault);
-
       return res.status(200).json({
-        dataSourceViews: all.filter(
-          (dataSourceInfo) => !category || dataSourceInfo.category === category
-        ),
+        dataSourceView: getDataSourceViewInfo(dataSourceView),
       });
     }
-    case "POST": {
+    case "PATCH": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
-        // Only admins, or builders who have to the vault, can create a new view
+        // Only admins, or builders who have to the vault, can patch
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -86,7 +72,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = PostDataSourceViewSchema.decode(req.body);
+      const bodyValidation = PatchDataSourceViewSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
@@ -99,42 +85,49 @@ async function handler(
         });
       }
 
-      const { name, parentsIn } = bodyValidation.right;
+      const { parentsIn } = bodyValidation.right;
+      const updateResult = await dataSourceView.updateParents(auth, parentsIn);
 
-      // Create a new view
-      const dataSource = await DataSourceResource.fetchByName(auth, name);
-      if (!dataSource) {
+      if (updateResult.isErr()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 500,
           api_error: {
-            type: "invalid_request_error",
-            message: `Invalid data source: ${name}`,
+            type: "internal_server_error",
+            message: "The data source view cannot be updated.",
           },
         });
       }
-      const existing = await DataSourceViewResource.listForDataSourcesInVault(
-        auth,
-        [dataSource],
-        vault
-      );
-      if (existing.length > 0) {
+      return res
+        .status(200)
+        .json({ dataSourceView: getDataSourceViewInfo(dataSourceView) });
+    }
+    case "DELETE": {
+      if (!auth.isAdmin() || !auth.isBuilder()) {
+        // Only admins, or builders who have to the vault, can patch
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 403,
           api_error: {
-            type: "invalid_request_error",
-            message: `View already exists for data source: ${name}`,
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `admins` or `builder` can administrate vaults.",
           },
         });
       }
-      const dataSourceView =
-        await DataSourceViewResource.createViewInVaultFromDataSource(
-          vault,
-          dataSource,
-          parentsIn
-        );
-      return res.status(201).json({
-        dataSourceView: getDataSourceViewInfo(dataSourceView),
-      });
+
+      const deleteResult = await dataSourceView.delete(auth);
+
+      if (deleteResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "The data source view cannot be updated.",
+          },
+        });
+      }
+
+      res.status(204).end();
+      return;
     }
     default:
       return apiError(req, res, {
@@ -142,7 +135,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or POST is expected.",
+            "The method passed is not supported, GET, PATCH or DELETE is expected.",
         },
       });
   }

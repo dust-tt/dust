@@ -40,28 +40,30 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
-    vault: VaultResource
+    vault: VaultResource,
+    dataSource: DataSourceResource
   ) {
     super(DataSourceViewModel, blob, vault);
+    this.ds = dataSource;
   }
 
   // Creation.
 
   private static async makeNew(
     blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
-    vault: VaultResource
+    vault: VaultResource,
+    dataSource: DataSourceResource
   ) {
     const key = await DataSourceViewResource.model.create({
       ...blob,
       vaultId: vault.id,
     });
-
-    return new this(DataSourceViewResource.model, key.get(), vault);
+    return new this(DataSourceViewResource.model, key.get(), vault, dataSource);
   }
 
   static async createViewInVaultFromDataSource(
     vault: VaultResource,
-    dataSource: DataSourceType,
+    dataSource: DataSourceResource,
     parentsIn: string[]
   ) {
     return this.makeNew(
@@ -70,7 +72,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         parentsIn,
         workspaceId: vault.workspaceId,
       },
-      vault
+      vault,
+      dataSource
     );
   }
 
@@ -86,7 +89,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         parentsIn: null,
         workspaceId: vault.workspaceId,
       },
-      vault
+      vault,
+      dataSource
     );
   }
 
@@ -171,7 +175,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     parentsIn: string[]
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.model.update(
+      const [, affectedRows] = await this.model.update(
         {
           parentsIn,
         },
@@ -180,8 +184,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
             workspaceId: auth.getNonNullableWorkspace().id,
             id: this.id,
           },
+          returning: true,
         }
       );
+      Object.assign(this, affectedRows[0].get());
 
       return new Ok(undefined);
     } catch (err) {

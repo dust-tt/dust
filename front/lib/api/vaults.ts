@@ -4,6 +4,7 @@ import type {
   ContentNodeType,
   CoreAPIError,
   ResourceCategory,
+  ResourceInfo,
   Result,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -11,7 +12,10 @@ import { ConnectorsAPI, CoreAPI, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -28,6 +32,48 @@ export type LightContentNode = {
 
 export type GetDataSourceContentResponseBody = {
   nodes: LightContentNode[];
+};
+
+export const getDataSourceInfo = (
+  dataSource: DataSourceResource
+): ResourceInfo => {
+  return {
+    ...dataSource.toJSON(),
+    sId: dataSource.name,
+    usage: 0,
+    category: getDataSourceCategory(dataSource),
+  };
+};
+
+export const getDataSourceInfos = async (
+  auth: Authenticator,
+  vault: VaultResource
+): Promise<ResourceInfo[]> => {
+  const dataSources = await DataSourceResource.listByVault(auth, vault);
+
+  return dataSources.map((dataSource) => getDataSourceInfo(dataSource));
+};
+
+export const getDataSourceViewInfo = (
+  dataSourceView: DataSourceViewResource
+): ResourceInfo => {
+  return {
+    ...(dataSourceView.dataSource as DataSourceResource).toJSON(),
+    ...dataSourceView.toJSON(),
+    usage: 0,
+    category: getDataSourceCategory(
+      dataSourceView.dataSource as DataSourceResource
+    ),
+  };
+};
+
+export const getDataSourceViewsInfo = async (
+  auth: Authenticator,
+  vault: VaultResource
+): Promise<ResourceInfo[]> => {
+  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
+
+  return dataSourceViews.map((view) => getDataSourceViewInfo(view));
 };
 
 export const getDataSourceCategory = (

@@ -1,9 +1,13 @@
-import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchVaultRequestBodySchema } from "@dust-tt/types";
+import type { UserType, VaultType, WithAPIErrorResponse } from "@dust-tt/types";
+import { PatchVaultRequestBodySchema, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  getDataSourceInfos,
+  getDataSourceViewsInfo,
+} from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -12,8 +16,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
-import { getDataSourceViewsInfo } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
-import { getDataSourceInfos } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export type VaultCategoryInfo = {
   usage: number;
@@ -21,12 +23,21 @@ export type VaultCategoryInfo = {
 };
 
 export type GetVaultResponseBody = {
-  vault: VaultType & { categories: { [key: string]: VaultCategoryInfo } };
+  vault: VaultType & {
+    categories: { [key: string]: VaultCategoryInfo };
+    members: UserType[];
+  };
+};
+
+export type PatchVaultResponseBody = {
+  vault: VaultType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetVaultResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetVaultResponseBody | PatchVaultResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.workspace();
@@ -42,6 +53,7 @@ async function handler(
 
   const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
+  // Check if the user has access to the vault - either they are an admin or they have read access
   if (
     !vault ||
     (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
@@ -90,15 +102,17 @@ async function handler(
         {} as { [key: string]: VaultCategoryInfo }
       );
 
-      res.status(200).json({
+      const currentMembers = await group.getActiveMembers(auth);
+      return res.status(200).json({
         vault: {
           ...vault.toJSON(),
           categories,
+          members: currentMembers.map((member) => member.toJSON()),
         },
       });
-      return;
     case "PATCH":
       if (!auth.isAdmin() || !auth.isBuilder()) {
+        // Only admins, or builders who have to the vault, can patch
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -125,26 +139,12 @@ async function handler(
       const { members, content } = bodyValidation.right;
 
       if (members) {
-        const currentMembers = await group.getActiveMembers(auth);
-        await Promise.all(
-          members
-            .filter(
-              (memberId) => !currentMembers.map((m) => m.sId).includes(memberId)
-            )
-            .map(async (member) => {
-              const user = await UserResource.fetchById(member);
-              if (user) {
-                return group.addMember(auth, user?.toJSON());
-              }
-            })
-        );
-        await Promise.all(
-          currentMembers
-            .filter((currentMember) => !members.includes(currentMember.sId))
-            .map(async (member) => {
-              return group.removeMember(auth, member.toJSON());
-            })
-        );
+        const users = removeNulls(
+          await Promise.all(
+            members.map((member) => UserResource.fetchById(member))
+          )
+        ).map((user) => user.toJSON());
+        await group.setMembers(auth, users);
       }
 
       if (content) {
@@ -177,7 +177,7 @@ async function handler(
             if (dataSource) {
               await DataSourceViewResource.createViewInVaultFromDataSource(
                 vault,
-                dataSource.toJSON(),
+                dataSource,
                 dataSourceConfig.parentsIn
               );
             }

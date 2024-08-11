@@ -1,5 +1,5 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PostVaultRequestBodySchema } from "@dust-tt/types";
+import { PostVaultRequestBodySchema, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultsResponseBody = {
@@ -41,7 +42,7 @@ async function handler(
     case "GET":
       const vaults = await VaultResource.listWorkspaceVaults(auth);
 
-      res.status(200).json({
+      return res.status(200).json({
         vaults: vaults
           .filter(
             (vault) =>
@@ -49,7 +50,6 @@ async function handler(
           )
           .map((vault) => vault.toJSON()),
       });
-      return;
     case "POST":
       if (!auth.isAdmin() || !auth.isBuilder()) {
         return apiError(req, res, {
@@ -77,8 +77,8 @@ async function handler(
 
       const { name, members } = bodyValidation.right;
 
-      const existingVault = await VaultResource.fetchByName(auth, name);
-      if (existingVault) {
+      const nameAvailable = await VaultResource.isNameAvailable(auth, name);
+      if (!nameAvailable) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -102,17 +102,30 @@ async function handler(
       });
 
       if (members) {
-        await Promise.all(
-          members?.map(async (member) => {
-            const user = await UserResource.fetchById(member);
-            if (user) {
-              return group.addMember(auth, user?.toJSON());
-            }
-          })
-        );
+        const users = await removeNulls(
+          await Promise.all(
+            members.map((member) => UserResource.fetchById(member))
+          )
+        ).map((user) => user.toJSON());
+        const groupsResult = await group.addMembers(auth, users);
+        if (groupsResult.isErr()) {
+          logger.error(
+            {
+              error: groupsResult.error,
+            },
+            "The vault cannot be created - group members could not be added"
+          );
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "The vault cannot be created.",
+            },
+          });
+        }
       }
 
-      return res.status(200).json({ vault: vault.toJSON() });
+      return res.status(201).json({ vault: vault.toJSON() });
     default:
       return apiError(req, res, {
         status_code: 405,
