@@ -3,14 +3,14 @@ import React, { ReactNode } from "react";
 import { DocumentTextStrokeIcon, ImageStrokeIcon } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import {
-  Confluence,
-  Drive,
-  Github,
-  Intercom,
-  Microsoft,
-  Notion,
-  Slack,
-  Zendesk,
+  ConfluenceLogo,
+  DriveLogo,
+  GithubLogo,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
+  ZendeskLogo,
 } from "@sparkle/logo/platforms";
 
 import {
@@ -51,15 +51,15 @@ interface CitationProps {
 }
 
 const typeIcons = {
-  confluence: Confluence,
+  confluence: ConfluenceLogo,
   document: DocumentTextStrokeIcon,
-  github: Github,
-  google_drive: Drive,
-  intercom: Intercom,
-  microsoft: Microsoft,
-  zendesk: Zendesk,
-  notion: Notion,
-  slack: Slack,
+  github: GithubLogo,
+  google_drive: DriveLogo,
+  intercom: IntercomLogo,
+  microsoft: MicrosoftLogo,
+  zendesk: ZendeskLogo,
+  notion: NotionLogo,
+  slack: SlackLogo,
   image: ImageStrokeIcon,
 };
 
