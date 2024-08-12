@@ -58,6 +58,9 @@ interface TreeItemProps {
   className?: string;
   actions?: React.ReactNode;
   areActionsFading?: boolean;
+  isClickable?: boolean;
+  isSelected?: boolean;
+  onItemClick?: () => void;
 }
 
 export interface TreeItemPropsWithChildren extends TreeItemProps {
@@ -85,6 +88,9 @@ Tree.Item = function ({
   areActionsFading = true,
   renderTreeItems,
   children,
+  isClickable = false,
+  isSelected = false,
+  onItemClick,
 }: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
   const [collapsedState, setCollapsedState] = useState<boolean>(
     defaultCollapsed ?? true
@@ -113,8 +119,13 @@ Tree.Item = function ({
         className={classNames(
           className ? className : "",
           "s-group s-flex s-cursor-default s-flex-row s-items-center s-gap-4",
-          size === "sm" ? "s-py-1" : "s-py-2"
+          size === "sm" ? "s-py-1" : "s-py-2",
+          isClickable ? "s-cursor-pointer" : "",
+          isSelected
+            ? "s-rounded-md s-border s-border-neutral-200 s-bg-white"
+            : ""
         )}
+        onClick={isClickable ? onItemClick : undefined}
       >
         {type === "node" && (
           <IconButton
@@ -125,7 +136,12 @@ Tree.Item = function ({
             }
             size="sm"
             variant="secondary"
-            onClick={effectiveOnChevronClick}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (effectiveOnChevronClick) {
+                effectiveOnChevronClick();
+              }
+            }}
           />
         )}
         {type === "leaf" && <div className="s-w-5"></div>}

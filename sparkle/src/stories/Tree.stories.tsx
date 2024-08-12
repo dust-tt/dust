@@ -1,6 +1,5 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
-import { v4 as uuidv4 } from "uuid";
 
 import { Dust } from "@sparkle/icons/solid";
 
@@ -33,7 +32,7 @@ export const TreeExample = () => {
           <div className="s-text-xl">Tree</div>
           <div>
             <Tree isBoxed>
-              <Tree.Item label="item 1 (no children)" variant="folder" />
+              <Tree.Item label="item 1 (no children)" variant="folder" isSelected={true}/>
               <Tree.Item label="item 2 (loading)" variant="folder">
                 <Tree isLoading />
               </Tree.Item>
@@ -586,10 +585,76 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
+        <DummyNavBar/>
       </div>
     </div>
   );
 };
+
+export const DummyNavBar = () => {
+  return <div className="s-flex s-flex-col s-gap-3">
+    <div className="s-text-xl">Nav bar</div>
+    <div>
+      <Tree isBoxed>
+        <Tree.Item
+          label="Intercom"
+          visual={<IntercomLogo />}
+          isClickable={true}
+          onItemClick={() => console.log("Clickable")}
+          isSelected={true}
+        >
+          <Tree>
+            <Tree.Item
+              type="leaf"
+              label="item 1"
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="item 2"
+              type="leaf"
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+            <Tree.Item
+              label="item 3"
+              type="leaf"
+              checkbox={{
+                variant: "checkable",
+                checked: false,
+                onChange: () => {
+                  return;
+                },
+              }}
+            />
+          </Tree>
+        </Tree.Item>
+        <Tree.Item
+          label="Notion"
+          visual={<NotionLogo />}
+        />
+        <Tree.Item
+          label="Slack"
+          visual={<SlackLogo />}
+        />
+        <Tree.Item
+          label="Dust"
+          visual={<Dust />}
+        />
+      </Tree>
+    </div>
+  </div>;
+}
 
 export const SelectDataSourceExample = () => {
   return (
@@ -838,30 +903,4 @@ const createTreeItems = (n = 5, getLabel: () => string) => {
   }
 
   return <Tree>{items}</Tree>;
-};
-
-export const DeeplyNestedTreeWithActions = () => {
-  const getLabel = () =>
-    `${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}-${uuidv4()}`;
-  return (
-    <div className="s-mx-auto s-max-w-2xl s-gap-3 s-pt-10">
-      <div className="s-pb-10 s-text-xl">Huge</div>
-      <div>
-        <Tree>{createTreeItems(20, getLabel)}</Tree>
-      </div>
-    </div>
-  );
-};
-
-export const SmallTreeWithActions = () => {
-  const getLabel = () =>
-    `${uuidv4().slice(0, Math.floor(Math.random() * 32) + 3)}`;
-  return (
-    <div className="s-mx-auto s-max-w-2xl s-gap-3 s-pt-10">
-      <div className="s-pb-10 s-text-xl">Huge</div>
-      <div>
-        <Tree>{createTreeItems(5, getLabel)}</Tree>
-      </div>
-    </div>
-  );
 };
