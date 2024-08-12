@@ -51,8 +51,6 @@ function getTableColumns(
 ): ColumnDef<RowData, unknown>[] {
   return [
     {
-      header: "Name",
-      accessorKey: "name",
       id: "name",
       cell: (info: Info) => (
         <DataTable.Cell avatarUrl={info.row.original.icon}>
