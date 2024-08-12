@@ -8,6 +8,7 @@ import type {
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
+  GetDataSourceOrViewContentResponseBody,
   RunRunType,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
@@ -18,7 +19,6 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
-import type { GetDataSourceOrViewContentResponseBody } from "@app/lib/api/vaults";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
