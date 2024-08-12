@@ -1,4 +1,7 @@
-import type { ResourceInfo, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceOrViewInfo,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceInfo } from "@app/lib/api/vaults";
@@ -8,7 +11,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetDataSourceResponseBody = {
-  dataSource: ResourceInfo;
+  dataSource: DataSourceOrViewInfo;
 };
 
 async function handler(

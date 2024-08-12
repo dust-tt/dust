@@ -1,4 +1,7 @@
-import type { ResourceInfo, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceOrViewInfo,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -11,7 +14,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { apiError } from "@app/logger/withlogging";
 
 export type GetDataSourceViewResponseBody = {
-  dataSourceView: ResourceInfo;
+  dataSourceView: DataSourceOrViewInfo;
 };
 
 async function handler(

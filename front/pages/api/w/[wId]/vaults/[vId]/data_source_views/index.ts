@@ -1,4 +1,7 @@
-import type { ResourceInfo, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceOrViewInfo,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { PostDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -16,11 +19,11 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourceViewsResponseBody = {
-  dataSourceViews: ResourceInfo[];
+  dataSourceViews: DataSourceOrViewInfo[];
 };
 
 export type PostVaultDataSourceViewsResponseBody = {
-  dataSourceView: ResourceInfo;
+  dataSourceView: DataSourceOrViewInfo;
 };
 
 async function handler(
