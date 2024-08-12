@@ -129,7 +129,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       id: "data_sources",
       label: "Data sources",
       icon: BookOpenIcon,
-      href: `/w/${owner.sId}/data-sources/vaults/global`,
+      href: `/w/${owner.sId}/data-sources/vaults`,
       isCurrent: (currentRoute: string) =>
         currentRoute.startsWith("/w/[wId]/data-sources/vaults/"),
       sizing: "expand",
