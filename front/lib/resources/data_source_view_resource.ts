@@ -1,12 +1,7 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
+import type { DataSourceViewType, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
@@ -49,20 +44,22 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   private static async makeNew(
     blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
-    vault: VaultResource
+    vault: VaultResource,
+    dataSource: DataSourceResource
   ) {
     const key = await DataSourceViewResource.model.create({
       ...blob,
       vaultId: vault.id,
     });
-
-    return new this(DataSourceViewResource.model, key.get(), vault);
+    const dsv = new this(DataSourceViewResource.model, key.get(), vault);
+    dsv.ds = dataSource;
+    return dsv;
   }
 
   static async createViewInVaultFromDataSource(
     vault: VaultResource,
-    dataSource: DataSourceType,
-    parentsIn: string[]
+    dataSource: DataSourceResource,
+    parentsIn: string[] | null
   ) {
     return this.makeNew(
       {
@@ -70,7 +67,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         parentsIn,
         workspaceId: vault.workspaceId,
       },
-      vault
+      vault,
+      dataSource
     );
   }
 
@@ -86,7 +84,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         parentsIn: null,
         workspaceId: vault.workspaceId,
       },
-      vault
+      vault,
+      dataSource
     );
   }
 
@@ -119,6 +118,14 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
+  }
+
+  static async listByVault(auth: Authenticator, vault: VaultResource) {
+    return this.baseFetch(auth, {
+      where: {
+        vaultId: vault.id,
+      },
+    });
   }
 
   static async listForDataSourcesInVault(
@@ -155,6 +162,28 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator
   ): Promise<DataSourceResource | null> {
     return DataSourceResource.fetchByModelIdWithAuth(auth, this.dataSourceId);
+  }
+
+  // Updating.
+  async updateParents(
+    auth: Authenticator,
+    parentsIn: string[] | null
+  ): Promise<Result<undefined, Error>> {
+    const [, affectedRows] = await this.model.update(
+      {
+        parentsIn,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
+        returning: true,
+      }
+    );
+    Object.assign(this, affectedRows[0].get());
+
+    return new Ok(undefined);
   }
 
   // Deletion.

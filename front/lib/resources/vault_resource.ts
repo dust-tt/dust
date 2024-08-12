@@ -4,8 +4,9 @@ import type {
   LightWorkspaceType,
   ModelId,
   Result,
+  VaultType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -172,22 +173,34 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new this(VaultModel, vault.get());
   }
 
+  static async isNameAvailable(
+    auth: Authenticator,
+    name: string
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const vault = await this.model.findOne({
+      where: {
+        name,
+        workspaceId: owner.id,
+      },
+    });
+
+    return !vault;
+  }
+
   async delete(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
+    await this.model.destroy({
+      where: {
+        id: this.id,
+      },
+      transaction,
+    });
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    return new Ok(undefined);
   }
 
   static async deleteAllForWorkspace(
@@ -228,5 +241,13 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   isGlobal() {
     return this.kind === "global";
+  }
+
+  toJSON(): VaultType {
+    return {
+      sId: this.sId,
+      name: this.name,
+      kind: this.kind,
+    };
   }
 }

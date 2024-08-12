@@ -215,7 +215,6 @@ async function handleDataSourceView(
   if (!dataSource) {
     return new Err(new Error("Data source not found for view."));
   }
-
   return new Ok({
     project_id: parseInt(dataSource.dustAPIProjectId),
     data_source_id: dataSource.name,

@@ -8,6 +8,7 @@ import type {
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
+  GetDataSourceOrViewContentResponseBody,
   RunRunType,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
@@ -51,6 +52,10 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type { GetVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
+import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
+import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import type { GetVaultDataSourcesResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
@@ -1259,5 +1264,116 @@ export function useLabsTranscriptsConfiguration({
     isTranscriptsConfigurationLoading: !error && !data,
     isTranscriptsConfigurationError: error,
     mutateTranscriptsConfiguration: mutate,
+  };
+}
+
+export function useVaults({ workspaceId }: { workspaceId: string }) {
+  const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/vaults`,
+    vaultsFetcher
+  );
+
+  return {
+    vaults: data ? data.vaults : null,
+    isVaultsLoading: !error && !data,
+    isVaultsError: error,
+  };
+}
+
+export function useVaultInfo({
+  workspaceId,
+  vaultId,
+  disabled,
+}: {
+  workspaceId: string;
+  vaultId: string;
+  disabled?: boolean;
+}) {
+  const vaultsCategoriesFetcher: Fetcher<GetVaultResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    disabled ? null : `/api/w/${workspaceId}/vaults/${vaultId}`,
+    vaultsCategoriesFetcher
+  );
+
+  return {
+    vaultInfo: data ? data.vault : null,
+    isVaultInfoLoading: !error && !data,
+    isVaultInfoError: error,
+  };
+}
+
+export function useVaultDataSourceOrViews({
+  workspaceId,
+  vaultId,
+  category,
+  type,
+  disabled,
+}: {
+  workspaceId: string;
+  vaultId: string;
+  category: string;
+  type: DataSourceOrView;
+  disabled?: boolean;
+}) {
+  const vaultsDataSourcesFetcher: Fetcher<
+    GetVaultDataSourcesResponseBody | GetVaultDataSourceViewsResponseBody
+  > = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/vaults/${vaultId}/${type}?category=${category}`,
+    vaultsDataSourcesFetcher
+  );
+
+  const vaultDataSourceOrViews =
+    type === "data_sources"
+      ? (data as GetVaultDataSourcesResponseBody)?.dataSources
+      : (data as GetVaultDataSourceViewsResponseBody)?.dataSourceViews;
+
+  return {
+    vaultDataSourceOrViews,
+    isVaultDataSourceOrViewsLoading: !error && !data,
+    isVaultDataSourceOrViewsError: error,
+  };
+}
+
+type DataSourceOrView = "data_sources" | "data_source_views";
+
+export function useVaultDataSourceOrViewContent({
+  workspaceId,
+  vaultId,
+  type,
+  dataSourceOrViewId,
+  viewType,
+  parentId,
+  disabled,
+}: {
+  workspaceId: string;
+  vaultId: string;
+  type: DataSourceOrView;
+  dataSourceOrViewId: string;
+  viewType: ContentNodesViewType;
+  parentId: string | undefined;
+  disabled?: boolean;
+}) {
+  const vaultsDataSourcesFetcher: Fetcher<GetDataSourceOrViewContentResponseBody> =
+    fetcher;
+  const qs =
+    `?viewType=${viewType}` + (parentId ? `&parentId=${parentId}` : "");
+  const { data, error } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/vaults/${vaultId}/${type}/${dataSourceOrViewId}/content${qs}`,
+    vaultsDataSourcesFetcher
+  );
+
+  return {
+    vaultContent: data?.nodes,
+    isVaultContentLoading: !error && !data,
+    isVaultContentError: error,
   };
 }
