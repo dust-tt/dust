@@ -1357,7 +1357,7 @@ export function useVaultDataSourceOrViewContent({
   type: DataSourceOrView;
   dataSourceOrViewId: string;
   viewType: ContentNodesViewType;
-  parentId: string | undefined;
+  parentId: string | null;
   disabled?: boolean;
 }) {
   const vaultsDataSourcesFetcher: Fetcher<GetDataSourceOrViewContentResponseBody> =

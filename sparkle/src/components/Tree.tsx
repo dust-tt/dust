@@ -52,6 +52,7 @@ interface TreeItemProps {
   size?: "sm" | "md";
   visual?: React.ReactNode;
   checkbox?: CheckboxProps;
+  onClick?: () => void;
   onChevronClick?: () => void;
   collapsed?: boolean;
   defaultCollapsed?: boolean;
@@ -80,6 +81,7 @@ Tree.Item = function ({
   size = "sm",
   visual,
   checkbox,
+  onClick,
   onChevronClick,
   collapsed,
   defaultCollapsed,
@@ -163,6 +165,7 @@ Tree.Item = function ({
             )}
 
             <div
+              onClick={onClick}
               className={classNames(
                 "s-truncate s-font-medium s-text-element-900",
                 size === "sm" ? "s-text-sm" : "s-text-base"

@@ -5,6 +5,7 @@ import { Bars3Icon } from "@heroicons/react/20/solid";
 import React, { Fragment, useContext, useState } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
+import { DataSourceNavigationTree } from "@app/components/navigation/DataSourceNavigationTree";
 import {
   NavigationSidebar,
   ToggleNavigationSidebarButton,
@@ -129,7 +130,11 @@ export function Navigation({
             subscription={subscription}
             subNavigation={subNavigation}
           >
-            {navChildren && navChildren}
+            <>
+              {navChildren && navChildren}
+
+              <DataSourceNavigationTree owner={owner} />
+            </>
           </NavigationSidebar>
         </div>
       </Transition>
