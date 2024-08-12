@@ -9,7 +9,7 @@ import {
   Searchbar,
 } from "@dust-tt/sparkle";
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
-import { removeNulls, RESOURCE_CATEGORIES } from "@dust-tt/types";
+import { DATA_SOURCE_OR_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType, ReactElement } from "react";
 import { useState } from "react";
@@ -113,7 +113,7 @@ export const VaultCategoriesList = ({
 
   const rows: RowData[] = vaultInfo
     ? removeNulls(
-        RESOURCE_CATEGORIES.map((category) =>
+        DATA_SOURCE_OR_VIEW_CATEGORIES.map((category) =>
           vaultInfo.categories[category]
             ? {
                 category,

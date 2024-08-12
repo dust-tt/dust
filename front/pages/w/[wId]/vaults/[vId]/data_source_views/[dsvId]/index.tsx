@@ -1,6 +1,5 @@
-import { ChevronRightIcon, LockIcon, Page } from "@dust-tt/sparkle";
+import { LockIcon, Page } from "@dust-tt/sparkle";
 import type {
-  DatasetViewType,
   DataSourceType,
   DataSourceViewType,
   PlanType,
@@ -8,8 +7,6 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
-import { Data } from "emoji-mart";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -22,10 +19,8 @@ import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultData
 import config from "@app/lib/api/config";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

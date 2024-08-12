@@ -7,8 +7,8 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
+  DataSourceOrViewCategory,
   EditedByUser,
-  ResourceCategory,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -44,7 +44,7 @@ type VaultResourcesListProps = {
   owner: WorkspaceType;
   isAdmin: boolean;
   vault: VaultType;
-  category: ResourceCategory;
+  category: DataSourceOrViewCategory;
   onSelect: (sId: string) => void;
 };
 
