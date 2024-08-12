@@ -484,7 +484,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(
         userIds.length === 1
           ? new Error("The user is not member of the workspace.")
-          : new Error("Some users are not member of the workspace.")
+          : new Error("Some users are not members of the workspace.")
       );
     }
 
