@@ -13,7 +13,7 @@ import type {
   LightWorkspaceType,
   VaultType,
 } from "@dust-tt/types";
-import { DATA_SOURCE_OR_VIEW_CATEGORIES } from "@dust-tt/types";
+import { assertNever, DATA_SOURCE_OR_VIEW_CATEGORIES } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -48,27 +48,53 @@ export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
   return (
     <div className="flex flex-col px-3">
       <Item.List>
-        {sortedGroupedVaults.map((vaults, index) => (
-          <Fragment key={`vault-section-${index}`}>
-            {vaults.map((vault) => (
-              <Fragment key={`vault-${vault.sId}`}>
-                <Item.SectionHeader
-                  label={vault.kind === "global" ? "SHARED" : vault.name}
-                  key={vault.sId}
-                />
-                {vault.kind === "system" ? (
-                  <SystemVaultMenu />
-                ) : (
-                  <VaultMenuItem owner={owner} vault={vault} />
-                )}
-              </Fragment>
-            ))}
-          </Fragment>
-        ))}
+        {sortedGroupedVaults.map((vaults, index) => {
+          if (vaults.length === 0) {
+            return null;
+          }
+
+          const [vault] = vaults;
+          const sectionLabel = getSectionLabel(vault);
+
+          return (
+            <Fragment key={`vault-section-${index}`}>
+              <Item.SectionHeader label={sectionLabel} key={vault.sId} />
+              {renderVaultItems(vaults, owner)}
+            </Fragment>
+          );
+        })}
       </Item.List>
     </div>
   );
 }
+
+// Function to render vault items.
+const renderVaultItems = (vaults: VaultType[], owner: LightWorkspaceType) =>
+  vaults.map((vault) => (
+    <Fragment key={`vault-${vault.sId}`}>
+      {vault.kind === "system" ? (
+        <SystemVaultMenu />
+      ) : (
+        <VaultMenuItem owner={owner} vault={vault} />
+      )}
+    </Fragment>
+  ));
+
+const getSectionLabel = (vault: VaultType) => {
+  switch (vault.kind) {
+    case "global":
+      return "SHARED";
+
+    case "regular":
+      return "PRIVATE";
+
+    case "system":
+      return "SYSTEM";
+
+    default:
+      assertNever(vault.kind);
+  }
+};
 
 const RootItemIconWrapper = (
   IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
