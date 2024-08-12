@@ -87,15 +87,17 @@ const VaultMenuItem = ({
 }) => {
   const router = useRouter();
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const vaultPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}`;
+  const isAncestorToCurrentPage = router.asPath.includes(vaultPath);
+
+  // Unfold the vault if it's an ancestor of the current page.
+  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
 
   const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
     workspaceId: owner.sId,
     vaultId: vault.sId,
     disabled: !isExpanded,
   });
-
-  const vaultPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}`;
 
   return (
     <Tree.Item
@@ -205,7 +207,12 @@ const VaultCategoryItem = ({
   category: string;
 }) => {
   const router = useRouter();
-  const [isExpanded, setIsExpanded] = useState(false);
+
+  const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
+  const isAncestorToCurrentPage = router.asPath.includes(vaultCategoryPath);
+
+  // Unfold the vault's category if it's an ancestor of the current page.
+  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
   const { isVaultDataSourceOrViewsLoading, vaultDataSourceOrViews } =
@@ -216,8 +223,6 @@ const VaultCategoryItem = ({
       type: categoryDetails.dataSourceOrView,
       disabled: !isExpanded,
     });
-
-  const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
 
   return (
     <Tree.Item
