@@ -121,8 +121,6 @@ export function CreateVaultModal({
         const errorData = await res.json();
         throw new Error(errorData.error?.message || "Failed to create vault");
       }
-      onSave();
-      onClose();
       return await res.json();
     } finally {
       setIsSaving(false);
@@ -168,6 +166,7 @@ export function CreateVaultModal({
               "An unexpected error occurred while creating the vault.",
           });
         }
+        onSave();
       }}
     >
       <Page.Vertical gap="md">
