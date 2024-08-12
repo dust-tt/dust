@@ -429,7 +429,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       activeMembersIds.includes(userId)
     );
     if (alreadyActive.length > 0) {
-      return new Err(new Error(`User ${alreadyActive} already member.`));
+      return alreadyActive.length === 1
+        ? new Err(new Error(`User ${alreadyActive} already member.`))
+        : new Err(new Error(`Users ${alreadyActive} already members.`));
     }
 
     // Create a new membership.
