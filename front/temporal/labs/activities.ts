@@ -271,7 +271,7 @@ export async function processTranscriptActivity(
     return new Err(new Error("username must be a non-empty string"));
   }
 
-  let conversation = await createConversation(auth, {
+  const initialConversation = await createConversation(auth, {
     title: transcriptTitle,
     visibility: "workspace",
   });
@@ -295,7 +295,7 @@ export async function processTranscriptActivity(
 
   const contentFragmentRes = await postNewContentFragment(
     auth,
-    conversation,
+    initialConversation,
     contentFragmentData,
     baseContext
   );
@@ -304,10 +304,25 @@ export async function processTranscriptActivity(
     localLogger.error(
       {
         agentConfigurationId,
-        conversationSid: conversation.sId,
+        conversationSid: initialConversation.sId,
         error: contentFragmentRes.error,
       },
       "[processTranscriptActivity] Error creating content fragment. Stopping."
+    );
+    return;
+  }
+
+  // Initial conversation is stale, so we need to reload it.
+  let conversation = await getConversation(auth, initialConversation.sId);
+
+  if (!conversation) {
+    localLogger.error(
+      {
+        agentConfigurationId,
+        conversationSid: initialConversation.sId,
+        panic: true,
+      },
+      "[processTranscriptActivity] Unreachable: Error getting conversation after creation."
     );
     return;
   }
