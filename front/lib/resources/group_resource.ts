@@ -493,14 +493,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(new Error("Not a regular group, cannot be updated."));
     }
 
-    // Check if the user is already a member of the group.
+    // Check if the users are already a member of the group.
     const activeMembers = await this.getActiveMembers(auth);
     const activeMembersIds = activeMembers.map((m) => m.sId);
-    const notActive = userIds.filter(
+    const notActiveUserIds = userIds.filter(
       (userId) => !activeMembersIds.includes(userId)
     );
-    if (notActive.length > 0) {
-      return new Err(new Error(`User ${notActive} not a member.`));
+    if (notActiveUserIds.length > 0) {
+      return notActiveUserIds.length === 1
+        ? new Err(new Error(`User ${notActiveUserIds} not a member.`))
+        : new Err(new Error(`Users ${notActiveUserIds} are not members.`));
     }
 
     // Remove group membership.
