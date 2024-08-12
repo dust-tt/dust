@@ -1,7 +1,7 @@
 import { LockIcon, Page } from "@dust-tt/sparkle";
 import type {
+  DataSourceOrViewCategory,
   PlanType,
-  ResourceCategory,
   SubscriptionType,
   VaultType,
   WorkspaceType,
@@ -25,7 +25,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   isAdmin: boolean;
   plan: PlanType;
   vault: VaultType;
-  category: ResourceCategory;
+  category: DataSourceOrViewCategory;
   gaTrackingId: string;
   dustClientFacingUrl: string;
 }>(async (context, auth) => {
