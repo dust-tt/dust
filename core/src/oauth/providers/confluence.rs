@@ -14,6 +14,8 @@ use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
 
+use super::utils::ProviderHttpRequestError;
+
 lazy_static! {
     static ref OAUTH_CONFLUENCE_CLIENT_ID: String = env::var("OAUTH_CONFLUENCE_CLIENT_ID").unwrap();
     static ref OAUTH_CONFLUENCE_CLIENT_SECRET: String =
@@ -160,5 +162,24 @@ impl Provider for ConfluenceConnectionProvider {
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,
         };
         Ok(raw_json)
+    }
+
+    fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        match &error {
+            ProviderHttpRequestError::RequestFailed {
+                status, message, ..
+            } if *status == 403 => {
+                if message.contains("refresh_token is invalid") {
+                    ProviderError::TokenRevokedError
+                } else {
+                    // Call the default implementation for other 403 errors.
+                    self.default_handle_provider_request_error(error)
+                }
+            }
+            _ => {
+                // Call the default implementation for other cases.
+                self.default_handle_provider_request_error(error)
+            }
+        }
     }
 }
