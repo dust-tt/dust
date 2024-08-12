@@ -1,5 +1,5 @@
 import type { UserType, VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchVaultRequestBodySchema, removeNulls } from "@dust-tt/types";
+import { PatchVaultRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";

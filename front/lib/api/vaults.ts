@@ -3,14 +3,12 @@ import type {
   ConnectorsAPIError,
   ContentNodesViewType,
   CoreAPIError,
-  GetDataSourceOrViewContentResponseBody,
-  ResourceCategory,
-  ResourceInfo,
+  DataSourceOrViewCategory,
+  DataSourceOrViewInfo,
+  LightContentNode,
   Result,
-  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Ok } from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -18,11 +16,10 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
 
 export const getDataSourceInfo = (
   dataSource: DataSourceResource
-): ResourceInfo => {
+): DataSourceOrViewInfo => {
   return {
     ...dataSource.toJSON(),
     sId: dataSource.name,
@@ -34,7 +31,7 @@ export const getDataSourceInfo = (
 export const getDataSourceInfos = async (
   auth: Authenticator,
   vault: VaultResource
-): Promise<ResourceInfo[]> => {
+): Promise<DataSourceOrViewInfo[]> => {
   const dataSources = await DataSourceResource.listByVault(auth, vault);
 
   return dataSources.map((dataSource) => getDataSourceInfo(dataSource));
@@ -42,7 +39,7 @@ export const getDataSourceInfos = async (
 
 export const getDataSourceViewInfo = (
   dataSourceView: DataSourceViewResource
-): ResourceInfo => {
+): DataSourceOrViewInfo => {
   return {
     ...(dataSourceView.dataSource as DataSourceResource).toJSON(),
     ...dataSourceView.toJSON(),
@@ -56,7 +53,7 @@ export const getDataSourceViewInfo = (
 export const getDataSourceViewsInfo = async (
   auth: Authenticator,
   vault: VaultResource
-): Promise<ResourceInfo[]> => {
+): Promise<DataSourceOrViewInfo[]> => {
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
 
   return dataSourceViews.map((view) => getDataSourceViewInfo(view));
@@ -76,7 +73,7 @@ export const isConnectedDataSource = (
 
 export const getDataSourceCategory = (
   dataSource: DataSourceResource
-): ResourceCategory => {
+): DataSourceOrViewCategory => {
   if (isFolderDataSource(dataSource)) {
     return "files";
   }
@@ -88,64 +85,25 @@ export const getDataSourceCategory = (
   return "managed";
 };
 
-export const getContentHandler = async (
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetDataSourceOrViewContentResponseBody>
-  >,
+export const getDataSourceContent = async (
   dataSource: DataSourceResource,
-  rootIds: string[] | null
-): Promise<void> => {
-  const viewType = req.query.viewType;
-  if (
-    !viewType ||
-    typeof viewType !== "string" ||
-    (viewType !== "tables" && viewType !== "documents")
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid viewType. Required: tables | documents",
-      },
-    });
-  }
-
-  let parentId: string | null = null;
-  if (req.query.parentId && typeof req.query.parentId === "string") {
-    parentId = req.query.parentId;
-  }
-
-  const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-  const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-
-  const content = dataSource.connectorId
-    ? await getManagedDataSourceContent(
+  viewType: ContentNodesViewType,
+  rootIds: string[] | null,
+  parentId: string | null,
+  { limit, offset }: { limit: number; offset: number }
+): Promise<Result<LightContentNode[], ConnectorsAPIError | CoreAPIError>> => {
+  return dataSource.connectorId
+    ? getManagedDataSourceContent(
         dataSource.connectorId,
         "read",
         rootIds,
         parentId,
         viewType
       )
-    : await getUnmanagedDataSourceContent(dataSource, viewType, {
+    : getUnmanagedDataSourceContent(dataSource, viewType, {
         limit,
         offset,
       });
-
-  if (content.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `An error occurred while retrieving the data source permissions.`,
-      },
-    });
-  }
-
-  res.status(200).json({
-    nodes: content.value,
-  });
-  return;
 };
 
 export const getManagedDataSourceContent = async (

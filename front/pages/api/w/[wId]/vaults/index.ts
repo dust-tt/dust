@@ -1,5 +1,5 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PostVaultRequestBodySchema, removeNulls } from "@dust-tt/types";
+import { PostVaultRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
