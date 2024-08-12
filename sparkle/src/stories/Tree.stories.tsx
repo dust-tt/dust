@@ -599,7 +599,6 @@ export const DummyNavBar = () => {
         <Tree.Item
           label="Intercom"
           visual={<IntercomLogo />}
-          isClickable={true}
           onItemClick={() => console.log("Clickable")}
           isSelected={true}
         >

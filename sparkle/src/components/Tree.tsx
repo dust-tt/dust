@@ -58,7 +58,6 @@ interface TreeItemProps {
   className?: string;
   actions?: React.ReactNode;
   areActionsFading?: boolean;
-  isClickable?: boolean;
   isSelected?: boolean;
   onItemClick?: () => void;
 }
@@ -88,7 +87,6 @@ Tree.Item = function ({
   areActionsFading = true,
   renderTreeItems,
   children,
-  isClickable = false,
   isSelected = false,
   onItemClick,
 }: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
@@ -120,12 +118,12 @@ Tree.Item = function ({
           className ? className : "",
           "s-group s-flex s-cursor-default s-flex-row s-items-center s-gap-4",
           size === "sm" ? "s-py-1" : "s-py-2",
-          isClickable ? "s-cursor-pointer" : "",
+          onItemClick ? "s-cursor-pointer" : "",
           isSelected
             ? "s-rounded-md s-border s-border-neutral-200 s-bg-white"
             : ""
         )}
-        onClick={isClickable ? onItemClick : undefined}
+        onClick={onItemClick ? onItemClick : undefined}
       >
         {type === "node" && (
           <IconButton
