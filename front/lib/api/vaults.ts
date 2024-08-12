@@ -178,7 +178,7 @@ export const getUnmanagedDataSourceContent = async (
     }
 
     const documentsAsContentNodes = documentsRes.value.documents.map((doc) => ({
-      internalId: "string",
+      internalId: doc.document_id,
       parentInternalId: null,
       type: "file" as const,
       title: doc.document_id,
@@ -199,7 +199,7 @@ export const getUnmanagedDataSourceContent = async (
     }
 
     const tablesAsContentNodes = tablesRes.value.tables.map((table) => ({
-      internalId: "string",
+      internalId: table.table_id,
       parentInternalId: null,
       type: "database" as const,
       title: table.name,
