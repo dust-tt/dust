@@ -14,6 +14,7 @@ import type {
   VaultType,
 } from "@dust-tt/types";
 import { DATA_SOURCE_OR_VIEW_CATEGORIES } from "@dust-tt/types";
+import { groupBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { Fragment, useState } from "react";
@@ -29,6 +30,8 @@ interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
 }
 
+const VAULTS_SORT_ORDER = ["system", "global", "regular"];
+
 export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
@@ -36,20 +39,30 @@ export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
     return <></>;
   }
 
+  // Group by kind and sort.
+  const groupedVaults = groupBy(vaults, (vault) => vault.kind);
+  const sortedGroupedVaults = VAULTS_SORT_ORDER.map(
+    (kind) => groupedVaults[kind] || []
+  );
+
   return (
     <div className="flex flex-col px-3">
       <Item.List>
-        {vaults.map((vault) => (
-          <Fragment key={`vault-${vault.sId}`}>
-            <Item.SectionHeader
-              label={vault.kind === "global" ? "SHARED" : vault.name}
-              key={vault.sId}
-            />
-            {vault.kind === "system" ? (
-              <SystemVaultMenu />
-            ) : (
-              <VaultMenuItem owner={owner} vault={vault} />
-            )}
+        {sortedGroupedVaults.map((vaults, index) => (
+          <Fragment key={`vault-section-${index}`}>
+            {vaults.map((vault) => (
+              <Fragment key={`vault-${vault.sId}`}>
+                <Item.SectionHeader
+                  label={vault.kind === "global" ? "SHARED" : vault.name}
+                  key={vault.sId}
+                />
+                {vault.kind === "system" ? (
+                  <SystemVaultMenu />
+                ) : (
+                  <VaultMenuItem owner={owner} vault={vault} />
+                )}
+              </Fragment>
+            ))}
           </Fragment>
         ))}
       </Item.List>
