@@ -6,8 +6,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-
 export function UserMenu({
   user,
   owner,
@@ -15,9 +13,9 @@ export function UserMenu({
   user: UserType;
   owner: WorkspaceType;
 }) {
-  const hasBetaAccess =
-    owner.flags.some((flag: string) => flag.startsWith("labs_")) ||
-    isDevelopmentOrDustWorkspace(owner);
+  const hasBetaAccess = owner.flags.some((flag: string) =>
+    flag.startsWith("labs_")
+  );
 
   return (
     <DropdownMenu>
@@ -39,8 +37,7 @@ export function UserMenu({
         {hasBetaAccess && (
           <>
             <DropdownMenu.SectionHeader label="Beta" />
-            {(owner.flags.includes("labs_transcripts") ||
-              isDevelopmentOrDustWorkspace(owner)) && (
+            {owner.flags.includes("labs_transcripts") && (
               <DropdownMenu.Item
                 label="Transcripts processing"
                 href={`/w/${owner.sId}/assistant/labs/transcripts`}
