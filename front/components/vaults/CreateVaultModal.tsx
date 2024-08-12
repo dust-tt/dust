@@ -15,6 +15,7 @@ import { MinusIcon } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import logger from "@app/logger/logger";
 
 type RowData = {
   icon: string;
@@ -112,7 +113,7 @@ export function CreateVaultModal({
         },
         body: JSON.stringify({
           name: vaultName,
-          memberIds: selectedMembers,
+          members: selectedMembers,
         }),
       });
 
@@ -128,10 +129,7 @@ export function CreateVaultModal({
     }
   };
 
-  const rows = useMemo(
-    () => getTableRows(allUsers),
-    [allUsers]
-  );
+  const rows = useMemo(() => getTableRows(allUsers), [allUsers]);
 
   const columns = useMemo(
     () => getTableColumns(selectedMembers, handleMemberToggle),
@@ -155,7 +153,14 @@ export function CreateVaultModal({
             title: "Successfully created vault",
             description: "Vault was successfully created.",
           });
-        } catch (e) {
+        } catch (err) {
+          logger.error(
+            {
+              workspaceId: owner.id,
+              error: err,
+            },
+            "Error creating vault"
+          );
           sendNotification({
             type: "error",
             title: "Failed to create vault",
