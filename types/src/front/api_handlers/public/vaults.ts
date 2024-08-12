@@ -1,6 +1,7 @@
 import * as t from "io-ts";
 
 import { ConnectorProvider, EditedByUser } from "../../data_source";
+import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
   dataSource: t.string,
@@ -41,16 +42,32 @@ export type PatchVaultRequestBodyType = t.TypeOf<
   typeof PostVaultRequestBodySchema
 >;
 
-export const RESOURCE_CATEGORIES = [
+export type LightContentNode = {
+  internalId: string;
+  parentInternalId: string | null;
+  type: ContentNodeType;
+  title: string;
+  expandable: boolean;
+  preventSelection?: boolean;
+  dustDocumentId: string | null;
+  lastUpdatedAt: number | null;
+};
+
+export type GetDataSourceOrViewContentResponseBody = {
+  nodes: LightContentNode[];
+};
+
+export const DATA_SOURCE_OR_VIEW_CATEGORIES = [
   "managed",
   "files",
   "webfolder",
   "apps",
 ] as const;
 
-export type ResourceCategory = (typeof RESOURCE_CATEGORIES)[number];
+export type DataSourceOrViewCategory =
+  (typeof DATA_SOURCE_OR_VIEW_CATEGORIES)[number];
 
-export type ResourceInfo = {
+export type DataSourceOrViewInfo = {
   createdAt: number;
   sId: string;
   name: string;
@@ -58,6 +75,6 @@ export type ResourceInfo = {
   connectorId?: string | null;
   connectorProvider?: ConnectorProvider | null;
   editedByUser?: EditedByUser | null;
-  category: ResourceCategory;
+  category: DataSourceOrViewCategory;
   usage: number;
 };

@@ -139,11 +139,9 @@ async function handler(
       const { members, content } = bodyValidation.right;
 
       if (members) {
-        const users = removeNulls(
-          await Promise.all(
-            members.map((member) => UserResource.fetchById(member))
-          )
-        ).map((user) => user.toJSON());
+        const users = (await UserResource.fetchByIds(members)).map((user) =>
+          user.toJSON()
+        );
         await group.setMembers(auth, users);
       }
 

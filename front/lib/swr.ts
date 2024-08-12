@@ -1315,7 +1315,7 @@ export function useVaultDataSourceOrViews({
   workspaceId: string;
   vaultId: string;
   category: string;
-  type: "data_sources" | "data_source_views";
+  type: DataSourceOrView;
   disabled?: boolean;
 }) {
   const vaultsDataSourcesFetcher: Fetcher<
@@ -1341,6 +1341,8 @@ export function useVaultDataSourceOrViews({
   };
 }
 
+type DataSourceOrView = "data_sources" | "data_source_views";
+
 export function useVaultDataSourceOrViewContent({
   workspaceId,
   vaultId,
@@ -1352,7 +1354,7 @@ export function useVaultDataSourceOrViewContent({
 }: {
   workspaceId: string;
   vaultId: string;
-  type: "data_sources" | "data_source_views";
+  type: DataSourceOrView;
   dataSourceOrViewId: string;
   viewType: ContentNodesViewType;
   parentId: string | undefined;

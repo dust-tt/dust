@@ -41,7 +41,7 @@ export class UserResource extends BaseResource<User> {
     return new this(User, user.get());
   }
 
-  static async listByIds(userIds: string[]): Promise<UserResource[]> {
+  static async fetchByIds(userIds: string[]): Promise<UserResource[]> {
     const users = await User.findAll({
       where: {
         sId: userIds,
@@ -51,7 +51,7 @@ export class UserResource extends BaseResource<User> {
     return users.map((user) => new UserResource(User, user.get()));
   }
 
-  static async listByModelIds(ids: ModelId[]): Promise<UserResource[]> {
+  static async fetchByModelIds(ids: ModelId[]): Promise<UserResource[]> {
     const users = await User.findAll({
       where: {
         id: ids,

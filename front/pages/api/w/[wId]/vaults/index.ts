@@ -102,11 +102,9 @@ async function handler(
       });
 
       if (members) {
-        const users = await removeNulls(
-          await Promise.all(
-            members.map((member) => UserResource.fetchById(member))
-          )
-        ).map((user) => user.toJSON());
+        const users = (await UserResource.fetchByIds(members)).map((user) =>
+          user.toJSON()
+        );
         const groupsResult = await group.addMembers(auth, users);
         if (groupsResult.isErr()) {
           logger.error(

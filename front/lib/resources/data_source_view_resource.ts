@@ -169,25 +169,21 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
-    try {
-      const [, affectedRows] = await this.model.update(
-        {
-          parentsIn,
+    const [, affectedRows] = await this.model.update(
+      {
+        parentsIn,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
         },
-        {
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            id: this.id,
-          },
-          returning: true,
-        }
-      );
-      Object.assign(this, affectedRows[0].get());
+        returning: true,
+      }
+    );
+    Object.assign(this, affectedRows[0].get());
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    return new Ok(undefined);
   }
 
   // Deletion.

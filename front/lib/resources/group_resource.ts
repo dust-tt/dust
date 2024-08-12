@@ -32,8 +32,6 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
 
-  private activeMembers?: UserResource[];
-
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
     super(GroupModel, blob);
   }
@@ -370,21 +368,16 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
-    if (!this.activeMembers) {
-      const memberships = await GroupMembershipModel.findAll({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-      });
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        groupId: this.id,
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+    });
 
-      this.activeMembers = await UserResource.listByModelIds(
-        memberships.map((m) => m.userId)
-      );
-    }
-    return this.activeMembers;
+    return UserResource.fetchByModelIds(memberships.map((m) => m.userId));
   }
 
   async addMembers(
@@ -400,7 +393,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const userResources = await UserResource.listByIds(userIds);
+    const userResources = await UserResource.fetchByIds(userIds);
     if (userResources.length !== userIds.length) {
       return new Err(
         userIds.length === 1
@@ -420,7 +413,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(
         userIds.length === 1
           ? new Error("The user is not member of the workspace.")
-          : new Error("Some users are not member of the workspace.")
+          : new Error("Some users are not members of the workspace.")
       );
     }
 
@@ -450,9 +443,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       { transaction }
     );
 
-    // Add user into active members local list.
-    this.activeMembers = [...activeMembers, ...userResources];
-
     return new Ok(undefined);
   }
 
@@ -476,7 +466,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const userResources = await UserResource.listByIds(userIds);
+    const userResources = await UserResource.fetchByIds(userIds);
     if (userResources.length !== userIds.length) {
       return new Err(
         userIds.length === 1
@@ -528,8 +518,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
-    // Remove user from active members local list.
-    this.activeMembers = activeMembers.filter((m) => !userIds.includes(m.sId));
     return new Ok(undefined);
   }
 

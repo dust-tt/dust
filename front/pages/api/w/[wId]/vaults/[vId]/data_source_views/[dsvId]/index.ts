@@ -61,7 +61,7 @@ async function handler(
     }
     case "PATCH": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
-        // Only admins, or builders who have to the vault, can patch
+        // Only admins, or builders who have access to the vault, can patch
         return apiError(req, res, {
           status_code: 403,
           api_error: {

@@ -1,7 +1,9 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  GetDataSourceOrViewContentResponseBody,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { GetDataSourceOrViewContentResponseBody } from "@app/lib/api/vaults";
 import { getContentHandler } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";

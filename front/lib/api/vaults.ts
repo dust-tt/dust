@@ -1,8 +1,9 @@
 import type {
+  ConnectorPermission,
   ConnectorsAPIError,
   ContentNodesViewType,
-  ContentNodeType,
   CoreAPIError,
+  GetDataSourceOrViewContentResponseBody,
   ResourceCategory,
   ResourceInfo,
   Result,
@@ -19,28 +20,13 @@ import type { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-export type LightContentNode = {
-  internalId: string;
-  parentInternalId: string | null;
-  type: ContentNodeType;
-  title: string;
-  expandable: boolean;
-  preventSelection?: boolean;
-  dustDocumentId: string | null;
-  lastUpdatedAt: number | null;
-};
-
-export type GetDataSourceOrViewContentResponseBody = {
-  nodes: LightContentNode[];
-};
-
 export const getDataSourceInfo = (
   dataSource: DataSourceResource
 ): ResourceInfo => {
   return {
     ...dataSource.toJSON(),
     sId: dataSource.name,
-    usage: 0,
+    usage: 0, // TODO: Implement usage calculation
     category: getDataSourceCategory(dataSource),
   };
 };
@@ -60,7 +46,7 @@ export const getDataSourceViewInfo = (
   return {
     ...(dataSourceView.dataSource as DataSourceResource).toJSON(),
     ...dataSourceView.toJSON(),
-    usage: 0,
+    usage: 0, // TODO: Implement usage calculation
     category: getDataSourceCategory(
       dataSourceView.dataSource as DataSourceResource
     ),
@@ -76,14 +62,26 @@ export const getDataSourceViewsInfo = async (
   return dataSourceViews.map((view) => getDataSourceViewInfo(view));
 };
 
+export const isFolderDataSource = (dataSource: DataSourceResource): boolean =>
+  !dataSource.connectorProvider;
+
+export const isWebfolderDataSource = (
+  dataSource: DataSourceResource
+): boolean => dataSource.connectorProvider === "webcrawler";
+
+export const isConnectedDataSource = (
+  dataSource: DataSourceResource
+): boolean =>
+  !isFolderDataSource(dataSource) && !isWebfolderDataSource(dataSource);
+
 export const getDataSourceCategory = (
   dataSource: DataSourceResource
 ): ResourceCategory => {
-  if (!dataSource.connectorProvider) {
+  if (isFolderDataSource(dataSource)) {
     return "files";
   }
 
-  if (dataSource.connectorProvider === "webcrawler") {
+  if (isWebfolderDataSource(dataSource)) {
     return "webfolder";
   }
 
@@ -129,7 +127,10 @@ export const getContentHandler = async (
         parentId,
         viewType
       )
-    : await getUnmanagedDataSourceContent(dataSource, viewType, limit, offset);
+    : await getUnmanagedDataSourceContent(dataSource, viewType, {
+        limit,
+        offset,
+      });
 
   if (content.isErr()) {
     return apiError(req, res, {
@@ -149,7 +150,7 @@ export const getContentHandler = async (
 
 export const getManagedDataSourceContent = async (
   connectorId: string,
-  permission: "read" | "write" | "read_write" | "none",
+  permission: ConnectorPermission,
   rootIds: string[] | null,
   parentId: string | null,
   viewType: ContentNodesViewType
@@ -202,8 +203,7 @@ export const getManagedDataSourceContent = async (
 export const getUnmanagedDataSourceContent = async (
   dataSource: DataSourceResource,
   viewType: ContentNodesViewType,
-  limit: number,
-  offset: number
+  { limit, offset }: { limit: number; offset: number }
 ): Promise<Result<LightContentNode[], CoreAPIError>> => {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
