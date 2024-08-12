@@ -742,9 +742,9 @@ export default function DataSourcesView({
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  label="Add Connection"
+                  label="Add Connections"
                   variant="primary"
-                  icon={CloudArrowLeftRightIcon}
+                  icon={PlusIcon}
                   size="sm"
                 />
               </DropdownMenu.Button>
