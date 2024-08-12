@@ -38,15 +38,11 @@ async function handler(
     req.query.dsvId as string
   );
 
-  const dataSource = dataSourceView?.dataSource;
-  const vault = dataSourceView?.vault;
-
   if (
     !dataSourceView ||
-    !dataSource ||
-    !vault ||
-    req.query.vId !== vault.sId ||
-    (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
+    req.query.vId !== dataSourceView.vault.sId ||
+    (!auth.isAdmin() &&
+      !auth.hasPermission([dataSourceView.vault.acl()], "read"))
   ) {
     return apiError(req, res, {
       status_code: 404,
@@ -59,7 +55,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       return res.status(200).json({
-        dataSourceView: getDataSourceViewInfo(dataSourceView),
+        dataSourceView: await getDataSourceViewInfo(auth, dataSourceView),
       });
     }
     case "PATCH": {
@@ -100,9 +96,9 @@ async function handler(
           },
         });
       }
-      return res
-        .status(200)
-        .json({ dataSourceView: getDataSourceViewInfo(dataSourceView) });
+      return res.status(200).json({
+        dataSourceView: await getDataSourceViewInfo(auth, dataSourceView),
+      });
     }
     case "DELETE": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
@@ -113,6 +109,16 @@ async function handler(
             type: "workspace_auth_error",
             message:
               "Only users that are `admins` or `builder` can administrate vaults.",
+          },
+        });
+      }
+
+      if ((await dataSourceView.getUsagesByAgents(auth)) > 0) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "data_source_error",
+            message: "The data source view is in use and cannot be deleted.",
           },
         });
       }

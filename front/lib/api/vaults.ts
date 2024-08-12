@@ -17,13 +17,13 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
-export const getDataSourceInfo = (
+export const getDataSourceInfo = async (
+  auth: Authenticator,
   dataSource: DataSourceResource
-): DataSourceOrViewInfo => {
+): Promise<DataSourceOrViewInfo> => {
   return {
     ...dataSource.toJSON(),
-    sId: dataSource.name,
-    usage: 0, // TODO: Implement usage calculation
+    usage: await dataSource.getUsagesByAgents(auth),
     category: getDataSourceCategory(dataSource),
   };
 };
@@ -34,16 +34,18 @@ export const getDataSourceInfos = async (
 ): Promise<DataSourceOrViewInfo[]> => {
   const dataSources = await DataSourceResource.listByVault(auth, vault);
 
-  return dataSources.map((dataSource) => getDataSourceInfo(dataSource));
+  return Promise.all(
+    dataSources.map((dataSource) => getDataSourceInfo(auth, dataSource))
+  );
 };
 
-export const getDataSourceViewInfo = (
+export const getDataSourceViewInfo = async (
+  auth: Authenticator,
   dataSourceView: DataSourceViewResource
-): DataSourceOrViewInfo => {
+): Promise<DataSourceOrViewInfo> => {
   return {
-    ...(dataSourceView.dataSource as DataSourceResource).toJSON(),
     ...dataSourceView.toJSON(),
-    usage: 0, // TODO: Implement usage calculation
+    usage: await dataSourceView.getUsagesByAgents(auth),
     category: getDataSourceCategory(
       dataSourceView.dataSource as DataSourceResource
     ),
@@ -56,29 +58,19 @@ export const getDataSourceViewsInfo = async (
 ): Promise<DataSourceOrViewInfo[]> => {
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
 
-  return dataSourceViews.map((view) => getDataSourceViewInfo(view));
+  return Promise.all(
+    dataSourceViews.map((view) => getDataSourceViewInfo(auth, view))
+  );
 };
-
-export const isFolderDataSource = (dataSource: DataSourceResource): boolean =>
-  !dataSource.connectorProvider;
-
-export const isWebfolderDataSource = (
-  dataSource: DataSourceResource
-): boolean => dataSource.connectorProvider === "webcrawler";
-
-export const isConnectedDataSource = (
-  dataSource: DataSourceResource
-): boolean =>
-  !isFolderDataSource(dataSource) && !isWebfolderDataSource(dataSource);
 
 export const getDataSourceCategory = (
   dataSource: DataSourceResource
 ): DataSourceOrViewCategory => {
-  if (isFolderDataSource(dataSource)) {
+  if (dataSource.isFolder()) {
     return "files";
   }
 
-  if (isWebfolderDataSource(dataSource)) {
+  if (dataSource.isWebcrawler()) {
     return "webfolder";
   }
 

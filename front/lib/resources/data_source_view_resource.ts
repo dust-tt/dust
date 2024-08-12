@@ -10,6 +10,7 @@ import type {
   Transaction,
 } from "sequelize";
 
+import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
@@ -156,14 +157,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return dataSource ?? null;
   }
 
-  // Peer fetching.
-
-  async fetchDataSource(
-    auth: Authenticator
-  ): Promise<DataSourceResource | null> {
-    return DataSourceResource.fetchByModelIdWithAuth(auth, this.dataSourceId);
-  }
-
   // Updating.
   async updateParents(
     auth: Authenticator,
@@ -235,8 +228,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // Getters.
 
-  get dataSource(): DataSourceResource | undefined {
-    return this.ds;
+  get dataSource(): DataSourceResource {
+    return this.ds as DataSourceResource;
   }
 
   // sId logic.
@@ -265,14 +258,24 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return isResourceSId("data_source_view", sId);
   }
 
+  getUsagesByAgents = async (auth: Authenticator) => {
+    return getDataSourceViewUsage({ auth, dataSourceView: this.toJSON() });
+  };
+
   // Serialization.
 
   toJSON(): DataSourceViewType {
     return {
+      id: this.id,
+      sId: this.sId,
       createdAt: this.createdAt.getTime(),
       parentsIn: this.parentsIn,
-      sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
+      connectorId: this.dataSource.connectorId,
+      connectorProvider: this.dataSource.connectorProvider,
+      name: this.dataSource.name,
+      description: this.dataSource.description,
+      dustAPIProjectId: this.dataSource.dustAPIProjectId,
     };
   }
 }

@@ -153,9 +153,7 @@ async function handler(
 
         const viewByDataSourceName = currentViews.reduce(
           (acc, view) => {
-            if (view.dataSource) {
-              acc[view.dataSource.name] = view;
-            }
+            acc[view.dataSource.name] = view;
             return acc;
           },
           {} as { [key: string]: DataSourceViewResource }

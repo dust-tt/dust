@@ -1,6 +1,7 @@
 import type {
   ConnectorProvider,
   DataSourceType,
+  DataSourceViewType,
   ModelId,
 } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
@@ -10,6 +11,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export type DataSourcesUsageByAgent = Record<ModelId, number>;
 
@@ -103,6 +105,56 @@ export async function getDataSourceUsage({
       {
         model: DataSource,
         as: "dataSource",
+        where: {
+          workspaceId: owner.id,
+        },
+        attributes: [],
+      },
+      {
+        model: AgentRetrievalConfiguration,
+        as: "agent_retrieval_configuration",
+        attributes: [],
+        required: true,
+        include: [
+          {
+            model: AgentConfiguration,
+            as: "agent_configuration",
+            attributes: [],
+            required: true,
+            where: {
+              status: "active",
+            },
+          },
+        ],
+      },
+    ],
+  });
+}
+
+export async function getDataSourceViewUsage({
+  auth,
+  dataSourceView,
+}: {
+  auth: Authenticator;
+  dataSourceView: DataSourceViewType;
+}): Promise<number> {
+  const owner = auth.workspace();
+
+  // This condition is critical it checks that we can identify the workspace and that the current
+  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
+  // be possible to access data sources without being authenticated.
+  if (!owner || !auth.isUser()) {
+    return 0;
+  }
+
+  return AgentDataSourceConfiguration.count({
+    where: {
+      dataSourceViewId: dataSourceView.id,
+    },
+    include: [
+      {
+        model: DataSourceViewModel,
+        as: "dataSourceView",
         where: {
           workspaceId: owner.id,
         },

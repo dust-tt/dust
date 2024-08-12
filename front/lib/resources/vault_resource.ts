@@ -109,7 +109,11 @@ export class VaultResource extends BaseResource<VaultModel> {
       },
     });
 
-    return vaults.map((vault) => new this(VaultModel, vault.get()));
+    return vaults
+      .map((vault) => new this(VaultModel, vault.get()))
+      .filter(
+        (vault) => auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
+      );
   }
 
   static async fetchWorkspaceSystemVault(
@@ -159,18 +163,22 @@ export class VaultResource extends BaseResource<VaultModel> {
       return null;
     }
 
-    const vault = await this.model.findOne({
+    const vaultModel = await this.model.findOne({
       where: {
         id: vaultModelId,
         workspaceId: owner.id,
       },
     });
 
-    if (!vault) {
+    if (!vaultModel) {
+      return null;
+    }
+    const vault = new this(VaultModel, vaultModel.get());
+    if (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read")) {
       return null;
     }
 
-    return new this(VaultModel, vault.get());
+    return vault;
   }
 
   static async isNameAvailable(
