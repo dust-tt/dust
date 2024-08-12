@@ -30,7 +30,10 @@ import {
   updateDocumentParentsField,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { isNotFoundError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  isNotFoundError,
+} from "@connectors/lib/error";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -679,6 +682,12 @@ export async function confluenceGetReportPersonalActionActivity(
         { connectorId, userAccountId, err },
         "Error while reporting Confluence account."
       );
+
+      // If token has been revoked, return false.
+      if (err instanceof ExternalOAuthTokenError) {
+        return false;
+      }
+
       throw err;
     }
   }
