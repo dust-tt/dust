@@ -1,5 +1,5 @@
 import { Button, DropdownMenu, Modal, TextArea } from "@dust-tt/sparkle";
-import type { DataSourceIntegration,WorkspaceType } from "@dust-tt/types";
+import type { DataSourceIntegration, WorkspaceType } from "@dust-tt/types";
 import React, { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
