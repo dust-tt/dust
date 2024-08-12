@@ -1,6 +1,10 @@
 import { Button, FolderIcon, Item, LockIcon, Tree } from "@dust-tt/sparkle";
-import type { ResourceInfo, VaultType, WorkspaceType } from "@dust-tt/types";
-import { RESOURCE_CATEGORIES } from "@dust-tt/types";
+import type {
+  DataSourceOrViewInfo,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { DATA_SOURCE_OR_VIEW_CATEGORIES } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { SVGProps } from "react";
 import * as React from "react";
@@ -42,7 +46,7 @@ const VaultDataSourceOrViewsItem = ({
 }: {
   owner: WorkspaceType;
   vault: VaultType;
-  resource: ResourceInfo;
+  resource: DataSourceOrViewInfo;
 }): ReactElement => {
   const router = useRouter();
   const Logo = resource.connectorProvider
@@ -51,7 +55,7 @@ const VaultDataSourceOrViewsItem = ({
   return (
     <Tree.Item
       type="leaf"
-      onClick={() => {
+      onItemClick={() => {
         void router.push(
           `/w/${owner.sId}/vaults/${vault.sId}/${CATEGORY_DETAILS[resource.category].dataSourceOrView}/${resource.sId}`
         );
@@ -91,7 +95,7 @@ const VaultCategoryItem = ({
     <Tree.Item
       label={categoryDetails.label}
       collapsed={!isExpanded}
-      onClick={() => {
+      onItemClick={() => {
         void router.push(
           `/w/${owner.sId}/vaults/${vault.sId}/resources/${category}`
         );
@@ -138,7 +142,7 @@ const VaultItem = ({
     <Tree.Item
       label={vault.name}
       collapsed={!isExpanded}
-      onClick={() => {
+      onItemClick={() => {
         void router.push(`/w/${owner.sId}/vaults/${vault.sId}`);
       }}
       onChevronClick={() => setIsExpanded(!isExpanded)}
@@ -155,7 +159,7 @@ const VaultItem = ({
       {isExpanded && (
         <Tree>
           {vaultInfo?.categories &&
-            RESOURCE_CATEGORIES.map(
+            DATA_SOURCE_OR_VIEW_CATEGORIES.map(
               (c) =>
                 vaultInfo.categories[c] && (
                   <VaultCategoryItem
