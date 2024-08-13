@@ -70,7 +70,7 @@ async function handler(
         });
       }
 
-      const { name, members } = bodyValidation.right;
+      const { name, membersId } = bodyValidation.right;
 
       const nameAvailable = await VaultResource.isNameAvailable(auth, name);
       if (!nameAvailable) {
@@ -96,8 +96,8 @@ async function handler(
         groupId: group.id,
       });
 
-      if (members) {
-        const users = (await UserResource.fetchByIds(members)).map((user) =>
+      if (membersId) {
+        const users = (await UserResource.fetchByIds(membersId)).map((user) =>
           user.toJSON()
         );
         const groupsResult = await group.addMembers(auth, users);

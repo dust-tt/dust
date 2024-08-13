@@ -5,6 +5,7 @@ export const WHITELISTABLE_FEATURES = [
   "document_tracker",
   "microsoft_connector",
   "dust_splitted_ds_flag",
+  "data_vaults_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
