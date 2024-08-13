@@ -227,7 +227,7 @@ const VaultDataSourceOrViewItem = ({
   return (
     <Tree.Item
       type="leaf"
-      isSelected={router.asPath === dataSourceOrViewPath}
+      isSelected={router.asPath.includes(dataSourceOrViewPath)}
       onItemClick={() => router.push(dataSourceOrViewPath)}
       label={label}
       visual={SubItemIconItemWrapper(LogoComponent)}

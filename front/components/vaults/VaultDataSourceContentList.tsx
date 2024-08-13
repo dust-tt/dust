@@ -37,7 +37,7 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.Cell
-          iconClassName="text-emerald-500"
+          iconClassName="text-brand"
           icon={info.row.original.type === "folder" ? FolderIcon : GlobeAltIcon}
         >
           <span className="font-bold">{info.row.original.title}</span>

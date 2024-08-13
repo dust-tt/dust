@@ -47,22 +47,22 @@ export const CATEGORY_DETAILS: {
 } = {
   managed: {
     label: "Connected Data",
-    icon: <CloudArrowLeftRightIcon className="text-emerald-500" />,
+    icon: <CloudArrowLeftRightIcon className="text-brand" />,
     dataSourceOrView: "data_source_views",
   },
   files: {
     label: "Folders",
-    icon: <FolderIcon className="text-emerald-500" />,
+    icon: <FolderIcon className="text-brand" />,
     dataSourceOrView: "data_sources",
   },
   webfolder: {
     label: "Websites",
-    icon: <GlobeAltIcon className="text-emerald-500" />,
+    icon: <GlobeAltIcon className="text-brand" />,
     dataSourceOrView: "data_sources",
   },
   apps: {
     label: "Apps",
-    icon: <CommandLineIcon className="text-emerald-500" />,
+    icon: <CommandLineIcon className="text-brand" />,
     dataSourceOrView: "data_sources",
   },
 };
@@ -74,7 +74,7 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.Cell
-          iconClassName="text-emerald-500"
+          iconClassName="text-brand"
           icon={info.row.original.icon}
         >
           <span className="font-bold">{info.row.original.label}</span> (
