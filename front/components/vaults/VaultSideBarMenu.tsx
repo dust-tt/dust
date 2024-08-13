@@ -30,11 +30,15 @@ import {
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
+  setShowVaultCreationModal: (show: boolean) => void;
 }
 
 const VAULTS_SORT_ORDER = ["system", "global", "regular"];
 
-export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
+export default function VaultSideBarMenu({
+  owner,
+  setShowVaultCreationModal,
+}: VaultSideBarMenuProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
   if (!vaults || isVaultsLoading) {
@@ -69,6 +73,7 @@ export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
                     variant="tertiary"
                     label="Create Vault "
                     icon={LockIcon}
+                    onClick={() => setShowVaultCreationModal(true)}
                   />
                 )}
               </div>

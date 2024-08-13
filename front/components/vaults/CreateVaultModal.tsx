@@ -7,14 +7,16 @@ import {
   Page,
   PlusIcon,
   Searchbar,
+  Spinner,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useMembers } from "@app/lib/swr";
 import logger from "@app/logger/logger";
 
 type RowData = {
@@ -28,11 +30,10 @@ type RowData = {
 type Info = CellContext<RowData, unknown>;
 
 interface CreateVaultModalProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
-  allUsers: UserType[];
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
@@ -45,72 +46,69 @@ function getTableRows(allUsers: UserType[]): RowData[] {
   });
 }
 
-function getTableColumns(
-  selectedMembers: string[],
-  handleMemberToggle: (member: string) => void
-): ColumnDef<RowData, unknown>[] {
-  return [
-    {
-      id: "name",
-      cell: (info: Info) => (
-        <DataTable.Cell avatarUrl={info.row.original.icon}>
-          {info.row.original.name}
-        </DataTable.Cell>
-      ),
-    },
-    {
-      id: "action",
-      cell: (info: Info) => {
-        const isSelected = selectedMembers.includes(info.row.original.userId);
-        if (isSelected) {
-          return (
-            <Button
-              label="Remove"
-              onClick={() => handleMemberToggle(info.row.original.userId)}
-              variant="tertiary"
-              size="sm"
-              icon={MinusIcon}
-            />
-          );
-        }
-        return (
-          <Button
-            label="Add"
-            onClick={() => handleMemberToggle(info.row.original.userId)}
-            variant="secondary"
-            size="sm"
-            icon={PlusIcon}
-          />
-        );
-      },
-    },
-  ];
-}
-
 export function CreateVaultModal({
   owner,
   isOpen,
   onClose,
   onSave,
-  allUsers,
 }: CreateVaultModalProps) {
   const [vaultName, setVaultName] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
 
-  const handleMemberToggle = useCallback((member: string) => {
-    setSelectedMembers((prevSelectedMembers) => {
-      const isCurrentlySelected = prevSelectedMembers.includes(member);
-      if (isCurrentlySelected) {
-        return prevSelectedMembers.filter((m) => m !== member);
-      } else {
-        return [...prevSelectedMembers, member];
-      }
-    });
-  }, []);
+  const getTableColumns = useCallback(() => {
+    return [
+      {
+        id: "name",
+        cell: (info: Info) => (
+          <DataTable.Cell avatarUrl={info.row.original.icon}>
+            {info.row.original.name}
+          </DataTable.Cell>
+        ),
+      },
+      {
+        id: "action",
+        cell: (info: Info) => {
+          const isSelected = selectedMembers.includes(info.row.original.userId);
+          if (isSelected) {
+            return (
+              <Button
+                label="Remove"
+                onClick={() =>
+                  setSelectedMembers(
+                    selectedMembers.filter(
+                      (m) => m !== info.row.original.userId
+                    )
+                  )
+                }
+                variant="tertiary"
+                size="sm"
+                icon={MinusIcon}
+              />
+            );
+          }
+          return (
+            <Button
+              label="Add"
+              onClick={() =>
+                setSelectedMembers([
+                  ...selectedMembers,
+                  info.row.original.userId,
+                ])
+              }
+              variant="secondary"
+              size="sm"
+              icon={PlusIcon}
+            />
+          );
+        },
+      },
+    ];
+  }, [selectedMembers]);
 
   const createVault = async () => {
     setIsSaving(true);
@@ -136,12 +134,9 @@ export function CreateVaultModal({
     }
   };
 
-  const rows = useMemo(() => getTableRows(allUsers), [allUsers]);
+  const rows = useMemo(() => getTableRows(members), [members]);
 
-  const columns = useMemo(
-    () => getTableColumns(selectedMembers, handleMemberToggle),
-    [selectedMembers, handleMemberToggle]
-  );
+  const columns = useMemo(() => getTableColumns(), [getTableColumns]);
 
   return (
     <Modal
@@ -209,12 +204,18 @@ export function CreateVaultModal({
             value={searchTerm}
             onChange={setSearchTerm}
           />
-          <DataTable
-            data={rows}
-            columns={columns}
-            filterColumn="name"
-            filter={searchTerm}
-          />
+          {isMembersLoading ? (
+            <div className="mt-8 flex justify-center">
+              <Spinner size="lg" variant="color" />
+            </div>
+          ) : (
+            <DataTable
+              data={rows}
+              columns={columns}
+              filterColumn="name"
+              filter={searchTerm}
+            />
+          )}
         </div>
       </Page.Vertical>
     </Modal>

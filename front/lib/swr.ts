@@ -10,6 +10,7 @@ import type {
   DataSourceOrView,
   DataSourceType,
   GetDataSourceOrViewContentResponseBody,
+  LightWorkspaceType,
   RunRunType,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
@@ -321,7 +322,7 @@ export function useDataSources(
   };
 }
 
-export function useMembers(owner: WorkspaceType) {
+export function useMembers(owner: LightWorkspaceType) {
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/members`,
