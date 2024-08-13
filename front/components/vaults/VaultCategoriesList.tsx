@@ -43,6 +43,7 @@ export const CATEGORY_DETAILS: {
       className?: string;
     }>;
     dataSourceOrView: "data_sources" | "data_source_views";
+    category: "managed" | "file" | "webfolder";
   };
 } = {
   managed: {
