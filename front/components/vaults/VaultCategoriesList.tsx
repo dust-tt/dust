@@ -74,10 +74,7 @@ const getTableColumns = () => {
       header: "Name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <DataTable.Cell
-          // iconClassName="text-brand"
-          icon={info.row.original.icon}
-        >
+        <DataTable.Cell icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.name}</span> (
           {info.row.original.count} items)
         </DataTable.Cell>

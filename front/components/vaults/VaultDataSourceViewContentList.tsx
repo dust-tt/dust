@@ -35,7 +35,8 @@ const getTableColumns = () => {
   return [
     {
       header: "Name",
-      accessorKey: "name",
+      accessorKey: "title",
+      id: "title",
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.Cell
           // iconClassName="text-brand"
@@ -111,7 +112,7 @@ export const VaultDataSourceViewContentList = ({
           data={rows}
           columns={getTableColumns()}
           filter={dataSourceSearch}
-          filterColumn={"name"}
+          filterColumn={"title"}
         />
       ) : (
         <>No content</>
