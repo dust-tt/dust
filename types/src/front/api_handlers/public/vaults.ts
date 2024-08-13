@@ -34,7 +34,7 @@ export type PostVaultRequestBodyType = t.TypeOf<
 >;
 
 export const PatchVaultRequestBodySchema = t.type({
-  members: t.union([t.array(t.string), t.undefined]),
+  membersId: t.union([t.array(t.string), t.undefined]),
   content: t.union([t.array(ContentSchema), t.undefined]),
 });
 
