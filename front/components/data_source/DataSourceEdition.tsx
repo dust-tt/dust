@@ -402,20 +402,18 @@ export function DataSourceEditionModal({
             </div>
           </div>
         )}
-        {isSetup &&
-          isDataSourceOwner &&
-          ["github", "notion"].includes(connectorProvider) && (
-            <div className="flex items-center justify-center">
-              <Button
-                label={"Edit Permissions"}
-                icon={LockIcon}
-                variant="primaryWarning"
-                onClick={() => {
-                  setShowConfirmDialog(true);
-                }}
-              />
-            </div>
-          )}
+        {isSetup && isDataSourceOwner && (
+          <div className="flex items-center justify-center">
+            <Button
+              label={"Edit Permissions"}
+              icon={LockIcon}
+              variant="primaryWarning"
+              onClick={() => {
+                setShowConfirmDialog(true);
+              }}
+            />
+          </div>
+        )}
         <Dialog
           title="Are you sure?"
           isOpen={showConfirmDialog}
