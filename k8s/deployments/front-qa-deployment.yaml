@@ -36,7 +36,7 @@ spec:
             - secretRef:
                 name: front-secrets
             - secretRef:
-                name: front-qa-secrets
+                name: front-edge-secrets
 
           env:
             # we override --max-old-space-size for edge as pods
