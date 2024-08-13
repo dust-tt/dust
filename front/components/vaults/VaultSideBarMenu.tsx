@@ -83,6 +83,7 @@ export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
         owner={owner}
         isOpen={showVaultCreationModal}
         onClose={() => setShowVaultCreationModal(false)}
+        onSave={() => setShowVaultCreationModal(false)}
       />
     </div>
   );
