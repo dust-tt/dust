@@ -1215,11 +1215,12 @@ function ManagedDataSourceView({
                     disabled={readOnly}
                     onClick={() => {
                       if (
-                        (!displayManagePermissionButton &&
-                          displayDataSourceDetailsModal) ||
-                        displayManagePermissionButton
+                        !displayManagePermissionButton &&
+                        displayDataSourceDetailsModal
                       ) {
                         setShowEditionModal(true);
+                      } else if (displayDataSourceDetailsModal) {
+                        setShowPermissionModal(true);
                       } else {
                         void handleUpdatePermissions();
                       }
