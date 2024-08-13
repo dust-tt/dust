@@ -19,7 +19,7 @@ async function getProviderStatus() {
 
   const [incident] = providerIncidents;
   const { name, incident_updates: incidentUpdates } = incident;
-  const [latestUpdate] = incidentUpdates.reverse();
+  const [latestUpdate] = incidentUpdates;
 
   return {
     name,
