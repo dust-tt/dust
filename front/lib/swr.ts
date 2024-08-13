@@ -7,6 +7,7 @@ import type {
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
+  DataSourceOrView,
   DataSourceType,
   GetDataSourceOrViewContentResponseBody,
   RunRunType,
@@ -1340,8 +1341,6 @@ export function useVaultDataSourceOrViews({
     isVaultDataSourceOrViewsError: error,
   };
 }
-
-type DataSourceOrView = "data_sources" | "data_source_views";
 
 export function useVaultDataSourceOrViewContent({
   workspaceId,

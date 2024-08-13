@@ -4,3 +4,5 @@ export interface DataSourceViewType {
   sId: string;
   updatedAt: number;
 }
+
+export type DataSourceOrView = "data_sources" | "data_source_views";
