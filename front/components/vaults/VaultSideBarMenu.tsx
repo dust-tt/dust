@@ -73,7 +73,7 @@ const renderVaultItems = (vaults: VaultType[], owner: LightWorkspaceType) =>
   vaults.map((vault) => (
     <Fragment key={`vault-${vault.sId}`}>
       {vault.kind === "system" ? (
-        <SystemVaultMenu />
+        <SystemVaultMenu owner={owner} vault={vault} />
       ) : (
         <VaultMenuItem owner={owner} vault={vault} />
       )}
@@ -110,9 +110,102 @@ const SubItemIconItemWrapper = (
 
 // System vault.
 
-const SystemVaultMenu = () => {
-  // TODO(Groups UI) Implement system vault menu.
-  return <></>;
+const SYSTEM_VAULTS_ITEMS = [
+  {
+    label: "Connection Management",
+    visual: RootItemIconWrapper(CloudArrowLeftRightIcon),
+    category: "managed",
+  },
+  {
+    label: "Files",
+    visual: RootItemIconWrapper(FolderIcon),
+    category: "files",
+  },
+  // TODO(GROUPS_UI) Add support for Dust apps.
+];
+
+const SystemVaultMenu = ({
+  owner,
+  vault,
+}: {
+  owner: LightWorkspaceType;
+  vault: VaultType;
+}) => {
+  return (
+    <>
+      {SYSTEM_VAULTS_ITEMS.map((item) => (
+        <SystemVaultItem
+          category={item.category}
+          key={item.label}
+          label={item.label}
+          owner={owner}
+          vault={vault}
+          visual={item.visual}
+        />
+      ))}
+    </>
+  );
+};
+
+const SystemVaultItem = ({
+  category,
+  label,
+  owner,
+  vault,
+  visual,
+}: {
+  category: string;
+  label: string;
+  owner: LightWorkspaceType;
+  vault: VaultType;
+  visual: ReactElement;
+}) => {
+  const router = useRouter();
+
+  const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_sources`;
+  const isAncestorToCurrentPage = router.asPath.includes(itemPath);
+
+  // Unfold the item if it's an ancestor of the current page.
+  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
+
+  const { isVaultDataSourceOrViewsLoading, vaultDataSourceOrViews } =
+    useVaultDataSourceOrViews({
+      workspaceId: owner.sId,
+      vaultId: vault.sId,
+      category,
+      // System vault only has data sources.
+      type: "data_sources",
+      disabled: !isExpanded,
+    });
+
+  return (
+    <Tree.Item
+      label={label}
+      collapsed={!isExpanded}
+      onItemClick={() => router.push(itemPath)}
+      isSelected={router.asPath === itemPath}
+      onChevronClick={() => setIsExpanded(!isExpanded)}
+      visual={visual}
+      size="md"
+      areActionsFading={false}
+    >
+      {isExpanded && (
+        <Tree isLoading={isVaultDataSourceOrViewsLoading}>
+          {vaultDataSourceOrViews &&
+            vaultDataSourceOrViews.map((ds) => (
+              <VaultDataSourceOrViewItem
+                item={ds}
+                key={ds.sId}
+                owner={owner}
+                vault={vault}
+                // System vault only has data sources.
+                viewType="data_sources"
+              />
+            ))}
+        </Tree>
+      )}
+    </Tree.Item>
+  );
 };
 
 // Global + regular vaults.
@@ -205,13 +298,15 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
 };
 
 const VaultDataSourceOrViewItem = ({
+  item,
   owner,
   vault,
-  item,
+  viewType,
 }: {
+  item: DataSourceOrViewInfo;
   owner: LightWorkspaceType;
   vault: VaultType;
-  item: DataSourceOrViewInfo;
+  viewType: "data_sources" | "data_source_views";
 }): ReactElement => {
   const router = useRouter();
   const configuration = item.connectorProvider
@@ -220,8 +315,6 @@ const VaultDataSourceOrViewItem = ({
 
   const LogoComponent = configuration?.logoComponent ?? FolderIcon;
   const label = configuration?.name ?? item.name;
-  const viewType =
-    DATA_SOURCE_OR_VIEW_SUB_ITEMS[item.category].dataSourceOrView;
   const dataSourceOrViewPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${item.category}/${viewType}/${item.sId}`;
 
   return (
@@ -278,10 +371,11 @@ const VaultCategoryItem = ({
           {vaultDataSourceOrViews &&
             vaultDataSourceOrViews.map((ds) => (
               <VaultDataSourceOrViewItem
+                item={ds}
                 key={ds.sId}
                 owner={owner}
                 vault={vault}
-                item={ds}
+                viewType={categoryDetails.dataSourceOrView}
               />
             ))}
         </Tree>

@@ -67,6 +67,14 @@ export const DATA_SOURCE_OR_VIEW_CATEGORIES = [
 export type DataSourceOrViewCategory =
   (typeof DATA_SOURCE_OR_VIEW_CATEGORIES)[number];
 
+export function isDataSourceOrViewCategory(
+  category: string
+): category is DataSourceOrViewCategory {
+  return DATA_SOURCE_OR_VIEW_CATEGORIES.includes(
+    category as DataSourceOrViewCategory
+  );
+}
+
 export type DataSourceOrViewInfo = {
   createdAt: number;
   sId: string;
