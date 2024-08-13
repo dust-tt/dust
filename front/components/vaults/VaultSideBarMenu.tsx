@@ -9,6 +9,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  DataSourceOrView,
   DataSourceOrViewInfo,
   LightWorkspaceType,
   VaultType,
@@ -272,7 +273,7 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
     icon: ReactElement<{
       className?: string;
     }>;
-    dataSourceOrView: "data_sources" | "data_source_views";
+    dataSourceOrView: DataSourceOrView;
   };
 } = {
   managed: {
