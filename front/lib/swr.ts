@@ -22,6 +22,7 @@ import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
+import type { GetAppStatusResponseBody } from "@app/pages/api/app-status";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
@@ -113,6 +114,21 @@ export const postFetcher = async ([url, body]: [string, object]) => {
 
   return resHandler(res);
 };
+
+export function useAppStatus() {
+  const appStatusFetcher: Fetcher<GetAppStatusResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    "/api/app-status",
+    appStatusFetcher
+  );
+
+  return {
+    appStatus: useMemo(() => (data ? data : null), [data]),
+    isAppStatusLoading: !error && !data,
+    isAppStatusError: !!error,
+  };
+}
 
 export function useDatasets({
   owner,
