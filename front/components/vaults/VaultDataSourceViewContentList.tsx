@@ -3,6 +3,7 @@ import {
   FolderIcon,
   GlobeAltIcon,
   Searchbar,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -77,7 +78,11 @@ export const VaultDataSourceViewContentList = ({
     })) || [];
 
   if (isVaultContentLoading) {
-    return "loader";
+    return (
+      <div className="mt-8 flex justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   return (

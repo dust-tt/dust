@@ -3,6 +3,7 @@ import {
   FolderIcon,
   GlobeAltIcon,
   Searchbar,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
@@ -82,7 +83,11 @@ export const VaultDataSourceContentList = ({
     })) || [];
 
   if (isVaultContentLoading) {
-    return "loader";
+    return (
+      <div className="mt-8 flex justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   return (

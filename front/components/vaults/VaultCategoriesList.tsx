@@ -7,6 +7,7 @@ import {
   GlobeAltIcon,
   RobotIcon,
   Searchbar,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import { DATA_SOURCE_OR_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
@@ -43,7 +44,6 @@ export const CATEGORY_DETAILS: {
       className?: string;
     }>;
     dataSourceOrView: "data_sources" | "data_source_views";
-    category: "managed" | "file" | "webfolder";
   };
 } = {
   managed: {
@@ -130,7 +130,11 @@ export const VaultCategoriesList = ({
     : [];
 
   if (isVaultInfoLoading) {
-    return "loader";
+    return (
+      <div className="mt-8 flex justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   return (

@@ -24,7 +24,10 @@ import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  getDataSourceOrViewName,
+} from "@app/lib/connector_providers";
 import { useDataSources, useVaultDataSourceOrViews } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -148,9 +151,7 @@ export const VaultResourcesList = ({
     vaultDataSourceOrViews?.map((r) => ({
       sId: r.sId,
       category: r.category,
-      label: r.connectorProvider
-        ? CONNECTOR_CONFIGURATIONS[r.connectorProvider].name
-        : r.name,
+      label: getDataSourceOrViewName(r),
       icon: r.connectorProvider
         ? CONNECTOR_CONFIGURATIONS[r.connectorProvider].logoComponent
         : FolderIcon,
