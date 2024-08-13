@@ -11,7 +11,7 @@ import type {
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useUser } from "@app/lib/swr";
+import { useAppStatuses, useUser } from "@app/lib/swr";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -102,6 +102,7 @@ export const NavigationSidebar = React.forwardRef<
           {user && <UserMenu user={user} owner={owner} />}
         </div>
 
+        <AppStatusesBanner />
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
@@ -170,6 +171,32 @@ export const NavigationSidebar = React.forwardRef<
     </div>
   );
 });
+
+function AppStatusesBanner() {
+  const { appStatuses } = useAppStatuses();
+  const { providerStatus } = appStatuses ?? {};
+
+  if (!appStatuses || !providerStatus) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2 border-y border-orange-200 bg-orange-100 px-3 py-3 text-xs text-orange-900">
+      <div className="font-bold">{providerStatus.name}</div>
+      <div className="font-normal">
+        {providerStatus.description} More Info{" "}
+        <Link
+          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+          target="_blank"
+          className="underline"
+        >
+          here
+        </Link>
+        .
+      </div>
+    </div>
+  );
+}
 
 function SubscriptionEndBanner({ endDate }: { endDate: number }) {
   const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {

@@ -121,6 +121,13 @@ const config = {
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
+  // Status page.
+  getProviderStatusPageId: (): string => {
+    return EnvironmentConfig.getEnvVariable("PROVIDER_STATUS_PAGE_ID");
+  },
+  getStatusPageApiToken: (): string => {
+    return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
+  },
 };
 
 export default config;
