@@ -102,7 +102,7 @@ export const NavigationSidebar = React.forwardRef<
           {user && <UserMenu user={user} owner={owner} />}
         </div>
 
-        <AppStatusesBanner />
+        <AppStatusBanner />
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
         )}
@@ -172,7 +172,7 @@ export const NavigationSidebar = React.forwardRef<
   );
 });
 
-function AppStatusesBanner() {
+function AppStatusBanner() {
   const { appStatus } = useAppStatus();
   const { providerStatus } = appStatus ?? {};
 
