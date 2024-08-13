@@ -22,26 +22,26 @@ spec:
                   number: 80
 
     - host: front-edge.dust.tt
-        http:
-          paths:
-            - pathType: Prefix
-              path: "/"
-              backend:
-                service:
-                  name: front-edge-service
-                  port:
-                    number: 80
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: front-edge-service
+                port:
+                  number: 80
 
     - host: front-qa.dust.tt
-        http:
-          paths:
-            - pathType: Prefix
-              path: "/"
-              backend:
-                service:
-                  name: front-qa-service
-                  port:
-                    number: 80
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: front-qa-service
+                port:
+                  number: 80
 
     - host: connectors.dust.tt
       http:
