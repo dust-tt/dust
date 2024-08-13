@@ -1,4 +1,4 @@
-import Mention, { MentionPluginKey } from "@tiptap/extension-mention";
+import { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
@@ -6,6 +6,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
 import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/MentionStorage";
+import { MentionWithPaste } from "@app/components/assistant/conversation/input_bar/editor/MentionWithPaste";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
@@ -164,7 +165,7 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     enableInputRules: false, // Disable Markdown when typing.
-    enablePasteRules: false, // Disable Markdown when pasting.
+    enablePasteRules: [MentionWithPaste.name], // We don't want Markdown when pasting but we allow CustomMention extension as it will handle parsing @assistant-name from plain text back into a mention.
     extensions: [
       StarterKit.configure({
         heading: false,
@@ -173,7 +174,7 @@ const useCustomEditor = ({
       }),
       ParagraphExtension,
       MentionStorage,
-      Mention.configure({
+      MentionWithPaste.configure({
         HTMLAttributes: {
           class:
             "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
