@@ -63,7 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     auth,
     dataSourceViewId
   );
-  if (!dataSourceView) {
+  if (!dataSourceView || !dataSourceView.dataSource) {
     return {
       notFound: true,
     };
