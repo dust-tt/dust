@@ -173,12 +173,8 @@ export class VaultResource extends BaseResource<VaultModel> {
     if (!vaultModel) {
       return null;
     }
-    const vault = new this(VaultModel, vaultModel.get());
-    if (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read")) {
-      return null;
-    }
 
-    return vault;
+    return new this(VaultModel, vaultModel.get());
   }
 
   static async isNameAvailable(

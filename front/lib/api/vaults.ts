@@ -21,9 +21,10 @@ export const getDataSourceInfo = async (
   auth: Authenticator,
   dataSource: DataSourceResource
 ): Promise<DataSourceOrViewInfo> => {
+  const usageRes = await dataSource.getUsagesByAgents(auth);
   return {
     ...dataSource.toJSON(),
-    usage: await dataSource.getUsagesByAgents(auth),
+    usage: usageRes.isOk() ? usageRes.value : 0,
     category: getDataSourceCategory(dataSource),
   };
 };
@@ -43,9 +44,10 @@ export const getDataSourceViewInfo = async (
   auth: Authenticator,
   dataSourceView: DataSourceViewResource
 ): Promise<DataSourceOrViewInfo> => {
+  const usageRes = await dataSourceView.getUsagesByAgents(auth);
   return {
     ...dataSourceView.toJSON(),
-    usage: await dataSourceView.getUsagesByAgents(auth),
+    usage: usageRes.isOk() ? usageRes.value : 0,
     category: getDataSourceCategory(
       dataSourceView.dataSource as DataSourceResource
     ),

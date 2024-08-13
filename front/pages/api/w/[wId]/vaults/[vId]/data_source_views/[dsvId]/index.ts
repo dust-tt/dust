@@ -113,7 +113,8 @@ async function handler(
         });
       }
 
-      if ((await dataSourceView.getUsagesByAgents(auth)) > 0) {
+      const usageRes = await dataSourceView.getUsagesByAgents(auth);
+      if (usageRes.isErr() || usageRes.value > 0) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {

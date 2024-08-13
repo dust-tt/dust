@@ -3,7 +3,9 @@ import type {
   DataSourceType,
   DataSourceViewType,
   ModelId,
+  Result,
 } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -87,48 +89,50 @@ export async function getDataSourceUsage({
 }: {
   auth: Authenticator;
   dataSource: DataSourceType;
-}): Promise<number> {
+}): Promise<Result<number, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
   // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
   // be possible to access data sources without being authenticated.
   if (!owner || !auth.isUser()) {
-    return 0;
+    return new Err(new Error("Unexpected `auth` without `workspace`."));
   }
 
-  return AgentDataSourceConfiguration.count({
-    where: {
-      dataSourceId: dataSource.id,
-    },
-    include: [
-      {
-        model: DataSource,
-        as: "dataSource",
-        where: {
-          workspaceId: owner.id,
-        },
-        attributes: [],
+  return new Ok(
+    await AgentDataSourceConfiguration.count({
+      where: {
+        dataSourceId: dataSource.id,
       },
-      {
-        model: AgentRetrievalConfiguration,
-        as: "agent_retrieval_configuration",
-        attributes: [],
-        required: true,
-        include: [
-          {
-            model: AgentConfiguration,
-            as: "agent_configuration",
-            attributes: [],
-            required: true,
-            where: {
-              status: "active",
-            },
+      include: [
+        {
+          model: DataSource,
+          as: "dataSource",
+          where: {
+            workspaceId: owner.id,
           },
-        ],
-      },
-    ],
-  });
+          attributes: [],
+        },
+        {
+          model: AgentRetrievalConfiguration,
+          as: "agent_retrieval_configuration",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: AgentConfiguration,
+              as: "agent_configuration",
+              attributes: [],
+              required: true,
+              where: {
+                status: "active",
+              },
+            },
+          ],
+        },
+      ],
+    })
+  );
 }
 
 export async function getDataSourceViewUsage({
@@ -137,46 +141,48 @@ export async function getDataSourceViewUsage({
 }: {
   auth: Authenticator;
   dataSourceView: DataSourceViewType;
-}): Promise<number> {
+}): Promise<Result<number, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
   // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
   // be possible to access data sources without being authenticated.
   if (!owner || !auth.isUser()) {
-    return 0;
+    return new Err(new Error("Unexpected `auth` without `workspace`."));
   }
 
-  return AgentDataSourceConfiguration.count({
-    where: {
-      dataSourceViewId: dataSourceView.id,
-    },
-    include: [
-      {
-        model: DataSourceViewModel,
-        as: "dataSourceView",
-        where: {
-          workspaceId: owner.id,
-        },
-        attributes: [],
+  return new Ok(
+    await AgentDataSourceConfiguration.count({
+      where: {
+        dataSourceViewId: dataSourceView.id,
       },
-      {
-        model: AgentRetrievalConfiguration,
-        as: "agent_retrieval_configuration",
-        attributes: [],
-        required: true,
-        include: [
-          {
-            model: AgentConfiguration,
-            as: "agent_configuration",
-            attributes: [],
-            required: true,
-            where: {
-              status: "active",
-            },
+      include: [
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+          where: {
+            workspaceId: owner.id,
           },
-        ],
-      },
-    ],
-  });
+          attributes: [],
+        },
+        {
+          model: AgentRetrievalConfiguration,
+          as: "agent_retrieval_configuration",
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: AgentConfiguration,
+              as: "agent_configuration",
+              attributes: [],
+              required: true,
+              where: {
+                status: "active",
+              },
+            },
+          ],
+        },
+      ],
+    })
+  );
 }
