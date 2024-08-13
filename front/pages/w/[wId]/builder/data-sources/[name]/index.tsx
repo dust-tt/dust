@@ -1167,11 +1167,7 @@ function ManagedDataSourceView({
               icon={LockIcon}
               disabled={readOnly || !isAdmin}
               onClick={() => {
-                if (displayDataSourceDetailsModal) {
                   setShowEditionModal(true);
-                } else {
-                  void handleUpdatePermissions();
-                }
               }}
             />
           ) : (
