@@ -279,7 +279,10 @@ DataTable.Cell = function Cell({
           <Icon
             visual={icon}
             size="sm"
-            className={classNames("s-mr-2 s-text-element-600", className || "")}
+            className={classNames(
+              "s-mr-2 s-text-element-600",
+              iconClassName || ""
+            )}
           />
         )}
         <div className="s-flex">

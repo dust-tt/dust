@@ -1,4 +1,5 @@
 import {
+  Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   FolderIcon,
@@ -58,7 +59,18 @@ export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
 
           return (
             <Fragment key={`vault-section-${index}`}>
-              <Item.SectionHeader label={sectionLabel} key={vault.sId} />
+              <div className="flex items-center justify-between">
+                <Item.SectionHeader label={sectionLabel} key={vault.sId} />
+                {sectionLabel === "PRIVATE" && (
+                  <Button
+                    className="mt-4"
+                    size="xs"
+                    variant="tertiary"
+                    label="Create Vault "
+                    icon={LockIcon}
+                  />
+                )}
+              </div>
               {renderVaultItems(vaults, owner)}
             </Fragment>
           );
@@ -227,7 +239,10 @@ const VaultDataSourceOrViewItem = ({
   return (
     <Tree.Item
       type="leaf"
-      isSelected={router.asPath.includes(dataSourceOrViewPath)}
+      isSelected={
+        router.asPath === dataSourceOrViewPath ||
+        router.asPath.includes(dataSourceOrViewPath + "/")
+      }
       onItemClick={() => router.push(dataSourceOrViewPath)}
       label={label}
       visual={SubItemIconItemWrapper(LogoComponent)}
