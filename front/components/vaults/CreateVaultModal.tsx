@@ -15,7 +15,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
@@ -50,48 +50,6 @@ function getTableRows(allUsers: UserType[]): RowData[] {
   });
 }
 
-function getTableColumns(
-  selectedMembers: string[],
-  handleMemberToggle: (member: string) => void
-): ColumnDef<RowData, unknown>[] {
-  return [
-    {
-      id: "name",
-      cell: (info: Info) => (
-        <DataTable.Cell avatarUrl={info.row.original.icon}>
-          {info.row.original.name}
-        </DataTable.Cell>
-      ),
-    },
-    {
-      id: "action",
-      cell: (info: Info) => {
-        const isSelected = selectedMembers.includes(info.row.original.userId);
-        if (isSelected) {
-          return (
-            <Button
-              label="Remove"
-              onClick={() => handleMemberToggle(info.row.original.userId)}
-              variant="tertiary"
-              size="sm"
-              icon={MinusIcon}
-            />
-          );
-        }
-        return (
-          <Button
-            label="Add"
-            onClick={() => handleMemberToggle(info.row.original.userId)}
-            variant="secondary"
-            size="sm"
-            icon={PlusIcon}
-          />
-        );
-      },
-    },
-  ];
-}
-
 export function CreateVaultModal({
   owner,
   isOpen,
@@ -106,16 +64,55 @@ export function CreateVaultModal({
   const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
 
-  const handleMemberToggle = useCallback((member: string) => {
-    setSelectedMembers((prevSelectedMembers) => {
-      const isCurrentlySelected = prevSelectedMembers.includes(member);
-      if (isCurrentlySelected) {
-        return prevSelectedMembers.filter((m) => m !== member);
-      } else {
-        return [...prevSelectedMembers, member];
-      }
-    });
-  }, []);
+  const getTableColumns = useCallback(() => {
+    return [
+      {
+        id: "name",
+        cell: (info: Info) => (
+          <DataTable.Cell avatarUrl={info.row.original.icon}>
+            {info.row.original.name}
+          </DataTable.Cell>
+        ),
+      },
+      {
+        id: "action",
+        cell: (info: Info) => {
+          const isSelected = selectedMembers.includes(info.row.original.userId);
+          if (isSelected) {
+            return (
+              <Button
+                label="Remove"
+                onClick={() =>
+                  setSelectedMembers(
+                    selectedMembers.filter(
+                      (m) => m !== info.row.original.userId
+                    )
+                  )
+                }
+                variant="tertiary"
+                size="sm"
+                icon={MinusIcon}
+              />
+            );
+          }
+          return (
+            <Button
+              label="Add"
+              onClick={() =>
+                setSelectedMembers([
+                  ...selectedMembers,
+                  info.row.original.userId,
+                ])
+              }
+              variant="secondary"
+              size="sm"
+              icon={PlusIcon}
+            />
+          );
+        },
+      },
+    ];
+  }, [selectedMembers]);
 
   const createVault = async () => {
     setIsSaving(true);
@@ -143,10 +140,7 @@ export function CreateVaultModal({
 
   const rows = useMemo(() => getTableRows(members), [members]);
 
-  const columns = useMemo(
-    () => getTableColumns(selectedMembers, handleMemberToggle),
-    [selectedMembers, handleMemberToggle]
-  );
+  const columns = useMemo(() => getTableColumns(), [getTableColumns]);
 
   return (
     <Modal
