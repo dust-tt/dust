@@ -20,7 +20,7 @@ import { classNames } from "@app/lib/utils";
 
 type RowData = {
   category: string;
-  label: string;
+  name: string;
   icon: ComponentType;
   usage: number;
   count: number;
@@ -74,11 +74,8 @@ const getTableColumns = () => {
       header: "Name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <DataTable.Cell
-          // iconClassName="text-brand"
-          icon={info.row.original.icon}
-        >
-          <span className="font-bold">{info.row.original.label}</span> (
+        <DataTable.Cell icon={info.row.original.icon}>
+          <span className="font-bold">{info.row.original.name}</span> (
           {info.row.original.count} items)
         </DataTable.Cell>
       ),
@@ -119,7 +116,7 @@ export const VaultCategoriesList = ({
             ? {
                 category,
                 ...vaultInfo.categories[category],
-                label: CATEGORY_DETAILS[category].label,
+                name: CATEGORY_DETAILS[category].label,
                 icon: CATEGORY_DETAILS[category].icon.type as ComponentType,
                 onClick: () => onSelect(category),
                 onMoreClick: () => {},
