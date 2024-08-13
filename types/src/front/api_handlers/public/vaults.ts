@@ -25,7 +25,7 @@ export type PatchDataSourceViewType = t.TypeOf<
 
 export const PostVaultRequestBodySchema = t.type({
   name: t.string,
-  members: t.union([t.array(t.string), t.undefined]),
+  membersId: t.union([t.array(t.string), t.undefined]),
   content: t.union([t.array(ContentSchema), t.undefined]),
 });
 

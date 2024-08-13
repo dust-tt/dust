@@ -122,7 +122,7 @@ export function CreateVaultModal({
         },
         body: JSON.stringify({
           name: vaultName,
-          members: selectedMembers,
+          membersId: selectedMembers,
         }),
       });
 
