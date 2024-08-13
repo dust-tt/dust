@@ -26,7 +26,6 @@ export type PatchDataSourceViewType = t.TypeOf<
 export const PostVaultRequestBodySchema = t.type({
   name: t.string,
   membersId: t.union([t.array(t.string), t.undefined]),
-  content: t.union([t.array(ContentSchema), t.undefined]),
 });
 
 export type PostVaultRequestBodyType = t.TypeOf<
@@ -39,7 +38,7 @@ export const PatchVaultRequestBodySchema = t.type({
 });
 
 export type PatchVaultRequestBodyType = t.TypeOf<
-  typeof PostVaultRequestBodySchema
+  typeof PatchVaultRequestBodySchema
 >;
 
 export type LightContentNode = {
