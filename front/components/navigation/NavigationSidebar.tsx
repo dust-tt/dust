@@ -11,7 +11,7 @@ import type {
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useAppStatuses, useUser } from "@app/lib/swr";
+import { useAppStatus, useUser } from "@app/lib/swr";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -173,10 +173,10 @@ export const NavigationSidebar = React.forwardRef<
 });
 
 function AppStatusesBanner() {
-  const { appStatuses } = useAppStatuses();
-  const { providerStatus } = appStatuses ?? {};
+  const { appStatus } = useAppStatus();
+  const { providerStatus } = appStatus ?? {};
 
-  if (!appStatuses || !providerStatus) {
+  if (!appStatus || !providerStatus) {
     return null;
   }
 

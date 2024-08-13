@@ -113,18 +113,18 @@ export const postFetcher = async ([url, body]: [string, object]) => {
   return resHandler(res);
 };
 
-export function useAppStatuses() {
-  const appStatusesFetcher: Fetcher<GetAppStatusResponseBody> = fetcher;
+export function useAppStatus() {
+  const appStatusFetcher: Fetcher<GetAppStatusResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
     "/api/app-status",
-    appStatusesFetcher
+    appStatusFetcher
   );
 
   return {
-    appStatuses: useMemo(() => (data ? data : null), [data]),
-    isAppStatusesLoading: !error && !data,
-    isAppStatusesError: !!error,
+    appStatus: useMemo(() => (data ? data : null), [data]),
+    isAppStatusLoading: !error && !data,
+    isAppStatusError: !!error,
   };
 }
 
