@@ -62,13 +62,24 @@ function getTableColumns(
       id: "action",
       cell: (info: Info) => {
         const isSelected = selectedMembers.includes(info.row.original.userId);
+        if (isSelected) {
+          return (
+            <Button
+              label="Remove"
+              onClick={() => handleMemberToggle(info.row.original.userId)}
+              variant="tertiary"
+              size="sm"
+              icon={MinusIcon}
+            />
+          );
+        }
         return (
           <Button
-            label={isSelected ? "Remove" : "Add"}
+            label="Add"
             onClick={() => handleMemberToggle(info.row.original.userId)}
-            variant={isSelected ? "tertiary" : "secondary"}
+            variant="secondary"
             size="sm"
-            icon={isSelected ? MinusIcon : PlusIcon}
+            icon={PlusIcon}
           />
         );
       },
@@ -150,6 +161,14 @@ export function CreateVaultModal({
             description: "Vault was successfully created.",
           });
         } catch (err) {
+          if ((err as Error).message === "This vault name is already used.") {
+            sendNotification({
+              type: "error",
+              title: "Vault name is already used.",
+              description: "Please choose a different vault name",
+            });
+            return;
+          }
           logger.error(
             {
               workspaceId: owner.id,
