@@ -18,6 +18,9 @@ spec:
               app: front-edge
         - podSelector:
             matchLabels:
+              app: front-qa
+        - podSelector:
+            matchLabels:
               app: connectors
         - podSelector:
             matchLabels:

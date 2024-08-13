@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-qa-service
+  annotations:
+    cloud.google.com/backend-config: '{"default": "front-backendconfig"}'
+spec:
+  selector:
+    app: front-qa
+    name: front-qa-pod
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP
