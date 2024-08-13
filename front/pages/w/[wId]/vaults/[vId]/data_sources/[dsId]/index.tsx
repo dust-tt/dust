@@ -1,4 +1,4 @@
-import { LockIcon, Page } from "@dust-tt/sparkle";
+import { LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
   PlanType,
@@ -10,7 +10,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import { subNavigationBuild } from "@app/components/navigation/config";
-import { CompanyIcon } from "@app/components/navigation/DataSourceNavigationTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { BreadCrumb } from "@app/components/vaults/Breadcrumb";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
@@ -96,7 +95,7 @@ export default function VaultView({
         <BreadCrumb
           items={[
             {
-              icon: vault.kind === "global" ? <CompanyIcon /> : <LockIcon />,
+              icon: vault.kind === "global" ? <PlanetIcon /> : <LockIcon />,
               label: vault.name,
               href: `/w/${owner.sId}/vaults/${vault.sId}`,
             },

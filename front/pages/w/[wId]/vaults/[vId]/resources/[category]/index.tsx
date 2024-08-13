@@ -1,4 +1,4 @@
-import { LockIcon, Page } from "@dust-tt/sparkle";
+import { LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceOrViewCategory,
   PlanType,
@@ -10,7 +10,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import { subNavigationBuild } from "@app/components/navigation/config";
-import { CompanyIcon } from "@app/components/navigation/DataSourceNavigationTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { BreadCrumb } from "@app/components/vaults/Breadcrumb";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
@@ -85,7 +84,7 @@ export default function VaultView({
             {
               icon:
                 vault.kind === "global" ? (
-                  <CompanyIcon className="text-emerald-500" />
+                  <PlanetIcon className="text-emerald-500" />
                 ) : (
                   <LockIcon className="text-emerald-500" />
                 ),

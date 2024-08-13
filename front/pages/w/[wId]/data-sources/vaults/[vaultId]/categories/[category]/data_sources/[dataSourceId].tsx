@@ -118,7 +118,7 @@ export default function Vault({
             label: dataSource.connectorProvider
               ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].name
               : dataSource.name,
-            href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source/${dataSource.sId}`,
+            href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source/${dataSource.name}`,
           },
         ]}
       />

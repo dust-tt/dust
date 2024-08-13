@@ -1,6 +1,7 @@
 import {
   LockIcon,
   Page,
+  PlanetIcon,
   PuzzleIcon,
   Tab,
   UserGroupIcon,
@@ -16,7 +17,6 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { subNavigationBuild } from "@app/components/navigation/config";
-import { CompanyIcon } from "@app/components/navigation/DataSourceNavigationTree";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
 import { VaultMembers } from "@app/components/vaults/VaultMembers";
@@ -85,7 +85,7 @@ export default function VaultView({
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title={vault.name}
-          icon={vault.kind === "global" ? CompanyIcon : LockIcon}
+          icon={vault.kind === "global" ? PlanetIcon : LockIcon}
           description="Manage connections to your products and the real-time data feeds Dust has access to."
         />
 
