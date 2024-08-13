@@ -67,13 +67,13 @@ export default function Vault({
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title={vault.name}
+        title={vault.kind === "global" ? "Company Data" : vault.name}
         icon={vault.kind === "global" ? PlanetIcon : LockIcon}
         description="Manage connections to your products and the real-time data feeds Dust has access to."
       />
 
       {vault.kind !== "global" && (
-        <div className="s-w-[320px]">
+        <div className="w-[320px]">
           <Tab
             tabs={[
               {

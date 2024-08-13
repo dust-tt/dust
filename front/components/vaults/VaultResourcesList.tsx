@@ -25,7 +25,7 @@ import { classNames } from "@app/lib/utils";
 
 type RowData = {
   category: string;
-  label: string;
+  name: string;
   icon: ComponentType;
   usage: number;
   count: number;
@@ -58,7 +58,7 @@ const getTableColumns = () => {
           // iconClassName="text-brand"
           icon={info.row.original.icon}
         >
-          <span className="font-bold"> {info.row.original.label}</span> (
+          <span className="font-bold"> {info.row.original.name}</span> (
           {info.row.original.count} items)
         </DataTable.Cell>
       ),
@@ -138,7 +138,7 @@ export const VaultResourcesList = ({
     vaultDataSourceOrViews?.map((r) => ({
       sId: r.sId,
       category: r.category,
-      label: r.connectorProvider
+      name: r.connectorProvider
         ? CONNECTOR_CONFIGURATIONS[r.connectorProvider].name
         : r.name,
       icon: r.connectorProvider
