@@ -1167,7 +1167,7 @@ function ManagedDataSourceView({
               icon={LockIcon}
               disabled={readOnly || !isAdmin}
               onClick={() => {
-                  setShowEditionModal(true);
+                setShowEditionModal(true);
               }}
             />
           ) : (
