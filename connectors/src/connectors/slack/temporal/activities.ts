@@ -14,6 +14,7 @@ import type {
   Channel,
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
+import { Context } from "@temporalio/activity";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
@@ -183,7 +184,7 @@ export async function syncChannel(
   const messages = await getMessagesForChannel(
     connectorId,
     channelId,
-    100,
+    50,
     messagesCursor
   );
   if (!messages.messages) {
@@ -349,6 +350,7 @@ export async function syncNonThreaded(
   connectorId: ModelId,
   isBatchSync = false
 ) {
+  Context.current().heartbeat();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -543,6 +545,7 @@ export async function syncThread(
   connectorId: ModelId,
   isBatchSync = false
 ) {
+  Context.current().heartbeat();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
