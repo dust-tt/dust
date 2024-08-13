@@ -7,14 +7,20 @@ import {
   Page,
   PlusIcon,
   Searchbar,
+  Spinner,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useMembers } from "@app/lib/swr";
 import logger from "@app/logger/logger";
 
 type RowData = {
@@ -28,11 +34,10 @@ type RowData = {
 type Info = CellContext<RowData, unknown>;
 
 interface CreateVaultModalProps {
-  owner: WorkspaceType;
+  owner: WorkspaceType | LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void;
-  allUsers: UserType[];
+  onSave?: () => void;
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
@@ -92,13 +97,13 @@ export function CreateVaultModal({
   isOpen,
   onClose,
   onSave,
-  allUsers,
 }: CreateVaultModalProps) {
   const [vaultName, setVaultName] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
 
   const handleMemberToggle = useCallback((member: string) => {
@@ -136,7 +141,7 @@ export function CreateVaultModal({
     }
   };
 
-  const rows = useMemo(() => getTableRows(allUsers), [allUsers]);
+  const rows = useMemo(() => getTableRows(members), [members]);
 
   const columns = useMemo(
     () => getTableColumns(selectedMembers, handleMemberToggle),
@@ -183,7 +188,9 @@ export function CreateVaultModal({
               "An unexpected error occurred while creating the vault.",
           });
         }
-        onSave();
+        if (onSave) {
+          onSave();
+        }
       }}
     >
       <Page.Vertical gap="md">
@@ -209,12 +216,18 @@ export function CreateVaultModal({
             value={searchTerm}
             onChange={setSearchTerm}
           />
-          <DataTable
-            data={rows}
-            columns={columns}
-            filterColumn="name"
-            filter={searchTerm}
-          />
+          {isMembersLoading ? (
+            <div className="mt-8 flex justify-center">
+              <Spinner size="lg" variant="color" />
+            </div>
+          ) : (
+            <DataTable
+              data={rows}
+              columns={columns}
+              filterColumn="name"
+              filter={searchTerm}
+            />
+          )}
         </div>
       </Page.Vertical>
     </Modal>

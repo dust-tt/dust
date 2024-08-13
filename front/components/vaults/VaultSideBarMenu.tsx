@@ -20,6 +20,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { Fragment, useState } from "react";
 
+import { CreateVaultModal } from "@app/components/vaults/CreateVaultModal";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   useVaultDataSourceOrViews,
@@ -34,6 +35,7 @@ interface VaultSideBarMenuProps {
 const VAULTS_SORT_ORDER = ["system", "global", "regular"];
 
 export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
+  const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
   if (!vaults || isVaultsLoading) {
@@ -68,6 +70,7 @@ export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
                     variant="tertiary"
                     label="Create Vault "
                     icon={LockIcon}
+                    onClick={() => setShowVaultCreationModal(true)}
                   />
                 )}
               </div>
@@ -76,6 +79,11 @@ export default function VaultSideBarMenu({ owner }: VaultSideBarMenuProps) {
           );
         })}
       </Item.List>
+      <CreateVaultModal
+        owner={owner}
+        isOpen={showVaultCreationModal}
+        onClose={() => setShowVaultCreationModal(false)}
+      />
     </div>
   );
 }
