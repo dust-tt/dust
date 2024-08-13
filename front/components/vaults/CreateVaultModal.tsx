@@ -9,11 +9,7 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  LightWorkspaceType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
@@ -34,10 +30,10 @@ type RowData = {
 type Info = CellContext<RowData, unknown>;
 
 interface CreateVaultModalProps {
-  owner: WorkspaceType | LightWorkspaceType;
+  owner: LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
-  onSave?: () => void;
+  onSave: () => void;
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
@@ -182,9 +178,7 @@ export function CreateVaultModal({
               "An unexpected error occurred while creating the vault.",
           });
         }
-        if (onSave) {
-          onSave();
-        }
+        onSave();
       }}
     >
       <Page.Vertical gap="md">
