@@ -963,7 +963,7 @@ function getRenderingConfigForConnectorProvider(
       };
     case "github":
       return {
-        displayDataSourceDetailsModal: false,
+        displayDataSourceDetailsModal: true,
         displayManagePermissionButton: false,
         addDataButtonLabel: "Add / Remove data, manage permissions",
         displaySettingsButton: false,
