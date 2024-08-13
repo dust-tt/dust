@@ -4,7 +4,11 @@ import {
   GlobeAltIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ContentNodesViewType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 
@@ -63,7 +67,7 @@ export const VaultDataSourceContentList = ({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       dataSourceOrViewId: dataSourceId,
-      type: viewType,
+      type: "data_sources",
       viewType: viewType,
       parentId,
     });

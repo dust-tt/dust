@@ -74,6 +74,7 @@ export default function Vault({
             href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
           },
           {
+            icon: CATEGORY_DETAILS[category].icon,
             label: CATEGORY_DETAILS[category].label,
           },
         ]}
