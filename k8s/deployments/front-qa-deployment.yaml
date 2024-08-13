@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-qa-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-qa
+  template:
+    metadata:
+      labels:
+        app: front-qa
+        name: front-qa-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "front","service": "front-qa","tags": ["env:prod"]}]'
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/front-image:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          envFrom:
+            - configMapRef:
+                name: front-qa-config
+            - secretRef:
+                name: front-secrets
+            - secretRef:
+                name: front-qa-secrets
+
+          env:
+            # we override --max-old-space-size for edge as pods
+            # don't have the same memory limits as the regular front pods
+            - name: NODE_OPTIONS
+              value: "-r dd-trace/init"
+            - name: NEXTAUTH_URL
+              value: https://front-qa.dust.tt
+            - name: AUTH0_BASE_URL
+              value: https://front-qa.dust.tt
+            - name: URL
+              value: https://front-qa.dust.tt
+
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+            - name: PRESTOP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: prestop-secret
+                  key: PRESTOP_SECRET
+
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+            - name: service-account-volume
+              mountPath: /etc/service-accounts
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "admin/prestop.sh"]
+
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1.5Gi
+
+      imagePullSecrets:
+        - name: gcr-json-key
+
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-front-cert
+        - name: service-account-volume
+          secret:
+            secretName: gcp-service-account-secret
