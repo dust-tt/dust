@@ -75,7 +75,6 @@ export default function VaultView({
   owner,
   subscription,
   isAdmin,
-  plan,
   dataSource,
   vault,
   parentId,

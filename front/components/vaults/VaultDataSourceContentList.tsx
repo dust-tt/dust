@@ -41,7 +41,7 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.Cell
-          iconClassName="text-brand"
+          // iconClassName="text-brand"
           icon={info.row.original.type === "folder" ? FolderIcon : GlobeAltIcon}
         >
           <span className="font-bold">{info.row.original.title}</span>
@@ -61,7 +61,7 @@ export const VaultDataSourceContentList = ({
 }: VaultDataSourceContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
-  const [viewType, setViewType] = useState<ContentNodesViewType>("documents");
+  const [viewType] = useState<ContentNodesViewType>("documents");
   const { vaultContent, isVaultContentLoading } =
     useVaultDataSourceOrViewContent({
       workspaceId: owner.sId,
