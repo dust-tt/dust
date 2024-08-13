@@ -87,7 +87,7 @@ export default function Vault({
         category={category}
         onSelect={(sId) => {
           void router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/category/${category}/${CATEGORY_DETAILS[category].dataSourceOrView}/${sId}`
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/${CATEGORY_DETAILS[category].dataSourceOrView}/${sId}`
           );
         }}
       />

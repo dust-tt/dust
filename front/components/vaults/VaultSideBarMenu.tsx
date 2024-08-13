@@ -21,7 +21,10 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { Fragment, useState } from "react";
 
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  getDataSourceOrViewName,
+} from "@app/lib/connector_providers";
 import {
   useVaultDataSourceOrViews,
   useVaultInfo,
@@ -332,7 +335,6 @@ const VaultDataSourceOrViewItem = ({
     : null;
 
   const LogoComponent = configuration?.logoComponent ?? FolderIcon;
-  const label = configuration?.name ?? item.name;
   const dataSourceOrViewPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${item.category}/${viewType}/${item.sId}`;
 
   return (
@@ -343,7 +345,7 @@ const VaultDataSourceOrViewItem = ({
         router.asPath.includes(dataSourceOrViewPath + "/")
       }
       onItemClick={() => router.push(dataSourceOrViewPath)}
-      label={label}
+      label={getDataSourceOrViewName(item)}
       visual={SubItemIconItemWrapper(LogoComponent)}
       areActionsFading={false}
     />

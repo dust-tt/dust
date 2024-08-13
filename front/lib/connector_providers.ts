@@ -8,7 +8,11 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider, WhitelistableFeature } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  DataSourceOrViewInfo,
+  WhitelistableFeature,
+} from "@dust-tt/types";
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
@@ -136,3 +140,10 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isSearchEnabled: false,
   },
 };
+
+export function getDataSourceOrViewName(dsv: DataSourceOrViewInfo) {
+  if (dsv.category === "managed" && dsv.connectorProvider) {
+    return CONNECTOR_CONFIGURATIONS[dsv.connectorProvider].name;
+  }
+  return dsv.name;
+}
