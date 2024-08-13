@@ -1214,8 +1214,12 @@ function ManagedDataSourceView({
                     icon={ListCheckIcon}
                     disabled={readOnly}
                     onClick={() => {
-                      if (displayManagePermissionButton) {
-                        setShowPermissionModal(true);
+                      if (
+                        (!displayManagePermissionButton &&
+                          displayDataSourceDetailsModal) ||
+                        displayManagePermissionButton
+                      ) {
+                        setShowEditionModal(true);
                       } else {
                         void handleUpdatePermissions();
                       }
