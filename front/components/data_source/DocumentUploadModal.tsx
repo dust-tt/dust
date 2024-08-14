@@ -77,6 +77,11 @@ export function DocumentUploadModal({
           }
         })
         .catch((e) => console.error(e));
+    } else {
+      setDocumentId("");
+      setText("");
+      setTags([]);
+      setSourceUrl("");
     }
   }, [dataSource.name, documentToLoad, owner.sId]);
 
@@ -167,7 +172,7 @@ export function DocumentUploadModal({
           : undefined
       }
       isSaving={loading}
-      title="Add a new document"
+      title={documentToLoad ? "Edit document" : "Add a new document"}
     >
       <Page.Vertical align="stretch">
         <div className="ml-2 mr-2 space-y-2">
