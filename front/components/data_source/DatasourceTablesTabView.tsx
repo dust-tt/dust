@@ -2,14 +2,10 @@ import {
   Button,
   DataTable,
   Dialog,
-  DropdownMenu,
-  MoreIcon,
   Page,
-  PencilSquareIcon,
   PlusIcon,
   Searchbar,
   ServerIcon,
-  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -17,6 +13,7 @@ import { useContext, useState } from "react";
 import * as React from "react";
 
 import { TableUploadModal } from "@app/components/data_source/TableUploadModal";
+import { EditOrDeleteDropdown } from "@app/components/misc/EditOrDeleteDropdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -31,40 +28,6 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, unknown>;
-
-interface ActionDropdownProps {
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-function ActionDropdown({ onEdit, onDelete }: ActionDropdownProps) {
-  return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
-        <Button
-          variant="tertiary"
-          icon={MoreIcon}
-          label="More"
-          labelVisible={false}
-          size="sm"
-        />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topRight" width={220}>
-        <DropdownMenu.Item
-          label="Edit"
-          icon={PencilSquareIcon}
-          onClick={onEdit}
-        />
-        <DropdownMenu.Item
-          label="Delete"
-          icon={TrashIcon}
-          onClick={onDelete}
-          variant="warning"
-        />
-      </DropdownMenu.Items>
-    </DropdownMenu>
-  );
-}
 
 interface ConfirmDeleteDialogProps {
   isOpen: boolean;
@@ -168,7 +131,7 @@ export function DatasourceTablesTabView({
     {
       id: "actions",
       cell: (info: Info) => (
-        <ActionDropdown
+        <EditOrDeleteDropdown
           onEdit={() => {
             setTableToLoad(info.row.original.tableId);
             setShowTableUploadModal(true);

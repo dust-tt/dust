@@ -3,14 +3,10 @@ import {
   DataTable,
   Dialog,
   DocumentTextIcon,
-  DropdownMenu,
-  MoreIcon,
   Page,
-  PencilSquareIcon,
   PlusIcon,
   Popup,
   Searchbar,
-  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
@@ -25,6 +21,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import * as React from "react";
 
 import { DocumentUploadModal } from "@app/components/data_source/DocumentUploadModal";
+import { EditOrDeleteDropdown } from "@app/components/misc/EditOrDeleteDropdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -41,40 +38,6 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, unknown>;
-
-interface ActionDropdownProps {
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-export function ActionDropdown({ onEdit, onDelete }: ActionDropdownProps) {
-  return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
-        <Button
-          variant="tertiary"
-          icon={MoreIcon}
-          label="More"
-          labelVisible={false}
-          size="sm"
-        />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topRight" width={220}>
-        <DropdownMenu.Item
-          label="Edit"
-          icon={PencilSquareIcon}
-          onClick={onEdit}
-        />
-        <DropdownMenu.Item
-          label="Delete"
-          icon={TrashIcon}
-          onClick={onDelete}
-          variant="warning"
-        />
-      </DropdownMenu.Items>
-    </DropdownMenu>
-  );
-}
 
 interface ConfirmDeleteDialogProps {
   isOpen: boolean;
@@ -270,7 +233,7 @@ export function DatasourceDocumentsTabView({
     {
       id: "actions",
       cell: (info: Info) => (
-        <ActionDropdown
+        <EditOrDeleteDropdown
           onEdit={() => {
             setDocumentId(info.row.original.name);
             setShowDataSourceUploadModal(true);
