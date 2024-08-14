@@ -10,13 +10,18 @@ import {
   ServerIcon,
   Tab,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, PlanType, WorkspaceType } from "@dust-tt/types";
+import type {
+  CoreAPIDocument,
+  DataSourceType,
+  PlanType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { PostDataSourceDocumentRequestBody } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
-import { DataSourceUploadModal } from "@app/components/data_source/DataSourceUploadModal";
+import { DocumentUploadModal } from "@app/components/data_source/DocumentUploadModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -56,6 +61,9 @@ function DatasourceDocumentsTabView({
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
+  const [documentToLoad, setDocumentToLoad] = useState<CoreAPIDocument | null>(
+    null
+  );
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [bulkFilesUploading, setBulkFilesUploading] = useState<null | {
@@ -320,13 +328,8 @@ function DatasourceDocumentsTabView({
                     variant="secondary"
                     icon={PencilSquareIcon}
                     onClick={() => {
-                      void router.push(
-                        `/w/${owner.sId}/builder/data-sources/${
-                          dataSource.name
-                        }/upsert?documentId=${encodeURIComponent(
-                          d.document_id
-                        )}`
-                      );
+                      setDocumentToLoad(d);
+                      setShowDataSourceUploadModal(true);
                     }}
                     label="Edit"
                     labelVisible={false}
@@ -350,12 +353,13 @@ function DatasourceDocumentsTabView({
           </div>
         ) : null}
       </div>
-      <DataSourceUploadModal
+      <DocumentUploadModal
         isOpen={showDataSourceUploadModal}
         onClose={() => setShowDataSourceUploadModal(false)}
         owner={owner}
         dataSource={dataSource}
         plan={plan}
+        documentToLoad={documentToLoad}
       />
     </Page.Vertical>
   );

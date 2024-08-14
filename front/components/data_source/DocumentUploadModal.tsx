@@ -10,6 +10,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  CoreAPIDocument,
   DataSourceType,
   PlanType,
   PostDataSourceDocumentRequestBody,
@@ -21,21 +22,23 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
 
-export interface DataSourceUploadModalProps {
+export interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   dataSource: DataSourceType;
   plan: PlanType;
+  documentToLoad: CoreAPIDocument | null;
 }
 
-export function DataSourceUploadModal({
+export function DocumentUploadModal({
   isOpen,
   onClose,
   owner,
   dataSource,
   plan,
-}: DataSourceUploadModalProps) {
+  documentToLoad,
+}: DocumentUploadModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [documentId, setDocumentId] = useState("");
@@ -55,6 +58,28 @@ export function DataSourceUploadModal({
     setDisabled(!documentId || !text);
   }, [documentId, text]);
 
+  useEffect(() => {
+    if (documentToLoad) {
+      setDocumentId(documentToLoad.document_id);
+      setDisabled(true);
+      fetch(
+        `/api/w/${owner.sId}/data_sources/${
+          dataSource.name
+        }/documents/${encodeURIComponent(documentToLoad.document_id)}`
+      )
+        .then(async (res) => {
+          if (res.ok) {
+            const document = await res.json();
+            setDisabled(false);
+            setText(document.document.text);
+            setTags(document.document.tags);
+            setSourceUrl(document.document.source_url);
+          }
+        })
+        .catch((e) => console.error(e));
+    }
+  }, [dataSource.name, documentToLoad, owner.sId]);
+
   const handleUpsert = async () => {
     setLoading(true);
 
@@ -63,7 +88,7 @@ export function DataSourceUploadModal({
       parents: null,
       section: {
         prefix: null,
-        content: text,
+        content: text ?? null,
         sections: [],
       },
       text: null,
