@@ -22,7 +22,6 @@ import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
   isDevelopment,
   isProviderWhitelisted,
@@ -48,8 +47,8 @@ import { getDataSources } from "../data_sources";
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
-  providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-  modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+  providerId: GPT_4O_MODEL_CONFIG.providerId,
+  modelId: GPT_4O_MODEL_CONFIG.modelId,
   temperature: 0,
 };
 
@@ -178,37 +177,6 @@ function _getHelperGlobalAgent({
         description: null,
       },
     ],
-    maxStepsPerRun: 0,
-    visualizationEnabled: false,
-    templateId: null,
-  };
-}
-
-function _getGPT35TurboGlobalAgent({
-  settings,
-}: {
-  settings: GlobalAgentSettings | null;
-}): AgentConfigurationType {
-  const status = settings ? settings.status : "active";
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.GPT35_TURBO,
-    version: 0,
-    versionCreatedAt: null,
-    versionAuthorId: null,
-    name: "gpt3.5-turbo",
-    description: GPT_3_5_TURBO_MODEL_CONFIG.description,
-    instructions: null,
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
-    status,
-    scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
-    model: {
-      providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-      modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-      temperature: 0.7,
-    },
-    actions: [],
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
@@ -1056,9 +1024,6 @@ function getGlobalAgent(
         auth,
         helperPromptInstance,
       });
-      break;
-    case GLOBAL_AGENTS_SID.GPT35_TURBO:
-      agentConfiguration = _getGPT35TurboGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = _getGPT4GlobalAgent({ auth, settings });

@@ -42,7 +42,7 @@ export function getSmallWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_3_5_TURBO_MODEL_CONFIG;
+    return GPT_4O_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
@@ -81,7 +81,6 @@ export function getLargeWhitelistedModel(
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
-export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
@@ -99,7 +98,6 @@ export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
 
 export const MODEL_IDS = [
   GPT_4_TURBO_MODEL_ID,
-  GPT_3_5_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -206,21 +204,6 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
-};
-export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "openai",
-  modelId: GPT_3_5_TURBO_MODEL_ID,
-  displayName: "GPT 3.5 Turbo",
-  contextSize: 16_384,
-  recommendedTopK: 16,
-  recommendedExhaustiveTopK: 24, // 12_288
-  largeModel: false,
-  description:
-    "OpenAI's GPT 3.5 Turbo model, cost-effective and high throughput (16k context).",
-  shortDescription: "OpenAI's fast model.",
-  isLegacy: false,
-  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
-  supportsVision: false,
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -421,7 +404,6 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
-  GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
