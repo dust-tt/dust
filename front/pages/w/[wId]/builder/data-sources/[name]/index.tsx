@@ -1302,7 +1302,6 @@ function ManagedDataSourceView({
           onClose={() => setShowEditionModal(false)}
           dataSourceIntegration={dataSource}
           owner={owner}
-          router={router}
           user={user}
           dustClientFacingUrl={dustClientFacingUrl}
           setIsRequestDataSourceModalOpen={() => setShowRequestDialog(true)}

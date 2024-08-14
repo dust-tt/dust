@@ -20,7 +20,7 @@ import type {
 } from "@dust-tt/types";
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { NextRouter } from "next/router";
+import { useRouter } from "next/router";
 import React, { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -32,10 +32,9 @@ import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed
 interface DataSourceEditionModalProps {
   isOpen: boolean;
   owner: WorkspaceType;
-  connectorProvider: ConnectorProvider | null | undefined;
+  connectorProvider: ConnectorProvider | null;
   dataSourceIntegration: DataSourceIntegration | DataSourceType | null;
   onClose: () => void;
-  router: NextRouter;
   dustClientFacingUrl: string;
   user: UserType;
   setIsRequestDataSourceModalOpen?: (show: boolean) => void;
@@ -49,13 +48,26 @@ interface DataSourceEditionModalProps {
   ) => void;
 }
 
-const REDIRECT_TO_EDIT_PERMISSIONS = [
+const REDIRECT_PROVIDERS = [
   "confluence",
   "google_drive",
   "microsoft",
   "slack",
   "intercom",
-];
+] as const;
+
+type RedirectToEditPermissionsProvider = Extract<
+  ConnectorProvider,
+  (typeof REDIRECT_PROVIDERS)[number]
+>;
+
+function isRedirectToEditPermissionsProvider(
+  provider: ConnectorProvider
+): provider is RedirectToEditPermissionsProvider {
+  return REDIRECT_PROVIDERS.includes(
+    provider as RedirectToEditPermissionsProvider
+  );
+}
 
 function isDataSourceIntegration(
   integration: DataSourceIntegration | DataSourceType | null
@@ -75,15 +87,15 @@ export function DataSourceEditionModal({
   connectorProvider,
   dataSourceIntegration,
   onClose,
-  router,
   dustClientFacingUrl,
   user,
   setIsRequestDataSourceModalOpen,
   setDataSourceIntegrations,
   setIsLoadingByProvider,
 }: DataSourceEditionModalProps) {
-  const sendNotification = useContext(SendNotificationsContext);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
+  const router = useRouter();
 
   if (!connectorProvider || !dataSourceIntegration) {
     return;
@@ -101,10 +113,10 @@ export function DataSourceEditionModal({
     dataSourceName = dataSourceIntegration.name;
   }
 
-  let dataSourceOwner: EditedByUser | null | undefined = null;
+  let dataSourceOwner: EditedByUser | null = null;
   let isDataSourceOwner: boolean = false;
   if (isSetup) {
-    dataSourceOwner = dataSourceIntegration.editedByUser;
+    dataSourceOwner = dataSourceIntegration.editedByUser ?? null;
     isDataSourceOwner =
       dataSourceIntegration?.editedByUser?.userId === user.sId;
   }
@@ -166,7 +178,7 @@ export function DataSourceEditionModal({
               : ds;
           })
         );
-        if (REDIRECT_TO_EDIT_PERMISSIONS.includes(provider)) {
+        if (isRedirectToEditPermissionsProvider(provider)) {
           void router.push(
             `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
           );
