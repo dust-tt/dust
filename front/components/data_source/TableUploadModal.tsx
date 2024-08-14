@@ -19,25 +19,17 @@ import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_
 interface TableUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tableData: TableData) => void;
   dataSource: DataSourceType;
   owner: WorkspaceType;
   initialTableId: string | null;
 }
 
-interface TableData {
-  name: string;
-  description: string;
-  csvContent: string;
-}
-
 export function TableUploadModal({
   isOpen,
-  onClose,
-  onSave,
   dataSource,
   owner,
   initialTableId,
+  onClose,
 }: TableUploadModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +38,7 @@ export function TableUploadModal({
   const [tableDescription, setTableDescription] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
 
-  const [disabled, setDisabled] = useState(true);
+  const [hasChanged, setHasChanged] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
 
@@ -58,11 +50,10 @@ export function TableUploadModal({
 
   useEffect(() => {
     if (!initialTableId && !file) {
-      // File can be null if we are editing a table.
-      return setDisabled(true);
+      return setHasChanged(true);
     }
     if (!tableName || !tableDescription) {
-      return setDisabled(true);
+      return setHasChanged(true);
     }
 
     const edited =
@@ -71,7 +62,7 @@ export function TableUploadModal({
       table?.description !== tableDescription ||
       file;
 
-    return setDisabled(!edited);
+    return setHasChanged(!edited);
   }, [tableName, tableDescription, file, initialTableId, table]);
 
   useEffect(() => {
@@ -199,12 +190,6 @@ export function TableUploadModal({
         title: "Table successfully added",
         description: `Table ${tableName} was successfully added.`,
       });
-      onSave({
-        name: tableName,
-        description: tableDescription,
-        csvContent: fileContent || "",
-      });
-      onClose();
     } finally {
       setUploading(false);
     }
@@ -214,7 +199,7 @@ export function TableUploadModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      hasChanged={!disabled}
+      hasChanged={!hasChanged}
       variant="side-md"
       title={initialTableId ? "Edit table" : "Add a new table"}
       onSave={handleUpload}

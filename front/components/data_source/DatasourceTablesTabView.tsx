@@ -7,8 +7,9 @@ import {
   ServerIcon,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useRouter } from "next/router";
+import { useState } from "react";
 
+import { TableUploadModal } from "@app/components/data_source/TableUploadModal";
 import { tableKey } from "@app/lib/client/tables_query";
 import { useTables } from "@app/lib/swr";
 
@@ -21,11 +22,13 @@ export function DatasourceTablesTabView({
   readOnly: boolean;
   dataSource: DataSourceType;
 }) {
+  const [showTableUploadModal, setShowTableUploadModal] = useState(false);
+  const [tableToLoad, setTableToLoad] = useState<string | null>(null);
+
   const { tables } = useTables({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
   });
-  const router = useRouter();
 
   return (
     <>
@@ -49,9 +52,8 @@ export function DatasourceTablesTabView({
                   icon={PlusIcon}
                   label="Add table"
                   onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/tables/upsert`
-                    );
+                    setTableToLoad(null);
+                    setShowTableUploadModal(true);
                   }}
                 />
               </div>
@@ -84,13 +86,8 @@ export function DatasourceTablesTabView({
                       variant="secondary"
                       icon={PencilSquareIcon}
                       onClick={() => {
-                        void router.push(
-                          `/w/${owner.sId}/builder/data-sources/${
-                            dataSource.name
-                          }/tables/upsert?tableId=${encodeURIComponent(
-                            t.table_id
-                          )}`
-                        );
+                        setTableToLoad(t.table_id);
+                        setShowTableUploadModal(true);
                       }}
                       label="Edit"
                       labelVisible={false}
@@ -111,6 +108,13 @@ export function DatasourceTablesTabView({
             </div>
           ) : null}
         </div>
+        <TableUploadModal
+          isOpen={showTableUploadModal}
+          onClose={() => setShowTableUploadModal(false)}
+          dataSource={dataSource}
+          owner={owner}
+          initialTableId={tableToLoad}
+        />
       </Page.Vertical>
     </>
   );
