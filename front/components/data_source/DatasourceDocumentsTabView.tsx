@@ -286,6 +286,7 @@ export function DatasourceDocumentsTabView({
                 icon={PlusIcon}
                 label="Add document"
                 onClick={() => {
+                  setDocumentToLoad(null);
                   // Enforce plan limits: DataSource documents count.
                   if (
                     plan.limits.dataSources.documents.count != -1 &&
