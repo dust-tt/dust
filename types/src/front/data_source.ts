@@ -100,3 +100,22 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
 
   return new Ok(undefined);
 }
+
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "microsoft",
+];
+
+export function isFolder(ds: DataSourceType): boolean {
+  // If there is no connectorProvider, it's a folder.
+  return !ds.connectorProvider;
+}
+
+export function canContainStructuredData(ds: DataSourceType): boolean {
+  return Boolean(
+    isFolder(ds) ||
+      (ds.connectorProvider &&
+        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
+  );
+}

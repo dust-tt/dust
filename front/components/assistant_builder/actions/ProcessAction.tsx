@@ -13,11 +13,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { Result, TimeframeUnit } from "@dust-tt/types";
-import type {
-  DataSourceType,
-  ProcessSchemaPropertyType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { ProcessSchemaPropertyType, WorkspaceType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import React, { useContext, useEffect, useState } from "react";
 
@@ -264,7 +260,6 @@ export function ActionProcess({
   actionConfiguration,
   updateAction,
   setEdited,
-  dataSources,
   description,
   onDescriptionChange,
 }: {
@@ -277,7 +272,6 @@ export function ActionProcess({
     ) => AssistantBuilderProcessConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
 } & (
   | {
       description: string;
@@ -387,7 +381,6 @@ export function ActionProcess({
           setShowDataSourcesModal(isOpen);
         }}
         owner={owner}
-        dataSources={dataSources}
         onSave={(dsConfigs) => {
           setEdited(true);
           updateAction((previousAction) => ({
@@ -422,7 +415,6 @@ export function ActionProcess({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
-        canAddDataSource={dataSources.length > 0}
         onDelete={deleteDataSource}
       />
 

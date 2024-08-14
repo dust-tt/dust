@@ -6,8 +6,9 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/types";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -21,7 +22,6 @@ export default function DataSourceSelectionSection({
   owner,
   dataSourceConfigurations,
   openDataSourceModal,
-  canAddDataSource,
 }: {
   owner: WorkspaceType;
   dataSourceConfigurations: Record<
@@ -29,14 +29,16 @@ export default function DataSourceSelectionSection({
     AssistantBuilderDataSourceConfiguration
   >;
   openDataSourceModal: () => void;
-  canAddDataSource: boolean;
   onDelete?: (name: string) => void;
 }) {
+  const { dataSources } = useContext(AssistantBuilderContext);
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
   const [dataSourceToDisplay, setDataSourceToDisplay] =
     useState<DataSourceType | null>(null);
+
+  const canAddDataSource = dataSources.length > 0;
 
   return (
     <>

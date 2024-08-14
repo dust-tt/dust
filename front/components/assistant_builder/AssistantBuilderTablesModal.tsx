@@ -9,13 +9,15 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  ConnectorProvider,
   ContentNode,
   CoreAPITable,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { getMicrosoftSheetContentNodeInternalIdFromTableId } from "@dust-tt/types";
+import {
+  canContainStructuredData,
+  getMicrosoftSheetContentNodeInternalIdFromTableId,
+} from "@dust-tt/types";
 import {
   getGoogleSheetContentNodeInternalIdFromTableId,
   getNotionDatabaseContentNodeInternalIdFromTableId,
@@ -25,6 +27,7 @@ import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
@@ -33,18 +36,11 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceNodes, useTables } from "@app/lib/swr";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
-const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
-  "google_drive",
-  "notion",
-  "microsoft",
-];
-
 export default function AssistantBuilderTablesModal({
   isOpen,
   setOpen,
   onSave,
   owner,
-  dataSources,
   tablesQueryConfiguration,
 }: {
   isOpen: boolean;
@@ -54,17 +50,12 @@ export default function AssistantBuilderTablesModal({
     dataSource: DataSourceType
   ) => void;
   owner: WorkspaceType;
-  dataSources: DataSourceType[];
   tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
 }) {
+  const { dataSources } = React.useContext(AssistantBuilderContext);
+
   const supportedDataSources = useMemo(
-    () =>
-      dataSources.filter(
-        (ds) =>
-          // If there is no connectorProvider, it's a folder.
-          ds.connectorProvider === null ||
-          STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider)
-      ),
+    () => dataSources.filter(canContainStructuredData),
     [dataSources]
   );
 

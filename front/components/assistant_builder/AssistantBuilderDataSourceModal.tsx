@@ -18,8 +18,9 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderDataSourceConfigurations,
@@ -94,17 +95,17 @@ export default function AssistantBuilderDataSourceModal({
   isOpen,
   setOpen,
   owner,
-  dataSources,
   onSave,
   initialDataSourceConfigurations,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
-  dataSources: DataSourceType[];
   onSave: (dsConfigs: AssistantBuilderDataSourceConfigurations) => void;
   initialDataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
 }) {
+  const { dataSources } = useContext(AssistantBuilderContext);
+
   // Local modal state, that replaces the action's datasourceConfigurations state in the global
   // assistant builder state when the modal is saved.
   const [dataSourceConfigurations, setDataSourceConfigurations] =
@@ -226,7 +227,7 @@ export default function AssistantBuilderDataSourceModal({
                         [ds.name]: {
                           dataSource: ds,
                           // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
-                          dataSourceViewId: null,
+                          dataSourceView: null,
                           selectedResources: [],
                           isSelectAll: true,
                         },

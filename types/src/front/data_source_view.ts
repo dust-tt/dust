@@ -6,6 +6,7 @@ export interface DataSourceViewType {
   parentsIn: string[] | null;
   sId: string;
   updatedAt: number;
+  dataSourceId: ModelId;
 }
 
 export type DataSourceOrView = "data_sources" | "data_source_views";

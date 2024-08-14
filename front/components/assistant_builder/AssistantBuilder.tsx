@@ -22,7 +22,7 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -30,6 +30,7 @@ import { SharingButton } from "@app/components/assistant/Sharing";
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
@@ -71,8 +72,6 @@ export default function AssistantBuilder({
   subscription,
   plan,
   gaTrackingId,
-  dataSources,
-  dustApps,
   initialBuilderState,
   agentConfigurationId,
   flow,
@@ -80,6 +79,7 @@ export default function AssistantBuilder({
   baseUrl,
   defaultTemplate,
 }: AssistantBuilderProps) {
+  const { dataSources } = useContext(AssistantBuilderContext);
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -467,8 +467,6 @@ export default function AssistantBuilder({
                       <ActionsScreen
                         owner={owner}
                         builderState={builderState}
-                        dataSources={dataSources}
-                        dustApps={dustApps}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
                         setAction={setAction}

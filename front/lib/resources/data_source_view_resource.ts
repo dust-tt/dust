@@ -131,6 +131,14 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
+  static async listByVaults(auth: Authenticator, vaults: VaultResource[]) {
+    return this.baseFetch(auth, {
+      where: {
+        vaultId: vaults.map((v) => v.id),
+      },
+    });
+  }
+
   static async listForDataSourcesInVault(
     auth: Authenticator,
     dataSources: DataSourceResource[],
@@ -273,6 +281,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
+      dataSourceId: this.dataSourceId,
     };
   }
 }
