@@ -250,6 +250,7 @@ interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
   iconClassName?: string;
+  roundedAvatar?: boolean;
   children?: ReactNode;
   description?: string;
 }
@@ -258,6 +259,7 @@ DataTable.Cell = function Cell({
   children,
   className,
   avatarUrl,
+  roundedAvatar,
   icon,
   iconClassName,
   description,
@@ -273,7 +275,12 @@ DataTable.Cell = function Cell({
     >
       <div className="s-flex">
         {avatarUrl && (
-          <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />
+          <Avatar
+            visual={avatarUrl}
+            size="xs"
+            className="s-mr-2"
+            isRounded={roundedAvatar ?? false}
+          />
         )}
         {icon && (
           <Icon

@@ -22,6 +22,7 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
   onMoreClick?: () => void;
+  roundedAvatar?: boolean;
 };
 
 export const DataTableExample = () => {
@@ -34,6 +35,7 @@ export const DataTableExample = () => {
       lastUpdated: "July 8, 2023",
       size: "32kb",
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+      roundedAvatar: true,
       onClick: () => console.log("hehe"),
       onMoreClick: () => console.log("show more"),
     },
@@ -77,6 +79,7 @@ export const DataTableExample = () => {
           avatarUrl={info.row.original.avatarUrl}
           icon={info.row.original.icon}
           description={info.row.original.description}
+          roundedAvatar={info.row.original.roundedAvatar}
         >
           {info.row.original.name}
         </DataTable.Cell>
