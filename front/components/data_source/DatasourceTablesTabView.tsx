@@ -200,6 +200,7 @@ export function DatasourceTablesTabView({
       <TableUploadModal
         isOpen={showTableUploadModal}
         onClose={() => setShowTableUploadModal(false)}
+        onSave={() => setShowTableUploadModal(false)}
         dataSource={dataSource}
         owner={owner}
         initialTableId={tableToLoad}
