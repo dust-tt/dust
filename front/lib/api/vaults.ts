@@ -46,6 +46,7 @@ export const getDataSourceViewInfo = async (
 ): Promise<DataSourceOrViewInfo> => {
   const usageRes = await dataSourceView.getUsagesByAgents(auth);
   return {
+    ...dataSourceView.dataSource.toJSON(),
     ...dataSourceView.toJSON(),
     usage: usageRes.isOk() ? usageRes.value : 0,
     category: getDataSourceCategory(
