@@ -350,7 +350,6 @@ export async function syncNonThreaded(
   connectorId: ModelId,
   isBatchSync = false
 ) {
-  Context.current().heartbeat();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -545,7 +544,6 @@ export async function syncThread(
   connectorId: ModelId,
   isBatchSync = false
 ) {
-  Context.current().heartbeat();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);

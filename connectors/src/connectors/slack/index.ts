@@ -689,7 +689,10 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
+    logger.info(
+      { connectorId: this.connectorId },
+      `Stopping Slack connector is a no-op.`
+    );
     return new Ok(undefined);
   }
 
