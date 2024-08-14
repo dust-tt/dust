@@ -49,6 +49,8 @@ export type LightContentNode = {
   preventSelection?: boolean;
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
+  titleWithParentsContext?: string;
+  sourceUrl: string | null;
 };
 
 export type GetDataSourceViewContentResponseBody = {

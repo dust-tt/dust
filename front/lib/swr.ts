@@ -3,18 +3,16 @@ import type {
   AgentsGetViewType,
   AppType,
   ConnectorPermission,
-  ContentNode,
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
   DataSourceViewCategory,
-  DataSourceViewType,
   GetDataSourceViewContentResponseBody,
+  LightContentNode,
   LightWorkspaceType,
   RunRunType,
   WorkspaceEnterpriseConnection,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -139,7 +137,7 @@ export function useDatasets({
   app,
   disabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   app: AppType;
   disabled: boolean;
 }) {
@@ -158,7 +156,7 @@ export function useDatasets({
 }
 
 export function useDataset(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   dataset: string,
   showData = false
@@ -184,7 +182,7 @@ export function useProviders({
   owner,
   disabled = false,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const providersFetcher: Fetcher<GetProvidersResponseBody> = fetcher;
@@ -202,7 +200,7 @@ export function useProviders({
 }
 
 export function useSavedRunStatus(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   refresh: (data: GetRunStatusResponseBody | undefined) => number
 ) {
@@ -223,7 +221,7 @@ export function useSavedRunStatus(
 }
 
 export function useRunBlock(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   runId: string,
   type: string,
@@ -246,7 +244,7 @@ export function useRunBlock(
   };
 }
 
-export function useDustAppSecrets(owner: WorkspaceType) {
+export function useDustAppSecrets(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetDustAppSecretsResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/dust_app_secrets`,
@@ -260,7 +258,7 @@ export function useDustAppSecrets(owner: WorkspaceType) {
   };
 }
 
-export function useKeys(owner: WorkspaceType) {
+export function useKeys(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/keys`,
@@ -275,7 +273,7 @@ export function useKeys(owner: WorkspaceType) {
 }
 
 export function useRuns(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   limit: number,
   offset: number,
@@ -298,7 +296,7 @@ export function useRuns(
 }
 
 export function useDocuments(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   dataSource: { name: string },
   limit: number,
   offset: number,
@@ -324,7 +322,7 @@ export function useDocuments(
 }
 
 export function useDataSources(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   options = { disabled: false }
 ) {
   const { disabled } = options;
@@ -357,7 +355,7 @@ export function useMembers(owner: LightWorkspaceType) {
   };
 }
 
-export function useAdmins(owner: WorkspaceType) {
+export function useAdmins(owner: LightWorkspaceType) {
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/members?role=admin`,
@@ -372,7 +370,7 @@ export function useAdmins(owner: WorkspaceType) {
   };
 }
 
-export function useWorkspaceInvitations(owner: WorkspaceType) {
+export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
@@ -420,7 +418,7 @@ export function useDataSourceContentNodes({
   dataSource,
   internalIds,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   internalIds: string[];
 }): {
@@ -455,14 +453,14 @@ export function useDataSourceContentNodes({
 
 export function useConnectorPermissions({
   owner,
-  dataSourceOrView,
+  dataSource,
   parentId,
   filterPermission,
   disabled,
   viewType = "documents",
 }: {
-  owner: WorkspaceType;
-  dataSourceOrView: DataSourceType | DataSourceViewType;
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
@@ -472,7 +470,7 @@ export function useConnectorPermissions({
     fetcher;
 
   let url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-    dataSourceOrView.name
+    dataSource.name
   )}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
     url += `&parentId=${parentId}`;
@@ -495,13 +493,13 @@ export function useConnectorPermissions({
 
 export function usePokeConnectorPermissions({
   owner,
-  dataSourceOrView,
+  dataSource,
   parentId,
   filterPermission,
   disabled,
 }: {
-  owner: WorkspaceType;
-  dataSourceOrView: DataSourceType | DataSourceViewType;
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
@@ -509,7 +507,7 @@ export function usePokeConnectorPermissions({
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceOrView.name}/managed/permissions?viewType=documents`;
+  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(dataSource.name)}/managed/permissions?viewType=documents`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }
@@ -523,7 +521,7 @@ export function usePokeConnectorPermissions({
   );
 
   return {
-    resources: data ? data.resources : [],
+    resources: useMemo(() => (data ? data.resources : []), [data]),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -534,7 +532,7 @@ export function useConnectorConfig({
   dataSource,
   configKey,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   configKey: string;
 }) {
@@ -1185,7 +1183,6 @@ export function useWorkspaceEnterpriseConnection({
     mutateEnterpriseConnection: mutate,
   };
 }
-
 interface UseDataSourceKey {
   workspaceId: string;
   dataSourceName: string;
@@ -1193,14 +1190,14 @@ interface UseDataSourceKey {
 }
 
 interface UseDataSourceResult {
-  contentNodes: ContentNode[];
+  contentNodes: LightContentNode[];
   parentsById: Record<string, Set<string>>;
 }
 
 export function useDataSourceNodes(
   key: UseDataSourceKey,
   options?: SWRConfiguration<{
-    contentNodes: ContentNode[];
+    contentNodes: LightContentNode[];
     parentsById: Record<string, Set<string>>;
   }>
 ) {
@@ -1390,7 +1387,7 @@ export function useVaultDataSourceViewContent({
   );
 
   return {
-    vaultContent: data?.nodes,
+    vaultContent: useMemo(() => data?.nodes ?? [], [data]),
     isVaultContentLoading: !error && !data,
     isVaultContentError: error,
   };

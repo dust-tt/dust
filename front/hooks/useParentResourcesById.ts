@@ -1,8 +1,4 @@
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
@@ -12,8 +8,8 @@ export function useParentResourcesById({
   dataSource,
   internalIds,
 }: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType | DataSourceViewType | null;
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType | null;
   internalIds: string[];
 }) {
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
@@ -27,7 +23,7 @@ export function useParentResourcesById({
     try {
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource?.name || ""
+          dataSource?.name ?? ""
         )}/managed/parents`,
         {
           method: "POST",

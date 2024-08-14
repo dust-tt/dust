@@ -30,6 +30,18 @@ for directory in "${directories[@]}"; do
             echo "Linting failed. Please fix the issues before committing."
             exit 1
         fi
+        if ! npm run tsc --prefix $root_path/$directory; then
+            echo "Type checking failed. Please fix the issues before committing."
+            exit 1
+        fi
+        if ! npm run format:check --prefix $root_path/$directory; then
+            echo "Formatting check failed. Please fix the issues before committing."
+            exit 1
+        fi
+        if ! npm run docs:check --prefix $root_path/$directory; then
+            echo "Documentation check failed. Please fix the issues before committing."
+            exit 1
+        fi
         break
     fi
 done

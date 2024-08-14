@@ -63,8 +63,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const dataSourcesViews = globalDataSourceViews
     .map((dsv) => dsv.toJSON())
-    .filter((dsv) => !dsv.connectorId)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .filter((dsv) => !dsv.dataSource.connectorId)
+    .sort((a, b) => a.dataSource.name.localeCompare(b.dataSource.name));
 
   if (
     !owner ||
@@ -268,12 +268,13 @@ export default function LabsTranscriptsIndex({
 
     if (dataSource) {
       successMessage =
-        "The transcripts will be stored in the folder " + dataSource.name;
+        "The transcripts will be stored in the folder " +
+        dataSource.dataSource.name;
     }
     await makePatchRequest(
       transcriptConfigurationId,
       {
-        dataSourceId: dataSource ? dataSource.name : null,
+        dataSourceId: dataSource ? dataSource.dataSource.name : null,
       },
       successMessage
     );
@@ -639,8 +640,8 @@ export default function LabsTranscriptsIndex({
                           className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                           disabled={!transcriptsConfigurationState.isActive}
                         >
-                          {transcriptsConfigurationState?.dataSource?.name ||
-                            "Do not store transcripts"}
+                          {transcriptsConfigurationState?.dataSource?.dataSource
+                            .name || "Do not store transcripts"}
                           <ChevronDownIcon
                             className="-mr-1 ml-2 h-5 w-5"
                             aria-hidden="true"
@@ -659,7 +660,7 @@ export default function LabsTranscriptsIndex({
                           {dataSourcesViews.map((dsv) => (
                             <DropdownMenu.Item
                               key={dsv.id}
-                              label={dsv.name}
+                              label={dsv.dataSource.name}
                               onClick={() =>
                                 handleSetDataSource(
                                   transcriptsConfiguration.id,

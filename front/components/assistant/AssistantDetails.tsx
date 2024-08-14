@@ -17,11 +17,11 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
-  ContentNode,
   CoreAPITable,
   DataSourceConfiguration,
   DataSourceType,
   DustAppRunConfigurationType,
+  LightContentNode,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WorkspaceType,
@@ -41,13 +41,13 @@ import type { KeyedMutator } from "swr";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
-import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getConnectorProviderLogo } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import {
   useAgentConfiguration,
@@ -376,9 +376,7 @@ function DataSourcesSection({
           let dataSourceName = dsConfig.dataSourceId;
 
           if (ds) {
-            DsLogo = ds.connectorProvider
-              ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider].logoComponent
-              : null;
+            DsLogo = getConnectorProviderLogo(ds.connectorProvider);
             dataSourceName = getDisplayNameForDataSource(ds);
           }
 
@@ -446,7 +444,7 @@ function DataSourceSelectedNodes({
 
   return (
     <>
-      {dataSourceSelectedNodes.nodes.map((node: ContentNode) => (
+      {dataSourceSelectedNodes.nodes.map((node: LightContentNode) => (
         <Tree.Item
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}

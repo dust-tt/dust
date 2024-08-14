@@ -1,7 +1,7 @@
 import { Button, Item, Page, Searchbar, ServerIcon } from "@dust-tt/sparkle";
 import type {
   CoreAPITable,
-  DataSourceType,
+  DataSourceViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
@@ -9,33 +9,33 @@ import * as React from "react";
 import { useMemo, useState } from "react";
 
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { useTables } from "@app/lib/swr";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
 export const PickTableInFolder = ({
   owner,
-  dataSource,
+  dataSourceView,
   onPick,
   onBack,
   tablesQueryConfiguration,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   onPick: (table: CoreAPITable) => void;
   onBack?: () => void;
   tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
 }) => {
   const { tables } = useTables({
     workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
+    dataSourceName: dataSourceView.dataSource.name,
   });
   const [query, setQuery] = useState<string>("");
 
   const tablesToDisplay = tables.filter(
     (t) =>
       !tablesQueryConfiguration?.[
-        `${owner.sId}/${dataSource.name}/${t.table_id}`
+        `${owner.sId}/${dataSourceView.dataSource.name}/${t.table_id}`
       ]
   );
   const filtered = useMemo(
@@ -49,7 +49,7 @@ export const PickTableInFolder = ({
   const isAllSelected = !!tables.length && !tablesToDisplay.length;
 
   return (
-    <Transition show={true} className="mx-auto max-w-6xl">
+    <Transition show className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select a Table" icon={ServerIcon} />
         {isAllSelected && (
@@ -82,12 +82,10 @@ export const PickTableInFolder = ({
                 return (
                   <Item.Navigation
                     label={table.name}
-                    icon={
-                      dataSource.connectorProvider
-                        ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
-                            .logoComponent
-                        : ServerIcon
-                    }
+                    icon={getConnectorProviderLogoWithFallback(
+                      dataSourceView.dataSource.connectorProvider,
+                      ServerIcon
+                    )}
                     key={`${table.data_source_id}/${table.table_id}`}
                     onClick={() => {
                       onPick(table);

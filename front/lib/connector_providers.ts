@@ -13,6 +13,8 @@ import type {
   DataSourceViewType,
   WhitelistableFeature,
 } from "@dust-tt/types";
+import type { LucideIcon } from "lucide-react";
+import type { SVGProps } from "react";
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
@@ -142,9 +144,30 @@ export const CONNECTOR_CONFIGURATIONS: Record<
 };
 
 export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
-  if (dsv.category === "managed" && dsv.connectorProvider) {
-    return CONNECTOR_CONFIGURATIONS[dsv.connectorProvider].name;
+  if (dsv.category === "managed" && dsv.dataSource.connectorProvider) {
+    return CONNECTOR_CONFIGURATIONS[dsv.dataSource.connectorProvider].name;
   }
 
-  return dsv.name;
+  return dsv.dataSource.name;
+}
+
+type LogoType = ((props: SVGProps<SVGSVGElement>) => JSX.Element) | LucideIcon;
+
+export function getConnectorProviderLogo(
+  provider: ConnectorProvider | null
+): LogoType | null {
+  if (!provider) {
+    return null;
+  }
+  return CONNECTOR_CONFIGURATIONS[provider].logoComponent;
+}
+
+export function getConnectorProviderLogoWithFallback(
+  provider: ConnectorProvider | null,
+  fallback: LogoType
+): LogoType {
+  if (!provider) {
+    return fallback;
+  }
+  return CONNECTOR_CONFIGURATIONS[provider].logoComponent;
 }

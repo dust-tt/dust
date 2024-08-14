@@ -1,36 +1,43 @@
 import { Page, SliderToggle } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  ContentNode,
-  DataSourceType,
-  WorkspaceType,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 
-import { CONNECTOR_PROVIDER_TO_RESOURCE_NAME } from "@app/components/assistant_builder/shared";
+import { getConnectorProviderResourceName } from "@app/components/assistant_builder/shared";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogo,
+} from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 
-export default function DataSourceResourceSelector({
-  dataSource,
+export default function DataSourceViewResourceSelector({
+  dataSourceView,
   owner,
   selectedResources,
   isSelectAll,
   onSelectChange,
   toggleSelectAll,
 }: {
-  dataSource: DataSourceType | null;
-  owner: WorkspaceType;
-  selectedResources: ContentNode[];
+  dataSourceView: DataSourceViewType;
+  owner: LightWorkspaceType;
+  selectedResources: LightContentNode[];
   isSelectAll: boolean;
-  onSelectChange: (resource: ContentNode, selected: boolean) => void;
-  toggleSelectAll: () => void;
+  onSelectChange: (
+    dsView: DataSourceViewType,
+    resource: LightContentNode,
+    selected: boolean
+  ) => void;
+  toggleSelectAll: (dsView: DataSourceViewType) => void;
 }) {
   const { parentsById, setParentsById } = useParentResourcesById({
     owner,
-    dataSource,
+    dataSource: dataSourceView.dataSource,
     internalIds: selectedResources.map((r) => r.internalId),
   });
 
@@ -39,20 +46,20 @@ export default function DataSourceResourceSelector({
   ];
 
   return (
-    <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
+    <Transition show className="mx-auto max-w-6xl pb-8">
       <Page>
         <Page.Header
-          title={`Select Data Sources in ${
-            dataSource ? getDisplayNameForDataSource(dataSource) : null
-          }`}
+          title={`Select Data Sources in ${getDisplayNameForDataSource(
+            dataSourceView.dataSource
+          )}`}
           icon={
-            CONNECTOR_CONFIGURATIONS[
-              dataSource?.connectorProvider as ConnectorProvider
-            ]?.logoComponent
+            getConnectorProviderLogo(
+              dataSourceView.dataSource.connectorProvider
+            ) ?? undefined
           }
           description="Select the files and folders that will be used by the assistant as a source for its answers."
         />
-        {dataSource && (
+        {dataSourceView && (
           <div className="flex flex-row gap-32">
             <div className="flex-1">
               <div className="flex gap-4 pb-8 text-lg font-semibold text-element-900">
@@ -60,7 +67,7 @@ export default function DataSourceResourceSelector({
                 <SliderToggle
                   selected={isSelectAll}
                   onClick={() => {
-                    toggleSelectAll();
+                    toggleSelectAll(dataSourceView);
                     setParentsById({});
                   }}
                   size="xs"
@@ -69,18 +76,20 @@ export default function DataSourceResourceSelector({
               <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
                 <div>
                   Select from available{" "}
-                  {CONNECTOR_PROVIDER_TO_RESOURCE_NAME[
-                    dataSource.connectorProvider as ConnectorProvider
-                  ]?.plural ?? "resources"}
-                  :
+                  {getConnectorProviderResourceName(
+                    dataSourceView.dataSource
+                      .connectorProvider as ConnectorProvider,
+                    true
+                  )}
                 </div>
               </div>
               <DataSourceResourceSelectorTree
                 owner={owner}
-                dataSourceOrView={dataSource}
+                dataSourceView={dataSourceView}
                 showExpand={
                   CONNECTOR_CONFIGURATIONS[
-                    dataSource.connectorProvider as ConnectorProvider
+                    dataSourceView.dataSource
+                      .connectorProvider as ConnectorProvider
                   ]?.isNested
                 }
                 selectedResourceIds={selectedResources.map((r) => r.internalId)}
@@ -95,7 +104,7 @@ export default function DataSourceResourceSelector({
                     }
                     return newParentsById;
                   });
-                  onSelectChange(node, selected);
+                  onSelectChange(dataSourceView, node, selected);
                 }}
                 parentIsSelected={isSelectAll}
               />

@@ -18,15 +18,15 @@ import {
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-  DataSourceType,
+  DataSourceViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
 import { useState } from "react";
 
-import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
-import { SlackIntegration } from "@app/components/assistant/SlackIntegration";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
+import { SlackIntegration } from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
 type ConfirmationModalDataType = {
@@ -119,7 +119,7 @@ export function SharingButton({
   setNewScope: (scope: NonGlobalScope) => void;
   baseUrl: string;
   showSlackIntegration: boolean;
-  slackDataSource: DataSourceType | null;
+  slackDataSource: DataSourceViewType | null;
   slackChannelSelected: SlackChannel[];
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
 }) {
@@ -464,7 +464,7 @@ function SlackIntegrationDrawer({
 }: {
   show: boolean;
   onClose: () => void;
-  slackDataSource: DataSourceType;
+  slackDataSource: DataSourceViewType;
   owner: WorkspaceType;
   existingSelection: SlackChannel[];
   onSave: (channels: SlackChannel[]) => void;

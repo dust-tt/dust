@@ -1,5 +1,5 @@
 import { Modal } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 export default function ManagedDataSourceDocumentModal({
@@ -9,7 +9,7 @@ export default function ManagedDataSourceDocumentModal({
   isOpen,
   setOpen,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType | null;
   documentId: string | null;
   isOpen: boolean;
@@ -20,7 +20,7 @@ export default function ManagedDataSourceDocumentModal({
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    if (documentId && dataSource?.name) {
+    if (documentId && dataSource) {
       setDownloading(true);
       fetch(
         `/api/w/${owner.sId}/data_sources/${encodeURIComponent(

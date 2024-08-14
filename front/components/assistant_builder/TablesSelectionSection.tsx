@@ -24,8 +24,8 @@ export default function TablesSelectionSection({
   openTableModal: () => void;
   onDelete?: (sId: string) => void;
 }) {
-  const { dataSources } = useContext(AssistantBuilderContext);
-  const canSelectTable = dataSources.length > 0;
+  const { dataSourceViews } = useContext(AssistantBuilderContext);
+  const canSelectTable = dataSourceViews.length > 0;
 
   return (
     <Transition

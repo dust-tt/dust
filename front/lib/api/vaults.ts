@@ -129,6 +129,8 @@ export const getManagedDataSourceContent = async (
     preventSelection: r.preventSelection,
     dustDocumentId: r.dustDocumentId,
     lastUpdatedAt: r.lastUpdatedAt,
+    titleWithParentsContext: r.titleWithParentsContext,
+    sourceUrl: r.sourceUrl,
   }));
 
   return new Ok(results);
@@ -162,6 +164,7 @@ export const getUnmanagedDataSourceContent = async (
       preventSelection: false,
       dustDocumentId: doc.document_id,
       lastUpdatedAt: doc.timestamp,
+      sourceUrl: doc.source_url || null,
     }));
     return new Ok(documentsAsContentNodes);
   } else {
@@ -183,6 +186,7 @@ export const getUnmanagedDataSourceContent = async (
       preventSelection: false,
       dustDocumentId: table.table_id,
       lastUpdatedAt: table.timestamp,
+      sourceUrl: null,
     }));
 
     return new Ok(tablesAsContentNodes);

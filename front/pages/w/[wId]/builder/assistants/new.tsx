@@ -1,7 +1,6 @@
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceType,
   DataSourceViewType,
   PlanType,
   SubscriptionType,
@@ -14,20 +13,19 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
+import {
+  buildInitialActions,
+  getAccessibleSourcesAndApps,
+} from "@app/components/assistant_builder/server_side_props_helpers";
 import type {
   AssistantBuilderInitialState,
   BuilderFlow,
 } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
-import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { useAssistantTemplate } from "@app/lib/swr";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
@@ -45,7 +43,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
-  dataSources: DataSourceType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];
@@ -66,19 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const globalAndSystemVault =
-    await VaultResource.listWorkspaceDefaultVaults(auth);
-
-  const [ds, dsViews, allDustApps] = await Promise.all([
-    DataSourceResource.listByVaults(auth, globalAndSystemVault),
-    DataSourceViewResource.listByVaults(auth, globalAndSystemVault),
-    getApps(auth),
-  ]);
-
-  const dataSourcesByName = ds.reduce(
-    (acc, ds) => ({ ...acc, [ds.name]: ds }),
-    {} as Record<string, DataSourceResource>
-  );
+  const { dataSourceViews, dustApps } = await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -118,8 +103,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const actions = configuration
     ? await buildInitialActions({
-        dataSourcesByName,
-        dustApps: allDustApps,
+        dataSourceViews,
+        dustApps,
         configuration,
       })
     : [];
@@ -130,9 +115,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       gaTrackingId: config.getGaTrackingId(),
-      dataSources: ds.map((ds) => ds.toJSON()),
-      dataSourceViews: dsViews.map((dsView) => dsView.toJSON()),
-      dustApps: allDustApps,
+      dataSourceViews,
+      dustApps,
       actions,
       agentConfiguration: configuration,
       flow,
@@ -147,7 +131,6 @@ export default function CreateAssistant({
   subscription,
   plan,
   gaTrackingId,
-  dataSources,
   dataSourceViews,
   dustApps,
   actions,
@@ -172,7 +155,6 @@ export default function CreateAssistant({
   return (
     <AssistantBuilderProvider
       dustApps={dustApps}
-      dataSources={dataSources}
       dataSourceViews={dataSourceViews}
     >
       <AssistantBuilder
