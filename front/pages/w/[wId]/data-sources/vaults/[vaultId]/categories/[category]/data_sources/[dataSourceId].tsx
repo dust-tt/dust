@@ -2,10 +2,10 @@ import { FolderIcon, LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceOrViewCategory,
   DataSourceType,
+  PlanType,
   VaultType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
@@ -27,12 +27,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isAdmin: boolean;
     parentId: string | null;
     vault: VaultType;
+    plan: PlanType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
-  if (!subscription) {
+  if (!subscription || !plan) {
     return {
       notFound: true,
     };
@@ -74,6 +76,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       parentId: parentId || null,
       subscription,
       vault: vault.toJSON(),
+      plan,
     },
   };
 });
@@ -83,10 +86,9 @@ export default function Vault({
   dataSource,
   isAdmin,
   owner,
-  parentId,
   vault,
+  plan,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
       <BreadCrumb
@@ -124,15 +126,9 @@ export default function Vault({
       />
       <VaultDataSourceContentList
         owner={owner}
-        vault={vault}
         isAdmin={isAdmin}
-        parentId={parentId}
-        dataSourceId={dataSource.name}
-        onSelect={(parentId) => {
-          void router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source/${dataSource.name}?parentId=${parentId}`
-          );
-        }}
+        dataSource={dataSource}
+        plan={plan}
       />
     </Page.Vertical>
   );
