@@ -241,9 +241,8 @@ export function DatasourceDocumentsTabView({
 
   const columns = [
     {
-      accessorKey: "document_id",
+      accessorKey: "name",
       header: "Name",
-      id: "name",
       cell: (info: Info) => (
         <DataTable.Cell icon={DocumentTextIcon}>
           {info.row.original.name}
@@ -436,6 +435,8 @@ export function DatasourceDocumentsTabView({
           data={rows}
           columns={columns}
           initialColumnOrder={[{ id: "name", desc: false }]}
+          filter={dataSourceSearch}
+          filterColumn={"name"}
         />
       </div>
       <DocumentUploadModal
