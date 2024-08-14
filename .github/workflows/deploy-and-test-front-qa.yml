@@ -70,6 +70,7 @@ jobs:
             "ghRunId": "${{ github.run_id }}",
             "ghCommitSha": "${{ github.sha }}",
           }')
+          echo "$response"
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
           if [ "$http_code" != "202" ]; then
