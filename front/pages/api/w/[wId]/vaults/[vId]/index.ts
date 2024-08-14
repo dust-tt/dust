@@ -136,10 +136,10 @@ async function handler(
         });
       }
 
-      const { membersId, content } = bodyValidation.right;
+      const { memberIds, content } = bodyValidation.right;
 
-      if (membersId) {
-        const users = (await UserResource.fetchByIds(membersId)).map((user) =>
+      if (memberIds) {
+        const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
           user.toJSON()
         );
         await group.setMembers(auth, users);
