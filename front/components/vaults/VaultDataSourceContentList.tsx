@@ -1,7 +1,9 @@
 import {
+  Button,
   DataTable,
   FolderIcon,
   GlobeAltIcon,
+  PlusIcon,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -11,6 +13,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useVaultDataSourceOrViewContent } from "@app/lib/swr";
@@ -73,6 +76,8 @@ export const VaultDataSourceContentList = ({
       parentId,
     });
 
+  const router = useRouter();
+
   const rows: RowData[] =
     vaultContent?.map((v) => ({
       ...v,
@@ -100,7 +105,7 @@ export const VaultDataSourceContentList = ({
             : ""
         )}
       >
-        {rows.length > 0 && (
+        {rows.length > 0 ? (
           <Searchbar
             name="search"
             placeholder="Search (Name)"
@@ -109,17 +114,25 @@ export const VaultDataSourceContentList = ({
               setDataSourceSearch(s);
             }}
           />
+        ) : (
+          <Button
+            label="Add data to folder"
+            icon={PlusIcon}
+            onClick={() => {
+              void router.push(
+                `/w/${owner.sId}/builder/data-sources/${dataSourceId}`
+              );
+            }}
+          />
         )}
       </div>
-      {rows.length > 0 ? (
+      {rows.length > 0 && (
         <DataTable
           data={rows}
           columns={getTableColumns()}
           filter={dataSourceSearch}
           filterColumn={"name"}
         />
-      ) : (
-        <>Add content</>
       )}
     </>
   );
