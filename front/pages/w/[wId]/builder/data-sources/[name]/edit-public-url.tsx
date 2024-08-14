@@ -55,7 +55,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [connectorRes, dataSourceUsage] = await Promise.all([
+  const [connectorRes, dataSourceUsageRes] = await Promise.all([
     new ConnectorsAPI(config.getConnectorsAPIConfig(), logger).getConnector(
       dataSource.connectorId
     ),
@@ -75,7 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,
       gaTrackingId: GA_TRACKING_ID,
-      dataSourceUsage,
+      dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },
   };
 });

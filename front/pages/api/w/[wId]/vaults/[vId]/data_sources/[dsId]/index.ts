@@ -35,13 +35,10 @@ async function handler(
     req.query.dsId as string
   );
 
-  const vault = dataSource?.vault;
-
   if (
     !dataSource ||
-    !vault ||
-    req.query.vId !== vault.sId ||
-    (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
+    req.query.vId !== dataSource.vault.sId ||
+    (!auth.isAdmin() && !auth.hasPermission([dataSource.vault.acl()], "read"))
   ) {
     return apiError(req, res, {
       status_code: 404,
@@ -55,7 +52,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       return res.status(200).json({
-        dataSource: getDataSourceInfo(dataSource),
+        dataSource: await getDataSourceInfo(auth, dataSource),
       });
     }
     default:

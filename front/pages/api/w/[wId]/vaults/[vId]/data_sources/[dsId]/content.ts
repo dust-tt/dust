@@ -34,13 +34,10 @@ async function handler(
     req.query.dsId as string
   );
 
-  const vault = dataSource?.vault;
-
   if (
     !dataSource ||
-    !vault ||
-    req.query.vId !== vault.sId ||
-    (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
+    req.query.vId !== dataSource.vault.sId ||
+    (!auth.isAdmin() && !auth.hasPermission([dataSource.vault.acl()], "read"))
   ) {
     return apiError(req, res, {
       status_code: 404,
@@ -72,7 +69,9 @@ async function handler(
       if (req.query.parentId && typeof req.query.parentId === "string") {
         parentId = req.query.parentId;
       }
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const limit = req.query.limit
+        ? Math.min(200, parseInt(req.query.limit as string))
+        : 10;
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
         : 0;

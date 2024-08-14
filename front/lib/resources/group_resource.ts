@@ -382,10 +382,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[],
-    transaction?: Transaction
+    users: UserType[]
   ): Promise<Result<undefined, Error>> {
-    // Checking that the user is a member of the workspace.
     const owner = auth.getNonNullableWorkspace();
 
     if (users.length === 0) {
@@ -404,7 +402,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     const workspaceMemberships = await MembershipResource.getActiveMemberships({
       users: userResources,
       workspace: owner,
-      transaction,
     });
 
     if (
@@ -425,13 +422,15 @@ export class GroupResource extends BaseResource<GroupModel> {
     // Check if the user is already a member of the group.
     const activeMembers = await this.getActiveMembers(auth);
     const activeMembersIds = activeMembers.map((m) => m.sId);
-    const alreadyActive = userIds.filter((userId) =>
+    const alreadyActiveUserIds = userIds.filter((userId) =>
       activeMembersIds.includes(userId)
     );
-    if (alreadyActive.length > 0) {
-      return alreadyActive.length === 1
-        ? new Err(new Error(`User ${alreadyActive} already member.`))
-        : new Err(new Error(`Users ${alreadyActive} already members.`));
+    if (alreadyActiveUserIds.length > 0) {
+      return alreadyActiveUserIds.length === 1
+        ? new Err(new Error(`User ${alreadyActiveUserIds} is already member.`))
+        : new Err(
+            new Error(`Users ${alreadyActiveUserIds} are already members.`)
+          );
     }
 
     // Create a new membership.
@@ -441,8 +440,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
-      })),
-      { transaction }
+      }))
     );
 
     return new Ok(undefined);
@@ -457,12 +455,9 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[],
-    transaction?: Transaction
+    users: UserType[]
   ): Promise<Result<undefined, Error>> {
-    // Checking that the user is a member of the workspace.
     const owner = auth.getNonNullableWorkspace();
-
     if (users.length === 0) {
       return new Ok(undefined);
     }
@@ -479,7 +474,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     const workspaceMemberships = await MembershipResource.getActiveMemberships({
       users: userResources,
       workspace: owner,
-      transaction,
     });
 
     if (workspaceMemberships.length !== userIds.length) {
@@ -518,7 +512,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         },
-        transaction,
       }
     );
 

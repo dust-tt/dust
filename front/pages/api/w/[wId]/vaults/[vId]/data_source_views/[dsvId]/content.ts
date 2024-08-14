@@ -1,5 +1,4 @@
 import type {
-  ContentNodesViewType,
   GetDataSourceOrViewContentResponseBody,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -34,15 +33,11 @@ async function handler(
     req.query.dsvId as string
   );
 
-  const dataSource = dataSourceView?.dataSource;
-  const vault = dataSourceView?.vault;
-
   if (
     !dataSourceView ||
-    !dataSource ||
-    !vault ||
-    req.query.vId !== vault.sId ||
-    (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
+    req.query.vId !== dataSourceView.vault.sId ||
+    (!auth.isAdmin() &&
+      !auth.hasPermission([dataSourceView.vault.acl()], "read"))
   ) {
     return apiError(req, res, {
       status_code: 404,
@@ -55,7 +50,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const viewType = req.query.viewType as ContentNodesViewType;
+      const viewType = req.query.viewType;
       if (
         !viewType ||
         typeof viewType !== "string" ||
@@ -74,13 +69,15 @@ async function handler(
       if (req.query.parentId && typeof req.query.parentId === "string") {
         parentId = req.query.parentId;
       }
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const limit = req.query.limit
+        ? Math.min(200, parseInt(req.query.limit as string))
+        : 10;
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
         : 0;
 
       const contentRes = await getDataSourceContent(
-        dataSource,
+        dataSourceView.dataSource,
         viewType,
         dataSourceView.parentsIn,
         parentId,

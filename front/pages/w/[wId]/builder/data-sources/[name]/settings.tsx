@@ -50,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
-  const dataSourceUsage = await getDataSourceUsage({
+  const dataSourceUsageRes = await getDataSourceUsage({
     auth,
     dataSource,
   });
@@ -60,7 +60,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       dataSource,
       gaTrackingId: GA_TRACKING_ID,
-      dataSourceUsage,
+      dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },
   };
 });

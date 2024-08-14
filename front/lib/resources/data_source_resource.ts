@@ -13,6 +13,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSource } from "@app/lib/models/data_source";
@@ -235,11 +236,24 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     );
   }
 
+  isFolder() {
+    return !this.connectorProvider;
+  }
+
+  isWebcrawler() {
+    return this.connectorProvider === "webcrawler";
+  }
+
+  getUsagesByAgents(auth: Authenticator) {
+    return getDataSourceUsage({ auth, dataSource: this.toJSON() });
+  }
+
   // Serialization.
 
   toJSON(): DataSourceType {
     return {
       id: this.id,
+      sId: this.name, // TODO(thomas 20240812) Migrate to a real sId
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,

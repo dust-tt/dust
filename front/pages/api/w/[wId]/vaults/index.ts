@@ -43,12 +43,7 @@ async function handler(
       const vaults = await VaultResource.listWorkspaceVaults(auth);
 
       return res.status(200).json({
-        vaults: vaults
-          .filter(
-            (vault) =>
-              auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
-          )
-          .map((vault) => vault.toJSON()),
+        vaults: vaults.map((vault) => vault.toJSON()),
       });
     case "POST":
       if (!auth.isAdmin() || !auth.isBuilder()) {

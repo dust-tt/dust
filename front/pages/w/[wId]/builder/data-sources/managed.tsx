@@ -215,12 +215,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
             fetchConnectorError: true,
             fetchConnectorErrorMessage: statusRes.error.message,
             editedByUser: mds.editedByUser,
-            usage: await getDataSourceUsage({
-              auth,
-              dataSource: mds,
-            }),
+            usage: 0,
           };
         }
+        const usageRes = await getDataSourceUsage({
+          auth,
+          dataSource: mds,
+        });
         return {
           dataSourceName: mds.name,
           provider: mds.connectorProvider,
@@ -228,10 +229,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           fetchConnectorError: false,
           fetchConnectorErrorMessage: null,
           editedByUser: mds.editedByUser,
-          usage: await getDataSourceUsage({
-            auth,
-            dataSource: mds,
-          }),
+          usage: usageRes.isOk() ? usageRes.value : 0,
         };
       } catch (e) {
         // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying

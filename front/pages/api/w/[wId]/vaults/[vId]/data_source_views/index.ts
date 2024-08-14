@@ -136,7 +136,7 @@ async function handler(
           parentsIn
         );
       return res.status(201).json({
-        dataSourceView: getDataSourceViewInfo(dataSourceView),
+        dataSourceView: await getDataSourceViewInfo(auth, dataSourceView),
       });
     }
     default:
