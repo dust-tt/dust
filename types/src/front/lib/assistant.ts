@@ -42,7 +42,7 @@ export function getSmallWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4O_MODEL_CONFIG;
+    return GPT_4O_MINI_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;

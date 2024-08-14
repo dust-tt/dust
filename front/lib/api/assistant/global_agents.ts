@@ -22,6 +22,7 @@ import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
+  GPT_4O_MINI_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
   isDevelopment,
   isProviderWhitelisted,
@@ -213,8 +214,8 @@ function _getGPT4GlobalAgent({
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     model: {
-      providerId: GPT_4O_MODEL_CONFIG.providerId,
-      modelId: GPT_4O_MODEL_CONFIG.modelId,
+      providerId: GPT_4O_MINI_MODEL_CONFIG.providerId,
+      modelId: GPT_4O_MINI_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
