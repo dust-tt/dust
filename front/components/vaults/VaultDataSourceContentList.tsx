@@ -4,14 +4,14 @@ import { StandardDataSourceView } from "@app/components/data_source/StandardData
 
 type VaultDataSourceContentListProps = {
   owner: WorkspaceType;
-  isAdmin: boolean;
+  hasWritePermission: boolean;
   dataSource: DataSourceType;
   plan: PlanType;
 };
 
 export const VaultDataSourceContentList = ({
   owner,
-  isAdmin,
+  hasWritePermission,
   dataSource,
   plan,
 }: VaultDataSourceContentListProps) => {
@@ -19,7 +19,7 @@ export const VaultDataSourceContentList = ({
     <StandardDataSourceView
       owner={owner}
       plan={plan}
-      readOnly={!isAdmin}
+      readOnly={!hasWritePermission}
       dataSource={dataSource}
     />
   );

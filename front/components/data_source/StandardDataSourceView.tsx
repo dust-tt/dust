@@ -37,16 +37,16 @@ function DatasourceDocumentsTabView({
   plan,
   readOnly,
   dataSource,
-  router,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
   readOnly: boolean;
   dataSource: DataSourceType;
-  router: ReturnType<typeof useRouter>;
 }) {
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
+
+  const router = useRouter();
 
   const {
     documents,
@@ -369,17 +369,16 @@ function DatasourceTablesTabView({
   owner,
   readOnly,
   dataSource,
-  router,
 }: {
   owner: WorkspaceType;
   readOnly: boolean;
   dataSource: DataSourceType;
-  router: ReturnType<typeof useRouter>;
 }) {
   const { tables } = useTables({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
   });
+  const router = useRouter();
 
   return (
     <>
@@ -529,7 +528,6 @@ export function StandardDataSourceView({
             plan={plan}
             readOnly={readOnly}
             dataSource={dataSource}
-            router={router}
           />
         )}
         {currentTab === "tables" && (

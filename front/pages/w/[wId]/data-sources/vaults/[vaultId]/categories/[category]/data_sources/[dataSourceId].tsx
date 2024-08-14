@@ -24,7 +24,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
     category: DataSourceOrViewCategory;
     dataSource: DataSourceType;
-    isAdmin: boolean;
+    hasWritePermission: boolean;
     parentId: string | null;
     vault: VaultType;
     plan: PlanType;
@@ -63,7 +63,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       notFound: true,
     };
   }
-  const isAdmin = auth.isAdmin();
+  const hasWritePermission =
+    auth.isBuilder() && auth.hasPermission([vault.acl()], "write");
   const parentId = context.query?.parentId as string;
 
   return {
@@ -71,7 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       category: context.query.category as DataSourceOrViewCategory,
       dataSource: dataSource.toJSON(),
       gaTrackingId: config.getGaTrackingId(),
-      isAdmin,
+      hasWritePermission,
       owner,
       parentId: parentId || null,
       subscription,
@@ -84,7 +85,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 export default function Vault({
   category,
   dataSource,
-  isAdmin,
+  hasWritePermission,
   owner,
   vault,
   plan,
@@ -126,7 +127,7 @@ export default function Vault({
       />
       <VaultDataSourceContentList
         owner={owner}
-        isAdmin={isAdmin}
+        hasWritePermission={hasWritePermission}
         dataSource={dataSource}
         plan={plan}
       />
