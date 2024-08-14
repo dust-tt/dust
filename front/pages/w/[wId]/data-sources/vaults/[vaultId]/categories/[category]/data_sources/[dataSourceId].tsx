@@ -64,7 +64,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
   const hasWritePermission =
-    auth.isBuilder() && auth.hasPermission([vault.acl()], "write");
+    auth.isBuilder() || auth.hasPermission([vault.acl()], "write");
   const parentId = context.query?.parentId as string;
 
   return {
