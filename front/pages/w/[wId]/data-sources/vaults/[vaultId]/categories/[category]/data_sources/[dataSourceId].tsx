@@ -2,10 +2,10 @@ import { FolderIcon, LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceOrViewCategory,
   DataSourceType,
+  PlanType,
   VaultType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
@@ -24,15 +24,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
     category: DataSourceOrViewCategory;
     dataSource: DataSourceType;
-    isAdmin: boolean;
+    hasWritePermission: boolean;
     parentId: string | null;
     vault: VaultType;
+    plan: PlanType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
-  if (!subscription) {
+  if (!subscription || !plan) {
     return {
       notFound: true,
     };
@@ -61,7 +63,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       notFound: true,
     };
   }
-  const isAdmin = auth.isAdmin();
+  const hasWritePermission =
+    auth.isBuilder() && auth.hasPermission([vault.acl()], "write");
   const parentId = context.query?.parentId as string;
 
   return {
@@ -69,11 +72,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       category: context.query.category as DataSourceOrViewCategory,
       dataSource: dataSource.toJSON(),
       gaTrackingId: config.getGaTrackingId(),
-      isAdmin,
+      hasWritePermission,
       owner,
       parentId: parentId || null,
       subscription,
       vault: vault.toJSON(),
+      plan,
     },
   };
 });
@@ -81,12 +85,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 export default function Vault({
   category,
   dataSource,
-  isAdmin,
+  hasWritePermission,
   owner,
-  parentId,
   vault,
+  plan,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
       <BreadCrumb
@@ -124,15 +127,9 @@ export default function Vault({
       />
       <VaultDataSourceContentList
         owner={owner}
-        vault={vault}
-        isAdmin={isAdmin}
-        parentId={parentId}
-        dataSourceId={dataSource.name}
-        onSelect={(parentId) => {
-          void router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source/${dataSource.name}?parentId=${parentId}`
-          );
-        }}
+        hasWritePermission={hasWritePermission}
+        dataSource={dataSource}
+        plan={plan}
       />
     </Page.Vertical>
   );
