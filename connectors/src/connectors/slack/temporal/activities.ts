@@ -14,7 +14,6 @@ import type {
   Channel,
   ConversationsListResponse,
 } from "@slack/web-api/dist/response/ConversationsListResponse";
-import { Context } from "@temporalio/activity";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
