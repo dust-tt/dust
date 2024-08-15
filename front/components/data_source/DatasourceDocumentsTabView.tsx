@@ -1,31 +1,77 @@
 import {
   Button,
-  ContextItem,
+  DataTable,
   Dialog,
   DocumentTextIcon,
   Page,
-  PencilSquareIcon,
   PlusIcon,
   Popup,
+  Searchbar,
 } from "@dust-tt/sparkle";
 import type {
-  CoreAPIDocument,
   DataSourceType,
   PlanType,
   PostDataSourceDocumentRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
+import * as React from "react";
 
 import { DocumentUploadModal } from "@app/components/data_source/DocumentUploadModal";
+import { EditOrDeleteDropdown } from "@app/components/misc/EditOrDeleteDropdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { useDocuments } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
+
+type RowData = {
+  name: string;
+  size: number;
+  timestamp: number;
+  onClick?: () => void;
+  onMoreClick?: () => void;
+};
+
+type Info = CellContext<RowData, unknown>;
+
+interface ConfirmDeleteDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onValidate: () => void;
+  documentName: string;
+}
+
+export function ConfirmDeleteDialog({
+  isOpen,
+  onClose,
+  onValidate,
+  documentName,
+}: ConfirmDeleteDialogProps) {
+  return (
+    <Dialog
+      isOpen={isOpen}
+      onCancel={onClose}
+      onValidate={onValidate}
+      title="Confirm deletion"
+      validateVariant="primaryWarning"
+      validateLabel="Delete"
+    >
+      <div className="mt-1 text-left">
+        <p className="mb-4">
+          Are you sure you want to delete the document "{documentName}"?
+        </p>
+        <p className="mb-4 font-bold text-warning-500">
+          This action cannot be undone.
+        </p>
+      </div>
+    </Dialog>
+  );
+}
 
 export function DatasourceDocumentsTabView({
   owner,
@@ -39,7 +85,6 @@ export function DatasourceDocumentsTabView({
   dataSource: DataSourceType;
 }) {
   const [limit] = useState(10);
-  const [offset, setOffset] = useState(0);
 
   const router = useRouter();
 
@@ -49,22 +94,48 @@ export function DatasourceDocumentsTabView({
     isDocumentsLoading,
     isDocumentsError,
     mutateDocuments,
-  } = useDocuments(owner, dataSource, limit, offset);
+  } = useDocuments(owner, dataSource, limit, 0);
   const [showDocumentsLimitPopup, setShowDocumentsLimitPopup] = useState(false);
   const [showDataSourceUploadModal, setShowDataSourceUploadModal] =
     useState(false);
+  const [showDataSourceDeleteDialog, setShowDataSourceDeleteDialog] =
+    useState(false);
+  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
-  const [documentToLoad, setDocumentToLoad] = useState<CoreAPIDocument | null>(
-    null
-  );
+  const [documentId, setDocumentId] = useState<string | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [bulkFilesUploading, setBulkFilesUploading] = useState<null | {
     total: number;
     completed: number;
   }>(null);
+
+  const handleDelete = async () => {
+    if (!documentId) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${
+        dataSource.name
+      }/documents/${encodeURIComponent(documentId)}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!res.ok) {
+      alert("There was an error deleting the document.");
+      return;
+    }
+    sendNotification({
+      type: "success",
+      title: "Document successfully deleted",
+      description: `Document ${documentId} was successfully deleted`,
+    });
+  };
 
   const handleUpsert = async (text: string, documentId: string) => {
     const body: PostDataSourceDocumentRequestBody = {
@@ -131,55 +202,68 @@ export function DatasourceDocumentsTabView({
     }
   }, [documents, isDocumentsLoading, isDocumentsError]);
 
-  let last = offset + limit;
-  if (offset + limit > total) {
-    last = total;
-  }
+  const columns = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: (info: Info) => (
+        <DataTable.Cell icon={DocumentTextIcon}>
+          {info.row.original.name}
+        </DataTable.Cell>
+      ),
+    },
+    {
+      header: "Size",
+      accessorKey: "size",
+      cell: (info: Info) => (
+        <DataTable.Cell>
+          {Math.floor(info.row.original.size / 1024)} kb
+        </DataTable.Cell>
+      ),
+    },
+    {
+      header: "Last Edited",
+      accessorKey: "lastEdited",
+      cell: (info: Info) => (
+        <DataTable.Cell>
+          {timeAgoFrom(info.row.original.timestamp)} ago
+        </DataTable.Cell>
+      ),
+    },
+    {
+      id: "actions",
+      cell: (info: Info) => (
+        <EditOrDeleteDropdown
+          onEdit={() => {
+            setDocumentId(info.row.original.name);
+            setShowDataSourceUploadModal(true);
+          }}
+          onDelete={async () => {
+            // Implement delete functionality
+            setDocumentId(info.row.original.name);
+            setShowDataSourceDeleteDialog(true);
+            console.log("Delete", info.row.original.name);
+          }}
+        />
+      ),
+    },
+  ];
+
+  const rows = !isDocumentsLoading
+    ? documents.map((document) => {
+        return {
+          name: displayNameByDocId[document.document_id],
+          size: document.text_size,
+          timestamp: document.timestamp,
+        };
+      })
+    : [];
 
   return (
     <Page.Vertical align="stretch">
-      <div className="mt-16 flex flex-row">
-        <div className="flex flex-1">
-          <div className="flex flex-col">
-            <div className="flex flex-row">
-              <div className="flex flex-initial gap-x-2">
-                <Button
-                  variant="tertiary"
-                  disabled={offset < limit}
-                  onClick={() => {
-                    if (offset >= limit) {
-                      setOffset(offset - limit);
-                    } else {
-                      setOffset(0);
-                    }
-                  }}
-                  label="Previous"
-                />
-                <Button
-                  variant="tertiary"
-                  label="Next"
-                  disabled={offset + limit >= total}
-                  onClick={() => {
-                    if (offset + limit < total) {
-                      setOffset(offset + limit);
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-              {total > 0 && (
-                <span>
-                  Showing documents {offset + 1} - {last} of {total} documents
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
+      <div className="mt-1 flex flex-row">
         {readOnly ? null : (
-          <div className="">
+          <div className="w-full">
             <div className="relative mt-0 flex-none">
               <Popup
                 show={showDocumentsLimitPopup}
@@ -195,7 +279,7 @@ export function DatasourceDocumentsTabView({
                 className="absolute bottom-8 right-0"
               />
 
-              <>
+              <div className="flex w-full flex-row gap-2">
                 <Dialog
                   onCancel={() => {
                     //no-op as we can't cancel file upload
@@ -270,84 +354,53 @@ export function DatasourceDocumentsTabView({
                   }}
                 ></input>
 
+                <Searchbar
+                  name="search"
+                  placeholder="Search (Name)"
+                  value={dataSourceSearch}
+                  onChange={(s) => {
+                    setDataSourceSearch(s);
+                  }}
+                />
                 <Button
-                  className="mr-2"
                   variant="secondary"
                   icon={PlusIcon}
-                  label="Upload multiples files"
+                  label="Upload multiple files"
                   onClick={() => {
                     fileInputRef.current?.click();
                   }}
                 />
-              </>
-
-              <Button
-                variant="primary"
-                icon={PlusIcon}
-                label="Add document"
-                onClick={() => {
-                  setDocumentToLoad(null);
-                  // Enforce plan limits: DataSource documents count.
-                  if (
-                    plan.limits.dataSources.documents.count != -1 &&
-                    total >= plan.limits.dataSources.documents.count
-                  ) {
-                    setShowDocumentsLimitPopup(true);
-                  } else {
-                    setShowDataSourceUploadModal(true);
-                  }
-                }}
-              />
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Add document"
+                  onClick={() => {
+                    setDocumentId(null);
+                    // Enforce plan limits: DataSource documents count.
+                    if (
+                      plan.limits.dataSources.documents.count != -1 &&
+                      total >= plan.limits.dataSources.documents.count
+                    ) {
+                      setShowDocumentsLimitPopup(true);
+                    } else {
+                      setShowDataSourceUploadModal(true);
+                    }
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
       </div>
 
       <div className="py-8">
-        <ContextItem.List>
-          {documents.map((d) => (
-            <ContextItem
-              key={d.document_id}
-              title={displayNameByDocId[d.document_id]}
-              visual={
-                <ContextItem.Visual
-                  visual={({ className }) =>
-                    DocumentTextIcon({
-                      className: className + " text-element-600",
-                    })
-                  }
-                />
-              }
-              action={
-                <Button.List>
-                  <Button
-                    variant="secondary"
-                    icon={PencilSquareIcon}
-                    onClick={() => {
-                      setDocumentToLoad(d);
-                      setShowDataSourceUploadModal(true);
-                    }}
-                    label="Edit"
-                    labelVisible={false}
-                  />
-                </Button.List>
-              }
-            >
-              <ContextItem.Description>
-                <div className="pt-2 text-sm text-element-700">
-                  {Math.floor(d.text_size / 1024)} kb,{" "}
-                  {timeAgoFrom(d.timestamp)} ago
-                </div>
-              </ContextItem.Description>
-            </ContextItem>
-          ))}
-        </ContextItem.List>
-        {documents.length == 0 ? (
-          <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-            <p>No documents found for this Folder.</p>
-            <p className="mt-2">You can add documents manually or by API.</p>
-          </div>
-        ) : null}
+        <DataTable
+          data={rows}
+          columns={columns}
+          initialColumnOrder={[{ id: "name", desc: false }]}
+          filter={dataSourceSearch}
+          filterColumn={"name"}
+        />
       </div>
       <DocumentUploadModal
         isOpen={showDataSourceUploadModal}
@@ -355,7 +408,16 @@ export function DatasourceDocumentsTabView({
         owner={owner}
         dataSource={dataSource}
         plan={plan}
-        documentToLoad={documentToLoad}
+        documentIdToLoad={documentId}
+      />
+      <ConfirmDeleteDialog
+        isOpen={showDataSourceDeleteDialog}
+        onClose={() => setShowDataSourceDeleteDialog(false)}
+        onValidate={async () => {
+          await handleDelete();
+          setShowDataSourceDeleteDialog(false);
+        }}
+        documentName={documentId ?? ""}
       />
     </Page.Vertical>
   );
