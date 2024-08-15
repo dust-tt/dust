@@ -871,6 +871,7 @@ export function parsePropertyValue(
     case "unique_id":
       return parseUniqueIdProp(property.unique_id);
     case "relation":
+      return property.relation.map((r) => r.id).join(",");
     case "rollup":
     case "verification":
       return null;
