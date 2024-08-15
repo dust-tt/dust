@@ -850,7 +850,6 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
     },
     {
       header: "Used by",
-      id: "usedBy",
       accessorKey: "usage",
       cell: (info: Info) => (
         <>
@@ -868,12 +867,12 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       cell: (info: Info) => (
         <DataTable.Cell
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+          roundedAvatar={true}
         />
       ),
     },
     {
       header: "Last sync",
-      id: "lastSync",
       accessorKey: "editedByUser.editedAt",
       cell: (info: Info) => (
         <DataTable.Cell className="w-10">

@@ -288,6 +288,7 @@ function getTableColumns() {
       cell: (info: Info) => (
         <DataTable.Cell
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+          roundedAvatar={true}
         />
       ),
     },
