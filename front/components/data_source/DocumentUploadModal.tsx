@@ -10,7 +10,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
-  CoreAPIDocument,
   DataSourceType,
   PlanType,
   PostDataSourceDocumentRequestBody,
@@ -28,7 +27,7 @@ export interface DocumentUploadModalProps {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   plan: PlanType;
-  documentToLoad: CoreAPIDocument | null;
+  documentIdToLoad: string | null;
 }
 
 export function DocumentUploadModal({
@@ -37,7 +36,7 @@ export function DocumentUploadModal({
   owner,
   dataSource,
   plan,
-  documentToLoad,
+  documentIdToLoad,
 }: DocumentUploadModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,13 +58,13 @@ export function DocumentUploadModal({
   }, [documentId, text]);
 
   useEffect(() => {
-    if (documentToLoad) {
-      setDocumentId(documentToLoad.document_id);
+    if (documentIdToLoad) {
+      setDocumentId(documentIdToLoad);
       setDisabled(true);
       fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSource.name
-        }/documents/${encodeURIComponent(documentToLoad.document_id)}`
+        }/documents/${encodeURIComponent(documentIdToLoad)}`
       )
         .then(async (res) => {
           if (res.ok) {
@@ -83,7 +82,7 @@ export function DocumentUploadModal({
       setTags([]);
       setSourceUrl("");
     }
-  }, [dataSource.name, documentToLoad, owner.sId]);
+  }, [dataSource.name, documentIdToLoad, owner.sId]);
 
   const handleUpsert = async () => {
     setLoading(true);
@@ -172,7 +171,7 @@ export function DocumentUploadModal({
           : undefined
       }
       isSaving={loading}
-      title={documentToLoad ? "Edit document" : "Add a new document"}
+      title={documentIdToLoad ? "Edit document" : "Add a new document"}
     >
       <Page.Vertical align="stretch">
         <div className="ml-2 mr-2 space-y-2">

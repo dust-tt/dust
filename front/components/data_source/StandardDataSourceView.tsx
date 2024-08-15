@@ -52,13 +52,6 @@ export function StandardDataSourceView({
   return (
     <div className="pt-6">
       <Page.Vertical gap="xl" align="stretch">
-        <Page.SectionHeader
-          title={dataSource.name}
-          description={
-            "Use this page to view and upload documents and tables to your Folder."
-          }
-        />
-
         <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
 
         {currentTab === "documents" && (

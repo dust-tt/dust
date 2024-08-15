@@ -19,6 +19,7 @@ import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_
 interface TableUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: () => void;
   dataSource: DataSourceType;
   owner: WorkspaceType;
   initialTableId: string | null;
@@ -30,6 +31,7 @@ export function TableUploadModal({
   owner,
   initialTableId,
   onClose,
+  onSave,
 }: TableUploadModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -202,7 +204,10 @@ export function TableUploadModal({
       hasChanged={!hasChanged}
       variant="side-md"
       title={initialTableId ? "Edit table" : "Add a new table"}
-      onSave={handleUpload}
+      onSave={async () => {
+        await handleUpload();
+        onSave();
+      }}
     >
       <Page.Vertical align="stretch">
         <div className="pt-4">
