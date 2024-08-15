@@ -249,6 +249,8 @@ DataTable.Row = function Row({
 interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  iconClassName?: string;
+  roundedAvatar?: boolean;
   children?: ReactNode;
   description?: string;
 }
@@ -257,7 +259,9 @@ DataTable.Cell = function Cell({
   children,
   className,
   avatarUrl,
+  roundedAvatar,
   icon,
+  iconClassName,
   description,
   ...props
 }: CellProps) {
@@ -271,10 +275,22 @@ DataTable.Cell = function Cell({
     >
       <div className="s-flex">
         {avatarUrl && (
-          <Avatar visual={avatarUrl} size="xs" className="s-mr-2" />
+          <Avatar
+            visual={avatarUrl}
+            size="xs"
+            className="s-mr-2"
+            isRounded={roundedAvatar ?? false}
+          />
         )}
         {icon && (
-          <Icon visual={icon} size="sm" className="s-mr-2 s-text-element-600" />
+          <Icon
+            visual={icon}
+            size="sm"
+            className={classNames(
+              "s-mr-2 s-text-element-600",
+              iconClassName || ""
+            )}
+          />
         )}
         <div className="s-flex">
           <span className="s-text-sm s-text-element-800">{children}</span>

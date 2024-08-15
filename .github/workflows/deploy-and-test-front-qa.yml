@@ -1,0 +1,110 @@
+name: Deploy And test Front Qa
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy_front_qa
+  cancel-in-progress: false
+
+env:
+  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: "Authenticate with Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+
+      - name: Setup kubectl
+        run: |
+          gcloud container clusters get-credentials dust-kube --region us-central1
+
+      - name: Build the image on Cloud Build
+        run: |
+          chmod +x ./k8s/cloud-build.sh
+          ./k8s/cloud-build.sh front ./front/Dockerfile ./
+
+      - name: Deploy the image on Kubernetes
+        run: |
+          chmod +x ./k8s/deploy-image.sh
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-qa-deployment
+
+      - name: Wait for rollout to complete
+        run: kubectl rollout status deployment/front-qa-deployment --timeout=10m
+
+  run-playwright-tests:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Playwright Tests
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST "https://squid-app-xgsu4.ondigitalocean.app/webhook/tests/run" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.RANGER_API_TOKEN }}" \
+          -d '{
+            "targetUrl": "https://front-qa.dust.tt/",
+            "ghOwner": "'$REPO_OWNER'",
+            "ghRepo": "'$REPO_NAME'",
+            "ghRunId": "${{ github.run_id }}",
+            "ghCommitSha": "${{ github.sha }}",
+          }')
+          echo "$response"
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          if [ "$http_code" != "202" ]; then
+            error=$(echo "$body" | jq -r '.error // "Unknown error"')
+            echo "Error: $error"
+            exit 1
+          fi
+          test_run_id=$(echo "$body" | jq -r '.testRunId')
+          echo "Test Run ID: $test_run_id"
+          echo "TEST_RUN_ID=$test_run_id" >> $GITHUB_ENV
+
+      - name: Wait for Playwright Tests To Complete
+        run: |
+          timeout=2700  # 45 minutes in seconds
+          start_time=$(date +%s)
+          while true; do
+            current_time=$(date +%s)
+            elapsed=$((current_time - start_time))
+            if [ $elapsed -ge $timeout ]; then
+              echo "Timeout: Playwright tests did not complete within 45 minutes"
+              exit 1
+            fi
+            response=$(curl -s -X GET "https://squid-app-xgsu4.ondigitalocean.app/webhook/tests/status/$TEST_RUN_ID" \
+              -H "Authorization: Bearer ${{ secrets.RANGER_API_TOKEN }}")
+            status=$(echo "$response" | jq -r '.status')
+            if [ "$status" = "completed" ]; then
+              success=$(echo "$response" | jq -r '.success')
+              if [ "$success" = "true" ]; then
+                echo "Playwright tests completed successfully"
+                exit 0
+              else
+                echo "Playwright tests failed"
+                exit 1
+              fi
+            fi
+            sleep 30
+          done

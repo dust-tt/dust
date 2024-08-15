@@ -13,7 +13,9 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -104,6 +106,14 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return dataSource ?? null;
   }
 
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        id: ids,
+      },
+    });
+  }
+
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions
@@ -137,6 +147,14 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     });
   }
 
+  static async listByVault(auth: Authenticator, vault: VaultResource) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        vaultId: vault.id,
+      },
+    });
+  }
+
   // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
     const [dataSource] = await this.baseFetchWithAuthorization(auth, {
@@ -150,8 +168,15 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        dataSourceId: this.id,
+      },
+      transaction,
+    });
+
     if (this.isManaged()) {
-      await DataSourceViewResource.deleteForDataSource(auth, this);
+      await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
     }
 
     try {
@@ -211,11 +236,24 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     );
   }
 
+  isFolder() {
+    return !this.connectorProvider;
+  }
+
+  isWebcrawler() {
+    return this.connectorProvider === "webcrawler";
+  }
+
+  getUsagesByAgents(auth: Authenticator) {
+    return getDataSourceUsage({ auth, dataSource: this.toJSON() });
+  }
+
   // Serialization.
 
   toJSON(): DataSourceType {
     return {
       id: this.id,
+      sId: this.name, // TODO(thomas 20240812) Migrate to a real sId
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,

@@ -197,12 +197,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
             fetchConnectorError: true,
             fetchConnectorErrorMessage: statusRes.error.message,
             editedByUser: mds.editedByUser,
-            usage: await getDataSourceUsage({
-              auth,
-              dataSource: mds,
-            }),
+            usage: 0,
           };
         }
+        const usageRes = await getDataSourceUsage({
+          auth,
+          dataSource: mds,
+        });
         return {
           dataSourceName: mds.name,
           provider: mds.connectorProvider,
@@ -210,10 +211,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           fetchConnectorError: false,
           fetchConnectorErrorMessage: null,
           editedByUser: mds.editedByUser,
-          usage: await getDataSourceUsage({
-            auth,
-            dataSource: mds,
-          }),
+          usage: usageRes.isOk() ? usageRes.value : 0,
         };
       } catch (e) {
         // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
@@ -707,24 +705,26 @@ export default function DataSourcesView({
             />
           )}
           {connectionRows.length > 0 && (
-            <Searchbar
-              ref={searchBarRef}
-              name="search"
-              placeholder="Search (Name)"
-              value={dataSourceSearch}
-              onChange={(s) => {
-                setDataSourceSearch(s);
-              }}
-            />
+            <div className="hidden w-full sm:block">
+              <Searchbar
+                ref={searchBarRef}
+                name="search"
+                placeholder="Search (Name)"
+                value={dataSourceSearch}
+                onChange={(s) => {
+                  setDataSourceSearch(s);
+                }}
+              />
+            </div>
           )}
 
           {isAdmin && nonSetUpIntegrations.length > 0 && (
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  label="Add Connection"
+                  label="Add Connections"
                   variant="primary"
-                  icon={CloudArrowLeftRightIcon}
+                  icon={PlusIcon}
                   size="sm"
                 />
               </DropdownMenu.Button>
@@ -762,6 +762,11 @@ export default function DataSourcesView({
             columns={getTableColumns()}
             filter={dataSourceSearch}
             filterColumn={"name"}
+            columnsBreakpoints={{
+              // "managedBy": "sm",
+              usedBy: "sm",
+              lastSync: "sm",
+            }}
           />
         ) : !isAdmin ? (
           <div className="flex items-center justify-center text-sm font-normal text-element-700">
@@ -818,6 +823,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
     {
       header: "Name",
       accessorKey: "name",
+      id: "name",
       cell: (info: Info) => (
         <DataTable.Cell icon={info.row.original.icon}>
           {info.row.original.name}
@@ -839,9 +845,11 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
     },
     {
       header: "Managed by",
+      id: "managedBy",
       cell: (info: Info) => (
         <DataTable.Cell
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+          roundedAvatar={true}
         />
       ),
     },
@@ -876,7 +884,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       ),
     },
     {
-      header: "Manage",
+      id: "action",
       cell: (info: Info) => {
         const original = info.row.original;
         const disabled = original.isLoading || !original.isAdmin;

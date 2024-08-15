@@ -134,6 +134,10 @@ export const connectors = async ({
       await terminateAllWorkflowsForConnectorId(connector.id);
       return { success: true };
     }
+    case "pause": {
+      await throwOnError(manager.pause());
+      return { success: true };
+    }
     case "resume": {
       await throwOnError(manager.resume());
       return { success: true };

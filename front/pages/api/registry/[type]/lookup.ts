@@ -211,11 +211,7 @@ async function handleDataSourceView(
 
   // TODO(2024-08-02 flav) Uncomment.
   // if (hasAccessToDataSourceView) {
-  const dataSource = await dataSourceView.fetchDataSource(auth);
-  if (!dataSource) {
-    return new Err(new Error("Data source not found for view."));
-  }
-
+  const dataSource = dataSourceView.dataSource;
   return new Ok({
     project_id: parseInt(dataSource.dustAPIProjectId),
     data_source_id: dataSource.name,

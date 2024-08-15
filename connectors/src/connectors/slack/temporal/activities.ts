@@ -183,7 +183,7 @@ export async function syncChannel(
   const messages = await getMessagesForChannel(
     connectorId,
     channelId,
-    100,
+    50,
     messagesCursor
   );
   if (!messages.messages) {

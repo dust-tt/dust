@@ -84,6 +84,8 @@ export async function submitAssistantBuilderForm({
               a.configuration.dataSourceConfigurations
             ).map(({ dataSource, selectedResources, isSelectAll }) => ({
               dataSourceId: dataSource.name,
+              // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
+              dataSourceViewId: null,
               workspaceId: owner.sId,
               filter: {
                 parents: !isSelectAll
@@ -150,6 +152,8 @@ export async function submitAssistantBuilderForm({
               a.configuration.dataSourceConfigurations
             ).map(({ dataSource, selectedResources, isSelectAll }) => ({
               dataSourceId: dataSource.name,
+              // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
+              dataSourceViewId: null,
               workspaceId: owner.sId,
               filter: {
                 parents: !isSelectAll

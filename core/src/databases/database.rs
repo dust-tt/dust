@@ -4,6 +4,7 @@ use super::table_schema::TableSchema;
 use crate::{
     databases_store::store::DatabasesStore,
     project::Project,
+    search_filter::{Filterable, SearchFilter},
     sqlite_workers::client::{SqliteWorker, SqliteWorkerError, HEARTBEAT_INTERVAL_MS},
     stores::store::Store,
     utils,
@@ -442,6 +443,27 @@ impl Table {
         }
 
         Ok(schema)
+    }
+}
+
+impl Filterable for Table {
+    fn match_filter(&self, filter: &Option<SearchFilter>) -> bool {
+        match &filter {
+            Some(filter) => filter.match_filter(self),
+            None => true,
+        }
+    }
+
+    fn get_timestamp(&self) -> u64 {
+        self.timestamp
+    }
+
+    fn get_tags(&self) -> Vec<String> {
+        self.tags.clone()
+    }
+
+    fn get_parents(&self) -> Vec<String> {
+        self.parents.clone()
     }
 }
 

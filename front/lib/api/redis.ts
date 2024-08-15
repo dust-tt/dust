@@ -16,7 +16,7 @@ export async function getRedisClient(): Promise<RedisClientType> {
       url: REDIS_URI,
       isolationPoolOptions: {
         acquireTimeoutMillis: 10000, // Max time to wait for a connection: 10 seconds.
-        max: 300, // Maximum number of concurrent connections for streaming.
+        max: 500, // Maximum number of concurrent connections for streaming.
         evictionRunIntervalMillis: 15000, // Check for idle connections every 15 seconds.
         idleTimeoutMillis: 30000, // Connections idle for more than 30 seconds will be eligible for eviction.
       },

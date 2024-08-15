@@ -59,7 +59,7 @@ export async function batchRenderUserMessages(
       if (userIds.length === 0) {
         return [];
       }
-      return UserResource.listByModelIds(userIds);
+      return UserResource.fetchByModelIds(userIds);
     })(),
   ]);
 

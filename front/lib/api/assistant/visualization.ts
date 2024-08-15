@@ -119,23 +119,19 @@ The generated component should not have any required props / parameters.
 
    
 
-### Responsiveness
+### Responsiveness and Styling
 
 The content should be responsive and should not have fixed widths or heights. The component should be able to adapt to different screen sizes.
 The content should never overflow the viewport and should never have horizontal or vertical scrollbars.
 
 If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
-Never use tailwind's specific values like \`h-[600px]\`.
+Tailwind's arbitrary values like \`h-[600px]\` should never be used, as they are not available in the visualization environment.
+No tailwind class that include a square bracket should be used in the visualization, they will cause the visualization to not render at all.
+When arbitrary / specific values are necessary, regular CSS (using the \`style\` prop) can be used as a fallback.
+For all other styles, Tailwind CSS classes should be preferred
 
 Always add padding to the content (both horizontal and vertical) to make it look better and make sure the labels are fully visible.
 
-    
-
-### Styling
-
-For all other styles, Tailwind CSS classes should be preferred. Arbitrary values should not be used, e.g. \`h-[600px]\`. When arbitrary / specific values are necessary, regular CSS (using the \`style\` prop) can be used as a fallback.
-
-    
 
 ### Using files from the conversation
 

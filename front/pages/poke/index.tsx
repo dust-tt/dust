@@ -1,4 +1,4 @@
-import { CloudArrowLeftRightIcon, Icon, Spinner } from "@dust-tt/sparkle";
+import { BookOpenIcon, Icon, Spinner } from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
@@ -15,6 +15,8 @@ import {
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import {
   isEntreprisePlan,
+  isFreePlan,
+  isFriendsAndFamilyPlan,
   isOldFreePlan,
   isProPlan,
 } from "@app/lib/plans/plan_codes";
@@ -44,7 +46,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
             <PokeTable>
               <PokeTableBody>
                 <PokeTableRow>
-                  <PokeTableCell colSpan={3}>
+                  <PokeTableCell className="space-x-2" colSpan={3}>
                     <label>
                       Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
                     </label>
@@ -56,7 +58,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
-                  <PokeTableCell>
+                  <PokeTableCell className="max-w-[200px] overflow-hidden text-ellipsis">
                     {ws.adminEmail}{" "}
                     {ws.workspaceDomain && (
                       <label>({ws.workspaceDomain.domain})</label>
@@ -69,8 +71,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                   </PokeTableCell>
                   <PokeTableCell align="center">
                     <label>
-                      <Icon visual={CloudArrowLeftRightIcon} />{" "}
-                      {ws.dataSourcesCount}
+                      <Icon visual={BookOpenIcon} /> {ws.dataSourcesCount}
                     </label>
                   </PokeTableCell>
                 </PokeTableRow>
@@ -85,8 +86,12 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                           "rounded px-1 text-sm text-gray-500 text-white",
                           isEntreprisePlan(ws.subscription.plan.code) &&
                             "bg-red-500",
+                          isFriendsAndFamilyPlan(ws.subscription.plan.code) &&
+                            "bg-pink-500",
                           isProPlan(ws.subscription.plan.code) &&
                             "bg-orange-500",
+                          isFreePlan(ws.subscription.plan.code) &&
+                            "bg-blue-500",
                           isOldFreePlan(ws.subscription.plan.code) &&
                             "bg-gray-300"
                         )}
@@ -150,7 +155,7 @@ const Dashboard = () => {
             !isSearchResultsError &&
             renderWorkspaces("Search Results", searchResults)}
           {isSearchResultsLoading && !searchDisabled && (
-            <Spinner size="xl" variant="color" />
+            <Spinner size="lg" variant="color" />
           )}
           {!isUpgradedWorkspacesLoading &&
             !isUpgradedWorkspacesError &&
@@ -158,7 +163,7 @@ const Dashboard = () => {
               `Last ${limit} Upgraded Workspaces`,
               upgradedWorkspaces
             )}
-          {isUpgradedWorkspacesLoading && <Spinner size="xl" variant="color" />}
+          {isUpgradedWorkspacesLoading && <Spinner size="lg" variant="color" />}
         </>
       </div>
     </div>

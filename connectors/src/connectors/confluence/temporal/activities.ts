@@ -30,7 +30,10 @@ import {
   updateDocumentParentsField,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { isNotFoundError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  isNotFoundError,
+} from "@connectors/lib/error";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -659,19 +662,33 @@ export async function confluenceGetReportPersonalActionActivity(
   });
 
   if (oldestPageSync) {
-    const client = await getConfluenceClient({}, connector);
+    try {
+      const client = await getConfluenceClient({}, connector);
 
-    const result = await client.reportAccount({
-      accountId: userAccountId,
-      updatedAt: oldestPageSync.lastVisitedAt,
-    });
+      const result = await client.reportAccount({
+        accountId: userAccountId,
+        updatedAt: oldestPageSync.lastVisitedAt,
+      });
 
-    if (result && result.status === "closed") {
-      logger.info(
-        { connectorId, userAccountId },
-        "Confluence report accounts API, account closed."
+      if (result && result.status === "closed") {
+        logger.info(
+          { connectorId, userAccountId },
+          "Confluence report accounts API, account closed."
+        );
+        return true;
+      }
+    } catch (err) {
+      logger.error(
+        { connectorId, userAccountId, err },
+        "Error while reporting Confluence account."
       );
-      return true;
+
+      // If token has been revoked, return false.
+      if (err instanceof ExternalOAuthTokenError) {
+        return false;
+      }
+
+      throw err;
     }
   }
 

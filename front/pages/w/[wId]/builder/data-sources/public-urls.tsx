@@ -9,12 +9,14 @@ import {
   Searchbar,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type {
   ConnectorType,
   DataSourceType,
+  PlanType,
+  SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -37,6 +39,15 @@ const { GA_TRACKING_ID = "" } = process.env;
 
 type DataSourceWithConnector = DataSourceType & {
   connector: ConnectorType;
+};
+
+type Info = {
+  row: {
+    original: DataSourceType & {
+      icon: ComponentType;
+      usage: number;
+    };
+  };
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -183,15 +194,17 @@ export default function DataSourcesView({
         {clickableDataSources.length > 0 ? (
           <div className="relative">
             <div className="flex flex-row gap-2">
-              <Searchbar
-                ref={searchBarRef}
-                name="search"
-                placeholder="Search (Name)"
-                value={dataSourceSearch}
-                onChange={(s) => {
-                  setDataSourceSearch(s);
-                }}
-              />
+              <div className="hidden w-full sm:block">
+                <Searchbar
+                  ref={searchBarRef}
+                  name="search"
+                  placeholder="Search (Name)"
+                  value={dataSourceSearch}
+                  onChange={(s) => {
+                    setDataSourceSearch(s);
+                  }}
+                />
+              </div>
               {!readOnly && (
                 <Button.List>
                   <Button
@@ -233,6 +246,10 @@ export default function DataSourcesView({
             filter={dataSourceSearch}
             filterColumn={"name"}
             initialColumnOrder={[{ id: "name", desc: false }]}
+            columnsBreakpoints={{
+              usage: "sm",
+              editedAt: "sm",
+            }}
           />
         )}
       </Page.Vertical>
@@ -241,28 +258,24 @@ export default function DataSourcesView({
 }
 
 function getTableColumns() {
-  // to please typescript
-  type Info = {
-    row: {
-      original: DataSourceType & {
-        icon: ComponentType;
-        usage: number;
-      };
-    };
-  };
   return [
     {
       header: "Name",
+      id: "name",
       accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.Cell icon={info.row.original.icon}>
-          {info.row.original.name}
+          <span className="hidden sm:inline">{info.row.original.name}</span>
+          <span className="inline sm:hidden">
+            {truncate(info.row.original.name, 30, "...")}
+          </span>
         </DataTable.Cell>
       ),
     },
     {
       header: "Used by",
       accessorKey: "usage",
+      id: "usage",
       cell: (info: Info) => (
         <DataTable.Cell icon={RobotIcon}>
           {info.row.original.usage}
@@ -271,15 +284,18 @@ function getTableColumns() {
     },
     {
       header: "Added by",
+      id: "addedBy",
       cell: (info: Info) => (
         <DataTable.Cell
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
+          roundedAvatar={true}
         />
       ),
     },
     {
       header: "Last updated",
       accessorKey: "editedByUser.editedAt",
+      id: "editedAt",
       cell: (info: Info) => (
         <DataTable.Cell>
           {info.row.original.editedByUser?.editedAt

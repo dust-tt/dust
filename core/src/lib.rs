@@ -23,6 +23,7 @@ pub mod databases {
 }
 pub mod project;
 pub mod run;
+pub mod search_filter;
 pub mod utils;
 pub mod providers {
     pub mod azure_openai;
