@@ -39,7 +39,7 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as React from "react";
 
-import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEdition";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
@@ -917,10 +917,11 @@ function IntercomConfigView({
 }
 
 interface ConnectorUiConfig {
-  displayDataSourceDetailsModal: boolean;
-  displayManagePermissionButton: boolean;
-  addDataButtonLabel: string | null;
-  displaySettingsButton: boolean;
+  displayAddDataButton: boolean;
+  displayEditionModal: boolean;
+  displayManageConnectionButton: boolean;
+  addDataWithConnection: boolean;
+  displayWebcrawlerSettingsButton: boolean;
   guideLink: string | null;
   postPermissionsUpdateMessage?: string;
 }
@@ -929,9 +930,10 @@ function getRenderingConfigForConnectorProvider(
   connectorProvider: ConnectorProvider
 ): ConnectorUiConfig {
   const commonConfig = {
-    displayManagePermissionButton: true,
-    addDataButtonLabel: "Add / Remove data",
-    displaySettingsButton: false,
+    addDataWithConnection: false,
+    displayAddDataButton: true,
+    displayManageConnectionButton: true,
+    displayWebcrawlerSettingsButton: false,
   };
 
   switch (connectorProvider) {
@@ -940,7 +942,7 @@ function getRenderingConfigForConnectorProvider(
     case "microsoft":
       return {
         ...commonConfig,
-        displayDataSourceDetailsModal: true,
+        displayEditionModal: true,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
 
@@ -948,33 +950,34 @@ function getRenderingConfigForConnectorProvider(
     case "intercom":
       return {
         ...commonConfig,
-        displayDataSourceDetailsModal: false,
+        displayEditionModal: false,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     case "notion":
       return {
-        displayDataSourceDetailsModal: true,
-        displayManagePermissionButton: false,
-        addDataButtonLabel: "Add / Remove data, manage permissions",
-        displaySettingsButton: false,
+        ...commonConfig,
+        addDataWithConnection: true,
+        displayEditionModal: true,
+        displayManageConnectionButton: false,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
         postPermissionsUpdateMessage:
           "We've taken your edits into account. Notion permission edits may take up to 24 hours to be reflected on your workspace.",
       };
     case "github":
       return {
-        displayDataSourceDetailsModal: true,
-        displayManagePermissionButton: false,
-        addDataButtonLabel: "Add / Remove data, manage permissions",
-        displaySettingsButton: false,
+        ...commonConfig,
+        addDataWithConnection: true,
+        displayEditionModal: true,
+        displayManageConnectionButton: false,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     case "webcrawler":
       return {
-        displayDataSourceDetailsModal: false,
-        displayManagePermissionButton: false,
-        addDataButtonLabel: null,
-        displaySettingsButton: true,
+        addDataWithConnection: false,
+        displayAddDataButton: false,
+        displayEditionModal: false,
+        displayManageConnectionButton: false,
+        displayWebcrawlerSettingsButton: true,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     default:
@@ -1104,10 +1107,11 @@ function ManagedDataSourceView({
   };
 
   const {
-    displayDataSourceDetailsModal,
-    displayManagePermissionButton,
-    addDataButtonLabel,
-    displaySettingsButton,
+    displayEditionModal,
+    displayManageConnectionButton,
+    addDataWithConnection,
+    displayAddDataButton,
+    displayWebcrawlerSettingsButton,
     guideLink,
     postPermissionsUpdateMessage,
   } = getRenderingConfigForConnectorProvider(connectorProvider);
@@ -1131,13 +1135,6 @@ function ManagedDataSourceView({
           <span>{postPermissionsUpdateMessage}</span>
         </Dialog>
       )}
-      <ConnectorPermissionsModal
-        owner={owner}
-        connector={connector}
-        dataSource={dataSource}
-        isOpen={showPermissionModal}
-        setOpen={setShowPermissionModal}
-      />
       <div className="flex flex-col pt-4">
         <div className="flex flex-row items-end">
           <Page.Header
@@ -1159,21 +1156,25 @@ function ManagedDataSourceView({
             })()}
             icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
           />
-          {isAdmin && displayManagePermissionButton ? (
+          {isAdmin && displayManageConnectionButton ? (
             <Button
               className="ml-auto"
-              label="Manage permissions"
+              label="Manage connection"
               variant="tertiary"
               icon={LockIcon}
               disabled={readOnly || !isAdmin}
               onClick={() => {
-                setShowEditionModal(true);
+                if (displayEditionModal) {
+                  setShowEditionModal(true);
+                } else {
+                  void handleUpdatePermissions();
+                }
               }}
             />
           ) : (
             <></>
           )}
-          {isBuilder && displaySettingsButton ? (
+          {isBuilder && displayWebcrawlerSettingsButton ? (
             <Link
               className="ml-auto"
               href={`/w/${owner.sId}/builder/data-sources/${encodeURIComponent(
@@ -1203,20 +1204,17 @@ function ManagedDataSourceView({
           <>
             <div className="flex flex-col pb-4 pt-8">
               <Button.List>
-                {addDataButtonLabel && (
+                {displayAddDataButton && (
                   <Button
-                    label={addDataButtonLabel}
+                    label={`${addDataWithConnection ? "Add / Remove data, manage permissions" : "Add / Remove data"}`}
                     variant="primary"
                     icon={ListCheckIcon}
                     disabled={readOnly}
                     onClick={() => {
-                      if (
-                        !displayManagePermissionButton &&
-                        displayDataSourceDetailsModal
-                      ) {
-                        setShowEditionModal(true);
-                      } else if (displayDataSourceDetailsModal) {
+                      if (!addDataWithConnection) {
                         setShowPermissionModal(true);
+                      } else if (displayEditionModal) {
+                        setShowEditionModal(true);
                       } else {
                         void handleUpdatePermissions();
                       }
@@ -1305,6 +1303,13 @@ function ManagedDataSourceView({
           user={user}
           dustClientFacingUrl={dustClientFacingUrl}
           setIsRequestDataSourceModalOpen={() => setShowRequestDialog(true)}
+        />
+        <ConnectorPermissionsModal
+          owner={owner}
+          connector={connector}
+          dataSource={dataSource}
+          isOpen={showPermissionModal}
+          onClose={() => setShowPermissionModal(false)}
         />
         <RequestDataSourceDialog
           isOpen={showRequestDialog}
