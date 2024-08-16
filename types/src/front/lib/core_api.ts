@@ -1086,7 +1086,9 @@ export class CoreAPI {
       tables: CoreAPITable[];
     }>
   > {
-    const qs = filter ? `?view_filter=${JSON.stringify(filter)}` : "";
+    const qs = filter
+      ? `?view_filter=${encodeURIComponent(JSON.stringify(filter))}`
+      : "";
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -1200,7 +1202,9 @@ export class CoreAPI {
     rowId: string;
     filter?: CoreAPISearchFilter | null;
   }): Promise<CoreAPIResponse<{ row: CoreAPIRow }>> {
-    const qs = filter ? `?view_filter=${JSON.stringify(filter)}` : "";
+    const qs = filter
+      ? `?view_filter=${encodeURIComponent(JSON.stringify(filter))}`
+      : "";
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -1239,7 +1243,9 @@ export class CoreAPI {
       total: number;
     }>
   > {
-    const qs = filter ? `&view_filter=${JSON.stringify(filter)}` : "";
+    const qs = filter
+      ? `&view_filter=${encodeURIComponent(JSON.stringify(filter))}`
+      : "";
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
