@@ -41,7 +41,7 @@ import * as React from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
-import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEdition";
+import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourceDialog } from "@app/components/data_source/RequestDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
