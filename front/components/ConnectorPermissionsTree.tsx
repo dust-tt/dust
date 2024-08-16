@@ -156,6 +156,16 @@ export function PermissionTreeChildren({
                     });
                     return newState;
                   });
+                  if (onPermissionUpdate) {
+                    resourcesFiltered.forEach((r) => {
+                      onPermissionUpdate({
+                        internalId: r.internalId,
+                        permission: !selectAllClicked
+                          ? selectedPermission
+                          : unselectedPermission,
+                      });
+                    });
+                  }
                 }}
               />
             </div>
