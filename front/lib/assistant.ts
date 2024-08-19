@@ -45,8 +45,8 @@ export enum GLOBAL_AGENTS_SID {
   NOTION = "notion",
   GITHUB = "github",
   INTERCOM = "intercom",
-  GPT4 = "gpt-4",
   GPT35_TURBO = "gpt-3.5-turbo",
+  GPT4 = "gpt-4",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
@@ -63,7 +63,6 @@ export enum GLOBAL_AGENTS_SID {
 
 export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
-    case GLOBAL_AGENTS_SID.GPT35_TURBO:
     case GLOBAL_AGENTS_SID.GPT4:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
@@ -91,7 +90,6 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.INTERCOM,
-  GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
