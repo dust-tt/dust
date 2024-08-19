@@ -1,5 +1,7 @@
+import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
+import { ConnectorType } from "./lib/connectors_api";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -11,6 +13,24 @@ export const CONNECTOR_PROVIDERS = [
   "microsoft",
   "webcrawler",
 ] as const;
+
+export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
+  ConnectorProvider,
+  string
+> = {
+  confluence: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
+  slack: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
+  notion:
+    "You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
+  github:
+    "You cannot create a new Github app installation.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.",
+  google_drive:
+    "You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.",
+  intercom:
+    "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
+  microsoft: `Microsoft / mismatch error.`,
+  webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
+};
 
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 
@@ -42,6 +62,24 @@ export type DataSourceType = {
   dustAPIProjectId: string;
   connectorId: string | null;
   connectorProvider: ConnectorProvider | null;
+  editedByUser?: EditedByUser | null;
+};
+
+export type DataSourceIntegration = {
+  name: string;
+  dataSourceName: string | null;
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
+  fetchConnectorErrorMessage?: string | null;
+  status: "preview" | "built" | "rolling_out";
+  rollingOutFlag: WhitelistableFeature | null;
+  connectorProvider: ConnectorProvider;
+  description: string;
+  limitations: string | null;
+  guideLink: string | null;
+  synchronizedAgo: string | null;
+  setupWithSuffix: string | null;
+  usage: number | null;
   editedByUser?: EditedByUser | null;
 };
 
