@@ -19,7 +19,7 @@ import { assertNever, DATA_SOURCE_OR_VIEW_CATEGORIES } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import {
   CONNECTOR_CONFIGURATIONS,
@@ -187,7 +187,10 @@ const SystemVaultItem = ({
   const isAncestorToCurrentPage = router.asPath.includes(itemPath);
 
   // Unfold the item if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    setIsExpanded(isAncestorToCurrentPage);
+  }, [isAncestorToCurrentPage]);
 
   const { isVaultDataSourceOrViewsLoading, vaultDataSourceOrViews } =
     useVaultDataSourceOrViews({
@@ -244,7 +247,10 @@ const VaultMenuItem = ({
   const isAncestorToCurrentPage = router.asPath.includes(vaultPath);
 
   // Unfold the vault if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    setIsExpanded(isAncestorToCurrentPage);
+  }, [isAncestorToCurrentPage]);
 
   const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
     workspaceId: owner.sId,
@@ -342,7 +348,8 @@ const VaultDataSourceOrViewItem = ({
       type="leaf"
       isSelected={
         router.asPath === dataSourceOrViewPath ||
-        router.asPath.includes(dataSourceOrViewPath + "/")
+        router.asPath.includes(dataSourceOrViewPath + "/") ||
+        router.asPath.includes(dataSourceOrViewPath + "?")
       }
       onItemClick={() => router.push(dataSourceOrViewPath)}
       label={getDataSourceOrViewName(item)}
@@ -367,7 +374,10 @@ const VaultCategoryItem = ({
   const isAncestorToCurrentPage = router.asPath.includes(vaultCategoryPath);
 
   // Unfold the vault's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    setIsExpanded(isAncestorToCurrentPage);
+  }, [isAncestorToCurrentPage]);
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
   const { isVaultDataSourceOrViewsLoading, vaultDataSourceOrViews } =
