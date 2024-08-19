@@ -16,8 +16,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher, Key, SWRConfiguration } from "swr";
-import useSWR from "swr";
+import type { Fetcher, Key, KeyedMutator, SWRConfiguration } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -1288,7 +1288,7 @@ export function useLabsTranscriptsConfiguration({
 export function useVaults({ workspaceId }: { workspaceId: string }) {
   const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/vaults`,
     vaultsFetcher
   );
@@ -1297,6 +1297,16 @@ export function useVaults({ workspaceId }: { workspaceId: string }) {
     vaults: data ? data.vaults : null,
     isVaultsLoading: !error && !data,
     isVaultsError: error,
+  };
+}
+
+export function useVaultsMutate({ workspaceId }: { workspaceId: string }) {
+  const { mutate } = useSWRConfig();
+  return {
+    mutate: mutate.bind(
+      null,
+      `/api/w/${workspaceId}/vaults`
+    ) as KeyedMutator<GetVaultsResponseBody>,
   };
 }
 

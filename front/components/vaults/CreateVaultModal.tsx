@@ -18,7 +18,7 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useMembers } from "@app/lib/swr";
+import { useMembers, useVaults, useVaultsMutate } from "@app/lib/swr";
 import logger from "@app/logger/logger";
 import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 
@@ -57,7 +57,7 @@ export function CreateVaultModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const { mutate } = useSWRConfig();
+  const { mutate } = useVaultsMutate({ workspaceId: owner.sId });
   const router = useRouter();
   const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
@@ -133,7 +133,7 @@ export function CreateVaultModal({
       const r: PostVaultsResponseBody = await res.json();
 
       // Invalidate the vaults list
-      await mutate(`/api/w/${owner.sId}/vaults`);
+      await mutate();
 
       await router.push(`/w/${owner.sId}/data-sources/vaults/${r.vault.sId}`);
     } finally {
