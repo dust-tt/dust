@@ -1288,7 +1288,7 @@ export function useLabsTranscriptsConfiguration({
 export function useVaults({ workspaceId }: { workspaceId: string }) {
   const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error } = useSWRWithDefaults(
     `/api/w/${workspaceId}/vaults`,
     vaultsFetcher
   );
