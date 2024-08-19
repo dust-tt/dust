@@ -20,7 +20,7 @@ import { Icon } from "./Icon";
 interface TBaseData {
   onClick?: () => void;
   onMoreClick?: () => void;
-  onMoreMenuItem?: DropdownItemProps[];
+  moreMenuItems?: DropdownItemProps[];
 }
 
 interface ColumnBreakpoint {
@@ -122,7 +122,7 @@ export function DataTable<TData extends TBaseData, TValue>({
             key={row.id}
             onClick={row.original.onClick}
             onMoreClick={row.original.onMoreClick}
-            onMoreMenuItem={row.original.onMoreMenuItem}
+            moreMenuItems={row.original.moreMenuItems}
           >
             {row.getVisibleCells().map((cell) => (
               <DataTable.Cell
@@ -215,7 +215,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
   onMoreClick?: () => void;
-  onMoreMenuItem?: DropdownItemProps[];
+  moreMenuItems?: DropdownItemProps[];
 }
 
 DataTable.Row = function Row({
@@ -223,7 +223,7 @@ DataTable.Row = function Row({
   className,
   onClick,
   onMoreClick,
-  onMoreMenuItem,
+  moreMenuItems,
   ...props
 }: RowProps) {
   return (
@@ -248,7 +248,7 @@ DataTable.Row = function Row({
           <Icon visual={MoreIcon} size="sm" />
         </td>
       )}
-      {onMoreMenuItem && (
+      {moreMenuItems && (
         <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
           <DropdownMenu className="s-flex">
             <DropdownMenu.Button
@@ -259,7 +259,7 @@ DataTable.Row = function Row({
               <Icon visual={MoreIcon} size="sm" />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topRight" width={220}>
-              {onMoreMenuItem?.map((item, index) => (
+              {moreMenuItems?.map((item, index) => (
                 <DropdownMenu.Item key={index} {...item} />
               ))}
             </DropdownMenu.Items>

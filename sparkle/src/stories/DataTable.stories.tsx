@@ -24,7 +24,7 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
   onMoreClick?: () => void;
-  onMoreMenuItem?: DropdownItemProps[];
+  moreMenuItems?: DropdownItemProps[];
   roundedAvatar?: boolean;
 };
 
@@ -49,7 +49,7 @@ export const DataTableExample = () => {
       lastUpdated: "2023-07-09",
       size: "64kb",
       icon: FolderIcon,
-      onMoreMenuItem: [
+      moreMenuItems: [
         {
           label: "Edit",
           onClick: () => console.log("Edit"),
