@@ -1300,6 +1300,12 @@ function ManagedDataSourceView({
           dataSource={dataSource}
           owner={owner}
           user={user}
+          onEditPermissionsClick={() => {
+            void handleUpdatePermissions().then(() => {
+              postPermissionsUpdateMessage &&
+                setPostPermissionsUpdateDialogIsOpen(true);
+            });
+          }}
           dustClientFacingUrl={dustClientFacingUrl}
           onRequestFromDataSourceClick={() => setShowRequestDialog(true)}
         />
