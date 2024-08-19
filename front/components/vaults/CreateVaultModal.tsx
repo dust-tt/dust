@@ -13,11 +13,14 @@ import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
+import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
+import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useMembers } from "@app/lib/swr";
 import logger from "@app/logger/logger";
+import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 
 type RowData = {
   icon: string;
@@ -56,7 +59,8 @@ export function CreateVaultModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-
+  const { mutate } = useSWRConfig();
+  const router = useRouter();
   const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -128,7 +132,12 @@ export function CreateVaultModal({
         const errorData = await res.json();
         throw new Error(errorData.error?.message || "Failed to create vault");
       }
-      return await res.json();
+      const r: PostVaultsResponseBody = await res.json();
+
+      // Invalidate the vaults list
+      await mutate(`/api/w/${owner.sId}/vaults`);
+
+      await router.push(`/w/${owner.sId}/data-sources/vaults/${r.vault.sId}`);
     } finally {
       setIsSaving(false);
     }
