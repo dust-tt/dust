@@ -3,6 +3,7 @@ import { assertNever, isEmptyString, minTranscriptsSize } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
+import { UniqueConstraintError } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
@@ -203,6 +204,23 @@ export async function processTranscriptActivity(
       assertNever(transcriptsConfiguration.provider);
   }
 
+  try {
+    await transcriptsConfiguration.recordHistory({
+      configurationId: transcriptsConfiguration.id,
+      fileId,
+      fileName: transcriptTitle,
+    });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      localLogger.info(
+        {},
+        "[processTranscriptActivity] History record already exists. Stopping."
+      );
+      return;
+    }
+    throw error;
+  }
+
   // Short transcripts are likely not useful to process.
   if (transcriptContent.length < minTranscriptsSize) {
     localLogger.info(
@@ -385,12 +403,10 @@ export async function processTranscriptActivity(
     allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
   });
 
-  await transcriptsConfiguration.recordHistory({
-    configurationId: transcriptsConfiguration.id,
+  await transcriptsConfiguration.setConversationHistory(
     fileId,
-    fileName: transcriptTitle,
-    conversationId: conversation.sId,
-  });
+    conversation.sId
+  );
 
   const msg = {
     from: {

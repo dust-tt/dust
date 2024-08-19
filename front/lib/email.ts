@@ -2,12 +2,13 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
-import type { Result } from "@dust-tt/types";
+import type { Result, WorkspaceType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request_access";
 
 const { SENDGRID_API_KEY = "" } = process.env;
 
@@ -184,8 +185,9 @@ export async function sendAdminDataDeletionEmail({
     }Your Dust data will be deleted in ${remainingDays} days`,
     html: `<p>Hello ${firstName},</p>
     <p>You're receiving this as Admin of the Dust workspace ${workspaceName}. You recently canceled your Dust subscription.</p>
-    <p>To protect your privacy and maintain the highest security standards, your data will be permanently deleted in ${remainingDays} days. Please note that once deleted, the data cannot be recovered.</p>
-    <p>If you have any question about Dust, or would like to recover your account, simply reply to this email.</p>
+    <p>To protect your privacy and maintain the highest security standards, your data will be permanently deleted in ${remainingDays} days.</p>
+    <p>To keep your data, please resubscribe within the next ${remainingDays} days to recover your account. After this period, data recovery will not be possible.</p>
+    <p>If you have any question about Dust, simply reply to this email.</p>
     ${isLast ? "<p>This is our last message before data deletion.</p>" : ""}
     <p>Best,</p>
     <p>The Dust team</p>`,
@@ -261,4 +263,35 @@ export async function sendEmailWithTemplate({
     );
     return new Err(e as Error);
   }
+}
+
+export async function sendRequestDataSourceEmail({
+  userTo,
+  emailMessage,
+  dataSourceName,
+  owner,
+}: {
+  userTo: string;
+  emailMessage: string;
+  dataSourceName: string;
+  owner: WorkspaceType;
+}) {
+  const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      emailMessage,
+      dataSourceName,
+      userTo,
+    } satisfies PostRequestAccessBody),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || "Failed to send email");
+  }
+
+  return res.json();
 }

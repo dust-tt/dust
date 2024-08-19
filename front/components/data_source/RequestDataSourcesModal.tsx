@@ -1,49 +1,17 @@
 import { Button, DropdownMenu, Modal, TextArea } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { DataSourceIntegration, WorkspaceType } from "@dust-tt/types";
 import React, { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { sendRequestDataSourceEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
-import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request_access";
-import type { DataSourceIntegration } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
-interface RequestDataSourceProps {
+interface RequestDataSourcesProps {
   isOpen: boolean;
   onClose: () => void;
   dataSourceIntegrations: DataSourceIntegration[];
   owner: WorkspaceType;
-}
-
-async function sendRequestDataSourceEmail({
-  userTo,
-  emailMessage,
-  dataSourceName,
-  owner,
-}: {
-  userTo: string;
-  emailMessage: string;
-  dataSourceName: string;
-  owner: WorkspaceType;
-}) {
-  const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      emailMessage,
-      dataSourceName,
-      userTo,
-    } satisfies PostRequestAccessBody),
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.error?.message || "Failed to send email");
-  }
-
-  return res.json();
 }
 
 export function RequestDataSourcesModal({
@@ -51,7 +19,7 @@ export function RequestDataSourcesModal({
   onClose,
   dataSourceIntegrations,
   owner,
-}: RequestDataSourceProps) {
+}: RequestDataSourcesProps) {
   const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
     useState<DataSourceIntegration | null>(null);
   const [message, setMessage] = useState("");

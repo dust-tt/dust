@@ -43,11 +43,9 @@ spec:
             # don't have the same memory limits as the regular front pods
             - name: NODE_OPTIONS
               value: "-r dd-trace/init"
-            - name: NEXTAUTH_URL
-              value: https://front-qa.dust.tt
             - name: AUTH0_BASE_URL
               value: https://front-qa.dust.tt
-            - name: URL
+            - name: DUST_CLIENT_FACING_URL
               value: https://front-qa.dust.tt
 
             - name: DD_AGENT_HOST

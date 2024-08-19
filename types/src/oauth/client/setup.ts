@@ -1,4 +1,4 @@
-import { WorkspaceType } from "../../front/user";
+import { LightWorkspaceType } from "../../front/user";
 import {
   isOAuthConnectionType,
   OAuthConnectionType,
@@ -14,7 +14,7 @@ export async function setupOAuthConnection({
   useCase,
 }: {
   dustClientFacingUrl: string;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
 }): Promise<Result<OAuthConnectionType, Error>> {

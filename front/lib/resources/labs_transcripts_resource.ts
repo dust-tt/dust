@@ -170,6 +170,25 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
+  async setConversationHistory(
+    fileId: string,
+    conversationId: string
+  ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
+    const history = await LabsTranscriptsHistoryModel.findOne({
+      where: {
+        fileId,
+      },
+    });
+
+    if (!history) {
+      return null;
+    }
+
+    await history?.update({ conversationId });
+
+    return history.get();
+  }
+
   async fetchHistoryForFileId(
     fileId: LabsTranscriptsHistoryModel["fileId"]
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
