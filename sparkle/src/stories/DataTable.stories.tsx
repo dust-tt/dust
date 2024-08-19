@@ -2,6 +2,8 @@ import type { Meta } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
 import React from "react";
 
+import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
+
 import { DataTable, FolderIcon } from "../index_with_tw_base";
 
 const meta = {
@@ -22,6 +24,7 @@ type Data = {
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
   onMoreClick?: () => void;
+  onMoreMenuItem?: DropdownItemProps[];
   roundedAvatar?: boolean;
 };
 
@@ -46,6 +49,12 @@ export const DataTableExample = () => {
       lastUpdated: "2023-07-09",
       size: "64kb",
       icon: FolderIcon,
+      onMoreMenuItem: [
+        {
+          label: "Edit",
+          onClick: () => console.log("Edit"),
+        },
+      ],
     },
     {
       name: "Development",

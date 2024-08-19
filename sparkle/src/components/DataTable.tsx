@@ -10,7 +10,8 @@ import {
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
 
-import { Avatar, MoreIcon } from "@sparkle/index";
+import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
+import { Avatar, DropdownMenu, MoreIcon } from "@sparkle/index";
 import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -19,6 +20,7 @@ import { Icon } from "./Icon";
 interface TBaseData {
   onClick?: () => void;
   onMoreClick?: () => void;
+  onMoreMenuItem?: DropdownItemProps[];
 }
 
 interface ColumnBreakpoint {
@@ -120,6 +122,7 @@ export function DataTable<TData extends TBaseData, TValue>({
             key={row.id}
             onClick={row.original.onClick}
             onMoreClick={row.original.onMoreClick}
+            onMoreMenuItem={row.original.onMoreMenuItem}
           >
             {row.getVisibleCells().map((cell) => (
               <DataTable.Cell
@@ -212,6 +215,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
   onMoreClick?: () => void;
+  onMoreMenuItem?: DropdownItemProps[];
 }
 
 DataTable.Row = function Row({
@@ -219,6 +223,7 @@ DataTable.Row = function Row({
   className,
   onClick,
   onMoreClick,
+  onMoreMenuItem,
   ...props
 }: RowProps) {
   return (
@@ -241,6 +246,24 @@ DataTable.Row = function Row({
           }}
         >
           <Icon visual={MoreIcon} size="sm" />
+        </td>
+      )}
+      {onMoreMenuItem && (
+        <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
+          <DropdownMenu className="s-flex">
+            <DropdownMenu.Button
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <Icon visual={MoreIcon} size="sm" />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items origin="topRight" width={220}>
+              {onMoreMenuItem?.map((item, index) => (
+                <DropdownMenu.Item key={index} {...item} />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
         </td>
       )}
     </tr>
