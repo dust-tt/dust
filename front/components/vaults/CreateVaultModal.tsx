@@ -15,10 +15,9 @@ import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
-import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useMembers, useVaults, useVaultsMutate } from "@app/lib/swr";
+import { useMembers, useVaultsMutate } from "@app/lib/swr";
 import logger from "@app/logger/logger";
 import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 
