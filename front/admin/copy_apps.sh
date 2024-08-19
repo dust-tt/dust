@@ -1,7 +1,13 @@
 #!/bin/bash
-TARGET_WORKSPACE_ID=1
-FRONT_DATABASE_URI="postgres://dev:xxx@localhost/dust_front"
-CORE_DATABASE_URI="postgres://dev:xxx@localhost/dust_api"
+DIR=$(dirname $0)
+
+if [ -z "$TARGET_WORKSPACE_ID" ] 
+then
+    echo "Please set TARGET_WORKSPACE_ID to set where to create dust-apps."
+    exit 1
+fi
+
+mkdir /tmp/dust-apps
 
 echo "Will copy apps into workspace ${TARGET_WORKSPACE_ID}..."
 echo "You'll have to manually update front/lib/api/config.ts to use localhost:3000 instead of dust.tt,"
@@ -31,7 +37,7 @@ function fetch {
     where_clause=${4}
 
     echo "Fetching ${table_name} from ${PRODBOX_POD_NAME}..."
-    kubectl exec -it ${PRODBOX_POD_NAME} -- bash -c "psql \$${database_uri}_DATABASE_URI  -c \"COPY (SELECT $(escaped_columns_list ${cols_to_fetch}) FROM ${table_name} WHERE ${where_clause}) TO STDOUT;\"" > ${database_uri}_${table_name}.csv
+    kubectl exec -it ${PRODBOX_POD_NAME} -- bash -c "psql \$${database_uri}_DATABASE_URI  -c \"COPY (SELECT $(escaped_columns_list ${cols_to_fetch}) FROM ${table_name} WHERE ${where_clause}) TO STDOUT;\"" > /tmp/dust-apps/${database_uri}_${table_name}.csv
 }
 
 function import {
@@ -44,7 +50,7 @@ function import {
     echo -n "Preparing ${table_name}... "
     psql ${uri} -c "drop table if exists __copy; create table __copy as (select * from ${table_name} limit 0);"
     echo -n "Importing ${table_name}... "
-    psql ${uri} -c "COPY __copy ($(columns_list ${cols_to_import})) from stdin;" < ${database_uri}_${table_name}.csv
+    psql ${uri} -c "COPY __copy ($(columns_list ${cols_to_import})) from stdin;" < /tmp/dust-apps/${database_uri}_${table_name}.csv
     echo -n "Updating existing ${table_name}... "
     psql ${uri} -c "update ${table_name} set $(updates_clause $cols_to_update) from __copy where ${table_name}.id = __copy.id;"
     echo -n "Inserting new ${table_name}... "
@@ -85,3 +91,5 @@ fetch CORE datasets_points "id hash json" "\\\"id\\\" in (${dataset_points_ids})
 import CORE datasets "id project created dataset_id hash" "hash"
 import CORE datasets_points "id hash json" "hash json"
 import CORE datasets_joins " id dataset point point_idx" "point point_idx"
+
+rm -R /tmp/dust-apps
