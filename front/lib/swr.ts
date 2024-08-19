@@ -1370,6 +1370,7 @@ export function useVaultDataSourceOrViewContent({
   dataSourceOrViewId,
   viewType,
   parentId,
+  filterPermission,
   disabled,
 }: {
   workspaceId: string;
@@ -1378,12 +1379,15 @@ export function useVaultDataSourceOrViewContent({
   dataSourceOrViewId: string;
   viewType: ContentNodesViewType;
   parentId: string | null;
+  filterPermission: ConnectorPermission;
   disabled?: boolean;
 }) {
   const vaultsDataSourcesFetcher: Fetcher<GetDataSourceOrViewContentResponseBody> =
     fetcher;
   const qs =
-    `?viewType=${viewType}` + (parentId ? `&parentId=${parentId}` : "");
+    `?viewType=${viewType}` +
+    `&filterPermission=${filterPermission}` +
+    (parentId ? `&parentId=${parentId}` : "");
   const { data, error } = useSWRWithDefaults(
     disabled
       ? null

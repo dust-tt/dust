@@ -1,4 +1,5 @@
 import type {
+  ConnectorPermission,
   ContentNodesViewType,
   GetDataSourceOrViewContentResponseBody,
   WithAPIErrorResponse,
@@ -76,8 +77,25 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
+      let filterPermission: ConnectorPermission | undefined = undefined;
+      if (
+        req.query.filterPermission &&
+        typeof req.query.filterPermission === "string"
+      ) {
+        switch (req.query.filterPermission) {
+          case "read":
+            filterPermission = "read";
+            break;
+          case "write":
+            filterPermission = "write";
+            break;
+        }
+      }
+
       const contentRes = await getDataSourceContent(
+        auth,
         dataSource,
+        filterPermission,
         viewType,
         null,
         parentId,

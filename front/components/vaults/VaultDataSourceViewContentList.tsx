@@ -66,6 +66,7 @@ export const VaultDataSourceViewContentList = ({
       dataSourceOrViewId: dataSourceViewId,
       type: "data_source_views",
       viewType: "documents",
+      filterPermission: "read",
       parentId,
     });
 
