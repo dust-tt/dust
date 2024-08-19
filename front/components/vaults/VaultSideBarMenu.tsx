@@ -59,10 +59,6 @@ export default function VaultSideBarMenu({
       <div className="flex flex-col px-3">
         <Item.List>
           {sortedGroupedVaults.map((vaults, index) => {
-            if (vaults.length === 0) {
-              return null;
-            }
-
             const [vault] = vaults;
             const sectionLabel = getSectionLabel(vault);
 
@@ -138,11 +134,6 @@ const SYSTEM_VAULTS_ITEMS = [
     label: "Connection Management",
     visual: RootItemIconWrapper(CloudArrowLeftRightIcon),
     category: "managed",
-  },
-  {
-    label: "Files",
-    visual: RootItemIconWrapper(FolderIcon),
-    category: "files",
   },
   // TODO(GROUPS_UI) Add support for Dust apps.
 ];

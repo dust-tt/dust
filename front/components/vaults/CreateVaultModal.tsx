@@ -13,11 +13,14 @@ import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
+import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
+import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useMembers } from "@app/lib/swr";
+import { SWR_KEYS, useMembers } from "@app/lib/swr";
 import logger from "@app/logger/logger";
+import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 
 type RowData = {
   icon: string;
@@ -37,13 +40,11 @@ interface CreateVaultModalProps {
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
-  return allUsers.map((user) => {
-    return {
-      icon: user.image ?? "",
-      name: user.fullName,
-      userId: user.sId,
-    };
-  });
+  return allUsers.map((user) => ({
+    icon: user.image ?? "",
+    name: user.fullName,
+    userId: user.sId,
+  }));
 }
 
 export function CreateVaultModal({
@@ -56,7 +57,8 @@ export function CreateVaultModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-
+  const { mutate } = useSWRConfig();
+  const router = useRouter();
   const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -128,7 +130,12 @@ export function CreateVaultModal({
         const errorData = await res.json();
         throw new Error(errorData.error?.message || "Failed to create vault");
       }
-      return await res.json();
+      const r: PostVaultsResponseBody = await res.json();
+
+      // Invalidate the vaults list
+      await mutate(SWR_KEYS.vaults(owner.sId));
+
+      await router.push(`/w/${owner.sId}/data-sources/vaults/${r.vault.sId}`);
     } finally {
       setIsSaving(false);
     }
@@ -147,6 +154,7 @@ export function CreateVaultModal({
       variant="side-md"
       hasChanged={!!vaultName && selectedMembers.length > 0}
       isSaving={isSaving}
+      className="flex"
       onSave={async () => {
         try {
           await createVault();
@@ -181,7 +189,7 @@ export function CreateVaultModal({
         onSave();
       }}
     >
-      <Page.Vertical gap="md">
+      <Page.Vertical gap="md" sizing="grow">
         <div className="mb-4 flex w-full max-w-xl flex-col gap-y-2 p-4">
           <Page.SectionHeader title="Name" />
           <Input
@@ -196,9 +204,10 @@ export function CreateVaultModal({
             <span>Vault name must be unique</span>
           </div>
         </div>
-        <div className="flex w-full flex-col gap-y-4 border-t p-4">
+        <div className="flex w-full grow flex-col gap-y-4 overflow-y-hidden border-t p-4">
           <Page.SectionHeader title="Vault members" />
           <Searchbar
+            className="grow-0"
             name="search"
             placeholder="Search members"
             value={searchTerm}
@@ -209,12 +218,14 @@ export function CreateVaultModal({
               <Spinner size="lg" variant="color" />
             </div>
           ) : (
-            <DataTable
-              data={rows}
-              columns={columns}
-              filterColumn="name"
-              filter={searchTerm}
-            />
+            <div className="flex grow flex-col overflow-y-auto">
+              <DataTable
+                data={rows}
+                columns={columns}
+                filterColumn="name"
+                filter={searchTerm}
+              />
+            </div>
           )}
         </div>
       </Page.Vertical>
