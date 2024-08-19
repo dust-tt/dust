@@ -23,7 +23,6 @@ type Data = {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  onMoreClick?: () => void;
   moreMenuItems?: DropdownItemProps[];
   roundedAvatar?: boolean;
 };
@@ -40,7 +39,6 @@ export const DataTableExample = () => {
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
       roundedAvatar: true,
       onClick: () => console.log("hehe"),
-      onMoreClick: () => console.log("show more"),
     },
     {
       name: "Design",
