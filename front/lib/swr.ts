@@ -16,8 +16,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher, Key, KeyedMutator, SWRConfiguration } from "swr";
-import useSWR, { useSWRConfig } from "swr";
+import type { Fetcher, Key, SWRConfiguration } from "swr";
+import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -60,6 +60,10 @@ import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
 import type { GetVaultDataSourcesResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
+
+export const SWR_KEYS = {
+  vaults: (workspaceId: string) => `/api/w/${workspaceId}/vaults`,
+};
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
@@ -1289,7 +1293,7 @@ export function useVaults({ workspaceId }: { workspaceId: string }) {
   const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults`,
+    SWR_KEYS.vaults(workspaceId),
     vaultsFetcher
   );
 
@@ -1297,16 +1301,6 @@ export function useVaults({ workspaceId }: { workspaceId: string }) {
     vaults: data ? data.vaults : null,
     isVaultsLoading: !error && !data,
     isVaultsError: error,
-  };
-}
-
-export function useVaultsMutate({ workspaceId }: { workspaceId: string }) {
-  const { mutate } = useSWRConfig();
-  return {
-    mutate: mutate.bind(
-      null,
-      `/api/w/${workspaceId}/vaults`
-    ) as KeyedMutator<GetVaultsResponseBody>,
   };
 }
 
