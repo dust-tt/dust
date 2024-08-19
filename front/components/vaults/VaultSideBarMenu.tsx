@@ -55,36 +55,38 @@ export default function VaultSideBarMenu({
   );
 
   return (
-    <div className="flex flex-col px-3">
-      <Item.List>
-        {sortedGroupedVaults.map((vaults, index) => {
-          if (vaults.length === 0) {
-            return null;
-          }
+    <div className="flex h-0 min-h-full w-full overflow-y-auto">
+      <div className="flex flex-col px-3">
+        <Item.List>
+          {sortedGroupedVaults.map((vaults, index) => {
+            if (vaults.length === 0) {
+              return null;
+            }
 
-          const [vault] = vaults;
-          const sectionLabel = getSectionLabel(vault);
+            const [vault] = vaults;
+            const sectionLabel = getSectionLabel(vault);
 
-          return (
-            <Fragment key={`vault-section-${index}`}>
-              <div className="flex items-center justify-between">
-                <Item.SectionHeader label={sectionLabel} key={vault.sId} />
-                {sectionLabel === "PRIVATE" && (
-                  <Button
-                    className="mt-4"
-                    size="xs"
-                    variant="tertiary"
-                    label="Create Vault "
-                    icon={LockIcon}
-                    onClick={() => setShowVaultCreationModal(true)}
-                  />
-                )}
-              </div>
-              {renderVaultItems(vaults, owner)}
-            </Fragment>
-          );
-        })}
-      </Item.List>
+            return (
+              <Fragment key={`vault-section-${index}`}>
+                <div className="flex items-center justify-between">
+                  <Item.SectionHeader label={sectionLabel} key={vault.sId} />
+                  {sectionLabel === "PRIVATE" && (
+                    <Button
+                      className="mt-4"
+                      size="xs"
+                      variant="tertiary"
+                      label="Create Vault "
+                      icon={LockIcon}
+                      onClick={() => setShowVaultCreationModal(true)}
+                    />
+                  )}
+                </div>
+                {renderVaultItems(vaults, owner)}
+              </Fragment>
+            );
+          })}
+        </Item.List>
+      </div>
     </div>
   );
 }
