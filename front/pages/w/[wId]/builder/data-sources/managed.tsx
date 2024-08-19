@@ -21,6 +21,7 @@ import type {
   DataSourceIntegration,
   DataSourceType,
   EditedByUser,
+  LightWorkspaceType,
   ManageDataSourcesLimitsType,
   Result,
   WorkspaceType,
@@ -123,7 +124,7 @@ export async function setupConnection({
   provider,
 }: {
   dustClientFacingUrl: string;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   provider: ConnectorProvider;
 }): Promise<Result<string, Error>> {
   let connectionId: string;

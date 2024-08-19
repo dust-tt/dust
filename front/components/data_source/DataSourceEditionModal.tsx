@@ -1,7 +1,6 @@
 import {
   Avatar,
   Button,
-  CloudArrowLeftRightIcon,
   Dialog,
   Icon,
   LockIcon,
@@ -10,200 +9,76 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  ConnectorType,
-  DataSourceIntegration,
   DataSourceType,
-  EditedByUser,
+  LightWorkspaceType,
   UpdateConnectorRequestBody,
   UserType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { useRouter } from "next/router";
 import React, { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
-interface DataSourceEditionModalProps {
+interface DataSourceManagementModalProps {
+  children: React.ReactNode;
   isOpen: boolean;
-  owner: WorkspaceType;
-  connectorProvider: ConnectorProvider | null;
-  dataSourceIntegration: DataSourceIntegration | DataSourceType | null;
   onClose: () => void;
-  dustClientFacingUrl: string;
-  user: UserType;
-  setIsRequestDataSourceModalOpen?: (show: boolean) => void;
-  setDataSourceIntegrations?: (
-    integrations: (prev: DataSourceIntegration[]) => DataSourceIntegration[]
-  ) => void;
-  setIsLoadingByProvider?: (
-    providers: (
-      prev: Record<ConnectorProvider, boolean | undefined>
-    ) => Record<ConnectorProvider, boolean | undefined>
-  ) => void;
 }
 
-const REDIRECT_PROVIDERS = [
-  "confluence",
-  "google_drive",
-  "microsoft",
-  "slack",
-  "intercom",
-] as const;
-
-type RedirectToEditPermissionsProvider = Extract<
-  ConnectorProvider,
-  (typeof REDIRECT_PROVIDERS)[number]
->;
-
-function isRedirectToEditPermissionsProvider(
-  provider: ConnectorProvider
-): provider is RedirectToEditPermissionsProvider {
-  return REDIRECT_PROVIDERS.includes(
-    provider as RedirectToEditPermissionsProvider
-  );
-}
-
-function isDataSourceIntegration(
-  integration: DataSourceIntegration | DataSourceType | null
-): integration is DataSourceIntegration {
+function DataSourceManagementModal({
+  children,
+  isOpen,
+  onClose,
+}: DataSourceManagementModalProps) {
   return (
-    integration !== null &&
-    "id" in integration &&
-    "name" in integration &&
-    "type" in integration &&
-    "config" in integration
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Manage Connection"
+      variant="side-sm"
+      hasChanged={false}
+    >
+      <Page variant="modal">{children}</Page>
+    </Modal>
   );
+}
+
+interface DataSourceEditionModalProps {
+  dataSource: DataSourceType;
+  dustClientFacingUrl: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onRequestFromDataSourceClick: () => void;
+  owner: LightWorkspaceType;
+  user: UserType;
 }
 
 export function DataSourceEditionModal({
-  isOpen,
-  owner,
-  connectorProvider,
-  dataSourceIntegration,
-  onClose,
+  dataSource,
   dustClientFacingUrl,
+  isOpen,
+  onClose,
+  onRequestFromDataSourceClick,
+  owner,
   user,
-  setIsRequestDataSourceModalOpen,
-  setDataSourceIntegrations,
-  setIsLoadingByProvider,
 }: DataSourceEditionModalProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const router = useRouter();
 
-  if (!connectorProvider || !dataSourceIntegration) {
-    return;
+  const { connectorProvider, editedByUser, name: dataSourceName } = dataSource;
+
+  const dataSourceOwner = editedByUser ?? null;
+  const isDataSourceOwner = editedByUser?.userId === user.sId;
+
+  if (!connectorProvider) {
+    return null;
   }
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
-
-  let isSetup: boolean | null = null;
-  let dataSourceName: string | null = null;
-  if (isDataSourceIntegration(dataSourceIntegration)) {
-    isSetup = !!dataSourceIntegration?.connector;
-    dataSourceName = dataSourceIntegration.dataSourceName;
-  } else {
-    isSetup = true;
-    dataSourceName = dataSourceIntegration.name;
-  }
-
-  let dataSourceOwner: EditedByUser | null = null;
-  let isDataSourceOwner: boolean = false;
-  if (isSetup) {
-    dataSourceOwner = dataSourceIntegration.editedByUser ?? null;
-    isDataSourceOwner =
-      dataSourceIntegration?.editedByUser?.userId === user.sId;
-  }
-
-  const handleEnableManagedDataSource = async (
-    dataSourceIntegration: DataSourceIntegration
-  ) => {
-    if (!setIsLoadingByProvider || !setDataSourceIntegrations) {
-      return;
-    }
-    try {
-      const provider = dataSourceIntegration.connectorProvider;
-      const suffix = dataSourceIntegration.setupWithSuffix;
-      const connectionIdRes = await setupConnection({
-        dustClientFacingUrl,
-        owner,
-        provider,
-      });
-      if (connectionIdRes.isErr()) {
-        throw connectionIdRes.error;
-      }
-      onClose();
-      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
-
-      const res = await fetch(
-        suffix
-          ? `/api/w/${
-              owner.sId
-            }/data_sources/managed?suffix=${encodeURIComponent(suffix)}`
-          : `/api/w/${owner.sId}/data_sources/managed`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider,
-            connectionId: connectionIdRes.value,
-            name: undefined,
-            configuration: null,
-          } satisfies PostManagedDataSourceRequestBody),
-        }
-      );
-
-      if (res.ok) {
-        const createdManagedDataSource: {
-          dataSource: DataSourceType;
-          connector: ConnectorType;
-        } = await res.json();
-        setDataSourceIntegrations((prev) =>
-          prev.map((ds) => {
-            return ds.connector === null && ds.connectorProvider == provider
-              ? {
-                  ...ds,
-                  connector: createdManagedDataSource.connector,
-                  setupWithSuffix: null,
-                  dataSourceName: createdManagedDataSource.dataSource.name,
-                }
-              : ds;
-          })
-        );
-        if (isRedirectToEditPermissionsProvider(provider)) {
-          void router.push(
-            `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
-          );
-        }
-      } else {
-        const responseText = await res.text();
-        sendNotification({
-          type: "error",
-          title: `Failed to enable connection (${provider})`,
-          description: `Got: ${responseText}`,
-        });
-      }
-    } catch (e) {
-      onClose();
-      sendNotification({
-        type: "error",
-        title: `Failed to enable connection (${dataSourceIntegration.connectorProvider})`,
-      });
-    } finally {
-      setIsLoadingByProvider((prev) => ({
-        ...prev,
-        [dataSourceIntegration.connectorProvider]: false,
-      }));
-    }
-  };
 
   const updateConnectorConnectionId = async (
     newConnectionId: string,
@@ -242,10 +117,6 @@ export function DataSourceEditionModal({
   };
 
   const handleUpdatePermissions = async () => {
-    if (!dataSourceIntegration) {
-      return;
-    }
-
     const connectionIdRes = await setupConnection({
       dustClientFacingUrl,
       owner,
@@ -272,47 +143,27 @@ export function DataSourceEditionModal({
       });
     }
   };
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Manage Connection"
-      variant="side-sm"
-      hasChanged={false}
-    >
-      <Page variant="modal">
+    <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
+      <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
             <Icon visual={connectorConfiguration.logoComponent} size="md" />
             <Page.SectionHeader
-              title={
-                isSetup
-                  ? `${connectorConfiguration.name} data & permissions`
-                  : `Connecting ${connectorConfiguration.name}`
-              }
+              title={`${connectorConfiguration.name} data & permissions`}
             />
           </div>
-          {(!isSetup || isDataSourceOwner) && (
+          {isDataSourceOwner && (
             <div className="mb-4 mt-8 w-full rounded-lg bg-amber-50 p-3">
               <div className="flex items-center gap-2 font-medium text-amber-800">
                 <Icon visual={InformationCircleIcon} />
                 Important
               </div>
-              {isSetup ? (
-                <div className="p-4 text-sm text-amber-900">
-                  <b>Editing</b> can break the existing data structure in Dust
-                  and Assistants using them.
-                </div>
-              ) : (
-                <div className="p-4 text-sm text-amber-900">
-                  <div className="pb-2 font-medium">
-                    Only one person can manage the connection.
-                  </div>
-                  Select a team member with {connectorConfiguration.name} admin
-                  rights and access to relevant data to handle the connection
-                  and data synchronization.
-                </div>
-              )}
+              <div className="p-4 text-sm text-amber-900">
+                <b>Editing</b> can break the existing data structure in Dust and
+                Assistants using them.
+              </div>
 
               <div className="pl-4 text-sm text-amber-800">
                 Read our{" "}
@@ -326,55 +177,34 @@ export function DataSourceEditionModal({
               </div>
             </div>
           )}
+        </div>
 
-          <div className="mt-4 flex items-center justify-center">
-            {!isSetup && (
+        <div className="flex flex-col gap-2 border-t pb-4 pt-4">
+          <Page.SectionHeader title="Connection Owner" />
+          <div className="flex items-center gap-2">
+            <Avatar visual={dataSourceOwner?.imageUrl} size="sm" />
+            <div>
+              <span className="font-bold">
+                {isDataSourceOwner ? "You" : dataSourceOwner?.fullName}
+              </span>{" "}
+              set it up
+              {dataSourceOwner?.editedAt
+                ? ` on ${formatTimestampToFriendlyDate(dataSourceOwner?.editedAt)}`
+                : "."}
+            </div>
+          </div>
+          {!isDataSourceOwner && (
+            <div className="flex items-center justify-center gap-2">
               <Button
-                variant="primary"
-                size="md"
-                icon={CloudArrowLeftRightIcon}
-                label="Make Connection"
-                onClick={async () => {
-                  await handleEnableManagedDataSource(
-                    dataSourceIntegration as DataSourceIntegration
-                  );
+                label={`Request from ${dataSourceOwner?.fullName ?? ""}`}
+                onClick={() => {
+                  onRequestFromDataSourceClick();
                 }}
               />
-            )}
-          </div>
-        </div>
-        {isSetup && (
-          <div className="flex flex-col gap-2 border-t pb-4 pt-4">
-            <Page.SectionHeader title="Connection Owner" />
-            <div className="flex items-center gap-2">
-              <Avatar visual={dataSourceOwner?.imageUrl} size="sm" />
-              <div>
-                <span className="font-bold">
-                  {isDataSourceOwner
-                    ? "You"
-                    : dataSourceIntegration?.editedByUser?.fullName}
-                </span>{" "}
-                set it up
-                {dataSourceIntegration?.editedByUser?.editedAt
-                  ? ` on ${formatTimestampToFriendlyDate(dataSourceIntegration?.editedByUser?.editedAt)}`
-                  : "."}
-              </div>
             </div>
-            {isSetup && !isDataSourceOwner && (
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  label={`Request from ${dataSourceOwner?.fullName ?? ""}`}
-                  onClick={() => {
-                    if (setIsRequestDataSourceModalOpen) {
-                      setIsRequestDataSourceModalOpen(true);
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
-        {isSetup && !isDataSourceOwner && (
+          )}
+        </div>
+        {!isDataSourceOwner && (
           <div className="item flex flex-col gap-2 border-t pb-4 pt-4">
             <Page.SectionHeader title="Editing permissions" />
             <div className="mb-4 w-full rounded-lg border-pink-200 bg-pink-50 p-3">
@@ -414,7 +244,7 @@ export function DataSourceEditionModal({
             </div>
           </div>
         )}
-        {isSetup && isDataSourceOwner && (
+        {isDataSourceOwner && (
           <div className="flex items-center justify-center">
             <Button
               label={"Edit Permissions"}
@@ -442,7 +272,7 @@ export function DataSourceEditionModal({
           {connectorConfiguration.name} Data sources and the assistants using
           them. Are you sure you want to continue?
         </Dialog>
-      </Page>
-    </Modal>
+      </>
+    </DataSourceManagementModal>
   );
 }

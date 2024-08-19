@@ -1296,13 +1296,12 @@ function ManagedDataSourceView({
         </div>
         <DataSourceEditionModal
           isOpen={showEditionModal}
-          connectorProvider={dataSource.connectorProvider}
           onClose={() => setShowEditionModal(false)}
-          dataSourceIntegration={dataSource}
+          dataSource={dataSource}
           owner={owner}
           user={user}
           dustClientFacingUrl={dustClientFacingUrl}
-          setIsRequestDataSourceModalOpen={() => setShowRequestDialog(true)}
+          onRequestFromDataSourceClick={() => setShowRequestDialog(true)}
         />
         <ConnectorPermissionsModal
           owner={owner}
