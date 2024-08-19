@@ -187,8 +187,7 @@ const SystemVaultItem = ({
   const isAncestorToCurrentPage = router.asPath.includes(itemPath);
 
   // Unfold the item if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
-
+  const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
     setIsExpanded(isAncestorToCurrentPage);
   }, [isAncestorToCurrentPage]);
@@ -248,8 +247,7 @@ const VaultMenuItem = ({
   const isAncestorToCurrentPage = router.asPath.includes(vaultPath);
 
   // Unfold the vault if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
-
+  const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
     setIsExpanded(isAncestorToCurrentPage);
   }, [isAncestorToCurrentPage]);
@@ -376,8 +374,7 @@ const VaultCategoryItem = ({
   const isAncestorToCurrentPage = router.asPath.includes(vaultCategoryPath);
 
   // Unfold the vault's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(isAncestorToCurrentPage);
-
+  const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
     setIsExpanded(isAncestorToCurrentPage);
   }, [isAncestorToCurrentPage]);
