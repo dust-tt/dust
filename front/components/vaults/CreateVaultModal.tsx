@@ -40,13 +40,11 @@ interface CreateVaultModalProps {
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
-  return allUsers.map((user) => {
-    return {
-      icon: user.image ?? "",
-      name: user.fullName,
-      userId: user.sId,
-    };
-  });
+  return allUsers.map((user) => ({
+    icon: user.image ?? "",
+    name: user.fullName,
+    userId: user.sId,
+  }));
 }
 
 export function CreateVaultModal({
@@ -156,6 +154,7 @@ export function CreateVaultModal({
       variant="side-md"
       hasChanged={!!vaultName && selectedMembers.length > 0}
       isSaving={isSaving}
+      className="flex"
       onSave={async () => {
         try {
           await createVault();
@@ -190,7 +189,7 @@ export function CreateVaultModal({
         onSave();
       }}
     >
-      <Page.Vertical gap="md">
+      <Page.Vertical gap="md" sizing="grow">
         <div className="mb-4 flex w-full max-w-xl flex-col gap-y-2 p-4">
           <Page.SectionHeader title="Name" />
           <Input
@@ -205,9 +204,10 @@ export function CreateVaultModal({
             <span>Vault name must be unique</span>
           </div>
         </div>
-        <div className="flex w-full flex-col gap-y-4 border-t p-4">
+        <div className="flex w-full grow flex-col gap-y-4 overflow-y-hidden border-t p-4">
           <Page.SectionHeader title="Vault members" />
           <Searchbar
+            className="grow-0"
             name="search"
             placeholder="Search members"
             value={searchTerm}
@@ -218,12 +218,14 @@ export function CreateVaultModal({
               <Spinner size="lg" variant="color" />
             </div>
           ) : (
-            <DataTable
-              data={rows}
-              columns={columns}
-              filterColumn="name"
-              filter={searchTerm}
-            />
+            <div className="flex grow flex-col overflow-y-auto">
+              <DataTable
+                data={rows}
+                columns={columns}
+                filterColumn="name"
+                filter={searchTerm}
+              />
+            </div>
           )}
         </div>
       </Page.Vertical>
