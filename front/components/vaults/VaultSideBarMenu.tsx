@@ -56,7 +56,7 @@ export default function VaultSideBarMenu({
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
-      <div className="flex flex-col px-3">
+      <div className="flex w-full flex-col px-2">
         <Item.List>
           {sortedGroupedVaults.map((vaults, index) => {
             const [vault] = vaults;
