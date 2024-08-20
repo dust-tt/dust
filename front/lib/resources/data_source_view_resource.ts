@@ -11,6 +11,7 @@ import type {
 } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import { getDataSourceCategory } from "@app/lib/api/vaults";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
@@ -120,7 +121,11 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetch(auth);
+    const dataSourceViews = await this.baseFetch(auth);
+
+    return dataSourceViews.filter(
+      (dsv) => auth.isAdmin() || auth.hasPermission([dsv.vault.acl()], "read")
+    );
   }
 
   static async listByVault(auth: Authenticator, vault: VaultResource) {
@@ -234,6 +239,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return this.ds as DataSourceResource;
   }
 
+  isDefault(): boolean {
+    return this.kind === "default";
+  }
+
   // sId logic.
 
   get sId(): string {
@@ -267,12 +276,24 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Serialization.
 
   toJSON(): DataSourceViewType {
+    const {
+      connectorId,
+      connectorProvider,
+      name: dataSourceName,
+    } = this.dataSource.toJSON();
+
     return {
+      category: getDataSourceCategory(this.dataSource),
+      connectorId,
+      connectorProvider,
       createdAt: this.createdAt.getTime(),
       id: this.id,
+      kind: this.kind,
+      name: dataSourceName,
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
+      usage: 0,
     };
   }
 }
