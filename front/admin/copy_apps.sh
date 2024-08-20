@@ -55,7 +55,7 @@ cd ${DIR}/..
 ./admin/cli.sh registry dump > /tmp/dust-apps/specs 2> /dev/null
 
 REGISTRY_COUNT=$(cat /tmp/dust-apps/specs | wc -w)
-IN_CLAUSE=$(cat /tmp/dust-apps/specs |  cut -f4 -d\|  | sed -E "s/(.*)/'\\1'/g" | paste -sd "," - )
+IN_CLAUSE=$(cat /tmp/dust-apps/specs | cut -f4 -d\| | sed -E "s/(.*)/'\\1'/g" | paste -sd "," - )
 LOCAL_COUNT=$(psql $CORE_DATABASE_URI -c "copy (select count(distinct(hash)) from specifications where hash in (${IN_CLAUSE})) to stdout")
 
 if [ $REGISTRY_COUNT -eq $LOCAL_COUNT ]
