@@ -1,5 +1,5 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -56,7 +56,6 @@ export function ActionRetrievalSearch({
   actionConfiguration,
   updateAction,
   setEdited,
-  dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
@@ -66,7 +65,6 @@ export function ActionRetrievalSearch({
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
@@ -82,7 +80,6 @@ export function ActionRetrievalSearch({
           setShowDataSourcesModal(isOpen);
         }}
         owner={owner}
-        dataSources={dataSources}
         onSave={(dsConfigs) => {
           setEdited(true);
           updateAction((previousAction) => ({
@@ -101,7 +98,6 @@ export function ActionRetrievalSearch({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
-        canAddDataSource={dataSources.length > 0}
         onDelete={(name) => {
           deleteDataSource({
             name,
@@ -129,7 +125,6 @@ export function ActionRetrievalExhaustive({
   actionConfiguration,
   updateAction,
   setEdited,
-  dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
@@ -139,7 +134,6 @@ export function ActionRetrievalExhaustive({
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
@@ -166,7 +160,6 @@ export function ActionRetrievalExhaustive({
           setShowDataSourcesModal(isOpen);
         }}
         owner={owner}
-        dataSources={dataSources}
         onSave={(dsConfigs) => {
           setEdited(true);
           updateAction((previousAction) => ({
@@ -185,7 +178,6 @@ export function ActionRetrievalExhaustive({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
-        canAddDataSource={dataSources.length > 0}
         onDelete={(name) => {
           deleteDataSource({
             name,

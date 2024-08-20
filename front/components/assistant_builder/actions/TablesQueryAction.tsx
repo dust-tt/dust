@@ -1,5 +1,5 @@
 import { Hoverable } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
@@ -24,7 +24,6 @@ export function ActionTablesQuery({
   actionConfiguration,
   updateAction,
   setEdited,
-  dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderTablesQueryConfiguration | null;
@@ -34,7 +33,6 @@ export function ActionTablesQuery({
     ) => AssistantBuilderTablesQueryConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
 }) {
   const [showTableModal, setShowTableModal] = useState(false);
 
@@ -48,7 +46,6 @@ export function ActionTablesQuery({
         isOpen={showTableModal}
         setOpen={(isOpen) => setShowTableModal(isOpen)}
         owner={owner}
-        dataSources={dataSources}
         onSave={(tables, dataSource) => {
           setEdited(true);
           updateAction((previousAction) => {
@@ -96,7 +93,6 @@ export function ActionTablesQuery({
             return newTables;
           });
         }}
-        canSelectTable={dataSources.length !== 0}
       />
     </>
   );

@@ -2,7 +2,6 @@ import type {
   AgentConfigurationType,
   AppType,
   CoreAPITable,
-  DataSourceType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
   TemplateAgentConfigurationType,
@@ -35,6 +34,7 @@ import {
 } from "@app/components/assistant_builder/types";
 import config from "@app/lib/api/config";
 import { tableKey } from "@app/lib/client/tables_query";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
 export async function buildInitialActions({
@@ -42,7 +42,7 @@ export async function buildInitialActions({
   dustApps,
   configuration,
 }: {
-  dataSourcesByName: Record<string, DataSourceType>;
+  dataSourcesByName: Record<string, DataSourceResource>;
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
@@ -53,14 +53,16 @@ export async function buildInitialActions({
     action: RetrievalConfigurationType | ProcessConfigurationType
   ) => {
     const selectedResources: {
-      dataSourceName: string;
+      dataSourceId: string;
+      dataSourceViewId: string | null;
       resources: string[] | null;
       isSelectAll: boolean;
     }[] = [];
 
     for (const ds of action.dataSources) {
       selectedResources.push({
-        dataSourceName: ds.dataSourceId,
+        dataSourceId: ds.dataSourceId,
+        dataSourceViewId: ds.dataSourceViewId,
         resources: ds.filter.parents?.in ?? null,
         isSelectAll: !ds.filter.parents,
       });
@@ -69,15 +71,15 @@ export async function buildInitialActions({
     const dataSourceConfigurationsArray: AssistantBuilderDataSourceConfiguration[] =
       await Promise.all(
         selectedResources.map(
-          async (ds): Promise<AssistantBuilderDataSourceConfiguration> => {
-            const dataSource = dataSourcesByName[ds.dataSourceName];
-            if (!dataSource.connectorId || !ds.resources) {
+          async (sr): Promise<AssistantBuilderDataSourceConfiguration> => {
+            const dataSourceResource = dataSourcesByName[sr.dataSourceId];
+
+            if (!dataSourceResource.connectorId || !sr.resources) {
               return {
-                dataSource,
-                // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
-                dataSourceViewId: null,
+                dataSource: dataSourceResource.toJSON(),
+                dataSourceView: null,
                 selectedResources: [],
-                isSelectAll: ds.isSelectAll,
+                isSelectAll: sr.isSelectAll,
               };
             }
             const connectorsAPI = new ConnectorsAPI(
@@ -85,8 +87,8 @@ export async function buildInitialActions({
               logger
             );
             const response = await connectorsAPI.getContentNodes({
-              connectorId: dataSource.connectorId,
-              internalIds: ds.resources,
+              connectorId: dataSourceResource.connectorId,
+              internalIds: sr.resources,
             });
 
             if (response.isErr()) {
@@ -94,11 +96,10 @@ export async function buildInitialActions({
             }
 
             return {
-              dataSource,
-              // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
-              dataSourceViewId: null,
+              dataSource: dataSourceResource.toJSON(),
+              dataSourceView: null,
               selectedResources: response.value.nodes,
-              isSelectAll: ds.isSelectAll,
+              isSelectAll: sr.isSelectAll,
             };
           }
         )

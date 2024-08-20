@@ -6,7 +6,9 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
+import { useContext } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -16,14 +18,15 @@ export default function TablesSelectionSection({
   tablesQueryConfiguration,
   openTableModal,
   onDelete,
-  canSelectTable,
 }: {
   show: boolean;
   tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
   openTableModal: () => void;
   onDelete?: (sId: string) => void;
-  canSelectTable: boolean;
 }) {
+  const { dataSources } = useContext(AssistantBuilderContext);
+  const canSelectTable = dataSources.length > 0;
+
   return (
     <Transition
       show={show}
