@@ -51,18 +51,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       })
     ).map((group) => new this(GroupModel, group.get()));
     const systemGroup =
-      existingGroups.find((v) => v.type === "system") ||
+      existingGroups.find((v) => v.kind === "system") ||
       (await GroupResource.makeNew({
         name: "System",
-        type: "system",
         kind: "system",
         workspaceId: workspace.id,
       }));
     const globalGroup =
-      existingGroups.find((v) => v.type === "global") ||
+      existingGroups.find((v) => v.kind === "global") ||
       (await GroupResource.makeNew({
         name: "Workspace",
-        type: "global",
         kind: "global",
         workspaceId: workspace.id,
       }));
@@ -135,7 +133,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       attributes: ["id"],
       where: {
         workspaceId,
-        type: {
+        kind: {
           [Op.notIn]: ["system", "global"],
         },
       },
@@ -238,7 +236,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         workspaceId: key.workspaceId,
         [Op.or]: [
-          { type: key.isSystem ? "system" : "global" },
+          { kind: key.isSystem ? "system" : "global" },
           { id: key.groupId },
         ],
       },
@@ -257,7 +255,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const group = await this.model.findOne({
       where: {
         workspaceId,
-        type: "global",
+        kind: "global",
       },
     });
 
@@ -275,7 +273,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const group = await this.model.findOne({
       where: {
         workspaceId: owner.id,
-        type: "system",
+        kind: "system",
       },
     });
 
@@ -293,7 +291,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const group = await this.model.findOne({
       where: {
         workspaceId: owner.id,
-        type: "global",
+        kind: "global",
       },
     });
 
@@ -340,7 +338,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const globalGroup = await this.model.findOne({
       where: {
         workspaceId: workspace.id,
-        type: "global",
+        kind: "global",
       },
     });
 
@@ -417,7 +415,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Users can only be added to regular groups.
-    if (this.type !== "regular") {
+    if (this.kind !== "regular") {
       return new Err(new Error("Not a regular group, cannot be updated."));
     }
 
@@ -487,7 +485,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Users can only be added to regular groups.
-    if (this.type !== "regular") {
+    if (this.kind !== "regular") {
       return new Err(new Error("Not a regular group, cannot be updated."));
     }
 
@@ -566,7 +564,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       sId: this.sId,
       name: this.name,
       workspaceId: this.workspaceId,
-      type: this.type,
+      kind: this.kind,
     };
   }
 }

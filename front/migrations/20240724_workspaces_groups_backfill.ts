@@ -21,13 +21,11 @@ async function backfillWorkspacesGroup(execute: boolean) {
             try {
               await GroupResource.makeNew({
                 name: "System",
-                type: "system",
                 kind: "system",
                 workspaceId: w.id,
               });
               await GroupResource.makeNew({
                 name: "Workspace",
-                type: "global",
                 kind: "global",
                 workspaceId: w.id,
               });
