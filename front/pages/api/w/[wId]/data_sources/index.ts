@@ -186,7 +186,7 @@ async function handler(
       );
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        globalVault,
+        ds.vault,
         ds
       );
 
