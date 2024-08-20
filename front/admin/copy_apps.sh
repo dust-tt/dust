@@ -86,7 +86,7 @@ else
     mv /tmp/dust-apps/FRONT_datasets_transformed.csv /tmp/dust-apps/FRONT_datasets.csv
     import FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "updatedAt name description schema"
 
-    project_ids=$(cut -f 11 FRONT_apps.csv |paste -sd "," -)
+    project_ids=$(cut -f 11 /tmp/dust-apps/FRONT_apps.csv |paste -sd "," -)
 
     # ---- projects
     fetch CORE projects "id" "\\\"id\\\" in (${project_ids})"
@@ -98,9 +98,9 @@ else
 
     # ---- datasets
     fetch CORE datasets "id project created dataset_id hash" "\\\"project\\\" in (${project_ids})"
-    dataset_ids=$(cut -f 1 CORE_datasets.csv |paste -sd "," -)
+    dataset_ids=$(cut -f 1 /tmp/dust-apps/CORE_datasets.csv |paste -sd "," -)
     fetch CORE datasets_joins "id dataset point point_idx" "\\\"dataset\\\" in (${dataset_ids})"
-    dataset_points_ids=$(cut -f 3 CORE_datasets_joins.csv |paste -sd "," -)
+    dataset_points_ids=$(cut -f 3 /tmp/dust-apps/CORE_datasets_joins.csv |paste -sd "," -)
     fetch CORE datasets_points "id hash json" "\\\"id\\\" in (${dataset_points_ids})"
 
     import CORE datasets "id project created dataset_id hash" "hash"
