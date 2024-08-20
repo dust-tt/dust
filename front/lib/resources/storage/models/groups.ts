@@ -1,5 +1,5 @@
-import type { SupportedGroupType } from "@dust-tt/types";
-import { isGlobalGroupType, isSystemGroupType } from "@dust-tt/types";
+import type { SupportedGroupKind } from "@dust-tt/types";
+import { isGlobalGroupKind, isSystemGroupKind } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -21,7 +21,8 @@ export class GroupModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare type: SupportedGroupType;
+  declare type: SupportedGroupKind;
+  declare kind: SupportedGroupKind;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -50,6 +51,10 @@ GroupModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    kind: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
   {
     modelName: "groups",
@@ -63,7 +68,7 @@ GroupModel.addHook(
   "enforce_one_system_and_global_group_per_workspace",
   async (group: GroupModel, options: { transaction: Transaction }) => {
     const groupType = group.type;
-    if (isSystemGroupType(groupType) || isGlobalGroupType(groupType)) {
+    if (isSystemGroupKind(groupType) || isGlobalGroupKind(groupType)) {
       const existingSystemOrWorkspaceGroupType = await GroupModel.findOne({
         where: {
           workspaceId: group.workspaceId,

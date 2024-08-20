@@ -87,6 +87,7 @@ async function handler(
         name: `Group for vault ${name}`,
         workspaceId: owner.id,
         type: "regular",
+        kind: "regular",
       });
 
       const vault = await VaultResource.makeNew({

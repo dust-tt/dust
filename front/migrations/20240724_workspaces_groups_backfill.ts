@@ -22,11 +22,13 @@ async function backfillWorkspacesGroup(execute: boolean) {
               await GroupResource.makeNew({
                 name: "System",
                 type: "system",
+                kind: "system",
                 workspaceId: w.id,
               });
               await GroupResource.makeNew({
                 name: "Workspace",
                 type: "global",
+                kind: "global",
                 workspaceId: w.id,
               });
               console.log(`System group created for workspace ${w.id}`);

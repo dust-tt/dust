@@ -55,6 +55,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       (await GroupResource.makeNew({
         name: "System",
         type: "system",
+        kind: "system",
         workspaceId: workspace.id,
       }));
     const globalGroup =
@@ -62,6 +63,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       (await GroupResource.makeNew({
         name: "Workspace",
         type: "global",
+        kind: "global",
         workspaceId: workspace.id,
       }));
     return {
