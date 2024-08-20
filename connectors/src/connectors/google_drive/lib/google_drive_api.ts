@@ -5,6 +5,7 @@ import {
   driveObjectToDustType,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
@@ -29,6 +30,9 @@ export async function getGoogleDriveObject(
 
     return await driveObjectToDustType(file, authCredentials);
   } catch (e) {
+    if ((e as GaxiosError).response?.status === 401) {
+      throw new ExternalOAuthTokenError();
+    }
     if ((e as GaxiosError).response?.status === 404) {
       return null;
     }
