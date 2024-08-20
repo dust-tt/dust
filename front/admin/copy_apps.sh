@@ -53,8 +53,12 @@ mkdir -p /tmp/dust-apps
 cd ${DIR}/..
 
 ./admin/cli.sh registry dump > /tmp/dust-apps/specs 2> /dev/null
+
+# Get the number of apps in the registry
 REGISTRY_COUNT=$(cat /tmp/dust-apps/specs | jq -r '[.[].app.appHash] | join("\n")' | wc -l)
-IN_CLAUSE=$(cat /tmp/dust-apps/specs | jq -r '[.[].app.appHash] | map("'"'"'" + . + "'"'"'") | join(",")' )
+
+# Reads appHash values from JSON, escapes them for shell usage, and concatenates them with commas for SQL queries.
+IN_CLAUSE=$(jq -r '[.[].app.appHash] | map("\(. | @sh)") | join(",")' /tmp/dust-apps/specs)
 LOCAL_COUNT=$(psql $CORE_DATABASE_URI -c "copy (select count(distinct(hash)) from specifications where hash in (${IN_CLAUSE})) to stdout")
 
 if [ $REGISTRY_COUNT -eq $LOCAL_COUNT ]
