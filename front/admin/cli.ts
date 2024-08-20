@@ -570,7 +570,7 @@ const registry = async (command: string) => {
     }
 
     default:
-      console.log(`Unknown workspace command: ${command}`);
+      console.log(`Unknown registry command: ${command}`);
       console.log("Possible values: `dump`");
   }
 };
