@@ -52,7 +52,7 @@ export default function VaultSideBarMenu({
   const groupedVaults = groupBy(vaults, (vault) => vault.kind);
   const sortedGroupedVaults = VAULTS_SORT_ORDER.map(
     (kind) => groupedVaults[kind] || []
-  );
+  ).filter((vaults) => vaults.length > 0);
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
