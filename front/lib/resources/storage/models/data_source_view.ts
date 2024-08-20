@@ -1,3 +1,4 @@
+import type { DataSourceViewKind } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -20,6 +21,7 @@ export class DataSourceViewModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare kind: DataSourceViewKind;
   declare parentsIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
@@ -42,14 +44,19 @@ DataSourceViewModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    updatedAt: {
-      type: DataTypes.DATE,
+    kind: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
+      defaultValue: "default",
     },
     parentsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
   },
   {

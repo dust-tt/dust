@@ -344,15 +344,15 @@ async function handler(
         vault
       );
 
-      // For managed data source, we create a default view in the workspace vault.
-      if (dataSource.isManaged()) {
-        const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+      // For all data sources, we create a default view in the global vault.
+      const globalVault = vault.isGlobal()
+        ? vault
+        : await VaultResource.fetchWorkspaceGlobalVault(auth);
 
-        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-          globalVault,
-          dataSource
-        );
-      }
+      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+        globalVault,
+        dataSource
+      );
 
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),

@@ -48,8 +48,8 @@ import { getDataSources } from "../data_sources";
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
-  providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-  modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+  providerId: GPT_4O_MODEL_CONFIG.providerId,
+  modelId: GPT_4O_MODEL_CONFIG.modelId,
   temperature: 0,
 };
 
@@ -214,7 +214,6 @@ function _getGPT35TurboGlobalAgent({
     templateId: null,
   };
 }
-
 function _getGPT4GlobalAgent({
   auth,
   settings,
@@ -1157,6 +1156,7 @@ export function isGlobalAgentId(sId: string): boolean {
 const RETIRED_GLOABL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,

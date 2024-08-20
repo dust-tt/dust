@@ -267,7 +267,7 @@ export function APIKeys({
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  const globalGroup = groups.find((group) => group.type === "global");
+  const globalGroup = groups.find((group) => group.kind === "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKeyGroup] = useState(globalGroup);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);

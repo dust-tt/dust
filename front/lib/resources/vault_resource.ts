@@ -247,6 +247,10 @@ export class VaultResource extends BaseResource<VaultModel> {
     return this.kind === "global";
   }
 
+  isSystem() {
+    return this.kind === "system";
+  }
+
   toJSON(): VaultType {
     return {
       sId: this.sId,

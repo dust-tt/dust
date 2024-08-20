@@ -185,8 +185,9 @@ export async function sendAdminDataDeletionEmail({
     }Your Dust data will be deleted in ${remainingDays} days`,
     html: `<p>Hello ${firstName},</p>
     <p>You're receiving this as Admin of the Dust workspace ${workspaceName}. You recently canceled your Dust subscription.</p>
-    <p>To protect your privacy and maintain the highest security standards, your data will be permanently deleted in ${remainingDays} days. Please note that once deleted, the data cannot be recovered.</p>
-    <p>If you have any question about Dust, or would like to recover your account, simply reply to this email.</p>
+    <p>To protect your privacy and maintain the highest security standards, your data will be permanently deleted in ${remainingDays} days.</p>
+    <p>To keep your data, please resubscribe within the next ${remainingDays} days to recover your account. After this period, data recovery will not be possible.</p>
+    <p>If you have any question about Dust, simply reply to this email.</p>
     ${isLast ? "<p>This is our last message before data deletion.</p>" : ""}
     <p>Best,</p>
     <p>The Dust team</p>`,
