@@ -1,20 +1,16 @@
-import type {
-  DataSourceOrViewInfo,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
 import { PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSourceViewInfo } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetDataSourceViewResponseBody = {
-  dataSourceView: DataSourceOrViewInfo;
+  dataSourceView: DataSourceViewType;
 };
 
 async function handler(
@@ -55,9 +51,10 @@ async function handler(
   switch (req.method) {
     case "GET": {
       return res.status(200).json({
-        dataSourceView: await getDataSourceViewInfo(auth, dataSourceView),
+        dataSourceView: dataSourceView.toJSON(),
       });
     }
+
     case "PATCH": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
         // Only admins, or builders who have access to the vault, can patch
@@ -97,9 +94,10 @@ async function handler(
         });
       }
       return res.status(200).json({
-        dataSourceView: await getDataSourceViewInfo(auth, dataSourceView),
+        dataSourceView: dataSourceView.toJSON(),
       });
     }
+
     case "DELETE": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
         // Only admins, or builders who have to the vault, can patch
@@ -139,6 +137,7 @@ async function handler(
       res.status(204).end();
       return;
     }
+
     default:
       return apiError(req, res, {
         status_code: 405,

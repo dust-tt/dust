@@ -13,7 +13,6 @@ import { ConnectorsAPI, CoreAPI, Ok } from "@dust-tt/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
@@ -37,32 +36,6 @@ export const getDataSourceInfos = async (
 
   return Promise.all(
     dataSources.map((dataSource) => getDataSourceInfo(auth, dataSource))
-  );
-};
-
-export const getDataSourceViewInfo = async (
-  auth: Authenticator,
-  dataSourceView: DataSourceViewResource
-): Promise<DataSourceOrViewInfo> => {
-  const usageRes = await dataSourceView.getUsagesByAgents(auth);
-  return {
-    ...dataSourceView.dataSource.toJSON(),
-    ...dataSourceView.toJSON(),
-    usage: usageRes.isOk() ? usageRes.value : 0,
-    category: getDataSourceCategory(
-      dataSourceView.dataSource as DataSourceResource
-    ),
-  };
-};
-
-export const getDataSourceViewsInfo = async (
-  auth: Authenticator,
-  vault: VaultResource
-): Promise<DataSourceOrViewInfo[]> => {
-  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
-
-  return Promise.all(
-    dataSourceViews.map((view) => getDataSourceViewInfo(auth, view))
   );
 };
 

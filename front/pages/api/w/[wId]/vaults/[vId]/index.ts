@@ -4,10 +4,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getDataSourceInfos,
-  getDataSourceViewsInfo,
-} from "@app/lib/api/vaults";
+import { getDataSourceInfos } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -82,7 +79,9 @@ async function handler(
     case "GET":
       const all = [
         ...(await getDataSourceInfos(auth, vault)),
-        ...(await getDataSourceViewsInfo(auth, vault)),
+        ...(await DataSourceViewResource.listByVault(auth, vault))
+          .map((dsv) => dsv.toJSON())
+          .filter((d) => d.category === "managed" || d.kind !== "default"),
       ];
 
       const categories = all.reduce(

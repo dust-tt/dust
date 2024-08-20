@@ -1,16 +1,9 @@
-import type {
-  DataSourceOrViewInfo,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
 import { PostDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getDataSourceViewInfo,
-  getDataSourceViewsInfo,
-} from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -19,11 +12,11 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourceViewsResponseBody = {
-  dataSourceViews: DataSourceOrViewInfo[];
+  dataSourceViews: DataSourceViewType[];
 };
 
 export type PostVaultDataSourceViewsResponseBody = {
-  dataSourceView: DataSourceOrViewInfo;
+  dataSourceView: DataSourceViewType;
 };
 
 async function handler(
@@ -68,14 +61,18 @@ async function handler(
           ? req.query.category
           : null;
 
-      const all = await getDataSourceViewsInfo(auth, vault);
+      const dataSourceViews = await DataSourceViewResource.listByVault(
+        auth,
+        vault
+      );
 
       return res.status(200).json({
-        dataSourceViews: all.filter(
-          (dataSourceInfo) => !category || dataSourceInfo.category === category
-        ),
+        dataSourceViews: dataSourceViews
+          .map((dsv) => dsv.toJSON())
+          .filter((d) => !category || d.category === category),
       });
     }
+
     case "POST": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
         // Only admins, or builders who have to the vault, can create a new view
@@ -136,9 +133,10 @@ async function handler(
           parentsIn
         );
       return res.status(201).json({
-        dataSourceView: await getDataSourceViewInfo(auth, dataSourceView),
+        dataSourceView: dataSourceView.toJSON(),
       });
     }
+
     default:
       return apiError(req, res, {
         status_code: 405,
