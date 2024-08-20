@@ -137,7 +137,7 @@ export function DatasourceTablesTabView({
     },
   ];
 
-  const rows = tables.map((t) => ({
+  const rows: RowData[] = tables.map((t) => ({
     tableId: t.table_id,
     name: t.name,
     dataSourceId: t.data_source_id,
@@ -145,12 +145,12 @@ export function DatasourceTablesTabView({
     moreMenuItems: [
       {
         label: "Edit",
-        icon: PencilSquareIcon as React.ComponentType,
+        icon: PencilSquareIcon,
         onClick: () => {},
       },
       {
         label: "Delete",
-        icon: TrashIcon as React.ComponentType,
+        icon: TrashIcon,
         onClick: () => {},
         variant: "warning",
       },

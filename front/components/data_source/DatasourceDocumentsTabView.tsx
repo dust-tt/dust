@@ -239,7 +239,7 @@ export function DatasourceDocumentsTabView({
     },
   ];
 
-  const rows = !isDocumentsLoading
+  const rows: RowData[] = !isDocumentsLoading
     ? documents.map((document) => {
         return {
           name: displayNameByDocId[document.document_id],
@@ -248,12 +248,12 @@ export function DatasourceDocumentsTabView({
           moreMenuItems: [
             {
               label: "Edit",
-              icon: PencilSquareIcon as React.ComponentType,
+              icon: PencilSquareIcon,
               onClick: () => {},
             },
             {
               label: "Delete",
-              icon: TrashIcon as React.ComponentType,
+              icon: TrashIcon,
               onClick: () => {},
               variant: "warning",
             },
