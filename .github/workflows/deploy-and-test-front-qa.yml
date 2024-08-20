@@ -61,14 +61,13 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          response=$(curl -s -w "\n%{http_code}" -X POST "https://squid-app-xgsu4.ondigitalocean.app/webhook/tests/run" \
+          response=$(curl -s -w "\n%{http_code}" -X POST "https://webhook.ranger.net/api/v1/tests/run" \
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer ${{ secrets.RANGER_API_TOKEN }}" \
           -d '{
             "targetUrl": "https://front-qa.dust.tt/",
             "ghOwner": "'$REPO_OWNER'",
             "ghRepo": "'$REPO_NAME'",
-            "ghRunId": "${{ github.run_id }}",
             "ghCommitSha": "${{ github.sha }}",
           }')
           echo "$response"
@@ -91,23 +90,28 @@ jobs:
           end_time=$((SECONDS + 2700))  # 45 minutes = 2700 seconds
           while [ $SECONDS -lt $end_time ]; do
             response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                       "https://api.github.com/repos/${{ github.repository }}/check-runs/$checkId")
+                        "https://api.github.com/repos/${{ github.repository }}/check-runs/$checkId")
             status=$(echo "$response" | jq -r .status)
-            conclusion=$(echo "$response" | jq -r .conclusion)
-            output=$(echo "$response" | jq -r .output)
-            title=$(echo "$output" | jq -r .title)
-            summary=$(echo "$output" | jq -r .summary)
 
             if [ "$status" = "completed" ]; then
-              echo "Final check conclusion: $conclusion"
-              echo "$title"
-              echo "$summary"
+              conclusion=$(echo "$response" | jq -r .conclusion)
+              echo "Playwright tests completed with conclusion: $conclusion"
+
+              output=$(echo "$response" | jq -r .output)
+              title=$(echo "$output" | jq -r .title)
+              summary=$(echo "$output" | jq -r .summary)
+
+              echo "Title: $title"
+              echo "Summary: $summary"
+
               if [ "$conclusion" != "success" ]; then
                 exit 1
               fi
+
               exit 0
             fi
 
+            echo "Tests still running. Waiting 30 seconds before next check..."
             sleep 30
           done
 
