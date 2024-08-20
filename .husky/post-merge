@@ -1,6 +1,9 @@
 #!/bin/sh
 
-echo "Running post-merge hook"
-./front/admin/copy_apps.sh
+current_branch=$(git symbolic-ref --short HEAD)
+if [ "$current_branch" = "main" ]
+then
+    ./front/admin/copy_apps.sh
+fi
 
 exit 0
