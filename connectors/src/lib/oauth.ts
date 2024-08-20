@@ -35,7 +35,10 @@ export async function getOAuthConnectionAccessTokenWithThrow({
       "Error retrieving access token"
     );
 
-    if (tokRes.error.code === "token_revoked_error") {
+    if (
+      tokRes.error.code === "token_revoked_error" ||
+      tokRes.error.code === "provider_access_token_refresh_error"
+    ) {
       throw new ExternalOAuthTokenError();
     } else {
       throw new Error(`Error retrieving access token from ${provider}`);

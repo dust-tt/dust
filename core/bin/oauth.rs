@@ -172,6 +172,9 @@ async fn connections_access_token(
             Err(e) => error_response(
                 match e.code {
                     connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
+                    connection::ConnectionErrorCode::ProviderAccessTokenRefreshError => {
+                        StatusCode::UNAUTHORIZED
+                    }
                     connection::ConnectionErrorCode::ConnectionNotFinalizedError => {
                         StatusCode::BAD_REQUEST
                     }
