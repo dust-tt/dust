@@ -35,6 +35,7 @@ import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
+import { lockWithRedis } from "@connectors/lib/redis";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -70,16 +71,22 @@ export async function botAnswerMessageWithErrorHandling(
     return new Err(new Error("Failed to find connector"));
   }
   try {
-    const res = await botAnswerMessage(
-      message,
-      slackTeamId,
-      slackChannel,
-      slackUserId,
-      slackBotId,
-      slackMessageTs,
-      slackThreadTs,
-      connector,
-      slackConfig
+    const res = await lockWithRedis(
+      `slack-bot-answer:${slackTeamId}:${slackChannel}:${slackThreadTs ?? slackMessageTs}`,
+      60,
+      async () => {
+        return botAnswerMessage(
+          message,
+          slackTeamId,
+          slackChannel,
+          slackUserId,
+          slackBotId,
+          slackMessageTs,
+          slackThreadTs,
+          connector,
+          slackConfig
+        );
+      }
     );
     if (res.isErr()) {
       logger.error(
