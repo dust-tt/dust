@@ -175,9 +175,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       transaction,
     });
 
-    if (this.isManaged()) {
-      await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
-    }
+    await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
 
     try {
       await this.model.destroy({
