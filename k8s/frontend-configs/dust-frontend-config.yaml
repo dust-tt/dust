@@ -7,8 +7,3 @@ spec:
     enabled: true
     responseCodeName: MOVED_PERMANENTLY_DEFAULT
   sslPolicy: dust-front-ssl-policy
-  additionalHeaders:
-    Strict-Transport-Security: "max-age=31536000; includeSubDomains"
-    X-Content-Type-Options: "nosniff"
-    Referrer-Policy: "strict-origin-when-cross-origin"
-    Permissions-Policy: "geolocation=(self src), microphone=(self src), camera=(self src)"
