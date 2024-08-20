@@ -67,6 +67,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         dataSourceId: dataSource.id,
         parentsIn,
         workspaceId: vault.workspaceId,
+        kind: "custom",
       },
       vault,
       dataSource
@@ -84,6 +85,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         dataSourceId: dataSource.id,
         parentsIn: null,
         workspaceId: vault.workspaceId,
+        kind: "default",
       },
       vault,
       dataSource

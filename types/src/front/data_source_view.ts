@@ -9,3 +9,6 @@ export interface DataSourceViewType {
 }
 
 export type DataSourceOrView = "data_sources" | "data_source_views";
+
+const DATA_SOURCE_VIEW_KINDS = ["default", "custom"] as const;
+export type DataSourceViewKind = (typeof DATA_SOURCE_VIEW_KINDS)[number];
