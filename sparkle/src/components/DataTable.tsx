@@ -10,7 +10,8 @@ import {
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
 
-import { Avatar, MoreIcon } from "@sparkle/index";
+import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
+import { Avatar, DropdownMenu, MoreIcon } from "@sparkle/index";
 import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -18,7 +19,7 @@ import { Icon } from "./Icon";
 
 interface TBaseData {
   onClick?: () => void;
-  onMoreClick?: () => void;
+  moreMenuItems?: DropdownItemProps[];
 }
 
 interface ColumnBreakpoint {
@@ -119,7 +120,7 @@ export function DataTable<TData extends TBaseData, TValue>({
           <DataTable.Row
             key={row.id}
             onClick={row.original.onClick}
-            onMoreClick={row.original.onMoreClick}
+            moreMenuItems={row.original.moreMenuItems}
           >
             {row.getVisibleCells().map((cell) => (
               <DataTable.Cell
@@ -211,14 +212,14 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
-  onMoreClick?: () => void;
+  moreMenuItems?: DropdownItemProps[];
 }
 
 DataTable.Row = function Row({
   children,
   className,
   onClick,
-  onMoreClick,
+  moreMenuItems,
   ...props
 }: RowProps) {
   return (
@@ -232,15 +233,22 @@ DataTable.Row = function Row({
       {...props}
     >
       {children}
-      {onMoreClick && (
-        <td
-          className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600"
-          onClick={(e) => {
-            e.stopPropagation(); // Prevent row click event
-            onMoreClick?.();
-          }}
-        >
-          <Icon visual={MoreIcon} size="sm" />
+      {moreMenuItems && (
+        <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
+          <DropdownMenu className="s-flex">
+            <DropdownMenu.Button
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <Icon visual={MoreIcon} size="sm" />
+            </DropdownMenu.Button>
+            <DropdownMenu.Items origin="topRight" width={220}>
+              {moreMenuItems?.map((item, index) => (
+                <DropdownMenu.Item key={index} {...item} />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
         </td>
       )}
     </tr>

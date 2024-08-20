@@ -2,6 +2,8 @@ import type { Meta } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
 import React from "react";
 
+import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
+
 import { DataTable, FolderIcon } from "../index_with_tw_base";
 
 const meta = {
@@ -21,7 +23,7 @@ type Data = {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  onMoreClick?: () => void;
+  moreMenuItems?: DropdownItemProps[];
   roundedAvatar?: boolean;
 };
 
@@ -37,7 +39,6 @@ export const DataTableExample = () => {
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
       roundedAvatar: true,
       onClick: () => console.log("hehe"),
-      onMoreClick: () => console.log("show more"),
     },
     {
       name: "Design",
@@ -46,6 +47,12 @@ export const DataTableExample = () => {
       lastUpdated: "2023-07-09",
       size: "64kb",
       icon: FolderIcon,
+      moreMenuItems: [
+        {
+          label: "Edit",
+          onClick: () => console.log("Edit"),
+        },
+      ],
     },
     {
       name: "Development",

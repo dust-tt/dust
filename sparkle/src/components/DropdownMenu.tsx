@@ -3,6 +3,7 @@ import React, {
   ComponentType,
   Fragment,
   JSXElementConstructor,
+  MouseEventHandler,
   MutableRefObject,
   ReactElement,
   useContext,
@@ -97,7 +98,7 @@ export interface DropdownButtonProps {
   className?: string;
   disabled?: boolean;
   children?: React.ReactNode;
-  onClick?: () => void;
+  onClick?: MouseEventHandler;
 }
 
 DropdownMenu.Button = function ({
@@ -227,7 +228,7 @@ DropdownMenu.Button = function ({
   );
 };
 
-interface DropdownItemProps {
+export interface DropdownItemProps {
   variant?: "default" | "warning";
   label: string;
   description?: string;
