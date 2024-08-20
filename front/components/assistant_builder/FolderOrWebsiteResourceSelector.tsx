@@ -41,7 +41,7 @@ export default function FolderOrWebsiteResourceSelector({
   });
 
   return (
-    <Transition show={!!owner} className="mx-auto max-w-6xl pb-8">
+    <Transition show className="mx-auto max-w-6xl pb-8">
       <Page>
         <Page.Header
           title={type === "folder" ? "Select Folders" : "Select Websites"}
