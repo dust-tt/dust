@@ -344,7 +344,7 @@ async function handler(
         vault
       );
 
-      // For all data sources, we create a default view in the workspace vault.
+      // For all data sources, we create a default view in the global vault.
       const globalVault = vault.isGlobal()
         ? vault
         : await VaultResource.fetchWorkspaceGlobalVault(auth);
