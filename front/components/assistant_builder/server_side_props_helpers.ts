@@ -35,17 +35,14 @@ import {
 import config from "@app/lib/api/config";
 import { tableKey } from "@app/lib/client/tables_query";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
 export async function buildInitialActions({
   dataSourcesByName,
-  dataSourceViewsById,
   dustApps,
   configuration,
 }: {
   dataSourcesByName: Record<string, DataSourceResource>;
-  dataSourceViewsById: Record<string, DataSourceViewResource>;
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
@@ -76,14 +73,11 @@ export async function buildInitialActions({
         selectedResources.map(
           async (sr): Promise<AssistantBuilderDataSourceConfiguration> => {
             const dataSourceResource = dataSourcesByName[sr.dataSourceId];
-            const dataSourceViewResource = sr.dataSourceViewId
-              ? dataSourceViewsById[sr.dataSourceViewId]
-              : null;
 
             if (!dataSourceResource.connectorId || !sr.resources) {
               return {
                 dataSource: dataSourceResource.toJSON(),
-                dataSourceView: dataSourceViewResource?.toJSON() ?? null,
+                dataSourceView: null,
                 selectedResources: [],
                 isSelectAll: sr.isSelectAll,
               };
@@ -103,7 +97,7 @@ export async function buildInitialActions({
 
             return {
               dataSource: dataSourceResource.toJSON(),
-              dataSourceView: dataSourceViewResource?.toJSON() ?? null,
+              dataSourceView: null,
               selectedResources: response.value.nodes,
               isSelectAll: sr.isSelectAll,
             };

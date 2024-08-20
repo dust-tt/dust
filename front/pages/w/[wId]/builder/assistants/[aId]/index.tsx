@@ -71,11 +71,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {} as Record<string, DataSourceResource>
   );
 
-  const dataSourceViewsById = dsViews.reduce(
-    (acc, dsView) => ({ ...acc, [dsView.sId]: dsView }),
-    {} as Record<string, DataSourceViewResource>
-  );
-
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
       notFound: true,
@@ -105,7 +100,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dustApps: allDustApps,
       actions: await buildInitialActions({
         dataSourcesByName,
-        dataSourceViewsById,
         dustApps: allDustApps,
         configuration,
       }),

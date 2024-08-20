@@ -82,11 +82,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     {} as Record<string, DataSourceResource>
   );
 
-  const dataSourceViewsById = dsViews.reduce(
-    (acc, dsView) => ({ ...acc, [dsView.id]: dsView }),
-    {} as Record<string, DataSourceViewResource>
-  );
-
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
   )
@@ -126,7 +121,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const actions = configuration
     ? await buildInitialActions({
         dataSourcesByName,
-        dataSourceViewsById,
         dustApps: allDustApps,
         configuration,
       })
