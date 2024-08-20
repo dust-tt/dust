@@ -14,7 +14,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Optimize compute resources by verifying changes in SQL models files and front/api/v1/* before running Danger.
+      # Optimize compute resources by verifying changes in SQL models files and front/pages/api/v1/* before running Danger.
       - name: Check for file changes
         id: file_changes
         run: |
@@ -22,12 +22,12 @@ jobs:
 
           echo "Checking for changed files..."
 
-          CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} -- 'front/lib/models/' 'front/lib/resources/storage/models/' 'connectors/src/lib/models/' 'connectors/src/resources/storage/models/' 'front/api/v1/')
+          CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} -- 'front/lib/models/' 'front/lib/resources/storage/models/' 'connectors/src/lib/models/' 'connectors/src/resources/storage/models/' 'front/pages/api/v1/')
           if [ -n "$CHANGED_FILES" ]; then
             echo "Changed files found:"
             echo "$CHANGED_FILES"
             echo "run_danger=true" >> $GITHUB_OUTPUT
-            echo "::warning ::Files in 'front/lib/models/', 'connectors/src/lib/models/', or 'front/api/v1/' have been modified."
+            echo "::warning ::Files in 'front/lib/models/', 'connectors/src/lib/models/', or 'front/pages/api/v1/' have been modified."
           else
             echo "No changed files found."
             echo "run_danger=false" >> $GITHUB_OUTPUT
