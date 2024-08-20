@@ -11,6 +11,7 @@ export interface DataSourceViewType {
   editedByUser?: EditedByUser | null;
   id: ModelId;
   kind: DataSourceViewKind;
+  name: string;
   parentsIn: string[] | null;
   sId: string;
   updatedAt: number;

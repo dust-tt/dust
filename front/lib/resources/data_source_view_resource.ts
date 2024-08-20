@@ -276,7 +276,11 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Serialization.
 
   toJSON(): DataSourceViewType {
-    const { connectorId, connectorProvider } = this.dataSource.toJSON();
+    const {
+      connectorId,
+      connectorProvider,
+      name: dataSourceName,
+    } = this.dataSource.toJSON();
 
     return {
       category: getDataSourceCategory(this.dataSource),
@@ -285,6 +289,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       createdAt: this.createdAt.getTime(),
       id: this.id,
       kind: this.kind,
+      name: dataSourceName,
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
