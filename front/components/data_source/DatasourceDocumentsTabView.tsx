@@ -4,9 +4,11 @@ import {
   Dialog,
   DocumentTextIcon,
   Page,
+  PencilSquareIcon,
   PlusIcon,
   Popup,
   Searchbar,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
@@ -21,7 +23,6 @@ import { useContext, useEffect, useRef, useState } from "react";
 import * as React from "react";
 
 import { DocumentUploadModal } from "@app/components/data_source/DocumentUploadModal";
-import { EditOrDeleteDropdown } from "@app/components/misc/EditOrDeleteDropdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -34,7 +35,13 @@ type RowData = {
   size: number;
   timestamp: number;
   onClick?: () => void;
-  onMoreClick?: () => void;
+  moreMenuItems: {
+    variant?: "default" | "warning";
+    label: string;
+    description?: string;
+    icon: React.ComponentType;
+    onClick: () => void;
+  }[];
 };
 
 type Info = CellContext<RowData, unknown>;
@@ -230,23 +237,6 @@ export function DatasourceDocumentsTabView({
         </DataTable.Cell>
       ),
     },
-    {
-      id: "actions",
-      cell: (info: Info) => (
-        <EditOrDeleteDropdown
-          onEdit={() => {
-            setDocumentId(info.row.original.name);
-            setShowDataSourceUploadModal(true);
-          }}
-          onDelete={async () => {
-            // Implement delete functionality
-            setDocumentId(info.row.original.name);
-            setShowDataSourceDeleteDialog(true);
-            console.log("Delete", info.row.original.name);
-          }}
-        />
-      ),
-    },
   ];
 
   const rows = !isDocumentsLoading
@@ -255,6 +245,18 @@ export function DatasourceDocumentsTabView({
           name: displayNameByDocId[document.document_id],
           size: document.text_size,
           timestamp: document.timestamp,
+          moreMenuItems: [
+            {
+              label: "Edit",
+              icon: PencilSquareIcon as React.ComponentType,
+              onClick: () => {},
+            },
+            {
+              label: "Delete",
+              icon: TrashIcon as React.ComponentType,
+              onClick: () => {},
+            },
+          ],
         };
       })
     : [];

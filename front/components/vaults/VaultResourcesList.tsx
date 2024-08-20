@@ -43,7 +43,6 @@ type RowData = {
   workspaceId: string;
   editedByUser?: EditedByUser | null;
   onClick?: () => void;
-  onMoreClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;
@@ -162,7 +161,6 @@ export const VaultResourcesList = ({
       workspaceId: owner.sId,
       dataSourceName: r.name,
       onClick: () => onSelect(r.sId),
-      onMoreClick: () => {},
     })) || [];
 
   if (isDataSourcesLoading || isVaultDataSourceOrViewsLoading) {

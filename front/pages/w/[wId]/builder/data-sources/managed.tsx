@@ -71,7 +71,6 @@ type RowData = DataSourceIntegration & {
   icon: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
   buttonOnClick: () => void;
   onClick?: () => void;
-  onMoreClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;

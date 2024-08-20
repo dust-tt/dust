@@ -19,7 +19,6 @@ type RowData = {
   expandable: boolean;
   lastUpdatedAt: number | null;
   onClick?: () => void;
-  onMoreClick?: () => void;
 };
 
 type VaultDataSourceViewContentListProps = {
@@ -75,7 +74,6 @@ export const VaultDataSourceViewContentList = ({
       count: 0,
       usage: 0,
       onClick: () => onSelect(v.internalId),
-      onMoreClick: () => onSelect(v.internalId),
     })) || [];
 
   if (isVaultContentLoading) {

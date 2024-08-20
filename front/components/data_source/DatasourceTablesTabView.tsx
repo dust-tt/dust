@@ -1,11 +1,14 @@
+import type { DropdownMenu } from "@dust-tt/sparkle";
 import {
   Button,
   DataTable,
   Dialog,
   Page,
+  PencilSquareIcon,
   PlusIcon,
   Searchbar,
   ServerIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -13,7 +16,6 @@ import { useContext, useState } from "react";
 import * as React from "react";
 
 import { TableUploadModal } from "@app/components/data_source/TableUploadModal";
-import { EditOrDeleteDropdown } from "@app/components/misc/EditOrDeleteDropdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useTables } from "@app/lib/swr";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -24,7 +26,13 @@ type RowData = {
   dataSourceId: string;
   timestamp: number;
   onClick?: () => void;
-  onMoreClick?: () => void;
+  moreMenuItems: {
+    variant?: "default" | "warning";
+    label: string;
+    description?: string;
+    icon: React.ComponentType;
+    onClick: () => void;
+  }[];
 };
 
 type Info = CellContext<RowData, unknown>;
@@ -128,21 +136,6 @@ export function DatasourceTablesTabView({
         </DataTable.Cell>
       ),
     },
-    {
-      id: "actions",
-      cell: (info: Info) => (
-        <EditOrDeleteDropdown
-          onEdit={() => {
-            setTableToLoad(info.row.original.tableId);
-            setShowTableUploadModal(true);
-          }}
-          onDelete={() => {
-            setTableToLoad(info.row.original.tableId);
-            setShowTableDeleteDialog(true);
-          }}
-        />
-      ),
-    },
   ];
 
   const rows = tables.map((t) => ({
@@ -150,6 +143,19 @@ export function DatasourceTablesTabView({
     name: t.name,
     dataSourceId: t.data_source_id,
     timestamp: t.timestamp,
+    moreMenuItems: [
+      {
+        label: "Edit",
+        icon: PencilSquareIcon as React.ComponentType,
+        onClick: () => {},
+      },
+      {
+        label: "Delete",
+        icon: TrashIcon as React.ComponentType,
+        onClick: () => {},
+        variant: "warning",
+      },
+    ],
   }));
 
   return (
