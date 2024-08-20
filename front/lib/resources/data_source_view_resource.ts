@@ -121,7 +121,11 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetch(auth);
+    const dataSourceViews = await this.baseFetch(auth);
+
+    return dataSourceViews.filter(
+      (dsv) => auth.isAdmin() || auth.hasPermission([dsv.vault.acl()], "read")
+    );
   }
 
   static async listByVault(auth: Authenticator, vault: VaultResource) {
