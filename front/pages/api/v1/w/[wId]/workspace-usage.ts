@@ -64,28 +64,37 @@ const GetWorkspaceUsageSchema = t.union([
  *         schema:
  *           type: string
  *       - in: query
- *         name: start_date
+ *         name: start
  *         required: true
  *         description: The start date in YYYY-MM format
  *         schema:
  *           type: string
  *       - in: query
- *         name: end_date
+ *         name: end
  *         required: false
- *         description: The end date in YYYY-MM format
+ *         description: The end date in YYYY-MM format (required when mode is 'range')
  *         schema:
  *           type: string
- *        - in: query
+ *       - in: query
+ *         name: mode
+ *         required: true
+ *         description: The mode of date range selection ('month' or 'range')
+ *         schema:
+ *           type: string
+ *           enum: [month, range]
+ *       - in: query
  *         name: table
  *         required: true
- *         description: | The name of the table usage table to retrieve:
- *         - "users": The list of users categorized by their activity level.
- *         - "assistant_messages": The list of messages sent by users including the mentioned assistants.
- *         - "builders": The list of builders categorized by their activity level.
- *         - "assistants": The list of workspace assistants and their corresponding usage.
- *         - "all": A concatenation of all the above tables.
+ *         description: |
+ *           The name of the usage table to retrieve:
+ *           - "users": The list of users categorized by their activity level.
+ *           - "assistant_messages": The list of messages sent by users including the mentioned assistants.
+ *           - "builders": The list of builders categorized by their activity level.
+ *           - "assistants": The list of workspace assistants and their corresponding usage.
+ *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
+ *           enum: [users, assistant_messages, builders, assistants, all]
  *     responses:
  *       200:
  *         description: The usage data in CSV format or a ZIP of multiple CSVs if table is equal to "all"
@@ -93,6 +102,14 @@ const GetWorkspaceUsageSchema = t.union([
  *           text/csv:
  *             schema:
  *               type: string
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Invalid request query
+ *       403:
+ *         description: The workspace does not have access to the usage data API
  *       404:
  *         description: The workspace was not found
  *       405:
@@ -228,7 +245,9 @@ async function fetchUsageData({
     case "users":
       return { users: await getUserUsageData(start, end, workspaceId) };
     case "assistant_messages":
-      return { mentions: await getMessageUsageData(start, end, workspaceId) };
+      return {
+        assistant_messages: await getMessageUsageData(start, end, workspaceId),
+      };
     case "builders":
       return { builders: await getBuildersUsageData(start, end, workspaceId) };
     case "assistants":

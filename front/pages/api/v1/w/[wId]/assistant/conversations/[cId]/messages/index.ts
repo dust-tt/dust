@@ -26,7 +26,7 @@ export type PostMessagesResponseBody = {
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages:
  *   post:
  *     summary: Create a message
- *     description: Create a message in the workspace identified by {wId}.
+ *     description: Create a message in the workspace identified by {wId} in the conversation identified by {cId}.
  *     tags:
  *       - Conversations
  *     parameters:
