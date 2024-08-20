@@ -12,6 +12,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -104,11 +105,16 @@ export class VaultResource extends BaseResource<VaultModel> {
   ): Promise<VaultResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
+    const where: WhereOptions = {
+      workspaceId: owner.id,
+    };
+
+    if (onlySystemAndGlobal) {
+      where["kind"] = ["system", "global"];
+    }
+
     const vaults = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
-        kind: onlySystemAndGlobal ? ["system", "global"] : undefined,
-      },
+      where,
     });
 
     return vaults
