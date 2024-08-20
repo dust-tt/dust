@@ -255,6 +255,7 @@ export function DatasourceDocumentsTabView({
               label: "Delete",
               icon: TrashIcon as React.ComponentType,
               onClick: () => {},
+              variant: "warning",
             },
           ],
         };
