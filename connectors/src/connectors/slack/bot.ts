@@ -72,7 +72,7 @@ export async function botAnswerMessageWithErrorHandling(
   }
   try {
     const res = await lockWithRedis(
-      `slack-bot-answer:${slackTeamId}:${slackChannel}`,
+      `slack-bot-answer:${slackTeamId}:${slackChannel}:${slackThreadTs || slackMessageTs}`,
       60,
       async () => {
         return botAnswerMessage(
