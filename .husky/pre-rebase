@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo "Running pre-rebase hook"
+./front/admin/copy_apps.sh
+
+exit 0

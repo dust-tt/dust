@@ -1,23 +1,6 @@
 #!/bin/bash
 DIR=$(dirname $0)
 
-if [ -z "$TARGET_WORKSPACE_ID" ] 
-then
-    echo "Please set TARGET_WORKSPACE_ID to set where to create dust-apps."
-    exit 1
-fi
-
-mkdir /tmp/dust-apps
-
-echo "Will copy apps into workspace ${TARGET_WORKSPACE_ID}..."
-echo "You'll have to manually update front/lib/api/config.ts to use localhost:3000 instead of dust.tt,"
-echo "and front/lib/development.ts / types/src/front/lib/actions/registry.ts to set your workspace sId in PRODUCTION_DUST_APPS_WORKSPACE_ID"
-echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."
-set -e
-
-echo "Fetching prodbox pod..."
-PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox |cut -d \  -f1)
-
 function escaped_columns_list {
     echo $* | sed -E 's/ /,/g'| sed -E 's/([a-zA-Z_]+)/\\"\1\\"/g'
 }
@@ -53,43 +36,74 @@ function import {
     psql ${uri} -c "COPY __copy ($(columns_list ${cols_to_import})) from stdin;" < /tmp/dust-apps/${database_uri}_${table_name}.csv
     echo -n "Updating existing ${table_name}... "
     psql ${uri} -c "update ${table_name} set $(updates_clause $cols_to_update) from __copy where ${table_name}.id = __copy.id;"
-    echo -n "Inserting new ${table_name}... "
+    echo -n "Inserting new ${table_name}..."
     psql ${uri} -c "insert into ${table_name} ($(columns_list ${cols_to_import})) (select $(copy_clause ${cols_to_import}) from __copy left join ${table_name} using(id) where ${table_name} is null);"
     echo -n "Cleaning up ${table_name}... "
     psql ${uri} -c "drop table if exists __copy;"
 }
 
-# ---- apps
-fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "\\\"workspaceId\\\"=5069"
-cat FRONT_apps.csv | cut -f1-11 | sed -E "s/^(.*)$/\1\t${TARGET_WORKSPACE_ID}/g" > FRONT_apps_transformed.csv
-mv FRONT_apps_transformed.csv FRONT_apps.csv
-import FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "updatedAt name description visibility savedSpecification savedConfig savedRun dustAPIProjectId"
+if [ -z "$DUST_APPS_SYNC_WORKSPACE_ID" ] 
+then
+    echo "Please set DUST_APPS_SYNC_WORKSPACE_ID if you want to synchronize dust-apps."
+    exit 1
+fi
 
-# ---- datasets
-fetch FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "\\\"workspaceId\\\"=5069"
-cat FRONT_datasets.csv | cut -f1-7 | sed -E "s/^(.*)$/\1\t${TARGET_WORKSPACE_ID}/g" > FRONT_datasets_transformed.csv
-mv FRONT_datasets_transformed.csv FRONT_datasets.csv
-import FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "updatedAt name description schema"
+mkdir -p /tmp/dust-apps
 
-project_ids=$(cut -f 11 FRONT_apps.csv |paste -sd "," -)
+cd ${DIR}/..
 
-# ---- projects
-fetch CORE projects "id" "\\\"id\\\" in (${project_ids})"
-import CORE projects "id" "id"
+./admin/cli.sh registry dump > /tmp/dust-apps/specs 2> /dev/null
 
-# ---- specifications
-fetch CORE specifications "id project created hash specification" "\\\"project\\\" in (${project_ids})"
-import CORE specifications "id project created hash specification" "hash specification"
+REGISTRY_COUNT=$(cat /tmp/dust-apps/specs | wc -w)
+IN_CLAUSE=$(cat /tmp/dust-apps/specs |  cut -f4 -d\|  | sed -E "s/(.*)/'\\1'/g" | paste -sd "," - )
+LOCAL_COUNT=$(psql $CORE_DATABASE_URI -c "copy (select count(distinct(hash)) from specifications where hash in (${IN_CLAUSE})) to stdout")
 
-# ---- datasets
-fetch CORE datasets "id project created dataset_id hash" "\\\"project\\\" in (${project_ids})"
-dataset_ids=$(cut -f 1 CORE_datasets.csv |paste -sd "," -)
-fetch CORE datasets_joins "id dataset point point_idx" "\\\"dataset\\\" in (${dataset_ids})"
-dataset_points_ids=$(cut -f 3 CORE_datasets_joins.csv |paste -sd "," -)
-fetch CORE datasets_points "id hash json" "\\\"id\\\" in (${dataset_points_ids})"
+if [ $REGISTRY_COUNT -eq $LOCAL_COUNT ]
+then
+    echo "All apps available, skipping."
+else 
+    echo "Will copy apps into workspace ${DUST_APPS_SYNC_WORKSPACE_ID}..."
+    echo "You'll have to manually update front/lib/api/config.ts to use localhost:3000 instead of dust.tt,"
+    echo "and front/lib/development.ts / types/src/front/lib/actions/registry.ts to set your workspace sId in PRODUCTION_DUST_APPS_WORKSPACE_ID"
+    echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."
+    set -e
 
-import CORE datasets "id project created dataset_id hash" "hash"
-import CORE datasets_points "id hash json" "hash json"
-import CORE datasets_joins " id dataset point point_idx" "point point_idx"
+    echo "Fetching prodbox pod..."
+    PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox |cut -d \  -f1)
+
+    # ---- apps
+    fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "\\\"workspaceId\\\"=5069"
+    cat /tmp/dust-apps/FRONT_apps.csv | cut -f1-11 | sed -E "s/^(.*)$/\1\t${DUST_APPS_SYNC_WORKSPACE_ID}/g" > /tmp/dust-apps/FRONT_apps_transformed.csv
+    mv /tmp/dust-apps/FRONT_apps_transformed.csv /tmp/dust-apps/FRONT_apps.csv
+    import FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "updatedAt name description visibility savedSpecification savedConfig savedRun dustAPIProjectId"
+
+    # ---- datasets
+    fetch FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "\\\"workspaceId\\\"=5069"
+    cat /tmp/dust-apps/FRONT_datasets.csv | cut -f1-7 | sed -E "s/^(.*)$/\1\t${DUST_APPS_SYNC_WORKSPACE_ID}/g" > /tmp/dust-apps/FRONT_datasets_transformed.csv
+    mv /tmp/dust-apps/FRONT_datasets_transformed.csv /tmp/dust-apps/FRONT_datasets.csv
+    import FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "updatedAt name description schema"
+
+    project_ids=$(cut -f 11 FRONT_apps.csv |paste -sd "," -)
+
+    # ---- projects
+    fetch CORE projects "id" "\\\"id\\\" in (${project_ids})"
+    import CORE projects "id" "id"
+
+    # ---- specifications
+    fetch CORE specifications "id project created hash specification" "\\\"project\\\" in (${project_ids})"
+    import CORE specifications "id project created hash specification" "hash specification"
+
+    # ---- datasets
+    fetch CORE datasets "id project created dataset_id hash" "\\\"project\\\" in (${project_ids})"
+    dataset_ids=$(cut -f 1 CORE_datasets.csv |paste -sd "," -)
+    fetch CORE datasets_joins "id dataset point point_idx" "\\\"dataset\\\" in (${dataset_ids})"
+    dataset_points_ids=$(cut -f 3 CORE_datasets_joins.csv |paste -sd "," -)
+    fetch CORE datasets_points "id hash json" "\\\"id\\\" in (${dataset_points_ids})"
+
+    import CORE datasets "id project created dataset_id hash" "hash"
+    import CORE datasets_points "id hash json" "hash json"
+    import CORE datasets_joins " id dataset point point_idx" "point point_idx"
+
+fi
 
 rm -R /tmp/dust-apps

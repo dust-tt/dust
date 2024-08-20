@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "Running post-merge hook"
+./front/admin/copy_apps.sh
+
+exit 0

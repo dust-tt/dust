@@ -1,6 +1,8 @@
+import type { DustRegistryActionName } from "@dust-tt/types";
 import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   ConnectorsAPI,
+  DustProdActionRegistry,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
@@ -182,6 +184,11 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       console.log("Connectors unpaused");
+      return;
+    }
+
+    case "dump-registry": {
+      console.log(DustProdActionRegistry);
       return;
     }
 
@@ -560,6 +567,24 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const registry = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "dump": {
+      Object.keys(DustProdActionRegistry).forEach((key) => {
+        const appName = key as DustRegistryActionName;
+        console.log(
+          `${DustProdActionRegistry[appName].app.workspaceId}|${key}|${DustProdActionRegistry[appName].app.appId}|${DustProdActionRegistry[appName].app.appHash}`
+        );
+      });
+      return;
+    }
+
+    default:
+      console.log(`Unknown workspace command: ${command}`);
+      console.log("Possible values: `dump`");
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -589,6 +614,8 @@ const main = async () => {
       return conversation(command, argv);
     case "transcripts":
       return transcripts(command, argv);
+    case "registry":
+      return registry(command, argv);
     default:
       console.log(
         "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`, `transcripts`"
