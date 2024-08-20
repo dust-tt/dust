@@ -187,11 +187,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       return;
     }
 
-    case "dump-registry": {
-      console.log(DustProdActionRegistry);
-      return;
-    }
-
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
@@ -567,15 +562,10 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
-const registry = async (command: string, args: parseArgs.ParsedArgs) => {
+const registry = async (command: string) => {
   switch (command) {
     case "dump": {
-      Object.keys(DustProdActionRegistry).forEach((key) => {
-        const appName = key as DustRegistryActionName;
-        console.log(
-          `${DustProdActionRegistry[appName].app.workspaceId}|${key}|${DustProdActionRegistry[appName].app.appId}|${DustProdActionRegistry[appName].app.appHash}`
-        );
-      });
+      console.log(JSON.stringify(DustProdActionRegistry));
       return;
     }
 
