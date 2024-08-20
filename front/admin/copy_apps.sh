@@ -45,7 +45,7 @@ function import {
 if [ -z "$DUST_APPS_SYNC_WORKSPACE_ID" ] 
 then
     echo "Please set DUST_APPS_SYNC_WORKSPACE_ID if you want to synchronize dust-apps."
-    exit 1
+    exit 0
 fi
 
 mkdir -p /tmp/dust-apps
