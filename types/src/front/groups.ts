@@ -13,18 +13,16 @@ import { ModelId } from "../shared/model_id";
  * Contains specific users added by workspace admins.
  * Has access to the list of Vaults configured by workspace admins.
  */
-export const SUPPORTED_GROUP_KINDS = ["regular", "global", "system"] as const;
-export type SupportedGroupKind = (typeof SUPPORTED_GROUP_KINDS)[number];
+export const GROUP_KINDS = ["regular", "global", "system"] as const;
+export type GroupKind = (typeof GROUP_KINDS)[number];
 
-export function isSupportedGroupKind(
-  value: unknown
-): value is SupportedGroupKind {
-  return SUPPORTED_GROUP_KINDS.includes(value as SupportedGroupKind);
+export function isGroupKind(value: unknown): value is GroupKind {
+  return GROUP_KINDS.includes(value as GroupKind);
 }
-export function isSystemGroupKind(value: SupportedGroupKind): boolean {
+export function isSystemGroupKind(value: GroupKind): boolean {
   return value === "system";
 }
-export function isGlobalGroupKind(value: SupportedGroupKind): boolean {
+export function isGlobalGroupKind(value: GroupKind): boolean {
   return value === "global";
 }
 
@@ -32,6 +30,6 @@ export type GroupType = {
   id: ModelId;
   name: string;
   sId: string;
-  type: SupportedGroupKind;
+  kind: GroupKind;
   workspaceId: ModelId;
 };
