@@ -171,10 +171,6 @@ export default function CreateAssistant({
     return null;
   }
 
-  console.log("Dust apps:", dustApps);
-  console.log("Data sources:", dataSources);
-  console.log("Data source views:", dataSourceViews);
-
   return (
     <AssistantBuilderProvider
       dustApps={dustApps}
