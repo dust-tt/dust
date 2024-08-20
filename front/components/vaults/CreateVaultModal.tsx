@@ -27,7 +27,6 @@ type RowData = {
   name: string;
   userId: string;
   onClick?: () => void;
-  onMoreClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;

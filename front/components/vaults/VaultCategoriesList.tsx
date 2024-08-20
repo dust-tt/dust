@@ -25,7 +25,6 @@ type RowData = {
   usage: number;
   count: number;
   onClick?: () => void;
-  onMoreClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;
@@ -119,7 +118,6 @@ export const VaultCategoriesList = ({
                 name: CATEGORY_DETAILS[category].label,
                 icon: CATEGORY_DETAILS[category].icon.type as ComponentType,
                 onClick: () => onSelect(category),
-                onMoreClick: () => {},
               }
             : null
         )
