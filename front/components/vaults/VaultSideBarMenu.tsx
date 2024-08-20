@@ -13,6 +13,7 @@ import type {
   DataSourceOrView,
   DataSourceOrViewInfo,
   LightWorkspaceType,
+  VaultKind,
   VaultType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_OR_VIEW_CATEGORIES } from "@dust-tt/types";
@@ -36,7 +37,7 @@ interface VaultSideBarMenuProps {
   setShowVaultCreationModal: (show: boolean) => void;
 }
 
-const VAULTS_SORT_ORDER = ["system", "global", "regular"];
+const VAULTS_SORT_ORDER: VaultKind[] = ["system", "global", "regular"];
 
 export default function VaultSideBarMenu({
   owner,
@@ -50,22 +51,22 @@ export default function VaultSideBarMenu({
 
   // Group by kind and sort.
   const groupedVaults = groupBy(vaults, (vault) => vault.kind);
-  const sortedGroupedVaults = VAULTS_SORT_ORDER.map(
-    (kind) => groupedVaults[kind] || []
-  );
+  const sortedGroupedVaults = VAULTS_SORT_ORDER.map((kind) => ({
+    kind,
+    vaults: groupedVaults[kind] || [],
+  }));
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <div className="flex w-full flex-col px-2">
         <Item.List>
-          {sortedGroupedVaults.map((vaults, index) => {
-            const [vault] = vaults;
-            const sectionLabel = getSectionLabel(vault);
+          {sortedGroupedVaults.map(({ kind, vaults }, index) => {
+            const sectionLabel = getSectionLabel(kind);
 
             return (
               <Fragment key={`vault-section-${index}`}>
                 <div className="flex items-center justify-between">
-                  <Item.SectionHeader label={sectionLabel} key={vault.sId} />
+                  <Item.SectionHeader label={sectionLabel} />
                   {sectionLabel === "PRIVATE" && (
                     <Button
                       className="mt-4"
@@ -99,8 +100,8 @@ const renderVaultItems = (vaults: VaultType[], owner: LightWorkspaceType) =>
     </Fragment>
   ));
 
-const getSectionLabel = (vault: VaultType) => {
-  switch (vault.kind) {
+const getSectionLabel = (kind: VaultKind) => {
+  switch (kind) {
     case "global":
       return "SHARED";
 
@@ -111,7 +112,7 @@ const getSectionLabel = (vault: VaultType) => {
       return "SYSTEM";
 
     default:
-      assertNever(vault.kind);
+      assertNever(kind);
   }
 };
 
