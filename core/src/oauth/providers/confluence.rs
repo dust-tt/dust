@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
+use tracing::info;
 
 use super::utils::ProviderHttpRequestError;
 
@@ -169,7 +170,9 @@ impl Provider for ConfluenceConnectionProvider {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
             } if *status == 403 => {
-                if message.contains("refresh_token is invalid") {
+                let is_revoked = message.contains("refresh_token is invalid");
+                info!(message, is_revoked, "Confluence 403 error");
+                if is_revoked {
                     ProviderError::TokenRevokedError
                 } else {
                     // Call the default implementation for other 403 errors.

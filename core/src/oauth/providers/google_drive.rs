@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
+use tracing::info;
 
 use super::utils::ProviderHttpRequestError;
 
@@ -202,9 +203,10 @@ impl Provider for GoogleDriveConnectionProvider {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
             } if *status == 400 => {
-                if message.contains("invalid_grant")
-                    && message.contains("Token has been expired or revoked")
-                {
+                let is_revoked = message.contains("invalid_grant")
+                    && message.contains("Token has been expired or revoked");
+                info!(message, is_revoked, "Google drive 403 error");
+                if is_revoked {
                     ProviderError::TokenRevokedError
                 } else {
                     // Call the default implementation for other 400 errors.
