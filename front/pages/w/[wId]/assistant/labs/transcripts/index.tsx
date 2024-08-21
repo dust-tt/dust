@@ -612,6 +612,7 @@ export default function LabsTranscriptsIndex({
                 </Page.Layout>
               </Page.Layout>
 
+              {owner.flags.includes("labs_transcripts_datasource") && (
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="3. Store transcripts in Folder" />
                 <Page.Layout direction="horizontal" gap="xl">
@@ -665,6 +666,7 @@ export default function LabsTranscriptsIndex({
                   )}
                 </Page.Layout>
               </Page.Layout>
+            )}
 
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="3. Enable transcripts processing" />
