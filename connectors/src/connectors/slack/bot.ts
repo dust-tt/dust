@@ -35,7 +35,6 @@ import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
-import { lockWithRedis } from "@connectors/lib/redis";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
