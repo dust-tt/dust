@@ -66,9 +66,9 @@ export function CreateVaultModal({
       {
         id: "name",
         cell: (info: Info) => (
-          <DataTable.Cell avatarUrl={info.row.original.icon}>
+          <DataTable.CellContent avatarUrl={info.row.original.icon}>
             {info.row.original.name}
-          </DataTable.Cell>
+          </DataTable.CellContent>
         ),
       },
       {

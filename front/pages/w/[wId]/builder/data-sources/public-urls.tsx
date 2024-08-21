@@ -264,12 +264,12 @@ function getTableColumns() {
       id: "name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <DataTable.Cell icon={info.row.original.icon}>
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="hidden sm:inline">{info.row.original.name}</span>
           <span className="inline sm:hidden">
             {truncate(info.row.original.name, 30, "...")}
           </span>
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
@@ -277,16 +277,16 @@ function getTableColumns() {
       accessorKey: "usage",
       id: "usage",
       cell: (info: Info) => (
-        <DataTable.Cell icon={RobotIcon}>
+        <DataTable.CellContent icon={RobotIcon}>
           {info.row.original.usage}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
       header: "Added by",
       id: "addedBy",
       cell: (info: Info) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
           roundedAvatar={true}
         />
@@ -297,13 +297,13 @@ function getTableColumns() {
       accessorKey: "editedByUser.editedAt",
       id: "editedAt",
       cell: (info: Info) => (
-        <DataTable.Cell>
+        <DataTable.CellContent>
           {info.row.original.editedByUser?.editedAt
             ? new Date(
                 info.row.original.editedByUser.editedAt
               ).toLocaleDateString()
             : null}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];

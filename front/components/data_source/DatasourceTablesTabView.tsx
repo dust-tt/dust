@@ -121,18 +121,18 @@ export function DatasourceTablesTabView({
       accessorKey: "name",
       header: "Name",
       cell: (info: Info) => (
-        <DataTable.Cell icon={ServerIcon}>
+        <DataTable.CellContent icon={ServerIcon}>
           {info.row.original.name}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
       header: "Last Edited",
       accessorKey: "lastEdited",
       cell: (info: Info) => (
-        <DataTable.Cell>
+        <DataTable.CellContent>
           {timeAgoFrom(info.row.original.timestamp)} ago
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];

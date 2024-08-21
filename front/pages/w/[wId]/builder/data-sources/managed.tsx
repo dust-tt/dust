@@ -825,9 +825,9 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       accessorKey: "name",
       id: "name",
       cell: (info: Info) => (
-        <DataTable.Cell icon={info.row.original.icon}>
+        <DataTable.CellContent icon={info.row.original.icon}>
           {info.row.original.name}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
@@ -836,9 +836,9 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
-            <DataTable.Cell icon={RobotIcon}>
+            <DataTable.CellContent icon={RobotIcon}>
               {info.row.original.usage}
-            </DataTable.Cell>
+            </DataTable.CellContent>
           ) : null}
         </>
       ),
@@ -847,7 +847,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       header: "Managed by",
       id: "managedBy",
       cell: (info: Info) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
           roundedAvatar={true}
         />
@@ -857,7 +857,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
       header: "Last sync",
       accessorKey: "editedByUser.editedAt",
       cell: (info: Info) => (
-        <DataTable.Cell className="w-10">
+        <DataTable.CellContent className="pr-2">
           {(() => {
             if (!info.row.original.connector) {
               return <Chip color="amber">Never</Chip>;
@@ -880,7 +880,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
               );
             }
           })()}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
@@ -891,7 +891,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
 
         if (!original.connector) {
           return (
-            <DataTable.Cell>
+            <DataTable.CellContent>
               <Button
                 variant="primary"
                 icon={CloudArrowLeftRightIcon}
@@ -899,11 +899,11 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
                 onClick={original.buttonOnClick}
                 label={original.isLoading ? "Connecting..." : "Connect"}
               />
-            </DataTable.Cell>
+            </DataTable.CellContent>
           );
         } else {
           return (
-            <DataTable.Cell className="relative">
+            <DataTable.CellContent>
               <Button
                 variant="secondary"
                 icon={Cog6ToothIcon}
@@ -911,7 +911,7 @@ function getTableColumns(): ColumnDef<RowData, unknown>[] {
                 onClick={original.buttonOnClick}
                 label={original.isAdmin ? "Manage" : "View"}
               />
-            </DataTable.Cell>
+            </DataTable.CellContent>
           );
         }
       },

@@ -214,27 +214,27 @@ export function DatasourceDocumentsTabView({
       accessorKey: "name",
       header: "Name",
       cell: (info: Info) => (
-        <DataTable.Cell icon={DocumentTextIcon}>
+        <DataTable.CellContent icon={DocumentTextIcon}>
           {info.row.original.name}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
       header: "Size",
       accessorKey: "size",
       cell: (info: Info) => (
-        <DataTable.Cell>
+        <DataTable.CellContent>
           {Math.floor(info.row.original.size / 1024)} kb
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
       header: "Last Edited",
       accessorKey: "lastEdited",
       cell: (info: Info) => (
-        <DataTable.Cell>
+        <DataTable.CellContent>
           {timeAgoFrom(info.row.original.timestamp)} ago
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];
