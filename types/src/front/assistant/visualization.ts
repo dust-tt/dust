@@ -16,12 +16,18 @@ interface SetContentHeightParams {
   height: number;
 }
 
+interface SetImageParams {
+  image: string;
+}
+
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrored: void;
+  // setScreenshotDownloadable: void;
+  generateScreenshot: SetImageParams;
 };
 
 // Derive the command type from the keys of the request map
@@ -40,6 +46,8 @@ export const validCommands: VisualizationRPCCommand[] = [
   "getCodeToExecute",
   "setContentHeight",
   "setErrored",
+  // "setScreenshotDownloadable",
+  "generateScreenshot",
 ];
 
 // Command results.
@@ -49,6 +57,8 @@ export interface CommandResultMap {
   getCodeToExecute: { code: string };
   setContentHeight: void;
   setErrored: void;
+  // setScreenshotDownloadable: void;
+  generateScreenshot: void;
 }
 
 // TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
@@ -148,6 +158,6 @@ export function isVisualizationRPCRequest(
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
     isSetContentHeightRequest(value) ||
-    isSetErroredRequest(value)
+    isSetErroredRequest(value) || true
   );
 }

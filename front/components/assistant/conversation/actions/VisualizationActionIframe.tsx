@@ -44,12 +44,14 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 function useVisualizationDataHandler({
   visualization,
   setContentHeight,
+  setScreenshot,
   setIsErrored,
   vizIframeRef,
   workspaceId,
 }: {
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
+  setScreenshot: (v: SetStateAction<string>) => void;
   setIsErrored: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
@@ -111,6 +113,10 @@ function useVisualizationDataHandler({
           setIsErrored(true);
           break;
 
+        case "generateScreenshot":
+          setScreenshot(data.params.image);
+          break;
+
         default:
           assertNever(data);
       }
@@ -123,6 +129,7 @@ function useVisualizationDataHandler({
     code,
     getFileBlob,
     setContentHeight,
+    setScreenshot,
     setIsErrored,
     vizIframeRef,
   ]);
@@ -138,6 +145,7 @@ export function VisualizationActionIframe({
   onRetry: () => void;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
+  const [screenshot, setScreenshot] = useState<string>("");
   const [isErrored, setIsErrored] = useState(false);
   const [activeIndex, setActiveIndex] = useState(1);
 
@@ -152,6 +160,7 @@ export function VisualizationActionIframe({
     visualization,
     workspaceId,
     setContentHeight,
+    setScreenshot,
     setIsErrored,
     vizIframeRef,
   });
@@ -190,6 +199,13 @@ export function VisualizationActionIframe({
       }
     }
   }, [activeIndex, contentHeight, codeFullyGenerated, isErrored]);
+
+  useEffect(() => {
+    const downloadLink = document.createElement("a");
+    downloadLink.download = `${visualization.identifier}.png`;
+    downloadLink.href = screenshot;
+    downloadLink.click();
+  }, [screenshot, visualization.identifier]);
 
   return (
     <div className="relative flex flex-col">

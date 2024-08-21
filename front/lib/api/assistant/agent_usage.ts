@@ -68,7 +68,8 @@ export async function getAgentsUsage({
     agentMessageCountTTL === TTL_KEY_NOT_EXIST ||
     agentMessageCountTTL === TTL_KEY_NOT_SET
   ) {
-    await launchMentionsCountWorkflow({ workspaceId });
+    // FIXME: uncomment it back
+    // await launchMentionsCountWorkflow({ workspaceId });
     return [];
     // agent mention count is stale
   } else if (

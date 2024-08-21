@@ -74,7 +74,22 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  return { fetchCode, fetchFile, error, sendHeightToParent };
+  const sendScreenshotToParent = useCallback(
+    async ({ image }: { image: string }) => {
+      await sendCrossDocumentMessage("generateScreenshot", {
+        image,
+      });
+    },
+    [sendCrossDocumentMessage]
+  );
+
+  return {
+    fetchCode,
+    fetchFile,
+    error,
+    sendHeightToParent,
+    sendScreenshotToParent,
+  };
 }
 
 const useFile = (
@@ -145,7 +160,13 @@ export function VisualizationWrapper({
 
   const [errored, setErrored] = useState<Error | null>(null);
 
-  const { fetchCode, fetchFile, error, sendHeightToParent } = api;
+  const {
+    fetchCode,
+    fetchFile,
+    error,
+    sendHeightToParent,
+    sendScreenshotToParent,
+  } = api;
 
   useEffect(() => {
     const loadCode = async () => {
@@ -199,6 +220,29 @@ export function VisualizationWrapper({
     }
   }, [error]);
 
+  const makeScreenshot = useCallback(() => {
+    const svg = document.querySelector("svg.recharts-surface") as SVGSVGElement;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], {
+      type: "image/svg+xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(svgBlob);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = svg?.width.baseVal.value;
+    canvas.height = svg?.height.baseVal.value;
+    const ctx = canvas.getContext("2d");
+
+    const image = new Image();
+    image.onload = function () {
+      ctx?.drawImage(image, 0, 0);
+      URL.revokeObjectURL(url);
+      const pngFile = canvas.toDataURL("image/png");
+      sendScreenshotToParent({ image: pngFile });
+    };
+    image.src = url;
+  }, [sendScreenshotToParent]);
+
   if (errored) {
     // Throw the error to the ErrorBoundary.
     throw errored;
@@ -210,6 +254,13 @@ export function VisualizationWrapper({
 
   return (
     <div ref={ref}>
+      <button
+        onClick={async () => {
+          makeScreenshot();
+        }}
+      >
+        Download
+      </button>
       <Runner
         code={runnerParams.code}
         scope={runnerParams.scope}
