@@ -1,7 +1,7 @@
 import { FolderIcon, LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
 import type {
-  DataSourceViewCategory,
   DataSourceType,
+  DataSourceViewCategory,
   DataSourceViewType,
   VaultType,
 } from "@dust-tt/types";

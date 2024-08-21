@@ -4,7 +4,6 @@ import {
   DataTable,
   DropdownMenu,
   PlusIcon,
-  RobotIcon,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
