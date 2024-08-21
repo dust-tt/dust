@@ -172,6 +172,20 @@ async function handler(
         });
       }
 
+      let vault = null;
+      if (typeof req.body.vaultId === "string") {
+        vault = await VaultResource.fetchById(auth, req.body.vaultId);
+        if (!vault) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "vault_not_found",
+              message: "The vault you requested was not found.",
+            },
+          });
+        }
+      }
+
       const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
       const ds = await DataSourceResource.makeNew(
         {
@@ -182,7 +196,7 @@ async function handler(
           assistantDefaultSelected: req.body.assistantDefaultSelected,
           editedByUserId: user.id,
         },
-        globalVault
+        vault ?? globalVault
       );
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(

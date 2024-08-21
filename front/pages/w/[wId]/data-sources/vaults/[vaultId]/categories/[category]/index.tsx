@@ -1,5 +1,9 @@
 import { LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
-import type { DataSourceViewCategory, VaultType } from "@dust-tt/types";
+import type {
+  DataSourceViewCategory,
+  PlanType,
+  VaultType,
+} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -18,12 +22,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     category: DataSourceViewCategory;
     isAdmin: boolean;
     vault: VaultType;
+    plan: PlanType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
-  if (!subscription) {
+  if (!subscription || !plan) {
     return {
       notFound: true,
     };
@@ -46,6 +52,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
+      plan,
       subscription,
       vault: vault.toJSON(),
     },
@@ -56,6 +63,7 @@ export default function Vault({
   category,
   isAdmin,
   owner,
+  plan,
   vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -82,6 +90,7 @@ export default function Vault({
 
       <VaultResourcesList
         owner={owner}
+        plan={plan}
         vault={vault}
         isAdmin={isAdmin}
         category={category}

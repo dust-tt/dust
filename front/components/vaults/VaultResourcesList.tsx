@@ -4,6 +4,7 @@ import {
   DataTable,
   DropdownMenu,
   PlusIcon,
+  Popup,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -11,17 +12,22 @@ import type {
   ConnectorType,
   DataSourceViewCategory,
   EditedByUser,
+  PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { FolderIcon } from "lucide-react";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import VaultCreateFolderModal from "@app/components/vaults/VaultCreateFolderModal";
+import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   CONNECTOR_CONFIGURATIONS,
   getDataSourceNameFromView,
@@ -47,6 +53,7 @@ type Info = CellContext<RowData, unknown>;
 
 type VaultResourcesListProps = {
   owner: WorkspaceType;
+  plan: PlanType;
   isAdmin: boolean;
   vault: VaultType;
   category: DataSourceViewCategory;
@@ -110,11 +117,18 @@ const getTableColumns = () => {
 
 export const VaultResourcesList = ({
   owner,
+  plan,
   isAdmin,
   vault,
   category,
   onSelect,
 }: VaultResourcesListProps) => {
+  const router = useRouter();
+  const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
+    useState(false);
+  const [showAddFolderModal, setShowAddFolderModal] = useState(false);
+  const [showAddWebsiteModal, setShowAddWebsiteModal] = useState(false);
+
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
@@ -130,6 +144,21 @@ export const VaultResourcesList = ({
       vaultId: vault.sId,
       category: category,
     });
+
+  const { submit: handleCreateStaticDataSource } = useSubmitFunction(
+    async (type: "files" | "webfolder") => {
+      if (
+        plan.limits.dataSources.count != -1 &&
+        dataSources.length >= plan.limits.dataSources.count
+      ) {
+        setShowDatasourceLimitPopup(true);
+      } else if (type === "files") {
+        setShowAddFolderModal(true);
+      } else if (type === "webfolder") {
+        setShowAddWebsiteModal(true);
+      }
+    }
+  );
 
   const rows: RowData[] =
     vaultDataSourceViews?.map((r) => ({
@@ -162,6 +191,38 @@ export const VaultResourcesList = ({
 
   return (
     <>
+      <Popup
+        show={showDatasourceLimitPopup}
+        chipLabel={`${plan.name} plan`}
+        description={`You have reached the limit of data sources (${plan.limits.dataSources.count} data sources). Upgrade your plan for unlimited datasources.`}
+        buttonLabel="Check Dust plans"
+        buttonClick={() => {
+          void router.push(`/w/${owner.sId}/subscription`);
+        }}
+        onClose={() => {
+          setShowDatasourceLimitPopup(false);
+        }}
+        className="absolute bottom-8 right-0"
+      />
+      <VaultCreateFolderModal
+        isOpen={showAddFolderModal}
+        setOpen={(isOpen) => {
+          setShowAddFolderModal(isOpen);
+        }}
+        owner={owner}
+        vault={vault}
+        dataSources={dataSources}
+      />
+      <VaultCreateWebsiteModal
+        isOpen={showAddWebsiteModal}
+        setOpen={(isOpen) => {
+          setShowAddWebsiteModal(isOpen);
+        }}
+        owner={owner}
+        onSave={() => {
+          console.log("todo");
+        }}
+      />
       <div
         className={classNames(
           "flex gap-2",
@@ -210,10 +271,22 @@ export const VaultResourcesList = ({
           </DropdownMenu>
         )}
         {category === "files" && (
-          <Button label="Add folder" onClick={() => {}} icon={PlusIcon} />
+          <Button
+            label="Add folder"
+            onClick={async () => {
+              await handleCreateStaticDataSource("files");
+            }}
+            icon={PlusIcon}
+          />
         )}
         {category === "webfolder" && (
-          <Button label="Add site" onClick={() => {}} icon={PlusIcon} />
+          <Button
+            label="Add site"
+            onClick={async () => {
+              await handleCreateStaticDataSource("webfolder");
+            }}
+            icon={PlusIcon}
+          />
         )}
       </div>
       {rows.length > 0 ? (
