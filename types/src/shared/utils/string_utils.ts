@@ -71,5 +71,7 @@ export function redactString(str: string, n: number) {
 }
 
 export function truncate(text: string, length: number, omission = "...") {
-  return text.length > length ? `${text.substring(0, 20)}${omission}` : text;
+  return text.length > length
+    ? `${text.substring(0, length - omission.length)}${omission}`
+    : text;
 }
