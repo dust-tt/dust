@@ -47,6 +47,10 @@ const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 2;
+// Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
+// messages). Some channels have integrations that post a lot of messages. Beyond this number (more
+// that 500 messages per week), the information is very likely useless.
+const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
 
 /**
  * Slack API rate limit TLDR:
@@ -490,6 +494,24 @@ export async function syncNonThreaded(
       }
     }
     hasMore = c.has_more;
+
+    if (messages.length > MAX_SYNC_NON_THREAD_MESSAGES) {
+      logger.warn(
+        {
+          messagesCount: messages.length,
+          connectorId,
+          channelName,
+          channelId,
+          startTsMs,
+          endTsMs,
+          latestTsSec,
+          nextCursor,
+          debugSlack: true,
+        },
+        "Giving up on syncNonThreaded: too many messages"
+      );
+      break;
+    }
   } while (hasMore);
 
   if (messages.length === 0) {
