@@ -100,18 +100,13 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async listWorkspaceVaults(
-    auth: Authenticator,
-    onlySystemAndGlobal = false
+    auth: Authenticator
   ): Promise<VaultResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const where: WhereOptions = {
       workspaceId: owner.id,
     };
-
-    if (onlySystemAndGlobal) {
-      where["kind"] = ["system", "global"];
-    }
 
     const vaults = await this.model.findAll({
       where,
@@ -122,6 +117,21 @@ export class VaultResource extends BaseResource<VaultModel> {
       .filter(
         (vault) => auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
       );
+  }
+
+  static async listWorkspaceDefaultVaults(auth: Authenticator) {
+    const owner = auth.getNonNullableWorkspace();
+
+    const vaults = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        kind: {
+          [Op.in]: ["system", "global"],
+        },
+      },
+    });
+
+    return vaults.map((vault) => new this(VaultModel, vault.get()));
   }
 
   static async fetchWorkspaceSystemVault(

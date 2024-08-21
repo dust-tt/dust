@@ -54,10 +54,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const globalAndSystemVault = await VaultResource.listWorkspaceVaults(
-    auth,
-    true
-  );
+  const globalAndSystemVault =
+    await VaultResource.listWorkspaceDefaultVaults(auth);
 
   const [ds, dsViews, configuration, allDustApps] = await Promise.all([
     DataSourceResource.listByVaults(auth, globalAndSystemVault),
