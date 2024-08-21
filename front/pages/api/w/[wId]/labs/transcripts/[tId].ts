@@ -110,8 +110,11 @@ async function handler(
         });
       }
 
-      const { agentConfigurationId: patchAgentId, isActive, dataSourceId } =
-        patchBodyValidation.right;
+      const {
+        agentConfigurationId: patchAgentId,
+        isActive,
+        dataSourceId,
+      } = patchBodyValidation.right;
 
       if (patchAgentId) {
         await transcriptsConfiguration.setAgentConfigurationId({

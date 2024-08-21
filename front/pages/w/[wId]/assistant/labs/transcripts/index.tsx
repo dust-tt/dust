@@ -128,6 +128,9 @@ export default function LabsTranscriptsIndex({
               (a) => a.sId === transcriptsConfiguration.agentConfigurationId
             ) || null,
           isActive: transcriptsConfiguration.isActive || false,
+          dataSource: dataSources.find(
+            (ds) => ds.id === transcriptsConfiguration.dataSourceId
+          ) || null,
         };
       });
     } else {
@@ -135,7 +138,7 @@ export default function LabsTranscriptsIndex({
         return defaultTranscriptConfigurationState;
       });
     }
-  }, [transcriptsConfiguration, agentConfigurations]);
+  }, [transcriptsConfiguration, agentConfigurations, dataSources]);
 
   if (isTranscriptsConfigurationLoading) {
     return <Spinner />;
@@ -242,7 +245,7 @@ export default function LabsTranscriptsIndex({
     return updateAssistant(transcriptConfigurationId, assistant);
   };
 
-  const handleSelectDataSource = async (
+  const handleSetDataSource = async (
     transcriptConfigurationId: number,
     dataSource: DataSourceType | null
   ) => {
@@ -256,17 +259,17 @@ export default function LabsTranscriptsIndex({
     let successMessage = "The transcripts will not be stored.";
 
     if (dataSource) {
-     successMessage =
-      "The transcripts will be stored in the folder " + dataSource.name;
+      successMessage =
+        "The transcripts will be stored in the folder " + dataSource.name;
     }
     await makePatchRequest(
       transcriptConfigurationId,
       {
-        dataSourceId: dataSource?.id,
+        dataSourceId: dataSource ? dataSource.id : null,
       },
       successMessage
     );
-  }
+  };
 
   const handleSetIsActive = async (
     transcriptConfigurationId: number,
@@ -638,13 +641,23 @@ export default function LabsTranscriptsIndex({
                       <DropdownMenu.Items origin="topLeft" width={220}>
                         <DropdownMenu.Item
                           label="Do not store transcripts"
-                          onClick={() => handleSelectDataSource(transcriptsConfiguration.id, null)}
+                          onClick={() =>
+                            handleSetDataSource(
+                              transcriptsConfiguration.id,
+                              null
+                            )
+                          }
                         />
                         {dataSources.map((ds) => (
                           <DropdownMenu.Item
                             key={ds.id}
                             label={ds.name}
-                            onClick={() => handleSelectDataSource(transcriptsConfiguration.id, ds)}
+                            onClick={() =>
+                              handleSetDataSource(
+                                transcriptsConfiguration.id,
+                                ds
+                              )
+                            }
                           />
                         ))}
                       </DropdownMenu.Items>
