@@ -78,7 +78,7 @@ const downloadScreenshot = (image: string, screenshotId: string) => {
   downloadLink.download = `screenshot_${screenshotId}.png`;
   downloadLink.href = image;
   downloadLink.click();
-}
+};
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
@@ -93,7 +93,9 @@ function useVisualizationDataHandler({
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
   setScreenshotDownloadable: (v: SetStateAction<boolean>) => void;
-  setScreenshot: (v: SetStateAction<{ image: string, screenshotId: string }>) => void;
+  setScreenshot: (
+    v: SetStateAction<{ image: string; screenshotId: string }>
+  ) => void;
   setIsErrored: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
@@ -160,7 +162,10 @@ function useVisualizationDataHandler({
           break;
 
         case "generateScreenshot":
-          setScreenshot({ image: data.params.image, screenshotId: data.params.screenshotId });
+          setScreenshot({
+            image: data.params.image,
+            screenshotId: data.params.screenshotId,
+          });
           break;
 
         default:
@@ -170,7 +175,16 @@ function useVisualizationDataHandler({
 
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  }, [visualization.identifier, code, getFileBlob, setContentHeight, setScreenshot, setIsErrored, vizIframeRef, setScreenshotDownloadable]);
+  }, [
+    visualization.identifier,
+    code,
+    getFileBlob,
+    setContentHeight,
+    setScreenshot,
+    setIsErrored,
+    vizIframeRef,
+    setScreenshotDownloadable,
+  ]);
 }
 
 export function VisualizationActionIframe({
@@ -183,8 +197,12 @@ export function VisualizationActionIframe({
   onRetry: () => void;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
-  const [screenshotDownloadable, setScreenshotDownloadable] = useState<boolean>(false);
-  const [screenshot, setScreenshot] = useState<{ image: string, screenshotId: string } | null>(null);
+  const [screenshotDownloadable, setScreenshotDownloadable] =
+    useState<boolean>(false);
+  const [screenshot, setScreenshot] = useState<{
+    image: string;
+    screenshotId: string;
+  } | null>(null);
   const [isErrored, setIsErrored] = useState(false);
   const [activeIndex, setActiveIndex] = useState(1);
 
@@ -288,23 +306,31 @@ export function VisualizationActionIframe({
                 }}
                 className={classNames("max-h-[60vh] w-full")}
               >
-                {<Button
-                  size="sm"
-                  label="Share"
-                  labelVisible={false}
-                  icon={ArrowUpOnSquareIcon}
-                  variant="tertiary"
-                  onClick={async () => {
-                    const result = await sendRequestToIframe(
-                      "generateScreenshot",
-                      visualization.identifier,
-                      {},
-                      vizIframeRef.current?.contentWindow as MessageEventSource
-                    );
-                    console.log("result", result);
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
                   }}
-                />}
-                
+                >
+                  <Button
+                    size="sm"
+                    label="Share"
+                    labelVisible={false}
+                    icon={ArrowUpOnSquareIcon}
+                    variant="tertiary"
+                    onClick={async () => {
+                      const result = await sendRequestToIframe(
+                        "generateScreenshot",
+                        visualization.identifier,
+                        {},
+                        vizIframeRef.current
+                          ?.contentWindow as MessageEventSource
+                      );
+                      console.log("result", result);
+                    }}
+                  />
+                </div>
+
                 <iframe
                   ref={vizIframeRef}
                   className={classNames(
