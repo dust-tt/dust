@@ -57,7 +57,6 @@ import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscr
 import type { GetVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
-import type { GetVaultDataSourcesResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
 export const SWR_KEYS = {
