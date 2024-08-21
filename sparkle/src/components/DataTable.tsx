@@ -254,25 +254,12 @@ DataTable.Row = function Row({
     </tr>
   );
 };
-interface CellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
-  avatarUrl?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  iconClassName?: string;
-  roundedAvatar?: boolean;
-  children?: ReactNode;
-  description?: string;
+
+interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
+  children: ReactNode;
 }
 
-DataTable.Cell = function Cell({
-  children,
-  className,
-  avatarUrl,
-  roundedAvatar,
-  icon,
-  iconClassName,
-  description,
-  ...props
-}: CellProps) {
+DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
   return (
     <td
       className={classNames(
@@ -281,35 +268,59 @@ DataTable.Cell = function Cell({
       )}
       {...props}
     >
-      <div className="s-flex">
-        {avatarUrl && (
-          <Avatar
-            visual={avatarUrl}
-            size="xs"
-            className="s-mr-2"
-            isRounded={roundedAvatar ?? false}
-          />
-        )}
-        {icon && (
-          <Icon
-            visual={icon}
-            size="sm"
-            className={classNames(
-              "s-mr-2 s-text-element-600",
-              iconClassName || ""
-            )}
-          />
-        )}
-        <div className="s-flex">
-          <span className="s-text-sm s-text-element-800">{children}</span>
-          {description && (
-            <span className="s-pl-2 s-text-sm s-text-element-600">
-              {description}
-            </span>
-          )}
-        </div>
-      </div>
+      {children}
     </td>
+  );
+};
+
+interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
+  avatarUrl?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  iconClassName?: string;
+  roundedAvatar?: boolean;
+  children?: ReactNode;
+  description?: string;
+}
+
+DataTable.CellContent = function CellContent({
+  children,
+  className,
+  avatarUrl,
+  roundedAvatar,
+  icon,
+  iconClassName,
+  description,
+  ...props
+}: CellContentProps) {
+  return (
+    <div className={classNames("s-flex s-py-2", className || "")} {...props}>
+      {avatarUrl && (
+        <Avatar
+          visual={avatarUrl}
+          size="xs"
+          className="s-mr-2"
+          isRounded={roundedAvatar ?? false}
+        />
+      )}
+      {icon && (
+        <Icon
+          visual={icon}
+          size="sm"
+          className={classNames(
+            "s-mr-2 s-text-element-600",
+            iconClassName || ""
+          )}
+        />
+      )}
+      <div className="s-flex">
+        <span className="s-text-sm s-text-element-800">{children}</span>
+        {description && (
+          <span className="s-pl-2 s-text-sm s-text-element-600">
+            {description}
+          </span>
+        )}
+      </div>
+    </div>
   );
 };
 
