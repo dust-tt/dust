@@ -180,6 +180,7 @@ export async function syncChannel(
   }
   const threadsToSync: string[] = [];
   let unthreadedTimeframesToSync: number[] = [];
+  const now = new Date();
   const messages = await getMessagesForChannel(
     connectorId,
     channelId,
@@ -199,10 +200,11 @@ export async function syncChannel(
     {
       connectorId,
       channelId,
-      threadsToSyncCount: threadsToSync.length,
-      unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
+      messagesCount: messages.messages.length,
+      delayMs: new Date().getTime() - now.getTime(),
+      debugSlack: true,
     },
-    "Received messages from channel."
+    "syncChannel.getMessagesForChannel.done"
   );
 
   // `allSkip` and `skip` logic assumes that the messages are returned in recency order (newest
@@ -268,8 +270,9 @@ export async function syncChannel(
       channelId,
       threadsToSyncCount: threadsToSync.length,
       unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
+      debugSlack: true,
     },
-    "Splitted threaded and non-threaded messages to sync"
+    "syncChannel.split.done"
   );
 
   await syncThreads(
@@ -282,6 +285,16 @@ export async function syncChannel(
 
   unthreadedTimeframesToSync = unthreadedTimeframesToSync.filter(
     (t) => !(t in weeksSynced)
+  );
+
+  logger.info(
+    {
+      connectorId,
+      channelId,
+      unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
+      debugSlack: true,
+    },
+    "syncChannel.syncMultipleNoNThreaded.send"
   );
 
   await syncMultipleNoNThreaded(
@@ -330,8 +343,9 @@ export async function getMessagesForChannel(
     {
       messagesCount: c.messages?.length,
       channelId,
+      connectorId,
     },
-    "Got messages from channel."
+    "getMessagesForChannel"
   );
   return c;
 }
@@ -374,6 +388,19 @@ export async function syncNonThreaded(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  logger.info(
+    {
+      connectorId,
+      channelName,
+      channelId,
+      startTsMs,
+      endTsMs,
+      debugSlack: true,
+    },
+    "syncNonThreaded.enter"
+  );
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const client = await getSlackClient(connectorId);
   const nextCursor: string | undefined = undefined;
@@ -385,6 +412,22 @@ export async function syncNonThreaded(
   let hasMore: boolean | undefined = undefined;
   let latestTsSec = endTsSec;
   do {
+    logger.info(
+      {
+        connectorId,
+        channelName,
+        channelId,
+        startTsMs,
+        endTsMs,
+        latestTsSec,
+        nextCursor,
+        debugSlack: true,
+      },
+      "syncNonThreaded.conversationHistory.send"
+    );
+
+    const now = new Date();
+
     let c: ConversationsHistoryResponse | undefined = undefined;
     try {
       c = await client.conversations.history({
@@ -418,6 +461,22 @@ export async function syncNonThreaded(
       );
     }
 
+    logger.info(
+      {
+        messagesCount: c.messages.length,
+        connectorId,
+        channelName,
+        channelId,
+        startTsMs,
+        endTsMs,
+        latestTsSec,
+        nextCursor,
+        delayMs: new Date().getTime() - now.getTime(),
+        debugSlack: true,
+      },
+      "syncNonThreaded.conversationHistory.done"
+    );
+
     for (const message of c.messages) {
       if (message.ts) {
         latestTsSec = parseInt(message.ts);
@@ -438,6 +497,21 @@ export async function syncNonThreaded(
   }
   messages.reverse();
 
+  logger.info(
+    {
+      messagesCount: messages.length,
+      connectorId,
+      channelName,
+      channelId,
+      startTsMs,
+      endTsMs,
+      latestTsSec,
+      nextCursor,
+      debugSlack: true,
+    },
+    "syncNonThreaded.loop.done"
+  );
+
   const content = await formatMessagesForUpsert({
     dataSourceConfig,
     channelName,
@@ -446,6 +520,21 @@ export async function syncNonThreaded(
     connectorId,
     slackClient: client,
   });
+
+  logger.info(
+    {
+      messagesCount: messages.length,
+      connectorId,
+      channelName,
+      channelId,
+      startTsMs,
+      endTsMs,
+      latestTsSec,
+      nextCursor,
+      debugSlack: true,
+    },
+    "syncNonThreaded.formatMessagesForUpsert.done"
+  );
 
   const startDate = new Date(startTsMs);
   const endDate = new Date(endTsMs);
@@ -489,6 +578,21 @@ export async function syncNonThreaded(
     documentId: documentId,
   });
 
+  logger.info(
+    {
+      messagesCount: messages.length,
+      connectorId,
+      channelName,
+      channelId,
+      startTsMs,
+      endTsMs,
+      latestTsSec,
+      nextCursor,
+      debugSlack: true,
+    },
+    "syncNonThreaded.messages.upsert.done"
+  );
+
   await upsertToDatasource({
     dataSourceConfig,
     documentId,
@@ -502,6 +606,21 @@ export async function syncNonThreaded(
     },
     async: true,
   });
+
+  logger.info(
+    {
+      messagesCount: messages.length,
+      connectorId,
+      channelName,
+      channelId,
+      startTsMs,
+      endTsMs,
+      latestTsSec,
+      nextCursor,
+      debugSlack: true,
+    },
+    "syncNonThreaded.datasource.upsert.done"
+  );
 }
 
 export async function syncThreads(
@@ -580,8 +699,10 @@ export async function syncThread(
       channelId,
       threadTs,
     },
-    "Fetching messages from channel thread."
+    "syncThread.getRepliesFromThread.send"
   );
+
+  const now = new Date();
 
   try {
     allMessages = await getRepliesFromThread({
@@ -608,8 +729,9 @@ export async function syncThread(
       channelName,
       channelId,
       threadTs,
+      delayMs: new Date().getTime() - now.getTime(),
     },
-    "Got messages from channel thread."
+    "syncThread.getRepliesFromThread.done"
   );
 
   const documentId = `slack-${channelId}-thread-${threadTs}`;
