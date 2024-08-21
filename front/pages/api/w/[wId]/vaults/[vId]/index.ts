@@ -1,5 +1,8 @@
 import type { UserType, VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchVaultRequestBodySchema } from "@dust-tt/types";
+import {
+  DATA_SOURCE_OR_VIEW_CATEGORIES,
+  PatchVaultRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -72,22 +75,21 @@ async function handler(
         view.toJSON()
       );
 
-      const categories = serializedDatasourceViews.reduce(
-        (acc, dataSourceView) => {
-          const value = acc[dataSourceView.category];
-          if (value) {
-            value.count += 1;
-            value.usage += dataSourceView.usage;
-          } else {
-            acc[dataSourceView.category] = {
-              count: 1,
-              usage: dataSourceView.usage,
-            };
-          }
-          return acc;
-        },
-        {} as { [key: string]: VaultCategoryInfo }
-      );
+      const categories: { [key: string]: VaultCategoryInfo } = {};
+      DATA_SOURCE_OR_VIEW_CATEGORIES.forEach((category) => {
+        categories[category] = {
+          count: 0,
+          usage: 0,
+        };
+      });
+
+      serializedDatasourceViews.forEach((dataSource) => {
+        const value = categories[dataSource.category];
+        if (value) {
+          value.count += 1;
+          value.usage += dataSource.usage;
+        }
+      });
 
       const currentMembers = (
         await Promise.all(

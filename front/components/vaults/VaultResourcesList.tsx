@@ -2,17 +2,18 @@ import {
   Button,
   Chip,
   DataTable,
-  DropdownMenu,
   PlusIcon,
   Popup,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorType,
   DataSourceViewCategory,
   EditedByUser,
   PlanType,
+  VaultSelectedDataSources,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -25,8 +26,10 @@ import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultCreateFolderModal from "@app/components/vaults/VaultCreateFolderModal";
 import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
+import VaultManagedDataSourcesModal from "@app/components/vaults/VaultManagedDatasourcesModal";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   CONNECTOR_CONFIGURATIONS,
@@ -124,18 +127,18 @@ export const VaultResourcesList = ({
   onSelect,
 }: VaultResourcesListProps) => {
   const router = useRouter();
+  const sendNotification = React.useContext(SendNotificationsContext);
+
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
   const [showAddWebsiteModal, setShowAddWebsiteModal] = useState(false);
 
+  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
 
-  const managedDataSources = dataSources.filter(
-    (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
-  );
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
@@ -184,10 +187,72 @@ export const VaultResourcesList = ({
     );
   }
 
-  const setUpDataSources = vaultDataSourceViews.map((dsv) => dsv.connectorId);
-  const unusedDataSources = managedDataSources.filter(
-    (ds) => !setUpDataSources.includes(ds.connectorId)
-  );
+  const saveSelectedDatasources = async (
+    selectedDataSources: VaultSelectedDataSources
+  ) => {
+    let error = null;
+    await Promise.all(
+      selectedDataSources.map(async (sDs) => {
+        const existingViewForDs = vaultDataSourceViews.find(
+          (d) => d.name === sDs.name
+        );
+
+        const body = {
+          name: sDs.name,
+          parentsIn: sDs.parentsIn,
+        };
+
+        try {
+          let res;
+          if (existingViewForDs) {
+            res = await fetch(
+              `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+              }
+            );
+          } else {
+            res = await fetch(
+              `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+              }
+            );
+          }
+
+          if (!res.ok) {
+            const rawError = (await res.json()) as { error: APIError };
+            error = rawError.error.message;
+          }
+        } catch (e) {
+          error = "An Unknown error occurred while adding data to vault.";
+        }
+      })
+    );
+
+    if (error) {
+      sendNotification({
+        title: "Error Adding Data to Vault",
+        type: "error",
+        description: error,
+      });
+    } else {
+      sendNotification({
+        title: "Data Successfully Added to Vault",
+        type: "success",
+        description: "All data sources were successfully updated.",
+      });
+    }
+    // @todo mutateVaultDataSourceOrViews(); ?
+  };
 
   return (
     <>
@@ -220,6 +285,21 @@ export const VaultResourcesList = ({
         }}
         owner={owner}
       />
+      <VaultManagedDataSourcesModal
+        isOpen={showDataSourcesModal}
+        setOpen={(isOpen) => {
+          setShowDataSourcesModal(isOpen);
+        }}
+        owner={owner}
+        dataSources={dataSources.filter(
+          (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
+        )}
+        onSave={async (selectedDataSources) => {
+          await saveSelectedDatasources(selectedDataSources);
+        }}
+        initialSelectedDataSources={vaultDataSourceViews}
+      />
+
       <div
         className={classNames(
           "flex gap-2",
@@ -239,33 +319,16 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {category === "managed" && unusedDataSources.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenu.Button>
-              <Button
-                label="Add data from connections"
-                variant="primary"
-                icon={PlusIcon}
-                size="sm"
-              />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items width={180}>
-              {unusedDataSources.map((ds) => (
-                <DropdownMenu.Item
-                  key={ds.name}
-                  label={ds.name}
-                  icon={
-                    ds.connectorProvider
-                      ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                          .logoComponent
-                      : FolderIcon
-                  }
-                  // TODO: add select data sources screen
-                  onClick={() => {}}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+        {category === "managed" && (
+          <Button
+            label="Add data from connections"
+            variant="primary"
+            icon={PlusIcon}
+            size="sm"
+            onClick={() => {
+              setShowDataSourcesModal(true);
+            }}
+          />
         )}
         {category === "files" && (
           <Button

@@ -6,3 +6,9 @@ export type VaultType = {
   sId: string;
   kind: VaultKind;
 };
+
+export type VaultSelectedDataSource = {
+  name: string;
+  parentsIn: string[] | null;
+};
+export type VaultSelectedDataSources = VaultSelectedDataSource[];
