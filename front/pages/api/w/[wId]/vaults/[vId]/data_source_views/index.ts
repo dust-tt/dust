@@ -73,11 +73,6 @@ async function handler(
       });
     }
 
-    // TODO:
-    case "PATCH": {
-      break;
-    }
-
     case "POST": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
         // Only admins, or builders who have to the vault, can create a new view
