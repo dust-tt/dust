@@ -1,14 +1,16 @@
 import {
   BookOpenIcon,
   Button,
+  ChevronDownIcon,
   CloudArrowLeftRightIcon,
   Dialog,
+  DropdownMenu,
   Page,
   SliderToggle,
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType } from "@dust-tt/types";
+import type { DataSourceType, SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   LabsTranscriptsProviderType,
@@ -23,6 +25,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import {
@@ -44,10 +47,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
+  dataSources: DataSourceType[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();
+
+  const allDataSources = await getDataSources(auth, { includeEditedBy: true });
+  const dataSources = allDataSources
+    .filter((ds) => !ds.connectorId)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (
     !owner ||
@@ -66,6 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
       dustClientFacingUrl: apiConfig.getClientFacingUrl(),
+      dataSources,
     },
   };
 });
@@ -75,6 +85,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   gaTrackingId,
   dustClientFacingUrl,
+  dataSources,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
@@ -100,6 +111,13 @@ export default function LabsTranscriptsIndex({
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
     }>(defaultTranscriptConfigurationState);
+
+  const [selectedDataSource, setSelectedDataSource] =
+    useState<DataSourceType | null>(null);
+
+  const handleDataSourceSelection = (dataSource: DataSourceType) => {
+    setSelectedDataSource(dataSource);
+  };
 
   useEffect(() => {
     if (transcriptsConfiguration) {
@@ -569,6 +587,51 @@ export default function LabsTranscriptsIndex({
                   </Page.Layout>
                 </Page.Layout>
               </Page.Layout>
+
+              <Page.Layout direction="vertical">
+                <Page.SectionHeader title="3. Store transcripts in Dust" />
+                <Page.Layout direction="horizontal" gap="xl">
+                  <Page.P>
+                    Store transcripts in a Datasource to keep using them in your
+                    assistants?
+                    <br />
+                    <small>
+                      Warning: this can make your transcripts' data public
+                      within your workspace.
+                    </small>
+                  </Page.P>
+                  {dataSources.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenu.Button
+                        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        disabled={!transcriptsConfigurationState.isActive}
+                      >
+                        {selectedDataSource
+                          ? selectedDataSource.name
+                          : "Do not store transcripts"}
+                        <ChevronDownIcon
+                          className="-mr-1 ml-2 h-5 w-5"
+                          aria-hidden="true"
+                        />
+                      </DropdownMenu.Button>
+                      <DropdownMenu.Items origin="topLeft" width={220}>
+                        <DropdownMenu.Item
+                          label="Do not store transcripts"
+                          onClick={() => setSelectedDataSource(null)}
+                        />
+                        {dataSources.map((ds) => (
+                          <DropdownMenu.Item
+                            key={ds.id}
+                            label={ds.name}
+                            onClick={() => handleDataSourceSelection(ds)}
+                          />
+                        ))}
+                      </DropdownMenu.Items>
+                    </DropdownMenu>
+                  )}
+                </Page.Layout>
+              </Page.Layout>
+
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="3. Enable transcripts processing" />
                 <Page.Layout direction="horizontal" gap="xl">
