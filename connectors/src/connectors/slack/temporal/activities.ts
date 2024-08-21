@@ -194,6 +194,17 @@ export async function syncChannel(
       weeksSynced: weeksSynced,
     };
   }
+
+  logger.info(
+    {
+      connectorId,
+      channelId,
+      threadsToSyncCount: threadsToSync.length,
+      unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
+    },
+    "Received messages from channel."
+  );
+
   // `allSkip` and `skip` logic assumes that the messages are returned in recency order (newest
   // first).
   let allSkip = true;
@@ -250,6 +261,16 @@ export async function syncChannel(
       allSkip = false;
     }
   }
+
+  logger.info(
+    {
+      connectorId,
+      channelId,
+      threadsToSyncCount: threadsToSync.length,
+      unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
+    },
+    "Splitted threaded and non-threaded messages to sync"
+  );
 
   await syncThreads(
     dataSourceConfig,
