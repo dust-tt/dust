@@ -16,8 +16,13 @@ interface SetContentHeightParams {
   height: number;
 }
 
+interface SetScreenshotDownloadableParams {
+  screenshotDownloadable: boolean;
+}
+
 interface SetImageParams {
   image: string;
+  screenshotId: string;
 }
 
 // Define a mapped type to extend the base with specific parameters.
@@ -26,7 +31,7 @@ export type VisualizationRPCRequestMap = {
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrored: void;
-  // setScreenshotDownloadable: void;
+  setScreenshotDownloadable: SetScreenshotDownloadableParams;
   generateScreenshot: SetImageParams;
 };
 
@@ -46,7 +51,7 @@ export const validCommands: VisualizationRPCCommand[] = [
   "getCodeToExecute",
   "setContentHeight",
   "setErrored",
-  // "setScreenshotDownloadable",
+  "setScreenshotDownloadable",
   "generateScreenshot",
 ];
 
@@ -57,7 +62,7 @@ export interface CommandResultMap {
   getCodeToExecute: { code: string };
   setContentHeight: void;
   setErrored: void;
-  // setScreenshotDownloadable: void;
+  setScreenshotDownloadable: void;
   generateScreenshot: void;
 }
 

@@ -1,10 +1,5 @@
 "use client";
 
-import type {
-  CommandResultMap,
-  VisualizationRPCCommand,
-  VisualizationRPCRequestMap,
-} from "@dust-tt/types";
 import { Spinner } from "@viz/app/components/Components";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
@@ -14,6 +9,7 @@ import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
 import { useResizeDetector } from "react-resize-detector";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import { CommandResultMap, VisualizationRPCCommand, VisualizationRPCRequestMap } from "@dust-tt/types/dist/front/assistant/visualization";
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
@@ -74,10 +70,20 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
+  const sendScreenshotDownloadableToParent = useCallback(
+    async ({ screenshotDownloadable }: { screenshotDownloadable: boolean }) => {
+      await sendCrossDocumentMessage("setScreenshotDownloadable", {
+        screenshotDownloadable,
+      });
+    },
+    [sendCrossDocumentMessage]
+  );
+
   const sendScreenshotToParent = useCallback(
-    async ({ image }: { image: string }) => {
+    async ({ image, screenshotId }: { image: string, screenshotId: string }) => {
       await sendCrossDocumentMessage("generateScreenshot", {
         image,
+        screenshotId,
       });
     },
     [sendCrossDocumentMessage]
@@ -89,6 +95,7 @@ export function useVisualizationAPI(
     error,
     sendHeightToParent,
     sendScreenshotToParent,
+    sendScreenshotDownloadableToParent,
   };
 }
 
@@ -115,6 +122,52 @@ const useFile = (
 
   return file;
 };
+
+
+const makeScreenshot = (sendScreenshotToParent: ({ image, screenshotId } : { image: string, screenshotId: string }) => void) => {
+  const svg = document.querySelector("svg.recharts-surface") as SVGSVGElement;
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const svgBlob = new Blob([svgData], {
+    type: "image/svg+xml;charset=utf-8",
+  });
+  const url = URL.createObjectURL(svgBlob);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = svg?.width.baseVal.value;
+  canvas.height = svg?.height.baseVal.value;
+  const ctx = canvas.getContext("2d");
+
+  const image = new Image();
+  image.onload = function () {
+    ctx?.drawImage(image, 0, 0);
+    URL.revokeObjectURL(url);
+    const pngFile = canvas.toDataURL("image/png");
+    sendScreenshotToParent({ image: pngFile, screenshotId: Math.random().toString() });
+  };
+  image.src = url;
+}
+
+// Custom hook to encapsulate the logic for handling visualization messages.
+function useVisualizationDataHandler(sendScreenshotToParent: ({ image } : { image: string}) => void) {
+  useEffect(() => {
+    const listener = async (event: MessageEvent) => {
+      const { data } = event;
+
+      switch (data.command) {
+        case "generateScreenshot":
+          makeScreenshot(sendScreenshotToParent);
+          break;
+
+        default:
+          // assertNever(data);
+          // we don't do anything as there're other handlers
+      }
+    };
+
+    window.addEventListener("message", listener);
+    return () => window.removeEventListener("message", listener);
+  }, [sendScreenshotToParent]);
+}
 
 interface RunnerParams {
   code: string;
@@ -160,13 +213,19 @@ export function VisualizationWrapper({
 
   const [errored, setErrored] = useState<Error | null>(null);
 
+  const [screenshotDownloadable, setScreenshotDownloadable] =
+    useState<boolean>(false);
+
   const {
     fetchCode,
     fetchFile,
     error,
     sendHeightToParent,
+    sendScreenshotDownloadableToParent,
     sendScreenshotToParent,
   } = api;
+
+  useVisualizationDataHandler(sendScreenshotToParent);
 
   useEffect(() => {
     const loadCode = async () => {
@@ -220,28 +279,11 @@ export function VisualizationWrapper({
     }
   }, [error]);
 
-  const makeScreenshot = useCallback(() => {
-    const svg = document.querySelector("svg.recharts-surface") as SVGSVGElement;
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const svgBlob = new Blob([svgData], {
-      type: "image/svg+xml;charset=utf-8",
-    });
-    const url = URL.createObjectURL(svgBlob);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = svg?.width.baseVal.value;
-    canvas.height = svg?.height.baseVal.value;
-    const ctx = canvas.getContext("2d");
-
-    const image = new Image();
-    image.onload = function () {
-      ctx?.drawImage(image, 0, 0);
-      URL.revokeObjectURL(url);
-      const pngFile = canvas.toDataURL("image/png");
-      sendScreenshotToParent({ image: pngFile });
-    };
-    image.src = url;
-  }, [sendScreenshotToParent]);
+  useEffect(() => {
+    if (screenshotDownloadable) {
+      sendScreenshotDownloadableToParent({ screenshotDownloadable })
+    }
+  }, [screenshotDownloadable, sendScreenshotDownloadableToParent])
 
   if (errored) {
     // Throw the error to the ErrorBoundary.
@@ -254,21 +296,23 @@ export function VisualizationWrapper({
 
   return (
     <div ref={ref}>
-      <button
-        onClick={async () => {
-          makeScreenshot();
-        }}
-      >
-        Download
-      </button>
       <Runner
         code={runnerParams.code}
         scope={runnerParams.scope}
         onRendered={(error) => {
           if (error) {
             setErrored(error);
+          } else {
+            const svg = document.querySelector(
+              "svg.recharts-surface"
+            ) as SVGSVGElement;
+            // It seems that it's triggered before the animation is done. Which makes it's difficult to get the correct dom.
+            if (svg) {
+              setScreenshotDownloadable(true);
+            }
           }
         }}
+        
       />
     </div>
   );
@@ -283,10 +327,11 @@ export function makeSendCrossDocumentMessage({
 }) {
   return <T extends VisualizationRPCCommand>(
     command: T,
-    params: VisualizationRPCRequestMap[T]
+    params: VisualizationRPCRequestMap[T],
+    messageUniqueId?: string
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
-      const messageUniqueId = Math.random().toString();
+      const messageUniqueIdOrRandom = messageUniqueId || Math.random().toString();
       const listener = (event: MessageEvent) => {
         if (event.origin !== allowedVisualizationOrigin) {
           console.log(
@@ -297,7 +342,7 @@ export function makeSendCrossDocumentMessage({
           return;
         }
 
-        if (event.data.messageUniqueId === messageUniqueId) {
+        if (event.data.messageUniqueId === messageUniqueIdOrRandom) {
           if (event.data.error) {
             reject(event.data.error);
           } else {
@@ -310,7 +355,7 @@ export function makeSendCrossDocumentMessage({
       window.top?.postMessage(
         {
           command,
-          messageUniqueId,
+          messageUniqueId: messageUniqueIdOrRandom,
           identifier,
           params,
         },

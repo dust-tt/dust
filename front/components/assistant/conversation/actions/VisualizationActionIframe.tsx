@@ -1,4 +1,5 @@
 import {
+  ArrowUpOnSquareIcon,
   Button,
   CommandLineIcon,
   PlayStrokeIcon,
@@ -9,6 +10,7 @@ import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
+  VisualizationRPCRequestMap,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isVisualizationRPCRequest } from "@dust-tt/types";
@@ -40,10 +42,49 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   );
 };
 
+const sendRequestToIframe = <T extends VisualizationRPCCommand>(
+  command: T,
+  identifier: string,
+  params: VisualizationRPCRequestMap[T],
+  target: MessageEventSource
+) => {
+  return new Promise<CommandResultMap[T]>((resolve, reject) => {
+    const messageUniqueId = Math.random().toString();
+    const listener = (event: MessageEvent) => {
+      if (event.data.messageUniqueId === messageUniqueId) {
+        if (event.data.error) {
+          reject(event.data.error);
+        } else {
+          resolve(event.data.result);
+        }
+        window.removeEventListener("message", listener);
+      }
+    };
+    window.addEventListener("message", listener);
+    target?.postMessage(
+      {
+        command,
+        messageUniqueId,
+        identifier,
+        params,
+      },
+      { targetOrigin: "*" }
+    );
+  });
+};
+
+const downloadScreenshot = (image: string, screenshotId: string) => {
+  const downloadLink = document.createElement("a");
+  downloadLink.download = `screenshot_${screenshotId}.png`;
+  downloadLink.href = image;
+  downloadLink.click();
+}
+
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
   visualization,
   setContentHeight,
+  setScreenshotDownloadable,
   setScreenshot,
   setIsErrored,
   vizIframeRef,
@@ -51,7 +92,8 @@ function useVisualizationDataHandler({
 }: {
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
-  setScreenshot: (v: SetStateAction<string>) => void;
+  setScreenshotDownloadable: (v: SetStateAction<boolean>) => void;
+  setScreenshot: (v: SetStateAction<{ image: string, screenshotId: string }>) => void;
   setIsErrored: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
@@ -113,8 +155,12 @@ function useVisualizationDataHandler({
           setIsErrored(true);
           break;
 
+        case "setScreenshotDownloadable":
+          setScreenshotDownloadable(data.params.screenshotDownloadable);
+          break;
+
         case "generateScreenshot":
-          setScreenshot(data.params.image);
+          setScreenshot({ image: data.params.image, screenshotId: data.params.screenshotId });
           break;
 
         default:
@@ -124,15 +170,7 @@ function useVisualizationDataHandler({
 
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  }, [
-    visualization.identifier,
-    code,
-    getFileBlob,
-    setContentHeight,
-    setScreenshot,
-    setIsErrored,
-    vizIframeRef,
-  ]);
+  }, [visualization.identifier, code, getFileBlob, setContentHeight, setScreenshot, setIsErrored, vizIframeRef, setScreenshotDownloadable]);
 }
 
 export function VisualizationActionIframe({
@@ -145,7 +183,8 @@ export function VisualizationActionIframe({
   onRetry: () => void;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
-  const [screenshot, setScreenshot] = useState<string>("");
+  const [screenshotDownloadable, setScreenshotDownloadable] = useState<boolean>(false);
+  const [screenshot, setScreenshot] = useState<{ image: string, screenshotId: string } | null>(null);
   const [isErrored, setIsErrored] = useState(false);
   const [activeIndex, setActiveIndex] = useState(1);
 
@@ -160,6 +199,7 @@ export function VisualizationActionIframe({
     visualization,
     workspaceId,
     setContentHeight,
+    setScreenshotDownloadable,
     setScreenshot,
     setIsErrored,
     vizIframeRef,
@@ -201,10 +241,9 @@ export function VisualizationActionIframe({
   }, [activeIndex, contentHeight, codeFullyGenerated, isErrored]);
 
   useEffect(() => {
-    const downloadLink = document.createElement("a");
-    downloadLink.download = `${visualization.identifier}.png`;
-    downloadLink.href = screenshot;
-    downloadLink.click();
+    if (screenshot) {
+      downloadScreenshot(screenshot.image, screenshot.screenshotId);
+    }
   }, [screenshot, visualization.identifier]);
 
   return (
@@ -249,6 +288,23 @@ export function VisualizationActionIframe({
                 }}
                 className={classNames("max-h-[60vh] w-full")}
               >
+                {<Button
+                  size="sm"
+                  label="Share"
+                  labelVisible={false}
+                  icon={ArrowUpOnSquareIcon}
+                  variant="tertiary"
+                  onClick={async () => {
+                    const result = await sendRequestToIframe(
+                      "generateScreenshot",
+                      visualization.identifier,
+                      {},
+                      vizIframeRef.current?.contentWindow as MessageEventSource
+                    );
+                    console.log("result", result);
+                  }}
+                />}
+                
                 <iframe
                   ref={vizIframeRef}
                   className={classNames(
