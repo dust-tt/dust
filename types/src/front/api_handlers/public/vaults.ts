@@ -1,6 +1,5 @@
 import * as t from "io-ts";
 
-import { ConnectorProvider, EditedByUser } from "../../data_source";
 import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
@@ -52,36 +51,24 @@ export type LightContentNode = {
   lastUpdatedAt: number | null;
 };
 
-export type GetDataSourceOrViewContentResponseBody = {
+export type GetDataSourceViewContentResponseBody = {
   nodes: LightContentNode[];
 };
 
-export const DATA_SOURCE_OR_VIEW_CATEGORIES = [
+export const DATA_SOURCE_VIEW_CATEGORIES = [
   "managed",
   "files",
   "webfolder",
   "apps",
 ] as const;
 
-export type DataSourceOrViewCategory =
-  (typeof DATA_SOURCE_OR_VIEW_CATEGORIES)[number];
+export type DataSourceViewCategory =
+  (typeof DATA_SOURCE_VIEW_CATEGORIES)[number];
 
-export function isDataSourceOrViewCategory(
+export function isDataSourceViewCategory(
   category: string
-): category is DataSourceOrViewCategory {
-  return DATA_SOURCE_OR_VIEW_CATEGORIES.includes(
-    category as DataSourceOrViewCategory
+): category is DataSourceViewCategory {
+  return DATA_SOURCE_VIEW_CATEGORIES.includes(
+    category as DataSourceViewCategory
   );
 }
-
-export type DataSourceOrViewInfo = {
-  createdAt: number;
-  sId: string;
-  name: string;
-  parentsIn?: string[] | null;
-  connectorId?: string | null;
-  connectorProvider?: ConnectorProvider | null;
-  editedByUser?: EditedByUser | null;
-  category: DataSourceOrViewCategory;
-  usage: number;
-};

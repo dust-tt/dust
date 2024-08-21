@@ -9,7 +9,7 @@ import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 
-import { useVaultDataSourceOrViewContent } from "@app/lib/swr";
+import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -58,16 +58,16 @@ export const VaultDataSourceViewContentList = ({
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
-  const { vaultContent, isVaultContentLoading } =
-    useVaultDataSourceOrViewContent({
+  const { vaultContent, isVaultContentLoading } = useVaultDataSourceViewContent(
+    {
       workspaceId: owner.sId,
       vaultId: vault.sId,
-      dataSourceOrViewId: dataSourceViewId,
-      type: "data_source_views",
+      dataSourceViewId,
       viewType: "documents",
       filterPermission: "read",
       parentId,
-    });
+    }
+  );
 
   const rows: RowData[] =
     vaultContent?.map((v) => ({

@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceOrViewInfo,
+  DataSourceViewType,
   WhitelistableFeature,
 } from "@dust-tt/types";
 
@@ -141,9 +141,10 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   },
 };
 
-export function getDataSourceOrViewName(dsv: DataSourceOrViewInfo) {
+export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
   if (dsv.category === "managed" && dsv.connectorProvider) {
     return CONNECTOR_CONFIGURATIONS[dsv.connectorProvider].name;
   }
+
   return dsv.name;
 }
