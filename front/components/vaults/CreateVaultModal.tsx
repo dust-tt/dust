@@ -205,19 +205,20 @@ export function CreateVaultModal({
         </div>
         <div className="flex w-full grow flex-col gap-y-4 overflow-y-hidden border-t p-4">
           <Page.SectionHeader title="Vault members" />
-          <Searchbar
-            className="grow-0"
-            name="search"
-            placeholder="Search members"
-            value={searchTerm}
-            onChange={setSearchTerm}
-          />
+          <div className="flex w-full">
+            <Searchbar
+              name="search"
+              placeholder="Search members"
+              value={searchTerm}
+              onChange={setSearchTerm}
+            />
+          </div>
           {isMembersLoading ? (
             <div className="mt-8 flex justify-center">
               <Spinner size="lg" variant="color" />
             </div>
           ) : (
-            <div className="flex grow flex-col overflow-y-auto">
+            <div className="flex grow flex-col overflow-y-auto p-4">
               <DataTable
                 data={rows}
                 columns={columns}
