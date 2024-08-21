@@ -17,8 +17,7 @@ interface SetContentHeightParams {
 }
 
 interface GenerateScreenshotParams {
-  image: string;
-  screenshotId: string;
+  image: Blob;
 }
 
 // Define a mapped type to extend the base with specific parameters.

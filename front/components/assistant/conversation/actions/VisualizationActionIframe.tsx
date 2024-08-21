@@ -25,8 +25,7 @@ type Visualization = {
 };
 
 type Screenshot = {
-  image: string;
-  screenshotId: string;
+  image: Blob;
 };
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
@@ -47,11 +46,11 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 
 function downloadScreenshot({
   image, 
-  screenshotId,
 }: Screenshot) {
   const downloadLink = document.createElement("a");
-  downloadLink.download = `screenshot_${screenshotId}.png`;
-  downloadLink.href = image;
+  const url = URL.createObjectURL(image);
+  downloadLink.download = `screenshot_${new Date().getTime()}.svg`;
+  downloadLink.href = url;
   downloadLink.click();
 }
 
@@ -132,7 +131,6 @@ function useVisualizationDataHandler({
         case "generateScreenshot":
           setScreenshot({
             image: data.params.image,
-            screenshotId: data.params.screenshotId,
           });
           break;
 

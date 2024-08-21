@@ -71,10 +71,9 @@ export function useVisualizationAPI(
   );
 
   const sendScreenshotToParent = useCallback(
-    async ({ image, screenshotId }: { image: string, screenshotId: string }) => {
+    async ({ image }: { image: Blob }) => {
       await sendCrossDocumentMessage("generateScreenshot", {
         image,
-        screenshotId,
       });
     },
     [sendCrossDocumentMessage]
@@ -114,27 +113,13 @@ const useFile = (
 };
 
 
-const makeScreenshot = async (sendScreenshotToParent: ({ image, screenshotId } : { image: string, screenshotId: string }) => void) => {
+const makeScreenshot = async (sendScreenshotToParent: ({ image } : { image: Blob }) => void) => {
   const svg = document.querySelector("svg.recharts-surface") as SVGSVGElement;
   const svgData = new XMLSerializer().serializeToString(svg);
   const svgBlob = new Blob([svgData], {
     type: "image/svg+xml;charset=utf-8",
   });
-  const url = URL.createObjectURL(svgBlob);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = svg?.width.baseVal.value;
-  canvas.height = svg?.height.baseVal.value;
-  const ctx = canvas.getContext("2d");
-
-  const image = new Image();
-  image.onload = async function () {
-    ctx?.drawImage(image, 0, 0);
-    URL.revokeObjectURL(url);
-    const pngFile = canvas.toDataURL("image/png");
-    await sendScreenshotToParent({ image: pngFile, screenshotId: Math.random().toString() });
-  };
-  image.src = url;
+  await sendScreenshotToParent({ image: svgBlob });
 }
 
 interface RunnerParams {
@@ -266,7 +251,7 @@ export function VisualizationWrapper({
               onClick={async () => {
                 await makeScreenshot(sendScreenshotToParent);
               }}
-            >Download</button>
+            >Download SVG</button>
           </div>
       )}
       <Runner
