@@ -1,7 +1,12 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { DataSourceViewType, ModelId, Result } from "@dust-tt/types";
+import type {
+  DataSourceViewKind,
+  DataSourceViewType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
@@ -75,18 +80,18 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     );
   }
 
-  // For now, we create a default view for all data sources in the global vault.
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
     vault: VaultResource,
-    dataSource: DataSourceResource
+    dataSource: DataSourceResource,
+    kind: DataSourceViewKind = "default"
   ) {
     return this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
         workspaceId: vault.workspaceId,
-        kind: "default",
+        kind,
       },
       vault,
       dataSource
@@ -190,6 +195,23 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       }
     );
     Object.assign(this, affectedRows[0].get());
+
+    return new Ok(undefined);
+  }
+
+  // TODO(GROUPS_INFRA) Remove once backfilled.
+  async updateKind(auth: Authenticator, kind: DataSourceViewKind) {
+    await this.model.update(
+      {
+        kind,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
+      }
+    );
 
     return new Ok(undefined);
   }
