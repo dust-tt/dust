@@ -1,6 +1,6 @@
 import type { UserType, VaultType, WithAPIErrorResponse } from "@dust-tt/types";
 import {
-  DATA_SOURCE_OR_VIEW_CATEGORIES,
+  DATA_SOURCE_VIEW_CATEGORIES,
   PatchVaultRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -76,7 +76,7 @@ async function handler(
       );
 
       const categories: { [key: string]: VaultCategoryInfo } = {};
-      DATA_SOURCE_OR_VIEW_CATEGORIES.forEach((category) => {
+      DATA_SOURCE_VIEW_CATEGORIES.forEach((category) => {
         categories[category] = {
           count: 0,
           usage: 0,
