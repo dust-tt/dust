@@ -140,6 +140,18 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
+  async setDataSourceId({
+    dataSourceId,
+  }: {
+    dataSourceId: number | null;
+  }) {
+    if (this.dataSourceId === dataSourceId) {
+      return;
+    }
+
+    return this.update({ dataSourceId });
+  }
+
   async delete(
     auth: Authenticator,
     transaction?: Transaction

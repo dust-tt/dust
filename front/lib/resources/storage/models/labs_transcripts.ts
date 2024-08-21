@@ -9,6 +9,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -27,6 +28,7 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
+  declare dataSourceId: ForeignKey<DataSource["id"]> | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -68,6 +70,10 @@ LabsTranscriptsConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    dataSourceId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

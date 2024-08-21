@@ -40,6 +40,7 @@ const defaultTranscriptConfigurationState = {
   isGongConnected: false,
   assistantSelected: null,
   isActive: false,
+  dataSource: null,
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -110,14 +111,8 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
+      dataSource: DataSourceType | null;
     }>(defaultTranscriptConfigurationState);
-
-  const [selectedDataSource, setSelectedDataSource] =
-    useState<DataSourceType | null>(null);
-
-  const handleDataSourceSelection = (dataSource: DataSourceType) => {
-    setSelectedDataSource(dataSource);
-  };
 
   useEffect(() => {
     if (transcriptsConfiguration) {
@@ -246,6 +241,32 @@ export default function LabsTranscriptsIndex({
   ) => {
     return updateAssistant(transcriptConfigurationId, assistant);
   };
+
+  const handleSelectDataSource = async (
+    transcriptConfigurationId: number,
+    dataSource: DataSourceType | null
+  ) => {
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        dataSource,
+      };
+    });
+
+    let successMessage = "The transcripts will not be stored.";
+
+    if (dataSource) {
+     successMessage =
+      "The transcripts will be stored in the folder " + dataSource.name;
+    }
+    await makePatchRequest(
+      transcriptConfigurationId,
+      {
+        dataSourceId: dataSource?.id,
+      },
+      successMessage
+    );
+  }
 
   const handleSetIsActive = async (
     transcriptConfigurationId: number,
@@ -560,8 +581,8 @@ export default function LabsTranscriptsIndex({
                 <Page.SectionHeader title="2. Choose an assistant" />
                 <Page.Layout direction="vertical">
                   <Page.P>
-                    Choose the assistant that will summarize the transcripts in
-                    the way you want.
+                    Choose the assistant that will process the transcripts the
+                    way you want.
                   </Page.P>
                   <Page.Layout direction="horizontal">
                     <AssistantPicker
@@ -589,15 +610,15 @@ export default function LabsTranscriptsIndex({
               </Page.Layout>
 
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Store transcripts in Dust" />
+                <Page.SectionHeader title="3. Store transcripts in Folder" />
                 <Page.Layout direction="horizontal" gap="xl">
                   <Page.P>
-                    Store transcripts in a Datasource to keep using them in your
+                    Store transcripts in a Folder to keep using them in your
                     assistants?
                     <br />
                     <small>
-                      Warning: this can make your transcripts' data public
-                      within your workspace.
+                      Warning: this can make your transcripts public within your
+                      workspace.
                     </small>
                   </Page.P>
                   {dataSources.length > 0 && (
@@ -606,8 +627,8 @@ export default function LabsTranscriptsIndex({
                         className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                         disabled={!transcriptsConfigurationState.isActive}
                       >
-                        {selectedDataSource
-                          ? selectedDataSource.name
+                        {transcriptsConfigurationState.dataSource
+                          ? transcriptsConfigurationState.dataSource.name
                           : "Do not store transcripts"}
                         <ChevronDownIcon
                           className="-mr-1 ml-2 h-5 w-5"
@@ -617,13 +638,13 @@ export default function LabsTranscriptsIndex({
                       <DropdownMenu.Items origin="topLeft" width={220}>
                         <DropdownMenu.Item
                           label="Do not store transcripts"
-                          onClick={() => setSelectedDataSource(null)}
+                          onClick={() => handleSelectDataSource(transcriptsConfiguration.id, null)}
                         />
                         {dataSources.map((ds) => (
                           <DropdownMenu.Item
                             key={ds.id}
                             label={ds.name}
-                            onClick={() => handleDataSourceSelection(ds)}
+                            onClick={() => handleSelectDataSource(transcriptsConfiguration.id, ds)}
                           />
                         ))}
                       </DropdownMenu.Items>
