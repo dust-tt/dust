@@ -1,6 +1,5 @@
 import * as t from "io-ts";
 
-import { ConnectorProvider, EditedByUser } from "../../data_source";
 import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
