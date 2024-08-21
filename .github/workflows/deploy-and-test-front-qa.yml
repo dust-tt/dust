@@ -66,8 +66,8 @@ jobs:
           -H "Authorization: Bearer ${{ secrets.RANGER_API_TOKEN }}" \
           -d '{
             "targetUrl": "https://front-qa.dust.tt/",
-            "ghOwner": "'$REPO_OWNER'",
-            "ghRepo": "'$REPO_NAME'",
+            "ghOwner": "$REPO_OWNER",
+            "ghRepo": "$REPO_NAME",
             "ghCommitSha": "${{ github.sha }}",
           }')
           echo "$response"
