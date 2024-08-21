@@ -12,7 +12,10 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
-import { useState } from "react";
+import { useRouter } from "next/router";
+import { useContext, useState } from "react";
+
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 export default function VaultCreateFolderModal({
   isOpen,
@@ -27,6 +30,9 @@ export default function VaultCreateFolderModal({
   vault: VaultType;
   dataSources: DataSourceType[];
 }) {
+  const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
+
   const [name, setName] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
 
@@ -75,9 +81,17 @@ export default function VaultCreateFolderModal({
         });
         if (res.ok) {
           setOpen(false);
+          await router.push(
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/files/data_sources/${name}`
+          );
         } else {
           const err = (await res.json()) as { error: APIError };
-          setNameError(err.error.message);
+          sendNotification({
+            title: "Error Saving Folder",
+            type: "error",
+            description: `Error: ${err.error.message}`,
+          });
+          return;
         }
       }}
       hasChanged={name !== null || description !== null}

@@ -184,9 +184,22 @@ async function handler(
             },
           });
         }
+      } else {
+        // If no vault is provided, use the global vault.
+        vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
       }
 
-      const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+      if (!auth.hasPermission([vault.acl()], "write")) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that have `write` permission for the current vault can create a data source.",
+          },
+        });
+      }
+
       const ds = await DataSourceResource.makeNew(
         {
           name: req.body.name,
@@ -196,7 +209,7 @@ async function handler(
           assistantDefaultSelected: req.body.assistantDefaultSelected,
           editedByUserId: user.id,
         },
-        vault ?? globalVault
+        vault
       );
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(

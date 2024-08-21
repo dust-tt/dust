@@ -5,12 +5,10 @@ export default function VaultCreateWebsiteModal({
   isOpen,
   setOpen,
   owner,
-  onSave,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
-  onSave: () => void;
 }) {
   console.log(owner);
   return (
@@ -20,7 +18,7 @@ export default function VaultCreateWebsiteModal({
         setOpen(false);
       }}
       onSave={() => {
-        onSave();
+        alert("To be implemented");
         setOpen(false);
       }}
       hasChanged={true}

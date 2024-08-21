@@ -219,9 +219,6 @@ export const VaultResourcesList = ({
           setShowAddWebsiteModal(isOpen);
         }}
         owner={owner}
-        onSave={() => {
-          console.log("todo");
-        }}
       />
       <div
         className={classNames(
