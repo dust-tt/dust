@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS "group_vaults" (
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "group_vaults_vault_id_group_id" ON "group_vaults" ("vaultId", "groupId");
+CREATE UNIQUE INDEX "group_vaults_vault_id_group_id" ON "group_vaults" ("vaultId", "groupId");
 
 CREATE INDEX "group_vaults_group_id" ON "group_vaults" ("groupId");
 

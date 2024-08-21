@@ -35,7 +35,10 @@ GroupVaultModel.init(
   {
     modelName: "group_vaults",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["vaultId", "groupId"] }, { fields: ["groupId"] }],
+    indexes: [
+      { fields: ["vaultId", "groupId"], unique: true },
+      { fields: ["groupId"] },
+    ],
   }
 );
 

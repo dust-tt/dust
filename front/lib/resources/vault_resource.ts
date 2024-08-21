@@ -9,6 +9,7 @@ import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
+  Includeable,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -18,11 +19,13 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vault";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -44,13 +47,18 @@ export class VaultResource extends BaseResource<VaultModel> {
     blob: CreationAttributes<VaultModel>,
     group: GroupResource
   ) {
-    const vault = await VaultModel.create(blob);
-    await GroupVaultModel.create({
-      groupId: group.id,
-      vaultId: vault.id,
-    });
+    return frontSequelize.transaction(async (transaction) => {
+      const vault = await VaultModel.create(blob, { transaction });
+      await GroupVaultModel.create(
+        {
+          groupId: group.id,
+          vaultId: vault.id,
+        },
+        { transaction }
+      );
 
-    return new this(VaultModel, vault.get(), [group]);
+      return new this(VaultModel, vault.get(), [group]);
+    });
   }
 
   static async makeDefaultsForWorkspace(
@@ -131,50 +139,28 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
-  static async listWorkspaceVaults(
-    auth: Authenticator
-  ): Promise<VaultResource[]> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const where: WhereOptions = {
-      workspaceId: owner.id,
-    };
-
-    const vaults = await this.model.findAll({
-      where,
-      include: GroupModel,
-    });
-
-    return vaults
-      .map(
-        (vault) =>
-          new this(
-            VaultModel,
-            vault.get(),
-            vault.groups.map(
-              (group) => new GroupResource(GroupModel, group.get())
-            )
-          )
-      )
-      .filter(
-        (vault) => auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
-      );
-  }
-
-  static async listWorkspaceDefaultVaults(auth: Authenticator) {
-    const owner = auth.getNonNullableWorkspace();
-
-    const vaults = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
-        kind: {
-          [Op.in]: ["system", "global"],
-        },
+  private static async baseFetch(
+    auth: Authenticator,
+    { includes, limit, order, where }: ResourceFindOptions<VaultModel> = {}
+  ) {
+    const includeClauses: Includeable[] = [
+      {
+        model: GroupResource.model,
       },
-      include: [{ model: GroupModel }],
+      ...(includes || []),
+    ];
+
+    const vaultModels = await this.model.findAll({
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      } as WhereOptions<VaultModel>,
+      include: includeClauses,
+      limit,
+      order,
     });
 
-    return vaults.map(
+    return vaultModels.map(
       (vault) =>
         new this(
           VaultModel,
@@ -186,82 +172,61 @@ export class VaultResource extends BaseResource<VaultModel> {
     );
   }
 
+  static async listWorkspaceVaults(
+    auth: Authenticator
+  ): Promise<VaultResource[]> {
+    const vaults = await this.baseFetch(auth);
+    return vaults.filter(
+      (vault) => auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
+    );
+  }
+
+  static async listWorkspaceDefaultVaults(auth: Authenticator) {
+    return this.baseFetch(auth, {
+      where: {
+        kind: {
+          [Op.in]: ["system", "global"],
+        },
+      },
+    });
+  }
+
   static async fetchWorkspaceSystemVault(
     auth: Authenticator
   ): Promise<VaultResource> {
-    const owner = auth.getNonNullableWorkspace();
-    const vault = await this.model.findOne({
-      where: {
-        workspaceId: owner.id,
-        kind: "system",
-      },
-      include: [{ model: GroupModel }],
-    });
+    const [vault] = await this.baseFetch(auth, { where: { kind: "system" } });
 
     if (!vault) {
       throw new Error("System vault not found.");
     }
 
-    return new this(
-      VaultModel,
-      vault.get(),
-      vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
-    );
+    return vault;
   }
 
   static async fetchWorkspaceGlobalVault(
     auth: Authenticator
   ): Promise<VaultResource> {
-    const owner = auth.getNonNullableWorkspace();
-    const vault = await this.model.findOne({
-      where: {
-        workspaceId: owner.id,
-        kind: "global",
-      },
-      include: [{ model: GroupModel }],
-    });
+    const [vault] = await this.baseFetch(auth, { where: { kind: "global" } });
 
     if (!vault) {
       throw new Error("Global vault not found.");
     }
 
-    return new this(
-      VaultModel,
-      vault.get(),
-      vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
-    );
+    return vault;
   }
 
   static async fetchById(
     auth: Authenticator,
     sId: string
   ): Promise<VaultResource | null> {
-    const owner = auth.getNonNullableWorkspace();
-
     const vaultModelId = getResourceIdFromSId(sId);
     if (!vaultModelId) {
       return null;
     }
 
-    const vaultModel = await this.model.findOne({
-      where: {
-        id: vaultModelId,
-        workspaceId: owner.id,
-      },
-      include: [{ model: GroupModel }],
-    });
+    const [vault] = await this.baseFetch(auth, { where: { id: vaultModelId } });
 
-    if (!vaultModel) {
-      return null;
-    }
-
-    return new this(
-      VaultModel,
-      vaultModel.get(),
-      vaultModel.groups.map(
-        (group) => new GroupResource(GroupModel, group.get())
-      )
-    );
+    return vault;
   }
 
   static async isNameAvailable(
