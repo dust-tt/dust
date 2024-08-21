@@ -9,8 +9,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -64,17 +62,6 @@ async function handler(
     });
   }
 
-  const group = await GroupResource.fetchByModelId(vault.groupId);
-  if (!group) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "vault_not_found",
-        message: "The vault you requested was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
       const all = [
@@ -101,7 +88,11 @@ async function handler(
         {} as { [key: string]: VaultCategoryInfo }
       );
 
-      const currentMembers = await group.getActiveMembers(auth);
+      const currentMembers = (
+        await Promise.all(
+          vault.groups.map((group) => group.getActiveMembers(auth))
+        )
+      ).flat();
       return res.status(200).json({
         vault: {
           ...vault.toJSON(),
@@ -135,14 +126,7 @@ async function handler(
         });
       }
 
-      const { memberIds, content } = bodyValidation.right;
-
-      if (memberIds) {
-        const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
-          user.toJSON()
-        );
-        await group.setMembers(auth, users);
-      }
+      const { content } = bodyValidation.right;
 
       if (content) {
         const currentViews = await DataSourceViewResource.listByVault(

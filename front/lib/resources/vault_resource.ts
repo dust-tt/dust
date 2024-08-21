@@ -1,6 +1,5 @@
 import type {
   ACLType,
-  GroupType,
   LightWorkspaceType,
   ModelId,
   Result,
@@ -18,6 +17,9 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vault";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -30,14 +32,32 @@ export interface VaultResource extends ReadonlyAttributesType<VaultModel> {}
 export class VaultResource extends BaseResource<VaultModel> {
   static model: ModelStatic<VaultModel> = VaultModel;
 
-  constructor(model: ModelStatic<VaultModel>, blob: Attributes<VaultModel>) {
+  // readonly groups: GroupResource[];
+
+  constructor(
+    model: ModelStatic<VaultModel>,
+    blob: Attributes<VaultModel>,
+    public readonly groups: GroupResource[]
+  ) {
     super(VaultModel, blob);
+    this.groups = groups;
   }
 
-  static async makeNew(blob: CreationAttributes<VaultModel>) {
+  static async makeNew(
+    blob: CreationAttributes<VaultModel>,
+    groups: GroupResource[]
+  ) {
     const vault = await VaultModel.create(blob);
+    await Promise.all(
+      groups.map((group) =>
+        GroupVaultModel.create({
+          groupId: group.id,
+          vaultId: vault.id,
+        })
+      )
+    );
 
-    return new this(VaultModel, vault.get());
+    return new this(VaultModel, vault.get(), groups);
   }
 
   static async makeDefaultsForWorkspace(
@@ -46,8 +66,8 @@ export class VaultResource extends BaseResource<VaultModel> {
       systemGroup,
       globalGroup,
     }: {
-      systemGroup: GroupType;
-      globalGroup: GroupType;
+      systemGroup: GroupResource;
+      globalGroup: GroupResource;
     }
   ) {
     const existingVaults = (
@@ -56,23 +76,42 @@ export class VaultResource extends BaseResource<VaultModel> {
           workspaceId: workspace.id,
         },
       })
-    ).map((vault) => new this(VaultModel, vault.get()));
+    ).map(
+      (vault) =>
+        new this(
+          VaultModel,
+          vault.get(),
+          vault.groups.map(
+            (group) => new GroupResource(GroupModel, group.get())
+          )
+        )
+    );
     const systemVault =
       existingVaults.find((v) => v.kind === "system") ||
-      (await VaultResource.makeNew({
-        name: "System",
-        kind: "system",
-        workspaceId: workspace.id,
-        groupId: systemGroup.id,
-      }));
+      (await VaultResource.makeNew(
+        {
+          name: "System",
+          kind: "system",
+          workspaceId: workspace.id,
+        },
+        [systemGroup]
+      ));
+
     const globalVault =
       existingVaults.find((v) => v.kind === "global") ||
-      (await VaultResource.makeNew({
-        name: "Workspace",
-        kind: "global",
-        workspaceId: workspace.id,
-        groupId: globalGroup.id,
-      }));
+      (await VaultResource.makeNew(
+        {
+          name: "Workspace",
+          kind: "global",
+          workspaceId: workspace.id,
+        },
+        [globalGroup]
+      ));
+    await GroupVaultModel.findOrCreate({
+      where: { groupId: globalGroup.id, vaultId: globalVault.id },
+      defaults: { groupId: globalGroup.id, vaultId: globalVault.id },
+    });
+
     return {
       systemVault,
       globalVault,
@@ -110,10 +149,20 @@ export class VaultResource extends BaseResource<VaultModel> {
 
     const vaults = await this.model.findAll({
       where,
+      include: GroupModel,
     });
 
     return vaults
-      .map((vault) => new this(VaultModel, vault.get()))
+      .map(
+        (vault) =>
+          new this(
+            VaultModel,
+            vault.get(),
+            vault.groups.map(
+              (group) => new GroupResource(GroupModel, group.get())
+            )
+          )
+      )
       .filter(
         (vault) => auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
       );
@@ -129,9 +178,19 @@ export class VaultResource extends BaseResource<VaultModel> {
           [Op.in]: ["system", "global"],
         },
       },
+      include: [{ model: GroupModel }],
     });
 
-    return vaults.map((vault) => new this(VaultModel, vault.get()));
+    return vaults.map(
+      (vault) =>
+        new this(
+          VaultModel,
+          vault.get(),
+          vault.groups.map(
+            (group) => new GroupResource(GroupModel, group.get())
+          )
+        )
+    );
   }
 
   static async fetchWorkspaceSystemVault(
@@ -143,13 +202,18 @@ export class VaultResource extends BaseResource<VaultModel> {
         workspaceId: owner.id,
         kind: "system",
       },
+      include: [{ model: GroupModel }],
     });
 
     if (!vault) {
       throw new Error("System vault not found.");
     }
 
-    return new this(VaultModel, vault.get());
+    return new this(
+      VaultModel,
+      vault.get(),
+      vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
+    );
   }
 
   static async fetchWorkspaceGlobalVault(
@@ -161,13 +225,18 @@ export class VaultResource extends BaseResource<VaultModel> {
         workspaceId: owner.id,
         kind: "global",
       },
+      include: [{ model: GroupModel }],
     });
 
     if (!vault) {
       throw new Error("Global vault not found.");
     }
 
-    return new this(VaultModel, vault.get());
+    return new this(
+      VaultModel,
+      vault.get(),
+      vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
+    );
   }
 
   static async fetchById(
@@ -186,13 +255,20 @@ export class VaultResource extends BaseResource<VaultModel> {
         id: vaultModelId,
         workspaceId: owner.id,
       },
+      include: [{ model: GroupModel }],
     });
 
     if (!vaultModel) {
       return null;
     }
 
-    return new this(VaultModel, vaultModel.get());
+    return new this(
+      VaultModel,
+      vaultModel.get(),
+      vaultModel.groups.map(
+        (group) => new GroupResource(GroupModel, group.get())
+      )
+    );
   }
 
   static async isNameAvailable(
@@ -206,6 +282,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         name,
         workspaceId: owner.id,
       },
+      include: [{ model: GroupModel }],
     });
 
     return !vault;
@@ -251,13 +328,12 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   acl(): ACLType {
+    console.log("acl..xxx");
     return {
-      aclEntries: [
-        {
-          groupId: this.groupId,
-          permissions: ["read", "write"],
-        },
-      ],
+      aclEntries: this.groups.map((group) => ({
+        groupId: group.id,
+        permissions: ["read", "write"],
+      })),
     };
   }
 

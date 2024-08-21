@@ -89,12 +89,14 @@ async function handler(
         kind: "regular",
       });
 
-      const vault = await VaultResource.makeNew({
-        name,
-        kind: "regular",
-        workspaceId: owner.id,
-        groupId: group.id,
-      });
+      const vault = await VaultResource.makeNew(
+        {
+          name,
+          kind: "regular",
+          workspaceId: owner.id,
+        },
+        [group]
+      );
 
       if (memberIds) {
         const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
