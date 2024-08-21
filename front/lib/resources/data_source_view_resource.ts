@@ -80,11 +80,11 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     );
   }
 
-  // For now, we create a default view for all data sources in the global vault.
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
     vault: VaultResource,
-    dataSource: DataSourceResource
+    dataSource: DataSourceResource,
+    kind: DataSourceViewKind = "default"
   ) {
     return this.makeNew(
       {
