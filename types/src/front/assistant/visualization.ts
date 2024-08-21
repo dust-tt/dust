@@ -16,7 +16,7 @@ interface SetContentHeightParams {
   height: number;
 }
 
-interface GenerateScreenshotParams {
+interface SetScreenshotParams {
   image: Blob;
 }
 
@@ -26,7 +26,7 @@ export type VisualizationRPCRequestMap = {
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrored: void;
-  generateScreenshot: GenerateScreenshotParams;
+  setScreenshot: SetScreenshotParams;
 };
 
 // Derive the command type from the keys of the request map
@@ -45,7 +45,7 @@ export const validCommands: VisualizationRPCCommand[] = [
   "getCodeToExecute",
   "setContentHeight",
   "setErrored",
-  "generateScreenshot",
+  "setScreenshot",
 ];
 
 // Command results.
@@ -55,7 +55,7 @@ export interface CommandResultMap {
   getCodeToExecute: { code: string };
   setContentHeight: void;
   setErrored: void;
-  generateScreenshot: void;
+  setScreenshot: void;
 }
 
 // TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
@@ -144,6 +144,26 @@ export function isSetErroredRequest(
   );
 }
 
+export function isSetScreenshotRequst(
+  value: unknown
+): value is VisualizationRPCRequest & {
+  command: "setErrored";
+} {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const v = value as Partial<VisualizationRPCRequest>;
+
+  return (
+    v.command === "setScreenshot" &&
+    typeof v.identifier === "string" &&
+    typeof v.messageUniqueId === "string" &&
+    typeof v.params === "object" &&
+    v.params !== null
+  );
+}
+
 export function isVisualizationRPCRequest(
   value: unknown
 ): value is VisualizationRPCRequest {
@@ -155,6 +175,7 @@ export function isVisualizationRPCRequest(
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
     isSetContentHeightRequest(value) ||
-    isSetErroredRequest(value) || true
+    isSetErroredRequest(value) ||
+    isSetScreenshotRequst(value) 
   );
 }

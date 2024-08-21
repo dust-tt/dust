@@ -72,7 +72,7 @@ export function useVisualizationAPI(
 
   const sendScreenshotToParent = useCallback(
     async ({ image }: { image: Blob }) => {
-      await sendCrossDocumentMessage("generateScreenshot", {
+      await sendCrossDocumentMessage("setScreenshot", {
         image,
       });
     },

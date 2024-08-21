@@ -128,7 +128,7 @@ function useVisualizationDataHandler({
           setIsErrored(true);
           break;
 
-        case "generateScreenshot":
+        case "setScreenshot":
           setScreenshot({
             image: data.params.image,
           });
