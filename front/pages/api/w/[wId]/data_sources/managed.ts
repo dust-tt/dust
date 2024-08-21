@@ -344,6 +344,19 @@ async function handler(
         vault
       );
 
+      // For each data source, we create two views:
+      // - One view in its associated vault
+      // - If the data source resides in the system vault, we also create a view in the global vault until vault are released.
+
+      if (dataSource.vault.isSystem()) {
+        const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          globalVault,
+          dataSource
+        );
+      }
+
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
         dataSource.vault,
         dataSource
