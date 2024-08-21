@@ -605,7 +605,7 @@ const main = async () => {
     case "transcripts":
       return transcripts(command, argv);
     case "registry":
-      return registry(command, argv);
+      return registry(command);
     default:
       console.log(
         "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`, `transcripts`"
