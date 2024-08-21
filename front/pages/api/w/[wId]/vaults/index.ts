@@ -95,7 +95,7 @@ async function handler(
           kind: "regular",
           workspaceId: owner.id,
         },
-        [group]
+        group
       );
 
       if (memberIds) {

@@ -35,27 +35,22 @@ export class VaultResource extends BaseResource<VaultModel> {
   constructor(
     model: ModelStatic<VaultModel>,
     blob: Attributes<VaultModel>,
-   readonly groups: GroupResource[]
+    readonly groups: GroupResource[]
   ) {
     super(VaultModel, blob);
-    this.groups = groups;
   }
 
   static async makeNew(
     blob: CreationAttributes<VaultModel>,
-    groups: GroupResource[]
+    group: GroupResource
   ) {
     const vault = await VaultModel.create(blob);
-    await Promise.all(
-      groups.map((group) =>
-        GroupVaultModel.create({
-          groupId: group.id,
-          vaultId: vault.id,
-        })
-      )
-    );
+    await GroupVaultModel.create({
+      groupId: group.id,
+      vaultId: vault.id,
+    });
 
-    return new this(VaultModel, vault.get(), groups);
+    return new this(VaultModel, vault.get(), [group]);
   }
 
   static async makeDefaultsForWorkspace(
@@ -92,7 +87,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "system",
           workspaceId: workspace.id,
         },
-        [systemGroup]
+        systemGroup
       ));
 
     const globalVault =
@@ -103,7 +98,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "global",
           workspaceId: workspace.id,
         },
-        [globalGroup]
+        globalGroup
       ));
     await GroupVaultModel.findOrCreate({
       where: { groupId: globalGroup.id, vaultId: globalVault.id },
@@ -280,7 +275,6 @@ export class VaultResource extends BaseResource<VaultModel> {
         name,
         workspaceId: owner.id,
       },
-      include: [{ model: GroupModel }],
     });
 
     return !vault;
@@ -290,6 +284,13 @@ export class VaultResource extends BaseResource<VaultModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
+    await GroupVaultModel.destroy({
+      where: {
+        vaultId: this.id,
+      },
+      transaction,
+    });
+
     await this.model.destroy({
       where: {
         id: this.id,
@@ -326,7 +327,6 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   acl(): ACLType {
-    console.log("acl..xxx");
     return {
       aclEntries: this.groups.map((group) => ({
         groupId: group.id,
