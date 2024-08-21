@@ -102,8 +102,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
         transaction,
       });
-  
-  
+
       await this.model.destroy({
         where: {
           id: this.id,
