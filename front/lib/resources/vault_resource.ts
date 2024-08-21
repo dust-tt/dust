@@ -32,8 +32,6 @@ export interface VaultResource extends ReadonlyAttributesType<VaultModel> {}
 export class VaultResource extends BaseResource<VaultModel> {
   static model: ModelStatic<VaultModel> = VaultModel;
 
-  // readonly groups: GroupResource[];
-
   constructor(
     model: ModelStatic<VaultModel>,
     blob: Attributes<VaultModel>,
