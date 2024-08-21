@@ -16,10 +16,6 @@ interface SetContentHeightParams {
   height: number;
 }
 
-interface SetScreenshotDownloadableParams {
-  screenshotDownloadable: boolean;
-}
-
 interface GenerateScreenshotParams {
   image: string;
   screenshotId: string;
@@ -31,7 +27,6 @@ export type VisualizationRPCRequestMap = {
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrored: void;
-  setScreenshotDownloadable: SetScreenshotDownloadableParams;
   generateScreenshot: GenerateScreenshotParams;
 };
 
@@ -51,7 +46,6 @@ export const validCommands: VisualizationRPCCommand[] = [
   "getCodeToExecute",
   "setContentHeight",
   "setErrored",
-  "setScreenshotDownloadable",
   "generateScreenshot",
 ];
 
@@ -62,7 +56,6 @@ export interface CommandResultMap {
   getCodeToExecute: { code: string };
   setContentHeight: void;
   setErrored: void;
-  setScreenshotDownloadable: void;
   generateScreenshot: void;
 }
 

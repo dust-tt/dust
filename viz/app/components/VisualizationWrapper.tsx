@@ -70,15 +70,6 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  const sendScreenshotDownloadableToParent = useCallback(
-    async ({ screenshotDownloadable }: { screenshotDownloadable: boolean }) => {
-      await sendCrossDocumentMessage("setScreenshotDownloadable", {
-        screenshotDownloadable,
-      });
-    },
-    [sendCrossDocumentMessage]
-  );
-
   const sendScreenshotToParent = useCallback(
     async ({ image, screenshotId }: { image: string, screenshotId: string }) => {
       await sendCrossDocumentMessage("generateScreenshot", {
@@ -95,7 +86,6 @@ export function useVisualizationAPI(
     error,
     sendHeightToParent,
     sendScreenshotToParent,
-    sendScreenshotDownloadableToParent,
   };
 }
 
@@ -124,7 +114,7 @@ const useFile = (
 };
 
 
-const makeScreenshot = (sendScreenshotToParent: ({ image, screenshotId } : { image: string, screenshotId: string }) => void) => {
+const makeScreenshot = async (sendScreenshotToParent: ({ image, screenshotId } : { image: string, screenshotId: string }) => void) => {
   const svg = document.querySelector("svg.recharts-surface") as SVGSVGElement;
   const svgData = new XMLSerializer().serializeToString(svg);
   const svgBlob = new Blob([svgData], {
@@ -138,35 +128,13 @@ const makeScreenshot = (sendScreenshotToParent: ({ image, screenshotId } : { ima
   const ctx = canvas.getContext("2d");
 
   const image = new Image();
-  image.onload = function () {
+  image.onload = async function () {
     ctx?.drawImage(image, 0, 0);
     URL.revokeObjectURL(url);
     const pngFile = canvas.toDataURL("image/png");
-    sendScreenshotToParent({ image: pngFile, screenshotId: Math.random().toString() });
+    await sendScreenshotToParent({ image: pngFile, screenshotId: Math.random().toString() });
   };
   image.src = url;
-}
-
-// Custom hook to encapsulate the logic for handling visualization messages.
-function useVisualizationDataHandler(sendScreenshotToParent: ({ image } : { image: string}) => void) {
-  useEffect(() => {
-    const listener = async (event: MessageEvent) => {
-      const { data } = event;
-
-      switch (data.command) {
-        case "generateScreenshot":
-          makeScreenshot(sendScreenshotToParent);
-          break;
-
-        default:
-          // assertNever(data);
-          // we don't do anything as there're other handlers
-      }
-    };
-
-    window.addEventListener("message", listener);
-    return () => window.removeEventListener("message", listener);
-  }, [sendScreenshotToParent]);
 }
 
 interface RunnerParams {
@@ -221,11 +189,8 @@ export function VisualizationWrapper({
     fetchFile,
     error,
     sendHeightToParent,
-    sendScreenshotDownloadableToParent,
     sendScreenshotToParent,
   } = api;
-
-  useVisualizationDataHandler(sendScreenshotToParent);
 
   useEffect(() => {
     const loadCode = async () => {
@@ -279,12 +244,6 @@ export function VisualizationWrapper({
     }
   }, [error]);
 
-  useEffect(() => {
-    if (screenshotDownloadable) {
-      sendScreenshotDownloadableToParent({ screenshotDownloadable })
-    }
-  }, [screenshotDownloadable, sendScreenshotDownloadableToParent])
-
   if (errored) {
     // Throw the error to the ErrorBoundary.
     throw errored;
@@ -296,6 +255,20 @@ export function VisualizationWrapper({
 
   return (
     <div ref={ref}>
+        {screenshotDownloadable && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
+            <button
+              onClick={async () => {
+                await makeScreenshot(sendScreenshotToParent);
+              }}
+            >Download</button>
+          </div>
+      )}
       <Runner
         code={runnerParams.code}
         scope={runnerParams.scope}
@@ -330,10 +303,9 @@ export function makeSendCrossDocumentMessage({
   return <T extends VisualizationRPCCommand>(
     command: T,
     params: VisualizationRPCRequestMap[T],
-    messageUniqueId?: string
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
-      const messageUniqueIdOrRandom = messageUniqueId || Math.random().toString();
+      const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
         if (event.origin !== allowedVisualizationOrigin) {
           console.log(
@@ -344,7 +316,7 @@ export function makeSendCrossDocumentMessage({
           return;
         }
 
-        if (event.data.messageUniqueId === messageUniqueIdOrRandom) {
+        if (event.data.messageUniqueId === messageUniqueId) {
           if (event.data.error) {
             reject(event.data.error);
           } else {
@@ -357,7 +329,7 @@ export function makeSendCrossDocumentMessage({
       window.top?.postMessage(
         {
           command,
-          messageUniqueId: messageUniqueIdOrRandom,
+          messageUniqueId,
           identifier,
           params,
         },
