@@ -101,18 +101,13 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async listWorkspaceVaults(
-    auth: Authenticator,
-    onlySystemAndGlobal = false
+    auth: Authenticator
   ): Promise<VaultResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const where: WhereOptions = {
       workspaceId: owner.id,
     };
-
-    if (onlySystemAndGlobal) {
-      where["kind"] = ["system", "global"];
-    }
 
     const vaults = await this.model.findAll({
       where,
