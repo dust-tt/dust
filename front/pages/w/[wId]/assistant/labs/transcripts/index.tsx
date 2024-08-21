@@ -128,9 +128,10 @@ export default function LabsTranscriptsIndex({
               (a) => a.sId === transcriptsConfiguration.agentConfigurationId
             ) || null,
           isActive: transcriptsConfiguration.isActive || false,
-          dataSource: dataSources.find(
-            (ds) => ds.id === transcriptsConfiguration.dataSourceId
-          ) || null,
+          dataSource:
+            dataSources.find(
+              (ds) => ds.id === transcriptsConfiguration.dataSourceId
+            ) || null,
         };
       });
     } else {
@@ -613,60 +614,60 @@ export default function LabsTranscriptsIndex({
               </Page.Layout>
 
               {owner.flags.includes("labs_transcripts_datasource") && (
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Store transcripts in Folder" />
-                <Page.Layout direction="horizontal" gap="xl">
-                  <Page.P>
-                    Store transcripts in a Folder to keep using them in your
-                    assistants?
-                    <br />
-                    <small>
-                      Warning: this can make your transcripts public within your
-                      workspace.
-                    </small>
-                  </Page.P>
-                  {dataSources.length > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenu.Button
-                        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        disabled={!transcriptsConfigurationState.isActive}
-                      >
-                        {transcriptsConfigurationState.dataSource
-                          ? transcriptsConfigurationState.dataSource.name
-                          : "Do not store transcripts"}
-                        <ChevronDownIcon
-                          className="-mr-1 ml-2 h-5 w-5"
-                          aria-hidden="true"
-                        />
-                      </DropdownMenu.Button>
-                      <DropdownMenu.Items origin="topLeft" width={220}>
-                        <DropdownMenu.Item
-                          label="Do not store transcripts"
-                          onClick={() =>
-                            handleSetDataSource(
-                              transcriptsConfiguration.id,
-                              null
-                            )
-                          }
-                        />
-                        {dataSources.map((ds) => (
+                <Page.Layout direction="vertical">
+                  <Page.SectionHeader title="3. Store transcripts in Folder" />
+                  <Page.Layout direction="horizontal" gap="xl">
+                    <Page.P>
+                      Store transcripts in a Folder to keep using them in your
+                      assistants?
+                      <br />
+                      <small>
+                        Warning: this can make your transcripts public within
+                        your workspace.
+                      </small>
+                    </Page.P>
+                    {dataSources.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenu.Button
+                          className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                          disabled={!transcriptsConfigurationState.isActive}
+                        >
+                          {transcriptsConfigurationState.dataSource
+                            ? transcriptsConfigurationState.dataSource.name
+                            : "Do not store transcripts"}
+                          <ChevronDownIcon
+                            className="-mr-1 ml-2 h-5 w-5"
+                            aria-hidden="true"
+                          />
+                        </DropdownMenu.Button>
+                        <DropdownMenu.Items origin="topLeft" width={220}>
                           <DropdownMenu.Item
-                            key={ds.id}
-                            label={ds.name}
+                            label="Do not store transcripts"
                             onClick={() =>
                               handleSetDataSource(
                                 transcriptsConfiguration.id,
-                                ds
+                                null
                               )
                             }
                           />
-                        ))}
-                      </DropdownMenu.Items>
-                    </DropdownMenu>
-                  )}
+                          {dataSources.map((ds) => (
+                            <DropdownMenu.Item
+                              key={ds.id}
+                              label={ds.name}
+                              onClick={() =>
+                                handleSetDataSource(
+                                  transcriptsConfiguration.id,
+                                  ds
+                                )
+                              }
+                            />
+                          ))}
+                        </DropdownMenu.Items>
+                      </DropdownMenu>
+                    )}
+                  </Page.Layout>
                 </Page.Layout>
-              </Page.Layout>
-            )}
+              )}
 
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="3. Enable transcripts processing" />
