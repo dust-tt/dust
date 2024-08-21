@@ -20,7 +20,7 @@ interface SetScreenshotDownloadableParams {
   screenshotDownloadable: boolean;
 }
 
-interface SetImageParams {
+interface GenerateScreenshotParams {
   image: string;
   screenshotId: string;
 }
@@ -32,7 +32,7 @@ export type VisualizationRPCRequestMap = {
   setContentHeight: SetContentHeightParams;
   setErrored: void;
   setScreenshotDownloadable: SetScreenshotDownloadableParams;
-  generateScreenshot: SetImageParams;
+  generateScreenshot: GenerateScreenshotParams;
 };
 
 // Derive the command type from the keys of the request map

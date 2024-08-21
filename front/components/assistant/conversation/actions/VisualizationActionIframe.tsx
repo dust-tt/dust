@@ -146,7 +146,6 @@ function useVisualizationDataHandler({
           if (code) {
             sendResponseToIframe(data, { code }, event.source);
           }
-
           break;
 
         case "setContentHeight":
@@ -320,14 +319,15 @@ export function VisualizationActionIframe({
                       icon={ArrowUpOnSquareIcon}
                       variant="tertiary"
                       onClick={async () => {
-                        const result = await sendRequestToIframe(
+                        await sendRequestToIframe(
                           "generateScreenshot",
                           visualization.identifier,
+                          // @ts-expect-error - current commands were designed for 1 way only 
+                          // and we weren't expecting to send any params
                           {},
                           vizIframeRef.current
                             ?.contentWindow as MessageEventSource
                         );
-                        console.log("result", result);
                       }}
                     />
                   </div>
