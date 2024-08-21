@@ -7,6 +7,7 @@ import type {
   VaultType,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
+import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
 import type {
   Attributes,
   CreationAttributes,
@@ -122,6 +123,21 @@ export class VaultResource extends BaseResource<VaultModel> {
       .filter(
         (vault) => auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
       );
+  }
+
+  static async listWorkspaceDefaultVaults(auth: Authenticator) {
+    const owner = auth.getNonNullableWorkspace();
+
+    const vaults = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        kind: {
+          [Op.in]: ["system", "global"],
+        },
+      },
+    });
+
+    return vaults.map((vault) => new this(VaultModel, vault.get()));
   }
 
   static async fetchWorkspaceSystemVault(
