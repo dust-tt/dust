@@ -62,10 +62,10 @@ const getTableColumns = () => {
       accessorKey: "label",
       id: "label",
       cell: (info: Info) => (
-        <DataTable.Cell icon={info.row.original.icon}>
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold"> {info.row.original.label}</span> (
           {info.row.original.count} items)
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
@@ -74,9 +74,9 @@ const getTableColumns = () => {
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
-            <DataTable.Cell icon={RobotIcon}>
+            <DataTable.CellContent icon={RobotIcon}>
               {info.row.original.usage}
-            </DataTable.Cell>
+            </DataTable.CellContent>
           ) : null}
         </>
       ),
@@ -84,7 +84,7 @@ const getTableColumns = () => {
     {
       header: "Managed by",
       cell: (info: Info) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
           roundedAvatar={true}
         />
@@ -94,7 +94,7 @@ const getTableColumns = () => {
       header: "Last sync",
       accessorKey: "editedByUser.editedAt",
       cell: (info: Info) => (
-        <DataTable.Cell className="w-10">
+        <DataTable.CellContent className="pr-2">
           {(() => {
             if (!info.row.original.connector) {
               return <Chip color="amber">Never</Chip>;
@@ -117,7 +117,7 @@ const getTableColumns = () => {
               );
             }
           })()}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];
