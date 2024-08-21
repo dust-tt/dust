@@ -473,6 +473,7 @@ export async function syncNonThreaded(
         nextCursor,
         delayMs: new Date().getTime() - now.getTime(),
         debugSlack: true,
+        hasMore: c.has_more,
       },
       "syncNonThreaded.conversationHistory.done"
     );
