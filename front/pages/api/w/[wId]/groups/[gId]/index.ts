@@ -38,10 +38,21 @@ async function handler(
     });
   }
 
-  const group = await GroupResource.fetchById(auth, req.query.gId as string);
+  const { gId } = req.query;
 
+  if (typeof gId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "group_not_found",
+        message: "The group you requested was not found.",
+      },
+    });
+  }
+
+  const group = await GroupResource.fetchById(auth, gId);
   // Check if the user has access to the group to get members list
-  if (!group || !auth.isBuilder()) {
+  if (!group) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -54,6 +65,18 @@ async function handler(
   switch (req.method) {
     case "GET":
       const members = await group.getActiveMembers(auth);
+      if (
+        !auth.isAdmin() &&
+        !members.find((m) => m.id === auth.getNonNullableUser().id)
+      ) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only `admins` or members can get group info.",
+          },
+        });
+      }
       return res.status(200).json({
         group: {
           ...group.toJSON(),
