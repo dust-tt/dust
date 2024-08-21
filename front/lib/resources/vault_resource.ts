@@ -16,11 +16,11 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vault";
+import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -71,21 +71,8 @@ export class VaultResource extends BaseResource<VaultModel> {
       globalGroup: GroupResource;
     }
   ) {
-    const existingVaults = (
-      await VaultModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-        },
-      })
-    ).map(
-      (vault) =>
-        new this(
-          VaultModel,
-          vault.get(),
-          vault.groups.map(
-            (group) => new GroupResource(GroupModel, group.get())
-          )
-        )
+    const existingVaults = await this.listWorkspaceDefaultVaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
     );
     const systemVault =
       existingVaults.find((v) => v.kind === "system") ||
@@ -108,10 +95,6 @@ export class VaultResource extends BaseResource<VaultModel> {
         },
         globalGroup
       ));
-    await GroupVaultModel.findOrCreate({
-      where: { groupId: globalGroup.id, vaultId: globalVault.id },
-      defaults: { groupId: globalGroup.id, vaultId: globalVault.id },
-    });
 
     return {
       systemVault,

@@ -67,7 +67,7 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vault";
+import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 // Labs - Can be removed at all times if a solution is dropped
