@@ -35,7 +35,7 @@ export class VaultResource extends BaseResource<VaultModel> {
   constructor(
     model: ModelStatic<VaultModel>,
     blob: Attributes<VaultModel>,
-    public readonly groups: GroupResource[]
+   readonly groups: GroupResource[]
   ) {
     super(VaultModel, blob);
     this.groups = groups;
