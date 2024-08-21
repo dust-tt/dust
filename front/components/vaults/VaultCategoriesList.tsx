@@ -73,10 +73,10 @@ const getTableColumns = () => {
       header: "Name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <DataTable.Cell icon={info.row.original.icon}>
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.name}</span> (
           {info.row.original.count} items)
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
@@ -85,9 +85,9 @@ const getTableColumns = () => {
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
-            <DataTable.Cell icon={RobotIcon}>
+            <DataTable.CellContent icon={RobotIcon}>
               {info.row.original.usage}
-            </DataTable.Cell>
+            </DataTable.CellContent>
           ) : null}
         </>
       ),

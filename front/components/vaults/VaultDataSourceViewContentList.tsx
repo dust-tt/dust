@@ -37,12 +37,12 @@ const getTableColumns = () => {
       accessorKey: "title",
       id: "title",
       cell: (info: CellContext<RowData, unknown>) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           // iconClassName="text-brand"
           icon={info.row.original.type === "folder" ? FolderIcon : GlobeAltIcon}
         >
           <span className="font-bold">{info.row.original.title}</span>
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];
