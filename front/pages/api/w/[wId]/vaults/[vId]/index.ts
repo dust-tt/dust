@@ -4,7 +4,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSourceInfos } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -77,23 +76,25 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const all = [
-        ...(await getDataSourceInfos(auth, vault)),
-        ...(await DataSourceViewResource.listByVault(auth, vault))
-          .map((dsv) => dsv.toJSON())
-          .filter((d) => d.category === "managed" || d.kind !== "default"),
-      ];
+      const dataSourceViews = await DataSourceViewResource.listByVault(
+        auth,
+        vault
+      );
 
-      const categories = all.reduce(
-        (acc, dataSource) => {
-          const value = acc[dataSource.category];
+      const serializedDatasourceViews = dataSourceViews.map((view) =>
+        view.toJSON()
+      );
+
+      const categories = serializedDatasourceViews.reduce(
+        (acc, dataSourceView) => {
+          const value = acc[dataSourceView.category];
           if (value) {
             value.count += 1;
-            value.usage += dataSource.usage;
+            value.usage += dataSourceView.usage;
           } else {
-            acc[dataSource.category] = {
+            acc[dataSourceView.category] = {
               count: 1,
-              usage: dataSource.usage,
+              usage: dataSourceView.usage,
             };
           }
           return acc;
@@ -109,6 +110,7 @@ async function handler(
           members: currentMembers.map((member) => member.toJSON()),
         },
       });
+
     case "PATCH":
       if (!auth.isAdmin() || !auth.isBuilder()) {
         // Only admins, or builders who have to the vault, can patch
@@ -188,6 +190,7 @@ async function handler(
       }
 
       return res.status(200).json({ vault: vault.toJSON() });
+
     default:
       return apiError(req, res, {
         status_code: 405,

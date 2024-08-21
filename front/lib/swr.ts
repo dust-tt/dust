@@ -7,9 +7,8 @@ import type {
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
-  DataSourceOrView,
   DataSourceType,
-  GetDataSourceOrViewContentResponseBody,
+  GetDataSourceViewContentResponseBody,
   LightWorkspaceType,
   RunRunType,
   WorkspaceEnterpriseConnection,
@@ -1327,47 +1326,41 @@ export function useVaultInfo({
   };
 }
 
-export function useVaultDataSourceOrViews({
-  workspaceId,
-  vaultId,
+export function useVaultDataSourceViews({
   category,
-  type,
   disabled,
+  vaultId,
+  workspaceId,
 }: {
-  workspaceId: string;
-  vaultId: string;
   category: string;
-  type: DataSourceOrView;
   disabled?: boolean;
+  vaultId: string;
+  workspaceId: string;
 }) {
-  const vaultsDataSourcesFetcher: Fetcher<
-    GetVaultDataSourcesResponseBody | GetVaultDataSourceViewsResponseBody
-  > = fetcher;
+  const vaultsDataSourceViewsFetcher: Fetcher<GetVaultDataSourceViewsResponseBody> =
+    fetcher;
 
   const { data, error } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${workspaceId}/vaults/${vaultId}/${type}?category=${category}`,
-    vaultsDataSourcesFetcher
+      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?category=${category}`,
+    vaultsDataSourceViewsFetcher
   );
 
-  const vaultDataSourceOrViews =
-    type === "data_sources"
-      ? (data as GetVaultDataSourcesResponseBody)?.dataSources
-      : (data as GetVaultDataSourceViewsResponseBody)?.dataSourceViews;
-
   return {
-    vaultDataSourceOrViews,
-    isVaultDataSourceOrViewsLoading: !error && !data,
-    isVaultDataSourceOrViewsError: error,
+    vaultDataSourceViews: useMemo(
+      () => (data ? data.dataSourceViews : []),
+      [data]
+    ),
+    isVaultDataSourceViewsLoading: !error && !data,
+    isVaultDataSourceViewsError: error,
   };
 }
 
-export function useVaultDataSourceOrViewContent({
+export function useVaultDataSourceViewContent({
   workspaceId,
   vaultId,
-  type,
-  dataSourceOrViewId,
+  dataSourceViewId,
   viewType,
   parentId,
   filterPermission,
@@ -1375,14 +1368,13 @@ export function useVaultDataSourceOrViewContent({
 }: {
   workspaceId: string;
   vaultId: string;
-  type: DataSourceOrView;
-  dataSourceOrViewId: string;
+  dataSourceViewId: string;
   viewType: ContentNodesViewType;
   parentId: string | null;
   filterPermission: ConnectorPermission;
   disabled?: boolean;
 }) {
-  const vaultsDataSourcesFetcher: Fetcher<GetDataSourceOrViewContentResponseBody> =
+  const vaultsDataSourcesFetcher: Fetcher<GetDataSourceViewContentResponseBody> =
     fetcher;
   const qs =
     `?viewType=${viewType}` +
@@ -1391,7 +1383,7 @@ export function useVaultDataSourceOrViewContent({
   const { data, error } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${workspaceId}/vaults/${vaultId}/${type}/${dataSourceOrViewId}/content${qs}`,
+      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views/${dataSourceViewId}/content${qs}`,
     vaultsDataSourcesFetcher
   );
 

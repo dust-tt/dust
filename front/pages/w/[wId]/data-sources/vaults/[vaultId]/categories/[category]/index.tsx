@@ -1,5 +1,5 @@
 import { LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
-import type { DataSourceOrViewCategory, VaultType } from "@dust-tt/types";
+import type { DataSourceViewCategory, VaultType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -15,7 +15,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
-    category: DataSourceOrViewCategory;
+    category: DataSourceViewCategory;
     isAdmin: boolean;
     vault: VaultType;
   }
@@ -42,7 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      category: context.query.category as DataSourceOrViewCategory,
+      category: context.query.category as DataSourceViewCategory,
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
@@ -87,7 +87,7 @@ export default function Vault({
         category={category}
         onSelect={(sId) => {
           void router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/${CATEGORY_DETAILS[category].dataSourceOrView}/${sId}`
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`
           );
         }}
       />

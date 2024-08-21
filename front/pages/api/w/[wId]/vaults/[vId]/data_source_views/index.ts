@@ -66,11 +66,20 @@ async function handler(
         vault
       );
 
+      console.log(">> vault:", vault, vault.isSystem());
+      console.log(">> category:", category);
+      console.log(">> dataSourceViews:", dataSourceViews);
+
       return res.status(200).json({
         dataSourceViews: dataSourceViews
           .map((dsv) => dsv.toJSON())
           .filter((d) => !category || d.category === category),
       });
+    }
+
+    // TODO:
+    case "PATCH": {
+      break;
     }
 
     case "POST": {

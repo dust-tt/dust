@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
-  DataSourceOrViewCategory,
+  DataSourceViewCategory,
   EditedByUser,
   VaultType,
   WorkspaceType,
@@ -23,12 +23,11 @@ import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
-import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import {
   CONNECTOR_CONFIGURATIONS,
-  getDataSourceOrViewName,
+  getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useDataSources, useVaultDataSourceOrViews } from "@app/lib/swr";
+import { useDataSources, useVaultDataSourceViews } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -51,7 +50,7 @@ type VaultResourcesListProps = {
   owner: WorkspaceType;
   isAdmin: boolean;
   vault: VaultType;
-  category: DataSourceOrViewCategory;
+  category: DataSourceViewCategory;
   onSelect: (sId: string) => void;
 };
 
@@ -66,19 +65,6 @@ const getTableColumns = () => {
           <span className="font-bold"> {info.row.original.label}</span> (
           {info.row.original.count} items)
         </DataTable.Cell>
-      ),
-    },
-    {
-      header: "Used by",
-      accessorKey: "usage",
-      cell: (info: Info) => (
-        <>
-          {info.row.original.usage ? (
-            <DataTable.Cell icon={RobotIcon}>
-              {info.row.original.usage}
-            </DataTable.Cell>
-          ) : null}
-        </>
       ),
     },
     {
@@ -139,19 +125,18 @@ export const VaultResourcesList = ({
   );
   const searchBarRef = useRef<HTMLInputElement>(null);
 
-  const { vaultDataSourceOrViews, isVaultDataSourceOrViewsLoading } =
-    useVaultDataSourceOrViews({
+  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
+    useVaultDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
-      type: CATEGORY_DETAILS[category].dataSourceOrView,
       category: category,
     });
 
   const rows: RowData[] =
-    vaultDataSourceOrViews?.map((r) => ({
+    vaultDataSourceViews?.map((r) => ({
       sId: r.sId,
       category: r.category,
-      label: getDataSourceOrViewName(r),
+      label: getDataSourceNameFromView(r),
       icon: r.connectorProvider
         ? CONNECTOR_CONFIGURATIONS[r.connectorProvider].logoComponent
         : FolderIcon,
@@ -163,7 +148,7 @@ export const VaultResourcesList = ({
       onClick: () => onSelect(r.sId),
     })) || [];
 
-  if (isDataSourcesLoading || isVaultDataSourceOrViewsLoading) {
+  if (isDataSourcesLoading || isVaultDataSourceViewsLoading) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner size="lg" />
@@ -171,7 +156,7 @@ export const VaultResourcesList = ({
     );
   }
 
-  const setUpDataSources = vaultDataSourceOrViews.map((dsv) => dsv.connectorId);
+  const setUpDataSources = vaultDataSourceViews.map((dsv) => dsv.connectorId);
   const unusedDataSources = managedDataSources.filter(
     (ds) => !setUpDataSources.includes(ds.connectorId)
   );

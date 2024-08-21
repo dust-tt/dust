@@ -10,7 +10,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
-import { DATA_SOURCE_OR_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
+import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType, ReactElement } from "react";
 import { useState } from "react";
@@ -42,28 +42,23 @@ export const CATEGORY_DETAILS: {
     icon: ReactElement<{
       className?: string;
     }>;
-    dataSourceOrView: "data_sources" | "data_source_views";
   };
 } = {
   managed: {
     label: "Connected Data",
     icon: <CloudArrowLeftRightIcon className="text-brand" />,
-    dataSourceOrView: "data_source_views",
   },
   files: {
     label: "Folders",
     icon: <FolderIcon className="text-brand" />,
-    dataSourceOrView: "data_sources",
   },
   webfolder: {
     label: "Websites",
     icon: <GlobeAltIcon className="text-brand" />,
-    dataSourceOrView: "data_sources",
   },
   apps: {
     label: "Apps",
     icon: <CommandLineIcon className="text-brand" />,
-    dataSourceOrView: "data_sources",
   },
 };
 
@@ -110,7 +105,7 @@ export const VaultCategoriesList = ({
 
   const rows: RowData[] = vaultInfo
     ? removeNulls(
-        DATA_SOURCE_OR_VIEW_CATEGORIES.map((category) =>
+        DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
           vaultInfo.categories[category]
             ? {
                 category,
