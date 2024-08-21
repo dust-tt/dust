@@ -303,13 +303,15 @@ export function VisualizationWrapper({
           if (error) {
             setErrored(error);
           } else {
-            const svg = document.querySelector(
-              "svg.recharts-surface"
-            ) as SVGSVGElement;
-            // It seems that it's triggered before the animation is done. Which makes it's difficult to get the correct dom.
-            if (svg) {
-              setScreenshotDownloadable(true);
-            }
+            setTimeout(() => {
+              const svg = document.querySelector(
+                "svg.recharts-surface"
+              ) as SVGSVGElement;
+              // It seems that it's triggered before the animation is done. Which makes it's difficult to get the correct dom.
+              if (svg) {
+                setScreenshotDownloadable(true);
+              }
+            }, 2000)
           }
         }}
         

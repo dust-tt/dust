@@ -306,30 +306,32 @@ export function VisualizationActionIframe({
                 }}
                 className={classNames("max-h-[60vh] w-full")}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <Button
-                    size="sm"
-                    label="Share"
-                    labelVisible={false}
-                    icon={ArrowUpOnSquareIcon}
-                    variant="tertiary"
-                    onClick={async () => {
-                      const result = await sendRequestToIframe(
-                        "generateScreenshot",
-                        visualization.identifier,
-                        {},
-                        vizIframeRef.current
-                          ?.contentWindow as MessageEventSource
-                      );
-                      console.log("result", result);
+                {screenshotDownloadable && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
                     }}
-                  />
-                </div>
+                  >
+                    <Button
+                      size="sm"
+                      label="Share"
+                      labelVisible={false}
+                      icon={ArrowUpOnSquareIcon}
+                      variant="tertiary"
+                      onClick={async () => {
+                        const result = await sendRequestToIframe(
+                          "generateScreenshot",
+                          visualization.identifier,
+                          {},
+                          vizIframeRef.current
+                            ?.contentWindow as MessageEventSource
+                        );
+                        console.log("result", result);
+                      }}
+                    />
+                  </div>
+                )}
 
                 <iframe
                   ref={vizIframeRef}
