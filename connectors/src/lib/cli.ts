@@ -129,11 +129,6 @@ export const connectors = async ({
       await throwOnError(manager.stop());
       return { success: true };
     }
-    case "delete": {
-      await throwOnError(manager.clean({ force: true }));
-      await terminateAllWorkflowsForConnectorId(connector.id);
-      return { success: true };
-    }
     case "pause": {
       await throwOnError(manager.pause());
       return { success: true };
