@@ -302,7 +302,7 @@ export function makeSendCrossDocumentMessage({
 }) {
   return <T extends VisualizationRPCCommand>(
     command: T,
-    params: VisualizationRPCRequestMap[T],
+    params: VisualizationRPCRequestMap[T]
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
