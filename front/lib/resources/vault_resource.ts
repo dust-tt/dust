@@ -7,7 +7,6 @@ import type {
   VaultType,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
-import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
 import type {
   Attributes,
   CreationAttributes,
