@@ -552,6 +552,16 @@ export async function syncThread(
 
   let allMessages: MessageElement[] = [];
 
+  logger.info(
+    {
+      messagesCount: allMessages.length,
+      channelName,
+      channelId,
+      threadTs,
+    },
+    "Fetching messages from channel thread."
+  );
+
   try {
     allMessages = await getRepliesFromThread({
       slackClient,
@@ -570,6 +580,16 @@ export async function syncThread(
     }
     throw e;
   }
+
+  logger.info(
+    {
+      messagesCount: allMessages.length,
+      channelName,
+      channelId,
+      threadTs,
+    },
+    "Got messages from channel thread."
+  );
 
   const documentId = `slack-${channelId}-thread-${threadTs}`;
 
