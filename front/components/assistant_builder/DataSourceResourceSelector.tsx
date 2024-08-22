@@ -77,7 +77,7 @@ export default function DataSourceResourceSelector({
               </div>
               <DataSourceResourceSelectorTree
                 owner={owner}
-                dataSource={dataSource}
+                dataSourceOrView={dataSource}
                 showExpand={
                   CONNECTOR_CONFIGURATIONS[
                     dataSource.connectorProvider as ConnectorProvider

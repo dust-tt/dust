@@ -3,6 +3,7 @@ import type {
   DataSourceType,
   ModelId,
   Result,
+  UserType,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
@@ -89,6 +90,17 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     }
 
     return result;
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    // Preparing the introduction of datasource sIds - fetchById for now points to fetchByName
+    const dataSource = await this.fetchByName(auth, id, options);
+
+    return dataSource ?? null;
   }
 
   static async fetchByName(
@@ -213,6 +225,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     // Update the current instance with the new values to avoid stale data
     Object.assign(this, affectedRows[0].get());
     return [affectedCount];
+  }
+
+  async setEditedBy(user: UserType) {
+    await this.update({
+      editedByUserId: user.id,
+      editedAt: new Date(),
+    });
   }
 
   private makeEditedBy(
