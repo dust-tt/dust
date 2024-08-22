@@ -8,11 +8,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  APIError,
   ConnectorType,
   DataSourceViewCategory,
   EditedByUser,
-  ManagedDataSourceViewsSelectedNodes,
   PlanType,
   VaultType,
   WorkspaceType,
@@ -26,10 +24,9 @@ import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import VaultCreateFolderModal from "@app/components/vaults/VaultCreateFolderModal";
 import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
-import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   CONNECTOR_CONFIGURATIONS,
@@ -129,14 +126,12 @@ export const VaultResourcesList = ({
   onSelect,
 }: VaultResourcesListProps) => {
   const router = useRouter();
-  const sendNotification = React.useContext(SendNotificationsContext);
 
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
   const [showAddWebsiteModal, setShowAddWebsiteModal] = useState(false);
 
-  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
@@ -144,25 +139,12 @@ export const VaultResourcesList = ({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   // DataSources Views of the current vault.
-  const {
-    vaultDataSourceViews,
-    isVaultDataSourceViewsLoading,
-    mutateVaultDataSourceViews,
-  } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
-    vaultId: vault.sId,
-    category: category,
-  });
-
-  // DataSources Views of the system vault holding the managed datasources we want to select data from.
-  const {
-    vaultDataSourceViews: systemVaultDataSourceViews,
-    isVaultDataSourceViewsLoading: isSystemVaultDataSourceViewsLoading,
-  } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
-    vaultId: systemVault.sId,
-    category: category,
-  });
+  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
+    useVaultDataSourceViews({
+      workspaceId: owner.sId,
+      vaultId: vault.sId,
+      category: category,
+    });
 
   const { submit: handleCreateStaticDataSource } = useSubmitFunction(
     async (type: "files" | "webfolder") => {
@@ -195,96 +177,13 @@ export const VaultResourcesList = ({
       onClick: () => onSelect(r.sId),
     })) || [];
 
-  if (
-    isDataSourcesLoading ||
-    isVaultDataSourceViewsLoading ||
-    isSystemVaultDataSourceViewsLoading
-  ) {
+  if (isDataSourcesLoading || isVaultDataSourceViewsLoading) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner size="lg" />
       </div>
     );
   }
-
-  const updateVaultDataSourceViews = async (
-    selectedNodes: ManagedDataSourceViewsSelectedNodes
-  ) => {
-    let error = null;
-    await Promise.all(
-      selectedNodes.map(async (sDs) => {
-        const existingViewForDs = vaultDataSourceViews.find(
-          (d) => d.name === sDs.name
-        );
-
-        const body = {
-          name: sDs.name,
-          parentsIn: sDs.parentsIn,
-        };
-
-        try {
-          let res;
-          if (existingViewForDs) {
-            if (sDs.parentsIn !== null && sDs.parentsIn.length === 0) {
-              res = await fetch(
-                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
-                {
-                  method: "DELETE",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                }
-              );
-            } else {
-              res = await fetch(
-                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
-                {
-                  method: "PATCH",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify(body),
-                }
-              );
-            }
-          } else {
-            res = await fetch(
-              `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(body),
-              }
-            );
-          }
-
-          if (!res.ok) {
-            const rawError = (await res.json()) as { error: APIError };
-            error = rawError.error.message;
-          }
-        } catch (e) {
-          error = "An Unknown error occurred while adding data to vault.";
-        }
-      })
-    );
-
-    if (error) {
-      sendNotification({
-        title: "Error Adding Data to Vault",
-        type: "error",
-        description: error,
-      });
-    } else {
-      sendNotification({
-        title: "Data Successfully Added to Vault",
-        type: "success",
-        description: "All data sources were successfully updated.",
-      });
-    }
-    await mutateVaultDataSourceViews();
-  };
 
   return (
     <>
@@ -317,21 +216,6 @@ export const VaultResourcesList = ({
         }}
         owner={owner}
       />
-      <VaultManagedDataSourcesViewsModal
-        isOpen={showDataSourcesModal}
-        setOpen={(isOpen) => {
-          setShowDataSourcesModal(isOpen);
-        }}
-        owner={owner}
-        systemVaultDataSourceViews={systemVaultDataSourceViews.filter(
-          (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
-        )}
-        onSave={async (selectedDataSources) => {
-          await updateVaultDataSourceViews(selectedDataSources);
-        }}
-        initialSelectedDataSources={vaultDataSourceViews}
-      />
-
       <div
         className={classNames(
           "flex gap-2",
@@ -352,14 +236,10 @@ export const VaultResourcesList = ({
           />
         )}
         {category === "managed" && (
-          <Button
-            label="Add data from connections"
-            variant="primary"
-            icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setShowDataSourcesModal(true);
-            }}
+          <EditVaultManagedDataSourcesViews
+            owner={owner}
+            vault={vault}
+            systemVault={systemVault}
           />
         )}
         {category === "files" && (

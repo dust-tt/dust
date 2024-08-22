@@ -10,6 +10,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  DataSourceViewCategory,
   DataSourceViewType,
   LightWorkspaceType,
   VaultKind,
@@ -129,7 +130,7 @@ const SYSTEM_VAULTS_ITEMS = [
   {
     label: "Connection Management",
     visual: RootItemIconWrapper(CloudArrowLeftRightIcon),
-    category: "managed",
+    category: "managed" as DataSourceViewCategory,
   },
   // TODO(GROUPS_UI) Add support for Dust apps.
 ];
@@ -164,7 +165,7 @@ const SystemVaultItem = ({
   vault,
   visual,
 }: {
-  category: string;
+  category: DataSourceViewCategory;
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
@@ -343,7 +344,7 @@ const VaultCategoryItem = ({
 }: {
   owner: LightWorkspaceType;
   vault: VaultType;
-  category: string;
+  category: DataSourceViewCategory;
 }) => {
   const router = useRouter();
 

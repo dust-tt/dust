@@ -8,6 +8,7 @@ import type {
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
+  DataSourceViewCategory,
   DataSourceViewType,
   GetDataSourceViewContentResponseBody,
   LightWorkspaceType,
@@ -1332,7 +1333,7 @@ export function useVaultDataSourceViews({
   vaultId,
   workspaceId,
 }: {
-  category: string;
+  category: DataSourceViewCategory;
   disabled?: boolean;
   vaultId: string;
   workspaceId: string;

@@ -99,6 +99,8 @@ function VaultManagedDataSourceViewsTree({
   const selectedNodesInDataSourceView = selectedNodes.find(
     (ds) => ds.name === dataSourceView.name
   );
+
+  // TODO(GROUPS_INFRA): useParentResourcesById should use views not data sources.
   const { parentsById, setParentsById } = useParentResourcesById({
     owner,
     dataSource: dataSourceView,
