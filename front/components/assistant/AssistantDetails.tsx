@@ -22,7 +22,6 @@ import type {
   DataSourceConfiguration,
   DataSourceViewType,
   DustAppRunConfigurationType,
-  LightContentNode,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WorkspaceType,
