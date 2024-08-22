@@ -10,7 +10,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, SubscriptionType } from "@dust-tt/types";
+import type { DataSourceViewType, SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   LabsTranscriptsProviderType,
@@ -25,9 +25,10 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import {
   useAgentConfigurations,
   useLabsTranscriptsConfiguration,
@@ -48,15 +49,21 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
-  dataSources: DataSourceType[];
+  dataSourcesViews: DataSourceViewType[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();
 
-  const allDataSources = await getDataSources(auth, { includeEditedBy: true });
-  const dataSources = allDataSources
-    .filter((ds) => !ds.connectorId)
+  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const globalDataSourceViews = await DataSourceViewResource.listByVault(
+    auth,
+    globalVault
+  );
+
+  const dataSourcesViews = globalDataSourceViews
+    .map((dsv) => dsv.toJSON())
+    .filter((dsv) => !dsv.connectorId)
     .sort((a, b) => a.name.localeCompare(b.name));
 
   if (
@@ -76,7 +83,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
       dustClientFacingUrl: apiConfig.getClientFacingUrl(),
-      dataSources,
+      dataSourcesViews,
     },
   };
 });
@@ -86,7 +93,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   gaTrackingId,
   dustClientFacingUrl,
-  dataSources,
+  dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
@@ -111,7 +118,7 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
-      dataSource: DataSourceType | null;
+      dataSource: DataSourceViewType | null;
     }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
@@ -129,8 +136,8 @@ export default function LabsTranscriptsIndex({
             ) || null,
           isActive: transcriptsConfiguration.isActive || false,
           dataSource:
-            dataSources.find(
-              (ds) => ds.sId === transcriptsConfiguration.dataSourceId
+            dataSourcesViews.find(
+              (ds) => ds.name === transcriptsConfiguration.dataSourceId
             ) || null,
         };
       });
@@ -139,7 +146,7 @@ export default function LabsTranscriptsIndex({
         return defaultTranscriptConfigurationState;
       });
     }
-  }, [transcriptsConfiguration, agentConfigurations, dataSources]);
+  }, [transcriptsConfiguration, agentConfigurations, dataSourcesViews]);
 
   if (isTranscriptsConfigurationLoading) {
     return <Spinner />;
@@ -248,7 +255,7 @@ export default function LabsTranscriptsIndex({
 
   const handleSetDataSource = async (
     transcriptConfigurationId: number,
-    dataSource: DataSourceType | null
+    dataSource: DataSourceViewType | null
   ) => {
     setTranscriptsConfigurationState((prev) => {
       return {
@@ -626,15 +633,14 @@ export default function LabsTranscriptsIndex({
                         your workspace.
                       </small>
                     </Page.P>
-                    {dataSources.length > 0 && (
+                    {dataSourcesViews.length > 0 && (
                       <DropdownMenu>
                         <DropdownMenu.Button
                           className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                           disabled={!transcriptsConfigurationState.isActive}
                         >
-                          {transcriptsConfigurationState.dataSource
-                            ? transcriptsConfigurationState.dataSource.name
-                            : "Do not store transcripts"}
+                          {transcriptsConfigurationState?.dataSource?.name ||
+                            "Do not store transcripts"}
                           <ChevronDownIcon
                             className="-mr-1 ml-2 h-5 w-5"
                             aria-hidden="true"
@@ -650,14 +656,14 @@ export default function LabsTranscriptsIndex({
                               )
                             }
                           />
-                          {dataSources.map((ds) => (
+                          {dataSourcesViews.map((dsv) => (
                             <DropdownMenu.Item
-                              key={ds.id}
-                              label={ds.name}
+                              key={dsv.id}
+                              label={dsv.name}
                               onClick={() =>
                                 handleSetDataSource(
                                   transcriptsConfiguration.id,
-                                  ds
+                                  dsv
                                 )
                               }
                             />
