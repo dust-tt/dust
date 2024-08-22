@@ -11,6 +11,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
+  DataSourceViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission } from "@dust-tt/types";
@@ -51,7 +52,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
 
 export function PermissionTreeChildren({
   owner,
-  dataSource,
+  dataSourceOrView,
   parentId,
   permissionFilter,
   canUpdatePermissions,
@@ -63,7 +64,7 @@ export function PermissionTreeChildren({
   isSearchEnabled,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSourceOrView: DataSourceType | DataSourceViewType;
   parentId: string | null;
   permissionFilter?: ConnectorPermission;
   canUpdatePermissions?: boolean;
@@ -89,7 +90,7 @@ export function PermissionTreeChildren({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissionsHook({
       owner,
-      dataSource,
+      dataSourceOrView: dataSourceOrView,
       parentId,
       filterPermission: permissionFilter || null,
     });
@@ -99,12 +100,13 @@ export function PermissionTreeChildren({
   >({});
 
   const selectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
+    (dataSourceOrView.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSourceOrView.connectorProvider]
+        ?.selected) ||
     "none";
   const unselectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
+    (dataSourceOrView.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSourceOrView.connectorProvider]
         ?.unselected) ||
     "none";
 
@@ -256,7 +258,7 @@ export function PermissionTreeChildren({
               renderTreeItems={() => (
                 <PermissionTreeChildren
                   owner={owner}
-                  dataSource={dataSource}
+                  dataSourceOrView={dataSourceOrView}
                   parentId={r.internalId}
                   permissionFilter={permissionFilter}
                   canUpdatePermissions={canUpdatePermissions}
@@ -325,7 +327,7 @@ export function PermissionTree({
       <div className="overflow-x-auto">
         <PermissionTreeChildren
           owner={owner}
-          dataSource={dataSource}
+          dataSourceOrView={dataSource}
           parentId={null}
           permissionFilter={permissionFilter}
           canUpdatePermissions={canUpdatePermissions}

@@ -5,7 +5,11 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 
@@ -22,12 +26,12 @@ type RowData = {
 };
 
 type VaultDataSourceViewContentListProps = {
-  owner: WorkspaceType;
+  dataSourceView: DataSourceViewType;
   isAdmin: boolean;
-  vault: VaultType;
-  dataSourceViewId: string;
-  parentId: string | null;
   onSelect: (parentId: string) => void;
+  owner: WorkspaceType;
+  parentId: string | null;
+  vault: VaultType;
 };
 
 const getTableColumns = () => {
@@ -49,20 +53,20 @@ const getTableColumns = () => {
 };
 
 export const VaultDataSourceViewContentList = ({
-  owner,
+  dataSourceView,
   isAdmin,
-  vault,
-  dataSourceViewId,
-  parentId,
   onSelect,
+  owner,
+  parentId,
+  vault,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
   const { vaultContent, isVaultContentLoading } = useVaultDataSourceViewContent(
     {
-      workspaceId: owner.sId,
+      owner,
       vaultId: vault.sId,
-      dataSourceViewId,
+      dataSourceView,
       viewType: "documents",
       filterPermission: "read",
       parentId,

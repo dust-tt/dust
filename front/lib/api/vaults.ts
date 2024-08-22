@@ -129,6 +129,7 @@ export const getManagedDataSourceContent = async (
     preventSelection: r.preventSelection,
     dustDocumentId: r.dustDocumentId,
     lastUpdatedAt: r.lastUpdatedAt,
+    sourceUrl: r.sourceUrl,
   }));
 
   return new Ok(results);
@@ -162,7 +163,9 @@ export const getUnmanagedDataSourceContent = async (
       preventSelection: false,
       dustDocumentId: doc.document_id,
       lastUpdatedAt: doc.timestamp,
+      sourceUrl: doc.source_url ?? null,
     }));
+
     return new Ok(documentsAsContentNodes);
   } else {
     const tablesRes = await coreAPI.getTables({
@@ -183,6 +186,7 @@ export const getUnmanagedDataSourceContent = async (
       preventSelection: false,
       dustDocumentId: table.table_id,
       lastUpdatedAt: table.timestamp,
+      sourceUrl: null,
     }));
 
     return new Ok(tablesAsContentNodes);

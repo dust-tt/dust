@@ -324,6 +324,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
       usage: 0,
+      vaultId: this.vault.sId,
     };
   }
 }

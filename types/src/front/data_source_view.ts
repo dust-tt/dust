@@ -17,6 +17,7 @@ export interface DataSourceViewType {
   updatedAt: number;
   // TODO(GROUPS_INFRA) Add support for usage.
   usage: number;
+  vaultId: string;
 }
 
 const DATA_SOURCE_VIEW_KINDS = ["default", "custom"] as const;
