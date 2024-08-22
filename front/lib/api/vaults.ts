@@ -130,7 +130,6 @@ export const getManagedDataSourceContent = async (
     dustDocumentId: r.dustDocumentId,
     lastUpdatedAt: r.lastUpdatedAt,
     sourceUrl: r.sourceUrl,
-    titleWithParentsContext: r.titleWithParentsContext ?? null,
   }));
 
   return new Ok(results);
@@ -164,7 +163,6 @@ export const getUnmanagedDataSourceContent = async (
       preventSelection: false,
       sourceUrl: doc.source_url ?? null,
       title: doc.document_id,
-      titleWithParentsContext: null,
       type: "file" as const,
     }));
 
@@ -188,7 +186,6 @@ export const getUnmanagedDataSourceContent = async (
       preventSelection: false,
       sourceUrl: null,
       title: table.name,
-      titleWithParentsContext: null,
       type: "database" as const,
     }));
 

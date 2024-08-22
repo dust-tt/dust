@@ -17,6 +17,7 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
+  ContentNode,
   CoreAPITable,
   DataSourceConfiguration,
   DataSourceViewType,
@@ -452,7 +453,7 @@ function DataSourceViewSelectedNodes({
 
   return (
     <>
-      {dataSourceViewSelectedNodes.nodes.map((node: LightContentNode) => (
+      {dataSourceViewSelectedNodes.nodes.map((node: ContentNode) => (
         <Tree.Item
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}

@@ -49,7 +49,6 @@ export type LightContentNode = {
   preventSelection?: boolean;
   sourceUrl: string | null;
   title: string;
-  titleWithParentsContext: string | null;
   type: ContentNodeType;
 };
 
