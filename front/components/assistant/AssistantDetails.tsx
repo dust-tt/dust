@@ -455,7 +455,7 @@ function DataSourceViewSelectedNodes({
       {dataSourceViewSelectedNodes.nodes.map((node: LightContentNode) => (
         <Tree.Item
           key={node.internalId}
-          label={node.title}
+          label={node.titleWithParentsContext ?? node.title}
           type={node.expandable ? "node" : "leaf"}
           variant={node.type}
           className="whitespace-nowrap"

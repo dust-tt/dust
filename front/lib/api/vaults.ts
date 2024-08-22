@@ -130,6 +130,7 @@ export const getManagedDataSourceContent = async (
     dustDocumentId: r.dustDocumentId,
     lastUpdatedAt: r.lastUpdatedAt,
     sourceUrl: r.sourceUrl,
+    titleWithParentsContext: r.titleWithParentsContext ?? null,
   }));
 
   return new Ok(results);
@@ -155,15 +156,16 @@ export const getUnmanagedDataSourceContent = async (
     }
 
     const documentsAsContentNodes = documentsRes.value.documents.map((doc) => ({
-      internalId: doc.document_id,
-      parentInternalId: null,
-      type: "file" as const,
-      title: doc.document_id,
-      expandable: false,
-      preventSelection: false,
       dustDocumentId: doc.document_id,
+      expandable: false,
+      internalId: doc.document_id,
       lastUpdatedAt: doc.timestamp,
+      parentInternalId: null,
+      preventSelection: false,
       sourceUrl: doc.source_url ?? null,
+      title: doc.document_id,
+      titleWithParentsContext: null,
+      type: "file" as const,
     }));
 
     return new Ok(documentsAsContentNodes);
@@ -178,15 +180,16 @@ export const getUnmanagedDataSourceContent = async (
     }
 
     const tablesAsContentNodes = tablesRes.value.tables.map((table) => ({
-      internalId: table.table_id,
-      parentInternalId: null,
-      type: "database" as const,
-      title: table.name,
-      expandable: false,
-      preventSelection: false,
       dustDocumentId: table.table_id,
+      expandable: false,
+      internalId: table.table_id,
       lastUpdatedAt: table.timestamp,
+      parentInternalId: null,
+      preventSelection: false,
       sourceUrl: null,
+      title: table.name,
+      titleWithParentsContext: null,
+      type: "database" as const,
     }));
 
     return new Ok(tablesAsContentNodes);
