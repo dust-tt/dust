@@ -18,7 +18,7 @@ import { useConnectorPermissions } from "@app/lib/swr";
 
 export default function DataSourceResourceSelectorTree({
   owner,
-  dataSource,
+  dataSourceOrView,
   showExpand, //if not, it's flat
   parentIsSelected,
   selectedParents = [],
@@ -28,7 +28,7 @@ export default function DataSourceResourceSelectorTree({
   viewType = "documents",
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType | DataSourceViewType;
+  dataSourceOrView: DataSourceType | DataSourceViewType;
   showExpand: boolean;
   parentIsSelected?: boolean;
   selectedParents?: string[];
@@ -45,7 +45,7 @@ export default function DataSourceResourceSelectorTree({
     <div className="overflow-x-auto">
       <DataSourceResourceSelectorChildren
         owner={owner}
-        dataSource={dataSource}
+        dataSourceOrView={dataSourceOrView}
         parentId={null}
         showExpand={showExpand}
         parents={[]}
@@ -87,7 +87,7 @@ function getIconForType(type: ContentNodeType): IconComponentType {
 
 function DataSourceResourceSelectorChildren({
   owner,
-  dataSource,
+  dataSourceOrView,
   parentId,
   parents,
   parentIsSelected,
@@ -99,7 +99,7 @@ function DataSourceResourceSelectorChildren({
   viewType = "documents",
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType | DataSourceViewType;
+  dataSourceOrView: DataSourceType | DataSourceViewType;
   parentId: string | null;
   parents: string[];
   parentIsSelected?: boolean;
@@ -117,10 +117,10 @@ function DataSourceResourceSelectorChildren({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
       owner: owner,
-      dataSourceOrView: dataSource,
+      dataSourceOrView,
       parentId,
       filterPermission,
-      disabled: dataSource.connectorId === null,
+      disabled: dataSourceOrView.connectorId === null,
       viewType,
     });
 
@@ -186,7 +186,7 @@ function DataSourceResourceSelectorChildren({
             renderTreeItems={() => (
               <DataSourceResourceSelectorChildren
                 owner={owner}
-                dataSource={dataSource}
+                dataSourceOrView={dataSourceOrView}
                 parentId={r.internalId}
                 showExpand={showExpand}
                 // In table view, only manually selected nodes are considered and hierarchy does not apply.

@@ -33,7 +33,7 @@ export const PickTablesManaged = ({
         <Page.Header title="Select a Table" icon={ServerIcon} />
         <DataSourceResourceSelectorTree
           owner={owner}
-          dataSource={dataSource}
+          dataSourceOrView={dataSource}
           showExpand={true}
           selectedResourceIds={
             selectedNodes

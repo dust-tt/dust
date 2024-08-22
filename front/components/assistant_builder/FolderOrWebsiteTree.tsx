@@ -61,7 +61,7 @@ export default function FolderOrWebsiteTree({
         <DataSourceResourceSelectorTree
           showExpand
           owner={owner}
-          dataSource={dataSource}
+          dataSourceOrView={dataSource}
           parentIsSelected={currentConfig?.isSelectAll ?? false}
           selectedParents={selectedParents}
           onSelectChange={(resource, parents, selected) => {
