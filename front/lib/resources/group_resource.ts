@@ -257,6 +257,29 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
+  static async getGroupsFromSystemKey(
+    key: KeyResource,
+    groupIds: string[]
+  ): Promise<GroupResource[]> {
+    if (!key.isSystem) {
+      throw new Error("Only system keys are supported.");
+    }
+    const groups = await this.model.findAll({
+      where: {
+        workspaceId: key.workspaceId,
+        id: {
+          [Op.in]: removeNulls(groupIds.map((id) => getResourceIdFromSId(id))),
+        },
+      },
+    });
+
+    if (groups.length === 0) {
+      throw new Error("Group for key not found.");
+    }
+
+    return groups.map((group) => new this(GroupModel, group.get()));
+  }
+
   static async internalFetchWorkspaceGlobalGroup(
     workspaceId: ModelId
   ): Promise<GroupResource> {
