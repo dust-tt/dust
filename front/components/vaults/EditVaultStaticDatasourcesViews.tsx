@@ -74,6 +74,10 @@ export function EditVaultStaticDataSourcesViews({
           setShowAddWebsiteModal(isOpen);
         }}
         owner={owner}
+        vault={vault}
+        dataSources={dataSources}
+        dataSourceOrView={null} // null for a website creation.
+        webCrawlerConfiguration={null} // null for a website creation.
       />
       <Button
         label={category === "folder" ? "Add folder" : "Add website"}
