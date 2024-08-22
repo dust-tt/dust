@@ -163,7 +163,7 @@ function VaultManagedDataSourceViewsTree({
     >
       <DataSourceResourceSelectorTree
         owner={owner}
-        dataSource={dataSourceView}
+        dataSourceOrView={dataSourceView}
         showExpand={
           CONNECTOR_CONFIGURATIONS[
             dataSourceView.connectorProvider as ConnectorProvider
