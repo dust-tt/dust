@@ -190,14 +190,12 @@ function VaultManagedDataSourceViewsTree({
           // Setting selectedResources
           setSelectedNodes((prevState: ManagedDataSourceViewsSelectedNodes) => {
             if (selected) {
-              const ds = prevState.find(
-                (ds) => ds.name === dataSourceView.name
-              );
-              if (ds) {
-                if (ds.parentsIn === null) {
-                  ds.parentsIn = [node.internalId];
+              const dsv = prevState.find((v) => v.name === dataSourceView.name);
+              if (dsv) {
+                if (dsv.parentsIn === null) {
+                  dsv.parentsIn = [node.internalId];
                 } else {
-                  ds.parentsIn.push(node.internalId);
+                  dsv.parentsIn.push(node.internalId);
                 }
               } else {
                 prevState.push({
@@ -208,9 +206,9 @@ function VaultManagedDataSourceViewsTree({
               return prevState;
             }
 
-            const ds = prevState.find((ds) => ds.name === dataSourceView.name);
-            if (ds && ds.parentsIn) {
-              ds.parentsIn = ds.parentsIn.filter(
+            const dsv = prevState.find((v) => v.name === dataSourceView.name);
+            if (dsv && dsv.parentsIn) {
+              dsv.parentsIn = dsv.parentsIn.filter(
                 (id) => id !== node.internalId
               );
             }

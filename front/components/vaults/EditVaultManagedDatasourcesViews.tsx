@@ -5,6 +5,7 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -48,8 +49,7 @@ export function EditVaultManagedDataSourcesViews({
   const updateVaultDataSourceViews = async (
     selectedNodes: ManagedDataSourceViewsSelectedNodes
   ) => {
-    let error = null;
-    await Promise.all(
+    const promisesErrors = await Promise.all(
       selectedNodes.map(async (sDs) => {
         const existingViewForDs = vaultDataSourceViews.find(
           (d) => d.name === sDs.name
@@ -100,19 +100,21 @@ export function EditVaultManagedDataSourcesViews({
 
           if (!res.ok) {
             const rawError = (await res.json()) as { error: APIError };
-            error = rawError.error.message;
+            return rawError.error.message;
           }
         } catch (e) {
-          error = "An Unknown error occurred while adding data to vault.";
+          return "An Unknown error occurred while adding data to vault.";
         }
+        return null;
       })
     );
 
-    if (error) {
+    const errors = removeNulls(promisesErrors);
+    if (errors.length) {
       sendNotification({
         title: "Error Adding Data to Vault",
         type: "error",
-        description: error,
+        description: errors[0],
       });
     } else {
       sendNotification({
