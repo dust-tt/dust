@@ -500,7 +500,7 @@ export function usePokeConnectorPermissions({
   disabled,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | DataSourceViewType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
