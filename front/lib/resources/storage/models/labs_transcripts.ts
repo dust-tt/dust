@@ -9,7 +9,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { DataSource } from "@app/lib/models/data_source";
+import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -172,4 +172,12 @@ LabsTranscriptsHistoryModel.belongsTo(LabsTranscriptsConfigurationModel, {
 LabsTranscriptsConfigurationModel.hasMany(LabsTranscriptsHistoryModel, {
   as: "configuration",
   foreignKey: { name: "configurationId", allowNull: false },
+});
+
+LabsTranscriptsConfigurationModel.belongsTo(DataSource, {
+  as: "dataSource",
+  foreignKey: {
+    name: "dataSourceId",
+    allowNull: true,
+  },
 });
