@@ -310,7 +310,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
-  static async listActiveGroupsOfUserInWorkspace({
+  static async listUserGroupsInWorkspace({
     user,
     workspace,
   }: {
