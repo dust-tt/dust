@@ -147,15 +147,15 @@ export const VaultResourcesList = ({
     });
 
   const { submit: handleCreateStaticDataSource } = useSubmitFunction(
-    async (type: "files" | "webfolder") => {
+    async (type: "folder" | "website") => {
       if (
         plan.limits.dataSources.count != -1 &&
         dataSources.length >= plan.limits.dataSources.count
       ) {
         setShowDatasourceLimitPopup(true);
-      } else if (type === "files") {
+      } else if (type === "folder") {
         setShowAddFolderModal(true);
-      } else if (type === "webfolder") {
+      } else if (type === "website") {
         setShowAddWebsiteModal(true);
       }
     }
@@ -242,20 +242,20 @@ export const VaultResourcesList = ({
             systemVault={systemVault}
           />
         )}
-        {category === "files" && (
+        {category === "folder" && (
           <Button
             label="Add folder"
             onClick={async () => {
-              await handleCreateStaticDataSource("files");
+              await handleCreateStaticDataSource("folder");
             }}
             icon={PlusIcon}
           />
         )}
-        {category === "webfolder" && (
+        {category === "website" && (
           <Button
             label="Add site"
             onClick={async () => {
-              await handleCreateStaticDataSource("webfolder");
+              await handleCreateStaticDataSource("website");
             }}
             icon={PlusIcon}
           />

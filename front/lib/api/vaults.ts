@@ -18,11 +18,11 @@ export const getDataSourceCategory = (
   dataSource: DataSourceResource
 ): DataSourceViewCategory => {
   if (dataSource.isFolder()) {
-    return "files";
+    return "folder";
   }
 
   if (dataSource.isWebcrawler()) {
-    return "webfolder";
+    return "website";
   }
 
   return "managed";
