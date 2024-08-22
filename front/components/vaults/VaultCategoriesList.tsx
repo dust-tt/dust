@@ -47,11 +47,11 @@ export const CATEGORY_DETAILS: {
     label: "Connected Data",
     icon: <CloudArrowLeftRightIcon className="text-brand" />,
   },
-  files: {
+  folder: {
     label: "Folders",
     icon: <FolderIcon className="text-brand" />,
   },
-  webfolder: {
+  website: {
     label: "Websites",
     icon: <GlobeAltIcon className="text-brand" />,
   },

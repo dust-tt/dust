@@ -57,8 +57,8 @@ export type GetDataSourceViewContentResponseBody = {
 
 export const DATA_SOURCE_VIEW_CATEGORIES = [
   "managed",
-  "files",
-  "webfolder",
+  "folder",
+  "website",
   "apps",
 ] as const;
 

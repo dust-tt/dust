@@ -290,11 +290,11 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
     label: "Connected Data",
     icon: SubItemIconItemWrapper(CloudArrowLeftRightIcon),
   },
-  files: {
+  folder: {
     label: "Files",
     icon: SubItemIconItemWrapper(FolderIcon),
   },
-  webfolder: {
+  website: {
     label: "Websites",
     icon: SubItemIconItemWrapper(GlobeAltIcon),
   },
