@@ -455,14 +455,14 @@ export function useDataSourceContentNodes({
 
 export function useConnectorPermissions({
   owner,
-  dataSource,
+  dataSourceOrView,
   parentId,
   filterPermission,
   disabled,
   viewType = "documents",
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType | DataSourceViewType;
+  dataSourceOrView: DataSourceType | DataSourceViewType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
@@ -472,7 +472,7 @@ export function useConnectorPermissions({
     fetcher;
 
   let url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-    dataSource.name
+    dataSourceOrView.name
   )}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
     url += `&parentId=${parentId}`;
@@ -495,13 +495,13 @@ export function useConnectorPermissions({
 
 export function usePokeConnectorPermissions({
   owner,
-  dataSource,
+  dataSourceOrView,
   parentId,
   filterPermission,
   disabled,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType | DataSourceViewType;
+  dataSourceOrView: DataSourceType | DataSourceViewType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
@@ -509,7 +509,7 @@ export function usePokeConnectorPermissions({
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?viewType=documents`;
+  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceOrView.name}/managed/permissions?viewType=documents`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }

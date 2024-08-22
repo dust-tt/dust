@@ -89,7 +89,7 @@ export function PermissionTreeChildren({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissionsHook({
       owner,
-      dataSource,
+      dataSourceOrView: dataSource,
       parentId,
       filterPermission: permissionFilter || null,
     });
