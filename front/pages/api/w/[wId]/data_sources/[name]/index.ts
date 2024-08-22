@@ -1,4 +1,5 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -155,10 +156,26 @@ async function handler(
 
       const dRes = await deleteDataSource(auth, dataSource.name);
       if (dRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: dRes.error,
-        });
+        switch (dRes.error.code) {
+          case "data_source_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "data_source_not_found",
+                message: "The data source was not found.",
+              },
+            });
+          case "unauthorized_deletion":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: "You are not authorized to delete this data source.",
+              },
+            });
+          default:
+            assertNever(dRes.error.code);
+        }
       }
 
       res.status(204).end();

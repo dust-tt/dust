@@ -1,4 +1,6 @@
+import type { DataSourceType } from "@dust-tt/types";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { deleteDataSource } from "@app/lib/api/data_sources";
@@ -6,9 +8,7 @@ import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
-export type DeleteDataSourceResponseBody = {
-  success: true;
-};
+export type DeleteDataSourceResponseBody = DataSourceType;
 
 async function handler(
   req: NextApiRequest,
@@ -45,11 +45,26 @@ async function handler(
       }
       const result = await deleteDataSource(auth, req.query.name as string);
       if (result.isErr()) {
-        return apiError(req, res, {
-          status_code:
-            result.error.type === "data_source_not_found" ? 404 : 500,
-          api_error: result.error,
-        });
+        switch (result.error.code) {
+          case "data_source_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "data_source_not_found",
+                message: "The data source was not found.",
+              },
+            });
+          case "unauthorized_deletion":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: "You are not authorized to delete this data source.",
+              },
+            });
+          default:
+            assertNever(result.error.code);
+        }
       }
 
       return res.status(200).json(result.value);
