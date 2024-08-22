@@ -50,11 +50,6 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                     <label>
                       Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
                     </label>
-                    {ws.upgradedAt && (
-                      <label>
-                        Upgraded: {moment(ws.upgradedAt).format("DD-MM-YYYY")}
-                      </label>
-                    )}
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
