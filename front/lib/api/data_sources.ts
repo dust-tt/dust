@@ -1,9 +1,4 @@
-import type {
-  APIError,
-  ConnectorProvider,
-  DataSourceType,
-  Result,
-} from "@dust-tt/types";
+import type { ConnectorProvider, DataSourceType, Result } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
