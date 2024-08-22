@@ -9,12 +9,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import {
-  getDataSource,
-  updateDataSourceEditedBy,
-} from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
@@ -31,7 +28,9 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isAdmin()) {
+  const owner = auth.workspace();
+  const user = auth.user();
+  if (!owner || !user || !auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -42,9 +41,11 @@ async function handler(
     });
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
-  const dataSource = await getDataSource(auth, req.query.name as string);
+  // fetchByName enforces through auth the authorization (workspace here mainly).
+  const dataSource = await DataSourceResource.fetchByName(
+    auth,
+    req.query.name as string
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -89,11 +90,14 @@ async function handler(
         connectorId: dataSource.connectorId.toString(),
         connectionId: bodyValidation.right.connectionId,
       });
-      const email = auth.user()?.email;
+      const email = user.email;
       if (email && !isDisposableEmailDomain(email)) {
         void sendUserOperationMessage({
           logger: logger,
-          message: `${email} updated the data source \`${dataSource.name}\`  for workspace \`${owner.name}\` sId: \`${owner.sId}\` connectorId: \`${dataSource.connectorId}\``,
+          message:
+            `${email} updated the data source \`${dataSource.name}\` ` +
+            `for workspace \`${owner.name}\` sId: \`${owner.sId}\` ` +
+            `connectorId: \`${dataSource.connectorId}\``,
         });
       }
 
@@ -121,10 +125,10 @@ async function handler(
         }
       }
 
-      await updateDataSourceEditedBy(auth, dataSource);
+      await dataSource.setEditedBy(auth, user);
       void ServerSideTracking.trackDataSourceUpdated({
-        dataSource,
-        user: auth.user() ?? undefined,
+        dataSource: dataSource.toJSON(),
+        user,
         workspace: owner,
       });
 

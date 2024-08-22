@@ -67,47 +67,6 @@ export async function getDataSources(
   return dataSources.map((dataSource) => dataSource.toJSON());
 }
 
-export async function updateDataSourceEditedBy(
-  auth: Authenticator,
-  dataSource: DataSourceType
-): Promise<Result<undefined, APIError>> {
-  const owner = auth.workspace();
-  const user = auth.user();
-  if (!owner || !user) {
-    return new Err({
-      type: "workspace_not_found",
-      message: "Could not find the workspace.",
-    });
-  }
-
-  if (!auth.isAdmin()) {
-    return new Err({
-      type: "workspace_auth_error",
-      message:
-        "Only users that are `admins` for the current workspace can update data sources.",
-    });
-  }
-
-  const dataSourceResource = await DataSourceResource.fetchByModelIdWithAuth(
-    auth,
-    dataSource.id
-  );
-
-  if (!dataSourceResource) {
-    return new Err({
-      type: "data_source_not_found",
-      message: "Could not find the data source.",
-    });
-  }
-
-  await dataSourceResource.update({
-    editedAt: new Date(),
-    editedByUserId: user.id,
-  });
-
-  return new Ok(undefined);
-}
-
 export async function deleteDataSource(
   auth: Authenticator,
   dataSourceName: string
