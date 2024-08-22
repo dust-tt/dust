@@ -59,6 +59,7 @@ type VaultResourcesListProps = {
   plan: PlanType;
   isAdmin: boolean;
   vault: VaultType;
+  systemVault: VaultType;
   category: DataSourceViewCategory;
   onSelect: (sId: string) => void;
 };
@@ -123,6 +124,7 @@ export const VaultResourcesList = ({
   plan,
   isAdmin,
   vault,
+  systemVault,
   category,
   onSelect,
 }: VaultResourcesListProps) => {
@@ -141,12 +143,23 @@ export const VaultResourcesList = ({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
+  // DataSources Views of the current vault.
   const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
     useVaultDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category: category,
     });
+
+  // DataSources Views of the system vault holding the managed datasources we want to select data from.
+  const {
+    vaultDataSourceViews: systemVaultDataSourceViews,
+    isVaultDataSourceViewsLoading: isSystemVaultDataSourceViewsLoading,
+  } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: systemVault.sId,
+    category: category,
+  });
 
   const { submit: handleCreateStaticDataSource } = useSubmitFunction(
     async (type: "files" | "webfolder") => {
@@ -179,7 +192,11 @@ export const VaultResourcesList = ({
       onClick: () => onSelect(r.sId),
     })) || [];
 
-  if (isDataSourcesLoading || isVaultDataSourceViewsLoading) {
+  if (
+    isDataSourcesLoading ||
+    isVaultDataSourceViewsLoading ||
+    isSystemVaultDataSourceViewsLoading
+  ) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner size="lg" />
@@ -205,16 +222,28 @@ export const VaultResourcesList = ({
         try {
           let res;
           if (existingViewForDs) {
-            res = await fetch(
-              `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
-              {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(body),
-              }
-            );
+            if (sDs.parentsIn !== null && sDs.parentsIn.length === 0) {
+              res = await fetch(
+                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
+                {
+                  method: "DELETE",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+            } else {
+              res = await fetch(
+                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
+                {
+                  method: "PATCH",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(body),
+                }
+              );
+            }
           } else {
             res = await fetch(
               `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views`,
@@ -291,7 +320,7 @@ export const VaultResourcesList = ({
           setShowDataSourcesModal(isOpen);
         }}
         owner={owner}
-        dataSources={dataSources.filter(
+        systemVaultDataSourceViews={systemVaultDataSourceViews.filter(
           (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
         )}
         onSave={async (selectedDataSources) => {

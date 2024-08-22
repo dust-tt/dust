@@ -1,4 +1,8 @@
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  DataSourceViewType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
@@ -9,7 +13,7 @@ export function useParentResourcesById({
   internalIds,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType | null;
+  dataSource: DataSourceType | DataSourceViewType | null;
   internalIds: string[];
 }) {
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(

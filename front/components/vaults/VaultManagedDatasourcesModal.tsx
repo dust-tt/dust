@@ -1,7 +1,6 @@
 import { Modal, Tree } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceType,
   DataSourceViewType,
   VaultSelectedDataSources,
   WorkspaceType,
@@ -16,14 +15,14 @@ export default function VaultManagedDataSourcesModal({
   isOpen,
   setOpen,
   owner,
-  dataSources,
+  systemVaultDataSourceViews,
   onSave,
   initialSelectedDataSources,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
-  dataSources: DataSourceType[];
+  systemVaultDataSourceViews: DataSourceViewType[];
   onSave: (dsConfigs: VaultSelectedDataSources) => void;
   initialSelectedDataSources: DataSourceViewType[];
 }) {
@@ -53,12 +52,12 @@ export default function VaultManagedDataSourcesModal({
       <div className="w-full pt-12">
         <div className="overflow-x-auto">
           <Tree isLoading={false}>
-            {dataSources.map((dataSource) => {
+            {systemVaultDataSourceViews.map((dataSourceView) => {
               return (
                 <VaultManagedDataSourceTree
-                  key={dataSource.name}
+                  key={dataSourceView.name}
                   owner={owner}
-                  dataSource={dataSource}
+                  dataSourceView={dataSourceView}
                   selectedDataSources={selectedDataSources}
                   setSelectedDataSources={setSelectedDataSources}
                   hasChanged={hasChanged}
@@ -75,14 +74,14 @@ export default function VaultManagedDataSourcesModal({
 
 function VaultManagedDataSourceTree({
   owner,
-  dataSource,
+  dataSourceView,
   selectedDataSources,
   setSelectedDataSources,
   hasChanged,
   setHasChanged,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   selectedDataSources: VaultSelectedDataSources;
   setSelectedDataSources: (
     prevState: (prevState: VaultSelectedDataSources) => VaultSelectedDataSources
@@ -91,14 +90,16 @@ function VaultManagedDataSourceTree({
   setHasChanged: (hasChanged: boolean) => void;
 }) {
   const config =
-    CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider as ConnectorProvider];
+    CONNECTOR_CONFIGURATIONS[
+      dataSourceView.connectorProvider as ConnectorProvider
+    ];
   const LogoComponent = config?.logoComponent ?? null;
   const selectedDs = selectedDataSources.find(
-    (ds) => ds.name === dataSource.name
+    (ds) => ds.name === dataSourceView.name
   );
   const { parentsById, setParentsById } = useParentResourcesById({
     owner,
-    dataSource,
+    dataSource: dataSourceView,
     internalIds: selectedDs?.parentsIn ?? [],
   });
 
@@ -113,7 +114,7 @@ function VaultManagedDataSourceTree({
 
   return (
     <Tree.Item
-      key={dataSource.name}
+      key={dataSourceView.name}
       label={config?.name}
       visual={LogoComponent ? <LogoComponent className="s-h-5 s-w-5" /> : null}
       variant="folder"
@@ -131,30 +132,36 @@ function VaultManagedDataSourceTree({
 
           // Setting selectedResources
           setSelectedDataSources((prevState) => {
+            const existingDs = prevState.find(
+              (ds) => ds.name === dataSourceView.name
+            );
+
             if (checked) {
-              const ds = prevState.find((ds) => ds.name === dataSource.name);
-              if (ds) {
-                ds.parentsIn = null;
+              if (existingDs) {
+                existingDs.parentsIn = null; // null means select all.
               } else {
                 prevState.push({
-                  name: dataSource.name,
-                  parentsIn: null,
+                  name: dataSourceView.name,
+                  parentsIn: null, // null means select all.
                 });
               }
               return prevState;
             }
 
-            return prevState.filter((ds) => ds.name !== dataSource.name);
+            if (existingDs) {
+              existingDs.parentsIn = []; // Empty array means select none.
+            }
+            return prevState;
           });
         },
       }}
     >
       <DataSourceResourceSelectorTree
         owner={owner}
-        dataSource={dataSource}
+        dataSource={dataSourceView}
         showExpand={
           CONNECTOR_CONFIGURATIONS[
-            dataSource.connectorProvider as ConnectorProvider
+            dataSourceView.connectorProvider as ConnectorProvider
           ]?.isNested
         }
         selectedResourceIds={selectedDs?.parentsIn ?? []}
@@ -178,7 +185,9 @@ function VaultManagedDataSourceTree({
           // Setting selectedResources
           setSelectedDataSources((prevState: VaultSelectedDataSources) => {
             if (selected) {
-              const ds = prevState.find((ds) => ds.name === dataSource.name);
+              const ds = prevState.find(
+                (ds) => ds.name === dataSourceView.name
+              );
               if (ds) {
                 if (ds.parentsIn === null) {
                   ds.parentsIn = [node.internalId];
@@ -187,14 +196,14 @@ function VaultManagedDataSourceTree({
                 }
               } else {
                 prevState.push({
-                  name: dataSource.name,
+                  name: dataSourceView.name,
                   parentsIn: [node.internalId],
                 });
               }
               return prevState;
             }
 
-            const ds = prevState.find((ds) => ds.name === dataSource.name);
+            const ds = prevState.find((ds) => ds.name === dataSourceView.name);
             if (ds && ds.parentsIn) {
               ds.parentsIn = ds.parentsIn.filter(
                 (id) => id !== node.internalId

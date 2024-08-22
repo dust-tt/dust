@@ -8,6 +8,7 @@ import type {
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
+  DataSourceViewType,
   GetDataSourceViewContentResponseBody,
   LightWorkspaceType,
   RunRunType,
@@ -460,7 +461,7 @@ export function useConnectorPermissions({
   viewType = "documents",
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | DataSourceViewType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;

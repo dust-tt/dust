@@ -22,6 +22,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     category: DataSourceViewCategory;
     isAdmin: boolean;
     vault: VaultType;
+    systemVault: VaultType;
     plan: PlanType;
   }
 >(async (context, auth) => {
@@ -35,11 +36,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
+  const systemVault = await VaultResource.fetchWorkspaceSystemVault(auth);
   const vault = await VaultResource.fetchById(
     auth,
     context.query.vaultId as string
   );
-  if (!vault) {
+  if (!vault || !systemVault) {
     return {
       notFound: true,
     };
@@ -55,6 +57,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       subscription,
       vault: vault.toJSON(),
+      systemVault: systemVault.toJSON(),
     },
   };
 });
@@ -65,6 +68,7 @@ export default function Vault({
   owner,
   plan,
   vault,
+  systemVault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
@@ -92,6 +96,7 @@ export default function Vault({
         owner={owner}
         plan={plan}
         vault={vault}
+        systemVault={systemVault}
         isAdmin={isAdmin}
         category={category}
         onSelect={(sId) => {
