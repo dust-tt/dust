@@ -39,7 +39,7 @@ export type GroupErrorType =
 export class GroupError extends Error {
   constructor(
     message: string,
-    readonly type: GroupErrorType,
+    readonly code: GroupErrorType,
     readonly groupId: string,
     readonly userIds?: string[]
   ) {

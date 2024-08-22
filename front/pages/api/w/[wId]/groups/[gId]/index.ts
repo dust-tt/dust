@@ -105,7 +105,7 @@ async function handler(
         const result = await group.value.setMembers(auth, users);
 
         if (result.isErr()) {
-          if (result.error.type === "unauthorized") {
+          if (result.error.code === "unauthorized") {
             return apiError(req, res, {
               status_code: 403,
               api_error: {

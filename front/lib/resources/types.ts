@@ -6,7 +6,7 @@ export type ResourceErrorType =
 export class ResourceError extends Error {
   constructor(
     message: string,
-    readonly type: ResourceErrorType
+    readonly code: ResourceErrorType
   ) {
     super(message);
   }
