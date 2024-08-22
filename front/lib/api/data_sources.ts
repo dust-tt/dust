@@ -11,7 +11,6 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
