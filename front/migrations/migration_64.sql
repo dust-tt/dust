@@ -1,0 +1,1 @@
+ALTER TABLE "public"."labs_transcripts_configurations" ADD COLUMN "dataSourceId" VARCHAR(255);
