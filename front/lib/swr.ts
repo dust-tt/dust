@@ -8,6 +8,7 @@ import type {
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
+  DataSourceViewCategory,
   DataSourceViewType,
   GetDataSourceViewContentResponseBody,
   LightWorkspaceType,
@@ -1357,15 +1358,14 @@ export function useVaultDataSourceViews({
   vaultId,
   workspaceId,
 }: {
-  category: string;
+  category: DataSourceViewCategory;
   disabled?: boolean;
   vaultId: string;
   workspaceId: string;
 }) {
   const vaultsDataSourceViewsFetcher: Fetcher<GetVaultDataSourceViewsResponseBody> =
     fetcher;
-
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
       : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?category=${category}`,
@@ -1377,6 +1377,7 @@ export function useVaultDataSourceViews({
       () => (data ? data.dataSourceViews : []),
       [data]
     ),
+    mutateVaultDataSourceViews: mutate,
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
   };
