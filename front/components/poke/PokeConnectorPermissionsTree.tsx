@@ -35,7 +35,7 @@ export function PokePermissionTree({
       <div className="overflow-x-auto">
         <PermissionTreeChildren
           owner={owner}
-          dataSource={dataSource}
+          dataSourceOrView={dataSource}
           parentId={null}
           permissionFilter={permissionFilter}
           canUpdatePermissions={canUpdatePermissions}

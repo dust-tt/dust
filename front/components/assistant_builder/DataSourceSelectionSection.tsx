@@ -103,7 +103,7 @@ export default function DataSourceSelectionSection({
                   {dsConfig.isSelectAll && (
                     <PermissionTreeChildren
                       owner={owner}
-                      dataSource={dsConfig.dataSource}
+                      dataSourceOrView={dsConfig.dataSource}
                       parentId={null}
                       permissionFilter="read"
                       canUpdatePermissions={true}
@@ -163,7 +163,7 @@ export default function DataSourceSelectionSection({
                       >
                         <PermissionTreeChildren
                           owner={owner}
-                          dataSource={dsConfig.dataSource}
+                          dataSourceOrView={dsConfig.dataSource}
                           parentId={node.internalId}
                           permissionFilter="read"
                           canUpdatePermissions={true}
