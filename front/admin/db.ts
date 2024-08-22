@@ -67,6 +67,7 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 // Labs - Can be removed at all times if a solution is dropped
@@ -105,6 +106,7 @@ async function main() {
   await FileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
   await VaultModel.sync({ alter: true });
+  await GroupVaultModel.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
   await RunModel.sync({ alter: true });
