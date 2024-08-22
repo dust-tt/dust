@@ -273,10 +273,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    if (groups.length === 0) {
-      throw new Error("Group for key not found.");
-    }
-
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
