@@ -21,7 +21,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import {
+  Authenticator,
+  getAPIKey,
+  getGroupIdsFromHeaders,
+} from "@app/lib/auth";
 import { Provider } from "@app/lib/models/apps";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -178,7 +182,8 @@ async function handler(
 
   const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
     keyRes.value,
-    req.query.wId as string
+    req.query.wId as string,
+    getGroupIdsFromHeaders(req.headers)
   );
 
   const owner = workspaceAuth.workspace();
