@@ -3,10 +3,14 @@ export type ResourceErrorType =
   | "unauthorized"
   | "invalid_id";
 
-export type ResourceError = {
-  type: ResourceErrorType;
-  message: string;
-};
+export class ResourceError extends Error {
+  constructor(
+    message: string,
+    readonly type: ResourceErrorType
+  ) {
+    super(message);
+  }
+}
 
 import type {
   FindOptions,
