@@ -11,7 +11,6 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -70,20 +69,18 @@ export async function getDataSources(
 export async function deleteDataSource(
   auth: Authenticator,
   dataSourceName: string
-): Promise<Result<{ success: true }, APIError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return new Err({
-      type: "workspace_not_found",
-      message: "Could not find the workspace.",
-    });
-  }
+): Promise<
+  Result<
+    DataSourceType,
+    { code: "data_source_not_found" | "unauthorized_deletion"; message: string }
+  >
+> {
+  const owner = auth.getNonNullableWorkspace();
 
   if (!auth.isBuilder()) {
     return new Err({
-      type: "workspace_auth_error",
-      message:
-        "Only users that are `builders` for the current workspace can delete data sources.",
+      code: "unauthorized_deletion",
+      message: "Only builders can delete data sources.",
     });
   }
 
@@ -91,7 +88,7 @@ export async function deleteDataSource(
 
   if (!dataSource) {
     return new Err({
-      type: "data_source_not_found",
+      code: "data_source_not_found",
       message: "Could not find the data source.",
     });
   }
@@ -104,9 +101,9 @@ export async function deleteDataSource(
       !auth.isAdmin()
     ) {
       return new Err({
-        type: "workspace_auth_error",
+        code: "unauthorized_deletion",
         message:
-          "Only users that are `admins` for the current workspace can delete connected data sources.",
+          "Only users that are `admins` for the current workspace can delete connections.",
       });
     }
 
@@ -120,13 +117,12 @@ export async function deleteDataSource(
     );
     if (connDeleteRes.isErr()) {
       // If we get a not found we proceed with the deletion of the data source. This will enable
-      // us to retry deletion of the data source if it fails at the Core level.
+      // us to retry deletion of the data source if it fails at a later stage. Otherwise we throw
+      // as this is unexpected.
       if (connDeleteRes.error.type !== "connector_not_found") {
-        return new Err({
-          type: "internal_server_error",
-          message: `Error deleting connector`,
-          connectors_error: connDeleteRes.error,
-        });
+        throw new Error(
+          "Unexpected error deleting connector: " + connDeleteRes.error.message
+        );
       }
     }
   }
@@ -137,18 +133,16 @@ export async function deleteDataSource(
     dataSourceName: dataSource.name,
   });
   if (coreDeleteRes.isErr()) {
+    // Same as above we proceed with the deletion if the data source is not found in core. Otherwise
+    // we throw as this is unexpected.
     if (coreDeleteRes.error.code !== "data_source_not_found") {
-      return new Err({
-        type: "internal_server_error",
-        message: `Error deleting core data source: ${coreDeleteRes.error.message}`,
-        data_source_error: coreDeleteRes.error,
-      });
+      throw new Error(
+        "Unexpected error deleting data source: " + coreDeleteRes.error.message
+      );
     }
   }
 
-  await frontSequelize.transaction(async (t) => {
-    await dataSource.delete(auth, t);
-  });
+  await dataSource.delete(auth);
 
   await launchScrubDataSourceWorkflow({
     wId: owner.sId,
@@ -158,7 +152,7 @@ export async function deleteDataSource(
     await warnPostDeletion(auth, dataSource.connectorProvider);
   }
 
-  return new Ok({ success: true });
+  return new Ok(dataSource.toJSON());
 }
 
 async function warnPostDeletion(
