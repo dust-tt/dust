@@ -116,7 +116,7 @@ function DataSourceResourceSelectorChildren({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
       owner: owner,
-      dataSource,
+      dataSourceOrView: dataSource,
       parentId,
       filterPermission,
       disabled: dataSource.connectorId === null,
