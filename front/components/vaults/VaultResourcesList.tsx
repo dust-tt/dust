@@ -144,12 +144,15 @@ export const VaultResourcesList = ({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   // DataSources Views of the current vault.
-  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
-    useVaultDataSourceViews({
-      workspaceId: owner.sId,
-      vaultId: vault.sId,
-      category: category,
-    });
+  const {
+    vaultDataSourceViews,
+    isVaultDataSourceViewsLoading,
+    mutateVaultDataSourceViews,
+  } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vault.sId,
+    category: category,
+  });
 
   // DataSources Views of the system vault holding the managed datasources we want to select data from.
   const {
@@ -280,7 +283,7 @@ export const VaultResourcesList = ({
         description: "All data sources were successfully updated.",
       });
     }
-    // @todo mutateVaultDataSourceOrViews(); ?
+    await mutateVaultDataSourceViews();
   };
 
   return (

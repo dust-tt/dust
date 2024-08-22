@@ -1339,8 +1339,7 @@ export function useVaultDataSourceViews({
 }) {
   const vaultsDataSourceViewsFetcher: Fetcher<GetVaultDataSourceViewsResponseBody> =
     fetcher;
-
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
       : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?category=${category}`,
@@ -1352,6 +1351,7 @@ export function useVaultDataSourceViews({
       () => (data ? data.dataSourceViews : []),
       [data]
     ),
+    mutateVaultDataSourceViews: mutate,
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
   };
