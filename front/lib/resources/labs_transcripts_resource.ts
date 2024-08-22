@@ -140,7 +140,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
-  async setDataSourceId(dataSourceId: number | null) {
+  async setDataSourceId(dataSourceId: string | null) {
     if (this.dataSourceId === dataSourceId) {
       return;
     }

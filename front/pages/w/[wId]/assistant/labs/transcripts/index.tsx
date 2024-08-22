@@ -130,7 +130,7 @@ export default function LabsTranscriptsIndex({
           isActive: transcriptsConfiguration.isActive || false,
           dataSource:
             dataSources.find(
-              (ds) => ds.id === transcriptsConfiguration.dataSourceId
+              (ds) => ds.sId === transcriptsConfiguration.dataSourceId
             ) || null,
         };
       });
@@ -266,7 +266,7 @@ export default function LabsTranscriptsIndex({
     await makePatchRequest(
       transcriptConfigurationId,
       {
-        dataSourceId: dataSource ? dataSource.id : null,
+        dataSourceId: dataSource ? dataSource.name : null,
       },
       successMessage
     );

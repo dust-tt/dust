@@ -28,7 +28,7 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
-  declare dataSourceId: ForeignKey<DataSource["id"]> | null;
+  declare dataSourceId: ForeignKey<DataSource["name"]> | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -72,7 +72,7 @@ LabsTranscriptsConfigurationModel.init(
       defaultValue: false,
     },
     dataSourceId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

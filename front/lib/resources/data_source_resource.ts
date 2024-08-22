@@ -91,6 +91,17 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return result;
   }
 
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    // Preparing the introduction of datasource sIds - fetchById for now points to fetchByName
+    const dataSource = await this.fetchByName(auth, id, options);
+
+    return dataSource ?? null;
+  }
+
   static async fetchByName(
     auth: Authenticator,
     name: string,
