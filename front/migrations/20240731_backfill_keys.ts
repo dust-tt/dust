@@ -16,9 +16,9 @@ async function backfillApiKeys(
 
   if (execute) {
     const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
-    if (globalGroup) {
+    if (globalGroup.isOk()) {
       await KeyResource.model.update(
-        { groupId: globalGroup.id },
+        { groupId: globalGroup.value.id },
         {
           where: {
             workspaceId: workspace.id,
@@ -29,9 +29,9 @@ async function backfillApiKeys(
     }
 
     const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
-    if (systemGroup) {
+    if (systemGroup.isOk()) {
       await KeyResource.model.update(
-        { groupId: systemGroup.id },
+        { groupId: systemGroup.value.id },
         {
           where: {
             workspaceId: workspace.id,

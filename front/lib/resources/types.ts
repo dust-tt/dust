@@ -1,3 +1,13 @@
+export type ResourceErrorType =
+  | "resource_not_found"
+  | "unauthorized"
+  | "invalid_id";
+
+export type ResourceError = {
+  type: ResourceErrorType;
+  message: string;
+};
+
 import type {
   FindOptions,
   Model,

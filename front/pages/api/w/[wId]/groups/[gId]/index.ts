@@ -8,6 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetGroupResponseBody = {
@@ -52,7 +53,7 @@ async function handler(
 
   const group = await GroupResource.fetchById(auth, gId);
   // Check if the user has access to the group to get members list
-  if (!group) {
+  if (group.isErr()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -64,22 +65,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const members = await group.getActiveMembers(auth);
-      if (
-        !auth.isAdmin() &&
-        !members.find((m) => m.id === auth.getNonNullableUser().id)
-      ) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Only `admins` or members can get group info.",
-          },
-        });
-      }
+      const members = await group.value.getActiveMembers(auth);
       return res.status(200).json({
         group: {
-          ...group.toJSON(),
+          ...group.value.toJSON(),
           members: members.map((member) => member.toJSON()),
         },
       });
@@ -114,10 +103,31 @@ async function handler(
         const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
           user.toJSON()
         );
-        await group.setMembers(auth, users);
+        const result = await group.value.setMembers(auth, users);
+
+        if (result.isErr()) {
+          if (result.error.type === "unauthorized") {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Only users that are `admins` can administrate groups.",
+              },
+            });
+          } else {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: result.error.message,
+              },
+            });
+          }
+        }
       }
 
-      return res.status(200).json({ group: group.toJSON() });
+      return res.status(200).json({ group: group.value.toJSON() });
     default:
       return apiError(req, res, {
         status_code: 405,

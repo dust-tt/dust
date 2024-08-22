@@ -136,7 +136,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
-        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+        GroupResource.listActiveGroupsOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
@@ -255,7 +255,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
-        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+        GroupResource.listActiveGroupsOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
@@ -513,7 +513,7 @@ export class Authenticator {
       return null;
     }
 
-    const groups = await GroupResource.fetchActiveGroupsOfUserInWorkspace({
+    const groups = await GroupResource.listActiveGroupsOfUserInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
     });

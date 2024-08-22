@@ -5,14 +5,12 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  NonAttribute,
   Transaction,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
 export class GroupModel extends Model<
   InferAttributes<GroupModel>,
@@ -26,7 +24,6 @@ export class GroupModel extends Model<
   declare kind: GroupKind;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare vaults: NonAttribute<VaultModel[]>;
 }
 
 GroupModel.init(
