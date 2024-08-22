@@ -1,4 +1,4 @@
-import { LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   PlanType,
@@ -8,8 +8,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { BreadCrumb } from "@app/components/vaults/Breadcrumb";
-import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import { VaultResourcesList } from "@app/components/vaults/VaultResourcesList";
@@ -73,25 +71,6 @@ export default function Vault({
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <BreadCrumb
-        items={[
-          {
-            icon:
-              vault.kind === "global" ? (
-                <PlanetIcon className="text-brand" />
-              ) : (
-                <LockIcon className="text-brand" />
-              ),
-            label: vault.name,
-            href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
-          },
-          {
-            icon: CATEGORY_DETAILS[category].icon,
-            label: CATEGORY_DETAILS[category].label,
-          },
-        ]}
-      />
-
       <VaultResourcesList
         owner={owner}
         plan={plan}

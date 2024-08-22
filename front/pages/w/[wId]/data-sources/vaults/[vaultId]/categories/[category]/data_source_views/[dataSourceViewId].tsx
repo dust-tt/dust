@@ -1,4 +1,4 @@
-import { FolderIcon, LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
   DataSourceViewCategory,
@@ -10,13 +10,10 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
-import { BreadCrumb } from "@app/components/vaults/Breadcrumb";
-import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultDataSourceViewContentList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import config from "@app/lib/api/config";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -86,7 +83,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function Vault({
   category,
-  dataSource,
   dataSourceView,
   isAdmin,
   owner,
@@ -96,43 +92,6 @@ export default function Vault({
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <BreadCrumb
-        items={[
-          {
-            icon:
-              vault.kind === "global" ? (
-                <PlanetIcon className="text-brand" />
-              ) : (
-                <LockIcon className="text-brand" />
-              ),
-            label: vault.name,
-            href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
-          },
-          {
-            icon: CATEGORY_DETAILS[category].icon,
-            label: CATEGORY_DETAILS.managed.label,
-            href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`,
-          },
-          {
-            icon: dataSource.connectorProvider ? (
-              React.createElement(
-                CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
-                  .logoComponent
-              )
-            ) : (
-              <FolderIcon className="text-brand" />
-            ),
-            label: dataSource.connectorProvider
-              ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].name
-              : dataSource.name,
-            href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
-          },
-          {
-            label: "...",
-          },
-        ]}
-      />
-
       <VaultDataSourceViewContentList
         owner={owner}
         vault={vault}
