@@ -16,6 +16,7 @@ import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -194,7 +195,16 @@ async function processSheet(
         { ...loggerArgs, error: err },
         "[Spreadsheet] Failed to upsert table."
       );
-      throw err;
+      if (err instanceof Error) {
+        throw new ProviderWorkflowError(
+          "microsoft",
+          `Spreadsheet failed to upsert (possibly transient): ${err.message}`,
+          "transient_upstream_activity_error",
+          err
+        );
+      } else {
+        throw err;
+      }
     }
 
     await upsertWorksheetInDb(connector, internalId, worksheet, spreadsheetId);
