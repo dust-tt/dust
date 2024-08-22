@@ -2,7 +2,6 @@ import {
   Button,
   Chip,
   DataTable,
-  DropdownMenu,
   PlusIcon,
   Popup,
   Searchbar,
@@ -25,6 +24,7 @@ import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import VaultCreateFolderModal from "@app/components/vaults/VaultCreateFolderModal";
 import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -56,6 +56,7 @@ type VaultResourcesListProps = {
   plan: PlanType;
   isAdmin: boolean;
   vault: VaultType;
+  systemVault: VaultType;
   category: DataSourceViewCategory;
   onSelect: (sId: string) => void;
 };
@@ -120,10 +121,12 @@ export const VaultResourcesList = ({
   plan,
   isAdmin,
   vault,
+  systemVault,
   category,
   onSelect,
 }: VaultResourcesListProps) => {
   const router = useRouter();
+
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
@@ -133,11 +136,9 @@ export const VaultResourcesList = ({
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
 
-  const managedDataSources = dataSources.filter(
-    (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
-  );
   const searchBarRef = useRef<HTMLInputElement>(null);
 
+  // DataSources Views of the current vault.
   const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
     useVaultDataSourceViews({
       workspaceId: owner.sId,
@@ -183,11 +184,6 @@ export const VaultResourcesList = ({
       </div>
     );
   }
-
-  const setUpDataSources = vaultDataSourceViews.map((dsv) => dsv.connectorId);
-  const unusedDataSources = managedDataSources.filter(
-    (ds) => !setUpDataSources.includes(ds.connectorId)
-  );
 
   return (
     <>
@@ -239,33 +235,12 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {category === "managed" && unusedDataSources.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenu.Button>
-              <Button
-                label="Add data from connections"
-                variant="primary"
-                icon={PlusIcon}
-                size="sm"
-              />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items width={180}>
-              {unusedDataSources.map((ds) => (
-                <DropdownMenu.Item
-                  key={ds.name}
-                  label={ds.name}
-                  icon={
-                    ds.connectorProvider
-                      ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                          .logoComponent
-                      : FolderIcon
-                  }
-                  // TODO: add select data sources screen
-                  onClick={() => {}}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+        {category === "managed" && (
+          <EditVaultManagedDataSourcesViews
+            owner={owner}
+            vault={vault}
+            systemVault={systemVault}
+          />
         )}
         {category === "files" && (
           <Button

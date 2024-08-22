@@ -1,5 +1,4 @@
 import {
-  Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   DataTable,
@@ -147,7 +146,6 @@ export const VaultCategoriesList = ({
             }}
           />
         )}
-        <Button label="Add Data" onClick={() => {}} />
       </div>
       {rows.length > 0 ? (
         <DataTable

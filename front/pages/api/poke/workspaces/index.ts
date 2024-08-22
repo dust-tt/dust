@@ -31,7 +31,6 @@ import { apiError } from "@app/logger/withlogging";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;
-  upgradedAt: string | null;
   subscription: SubscriptionType;
   adminEmail: string | null;
   membersCount: number;
@@ -322,7 +321,6 @@ async function handler(
             return {
               ...lightWorkspace,
               createdAt: ws.createdAt.toISOString(),
-              upgradedAt: ws.upgradedAt?.toISOString() ?? null,
               subscription,
               adminEmail: firstAdmin?.email ?? null,
               membersCount,
