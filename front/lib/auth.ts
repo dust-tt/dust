@@ -288,7 +288,8 @@ export class Authenticator {
    */
   static async fromKey(
     key: KeyResource,
-    wId: string
+    wId: string,
+    requestedGroupIds?: string[]
   ): Promise<{
     workspaceAuth: Authenticator;
     keyAuth: Authenticator;
@@ -330,6 +331,7 @@ export class Authenticator {
       );
 
     let keyGroups: GroupResource[] = [];
+    let requestedGroups: GroupResource[] = [];
     let keyFlags: WhitelistableFeature[] = [];
     let workspaceFlags: WhitelistableFeature[] = [];
 
@@ -339,6 +341,7 @@ export class Authenticator {
     if (workspace) {
       [
         keyGroups,
+        requestedGroups,
         keySubscription,
         keyFlags,
         workspaceSubscription,
@@ -346,6 +349,9 @@ export class Authenticator {
       ] = await Promise.all([
         // Key related attributes.
         GroupResource.listWorkspaceGroupsFromKey(key),
+        requestedGroupIds
+          ? GroupResource.getGroupsWithSystemKey(key, requestedGroupIds)
+          : [],
         getSubscriptionForWorkspace(keyWorkspace),
         getFeatureFlags(keyWorkspace),
         // Workspace related attributes.
@@ -353,6 +359,16 @@ export class Authenticator {
         getFeatureFlags(workspace),
       ]);
     }
+
+    const allGroups = Object.entries(
+      keyGroups.concat(requestedGroups).reduce(
+        (acc, group) => {
+          acc[group.id] = group;
+          return acc;
+        },
+        {} as Record<string, GroupResource>
+      )
+    ).map(([, group]) => group);
 
     return {
       workspaceAuth: new Authenticator({
@@ -365,7 +381,7 @@ export class Authenticator {
       }),
       keyAuth: new Authenticator({
         flags: keyFlags,
-        groups: keyGroups,
+        groups: allGroups,
         key: key.toAuthJSON(),
         role: "builder",
         subscription: keySubscription,
