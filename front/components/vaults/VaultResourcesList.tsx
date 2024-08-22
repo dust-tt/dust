@@ -219,6 +219,9 @@ export const VaultResourcesList = ({
           setShowAddWebsiteModal(isOpen);
         }}
         owner={owner}
+        dataSources={dataSources}
+        dataSource={null}
+        webCrawlerConfiguration={null}
       />
       <div
         className={classNames(
