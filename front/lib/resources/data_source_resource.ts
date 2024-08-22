@@ -227,12 +227,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return [affectedCount];
   }
 
-  async setEditedBy(auth: Authenticator, user: UserType) {
-    if (!auth.isAdmin()) {
-      throw new Error(
-        "Unexpected call to DataSourceResource.setEditedBy by non admin"
-      );
-    }
+  async setEditedBy(user: UserType) {
     await this.update({
       editedByUserId: user.id,
       editedAt: new Date(),
