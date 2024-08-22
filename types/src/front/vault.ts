@@ -6,3 +6,10 @@ export type VaultType = {
   sId: string;
   kind: VaultKind;
 };
+
+type ManagedDataSourceViewSelectedNodes = {
+  name: string;
+  parentsIn: string[] | null;
+};
+export type ManagedDataSourceViewsSelectedNodes =
+  ManagedDataSourceViewSelectedNodes[];

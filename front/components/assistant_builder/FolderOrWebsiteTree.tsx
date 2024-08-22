@@ -31,7 +31,7 @@ export default function FolderOrWebsiteTree({
   const { parentsById, setParentsById } = useParentResourcesById({
     owner,
     dataSource,
-    selectedResources,
+    internalIds: selectedResources.map((r) => r.internalId),
   });
 
   const selectedParents = [
