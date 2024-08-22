@@ -59,7 +59,7 @@ async function handler(
               status_code: 403,
               api_error: {
                 type: "workspace_auth_error",
-                message: "You are not authorized to delete this data source.",
+                message: `You are not authorized to delete this data source: ${result.error.message}`,
               },
             });
           default:
