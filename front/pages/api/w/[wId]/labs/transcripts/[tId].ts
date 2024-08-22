@@ -133,7 +133,7 @@ async function handler(
       }
 
       if (dataSourceId !== undefined) {
-        await transcriptsConfiguration.setDataSourceId(dataSourceId);
+        await transcriptsConfiguration.setDataSourceId(auth, dataSourceId);
       }
 
       return res.status(200).json({ configuration: transcriptsConfiguration });

@@ -137,7 +137,7 @@ export default function LabsTranscriptsIndex({
           isActive: transcriptsConfiguration.isActive || false,
           dataSource:
             dataSourcesViews.find(
-              (ds) => ds.name === transcriptsConfiguration.dataSourceId
+              (ds) => ds.id === transcriptsConfiguration.dataSourceId
             ) || null,
         };
       });
