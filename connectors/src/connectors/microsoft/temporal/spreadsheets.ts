@@ -70,7 +70,7 @@ async function upsertTable(
   rows: string[][],
   loggerArgs: object
 ) {
-  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const tableName = slugify(
     `${spreadsheet.name?.substring(0, 16)}-${worksheet.name?.substring(0, 16)}`
@@ -119,7 +119,8 @@ async function processSheet(
 
   const loggerArgs = {
     sheet: {
-      id: worksheet.id,
+      documentId: spreadsheetId,
+      worksheetId: worksheet.id,
       name: worksheet.name,
     },
   };
@@ -178,15 +179,23 @@ async function processSheet(
       })),
     ];
 
-    await upsertTable(
-      connector,
-      internalId,
-      spreadsheet,
-      worksheet,
-      parents,
-      [headers, ...rest],
-      loggerArgs
-    );
+    try {
+      await upsertTable(
+        connector,
+        internalId,
+        spreadsheet,
+        worksheet,
+        parents,
+        [headers, ...rest],
+        loggerArgs
+      );
+    } catch (err) {
+      logger.error(
+        { ...loggerArgs, error: err },
+        "[Spreadsheet] Failed to upsert table."
+      );
+      throw err;
+    }
 
     await upsertWorksheetInDb(connector, internalId, worksheet, spreadsheetId);
 
