@@ -88,7 +88,9 @@ export type APIErrorType =
   | "run_not_found"
   // Vaults:
   | "vault_already_exists"
-  | "vault_not_found";
+  | "vault_not_found"
+  // Groups:
+  | "group_not_found";
 
 export type APIError = {
   type: APIErrorType;

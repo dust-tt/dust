@@ -1,22 +1,18 @@
-import type {
-  DataSourceOrViewInfo,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { GroupType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSourceInfo } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetDataSourceResponseBody = {
-  dataSource: DataSourceOrViewInfo;
+export type GetGroupsResponseBody = {
+  groups: GroupType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDataSourceResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetGroupsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.workspace();
@@ -30,31 +26,14 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(
-    auth,
-    req.query.dsId as string
-  );
-
-  if (
-    !dataSource ||
-    req.query.vId !== dataSource.vault.sId ||
-    (!auth.isAdmin() && !auth.hasPermission([dataSource.vault.acl()], "read"))
-  ) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
-    case "GET": {
+    case "GET":
+      const groups = await GroupResource.fetchWorkspaceGroups(auth);
+
       return res.status(200).json({
-        dataSource: await getDataSourceInfo(auth, dataSource),
+        groups: groups.map((group) => group.toJSON()),
       });
-    }
+
     default:
       return apiError(req, res, {
         status_code: 405,

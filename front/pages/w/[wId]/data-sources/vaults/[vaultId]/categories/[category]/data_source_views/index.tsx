@@ -1,9 +1,9 @@
 import type {
-  DataSourceOrViewCategory,
+  DataSourceViewCategory,
   UserType,
   VaultType,
 } from "@dust-tt/types";
-import { isDataSourceOrViewCategory } from "@dust-tt/types";
+import { isDataSourceViewCategory } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -15,7 +15,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
-    category: DataSourceOrViewCategory;
+    category: DataSourceViewCategory;
     user: UserType;
     vault: VaultType;
   }
@@ -40,10 +40,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const dataSourceOrViewCategory = context.query.category;
+  const dataSourceViewCategory = context.query.category;
   if (
-    typeof dataSourceOrViewCategory !== "string" ||
-    !isDataSourceOrViewCategory(dataSourceOrViewCategory)
+    typeof dataSourceViewCategory !== "string" ||
+    !isDataSourceViewCategory(dataSourceViewCategory)
   ) {
     return {
       notFound: true,
@@ -52,7 +52,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      category: dataSourceOrViewCategory,
+      category: dataSourceViewCategory,
       gaTrackingId: config.getGaTrackingId(),
       owner,
       subscription,

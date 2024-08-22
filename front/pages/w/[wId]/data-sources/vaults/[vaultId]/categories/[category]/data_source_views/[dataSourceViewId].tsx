@@ -1,7 +1,7 @@
 import { FolderIcon, LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
 import type {
-  DataSourceOrViewCategory,
   DataSourceType,
+  DataSourceViewCategory,
   DataSourceViewType,
   VaultType,
 } from "@dust-tt/types";
@@ -23,7 +23,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
-    category: DataSourceOrViewCategory;
+    category: DataSourceViewCategory;
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
     isAdmin: boolean;
@@ -71,7 +71,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      category: context.query.category as DataSourceOrViewCategory,
+      category: context.query.category as DataSourceViewCategory,
       dataSource: dataSourceView.dataSource.toJSON(),
       dataSourceView: dataSourceView.toJSON(),
       gaTrackingId: config.getGaTrackingId(),

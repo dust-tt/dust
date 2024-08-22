@@ -19,7 +19,6 @@ import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { getDataSourceCategory } from "@app/lib/api/vaults";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -28,6 +27,7 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

@@ -19,9 +19,9 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 export type FetchDataSourceOptions = {

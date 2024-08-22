@@ -1,2 +1,1 @@
--- Migration created on Aug 21, 2024
-ALTER TABLE "public"."labs_transcripts_configurations" ADD COLUMN "dataSourceId" VARCHAR(255);
+ALTER TABLE "vaults" DROP COLUMN "groupId";

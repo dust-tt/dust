@@ -19,6 +19,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -95,6 +96,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
+      await GroupVaultModel.destroy({
+        where: {
+          groupId: this.id,
+        },
+        transaction,
+      });
+
       await this.model.destroy({
         where: {
           id: this.id,

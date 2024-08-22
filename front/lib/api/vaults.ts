@@ -3,8 +3,7 @@ import type {
   ConnectorsAPIError,
   ContentNodesViewType,
   CoreAPIError,
-  DataSourceOrViewCategory,
-  DataSourceOrViewInfo,
+  DataSourceViewCategory,
   LightContentNode,
   Result,
 } from "@dust-tt/types";
@@ -12,36 +11,12 @@ import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-
-export const getDataSourceInfo = async (
-  auth: Authenticator,
-  dataSource: DataSourceResource
-): Promise<DataSourceOrViewInfo> => {
-  const usageRes = await dataSource.getUsagesByAgents(auth);
-  return {
-    ...dataSource.toJSON(),
-    usage: usageRes.isOk() ? usageRes.value : 0,
-    category: getDataSourceCategory(dataSource),
-  };
-};
-
-export const getDataSourceInfos = async (
-  auth: Authenticator,
-  vault: VaultResource
-): Promise<DataSourceOrViewInfo[]> => {
-  const dataSources = await DataSourceResource.listByVault(auth, vault);
-
-  return Promise.all(
-    dataSources.map((dataSource) => getDataSourceInfo(auth, dataSource))
-  );
-};
 
 export const getDataSourceCategory = (
   dataSource: DataSourceResource
-): DataSourceOrViewCategory => {
+): DataSourceViewCategory => {
   if (dataSource.isFolder()) {
     return "files";
   }

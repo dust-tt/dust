@@ -172,7 +172,34 @@ async function handler(
         });
       }
 
-      const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+      let vault = null;
+      if (typeof req.body.vaultId === "string") {
+        vault = await VaultResource.fetchById(auth, req.body.vaultId);
+        if (!vault) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "vault_not_found",
+              message: "The vault you requested was not found.",
+            },
+          });
+        }
+      } else {
+        // If no vault is provided, use the global vault.
+        vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+      }
+
+      if (!auth.hasPermission([vault.acl()], "write")) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that have `write` permission for the current vault can create a data source.",
+          },
+        });
+      }
+
       const ds = await DataSourceResource.makeNew(
         {
           name: req.body.name,
@@ -182,7 +209,7 @@ async function handler(
           assistantDefaultSelected: req.body.assistantDefaultSelected,
           editedByUserId: user.id,
         },
-        globalVault
+        vault
       );
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
