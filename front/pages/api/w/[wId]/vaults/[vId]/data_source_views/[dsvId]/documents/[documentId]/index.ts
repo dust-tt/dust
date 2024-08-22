@@ -54,8 +54,6 @@ async function handler(
     (dataSourceView &&
       auth.hasPermission([dataSourceView.vault.acl()], "read"));
 
-  console.log(">> dataSourceView:", dataSourceView);
-  console.log(">> hasAccessToDataSourceView:", hasAccessToDataSourceView);
   if (!dataSourceView || !hasAccessToDataSourceView) {
     return apiError(req, res, {
       status_code: 404,
