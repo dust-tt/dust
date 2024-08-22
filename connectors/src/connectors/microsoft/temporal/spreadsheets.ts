@@ -21,6 +21,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
@@ -194,7 +195,16 @@ async function processSheet(
         { ...loggerArgs, error: err },
         "[Spreadsheet] Failed to upsert table."
       );
-      throw err;
+      if (err instanceof Error) {
+        throw new ProviderWorkflowError(
+          "microsoft",
+          `Spreadsheet failed to upsert (possibly transient): ${err.message}`,
+          "transient_upstream_activity_error",
+          err
+        );
+      } else {
+        throw err;
+      }
     }
 
     await upsertWorksheetInDb(connector, internalId, worksheet, spreadsheetId);
