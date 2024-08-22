@@ -7,8 +7,9 @@ export type VaultType = {
   kind: VaultKind;
 };
 
-export type VaultSelectedDataSource = {
+type ManagedDataSourceViewSelectedNodes = {
   name: string;
   parentsIn: string[] | null;
 };
-export type VaultSelectedDataSources = VaultSelectedDataSource[];
+export type ManagedDataSourceViewsSelectedNodes =
+  ManagedDataSourceViewSelectedNodes[];

@@ -12,8 +12,8 @@ import type {
   ConnectorType,
   DataSourceViewCategory,
   EditedByUser,
+  ManagedDataSourceViewsSelectedNodes,
   PlanType,
-  VaultSelectedDataSources,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -29,7 +29,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultCreateFolderModal from "@app/components/vaults/VaultCreateFolderModal";
 import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
-import VaultManagedDataSourcesModal from "@app/components/vaults/VaultManagedDatasourcesModal";
+import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   CONNECTOR_CONFIGURATIONS,
@@ -207,12 +207,12 @@ export const VaultResourcesList = ({
     );
   }
 
-  const saveSelectedDatasources = async (
-    selectedDataSources: VaultSelectedDataSources
+  const updateVaultDataSourceViews = async (
+    selectedNodes: ManagedDataSourceViewsSelectedNodes
   ) => {
     let error = null;
     await Promise.all(
-      selectedDataSources.map(async (sDs) => {
+      selectedNodes.map(async (sDs) => {
         const existingViewForDs = vaultDataSourceViews.find(
           (d) => d.name === sDs.name
         );
@@ -317,7 +317,7 @@ export const VaultResourcesList = ({
         }}
         owner={owner}
       />
-      <VaultManagedDataSourcesModal
+      <VaultManagedDataSourcesViewsModal
         isOpen={showDataSourcesModal}
         setOpen={(isOpen) => {
           setShowDataSourcesModal(isOpen);
@@ -327,7 +327,7 @@ export const VaultResourcesList = ({
           (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
         )}
         onSave={async (selectedDataSources) => {
-          await saveSelectedDatasources(selectedDataSources);
+          await updateVaultDataSourceViews(selectedDataSources);
         }}
         initialSelectedDataSources={vaultDataSourceViews}
       />

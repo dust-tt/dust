@@ -2,7 +2,7 @@ import { Modal, Tree } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceViewType,
-  VaultSelectedDataSources,
+  ManagedDataSourceViewsSelectedNodes,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSe
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
-export default function VaultManagedDataSourcesModal({
+export default function VaultManagedDataSourcesViewsModal({
   isOpen,
   setOpen,
   owner,
@@ -23,11 +23,11 @@ export default function VaultManagedDataSourcesModal({
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   systemVaultDataSourceViews: DataSourceViewType[];
-  onSave: (dsConfigs: VaultSelectedDataSources) => void;
+  onSave: (dsConfigs: ManagedDataSourceViewsSelectedNodes) => void;
   initialSelectedDataSources: DataSourceViewType[];
 }) {
-  const [selectedDataSources, setSelectedDataSources] =
-    useState<VaultSelectedDataSources>(
+  const [selectedNodes, setSelectedNodes] =
+    useState<ManagedDataSourceViewsSelectedNodes>(
       initialSelectedDataSources.map((ds) => ({
         name: ds.name,
         parentsIn: ds.parentsIn ?? null,
@@ -42,7 +42,7 @@ export default function VaultManagedDataSourcesModal({
         setOpen(false);
       }}
       onSave={() => {
-        onSave(selectedDataSources);
+        onSave(selectedNodes);
         setOpen(false);
       }}
       hasChanged={hasChanged}
@@ -54,12 +54,12 @@ export default function VaultManagedDataSourcesModal({
           <Tree isLoading={false}>
             {systemVaultDataSourceViews.map((dataSourceView) => {
               return (
-                <VaultManagedDataSourceTree
+                <VaultManagedDataSourceViewsTree
                   key={dataSourceView.name}
                   owner={owner}
                   dataSourceView={dataSourceView}
-                  selectedDataSources={selectedDataSources}
-                  setSelectedDataSources={setSelectedDataSources}
+                  selectedNodes={selectedNodes}
+                  setSelectedNodes={setSelectedNodes}
                   hasChanged={hasChanged}
                   setHasChanged={setHasChanged}
                 />
@@ -72,19 +72,21 @@ export default function VaultManagedDataSourcesModal({
   );
 }
 
-function VaultManagedDataSourceTree({
+function VaultManagedDataSourceViewsTree({
   owner,
   dataSourceView,
-  selectedDataSources,
-  setSelectedDataSources,
+  selectedNodes,
+  setSelectedNodes,
   hasChanged,
   setHasChanged,
 }: {
   owner: WorkspaceType;
   dataSourceView: DataSourceViewType;
-  selectedDataSources: VaultSelectedDataSources;
-  setSelectedDataSources: (
-    prevState: (prevState: VaultSelectedDataSources) => VaultSelectedDataSources
+  selectedNodes: ManagedDataSourceViewsSelectedNodes;
+  setSelectedNodes: (
+    prevState: (
+      prevState: ManagedDataSourceViewsSelectedNodes
+    ) => ManagedDataSourceViewsSelectedNodes
   ) => void;
   hasChanged: boolean;
   setHasChanged: (hasChanged: boolean) => void;
@@ -94,22 +96,23 @@ function VaultManagedDataSourceTree({
       dataSourceView.connectorProvider as ConnectorProvider
     ];
   const LogoComponent = config?.logoComponent ?? null;
-  const selectedDs = selectedDataSources.find(
+  const selectedNodesInDataSourceView = selectedNodes.find(
     (ds) => ds.name === dataSourceView.name
   );
   const { parentsById, setParentsById } = useParentResourcesById({
     owner,
     dataSource: dataSourceView,
-    internalIds: selectedDs?.parentsIn ?? [],
+    internalIds: selectedNodesInDataSourceView?.parentsIn ?? [],
   });
 
   const selectedParents = [
     ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
   ];
 
-  const isSelectAll = selectedDs?.parentsIn === null;
+  const isSelectAll = selectedNodesInDataSourceView?.parentsIn === null;
   const isPartiallyChecked = !!(
-    selectedDs?.parentsIn?.length && selectedDs?.parentsIn?.length > 0
+    selectedNodesInDataSourceView?.parentsIn?.length &&
+    selectedNodesInDataSourceView?.parentsIn?.length > 0
   );
 
   return (
@@ -131,7 +134,7 @@ function VaultManagedDataSourceTree({
           setParentsById({});
 
           // Setting selectedResources
-          setSelectedDataSources((prevState) => {
+          setSelectedNodes((prevState) => {
             const existingDs = prevState.find(
               (ds) => ds.name === dataSourceView.name
             );
@@ -164,7 +167,7 @@ function VaultManagedDataSourceTree({
             dataSourceView.connectorProvider as ConnectorProvider
           ]?.isNested
         }
-        selectedResourceIds={selectedDs?.parentsIn ?? []}
+        selectedResourceIds={selectedNodesInDataSourceView?.parentsIn ?? []}
         selectedParents={selectedParents}
         onSelectChange={(node, parents, selected) => {
           if (!hasChanged) {
@@ -183,7 +186,7 @@ function VaultManagedDataSourceTree({
           });
 
           // Setting selectedResources
-          setSelectedDataSources((prevState: VaultSelectedDataSources) => {
+          setSelectedNodes((prevState: ManagedDataSourceViewsSelectedNodes) => {
             if (selected) {
               const ds = prevState.find(
                 (ds) => ds.name === dataSourceView.name
