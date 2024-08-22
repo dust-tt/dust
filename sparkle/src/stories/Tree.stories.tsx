@@ -8,7 +8,10 @@ import {
   Chip,
   CloudArrowDownIcon,
   Cog6ToothIcon,
+  DocumentIcon,
   DriveLogo,
+  EyeIcon,
+  FolderIcon,
   IconButton,
   IntercomLogo,
   NotionLogo,
@@ -31,12 +34,12 @@ export const TreeExample = () => {
         <div className="s-flex s-flex-col s-gap-3">
           <div className="s-text-xl">Tree</div>
           <div>
-            <Tree isBoxed>
-              <Tree.Item label="item 1 (no children)" variant="folder" isSelected={true}/>
-              <Tree.Item label="item 2 (loading)" variant="folder">
+            <Tree>
+              <Tree.Item label="item 1 (no children)" visual={FolderIcon} />
+              <Tree.Item label="item 2 (loading)" visual={FolderIcon}>
                 <Tree isLoading />
               </Tree.Item>
-              <Tree.Item label="item 3" variant="folder">
+              <Tree.Item label="item 3" visual={FolderIcon}>
                 <Tree>
                   <Tree.Item
                     type="leaf"
@@ -75,109 +78,55 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="item 4 (forced collapsed)"
-                variant="folder"
+                visual={FolderIcon}
                 collapsed={true}
               >
                 <Tree>
-                  <Tree.Item label="item 1" />
+                  <Tree.Item label="item 1" visual={DocumentIcon} />
                 </Tree>
               </Tree.Item>
               <Tree.Item
                 label="item 5 (forced expanded)"
-                variant="folder"
+                visual={FolderIcon}
                 collapsed={false}
-              >
-                <Tree>
-                  <Tree.Item label="item 1" />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="item 6 (default collapsed)"
-                variant="folder"
-                defaultCollapsed={true}
               >
                 <Tree>
                   <Tree.Item
                     label="item 1"
-                    checkbox={{
-                      variant: "checkable",
-                      checked: true,
-                      partialChecked: true,
-                      onChange: () => {
-                        return;
-                      },
-                    }}
+                    visual={DocumentIcon}
+                    actions={
+                      <>
+                        <div className="s-text-sm s-text-element-700">
+                          hello
+                        </div>
+                        <IconButton
+                          size="xs"
+                          icon={EyeIcon}
+                          variant="tertiary"
+                        />
+                      </>
+                    }
                   />
-                  <Tree.Item
-                    label="item 2"
-                    checkbox={{
-                      variant: "checkable",
-                      checked: true,
-                      onChange: () => {
-                        return;
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="item 3"
-                    checkbox={{
-                      variant: "checkable",
-                      checked: false,
-                      onChange: () => {
-                        return;
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="item 4"
-                    checkbox={{
-                      variant: "checkable",
-                      checked: false,
-                      onChange: () => {
-                        return;
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="item 5"
-                    checkbox={{
-                      variant: "checkable",
-                      checked: false,
-                      onChange: () => {
-                        return;
-                      },
-                    }}
-                  />
+                </Tree>
+              </Tree.Item>
+              <Tree.Item
+                label="item 6 (default collapsed)"
+                visual={FolderIcon}
+                defaultCollapsed={true}
+              >
+                <Tree>
+                  <Tree.Item label="item 1" visual={DocumentIcon} />
                 </Tree>
               </Tree.Item>
 
               <Tree.Item
                 label="item 7 (default expanded)"
-                variant="folder"
+                visual={FolderIcon}
                 defaultCollapsed={false}
               >
                 <Tree>
-                  <Tree.Item
-                    label="item 1"
-                    checkbox={{
-                      variant: "checkable",
-                      checked: true,
-                      partialChecked: true,
-                      onChange: () => {
-                        return;
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="item 2"
-                    checkbox={{
-                      variant: "checkable",
-                      checked: true,
-                      onChange: () => {
-                        return;
-                      },
-                    }}
-                  />
+                  <Tree.Item label="item 1" visual={DocumentIcon} />
+                  <Tree.Item label="item 2" visual={DocumentIcon} />
                 </Tree>
               </Tree.Item>
             </Tree>
@@ -186,11 +135,11 @@ export const TreeExample = () => {
         <div className="s-flex s-flex-col s-gap-3">
           <div className="s-text-xl">Flat</div>
           <div>
-            <Tree isBoxed>
+            <Tree>
               <Tree.Item
                 label="item 1"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: true,
@@ -202,7 +151,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 2"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: true,
@@ -214,7 +163,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 3"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -226,7 +175,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 4"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -238,7 +187,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 5"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -256,8 +205,8 @@ export const TreeExample = () => {
             <Tree>
               <Tree.Item
                 label="Intercom"
+                visual={IntercomLogo}
                 type="item"
-                visual={<IntercomLogo />}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -269,7 +218,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Notion"
                 type="item"
-                visual={<NotionLogo />}
+                visual={NotionLogo}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -281,7 +230,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Slack"
                 type="item"
-                visual={<SlackLogo />}
+                visual={SlackLogo}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -293,7 +242,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={<Dust />}
+                visual={Dust}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -302,6 +251,47 @@ export const TreeExample = () => {
                   },
                 }}
               />
+            </Tree>
+          </div>
+        </div>
+        <div className="s-flex s-flex-col s-gap-3">
+          <div className="s-text-xl">Nav bar</div>
+          <div>
+            <Tree variant="navigator">
+              <Tree.Item
+                label="Intercom"
+                visual={IntercomLogo}
+                onItemClick={() => console.log("Clickable")}
+                isSelected={true}
+                size="md"
+              >
+                <Tree variant="navigator">
+                  <Tree.Item label="item 1" visual={FolderIcon}>
+                    <Tree variant="navigator">
+                      <Tree.Item label="item 1" visual={FolderIcon} />
+                      <Tree.Item label="item 2" visual={FolderIcon} />
+                      <Tree.Item label="item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="item 2" visual={FolderIcon}>
+                    <Tree variant="navigator">
+                      <Tree.Item label="item 1" visual={FolderIcon} />
+                      <Tree.Item label="item 2" visual={FolderIcon} />
+                      <Tree.Item label="item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="item 3" visual={FolderIcon}>
+                    <Tree variant="navigator">
+                      <Tree.Item label="item 1" visual={FolderIcon} />
+                      <Tree.Item label="item 2" visual={FolderIcon} />
+                      <Tree.Item label="item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                </Tree>
+              </Tree.Item>
+              <Tree.Item label="Notion" visual={NotionLogo} size="md" />
+              <Tree.Item label="Slack" visual={SlackLogo} size="md" />
+              <Tree.Item label="Dust" visual={Dust} size="md" />
             </Tree>
           </div>
         </div>
@@ -311,12 +301,12 @@ export const TreeExample = () => {
         <div className="s-flex s-flex-col s-gap-3">
           <div className="s-text-xl">Tree</div>
           <div>
-            <Tree>
-              <Tree.Item label="item 1 (no children)" variant="folder" />
-              <Tree.Item label="item 2 (loading)" variant="folder">
+            <Tree isBoxed>
+              <Tree.Item label="item 1 (no children)" visual={FolderIcon} />
+              <Tree.Item label="item 2 (loading)" visual={FolderIcon}>
                 <Tree isLoading />
               </Tree.Item>
-              <Tree.Item label="item 3" variant="folder">
+              <Tree.Item label="item 3" visual={FolderIcon}>
                 <Tree>
                   <Tree.Item
                     type="leaf"
@@ -355,7 +345,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="item 4 (forced collapsed)"
-                variant="folder"
+                visual={FolderIcon}
                 collapsed={true}
               >
                 <Tree>
@@ -364,7 +354,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="item 5 (forced expanded)"
-                variant="folder"
+                visual={FolderIcon}
                 collapsed={false}
               >
                 <Tree>
@@ -373,7 +363,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="item 6 (default collapsed)"
-                variant="folder"
+                visual={FolderIcon}
                 defaultCollapsed={true}
               >
                 <Tree>
@@ -381,8 +371,7 @@ export const TreeExample = () => {
                     label="item 1"
                     checkbox={{
                       variant: "checkable",
-                      checked: true,
-                      partialChecked: true,
+                      checked: "partial",
                       onChange: () => {
                         return;
                       },
@@ -433,7 +422,7 @@ export const TreeExample = () => {
 
               <Tree.Item
                 label="item 7 (default expanded)"
-                variant="folder"
+                visual={FolderIcon}
                 defaultCollapsed={false}
               >
                 <Tree>
@@ -441,8 +430,7 @@ export const TreeExample = () => {
                     label="item 1"
                     checkbox={{
                       variant: "checkable",
-                      checked: true,
-                      partialChecked: true,
+                      checked: "partial",
                       onChange: () => {
                         return;
                       },
@@ -466,11 +454,11 @@ export const TreeExample = () => {
         <div className="s-flex s-flex-col s-gap-3">
           <div className="s-text-xl">Flat</div>
           <div>
-            <Tree>
+            <Tree isBoxed>
               <Tree.Item
                 label="item 1"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: true,
@@ -482,7 +470,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 2"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: true,
@@ -494,7 +482,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 3"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -506,7 +494,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 4"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -518,7 +506,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="item 5"
                 type="item"
-                variant="channel"
+                visual={FolderIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -537,7 +525,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Intercom"
                 type="item"
-                visual={<IntercomLogo />}
+                visual={IntercomLogo}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -549,7 +537,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Notion"
                 type="item"
-                visual={<NotionLogo />}
+                visual={NotionLogo}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -561,7 +549,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Slack"
                 type="item"
-                visual={<SlackLogo />}
+                visual={SlackLogo}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -573,7 +561,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={<Dust />}
+                visual={Dust}
                 checkbox={{
                   variant: "checkable",
                   checked: false,
@@ -585,75 +573,50 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <DummyNavBar/>
+        <div className="s-flex s-flex-col s-gap-3">
+          <div className="s-text-xl">Nav bar</div>
+          <div>
+            <Tree isBoxed variant="navigator">
+              <Tree.Item
+                label="Intercom"
+                visual={IntercomLogo}
+                onItemClick={() => console.log("Clickable")}
+                isSelected={true}
+              >
+                <Tree>
+                  <Tree.Item label="item 1" visual={FolderIcon}>
+                    <Tree>
+                      <Tree.Item label="item 1" visual={FolderIcon} />
+                      <Tree.Item label="item 2" visual={FolderIcon} />
+                      <Tree.Item label="item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="item 2" visual={FolderIcon}>
+                    <Tree>
+                      <Tree.Item label="item 1" visual={FolderIcon} />
+                      <Tree.Item label="item 2" visual={FolderIcon} />
+                      <Tree.Item label="item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="item 3" visual={FolderIcon}>
+                    <Tree>
+                      <Tree.Item label="item 1" visual={FolderIcon} />
+                      <Tree.Item label="item 2" visual={FolderIcon} />
+                      <Tree.Item label="item 3" visual={FolderIcon} />
+                    </Tree>
+                  </Tree.Item>
+                </Tree>
+              </Tree.Item>
+              <Tree.Item label="Notion" visual={NotionLogo} />
+              <Tree.Item label="Slack" visual={SlackLogo} />
+              <Tree.Item label="Dust" visual={Dust} />
+            </Tree>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-export const DummyNavBar = () => {
-  return <div className="s-flex s-flex-col s-gap-3">
-    <div className="s-text-xl">Nav bar</div>
-    <div>
-      <Tree isBoxed>
-        <Tree.Item
-          label="Intercom"
-          visual={<IntercomLogo />}
-          onItemClick={() => console.log("Clickable")}
-          isSelected={true}
-        >
-          <Tree>
-            <Tree.Item
-              type="leaf"
-              label="item 1"
-              checkbox={{
-                variant: "checkable",
-                checked: false,
-                onChange: () => {
-                  return;
-                },
-              }}
-            />
-            <Tree.Item
-              label="item 2"
-              type="leaf"
-              checkbox={{
-                variant: "checkable",
-                checked: false,
-                onChange: () => {
-                  return;
-                },
-              }}
-            />
-            <Tree.Item
-              label="item 3"
-              type="leaf"
-              checkbox={{
-                variant: "checkable",
-                checked: false,
-                onChange: () => {
-                  return;
-                },
-              }}
-            />
-          </Tree>
-        </Tree.Item>
-        <Tree.Item
-          label="Notion"
-          visual={<NotionLogo />}
-        />
-        <Tree.Item
-          label="Slack"
-          visual={<SlackLogo />}
-        />
-        <Tree.Item
-          label="Dust"
-          visual={<Dust />}
-        />
-      </Tree>
-    </div>
-  </div>;
-}
 
 export const SelectDataSourceExample = () => {
   return (
@@ -665,7 +628,7 @@ export const SelectDataSourceExample = () => {
             <Tree>
               <Tree.Item
                 label="Intercom"
-                visual={<IntercomLogo />}
+                visual={IntercomLogo}
                 size="md"
                 areActionsFading={false}
                 actions={
@@ -687,7 +650,7 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Slack"
                 collapsed={true}
-                visual={<SlackLogo />}
+                visual={SlackLogo}
                 areActionsFading={false}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
@@ -708,7 +671,7 @@ export const SelectDataSourceExample = () => {
               />
               <Tree.Item
                 label="Notion"
-                visual={<NotionLogo />}
+                visual={NotionLogo}
                 areActionsFading={false}
                 size="md"
                 actions={
@@ -737,7 +700,7 @@ export const SelectDataSourceExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Google Drive"
-                visual={<DriveLogo />}
+                visual={DriveLogo}
                 areActionsFading={false}
                 size="md"
                 defaultCollapsed={true}
@@ -768,7 +731,7 @@ export const SelectDataSourceExample = () => {
             <Tree>
               <Tree.Item
                 label="Intercom"
-                visual={<IntercomLogo />}
+                visual={IntercomLogo}
                 size="md"
                 checkbox={{
                   variant: "checkable",
@@ -781,7 +744,7 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Slack"
                 collapsed={true}
-                visual={<SlackLogo />}
+                visual={SlackLogo}
                 size="md"
                 checkbox={{
                   variant: "checkable",
@@ -793,7 +756,7 @@ export const SelectDataSourceExample = () => {
               />
               <Tree.Item
                 label="Notion"
-                visual={<NotionLogo />}
+                visual={NotionLogo}
                 size="md"
                 checkbox={{
                   variant: "checkable",
@@ -849,7 +812,7 @@ export const SelectDataSourceExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Google Drive"
-                visual={<DriveLogo />}
+                visual={DriveLogo}
                 size="md"
                 checkbox={{
                   variant: "checkable",
@@ -879,7 +842,7 @@ const TreeItem = ({
   return (
     <Tree.Item
       label={label}
-      variant="folder"
+      visual={FolderIcon}
       actions={
         <div className="s-flex s-flex-row s-justify-center s-gap-2">
           <span className="s-text-xs s-text-element-700">
