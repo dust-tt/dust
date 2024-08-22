@@ -2,6 +2,7 @@ export const WHITELISTABLE_FEATURES = [
   "usage_data_api",
   "okta_enterprise_connection",
   "labs_transcripts",
+  "labs_transcripts_datasource",
   "document_tracker",
   "microsoft_connector",
   "dust_splitted_ds_flag",
