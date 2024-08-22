@@ -84,6 +84,11 @@ export default function VaultCreateFolderModal({
           await router.push(
             `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/files/data_sources/${name}`
           );
+          sendNotification({
+            type: "success",
+            title: "Successfully created folder",
+            description: "Folder was successfully created.",
+          });
         } else {
           const err = (await res.json()) as { error: APIError };
           sendNotification({
