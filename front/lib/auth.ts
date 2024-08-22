@@ -350,7 +350,7 @@ export class Authenticator {
         // Key related attributes.
         GroupResource.listWorkspaceGroupsFromKey(key),
         requestedGroupIds
-          ? GroupResource.getGroupsFromSystemKey(key, requestedGroupIds)
+          ? GroupResource.getGroupsWithSystemKey(key, requestedGroupIds)
           : [],
         getSubscriptionForWorkspace(keyWorkspace),
         getFeatureFlags(keyWorkspace),

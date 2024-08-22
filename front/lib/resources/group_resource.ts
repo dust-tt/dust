@@ -257,7 +257,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  static async getGroupsFromSystemKey(
+  static async getGroupsWithSystemKey(
     key: KeyResource,
     groupIds: string[]
   ): Promise<GroupResource[]> {
