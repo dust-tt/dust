@@ -28,7 +28,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const groups = await GroupResource.fetchWorkspaceGroups(auth);
+      const groups = await GroupResource.listWorkspaceGroups(auth);
 
       return res.status(200).json({
         groups: groups.map((group) => group.toJSON()),

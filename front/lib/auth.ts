@@ -136,7 +136,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
-        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+        GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
@@ -255,7 +255,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
-        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+        GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
@@ -350,7 +350,7 @@ export class Authenticator {
         // Key related attributes.
         GroupResource.listWorkspaceGroupsFromKey(key),
         requestedGroupIds
-          ? GroupResource.getGroupsWithSystemKey(key, requestedGroupIds)
+          ? GroupResource.listGroupsWithSystemKey(key, requestedGroupIds)
           : [],
         getSubscriptionForWorkspace(keyWorkspace),
         getFeatureFlags(keyWorkspace),
@@ -529,7 +529,7 @@ export class Authenticator {
       return null;
     }
 
-    const groups = await GroupResource.fetchActiveGroupsOfUserInWorkspace({
+    const groups = await GroupResource.listUserGroupsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
     });
