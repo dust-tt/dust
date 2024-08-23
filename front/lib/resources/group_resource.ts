@@ -384,11 +384,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     const userIds = users.map((u) => u.sId);
     const userResources = await UserResource.fetchByIds(userIds);
     if (userResources.length !== userIds.length) {
-      new Err({
-        type: "user_not_found",
-        groupId: this.sId,
-        message: userIds.length === 1 ? "User not found" : "Users not found",
-      });
+      new Err(
+        new DustError(
+          "user_not_found",
+          userIds.length === 1 ? "User not found" : "Some users were not found"
+        )
+      );
     }
     const workspaceMemberships = await MembershipResource.getActiveMemberships({
       users: userResources,
