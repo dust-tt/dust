@@ -140,6 +140,7 @@ export type DustAPICredentials = {
 };
 
 export const DustUserIdHeader = "x-dust-user-id";
+export const DustGroupIdsHeader = "x-dust-group-ids";
 
 type PublicPostContentFragmentRequestBody = t.TypeOf<
   typeof PublicPostContentFragmentRequestBodySchema
