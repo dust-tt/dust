@@ -41,16 +41,16 @@ export type PatchVaultRequestBodyType = t.TypeOf<
 >;
 
 export type LightContentNode = {
-  internalId: string;
-  parentInternalId: string | null;
-  type: ContentNodeType;
-  title: string;
-  expandable: boolean;
-  preventSelection?: boolean;
   dustDocumentId: string | null;
+  expandable: boolean;
+  internalId: string;
   lastUpdatedAt: number | null;
-  titleWithParentsContext?: string;
+  parentInternalId: string | null;
+  preventSelection?: boolean;
   sourceUrl: string | null;
+  title: string;
+  titleWithParentsContext?: string;
+  type: ContentNodeType;
 };
 
 export type GetDataSourceViewContentResponseBody = {
