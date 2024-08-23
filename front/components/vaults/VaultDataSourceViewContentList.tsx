@@ -135,10 +135,10 @@ export const VaultDataSourceViewContentList = ({
           onClick: () => {
             if (currentTab === "documents") {
               setDocumentId(v.internalId);
-              setShowDocumentUploadModal(true);
+              setShowDocumentUploadOrEditModal(true);
             } else {
               setTableId(v.internalId);
-              setShowTableUploadModal(true);
+              setShowTableUploadOrEditModal(true);
             }
           },
         },
