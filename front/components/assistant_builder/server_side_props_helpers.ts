@@ -129,9 +129,12 @@ export async function buildInitialActions({
         )
       );
 
-    // key: dataSourceName, value: DataSourceConfig
+    // key: dataSourceView.sId, value: DataSourceConfig
     const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
-      (acc, curr) => ({ ...acc, [curr.dataSourceView.dataSource.name]: curr }),
+      (acc, curr) => ({
+        ...acc,
+        [curr.dataSourceView.sId]: curr,
+      }),
       {} as Record<string, AssistantBuilderDataSourceConfiguration>
     );
 
