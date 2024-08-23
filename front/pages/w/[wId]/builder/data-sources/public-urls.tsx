@@ -16,7 +16,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { truncate } from "@dust-tt/types";
+import { isWebsite, truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -77,10 +77,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     providerFilter: "webcrawler",
   });
 
-  const connectorIds = allDataSources
-    .filter(
-      (ds) => ds.connectorProvider === "webcrawler" && ds.connectorId !== null
-    )
+  const websiteDataSources = allDataSources.filter(isWebsite);
+
+  const connectorIds = websiteDataSources
+    .filter((ds) => ds.connectorId !== null)
     .map((ds) => ds.connectorId) as string[];
 
   const connectorsAPI = new ConnectorsAPI(
@@ -96,29 +96,25 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     throw new Error("Failed to fetch connectors");
   }
 
-  const dataSources = allDataSources
-    .filter((ds) => ds.connectorProvider === "webcrawler")
-    .map((ds) => {
-      const connector = connectorsRes.value.find(
-        (c) => c.id === ds.connectorId
+  const dataSources = websiteDataSources.map((ds) => {
+    const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
+    if (!connector) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          connectorId: ds.connectorId,
+          dataSourceName: ds.name,
+          connectorProvider: ds.connectorProvider,
+        },
+        "Connector not found"
       );
-      if (!connector) {
-        logger.error(
-          {
-            workspaceId: owner.sId,
-            connectorId: ds.connectorId,
-            dataSourceName: ds.name,
-            connectorProvider: ds.connectorProvider,
-          },
-          "Connector not found"
-        );
-        throw new Error("Connector not found");
-      }
-      return {
-        ...ds,
-        connector,
-      };
-    });
+      throw new Error("Connector not found");
+    }
+    return {
+      ...ds,
+      connector,
+    };
+  });
 
   return {
     props: {

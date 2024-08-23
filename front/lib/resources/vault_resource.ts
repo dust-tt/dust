@@ -296,6 +296,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       sId: this.sId,
       name: this.name,
       kind: this.kind,
+      groupIds: this.groups.map((group) => group.sId),
     };
   }
 }

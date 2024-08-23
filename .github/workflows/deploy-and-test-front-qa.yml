@@ -78,19 +78,18 @@ jobs:
             echo "Error: $error"
             exit 1
           fi
-          test_run_id=$(echo "$body" | jq -r '.testRunId')
-          echo "Test Run ID: $test_run_id"
-          echo "TEST_RUN_ID=$test_run_id" >> $GITHUB_ENV
+          check_id=$(echo "$body" | jq -r '.data.checkId')
+          echo "Check ID: $check_id"
+          echo "CHECK_ID=$check_id" >> $GITHUB_ENV
 
       - name: Wait for Playwright Tests To Complete
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          checkId=${{ steps.trigger-tests.outputs.check_id }}
           end_time=$((SECONDS + 2700))  # 45 minutes = 2700 seconds
           while [ $SECONDS -lt $end_time ]; do
             response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                        "https://api.github.com/repos/${{ github.repository }}/check-runs/$checkId")
+                        "https://api.github.com/repos/${{ github.repository }}/check-runs/${CHECK_ID}")
             status=$(echo "$response" | jq -r .status)
 
             if [ "$status" = "completed" ]; then

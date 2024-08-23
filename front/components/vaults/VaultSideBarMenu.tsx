@@ -23,7 +23,7 @@ import type { ReactElement } from "react";
 import { Fragment, useEffect, useState } from "react";
 
 import {
-  CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
 import { useVaultDataSourceViews, useVaultInfo, useVaults } from "@app/lib/swr";
@@ -290,11 +290,11 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
     label: "Connected Data",
     icon: SubItemIconItemWrapper(CloudArrowLeftRightIcon),
   },
-  files: {
+  folder: {
     label: "Files",
     icon: SubItemIconItemWrapper(FolderIcon),
   },
-  webfolder: {
+  website: {
     label: "Websites",
     icon: SubItemIconItemWrapper(GlobeAltIcon),
   },
@@ -314,11 +314,11 @@ const VaultDataSourceViewItem = ({
   vault: VaultType;
 }): ReactElement => {
   const router = useRouter();
-  const configuration = item.connectorProvider
-    ? CONNECTOR_CONFIGURATIONS[item.connectorProvider]
-    : null;
 
-  const LogoComponent = configuration?.logoComponent ?? FolderIcon;
+  const LogoComponent = getConnectorProviderLogoWithFallback(
+    item.dataSource.connectorProvider,
+    FolderIcon
+  );
   const dataSourceViewPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
 
   return (

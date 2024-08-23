@@ -40,7 +40,6 @@ export function VaultLayout({
           owner={owner}
           isOpen={showVaultCreationModal}
           onClose={() => setShowVaultCreationModal(false)}
-          onSave={() => setShowVaultCreationModal(false)}
         />
       </AppLayout>
     </RootLayout>

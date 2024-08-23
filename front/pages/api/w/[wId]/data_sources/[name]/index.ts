@@ -157,7 +157,10 @@ async function handler(
       if (dRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
-          api_error: dRes.error,
+          api_error: {
+            type: "internal_server_error",
+            message: dRes.error.message,
+          },
         });
       }
 

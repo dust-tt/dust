@@ -1,17 +1,16 @@
 import { ModelId } from "../shared/model_id";
 import { DataSourceViewCategory } from "./api_handlers/public/vaults";
-import { ConnectorProvider, EditedByUser } from "./data_source";
+import { DataSourceType, EditedByUser } from "./data_source";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
-  connectorId: string | null;
-  connectorProvider: ConnectorProvider | null;
   createdAt: number;
   // TODO(GROUPS_INFRA) Add support for edited by on data source view.
   editedByUser?: EditedByUser | null;
   id: ModelId;
+  vaultId: string;
   kind: DataSourceViewKind;
-  name: string;
+  dataSource: DataSourceType;
   parentsIn: string[] | null;
   sId: string;
   updatedAt: number;

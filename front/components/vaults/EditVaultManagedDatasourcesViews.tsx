@@ -52,7 +52,7 @@ export function EditVaultManagedDataSourcesViews({
     const promisesErrors = await Promise.all(
       selectedNodes.map(async (sDs) => {
         const existingViewForDs = vaultDataSourceViews.find(
-          (d) => d.name === sDs.name
+          (d) => d.dataSource.name === sDs.name
         );
 
         const body = {
@@ -143,7 +143,9 @@ export function EditVaultManagedDataSourcesViews({
         }}
         owner={owner}
         systemVaultDataSourceViews={systemVaultDataSourceViews.filter(
-          (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
+          (dsv) =>
+            dsv.dataSource.connectorProvider &&
+            dsv.dataSource.connectorProvider !== "webcrawler"
         )}
         onSave={async (selectedDataSources) => {
           await updateVaultDataSourceViews(selectedDataSources);

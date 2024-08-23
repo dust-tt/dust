@@ -31,7 +31,7 @@ import type {
 import type { ConnectorType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, isWebsite, Ok } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -1359,7 +1359,7 @@ export default function DataSourceView({
           title={`Manage ${dataSource.connectorId ? "Connection" : "Folder"}`}
           onClose={() => {
             if (dataSource.connectorId) {
-              if (dataSource.connectorProvider === "webcrawler") {
+              if (isWebsite(dataSource)) {
                 void router.push(
                   `/w/${owner.sId}/builder/data-sources/public-urls`
                 );

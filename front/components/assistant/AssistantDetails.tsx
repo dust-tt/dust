@@ -17,7 +17,6 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
-  ContentNode,
   CoreAPITable,
   DataSourceConfiguration,
   DataSourceViewType,
@@ -41,16 +40,14 @@ import type { KeyedMutator } from "swr";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
-import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
-import {
-  CONNECTOR_CONFIGURATIONS,
-  getDataSourceNameFromView,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogo } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import {
   useAgentConfiguration,
   useAgentUsage,
@@ -378,11 +375,9 @@ function DataSourceViewsSection({
           let dataSourceName = dsConfig.dataSourceId;
 
           if (dataSourceView) {
-            DsLogo = dataSourceView.connectorProvider
-              ? CONNECTOR_CONFIGURATIONS[dataSourceView.connectorProvider]
-                  .logoComponent
-              : null;
-            dataSourceName = getDataSourceNameFromView(dataSourceView);
+            const { dataSource } = dataSourceView;
+            DsLogo = getConnectorProviderLogo(dataSource.connectorProvider);
+            dataSourceName = getDisplayNameForDataSource(dataSource);
           }
 
           const isAllSelected = dsConfig.filter.parents === null;
@@ -391,7 +386,9 @@ function DataSourceViewsSection({
             <Tree.Item
               key={dsConfig.dataSourceId}
               type={
-                dataSourceView && dataSourceView.connectorId ? "node" : "leaf"
+                dataSourceView && dataSourceView.dataSource.connectorId
+                  ? "node"
+                  : "leaf"
               }
               label={dataSourceName}
               visual={DsLogo ? <DsLogo className="s-h-5 s-w-5" /> : null}
@@ -401,7 +398,7 @@ function DataSourceViewsSection({
               {dataSourceView && isAllSelected && (
                 <PermissionTreeChildren
                   owner={owner}
-                  dataSourceOrView={dataSourceView}
+                  dataSource={dataSourceView.dataSource}
                   parentId={null}
                   permissionFilter="read"
                   canUpdatePermissions={false}
@@ -443,16 +440,18 @@ function DataSourceViewSelectedNodes({
   setDataSourceViewToDisplay: (ds: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
+  const { dataSource } = dataSourceView;
+
   // TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
   const dataSourceViewSelectedNodes = useDataSourceContentNodes({
     owner,
-    dataSourceView,
+    dataSource,
     internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
   });
 
   return (
     <>
-      {dataSourceViewSelectedNodes.nodes.map((node: ContentNode) => (
+      {dataSourceViewSelectedNodes.nodes.map((node) => (
         <Tree.Item
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}
@@ -495,7 +494,7 @@ function DataSourceViewSelectedNodes({
         >
           <PermissionTreeChildren
             owner={owner}
-            dataSourceOrView={dataSourceView}
+            dataSource={dataSource}
             parentId={node.internalId}
             permissionFilter="read"
             canUpdatePermissions={true}

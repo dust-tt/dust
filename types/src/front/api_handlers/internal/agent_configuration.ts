@@ -62,7 +62,7 @@ const RetrievalActionConfigurationSchema = t.type({
   dataSources: t.array(
     t.type({
       dataSourceId: t.string,
-      dataSourceViewId: t.union([t.string, t.null]),
+      dataSourceViewId: t.string,
       workspaceId: t.string,
       filter: t.type({
         parents: t.union([
@@ -107,7 +107,7 @@ const ProcessActionConfigurationSchema = t.type({
   dataSources: t.array(
     t.type({
       dataSourceId: t.string,
-      dataSourceViewId: t.union([t.string, t.null]),
+      dataSourceViewId: t.string,
       workspaceId: t.string,
       filter: t.type({
         parents: t.union([

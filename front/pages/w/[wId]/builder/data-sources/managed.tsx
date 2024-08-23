@@ -512,23 +512,13 @@ export default function DataSourcesView({
           dataSource: DataSourceType;
           connector: ConnectorType;
         } = await res.json();
-        setDataSourceIntegrations((prev) =>
-          prev.map((ds) => {
-            return ds.connector === null && ds.connectorProvider == provider
-              ? {
-                  ...ds,
-                  connector: createdManagedDataSource.connector,
-                  setupWithSuffix: null,
-                  dataSourceName: createdManagedDataSource.dataSource.name,
-                }
-              : ds;
-          })
+        // Once the connection is enabled, redirect to the data source page.
+        void router.push(
+          `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}` +
+            (REDIRECT_TO_EDIT_PERMISSIONS.includes(provider)
+              ? `?edit_permissions=true`
+              : "")
         );
-        if (REDIRECT_TO_EDIT_PERMISSIONS.includes(provider)) {
-          void router.push(
-            `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}?edit_permissions=true`
-          );
-        }
       } else {
         const responseText = await res.text();
         sendNotification({

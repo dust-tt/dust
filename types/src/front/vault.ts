@@ -5,6 +5,7 @@ export type VaultType = {
   name: string;
   sId: string;
   kind: VaultKind;
+  groupIds: string[];
 };
 
 type ManagedDataSourceViewSelectedNodes = {

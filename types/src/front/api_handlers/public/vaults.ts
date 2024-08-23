@@ -49,6 +49,7 @@ export type LightContentNode = {
   preventSelection?: boolean;
   sourceUrl: string | null;
   title: string;
+  titleWithParentsContext?: string;
   type: ContentNodeType;
 };
 
@@ -58,8 +59,8 @@ export type GetDataSourceViewContentResponseBody = {
 
 export const DATA_SOURCE_VIEW_CATEGORIES = [
   "managed",
-  "files",
-  "webfolder",
+  "folder",
+  "website",
   "apps",
 ] as const;
 

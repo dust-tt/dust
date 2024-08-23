@@ -73,13 +73,12 @@ export const VaultDataSourceViewContentList = ({
     }
   );
 
-  const rows: RowData[] =
-    vaultContent?.map((v) => ({
-      ...v,
-      count: 0,
-      usage: 0,
-      onClick: () => onSelect(v.internalId),
-    })) || [];
+  const rows: RowData[] = vaultContent.map((v) => ({
+    ...v,
+    count: 0,
+    usage: 0,
+    onClick: () => onSelect(v.internalId),
+  }));
 
   if (isVaultContentLoading) {
     return (

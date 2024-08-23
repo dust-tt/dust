@@ -112,6 +112,14 @@ export function isFolder(ds: DataSourceType): boolean {
   return !ds.connectorProvider;
 }
 
+export function isWebsite(ds: DataSourceType): boolean {
+  return ds.connectorProvider === "webcrawler";
+}
+
+export function isManaged(ds: DataSourceType): boolean {
+  return ds.connectorProvider !== null && !isWebsite(ds);
+}
+
 export function canContainStructuredData(ds: DataSourceType): boolean {
   return Boolean(
     isFolder(ds) ||

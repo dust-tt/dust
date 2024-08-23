@@ -1,5 +1,15 @@
+import type {
+  DataSourceType,
+  LightContentNode,
+  TimeframeUnit,
+} from "@dust-tt/types";
 import type { ConnectorProvider } from "@dust-tt/types";
-import type { TimeframeUnit } from "@dust-tt/types";
+import {
+  getGoogleSheetTableIdFromContentNodeInternalId,
+  getMicrosoftSheetContentNodeInternalIdFromTableId,
+  getNotionDatabaseTableIdFromContentNodeInternalId,
+  isGoogleSheetContentNodeInternalId,
+} from "@dust-tt/types";
 
 export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
 export type FilteringMode = (typeof FILTERING_MODES)[number];
@@ -15,7 +25,7 @@ export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   year: "year(s)",
 };
 
-export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
+const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
   {
     singular: string;
@@ -31,6 +41,14 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   intercom: { singular: "element", plural: "elements" },
   webcrawler: { singular: "page", plural: "pages" },
 };
+
+export const getConnectorProviderResourceName = (
+  connectorProvider: ConnectorProvider,
+  plural: boolean
+) =>
+  CONNECTOR_PROVIDER_TO_RESOURCE_NAME[connectorProvider][
+    plural ? "plural" : "singular"
+  ];
 
 export const DROID_AVATARS_BASE_PATH = "/static/droidavatar/";
 
@@ -255,3 +273,35 @@ export const EMOJI_AVATAR_BASE_URL = buildAvatarUrl(
   EMOJI_AVATARS_BASE_PATH,
   ""
 );
+
+export function getTableIdForContentNode(
+  dataSource: DataSourceType,
+  contentNode: LightContentNode
+): string {
+  if (contentNode.type !== "database") {
+    throw new Error(`ContentNode type ${contentNode.type} is not supported`);
+  }
+  switch (dataSource.connectorProvider) {
+    case "notion":
+      return getNotionDatabaseTableIdFromContentNodeInternalId(
+        contentNode.internalId
+      );
+    case "google_drive":
+      if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
+        throw new Error(
+          `Googgle Drive ContentNode internalId ${contentNode.internalId} is not a Google Sheet internal ID`
+        );
+      }
+      return getGoogleSheetTableIdFromContentNodeInternalId(
+        contentNode.internalId
+      );
+    case "microsoft":
+      return getMicrosoftSheetContentNodeInternalIdFromTableId(
+        contentNode.internalId
+      );
+    default:
+      throw new Error(
+        `Provider ${dataSource.connectorProvider} is not supported`
+      );
+  }
+}

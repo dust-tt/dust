@@ -11,8 +11,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
-  DataSourceViewType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission } from "@dust-tt/types";
 import { useState } from "react";
@@ -52,7 +51,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
 
 export function PermissionTreeChildren({
   owner,
-  dataSourceOrView,
+  dataSource,
   parentId,
   permissionFilter,
   canUpdatePermissions,
@@ -63,8 +62,8 @@ export function PermissionTreeChildren({
   useConnectorPermissionsHook,
   isSearchEnabled,
 }: {
-  owner: WorkspaceType;
-  dataSourceOrView: DataSourceType | DataSourceViewType;
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
   parentId: string | null;
   permissionFilter?: ConnectorPermission;
   canUpdatePermissions?: boolean;
@@ -90,7 +89,7 @@ export function PermissionTreeChildren({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissionsHook({
       owner,
-      dataSourceOrView,
+      dataSource,
       parentId,
       filterPermission: permissionFilter || null,
     });
@@ -100,13 +99,12 @@ export function PermissionTreeChildren({
   >({});
 
   const selectedPermission: ConnectorPermission =
-    (dataSourceOrView.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSourceOrView.connectorProvider]
-        ?.selected) ||
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
     "none";
   const unselectedPermission: ConnectorPermission =
-    (dataSourceOrView.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSourceOrView.connectorProvider]
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
         ?.unselected) ||
     "none";
 
@@ -149,6 +147,7 @@ export function PermissionTreeChildren({
                 size="sm"
                 label={selectAllClicked ? "Unselect All" : "Select All"}
                 icon={ListCheckIcon}
+                disabled={search.trim().length === 0}
                 onClick={() => {
                   setSelectAllClicked((prev) => !prev);
                   setLocalStateByInternalId((prev) => {
@@ -258,7 +257,7 @@ export function PermissionTreeChildren({
               renderTreeItems={() => (
                 <PermissionTreeChildren
                   owner={owner}
-                  dataSourceOrView={dataSourceOrView}
+                  dataSource={dataSource}
                   parentId={r.internalId}
                   permissionFilter={permissionFilter}
                   canUpdatePermissions={canUpdatePermissions}
@@ -292,7 +291,7 @@ export function PermissionTree({
   showExpand,
   isSearchEnabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
   canUpdatePermissions?: boolean;
@@ -327,7 +326,7 @@ export function PermissionTree({
       <div className="overflow-x-auto">
         <PermissionTreeChildren
           owner={owner}
-          dataSourceOrView={dataSource}
+          dataSource={dataSource}
           parentId={null}
           permissionFilter={permissionFilter}
           canUpdatePermissions={canUpdatePermissions}

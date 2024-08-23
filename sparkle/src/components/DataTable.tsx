@@ -11,11 +11,12 @@ import {
 import React, { ReactNode, useEffect, useState } from "react";
 
 import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
-import { Avatar, DropdownMenu, MoreIcon } from "@sparkle/index";
+import { Avatar, DropdownMenu, IconButton, MoreIcon } from "@sparkle/index";
 import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
+import { breakpoints, useWindowSize } from "./WindowUtility";
 
 interface TBaseData {
   onClick?: () => void;
@@ -36,6 +37,16 @@ interface DataTableProps<TData extends TBaseData, TValue> {
   columnsBreakpoints?: ColumnBreakpoint;
 }
 
+function shouldRenderColumn(
+  windowWidth: number,
+  breakpoint?: keyof typeof breakpoints
+): boolean {
+  if (!breakpoint) {
+    return true;
+  }
+  return windowWidth >= breakpoints[breakpoint];
+}
+
 export function DataTable<TData extends TBaseData, TValue>({
   data,
   columns,
@@ -45,6 +56,7 @@ export function DataTable<TData extends TBaseData, TValue>({
   initialColumnOrder,
   columnsBreakpoints = {},
 }: DataTableProps<TData, TValue>) {
+  const windowSize = useWindowSize();
   const [sorting, setSorting] = useState<SortingState>(
     initialColumnOrder ?? []
   );
@@ -75,43 +87,49 @@ export function DataTable<TData extends TBaseData, TValue>({
       <DataTable.Header>
         {table.getHeaderGroups().map((headerGroup) => (
           <DataTable.Row key={headerGroup.id}>
-            {headerGroup.headers.map((header) => (
-              <DataTable.Head
-                key={header.id}
-                onClick={header.column.getToggleSortingHandler()}
-                className={classNames(
-                  header.column.getCanSort() ? "s-cursor-pointer" : "",
-                  columnsBreakpoints[header.id]
-                    ? `s-hidden ${columnsBreakpoints[header.id]}:s-block`
-                    : ""
-                )}
-              >
-                <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
+            {headerGroup.headers.map((header) => {
+              const breakpoint = columnsBreakpoints[header.id];
+              if (
+                !windowSize.width ||
+                !shouldRenderColumn(windowSize.width, breakpoint)
+              ) {
+                return null;
+              }
+              return (
+                <DataTable.Head
+                  key={header.id}
+                  onClick={header.column.getToggleSortingHandler()}
+                  className={classNames(
+                    header.column.getCanSort() ? "s-cursor-pointer" : ""
                   )}
-                  {header.column.getCanSort() && (
-                    <Icon
-                      visual={
-                        header.column.getIsSorted() === "asc"
-                          ? ArrowUpIcon
-                          : header.column.getIsSorted() === "desc"
-                            ? ArrowDownIcon
-                            : ArrowDownIcon
-                      }
-                      size="xs"
-                      className={classNames(
-                        "s-ml-1",
-                        header.column.getIsSorted()
-                          ? "s-opacity-100"
-                          : "s-opacity-0"
-                      )}
-                    />
-                  )}
-                </div>
-              </DataTable.Head>
-            ))}
+                >
+                  <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    {header.column.getCanSort() && (
+                      <Icon
+                        visual={
+                          header.column.getIsSorted() === "asc"
+                            ? ArrowUpIcon
+                            : header.column.getIsSorted() === "desc"
+                              ? ArrowDownIcon
+                              : ArrowDownIcon
+                        }
+                        size="xs"
+                        className={classNames(
+                          "s-ml-1",
+                          header.column.getIsSorted()
+                            ? "s-opacity-100"
+                            : "s-opacity-0"
+                        )}
+                      />
+                    )}
+                  </div>
+                </DataTable.Head>
+              );
+            })}
           </DataTable.Row>
         ))}
       </DataTable.Header>
@@ -122,18 +140,20 @@ export function DataTable<TData extends TBaseData, TValue>({
             onClick={row.original.onClick}
             moreMenuItems={row.original.moreMenuItems}
           >
-            {row.getVisibleCells().map((cell) => (
-              <DataTable.Cell
-                key={cell.id}
-                className={classNames(
-                  columnsBreakpoints[cell.column.id]
-                    ? `s-hidden ${columnsBreakpoints[cell.column.id]}:s-block`
-                    : ""
-                )}
-              >
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </DataTable.Cell>
-            ))}
+            {row.getVisibleCells().map((cell) => {
+              const breakpoint = columnsBreakpoints[cell.column.id];
+              if (
+                !windowSize.width ||
+                !shouldRenderColumn(windowSize.width, breakpoint)
+              ) {
+                return null;
+              }
+              return (
+                <DataTable.Cell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </DataTable.Cell>
+              );
+            })}
           </DataTable.Row>
         ))}
       </DataTable.Body>
@@ -225,23 +245,23 @@ DataTable.Row = function Row({
   return (
     <tr
       className={classNames(
-        "s-border-b s-border-structure-200 s-text-sm",
-        onClick ? "s-cursor-pointer hover:s-bg-gray-50" : "",
+        "s-group s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
+        onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
         className || ""
       )}
       onClick={onClick ? onClick : undefined}
       {...props}
     >
       {children}
-      {moreMenuItems && (
-        <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
-          <DropdownMenu className="s-flex">
+      <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
+        {moreMenuItems && (
+          <DropdownMenu className="s-mr-1.5 s-flex">
             <DropdownMenu.Button
               onClick={(e) => {
                 e.stopPropagation();
               }}
             >
-              <Icon visual={MoreIcon} size="sm" />
+              <IconButton icon={MoreIcon} size="sm" variant="tertiary" />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topRight" width={220}>
               {moreMenuItems?.map((item, index) => (
@@ -249,8 +269,8 @@ DataTable.Row = function Row({
               ))}
             </DropdownMenu.Items>
           </DropdownMenu>
-        </td>
-      )}
+        )}
+      </td>
     </tr>
   );
 };
@@ -263,7 +283,7 @@ DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
   return (
     <td
       className={classNames(
-        "s-whitespace-nowrap s-py-2 s-pl-0.5 s-text-element-800",
+        "s-h-12 s-whitespace-nowrap s-pl-1.5 s-text-element-800",
         className || ""
       )}
       {...props}
@@ -293,7 +313,10 @@ DataTable.CellContent = function CellContent({
   ...props
 }: CellContentProps) {
   return (
-    <div className={classNames("s-flex s-py-2", className || "")} {...props}>
+    <div
+      className={classNames("s-flex s-items-center s-py-2", className || "")}
+      {...props}
+    >
       {avatarUrl && (
         <Avatar
           visual={avatarUrl}

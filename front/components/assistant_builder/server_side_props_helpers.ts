@@ -2,6 +2,7 @@ import type {
   AgentConfigurationType,
   AppType,
   CoreAPITable,
+  DataSourceViewType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
   TemplateAgentConfigurationType,
@@ -32,17 +33,36 @@ import {
   getDefaultTablesQueryActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
+import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { tableKey } from "@app/lib/client/tables_query";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
+export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
+  const accessibleVaults = [
+    await VaultResource.fetchWorkspaceGlobalVault(auth),
+  ];
+
+  const [dsViews, allDustApps] = await Promise.all([
+    DataSourceViewResource.listByVaults(auth, accessibleVaults),
+    getApps(auth),
+  ]);
+
+  return {
+    dataSourceViews: dsViews.map((dsView) => dsView.toJSON()),
+    dustApps: allDustApps,
+  };
+};
+
 export async function buildInitialActions({
-  dataSourcesByName,
+  dataSourceViews,
   dustApps,
   configuration,
 }: {
-  dataSourcesByName: Record<string, DataSourceResource>;
+  dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
@@ -53,15 +73,13 @@ export async function buildInitialActions({
     action: RetrievalConfigurationType | ProcessConfigurationType
   ) => {
     const selectedResources: {
-      dataSourceId: string;
-      dataSourceViewId: string | null;
+      dataSourceViewId: string;
       resources: string[] | null;
       isSelectAll: boolean;
     }[] = [];
 
     for (const ds of action.dataSources) {
       selectedResources.push({
-        dataSourceId: ds.dataSourceId,
         dataSourceViewId: ds.dataSourceViewId,
         resources: ds.filter.parents?.in ?? null,
         isSelectAll: !ds.filter.parents,
@@ -72,12 +90,19 @@ export async function buildInitialActions({
       await Promise.all(
         selectedResources.map(
           async (sr): Promise<AssistantBuilderDataSourceConfiguration> => {
-            const dataSourceResource = dataSourcesByName[sr.dataSourceId];
+            const dataSourceView = dataSourceViews.find(
+              (dsv) => dsv.sId === sr.dataSourceViewId
+            );
 
-            if (!dataSourceResource.connectorId || !sr.resources) {
+            if (!dataSourceView) {
+              throw new Error(
+                `Could not find DataSourceView with id ${sr.dataSourceViewId}`
+              );
+            }
+
+            if (!dataSourceView.dataSource.connectorId || !sr.resources) {
               return {
-                dataSource: dataSourceResource.toJSON(),
-                dataSourceView: null,
+                dataSourceView,
                 selectedResources: [],
                 isSelectAll: sr.isSelectAll,
               };
@@ -87,7 +112,7 @@ export async function buildInitialActions({
               logger
             );
             const response = await connectorsAPI.getContentNodes({
-              connectorId: dataSourceResource.connectorId,
+              connectorId: dataSourceView.dataSource.connectorId,
               internalIds: sr.resources,
             });
 
@@ -96,8 +121,7 @@ export async function buildInitialActions({
             }
 
             return {
-              dataSource: dataSourceResource.toJSON(),
-              dataSourceView: null,
+              dataSourceView,
               selectedResources: response.value.nodes,
               isSelectAll: sr.isSelectAll,
             };
@@ -105,9 +129,12 @@ export async function buildInitialActions({
         )
       );
 
-    // key: dataSourceName, value: DataSourceConfig
+    // key: dataSourceView.sId, value: DataSourceConfig
     const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
-      (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
+      (acc, curr) => ({
+        ...acc,
+        [curr.dataSourceView.sId]: curr,
+      }),
       {} as Record<string, AssistantBuilderDataSourceConfiguration>
     );
 
@@ -159,10 +186,19 @@ export async function buildInitialActions({
 
       const coreAPITables: CoreAPITable[] = await Promise.all(
         action.tables.map(async (t) => {
-          const dataSource = dataSourcesByName[t.dataSourceId];
+          const dataSourceView = dataSourceViews.find(
+            (dsv) => dsv.dataSource.sId === t.dataSourceId
+          );
+
+          if (!dataSourceView) {
+            throw new Error(
+              `Could not find DataSourceView with id ${t.dataSourceId}`
+            );
+          }
+
           const coreAPITable = await coreAPI.getTable({
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceName: dataSource.name,
+            projectId: dataSourceView.dataSource.dustAPIProjectId,
+            dataSourceName: dataSourceView.dataSource.name,
             tableId: t.tableId,
           });
 

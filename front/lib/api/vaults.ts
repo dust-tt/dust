@@ -18,11 +18,11 @@ export const getDataSourceCategory = (
   dataSource: DataSourceResource
 ): DataSourceViewCategory => {
   if (dataSource.isFolder()) {
-    return "files";
+    return "folder";
   }
 
   if (dataSource.isWebcrawler()) {
-    return "webfolder";
+    return "website";
   }
 
   return "managed";
@@ -129,6 +129,7 @@ export const getManagedDataSourceContent = async (
     preventSelection: r.preventSelection,
     dustDocumentId: r.dustDocumentId,
     lastUpdatedAt: r.lastUpdatedAt,
+    titleWithParentsContext: r.titleWithParentsContext,
     sourceUrl: r.sourceUrl,
   }));
 

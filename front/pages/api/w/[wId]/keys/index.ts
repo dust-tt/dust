@@ -65,11 +65,21 @@ async function handler(
         ? await GroupResource.fetchById(auth, group_id)
         : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
+      if (group.isErr()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "group_not_found",
+            message: "Invalid group",
+          },
+        });
+      }
+
       const key = await KeyResource.makeNew({
         name: name,
         status: "active",
         userId: user?.id,
-        groupId: group?.id,
+        groupId: group.value.id,
         workspaceId: owner.id,
         isSystem: false,
       });
