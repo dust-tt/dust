@@ -239,6 +239,7 @@ export default function AssistantBuilderDataSourceModal({
         if (displayMode === "PickKind") {
           setOpen(false);
         } else {
+          setDataSourceConfigurations(initialDataSourceConfigurations);
           setDisplayMode("PickKind");
         }
       }}
