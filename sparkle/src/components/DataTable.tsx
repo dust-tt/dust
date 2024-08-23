@@ -29,7 +29,7 @@ interface ColumnBreakpoint {
 
 interface DataTableProps<TData extends TBaseData> {
   data: TData[];
-  columns: ColumnDef<TData, string & number>[];
+  columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
   filter?: string;
   filterColumn?: string;
