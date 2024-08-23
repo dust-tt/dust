@@ -14,7 +14,6 @@ import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
-  DustGroupIdsHeader,
   Err,
   groupHasPermission,
   isAdmin,
@@ -894,15 +893,4 @@ export async function prodAPICredentialsForOwner(
     apiKey: systemAPIKeyRes.value.secret,
     workspaceId: owner.sId,
   };
-}
-
-export function getGroupIdsFromHeaders(
-  headers: Record<string, string | string[] | undefined>
-): string[] | undefined {
-  const groupIds = headers[DustGroupIdsHeader];
-  if (typeof groupIds === "string") {
-    return groupIds.split(",").map((id) => id.trim());
-  } else {
-    undefined;
-  }
 }

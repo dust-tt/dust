@@ -21,11 +21,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
-import {
-  Authenticator,
-  getAPIKey,
-  getGroupIdsFromHeaders,
-} from "@app/lib/auth";
+import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import { Provider } from "@app/lib/models/apps";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";

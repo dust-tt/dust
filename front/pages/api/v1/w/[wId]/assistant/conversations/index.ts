@@ -19,11 +19,8 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import {
-  Authenticator,
-  getAPIKey,
-  getGroupIdsFromHeaders,
-} from "@app/lib/auth";
+import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostConversationsResponseBody = {
