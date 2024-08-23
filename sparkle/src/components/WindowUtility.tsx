@@ -30,12 +30,19 @@ function getActiveBreakpoint(width: number): keyof typeof breakpoints {
   return "xs";
 }
 
+
+interface WindowSizeState {
+  width: number | undefined;
+  height: number | undefined;
+  activeBreakpoint: keyof typeof breakpoints;
+}
+
 // Custom hook to get window size and active breakpoint
 export function useWindowSize() {
-  const [windowSize, setWindowSize] = useState({
-    width: undefined as number | undefined,
-    height: undefined as number | undefined,
-    activeBreakpoint: "xs" as keyof typeof breakpoints,
+  const [windowSize, setWindowSize] = useState<WindowSizeState>({
+    width: undefined,
+    height: undefined,
+    activeBreakpoint: "xs"
   });
 
   useEffect(() => {
