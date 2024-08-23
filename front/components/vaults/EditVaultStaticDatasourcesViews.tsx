@@ -6,11 +6,10 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import VaultCreateFolderModal from "@app/components/vaults/VaultCreateFolderModal";
 import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
-import { useSubmitFunction } from "@app/lib/client/utils";
 
 export function EditVaultStaticDataSourcesViews({
   owner,
@@ -32,7 +31,7 @@ export function EditVaultStaticDataSourcesViews({
     useState(false);
 
   const planDataSourcesLimit = plan.limits.dataSources.count;
-  const { submit: checkLimitsAndOpenModal } = useSubmitFunction(async () => {
+  const checkLimitsAndOpenModal = useCallback(() => {
     if (
       planDataSourcesLimit != -1 &&
       dataSources.length >= planDataSourcesLimit
@@ -43,7 +42,7 @@ export function EditVaultStaticDataSourcesViews({
     } else if (category === "website") {
       setShowAddWebsiteModal(true);
     }
-  });
+  }, [category, dataSources, planDataSourcesLimit]);
 
   return (
     <>
