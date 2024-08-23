@@ -5,21 +5,23 @@ import { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface DocumentDeleteDialogProps {
-  owner: WorkspaceType;
   dataSourceView: DataSourceViewType;
+  documentId: string | null;
+  documentName: string;
   isOpen: boolean;
   onClose: () => void;
-  documentName: string;
-  documentId: string | null;
+  onSave: () => void;
+  owner: WorkspaceType;
 }
 
 export const DocumentDeleteDialog = ({
+  dataSourceView,
+  documentId,
+  documentName,
   isOpen,
   onClose,
+  onSave,
   owner,
-  dataSourceView,
-  documentName,
-  documentId,
 }: DocumentDeleteDialogProps) => {
   const sendNotification = useContext(SendNotificationsContext);
   const [loading, setLoading] = useState(false);
@@ -47,10 +49,11 @@ export const DocumentDeleteDialog = ({
         description: `Document ${documentId} was successfully deleted`,
       });
       onClose();
+      onSave();
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Error deleting table",
+        title: "Error deleting document",
         description: "An error occurred while deleting the document.",
       });
     } finally {

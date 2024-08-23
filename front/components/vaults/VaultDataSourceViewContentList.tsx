@@ -100,7 +100,7 @@ export const VaultDataSourceViewContentList = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const router = useRouter();
-  const total = 0;
+  const total = 0; // TODO get total number of files
 
   const visualTable = {
     file: DocumentTextIcon,
@@ -109,17 +109,19 @@ export const VaultDataSourceViewContentList = ({
     channel: ChatBubbleBottomCenterTextIcon,
   };
 
-  const { vaultContent, isVaultContentLoading } = useVaultDataSourceViewContent(
-    {
-      dataSourceView,
-      filterPermission: "read",
-      owner,
-      parentId,
-      vaultId: vault.sId,
-      viewType: currentTab,
-    }
-  );
-  console.log(vaultContent);
+  const {
+    vaultContent,
+    isVaultContentLoading,
+    mutateVaultDataSourceViewContent,
+  } = useVaultDataSourceViewContent({
+    dataSourceView,
+    filterPermission: "read",
+    owner,
+    parentId,
+    vaultId: vault.sId,
+    viewType: currentTab,
+  });
+
   const rows: RowData[] =
     vaultContent?.map((v) => ({
       ...v,
@@ -290,17 +292,20 @@ export const VaultDataSourceViewContentList = ({
         owner={owner}
         dataSourceView={dataSourceView}
         plan={plan}
+        onSave={mutateVaultDataSourceViewContent}
         documentIdToLoad={documentId}
       />
       <MultipleDocumentsUpload
         fileInputRef={fileInputRef}
         owner={owner}
+        onSave={mutateVaultDataSourceViewContent}
         plan={plan}
         dataSourceView={dataSourceView}
       />
       <DocumentDeleteDialog
         isOpen={showDocumentDeleteDialog}
         onClose={() => setShowDocumentDeleteDialog(false)}
+        onSave={mutateVaultDataSourceViewContent}
         documentId={documentId}
         documentName={""}
         owner={owner}
@@ -309,6 +314,7 @@ export const VaultDataSourceViewContentList = ({
       <TableUploadOrEditModal
         isOpen={showTableUploadOrEditModal}
         onClose={() => setShowTableUploadOrEditModal(false)}
+        onSave={mutateVaultDataSourceViewContent}
         dataSourceView={dataSourceView}
         owner={owner}
         initialTableId={tableId}
@@ -316,6 +322,7 @@ export const VaultDataSourceViewContentList = ({
       <TableDeleteDialog
         isOpen={showTableDeleteDialog}
         onClose={() => setShowTableDeleteDialog(false)}
+        onSave={mutateVaultDataSourceViewContent}
         tableId={tableId}
         owner={owner}
         dataSourceView={dataSourceView}

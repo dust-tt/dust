@@ -22,21 +22,23 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
 
 export interface DocumentUploadOrEditModalProps {
+  dataSourceView: DataSourceViewType;
+  documentIdToLoad: string | null;
   isOpen: boolean;
   onClose: () => void;
+  onSave: () => void;
   owner: WorkspaceType;
-  dataSourceView: DataSourceViewType;
   plan: PlanType;
-  documentIdToLoad: string | null;
 }
 
 export function DocumentUploadOrEditModal({
+  dataSourceView,
+  documentIdToLoad,
   isOpen,
   onClose,
+  onSave,
   owner,
-  dataSourceView,
   plan,
-  documentIdToLoad,
 }: DocumentUploadOrEditModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,6 +127,7 @@ export function DocumentUploadOrEditModal({
         title: "Document successfully added",
         description: `Your document ${documentId} was successfully added`,
       });
+      onSave();
       onClose();
     } catch (error) {
       sendNotification({

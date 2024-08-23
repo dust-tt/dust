@@ -1405,7 +1405,7 @@ export function useVaultDataSourceViewContent({
     `?viewType=${viewType}` +
     `&filterPermission=${filterPermission}` +
     (parentId ? `&parentId=${parentId}` : "");
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
       : `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceView.sId}/content${qs}`,
@@ -1414,6 +1414,7 @@ export function useVaultDataSourceViewContent({
 
   return {
     vaultContent: useMemo(() => data?.nodes ?? [], [data]),
+    mutateVaultDataSourceViewContent: mutate,
     isVaultContentLoading: !error && !data,
     isVaultContentError: error,
   };

@@ -17,19 +17,21 @@ import { classNames } from "@app/lib/utils";
 import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
 
 interface TableUploadOrEditModalProps {
+  dataSourceView: DataSourceViewType;
+  initialTableId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  dataSourceView: DataSourceViewType;
+  onSave: () => void;
   owner: WorkspaceType;
-  initialTableId: string | null;
 }
 
 export function TableUploadOrEditModal({
-  isOpen,
   dataSourceView,
-  owner,
   initialTableId,
+  isOpen,
   onClose,
+  onSave,
+  owner,
 }: TableUploadOrEditModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -191,6 +193,7 @@ export function TableUploadOrEditModal({
         description: `Table ${tableName} was successfully added.`,
       });
       onClose();
+      onSave();
     } finally {
       setUploading(false);
     }

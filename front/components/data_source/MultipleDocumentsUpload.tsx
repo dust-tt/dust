@@ -13,70 +13,20 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 
-const handleUpsert = async (
-  owner: WorkspaceType,
-  dataSourceView: DataSourceViewType,
-  text: string,
-  documentId: string
-) => {
-  const body: PostDataSourceDocumentRequestBody = {
-    timestamp: null,
-    parents: null,
-    section: {
-      prefix: null,
-      content: text,
-      sections: [],
-    },
-    text: null,
-    source_url: undefined,
-    tags: [],
-    light_document_output: true,
-    upsert_context: null,
-    async: false,
-  };
-
-  try {
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${
-        dataSourceView.dataSource.name
-      }/documents/${encodeURIComponent(documentId)}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!res.ok) {
-      let errMsg = "";
-      try {
-        const data = await res.json();
-        errMsg = data.error.message;
-      } catch (e) {
-        errMsg = "An error occurred while uploading your document.";
-      }
-      return new Err(errMsg);
-    }
-  } catch (e) {
-    return new Err("An error occurred while uploading your document.");
-  }
-
-  return new Ok(null);
-};
-
 type MultipleDocumentsUploadProps = {
-  owner: WorkspaceType;
-  plan: PlanType;
   dataSourceView: DataSourceViewType;
   fileInputRef: RefObject<HTMLInputElement>;
+  onSave: () => void;
+  owner: WorkspaceType;
+  plan: PlanType;
 };
 
 export const MultipleDocumentsUpload = ({
-  owner,
   dataSourceView,
   fileInputRef,
+  onSave,
+  owner,
+  // plan // TODO check max files upload
 }: MultipleDocumentsUploadProps) => {
   const [bulkFilesUploading, setBulkFilesUploading] = useState<null | {
     total: number;
@@ -84,6 +34,54 @@ export const MultipleDocumentsUpload = ({
   }>(null);
 
   const sendNotification = useContext(SendNotificationsContext);
+
+  const handleUpsert = async (text: string, documentId: string) => {
+    const body: PostDataSourceDocumentRequestBody = {
+      timestamp: null,
+      parents: null,
+      section: {
+        prefix: null,
+        content: text,
+        sections: [],
+      },
+      text: null,
+      source_url: undefined,
+      tags: [],
+      light_document_output: true,
+      upsert_context: null,
+      async: false,
+    };
+
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/data_sources/${
+          dataSourceView.dataSource.name
+        }/documents/${encodeURIComponent(documentId)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!res.ok) {
+        let errMsg = "";
+        try {
+          const data = await res.json();
+          errMsg = data.error.message;
+        } catch (e) {
+          errMsg = "An error occurred while uploading your document.";
+        }
+        return new Err(errMsg);
+      }
+    } catch (e) {
+      return new Err("An error occurred while uploading your document.");
+    }
+
+    return new Ok(null);
+  };
 
   return (
     <>
@@ -136,8 +134,6 @@ export const MultipleDocumentsUpload = ({
                   });
                 } else {
                   const upsertRes = await handleUpsert(
-                    owner,
-                    dataSourceView,
                     uploadRes.value.content,
                     file.name
                   );
@@ -158,7 +154,7 @@ export const MultipleDocumentsUpload = ({
               }
             }
             setBulkFilesUploading(null);
-            // await mutateDocuments();
+            onSave();
           }
         }}
       ></input>

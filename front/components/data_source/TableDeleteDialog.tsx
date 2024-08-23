@@ -5,18 +5,20 @@ import { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface TableDeleteDialogProps {
-  owner: WorkspaceType;
   dataSourceView: DataSourceViewType;
   isOpen: boolean;
   onClose: () => void;
+  onSave: () => void;
+  owner: WorkspaceType;
   tableId: string | null;
 }
 
 export const TableDeleteDialog = ({
+  dataSourceView,
   isOpen,
   onClose,
+  onSave,
   owner,
-  dataSourceView,
   tableId,
 }: TableDeleteDialogProps) => {
   const [loading, setLoading] = useState(false);
@@ -47,6 +49,7 @@ export const TableDeleteDialog = ({
         description: `Your table was deleted`,
       });
       onClose();
+      onSave();
     } catch (error) {
       sendNotification({
         type: "error",
