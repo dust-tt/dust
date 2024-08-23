@@ -4,12 +4,15 @@ import { Err, isDevelopment, Ok } from "@dust-tt/types";
 export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
-export function isDevelopmentOrDustWorkspace(owner: LightWorkspaceType) {
+export function isADustProdWorkspace(owner: LightWorkspaceType) {
   return (
-    isDevelopment() ||
     owner.sId === PRODUCTION_DUST_WORKSPACE_ID ||
     owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID
   );
+}
+
+export function canForceUserRole(owner: LightWorkspaceType) {
+  return isDevelopment() || isADustProdWorkspace(owner);
 }
 
 export async function forceUserRole(
@@ -18,7 +21,7 @@ export async function forceUserRole(
   role: "user" | "builder" | "admin"
 ) {
   // Ideally we should check if the user is dust super user but we don't have this information in the front-end
-  if (!isDevelopmentOrDustWorkspace(owner)) {
+  if (!canForceUserRole(owner)) {
     return new Err("Not allowed");
   }
 
