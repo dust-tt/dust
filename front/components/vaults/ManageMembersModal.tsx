@@ -30,11 +30,13 @@ interface ManageMembersModalProps {
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-  }));
+  return allUsers
+    .map((user) => ({
+      icon: user.image ?? "",
+      name: user.fullName,
+      userId: user.sId,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function ManageMembersModal({

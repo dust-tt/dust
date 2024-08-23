@@ -8,6 +8,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ManageMembersModal } from "@app/components/vaults/ManageMembersModal";
 import { useVaultInfo } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 type RowData = {
   icon: string;
@@ -66,34 +67,52 @@ export const VaultMembers = ({ owner, isAdmin, vault }: VaultMembersProps) => {
 
     if (!res.ok) {
       const errorData = await res.json();
-      console.log("errorData", errorData);
+      logger.error(
+        {
+          workspaceId: owner.id,
+          error: errorData.error,
+        },
+        "Error creating vault"
+      );
+
+      sendNotification({
+        type: "error",
+        title: "Failed to update members",
+        description:
+          "An unexpected error occurred while creating the vault. " +
+          errorData.error
+            ? errorData.error.message
+            : "",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Successfully updated members",
+        description: "Members have been updated successfully updated.",
+      });
+
+      await mutateVaultInfo();
     }
-
-    sendNotification({
-      type: "success",
-      title: "Success",
-      description: "Members have been updated Successfully updated memmbers.",
-    });
-
-    await mutateVaultInfo();
   };
 
-  const rows: RowData[] = members.map((member) => ({
-    icon: member.image || "",
-    name: member.fullName,
-    userId: member.sId,
-    moreMenuItems: [
-      {
-        label: "Remove",
-        icon: MinusIcon,
-        onClick: async () => {
-          await setMemberIds(
-            members.map((m) => m.sId).filter((id) => id !== member.sId)
-          );
+  const rows: RowData[] = members
+    .map((member) => ({
+      icon: member.image || "",
+      name: member.fullName,
+      userId: member.sId,
+      moreMenuItems: [
+        {
+          label: "Remove",
+          icon: MinusIcon,
+          onClick: async () => {
+            await setMemberIds(
+              members.map((m) => m.sId).filter((id) => id !== member.sId)
+            );
+          },
         },
-      },
-    ],
-  }));
+      ],
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <>
