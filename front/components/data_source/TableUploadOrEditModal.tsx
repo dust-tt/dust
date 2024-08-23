@@ -5,7 +5,7 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, Result, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceViewType, Result, WorkspaceType } from "@dust-tt/types";
 import { parseAndStringifyCsv } from "@dust-tt/types";
 import { Err, isSlugified, Ok } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -16,23 +16,21 @@ import { useTable } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
 
-interface TableUploadModalProps {
+interface TableUploadOrEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   owner: WorkspaceType;
   initialTableId: string | null;
 }
 
-export function TableUploadModal({
+export function TableUploadOrEditModal({
   isOpen,
-  dataSource,
+  dataSourceView,
   owner,
   initialTableId,
   onClose,
-  onSave,
-}: TableUploadModalProps) {
+}: TableUploadOrEditModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,7 +44,7 @@ export function TableUploadModal({
 
   const { table } = useTable({
     workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
+    dataSourceName: dataSourceView.dataSource.name,
     tableId: initialTableId ?? null,
   });
 
@@ -168,7 +166,7 @@ export function TableUploadModal({
       }
 
       const uploadRes = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/csv`,
+        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -192,6 +190,7 @@ export function TableUploadModal({
         title: "Table successfully added",
         description: `Table ${tableName} was successfully added.`,
       });
+      onClose();
     } finally {
       setUploading(false);
     }
@@ -206,7 +205,6 @@ export function TableUploadModal({
       title={initialTableId ? "Edit table" : "Add a new table"}
       onSave={async () => {
         await handleUpload();
-        onSave();
       }}
     >
       <Page.Vertical align="stretch">

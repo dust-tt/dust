@@ -10,7 +10,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
-  DataSourceType,
+  DataSourceViewType,
   PlanType,
   PostDataSourceDocumentRequestBody,
   WorkspaceType,
@@ -21,23 +21,23 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
 
-export interface DocumentUploadModalProps {
+export interface DocumentUploadOrEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   plan: PlanType;
   documentIdToLoad: string | null;
 }
 
-export function DocumentUploadModal({
+export function DocumentUploadOrEditModal({
   isOpen,
   onClose,
   owner,
-  dataSource,
+  dataSourceView,
   plan,
   documentIdToLoad,
-}: DocumentUploadModalProps) {
+}: DocumentUploadOrEditModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [documentId, setDocumentId] = useState("");
@@ -63,7 +63,7 @@ export function DocumentUploadModal({
       setDisabled(true);
       fetch(
         `/api/w/${owner.sId}/data_sources/${
-          dataSource.name
+          dataSourceView.dataSource.name
         }/documents/${encodeURIComponent(documentIdToLoad)}`
       )
         .then(async (res) => {
@@ -82,7 +82,7 @@ export function DocumentUploadModal({
       setTags([]);
       setSourceUrl("");
     }
-  }, [dataSource.name, documentIdToLoad, owner.sId]);
+  }, [dataSourceView.dataSource.name, documentIdToLoad, owner.sId]);
 
   const handleUpsert = async () => {
     setLoading(true);
@@ -106,7 +106,7 @@ export function DocumentUploadModal({
     try {
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${
-          dataSource.name
+          dataSourceView.dataSource.name
         }/documents/${encodeURIComponent(documentId)}`,
         {
           method: "POST",

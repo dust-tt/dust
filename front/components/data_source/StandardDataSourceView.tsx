@@ -3,9 +3,6 @@ import type { DataSourceType, PlanType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
-import { DatasourceDocumentsTabView } from "@app/components/data_source/DatasourceDocumentsTabView";
-import { DatasourceTablesTabView } from "@app/components/data_source/DatasourceTablesTabView";
-
 const tabIds = ["documents", "tables"];
 
 export function StandardDataSourceView({
@@ -53,22 +50,6 @@ export function StandardDataSourceView({
     <div className="pt-6">
       <Page.Vertical gap="xl" align="stretch">
         <Tab tabs={tabs} setCurrentTab={setCurrentTab} />
-
-        {currentTab === "documents" && (
-          <DatasourceDocumentsTabView
-            owner={owner}
-            plan={plan}
-            readOnly={readOnly}
-            dataSource={dataSource}
-          />
-        )}
-        {currentTab === "tables" && (
-          <DatasourceTablesTabView
-            owner={owner}
-            readOnly={readOnly}
-            dataSource={dataSource}
-          />
-        )}
       </Page.Vertical>
     </div>
   );

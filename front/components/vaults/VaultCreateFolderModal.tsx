@@ -82,7 +82,7 @@ export default function VaultCreateFolderModal({
         if (res.ok) {
           setOpen(false);
           await router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/files/data_sources/${name}`
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_sources/${name}`
           );
           sendNotification({
             type: "success",
