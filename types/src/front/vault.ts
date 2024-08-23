@@ -8,9 +8,9 @@ export type VaultType = {
   groupIds: string[];
 };
 
-type ManagedDataSourceViewSelectedNodes = {
+export interface ManagedDataSourceViewSelectedNode {
   name: string;
   parentsIn: string[] | null;
-};
+}
 export type ManagedDataSourceViewsSelectedNodes =
-  ManagedDataSourceViewSelectedNodes[];
+  ManagedDataSourceViewSelectedNode[];

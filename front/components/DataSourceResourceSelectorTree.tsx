@@ -163,20 +163,25 @@ function DataSourceResourceSelectorChildren({
           (!isTablesView || r.type === "database") &&
           r.preventSelection !== true;
 
+        const checkedStatus =
+          isSelected || parentIsSelected
+            ? true
+            : partiallyChecked
+              ? "partial"
+              : false;
+
         return (
           <Tree.Item
             key={r.internalId}
-            visual={<IconComponent className="s-h-4 s-w-4" />}
+            visual={IconComponent}
             type={r.expandable && showExpand ? "node" : "leaf"}
             label={r.title}
-            variant={r.type}
             className="whitespace-nowrap"
             checkbox={
               checkable || partiallyChecked
                 ? {
                     disabled: parentIsSelected || !checkable,
-                    checked: Boolean(isSelected || parentIsSelected),
-                    partialChecked: partiallyChecked,
+                    checked: checkedStatus,
                     onChange: (checked) => {
                       onSelectChange(r, parents, checked);
                     },

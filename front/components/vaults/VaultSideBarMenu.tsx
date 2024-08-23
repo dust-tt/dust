@@ -19,7 +19,7 @@ import type {
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
+import type { ComponentType, ReactElement } from "react";
 import { Fragment, useEffect, useState } from "react";
 
 import {
@@ -112,24 +112,12 @@ const getSectionLabel = (kind: VaultKind) => {
   }
 };
 
-const RootItemIconWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-brand" />;
-};
-
-const SubItemIconItemWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-element-700" />;
-};
-
 // System vault.
 
 const SYSTEM_VAULTS_ITEMS = [
   {
     label: "Connection Management",
-    visual: RootItemIconWrapper(CloudArrowLeftRightIcon),
+    visual: CloudArrowLeftRightIcon,
     category: "managed" as DataSourceViewCategory,
   },
   // TODO(GROUPS_UI) Add support for Dust apps.
@@ -143,7 +131,7 @@ const SystemVaultMenu = ({
   vault: VaultType;
 }) => {
   return (
-    <>
+    <Tree variant="navigator">
       {SYSTEM_VAULTS_ITEMS.map((item) => (
         <SystemVaultItem
           category={item.category}
@@ -154,9 +142,11 @@ const SystemVaultMenu = ({
           visual={item.visual}
         />
       ))}
-    </>
+    </Tree>
   );
 };
+
+type IconType = ComponentType<{ className?: string }>;
 
 const SystemVaultItem = ({
   category,
@@ -169,7 +159,7 @@ const SystemVaultItem = ({
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
-  visual: ReactElement;
+  visual: IconType;
 }) => {
   const router = useRouter();
 
@@ -250,11 +240,7 @@ const VaultMenuItem = ({
       onItemClick={() => router.push(vaultPath)}
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={
-        vault.kind === "global"
-          ? RootItemIconWrapper(PlanetIcon)
-          : RootItemIconWrapper(LockIcon)
-      }
+      visual={vault.kind === "global" ? PlanetIcon : LockIcon}
       size="md"
       areActionsFading={false}
     >
@@ -281,26 +267,26 @@ const VaultMenuItem = ({
 const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
   [key: string]: {
     label: string;
-    icon: ReactElement<{
+    icon: ComponentType<{
       className?: string;
     }>;
   };
 } = {
   managed: {
     label: "Connected Data",
-    icon: SubItemIconItemWrapper(CloudArrowLeftRightIcon),
+    icon: CloudArrowLeftRightIcon,
   },
   folder: {
     label: "Files",
-    icon: SubItemIconItemWrapper(FolderIcon),
+    icon: FolderIcon,
   },
   website: {
     label: "Websites",
-    icon: SubItemIconItemWrapper(GlobeAltIcon),
+    icon: GlobeAltIcon,
   },
   apps: {
     label: "Apps",
-    icon: SubItemIconItemWrapper(CommandLineIcon),
+    icon: CommandLineIcon,
   },
 };
 
@@ -331,7 +317,7 @@ const VaultDataSourceViewItem = ({
       }
       onItemClick={() => router.push(dataSourceViewPath)}
       label={getDataSourceNameFromView(item)}
-      visual={SubItemIconItemWrapper(LogoComponent)}
+      visual={LogoComponent}
       areActionsFading={false}
     />
   );

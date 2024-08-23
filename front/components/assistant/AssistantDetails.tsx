@@ -1,27 +1,31 @@
 import {
   Avatar,
   BracesIcon,
+  ChatBubbleBottomCenterTextIcon,
   CommandLineIcon,
   ContentMessage,
+  DocumentTextIcon,
   ElementModal,
   ExternalLinkIcon,
+  FolderIcon,
   Icon,
   IconButton,
   Page,
   PlanetIcon,
   ServerIcon,
   Spinner,
+  Square3Stack3DIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
+  ContentNode,
   CoreAPITable,
   DataSourceConfiguration,
   DataSourceType,
   DustAppRunConfigurationType,
-  LightContentNode,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WorkspaceType,
@@ -48,6 +52,7 @@ import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDoc
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogo } from "@app/lib/connector_providers";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import {
   useAgentConfiguration,
@@ -387,8 +392,7 @@ function DataSourcesSection({
               key={dsConfig.dataSourceId}
               type={ds && ds.connectorId ? "node" : "leaf"}
               label={dataSourceName}
-              visual={DsLogo ? <DsLogo className="s-h-5 s-w-5" /> : null}
-              variant="folder" // in case LogoComponent is null
+              visual={DsLogo ?? FolderIcon}
               className="whitespace-nowrap"
             >
               {ds && isAllSelected && (
@@ -444,12 +448,12 @@ function DataSourceSelectedNodes({
 
   return (
     <>
-      {dataSourceSelectedNodes.nodes.map((node: LightContentNode) => (
+      {dataSourceSelectedNodes.nodes.map((node) => (
         <Tree.Item
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}
           type={node.expandable ? "node" : "leaf"}
-          variant={node.type}
+          visual={getVisualForContentNode(node)}
           className="whitespace-nowrap"
           actions={
             <div className="mr-8 flex flex-row gap-2">

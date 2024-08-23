@@ -17,6 +17,7 @@ import type { ConnectorPermission } from "@dust-tt/types";
 import { useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -184,7 +185,7 @@ export function PermissionTreeChildren({
               key={r.internalId}
               type={r.expandable ? "node" : "leaf"}
               label={r.title}
-              variant={r.type}
+              visual={getVisualForContentNode(r)}
               className="whitespace-nowrap"
               checkbox={
                 r.preventSelection !== true &&
