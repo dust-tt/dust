@@ -46,13 +46,13 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
+  if (!auth.isUser()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace can retrieve parents of connector resources.",
+          "Only the users of the current workspace can retrieve parents of connector resources.",
       },
     });
   }
