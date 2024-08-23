@@ -437,7 +437,7 @@ function DataSourceViewSelectedNodes({
   dataSourceConfiguration: DataSourceConfiguration;
   dataSourceView: DataSourceViewType;
   owner: WorkspaceType;
-  setDataSourceViewToDisplay: (ds: DataSourceViewType) => void;
+  setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
   const { dataSource } = dataSourceView;

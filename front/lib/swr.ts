@@ -38,7 +38,7 @@ import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
-import type { GetDataSourceViewssResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
+import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
@@ -348,7 +348,7 @@ export function useDataSourceViews(
   options = { disabled: false }
 ) {
   const { disabled } = options;
-  const dataSourceViewsFetcher: Fetcher<GetDataSourceViewssResponseBody> =
+  const dataSourceViewsFetcher: Fetcher<GetDataSourceViewsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     disabled ? null : `/api/w/${owner.sId}/data_source_views`,
