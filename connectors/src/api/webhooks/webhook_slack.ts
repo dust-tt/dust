@@ -302,14 +302,6 @@ const _webhookSlackAPIHandler = async (
                   );
                   return new Ok(undefined);
                 }
-                logger.info(
-                  {
-                    connectorId: c.connectorId,
-                    slackChannelId: channel,
-                    thread_ts,
-                  },
-                  "launchSlackSyncOneThreadWorkflow"
-                );
                 return launchSlackSyncOneThreadWorkflow(
                   c.connectorId,
                   channel,
@@ -353,14 +345,6 @@ const _webhookSlackAPIHandler = async (
                   );
                   return new Ok(undefined);
                 }
-                logger.info(
-                  {
-                    connectorId: c.connectorId,
-                    slackChannelId: channel,
-                    ts,
-                  },
-                  "launchSlackSyncOneMessageWorkflow"
-                );
                 return launchSlackSyncOneMessageWorkflow(
                   c.connectorId,
                   channel,
