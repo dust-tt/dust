@@ -2,7 +2,11 @@ import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { assertNever, isMembershipRoleType } from "@dust-tt/types";
+import {
+  assertNever,
+  isDevelopment,
+  isMembershipRoleType,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserForWorkspace } from "@app/lib/api/user";
@@ -22,14 +26,20 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can see memberships or modify it.",
-      },
-    });
+    // Allow Dust Super User to force role for testing
+    const allowForTesting =
+      isDevelopment() && auth.isDustSuperUser() && req.body.force === "true";
+
+    if (!allowForTesting) {
+      return apiError(req, res, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only users that are `admins` for the current workspace can see memberships or modify it.",
+        },
+      });
+    }
   }
 
   const owner = auth.getNonNullableWorkspace();
