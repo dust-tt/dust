@@ -50,9 +50,9 @@ async function handler(
     });
   }
 
-  const group = await GroupResource.fetchById(auth, gId);
+  const groupRes = await GroupResource.fetchById(auth, gId);
   // Check if the user has access to the group to get members list
-  if (group.isErr()) {
+  if (groupRes.isErr()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -64,10 +64,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const members = await group.value.getActiveMembers(auth);
+      const members = await groupRes.value.getActiveMembers(auth);
       return res.status(200).json({
         group: {
-          ...group.value.toJSON(),
+          ...groupRes.value.toJSON(),
           members: members.map((member) => member.toJSON()),
         },
       });
@@ -102,7 +102,7 @@ async function handler(
         const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
           user.toJSON()
         );
-        const result = await group.value.setMembers(auth, users);
+        const result = await groupRes.value.setMembers(auth, users);
 
         if (result.isErr()) {
           if (result.error.code === "unauthorized") {
@@ -126,7 +126,7 @@ async function handler(
         }
       }
 
-      return res.status(200).json({ group: group.value.toJSON() });
+      return res.status(200).json({ group: groupRes.value.toJSON() });
     default:
       return apiError(req, res, {
         status_code: 405,
