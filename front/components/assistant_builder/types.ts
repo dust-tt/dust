@@ -2,9 +2,8 @@ import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AppType,
-  ContentNode,
-  DataSourceType,
   DataSourceViewType,
+  LightContentNode,
   PlanType,
   ProcessSchemaPropertyType,
   SubscriptionType,
@@ -38,9 +37,8 @@ export const ACTION_MODES = [
 // Retrieval configuration
 
 export type AssistantBuilderDataSourceConfiguration = {
-  dataSource: DataSourceType;
-  dataSourceView: DataSourceViewType | null;
-  selectedResources: ContentNode[];
+  dataSourceView: DataSourceViewType;
+  selectedResources: LightContentNode[];
   isSelectAll: boolean;
 };
 

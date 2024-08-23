@@ -11,7 +11,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission } from "@dust-tt/types";
 import { useState } from "react";
@@ -62,7 +62,7 @@ export function PermissionTreeChildren({
   useConnectorPermissionsHook,
   isSearchEnabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   permissionFilter?: ConnectorPermission;
@@ -89,7 +89,7 @@ export function PermissionTreeChildren({
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissionsHook({
       owner,
-      dataSourceOrView: dataSource,
+      dataSource,
       parentId,
       filterPermission: permissionFilter || null,
     });
@@ -291,7 +291,7 @@ export function PermissionTree({
   showExpand,
   isSearchEnabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
   canUpdatePermissions?: boolean;

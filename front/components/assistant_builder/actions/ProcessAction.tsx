@@ -320,8 +320,8 @@ export function ActionProcess({
   const foldersOnly =
     Object.keys(actionConfiguration.dataSourceConfigurations).every(
       (k) =>
-        actionConfiguration.dataSourceConfigurations[k].dataSource
-          .connectorProvider === null
+        actionConfiguration.dataSourceConfigurations[k].dataSourceView
+          .dataSource.connectorProvider === null
     ) && Object.keys(actionConfiguration.dataSourceConfigurations).length > 0;
 
   const generateSchemaFromInstructions = async () => {

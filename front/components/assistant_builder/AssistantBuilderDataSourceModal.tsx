@@ -1,13 +1,13 @@
 import { Modal } from "@dust-tt/sparkle";
 import type {
-  ContentNode,
-  DataSourceType,
+  DataSourceViewType,
+  LightContentNode,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useEffect, useState } from "react";
+import { isFolder, isWebsite } from "@dust-tt/types";
+import { useEffect, useMemo, useState } from "react";
 
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import DataSourceResourceSelector from "@app/components/assistant_builder/DataSourceResourceSelector";
+import DataSourceViewResourceSelector from "@app/components/assistant_builder/DataSourceViewResourceSelector";
 import FolderOrWebsiteResourceSelector from "@app/components/assistant_builder/FolderOrWebsiteResourceSelector";
 import PickDataSource from "@app/components/assistant_builder/PickDataSource";
 import type {
@@ -16,21 +16,36 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 
+type DisplayMode =
+  | "PickKind" // Choose type of source
+  | "SelectFromManaged" // Once a source is chosen, select resources from it, here is from managed
+  | "SelectFromFolder" // Select folders
+  | "SelectFromWebsite"; // Select websites
+
+function getConfiguration(
+  configurations: AssistantBuilderDataSourceConfigurations,
+  dataSourceView: DataSourceViewType
+): AssistantBuilderDataSourceConfiguration {
+  return configurations[dataSourceView.sId];
+}
+
 function getUpdatedConfigurations(
   currentConfigurations: AssistantBuilderDataSourceConfigurations,
-  dataSource: DataSourceType,
+  dataSourceView: DataSourceViewType,
   selected: boolean,
-  node: ContentNode
+  node: LightContentNode
 ) {
-  const oldConfiguration = currentConfigurations[dataSource.name] || {
-    dataSource: dataSource,
-    selectedResources: [],
-    isSelectAll: false,
-  };
+  const oldConfiguration =
+    currentConfigurations[dataSourceView.sId] ||
+    ({
+      dataSourceView,
+      selectedResources: [],
+      isSelectAll: false,
+    } as AssistantBuilderDataSourceConfiguration);
 
   const newConfiguration = {
     ...oldConfiguration,
-  } satisfies AssistantBuilderDataSourceConfiguration;
+  };
 
   if (selected) {
     newConfiguration.selectedResources = [
@@ -50,9 +65,9 @@ function getUpdatedConfigurations(
     newConfiguration.isSelectAll ||
     newConfiguration.selectedResources.length > 0
   ) {
-    newConfigurations[dataSource.name] = newConfiguration;
+    newConfigurations[dataSourceView.sId] = newConfiguration;
   } else {
-    delete newConfigurations[dataSource.name];
+    delete newConfigurations[dataSourceView.sId];
   }
 
   return newConfigurations;
@@ -71,22 +86,123 @@ export default function AssistantBuilderDataSourceModal({
   onSave: (dsConfigs: AssistantBuilderDataSourceConfigurations) => void;
   initialDataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
 }) {
-  const { dataSources } = useContext(AssistantBuilderContext);
-
   // Local modal state, that replaces the action's datasourceConfigurations state in the global
   // assistant builder state when the modal is saved.
   const [dataSourceConfigurations, setDataSourceConfigurations] =
     useState<AssistantBuilderDataSourceConfigurations | null>(null);
 
   // Navigation state
-  const [selectedDataSource, setSelectedDataSource] =
-    useState<DataSourceType | null>(null);
-  // Hack to filter out Folders from the list of data sources
-  const [shouldDisplayFoldersScreen, setShouldDisplayFoldersScreen] =
-    useState(false);
-  // Hack to filter out Websites from the list of data sources
-  const [shouldDisplayWebsitesScreen, setShouldDisplayWebsitesScreen] =
-    useState(false);
+  const [selectedDataSourceView, setSelectedDataSourceView] =
+    useState<DataSourceViewType | null>(null);
+
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("PickKind");
+
+  const onSelectChangeManaged = useMemo(
+    () =>
+      (
+        dsView: DataSourceViewType,
+        node: LightContentNode,
+        selected: boolean
+      ) => {
+        setDataSourceConfigurations((currentConfigurations) => {
+          if (currentConfigurations === null) {
+            // Unreachable
+            return null;
+          }
+
+          return getUpdatedConfigurations(
+            currentConfigurations,
+            dsView,
+            selected,
+            node
+          );
+        });
+      },
+    []
+  );
+
+  const onSelectChangeFolderOrWebsite = useMemo(
+    () =>
+      (
+        dsView: DataSourceViewType,
+        selected: boolean,
+        contentNode?: LightContentNode
+      ) => {
+        setDataSourceConfigurations((currentConfigurations) => {
+          if (currentConfigurations === null) {
+            // Unreachable
+            return null;
+          }
+
+          if (contentNode === undefined) {
+            if (selected) {
+              return {
+                ...currentConfigurations,
+                [dsView.sId]: {
+                  dataSourceView: dsView,
+                  selectedResources: [],
+                  isSelectAll: true,
+                },
+              };
+            } else {
+              const newConfigurations = { ...currentConfigurations };
+              delete newConfigurations[dsView.sId];
+              return newConfigurations;
+            }
+          }
+
+          return getUpdatedConfigurations(
+            currentConfigurations,
+            dsView,
+            selected,
+            contentNode
+          );
+        });
+      },
+    []
+  );
+
+  const onToggleSelectAll = useMemo(
+    () => (dsView: DataSourceViewType) => {
+      setDataSourceConfigurations((currentConfigurations) => {
+        if (currentConfigurations === null) {
+          // Unreachable
+          return null;
+        }
+
+        const oldConfiguration =
+          currentConfigurations[dsView.sId] ||
+          ({
+            dataSourceView: dsView,
+            selectedResources: [],
+            isSelectAll: false,
+          } as AssistantBuilderDataSourceConfiguration);
+
+        const newConfiguration = {
+          ...oldConfiguration,
+          isSelectAll: !oldConfiguration.isSelectAll,
+          selectedResources: [],
+        };
+
+        const newConfigurations = { ...currentConfigurations };
+
+        if (
+          newConfiguration.isSelectAll ||
+          newConfiguration.selectedResources.length > 0
+        ) {
+          newConfigurations[dsView.sId] = newConfiguration;
+        } else {
+          delete newConfigurations[dsView.sId];
+        }
+
+        return {
+          ...currentConfigurations,
+          [dsView.sId]: newConfiguration,
+        };
+      });
+    },
+    []
+  );
 
   useNavigationLock(true, {
     title: "Warning",
@@ -99,10 +215,8 @@ export default function AssistantBuilderDataSourceModal({
     if (!dataSourceConfigurations && isOpen) {
       setDataSourceConfigurations(initialDataSourceConfigurations);
     } else if (!isOpen) {
-      setDataSourceConfigurations(null);
-      setSelectedDataSource(null);
-      setShouldDisplayFoldersScreen(false);
-      setShouldDisplayWebsitesScreen(false);
+      setSelectedDataSourceView(null);
+      setDisplayMode("PickKind");
     }
   }, [dataSourceConfigurations, initialDataSourceConfigurations, isOpen]);
 
@@ -110,176 +224,80 @@ export default function AssistantBuilderDataSourceModal({
     return null;
   }
 
-  const allFolders = dataSources.filter((ds) => !ds.connectorProvider);
   const alreadySelectedFolders = Object.values(dataSourceConfigurations).filter(
-    (ds) => !ds.dataSource.connectorProvider
-  );
-
-  const allWebsites = dataSources.filter(
-    (ds) => ds.connectorProvider === "webcrawler"
+    (ds) => isFolder(ds.dataSourceView.dataSource)
   );
 
   const alreadySelectedWebsites = Object.values(
     dataSourceConfigurations
-  ).filter((ds) => ds.dataSource.connectorProvider === "webcrawler");
+  ).filter((ds) => isWebsite(ds.dataSourceView.dataSource));
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => {
-        if (shouldDisplayFoldersScreen) {
-          setShouldDisplayFoldersScreen(false);
-        } else if (shouldDisplayWebsitesScreen) {
-          setShouldDisplayWebsitesScreen(false);
-        } else if (selectedDataSource !== null) {
-          setSelectedDataSource(null);
-        } else {
+        if (displayMode === "PickKind") {
           setOpen(false);
+        } else {
+          setDisplayMode("PickKind");
         }
       }}
       onSave={() => {
         onSave(dataSourceConfigurations);
         setOpen(false);
       }}
-      hasChanged={
-        selectedDataSource !== null ||
-        shouldDisplayFoldersScreen ||
-        shouldDisplayWebsitesScreen
-      }
+      hasChanged={displayMode !== "PickKind"}
       variant="full-screen"
       title="Manage data sources selection"
     >
       <div className="w-full pt-12">
-        {!selectedDataSource &&
-          !shouldDisplayFoldersScreen &&
-          !shouldDisplayWebsitesScreen && (
-            <PickDataSource
-              dataSources={dataSources}
-              show={!selectedDataSource}
-              onPick={(ds) => {
-                setSelectedDataSource(ds);
-              }}
-              onPickFolders={() => {
-                setShouldDisplayFoldersScreen(true);
-              }}
-              onPickWebsites={() => {
-                setShouldDisplayWebsitesScreen(true);
-              }}
-            />
-          )}
-        {!selectedDataSource &&
-          (shouldDisplayFoldersScreen || shouldDisplayWebsitesScreen) && (
-            <FolderOrWebsiteResourceSelector
-              owner={owner}
-              type={shouldDisplayFoldersScreen ? "folder" : "website"}
-              dataSources={
-                shouldDisplayFoldersScreen ? allFolders : allWebsites
-              }
-              selectedNodes={
-                shouldDisplayFoldersScreen
-                  ? alreadySelectedFolders
-                  : alreadySelectedWebsites
-              }
-              onSelectChange={(ds, selected, contentNode) => {
-                setDataSourceConfigurations((currentConfigurations) => {
-                  if (currentConfigurations === null) {
-                    // Unreachable
-                    return null;
-                  }
+        {displayMode === "PickKind" && (
+          <PickDataSource
+            onPick={(dsView) => {
+              setSelectedDataSourceView(dsView);
+              setDisplayMode("SelectFromManaged");
+            }}
+            onPickFolders={() => {
+              setDisplayMode("SelectFromFolder");
+            }}
+            onPickWebsites={() => {
+              setDisplayMode("SelectFromWebsite");
+            }}
+          />
+        )}
 
-                  if (contentNode === undefined) {
-                    if (selected) {
-                      return {
-                        ...currentConfigurations,
-                        [ds.name]: {
-                          dataSource: ds,
-                          // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
-                          dataSourceView: null,
-                          selectedResources: [],
-                          isSelectAll: true,
-                        },
-                      };
-                    } else {
-                      const newConfigurations = { ...currentConfigurations };
-                      delete newConfigurations[ds.name];
-                      return newConfigurations;
-                    }
-                  }
+        {displayMode === "SelectFromFolder" && (
+          <FolderOrWebsiteResourceSelector
+            owner={owner}
+            type="folder"
+            selectedNodes={alreadySelectedFolders}
+            onSelectChange={onSelectChangeFolderOrWebsite}
+          />
+        )}
 
-                  return getUpdatedConfigurations(
-                    currentConfigurations,
-                    ds,
-                    selected,
-                    contentNode
-                  );
-                });
-              }}
-            />
-          )}
-        {selectedDataSource && (
-          <DataSourceResourceSelector
-            dataSource={selectedDataSource}
+        {displayMode === "SelectFromWebsite" && (
+          <FolderOrWebsiteResourceSelector
+            owner={owner}
+            type="website"
+            selectedNodes={alreadySelectedWebsites}
+            onSelectChange={onSelectChangeFolderOrWebsite}
+          />
+        )}
+
+        {displayMode === "SelectFromManaged" && selectedDataSourceView && (
+          <DataSourceViewResourceSelector
+            dataSourceView={selectedDataSourceView}
             owner={owner}
             selectedResources={
-              dataSourceConfigurations[selectedDataSource.name]
-                ?.selectedResources || []
+              getConfiguration(dataSourceConfigurations, selectedDataSourceView)
+                ?.selectedResources ?? []
             }
             isSelectAll={
-              dataSourceConfigurations[selectedDataSource.name]?.isSelectAll ||
-              false
+              getConfiguration(dataSourceConfigurations, selectedDataSourceView)
+                ?.isSelectAll ?? false
             }
-            onSelectChange={(node, selected) => {
-              setDataSourceConfigurations((currentConfigurations) => {
-                if (currentConfigurations === null) {
-                  // Unreachable
-                  return null;
-                }
-
-                return getUpdatedConfigurations(
-                  currentConfigurations,
-                  selectedDataSource,
-                  selected,
-                  node
-                );
-              });
-            }}
-            toggleSelectAll={() => {
-              setDataSourceConfigurations((currentConfigurations) => {
-                if (currentConfigurations === null) {
-                  // Unreachable
-                  return null;
-                }
-                const oldConfiguration = currentConfigurations[
-                  selectedDataSource.name
-                ] || {
-                  dataSource: selectedDataSource,
-                  selectedResources: [],
-                  isSelectAll: false,
-                };
-
-                const newConfiguration = {
-                  ...oldConfiguration,
-                  isSelectAll: !oldConfiguration.isSelectAll,
-                  selectedResources: [],
-                } satisfies AssistantBuilderDataSourceConfiguration;
-
-                const newConfigurations = { ...currentConfigurations };
-
-                if (
-                  newConfiguration.isSelectAll ||
-                  newConfiguration.selectedResources.length > 0
-                ) {
-                  newConfigurations[selectedDataSource.name] = newConfiguration;
-                } else {
-                  delete newConfigurations[selectedDataSource.name];
-                }
-
-                return {
-                  ...currentConfigurations,
-                  [selectedDataSource.name]: newConfiguration,
-                };
-              });
-            }}
+            onSelectChange={onSelectChangeManaged}
+            toggleSelectAll={onToggleSelectAll}
           />
         )}
       </div>

@@ -62,6 +62,13 @@ export function makeScript<T extends ArgumentSpecs>(
 
       await worker(args as InferArgs<T & { execute: boolean }>, scriptLogger);
 
+      if (!args.execute) {
+        console.warn(
+          "\x1b[33m%s\x1b[0m", // yellow
+          "Script was not executed. Use --execute flag to run the script."
+        );
+      }
+
       process.exit(0);
     })
     .catch((error) => {

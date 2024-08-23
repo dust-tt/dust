@@ -134,11 +134,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   static async listByVault(auth: Authenticator, vault: VaultResource) {
-    return this.baseFetch(auth, {
-      where: {
-        vaultId: vault.id,
-      },
-    });
+    return this.listByVaults(auth, [vault]);
   }
 
   static async listByVaults(auth: Authenticator, vaults: VaultResource[]) {
@@ -306,20 +302,13 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Serialization.
 
   toJSON(): DataSourceViewType {
-    const {
-      connectorId,
-      connectorProvider,
-      name: dataSourceName,
-    } = this.dataSource.toJSON();
-
     return {
       category: getDataSourceCategory(this.dataSource),
-      connectorId,
-      connectorProvider,
       createdAt: this.createdAt.getTime(),
       id: this.id,
       kind: this.kind,
-      name: dataSourceName,
+      dataSource: this.dataSource.toJSON(),
+      vaultId: this.vault.sId,
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),

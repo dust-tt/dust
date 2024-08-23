@@ -18,7 +18,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import {
-  CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
 import { useDataSources, useVaultDataSourceViews } from "@app/lib/swr";
@@ -133,14 +133,15 @@ export const VaultResourcesList = ({
       sId: r.sId,
       category: r.category,
       label: getDataSourceNameFromView(r),
-      icon: r.connectorProvider
-        ? CONNECTOR_CONFIGURATIONS[r.connectorProvider].logoComponent
-        : FolderIcon,
+      icon: getConnectorProviderLogoWithFallback(
+        r.dataSource.connectorProvider,
+        FolderIcon
+      ),
       usage: r.usage,
       count: 0,
       editedByUser: r.editedByUser,
       workspaceId: owner.sId,
-      dataSourceName: r.name,
+      dataSourceName: r.dataSource.name,
       onClick: () => onSelect(r.sId),
     })) || [];
 
