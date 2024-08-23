@@ -1,6 +1,7 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
+  CloudArrowUpIcon,
   DataTable,
   DocumentIcon,
   DocumentTextIcon,
@@ -11,7 +12,7 @@ import {
   Popup,
   Searchbar,
   Spinner,
-  Square3Stack3DIcon,
+  TableIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -104,7 +105,7 @@ export const VaultDataSourceViewContentList = ({
   const visualTable = {
     file: DocumentTextIcon,
     folder: FolderIcon,
-    database: Square3Stack3DIcon,
+    database: TableIcon,
     channel: ChatBubbleBottomCenterTextIcon,
   };
 
@@ -188,8 +189,9 @@ export const VaultDataSourceViewContentList = ({
             />
           </DropdownMenu.Button>
 
-          <DropdownMenu.Items>
+          <DropdownMenu.Items width={300}>
             <DropdownMenu.Item
+              icon={DocumentTextIcon}
               onClick={() => {
                 setDocumentId(null);
                 // Enforce plan limits: DataSource documents count.
@@ -206,6 +208,7 @@ export const VaultDataSourceViewContentList = ({
               label={"Create a document"}
             />
             <DropdownMenu.Item
+              icon={TableIcon}
               onClick={() => {
                 setTableId(null);
                 setShowTableUploadOrEditModal(true);
@@ -213,10 +216,11 @@ export const VaultDataSourceViewContentList = ({
               label={"Create a table"}
             />
             <DropdownMenu.Item
+              icon={CloudArrowUpIcon}
               onClick={() => {
                 fileInputRef.current?.click();
               }}
-              label={"Upload a multiple files"}
+              label={"Upload multiple files"}
             />
           </DropdownMenu.Items>
         </DropdownMenu>
