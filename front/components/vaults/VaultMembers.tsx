@@ -87,8 +87,8 @@ export const VaultMembers = ({ owner, isAdmin, vault }: VaultMembersProps) => {
     } else {
       sendNotification({
         type: "success",
-        title: "Successfully updated members",
-        description: "Members have been updated successfully updated.",
+        title: "Members updated",
+        description: "Members have been updated successfully.",
       });
 
       await mutateVaultInfo();
