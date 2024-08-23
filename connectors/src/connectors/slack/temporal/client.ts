@@ -130,7 +130,7 @@ export async function launchSlackSyncOneThreadWorkflow(
     return new Ok(handle);
   } catch (e) {
     logger.error(
-      { error: e, connectorId, channelId, threadTs },
+      { error: e, connectorId, channelId, threadTs, workflowId },
       "Failed launchSlackSyncOneThreadWorkflow"
     );
     return new Err(e as Error);
@@ -188,7 +188,7 @@ export async function launchSlackSyncOneMessageWorkflow(
     return new Ok(handle);
   } catch (e) {
     logger.error(
-      { error: e, connectorId, channelId, threadTs },
+      { error: e, connectorId, channelId, threadTs, workflowId },
       "Failed launchSlackSyncOneMessageWorkflow"
     );
     return new Err(e as Error);
