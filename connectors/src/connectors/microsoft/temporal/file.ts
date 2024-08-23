@@ -268,7 +268,6 @@ export async function syncOneFile({
 
     const documentSection = result.value;
     if (documentSection) {
-      // In case of table, result is ok and result.value is null, no document to upsert
       const documentLength = sectionLength(documentSection);
       const isInSizeRange =
         documentLength > 0 && documentLength < maxDocumentLen;
