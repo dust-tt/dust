@@ -1,17 +1,3 @@
-export type ResourceErrorCode =
-  | "resource_not_found"
-  | "unauthorized"
-  | "invalid_id";
-
-export class ResourceError extends Error {
-  constructor(
-    readonly code: ResourceErrorCode,
-    message: string
-  ) {
-    super(message);
-  }
-}
-
 import type {
   FindOptions,
   Model,
