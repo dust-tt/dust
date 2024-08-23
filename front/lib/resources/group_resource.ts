@@ -30,7 +30,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { ResourceError } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 
-export type GroupErrorType =
+export type GroupErrorCode =
   | "user_not_found"
   | "user_not_member"
   | "user_already_member"
@@ -38,8 +38,8 @@ export type GroupErrorType =
 
 export class GroupError extends Error {
   constructor(
+    readonly code: GroupErrorCode,
     message: string,
-    readonly code: GroupErrorType,
     readonly groupId: string,
     readonly userIds?: string[]
   ) {
@@ -215,29 +215,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     id: string
   ): Promise<Result<GroupResource, ResourceError>> {
-    const groupModelId = getResourceIdFromSId(id);
-    if (!groupModelId) {
-      return new Err(new ResourceError("Invalid id", "invalid_id"));
+    const groupRes = await this.fetchByIds(auth, [id]);
+
+    if (groupRes.isErr()) {
+      return groupRes;
     }
 
-    const [group] = await this.baseFetch(auth, { where: { id: groupModelId } });
-
-    if (!group) {
-      return new Err(
-        new ResourceError("Group not found", "resource_not_found")
-      );
-    }
-
-    if (!group.canRead(auth)) {
-      return new Err(
-        new ResourceError(
-          "Only `admins` or members can view groups",
-          "unauthorized"
-        )
-      );
-    }
-
-    return new Ok(group);
+    return new Ok(groupRes.value[0]);
   }
 
   static async fetchByIds(
@@ -248,7 +232,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       ids.map((id) => getResourceIdFromSId(id))
     );
     if (groupModelIds.length !== ids.length) {
-      return new Err(new ResourceError("Invalid id", "invalid_id"));
+      return new Err(new ResourceError("invalid_id", "Invalid id"));
     }
 
     const groups = await this.baseFetch(auth, {
@@ -261,15 +245,18 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (groups.length !== ids.length) {
       return new Err(
-        new ResourceError("Some groups were not found", "resource_not_found")
+        new ResourceError(
+          "resource_not_found",
+          ids.length === 1 ? "Group not found" : "Some groups were not found"
+        )
       );
     }
 
     if (groups.some((group) => !group.canRead(auth))) {
       return new Err(
         new ResourceError(
-          "Only `admins` or members can view groups",
-          "unauthorized"
+          "unauthorized",
+          "Only `admins` or members can view groups"
         )
       );
     }
@@ -284,8 +271,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (!auth.isAdmin()) {
       return new Err(
         new ResourceError(
-          "Only `admins` can view the system group",
-          "unauthorized"
+          "unauthorized",
+          "Only `admins` can view the system group"
         )
       );
     }
@@ -298,7 +285,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (!group) {
       return new Err(
-        new ResourceError("System group not found", "resource_not_found")
+        new ResourceError("resource_not_found", "System group not found")
       );
     }
 
@@ -316,7 +303,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     if (!group) {
       return new Err(
-        new ResourceError("Global group not found", "resource_not_found")
+        new ResourceError("resource_not_found", "Global group not found")
       );
     }
 
@@ -405,7 +392,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, GroupError | ResourceError>> {
     if (!this.canWrite(auth)) {
       return new Err(
-        new ResourceError("Only `admins` can administer groups", "unauthorized")
+        new ResourceError("unauthorized", "Only `admins` can administer groups")
       );
     }
     const owner = auth.getNonNullableWorkspace();
@@ -433,10 +420,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     ) {
       return new Err(
         new GroupError(
+          "user_not_member",
           userIds.length === 1
             ? "User is not a member of the workspace"
             : "Users are not members of the workspace",
-          "user_not_member",
           this.sId
         )
       );
@@ -446,8 +433,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (this.kind !== "regular") {
       return new Err(
         new GroupError(
-          "Users can only be added to regular groups.",
           "system_or_global_group",
+          "Users can only be added to regular groups.",
           this.sId
         )
       );
@@ -462,10 +449,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (alreadyActiveUserIds.length > 0) {
       return new Err(
         new GroupError(
+          "user_already_member",
           alreadyActiveUserIds.length === 1
             ? "User is already a member of the group"
             : "Users are already members of the group",
-          "user_already_member",
           this.sId,
           alreadyActiveUserIds
         )
@@ -498,7 +485,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, ResourceError | GroupError>> {
     if (!this.canWrite(auth)) {
       return new Err(
-        new ResourceError("Only `admins` can administer groups", "unauthorized")
+        new ResourceError("unauthorized", "Only `admins` can administer groups")
       );
     }
     const owner = auth.getNonNullableWorkspace();
@@ -511,8 +498,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (userResources.length !== userIds.length) {
       return new Err(
         new GroupError(
-          userIds.length === 1 ? "User not found" : "Users not found",
           "user_not_found",
+          userIds.length === 1 ? "User not found" : "Users not found",
           this.sId
         )
       );
@@ -525,10 +512,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (workspaceMemberships.length !== userIds.length) {
       return new Err(
         new GroupError(
+          "user_not_member",
           userIds.length === 1
             ? "User is not a member of the workspace"
             : "Users are not members of the workspace",
-          "user_not_member",
           this.sId
         )
       );
@@ -538,8 +525,8 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (this.kind !== "regular") {
       return new Err(
         new GroupError(
-          "Users can only be added to regular groups.",
           "system_or_global_group",
+          "Users can only be added to regular groups.",
           this.sId
         )
       );
@@ -554,10 +541,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (notActiveUserIds.length > 0) {
       return new Err(
         new GroupError(
+          "user_not_member",
           notActiveUserIds.length === 1
             ? "User is not a member of the group"
             : "Users are not members of the group",
-          "user_not_member",
           this.sId
         )
       );
@@ -593,7 +580,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, ResourceError | GroupError>> {
     if (!this.canWrite(auth)) {
       return new Err(
-        new ResourceError("Only `admins` can administer groups", "unauthorized")
+        new ResourceError("unauthorized", "Only `admins` can administer groups")
       );
     }
     const userIds = users.map((u) => u.sId);

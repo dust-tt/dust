@@ -1,12 +1,12 @@
-export type ResourceErrorType =
+export type ResourceErrorCode =
   | "resource_not_found"
   | "unauthorized"
   | "invalid_id";
 
 export class ResourceError extends Error {
   constructor(
-    message: string,
-    readonly code: ResourceErrorType
+    readonly code: ResourceErrorCode,
+    message: string
   ) {
     super(message);
   }
