@@ -182,6 +182,7 @@ const SystemVaultItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       label={label}
       collapsed={!isExpanded}
       onItemClick={() => router.push(itemPath)}
@@ -235,6 +236,7 @@ const VaultMenuItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       label={vault.kind === "global" ? "Company Data" : vault.name}
       collapsed={!isExpanded}
       onItemClick={() => router.push(vaultPath)}
@@ -309,6 +311,7 @@ const VaultDataSourceViewItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       type="leaf"
       isSelected={
         router.asPath === dataSourceViewPath ||
@@ -354,6 +357,7 @@ const VaultCategoryItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
       onItemClick={() => router.push(vaultCategoryPath)}
