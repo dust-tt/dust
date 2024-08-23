@@ -8,6 +8,7 @@ import {
 import type {
   APIError,
   DataSourceType,
+  DataSourceViewType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -67,22 +68,27 @@ export default function VaultCreateFolderModal({
           return;
         }
 
-        const res = await fetch(`/api/w/${owner.sId}/data_sources`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            description,
-            assistantDefaultSelected: false,
-            vaultId: vault.sId,
-          }),
-        });
+        const res = await fetch(
+          `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name,
+              description,
+              assistantDefaultSelected: false,
+            }),
+          }
+        );
         if (res.ok) {
           setOpen(false);
+          const { dataSourceView } = (await res.json()) as {
+            dataSourceView: DataSourceViewType;
+          };
           await router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/files/data_sources/${name}`
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
           );
           sendNotification({
             type: "success",
@@ -109,7 +115,7 @@ export default function VaultCreateFolderModal({
             <Page.H>Name</Page.H>
             <div className="w-full">
               <Input
-                placeholder="Folder name"
+                placeholder="folder_name"
                 name="name"
                 value={name}
                 onChange={(value) => {
