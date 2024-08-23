@@ -56,7 +56,7 @@ export function DataTable<TData extends TBaseData, TValue>({
   initialColumnOrder,
   columnsBreakpoints = {},
 }: DataTableProps<TData, TValue>) {
-  const windowSize = useWindowSize(); // Use the hook here
+  const windowSize = useWindowSize();
   const [sorting, setSorting] = useState<SortingState>(
     initialColumnOrder ?? []
   );
