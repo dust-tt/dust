@@ -227,7 +227,7 @@ export default function AssistantBuilderTablesModal({
                 tableName: table.name,
               };
               onSave([config], selectedDataSourceView);
-              onClose();
+              onClose(undefined, true);
             }}
             onBack={() => {
               setSelectedDataSourceOrView(null);
