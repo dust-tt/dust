@@ -64,12 +64,12 @@ export const VaultDataSourceViewContentList = ({
 
   const { vaultContent, isVaultContentLoading } = useVaultDataSourceViewContent(
     {
-      owner,
-      vaultId: vault.sId,
       dataSourceView,
-      viewType: "documents",
       filterPermission: "read",
+      owner,
       parentId,
+      vaultId: vault.sId,
+      viewType: "documents",
     }
   );
 

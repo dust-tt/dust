@@ -305,10 +305,9 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return {
       category: getDataSourceCategory(this.dataSource),
       createdAt: this.createdAt.getTime(),
+      dataSource: this.dataSource.toJSON(),
       id: this.id,
       kind: this.kind,
-      dataSource: this.dataSource.toJSON(),
-      vaultId: this.vault.sId,
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),

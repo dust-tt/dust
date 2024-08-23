@@ -115,13 +115,13 @@ function DataSourceResourceSelectorChildren({
 }) {
   const { vaultContent, isVaultContentLoading, isVaultContentError } =
     useVaultDataSourceViewContent({
-      workspaceId: owner.sId,
-      vaultId: dataSourceView.vaultId,
-      dataSourceViewId: dataSourceView.sId,
-      viewType,
-      parentId,
-      filterPermission,
+      dataSourceView: dataSourceView,
       disabled: dataSourceView.dataSource.connectorId === null,
+      filterPermission,
+      owner,
+      parentId,
+      vaultId: dataSourceView.vaultId,
+      viewType,
     });
 
   useEffect(() => {
