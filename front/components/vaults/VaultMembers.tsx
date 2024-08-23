@@ -1,9 +1,39 @@
-import { Button, Searchbar } from "@dust-tt/sparkle";
+import { Button, DataTable, Searchbar } from "@dust-tt/sparkle";
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
-import { useState } from "react";
+import type { CellContext } from "@tanstack/react-table";
+import { MinusIcon } from "lucide-react";
+import { useContext, useState } from "react";
 
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { ManageMembersModal } from "@app/components/vaults/ManageMembersModal";
 import { useVaultInfo } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+
+type RowData = {
+  icon: string;
+  name: string;
+  userId: string;
+  onClick?: () => void;
+  moreMenuItems: {
+    variant?: "default" | "warning";
+    label: string;
+    description?: string;
+    icon: React.ComponentType;
+    onClick: () => void;
+  }[];
+};
+
+const tableColumns = [
+  {
+    id: "name",
+    cell: (info: CellContext<RowData, string>) => (
+      <DataTable.CellContent avatarUrl={info.row.original.icon}>
+        {info.getValue()}
+      </DataTable.CellContent>
+    ),
+    accessorFn: (row: RowData) => row.name,
+  },
+];
 
 type VaultMembersProps = {
   owner: WorkspaceType;
@@ -13,13 +43,57 @@ type VaultMembersProps = {
 
 export const VaultMembers = ({ owner, isAdmin, vault }: VaultMembersProps) => {
   const [memberSearch, setMemberSearch] = useState<string>("");
+  const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
 
-  const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
+  const { vaultInfo, isVaultInfoLoading, mutateVaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
     vaultId: vault.sId,
   });
 
-  const rows = vaultInfo?.members || [];
+  const members = vaultInfo?.members || [];
+
+  const setMemberIds = async (memberIds: string[]) => {
+    const res = await fetch(`/api/w/${owner.sId}/groups/${vault.groupIds[0]}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        memberIds,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.log("errorData", errorData);
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Success",
+      description: "Members have been updated Successfully updated memmbers.",
+    });
+
+    await mutateVaultInfo();
+  };
+
+  const rows: RowData[] = members.map((member) => ({
+    icon: member.image || "",
+    name: member.fullName,
+    userId: member.sId,
+    moreMenuItems: [
+      {
+        label: "Remove",
+        icon: MinusIcon,
+        onClick: async () => {
+          await setMemberIds(
+            members.map((m) => m.sId).filter((id) => id !== member.sId)
+          );
+        },
+      },
+    ],
+  }));
 
   return (
     <>
@@ -41,20 +115,35 @@ export const VaultMembers = ({ owner, isAdmin, vault }: VaultMembersProps) => {
             }}
           />
         )}
-        <Button label="Add Members" onClick={() => {}} />
+        <Button
+          label="Add Members"
+          onClick={() => {
+            setAddMemberModalOpen(true);
+          }}
+        />
       </div>
       {isVaultInfoLoading ? (
         <></>
       ) : rows.length > 0 ? (
-        <div>
-          {rows.map((row) => (
-            <div key={row.sId}>{row.email}</div>
-          ))}
-        </div>
+        <DataTable
+          data={rows}
+          columns={tableColumns}
+          filterColumn="name"
+          filter={memberSearch}
+        />
       ) : (
         <div className="flex items-center justify-center text-sm font-normal text-element-700">
           No members
         </div>
+      )}
+      {vaultInfo && (
+        <ManageMembersModal
+          isOpen={addMemberModalOpen}
+          onClose={() => setAddMemberModalOpen(false)}
+          owner={owner}
+          setMemberIds={setMemberIds}
+          existingMembers={vaultInfo.members}
+        />
       )}
     </>
   );
