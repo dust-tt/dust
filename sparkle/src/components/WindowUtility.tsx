@@ -10,32 +10,19 @@ export const breakpoints = {
   xxl: 1536,
 };
 
-// Helper function to determine active breakpoint
-function getActiveBreakpoint(width: number): keyof typeof breakpoints {
-  if (width >= breakpoints.xxl) {
-    return "xxl";
-  }
-  if (width >= breakpoints.xl) {
-    return "xl";
-  }
-  if (width >= breakpoints.lg) {
-    return "lg";
-  }
-  if (width >= breakpoints.md) {
-    return "md";
-  }
-  if (width >= breakpoints.sm) {
-    return "sm";
-  }
-  return "xs";
+// Interface for window size state
+interface WindowSizeState {
+  width: number | undefined;
+  height: number | undefined;
+  activeBreakpoint: keyof typeof breakpoints;
 }
 
 // Custom hook to get window size and active breakpoint
 export function useWindowSize() {
-  const [windowSize, setWindowSize] = useState({
-    width: undefined as number | undefined,
-    height: undefined as number | undefined,
-    activeBreakpoint: "xs" as keyof typeof breakpoints,
+  const [windowSize, setWindowSize] = useState<WindowSizeState>({
+    width: undefined,
+    height: undefined,
+    activeBreakpoint: "xs",
   });
 
   useEffect(() => {
@@ -57,4 +44,22 @@ export function useWindowSize() {
   return windowSize;
 }
 
-export default useWindowSize;
+// Helper function to determine active breakpoint
+function getActiveBreakpoint(width: number): keyof typeof breakpoints {
+  if (width >= breakpoints.xxl) {
+    return "xxl";
+  }
+  if (width >= breakpoints.xl) {
+    return "xl";
+  }
+  if (width >= breakpoints.lg) {
+    return "lg";
+  }
+  if (width >= breakpoints.md) {
+    return "md";
+  }
+  if (width >= breakpoints.sm) {
+    return "sm";
+  }
+  return "xs";
+}
