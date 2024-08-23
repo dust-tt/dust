@@ -1315,13 +1315,14 @@ export function useVaultInfo({
 }) {
   const vaultsCategoriesFetcher: Fetcher<GetVaultResponseBody> = fetcher;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled ? null : `/api/w/${workspaceId}/vaults/${vaultId}`,
     vaultsCategoriesFetcher
   );
 
   return {
     vaultInfo: data ? data.vault : null,
+    mutateVaultInfo: mutate,
     isVaultInfoLoading: !error && !data,
     isVaultInfoError: error,
   };
