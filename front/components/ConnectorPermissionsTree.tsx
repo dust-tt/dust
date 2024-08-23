@@ -147,6 +147,7 @@ export function PermissionTreeChildren({
                 size="sm"
                 label={selectAllClicked ? "Unselect All" : "Select All"}
                 icon={ListCheckIcon}
+                disabled={search.trim().length === 0}
                 onClick={() => {
                   setSelectAllClicked((prev) => !prev);
                   setLocalStateByInternalId((prev) => {
