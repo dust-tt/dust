@@ -2,16 +2,13 @@ import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  isDevelopment,
-  isMembershipRoleType,
-} from "@dust-tt/types";
+import { assertNever, isMembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -25,10 +22,14 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostMemberResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+
   if (!auth.isAdmin()) {
     // Allow Dust Super User to force role for testing
     const allowForTesting =
-      isDevelopment() && auth.isDustSuperUser() && req.body.force === "true";
+      isDevelopmentOrDustWorkspace(owner) &&
+      auth.isDustSuperUser() &&
+      req.body.force === "true";
 
     if (!allowForTesting) {
       return apiError(req, res, {
@@ -41,8 +42,6 @@ async function handler(
       });
     }
   }
-
-  const owner = auth.getNonNullableWorkspace();
 
   const userId = req.query.uId;
   if (!(typeof userId === "string")) {

@@ -18,7 +18,7 @@ export async function forceUserRole(
   role: "user" | "builder" | "admin"
 ) {
   // Ideally we should check if the user is dust super user but we don't have this information in the front-end
-  if (!isDevelopment()) {
+  if (!isDevelopmentOrDustWorkspace(owner)) {
     return new Err("Not allowed");
   }
 
