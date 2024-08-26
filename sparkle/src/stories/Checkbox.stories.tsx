@@ -22,7 +22,11 @@ export const CheckBoxExample = () => {
       <div className="s-flex s-gap-10">
         Selectable
         <Checkbox variant="selectable" onChange={handleChange} />
-        <Checkbox checked variant="selectable" onChange={handleChange} />
+        <Checkbox
+          checked="checked"
+          variant="selectable"
+          onChange={handleChange}
+        />
         <Checkbox
           checked="partial"
           variant="selectable"
@@ -30,7 +34,11 @@ export const CheckBoxExample = () => {
         />
         Checkable
         <Checkbox variant="checkable" onChange={handleChange} />
-        <Checkbox checked variant="checkable" onChange={handleChange} />
+        <Checkbox
+          checked="checked"
+          variant="checkable"
+          onChange={handleChange}
+        />
         <Checkbox
           checked="partial"
           variant="checkable"
@@ -43,7 +51,7 @@ export const CheckBoxExample = () => {
         <Checkbox size="xs" variant="selectable" onChange={handleChange} />
         <Checkbox
           size="xs"
-          checked
+          checked="checked"
           variant="selectable"
           onChange={handleChange}
         />
@@ -57,7 +65,7 @@ export const CheckBoxExample = () => {
         <Checkbox size="xs" variant="checkable" onChange={handleChange} />
         <Checkbox
           size="xs"
-          checked
+          checked="checked"
           variant="checkable"
           onChange={handleChange}
         />
@@ -74,21 +82,21 @@ export const CheckBoxExample = () => {
 
 export const Selectable: Story = {
   args: {
-    checked: true,
+    checked: "checked",
     variant: "selectable",
   },
 };
 
 export const Checked: Story = {
   args: {
-    checked: true,
+    checked: "checked",
     variant: "checkable",
   },
 };
 
 export const Unchecked: Story = {
   args: {
-    checked: false,
+    checked: "unchecked",
   },
 };
 
@@ -101,7 +109,7 @@ export const PartialChecked: Story = {
 
 export const Disabled: Story = {
   args: {
-    checked: true,
+    checked: "checked",
     disabled: true,
   },
 };

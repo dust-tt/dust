@@ -8,7 +8,7 @@ import { Icon } from "./Icon";
 export interface CheckboxProps {
   variant?: "selectable" | "checkable";
   size?: "xs" | "sm";
-  checked?: true | false | "partial";
+  checked?: "checked" | "unchecked" | "partial";
   disabled?: boolean;
   onChange: (checked: boolean) => void;
   className?: string;
@@ -16,7 +16,7 @@ export interface CheckboxProps {
 
 export function Checkbox({
   variant = "selectable",
-  checked = false,
+  checked = "unchecked",
   size = "sm",
   onChange,
   className = "",
@@ -25,11 +25,11 @@ export function Checkbox({
   let isChecked: boolean;
   let isPartialChecked: boolean;
   switch (checked) {
-    case true:
+    case "checked":
       isChecked = true;
       isPartialChecked = false;
       break;
-    case false:
+    case "unchecked":
       isChecked = false;
       isPartialChecked = false;
       break;

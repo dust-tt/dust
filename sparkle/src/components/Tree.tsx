@@ -23,6 +23,8 @@ export function Tree({
   variant = "finder",
 }: TreeProps) {
   const modifiedChildren = React.Children.map(children, (child) => {
+    // /!\ Limitation: This stops on the first invalid element.
+    // Meaning that if Tree.Item is not the first child, it will not work.
     if (React.isValidElement<TreeItemProps>(child)) {
       // Clone the child element and pass the necessary props
       const childProps: Partial<TreeItemProps> = {};
