@@ -182,36 +182,28 @@ export const isConnectorProviderAllowedForPlan = (
   plan: PlanType,
   provider: ConnectorProvider
 ): boolean => {
-  let isDataSourceAllowedInPlan = false;
   switch (provider) {
     case "confluence":
-      isDataSourceAllowedInPlan = plan.limits.connections.isConfluenceAllowed;
-      break;
+      return plan.limits.connections.isConfluenceAllowed;
     case "slack":
-      isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
-      break;
+      return plan.limits.connections.isSlackAllowed;
     case "notion":
-      isDataSourceAllowedInPlan = plan.limits.connections.isNotionAllowed;
+      return plan.limits.connections.isNotionAllowed;
       break;
     case "github":
-      isDataSourceAllowedInPlan = plan.limits.connections.isGithubAllowed;
-      break;
+      return plan.limits.connections.isGithubAllowed;
     case "google_drive":
-      isDataSourceAllowedInPlan = plan.limits.connections.isGoogleDriveAllowed;
-      break;
+      return plan.limits.connections.isGoogleDriveAllowed;
     case "intercom":
-      isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
+      return plan.limits.connections.isIntercomAllowed;
       break;
     case "microsoft":
-      isDataSourceAllowedInPlan = true;
-      break;
+      return true;
     case "webcrawler":
-      isDataSourceAllowedInPlan = plan.limits.connections.isWebCrawlerAllowed;
-      break;
+      return plan.limits.connections.isWebCrawlerAllowed;
     default:
       assertNever(provider);
   }
-  return isDataSourceAllowedInPlan;
 };
 
 export const isConnectorProviderAssistantDefaultSelected = (

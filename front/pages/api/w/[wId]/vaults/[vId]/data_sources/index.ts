@@ -4,6 +4,7 @@ import {
   ConnectorConfigurationTypeSchema,
   ConnectorsAPI,
   CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
@@ -19,7 +20,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
+import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -39,14 +40,17 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 // Sorcery: Create a union type with at least two elements to satisfy t.union
-const ConnectorProviderCodec = t.union([
-  t.literal(CONNECTOR_PROVIDERS[0]),
-  t.literal(CONNECTOR_PROVIDERS[1]),
-  ...CONNECTOR_PROVIDERS.slice(2).map((provider) => t.literal(provider)),
-]);
+export function getConnectorProviderCodec(): t.Mixed {
+  const [first, second, ...rest] = CONNECTOR_PROVIDERS;
+  return t.union([
+    t.literal(first),
+    t.literal(second),
+    ...rest.map((value) => t.literal(value)),
+  ]);
+}
 
 const PostManagedDataSourceRequestBodySchema = t.type({
-  provider: ConnectorProviderCodec,
+  provider: getConnectorProviderCodec(),
   connectionId: t.union([t.string, t.undefined]),
   configuration: ConnectorConfigurationTypeSchema,
 });
@@ -57,7 +61,7 @@ const PostStaticDataSourceRequestBodySchema = t.type({
   assistantDefaultSelected: t.boolean,
 });
 
-type PostVaultDataSourceResponseBody = {
+export type PostVaultDataSourceResponseBody = {
   dataSourceView: DataSourceViewType;
 };
 
@@ -95,7 +99,8 @@ async function handler(
     });
   }
 
-  const dataSourceEmbedder = owner.defaultEmbeddingProvider ?? "openai";
+  const dataSourceEmbedder =
+    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
   const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -146,7 +151,7 @@ async function handler(
             },
           });
         }
-        const dataSources = await getDataSources(auth);
+        const dataSources = await DataSourceResource.listByWorkspace(auth);
         if (
           plan.limits.dataSources.count != -1 &&
           dataSources.length >= plan.limits.dataSources.count

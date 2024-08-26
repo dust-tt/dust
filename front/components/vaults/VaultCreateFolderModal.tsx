@@ -8,7 +8,6 @@ import {
 import type {
   APIError,
   DataSourceType,
-  DataSourceViewType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -17,6 +16,7 @@ import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export default function VaultCreateFolderModal({
   isOpen,
@@ -84,9 +84,8 @@ export default function VaultCreateFolderModal({
         );
         if (res.ok) {
           setOpen(false);
-          const { dataSourceView } = (await res.json()) as {
-            dataSourceView: DataSourceViewType;
-          };
+          const response: PostVaultDataSourceResponseBody = await res.json();
+          const { dataSourceView } = response;
           await router.push(
             `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
           );
