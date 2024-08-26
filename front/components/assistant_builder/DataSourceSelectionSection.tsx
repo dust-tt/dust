@@ -14,6 +14,7 @@ import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { getConnectorProviderLogo } from "@app/lib/connector_providers";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -96,12 +97,7 @@ export default function DataSourceSelectionSection({
                   label={getDisplayNameForDataSource(
                     dsConfig.dataSourceView.dataSource
                   )}
-                  visual={
-                    LogoComponent ? (
-                      <LogoComponent className="s-h-5 s-w-5" />
-                    ) : null
-                  }
-                  variant="folder" // in case LogoComponent is null
+                  visual={LogoComponent ?? undefined}
                   className="whitespace-nowrap"
                 >
                   {dsConfig.isSelectAll && (
@@ -125,7 +121,7 @@ export default function DataSourceSelectionSection({
                         key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
                         label={node.titleWithParentsContext ?? node.title}
                         type={node.expandable ? "node" : "leaf"}
-                        variant={node.type}
+                        visual={getVisualForContentNode(node)}
                         className="whitespace-nowrap"
                         actions={
                           <div className="mr-8 flex flex-row gap-2">

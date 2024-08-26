@@ -27,16 +27,18 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
+  if (!auth.isUser()) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
+        type: "workspace_auth_error",
+        message:
+          "Only users of the current workspace can interact with vaults.",
       },
     });
   }
+
+  const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {
     case "GET":

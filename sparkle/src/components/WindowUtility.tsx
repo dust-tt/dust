@@ -30,7 +30,6 @@ function getActiveBreakpoint(width: number): keyof typeof breakpoints {
   return "xs";
 }
 
-
 interface WindowSizeState {
   width: number | undefined;
   height: number | undefined;
@@ -42,7 +41,7 @@ export function useWindowSize() {
   const [windowSize, setWindowSize] = useState<WindowSizeState>({
     width: undefined,
     height: undefined,
-    activeBreakpoint: "xs"
+    activeBreakpoint: "xs",
   });
 
   useEffect(() => {

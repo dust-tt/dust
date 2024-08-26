@@ -78,7 +78,7 @@ export function HelpAndQuickGuideWrapper({
           onClick={() => setIsHelpDrawerOpen(true)}
         >
           <span
-            style={{ fontSize: "32px", color: "white", fontWeight: "bold" }}
+            style={{ fontSize: "28px", color: "white", fontWeight: "bold" }}
           >
             ?
           </span>
