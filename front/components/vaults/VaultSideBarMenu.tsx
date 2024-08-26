@@ -2,6 +2,7 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
+  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   Item,
@@ -243,7 +244,7 @@ const VaultMenuItem = ({
       onItemClick={() => router.push(vaultPath)}
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={vault.kind === "global" ? PlanetIcon : LockIcon}
+      visual={vault.kind === "global" ? CompanyIcon : LockIcon}
       tailwindIconTextColor="text-brand"
       size="md"
       areActionsFading={false}
