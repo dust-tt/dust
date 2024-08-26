@@ -12,8 +12,7 @@ interface DocumentDeleteDialogProps {
   dataSourceView: DataSourceViewType;
   contentNode?: LightContentNode;
   isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
+  onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
 }
 
@@ -22,7 +21,6 @@ export const DocumentDeleteDialog = ({
   contentNode,
   isOpen,
   onClose,
-  onSave,
   owner,
 }: DocumentDeleteDialogProps) => {
   const sendNotification = useContext(SendNotificationsContext);
@@ -32,6 +30,7 @@ export const DocumentDeleteDialog = ({
       if (!contentNode?.internalId) {
         return;
       }
+      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSourceView.dataSource.name
@@ -50,8 +49,7 @@ export const DocumentDeleteDialog = ({
         title: "Document successfully deleted",
         description: `Document ${contentNode?.internalId} was successfully deleted`,
       });
-      onClose();
-      onSave();
+      onClose(true);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -66,7 +64,7 @@ export const DocumentDeleteDialog = ({
   return (
     <Dialog
       isOpen={isOpen}
-      onCancel={onClose}
+      onCancel={() => onClose(false)}
       isSaving={loading}
       onValidate={handleDeleteDocument}
       title="Confirm deletion"

@@ -4,7 +4,6 @@ import {
   Input,
   Modal,
   Page,
-  Popup,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
@@ -15,9 +14,9 @@ import type {
 } from "@dust-tt/types";
 import { parseAndStringifyCsv } from "@dust-tt/types";
 import { Err, isSlugified, Ok } from "@dust-tt/types";
-import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
 
+import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useTable } from "@app/lib/swr";
@@ -28,8 +27,7 @@ interface TableUploadOrEditModalProps {
   dataSourceView: DataSourceViewType;
   contentNode?: LightContentNode;
   isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
+  onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
   plan: PlanType;
 }
@@ -39,7 +37,6 @@ export function TableUploadOrEditModal({
   contentNode,
   isOpen,
   onClose,
-  onSave,
   owner,
   plan,
 }: TableUploadOrEditModalProps) {
@@ -84,8 +81,6 @@ export function TableUploadOrEditModal({
     setTableDescription(table ? table.description : "");
   }, [initialTableId, table]);
 
-  const router = useRouter();
-
   // TODO Get the total number of documents
   const total = 0;
 
@@ -95,16 +90,11 @@ export function TableUploadOrEditModal({
     total >= plan.limits.dataSources.documents.count
   ) {
     return (
-      <Popup
-        show={isOpen}
-        chipLabel={`${plan.name} plan`}
-        description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
-        buttonLabel="Check Dust plans"
-        buttonClick={() => {
-          void router.push(`/w/${owner.sId}/subscription`);
-        }}
-        onClose={onClose}
-        className="absolute bottom-8 right-0"
+      <DocumentLimitPopup
+        isOpen={isOpen}
+        plan={plan}
+        onClose={() => onClose(false)}
+        owner={owner}
       />
     );
   }
@@ -204,6 +194,7 @@ export function TableUploadOrEditModal({
         throw new Error("Unreachable: fileContent is null");
       }
 
+      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
       const uploadRes = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`,
         {
@@ -229,8 +220,7 @@ export function TableUploadOrEditModal({
         title: "Table successfully added",
         description: `Table ${tableName} was successfully added.`,
       });
-      onClose();
-      onSave();
+      onClose(true);
     } finally {
       setUploading(false);
     }
@@ -239,7 +229,7 @@ export function TableUploadOrEditModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => onClose(false)}
       hasChanged={!hasChanged}
       variant="side-md"
       title={initialTableId ? "Edit table" : "Add a new table"}

@@ -7,7 +7,6 @@ import {
   Modal,
   Page,
   PlusIcon,
-  Popup,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -17,9 +16,9 @@ import type {
   PlanType,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
 
+import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
@@ -28,8 +27,7 @@ export interface DocumentUploadOrEditModalProps {
   dataSourceView: DataSourceViewType;
   contentNode?: LightContentNode;
   isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
+  onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
   plan: PlanType;
 }
@@ -39,7 +37,6 @@ export function DocumentUploadOrEditModal({
   contentNode,
   isOpen,
   onClose,
-  onSave,
   owner,
   plan,
 }: DocumentUploadOrEditModalProps) {
@@ -90,8 +87,6 @@ export function DocumentUploadOrEditModal({
     }
   }, [dataSourceView.dataSource.name, documentIdToLoad, owner.sId]);
 
-  const router = useRouter();
-
   // TODO Get the total number of documents
   const total = 0;
 
@@ -101,16 +96,11 @@ export function DocumentUploadOrEditModal({
     total >= plan.limits.dataSources.documents.count
   ) {
     return (
-      <Popup
-        show={isOpen}
-        chipLabel={`${plan.name} plan`}
-        description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
-        buttonLabel="Check Dust plans"
-        buttonClick={() => {
-          void router.push(`/w/${owner.sId}/subscription`);
-        }}
-        onClose={onClose}
-        className="absolute bottom-8 right-0"
+      <DocumentLimitPopup
+        isOpen={isOpen}
+        plan={plan}
+        onClose={() => onClose(false)}
+        owner={owner}
       />
     );
   }
@@ -135,6 +125,7 @@ export function DocumentUploadOrEditModal({
     };
 
     try {
+      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSourceView.dataSource.name
@@ -156,8 +147,7 @@ export function DocumentUploadOrEditModal({
         title: "Document successfully added",
         description: `Your document ${documentId} was successfully added`,
       });
-      onSave();
-      onClose();
+      onClose(true);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -192,7 +182,7 @@ export function DocumentUploadOrEditModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => onClose(false)}
       hasChanged={hasChanged}
       variant="side-md"
       onSave={

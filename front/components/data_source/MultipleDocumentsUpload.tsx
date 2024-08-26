@@ -12,11 +12,12 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 
+const UPLOAD_ACCEPT = [".txt", ".pdf", ".md", ".csv"];
+
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
   isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
+  onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
   plan: PlanType;
 };
@@ -25,7 +26,6 @@ export const MultipleDocumentsUpload = ({
   dataSourceView,
   isOpen,
   onClose,
-  onSave,
   owner,
   // plan // TODO check max files upload
 }: MultipleDocumentsUploadProps) => {
@@ -35,7 +35,7 @@ export const MultipleDocumentsUpload = ({
     if (isOpen) {
       fileInputRef.current?.click();
       // Reset state immediately after opening the dialog, we don't need to keep it set
-      onClose();
+      onClose(false);
     }
   }, [isOpen, onClose]);
 
@@ -107,7 +107,7 @@ export const MultipleDocumentsUpload = ({
         // uploading files only
         isSaving={true}
         isOpen={bulkFilesUploading !== null}
-        title={`Uploading files`}
+        title="Uploading files"
       >
         {bulkFilesUploading && (
           <>
@@ -119,7 +119,7 @@ export const MultipleDocumentsUpload = ({
       <input
         className="hidden"
         type="file"
-        accept=".txt, .pdf, .md, .csv"
+        accept={UPLOAD_ACCEPT.join(",")}
         ref={fileInputRef}
         multiple={true}
         onChange={async (e) => {
@@ -165,10 +165,10 @@ export const MultipleDocumentsUpload = ({
               }
             }
             setBulkFilesUploading(null);
-            onSave();
+            onClose(true);
           }
         }}
-      ></input>
+      />
     </>
   );
 };

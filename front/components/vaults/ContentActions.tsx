@@ -5,6 +5,7 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isFolder, isWebsite } from "@dust-tt/types";
 
 import { DocumentDeleteDialog } from "@app/components/data_source/DocumentDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
@@ -39,22 +40,26 @@ export const ContentActions = ({
   currentAction,
   setCurrentAction,
 }: ContentActionsProps) => {
+  const onClose = (save: boolean) => {
+    setCurrentAction(null);
+    if (save) {
+      onSave();
+    }
+  };
   return (
     <>
       <DocumentUploadOrEditModal
         contentNode={currentAction?.contentNode}
         dataSourceView={dataSourceView}
         isOpen={currentAction?.key === "DocumentUploadOrEditModal"}
-        onClose={() => setCurrentAction(null)}
-        onSave={onSave}
+        onClose={onClose}
         owner={owner}
         plan={plan}
       />
       <MultipleDocumentsUpload
         dataSourceView={dataSourceView}
         isOpen={currentAction?.key === "MultipleDocumentsUpload"}
-        onClose={() => setCurrentAction(null)}
-        onSave={onSave}
+        onClose={onClose}
         owner={owner}
         plan={plan}
       />
@@ -62,16 +67,14 @@ export const ContentActions = ({
         contentNode={currentAction?.contentNode}
         dataSourceView={dataSourceView}
         isOpen={currentAction?.key === "DocumentDeleteDialog"}
-        onClose={() => setCurrentAction(null)}
-        onSave={onSave}
+        onClose={onClose}
         owner={owner}
       />
       <TableUploadOrEditModal
         contentNode={currentAction?.contentNode}
         dataSourceView={dataSourceView}
         isOpen={currentAction?.key === "TableUploadOrEditModal"}
-        onClose={() => setCurrentAction(null)}
-        onSave={onSave}
+        onClose={onClose}
         owner={owner}
         plan={plan}
       />
@@ -79,8 +82,7 @@ export const ContentActions = ({
         contentNode={currentAction?.contentNode}
         dataSourceView={dataSourceView}
         isOpen={currentAction?.key === "TableDeleteDialog"}
-        onClose={() => setCurrentAction(null)}
-        onSave={onSave}
+        onClose={onClose}
         owner={owner}
       />
     </>
@@ -123,17 +125,19 @@ export const getFolderMenuItems = (contentNode: LightContentNode) => {
   return [];
 };
 
-export const getWebfolderMenuItems = (contentNode: LightContentNode) => {
+export const getWebfolderMenuItems = (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  contentNode: LightContentNode
+) => {
   // TODO Actions for webrawler datasource
-  console.log(contentNode);
   return [];
 };
 
 export const getConnectedDataSourceMenuItems = (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   contentNode: LightContentNode
 ) => {
   // TODO Actions for managed datasource
-  console.log(contentNode);
   return [];
 };
 
@@ -141,10 +145,10 @@ export const getMenuItems = (
   dataSourceView: DataSourceViewType,
   contentNode: LightContentNode
 ) => {
-  if (!dataSourceView.dataSource.connectorProvider) {
+  if (isFolder(dataSourceView.dataSource)) {
     return getFolderMenuItems(contentNode);
   }
-  if (dataSourceView.dataSource.connectorProvider === "webcrawler") {
+  if (isWebsite(dataSourceView.dataSource)) {
     return getWebfolderMenuItems(contentNode);
   }
   return getConnectedDataSourceMenuItems(contentNode);

@@ -11,8 +11,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 interface TableDeleteDialogProps {
   dataSourceView: DataSourceViewType;
   isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
+  onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
   contentNode?: LightContentNode;
 }
@@ -21,7 +20,6 @@ export const TableDeleteDialog = ({
   dataSourceView,
   isOpen,
   onClose,
-  onSave,
   owner,
   contentNode,
 }: TableDeleteDialogProps) => {
@@ -36,6 +34,7 @@ export const TableDeleteDialog = ({
 
       setLoading(true);
 
+      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/${contentNode?.internalId}`,
         {
@@ -52,8 +51,7 @@ export const TableDeleteDialog = ({
         title: "Table successfully deleted",
         description: `Your table was deleted`,
       });
-      onClose();
-      onSave();
+      onClose(true);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -68,7 +66,7 @@ export const TableDeleteDialog = ({
     <Dialog
       isOpen={isOpen}
       isSaving={loading}
-      onCancel={onClose}
+      onCancel={() => onClose(false)}
       onValidate={handleDeleteTable}
       title="Confirm deletion"
       validateVariant="primaryWarning"
