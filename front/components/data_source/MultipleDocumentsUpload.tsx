@@ -1,9 +1,9 @@
 import { Dialog } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
+  LightWorkspaceType,
   PlanType,
   PostDataSourceDocumentRequestBody,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { RefObject } from "react";
@@ -17,7 +17,7 @@ type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
   fileInputRef: RefObject<HTMLInputElement>;
   onSave: () => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   plan: PlanType;
 };
 

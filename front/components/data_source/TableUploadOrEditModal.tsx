@@ -5,7 +5,11 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewType, Result, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  LightWorkspaceType,
+  Result,
+} from "@dust-tt/types";
 import { parseAndStringifyCsv } from "@dust-tt/types";
 import { Err, isSlugified, Ok } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -22,7 +26,7 @@ interface TableUploadOrEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export function TableUploadOrEditModal({

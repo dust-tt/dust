@@ -11,9 +11,9 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
+  LightWorkspaceType,
   PlanType,
   PostDataSourceDocumentRequestBody,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
 
@@ -27,7 +27,7 @@ export interface DocumentUploadOrEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   plan: PlanType;
 }
 

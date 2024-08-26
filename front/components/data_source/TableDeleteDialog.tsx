@@ -1,5 +1,5 @@
 import { Dialog } from "@dust-tt/sparkle";
-import type { DataSourceViewType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -9,7 +9,7 @@ interface TableDeleteDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   tableId: string | null;
 }
 
