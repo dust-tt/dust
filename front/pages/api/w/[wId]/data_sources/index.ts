@@ -1,5 +1,6 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import {
+  DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
@@ -139,7 +140,8 @@ async function handler(
       // Dust managed credentials: all data sources.
       const credentials = dustManagedCredentials();
 
-      const dataSourceEmbedder = owner.defaultEmbeddingProvider ?? "openai";
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
       const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),

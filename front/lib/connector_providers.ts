@@ -11,8 +11,10 @@ import {
 import type {
   ConnectorProvider,
   DataSourceViewType,
+  PlanType,
   WhitelistableFeature,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { LucideIcon } from "lucide-react";
 import type { SVGProps } from "react";
 
@@ -170,4 +172,69 @@ export function getConnectorProviderLogoWithFallback(
     return fallback;
   }
   return CONNECTOR_CONFIGURATIONS[provider].logoComponent;
+}
+
+export const isValidConnectorSuffix = (suffix: string): boolean => {
+  return /^[a-z0-9\-_]{1,16}$/.test(suffix);
+};
+
+export const isConnectorProviderAllowedForPlan = (
+  plan: PlanType,
+  provider: ConnectorProvider
+): boolean => {
+  switch (provider) {
+    case "confluence":
+      return plan.limits.connections.isConfluenceAllowed;
+    case "slack":
+      return plan.limits.connections.isSlackAllowed;
+    case "notion":
+      return plan.limits.connections.isNotionAllowed;
+    case "github":
+      return plan.limits.connections.isGithubAllowed;
+    case "google_drive":
+      return plan.limits.connections.isGoogleDriveAllowed;
+    case "intercom":
+      return plan.limits.connections.isIntercomAllowed;
+    case "microsoft":
+      return true;
+    case "webcrawler":
+      return plan.limits.connections.isWebCrawlerAllowed;
+    default:
+      assertNever(provider);
+  }
+};
+
+export const isConnectorProviderAssistantDefaultSelected = (
+  provider: ConnectorProvider
+): boolean => {
+  switch (provider) {
+    case "confluence":
+    case "slack":
+    case "notion":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "microsoft":
+      return true;
+    case "webcrawler":
+      return false;
+    default:
+      assertNever(provider);
+  }
+};
+
+export function getDefaultDataSourceName(
+  provider: ConnectorProvider,
+  suffix: string | null
+): string {
+  return suffix ? `managed-${provider}-${suffix}` : `managed-${provider}`;
+}
+
+export function getDefaultDataSourceDescription(
+  provider: ConnectorProvider,
+  suffix: string | null
+): string {
+  return suffix
+    ? `Managed Data Source for ${provider} (${suffix})`
+    : `Managed Data Source for ${provider}`;
 }

@@ -236,9 +236,13 @@ export default function AssistantBuilderDataSourceModal({
     <Modal
       isOpen={isOpen}
       onClose={() => {
+        // If we are in the PickKind mode, we close the modal, otherwise we go back to the PickKind mode
         if (displayMode === "PickKind") {
           setOpen(false);
-        } else {
+        }
+        // We are one of the selection modes, we didn't save so we cancel the changes and go back to the PickKind mode
+        else {
+          setDataSourceConfigurations(initialDataSourceConfigurations);
           setDisplayMode("PickKind");
         }
       }}

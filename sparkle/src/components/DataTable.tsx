@@ -27,9 +27,9 @@ interface ColumnBreakpoint {
   [columnId: string]: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
-interface DataTableProps<TData extends TBaseData, TValue> {
+interface DataTableProps<TData extends TBaseData> {
   data: TData[];
-  columns: ColumnDef<TData, TValue>[];
+  columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
   filter?: string;
   filterColumn?: string;
@@ -47,7 +47,7 @@ function shouldRenderColumn(
   return windowWidth >= breakpoints[breakpoint];
 }
 
-export function DataTable<TData extends TBaseData, TValue>({
+export function DataTable<TData extends TBaseData>({
   data,
   columns,
   className,
@@ -55,7 +55,7 @@ export function DataTable<TData extends TBaseData, TValue>({
   filterColumn,
   initialColumnOrder,
   columnsBreakpoints = {},
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps<TData>) {
   const windowSize = useWindowSize();
   const [sorting, setSorting] = useState<SortingState>(
     initialColumnOrder ?? []

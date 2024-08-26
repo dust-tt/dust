@@ -32,8 +32,6 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
-export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
-
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
 export type LabsConnectorProvider = "google_drive" | "gong";

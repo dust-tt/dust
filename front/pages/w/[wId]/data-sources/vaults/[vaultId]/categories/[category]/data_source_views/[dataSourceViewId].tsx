@@ -138,7 +138,7 @@ export default function Vault({
         vault={vault}
         isAdmin={isAdmin}
         parentId={parentId}
-        dataSourceViewId={dataSourceView.sId}
+        dataSourceView={dataSourceView}
         onSelect={(parentId) => {
           void router.push(
             `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`

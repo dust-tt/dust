@@ -1,10 +1,8 @@
 import {
   Avatar,
   BracesIcon,
-  ChatBubbleBottomCenterTextIcon,
   CommandLineIcon,
   ContentMessage,
-  DocumentTextIcon,
   ElementModal,
   ExternalLinkIcon,
   FolderIcon,
@@ -14,17 +12,15 @@ import {
   PlanetIcon,
   ServerIcon,
   Spinner,
-  Square3Stack3DIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
-  ContentNode,
   CoreAPITable,
   DataSourceConfiguration,
-  DataSourceType,
+  DataSourceViewType,
   DustAppRunConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
@@ -48,7 +44,7 @@ import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
-import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogo } from "@app/lib/connector_providers";
@@ -60,7 +56,7 @@ import {
   useApp,
   useConnectorPermissions,
   useDataSourceContentNodes,
-  useDataSources,
+  useDataSourceViews,
 } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
@@ -91,7 +87,7 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
-  const { dataSources } = useDataSources(owner);
+  const { dataSourceViews } = useDataSourceViews(owner);
 
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
@@ -272,9 +268,9 @@ export function AssistantDetails({
               </div>
               {retrievalActions.map((a, index) => (
                 <div className="flex flex-col gap-2" key={`action-${index}`}>
-                  <DataSourcesSection
+                  <DataSourceViewsSection
                     owner={owner}
-                    dataSources={dataSources}
+                    dataSourceViews={dataSourceViews}
                     dataSourceConfigurations={a.dataSources}
                   />
                 </div>
@@ -297,9 +293,9 @@ export function AssistantDetails({
                 <div className="text-lg font-bold text-element-800">
                   Extract from data sources
                 </div>
-                <DataSourcesSection
+                <DataSourceViewsSection
                   owner={owner}
-                  dataSources={dataSources}
+                  dataSourceViews={dataSourceViews}
                   dataSourceConfigurations={action.dataSources}
                 />
               </div>
@@ -343,26 +339,26 @@ export function AssistantDetails({
   );
 }
 
-function DataSourcesSection({
+function DataSourceViewsSection({
   owner,
-  dataSources,
+  dataSourceViews,
   dataSourceConfigurations,
 }: {
   owner: WorkspaceType;
-  dataSources: DataSourceType[];
+  dataSourceViews: DataSourceViewType[];
   dataSourceConfigurations: DataSourceConfiguration[];
 }) {
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
-  const [dataSourceToDisplay, setDataSourceToDisplay] =
-    useState<DataSourceType | null>(null);
+  const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
+    useState<DataSourceViewType | null>(null);
 
   return (
     <div className="flex flex-col gap-1">
-      <ManagedDataSourceDocumentModal
+      <DataSourceViewDocumentModal
         owner={owner}
-        dataSource={dataSourceToDisplay}
+        dataSourceView={dataSourceViewToDisplay}
         documentId={documentToDisplay}
         isOpen={!!documentToDisplay}
         setOpen={(open) => {
@@ -373,16 +369,17 @@ function DataSourcesSection({
       />
       <Tree>
         {dataSourceConfigurations.map((dsConfig) => {
-          const ds = dataSources.find(
-            (ds) => ds.name === dsConfig.dataSourceId
+          const dataSourceView = dataSourceViews.find(
+            (dsv) => dsv.sId === dsConfig.dataSourceViewId
           );
 
           let DsLogo = null;
           let dataSourceName = dsConfig.dataSourceId;
 
-          if (ds) {
-            DsLogo = getConnectorProviderLogo(ds.connectorProvider);
-            dataSourceName = getDisplayNameForDataSource(ds);
+          if (dataSourceView) {
+            const { dataSource } = dataSourceView;
+            DsLogo = getConnectorProviderLogo(dataSource.connectorProvider);
+            dataSourceName = getDisplayNameForDataSource(dataSource);
           }
 
           const isAllSelected = dsConfig.filter.parents === null;
@@ -390,32 +387,36 @@ function DataSourcesSection({
           return (
             <Tree.Item
               key={dsConfig.dataSourceId}
-              type={ds && ds.connectorId ? "node" : "leaf"}
+              type={
+                dataSourceView && dataSourceView.dataSource.connectorId
+                  ? "node"
+                  : "leaf"
+              }
               label={dataSourceName}
               visual={DsLogo ?? FolderIcon}
               className="whitespace-nowrap"
             >
-              {ds && isAllSelected && (
+              {dataSourceView && isAllSelected && (
                 <PermissionTreeChildren
                   owner={owner}
-                  dataSource={ds}
+                  dataSource={dataSourceView.dataSource}
                   parentId={null}
                   permissionFilter="read"
                   canUpdatePermissions={false}
                   displayDocumentSource={(documentId: string) => {
-                    setDataSourceToDisplay(ds);
+                    setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(documentId);
                   }}
                   useConnectorPermissionsHook={useConnectorPermissions}
                   isSearchEnabled={false}
                 />
               )}
-              {ds && !isAllSelected && (
-                <DataSourceSelectedNodes
+              {dataSourceView && !isAllSelected && (
+                <DataSourceViewSelectedNodes
                   owner={owner}
-                  dataSource={ds}
+                  dataSourceView={dataSourceView}
                   dataSourceConfiguration={dsConfig}
-                  setDataSourceToDisplay={setDataSourceToDisplay}
+                  setDataSourceViewToDisplay={setDataSourceViewToDisplay}
                   setDocumentToDisplay={setDocumentToDisplay}
                 />
               )}
@@ -427,20 +428,23 @@ function DataSourcesSection({
   );
 }
 
-function DataSourceSelectedNodes({
-  owner,
-  dataSource,
+function DataSourceViewSelectedNodes({
   dataSourceConfiguration,
-  setDataSourceToDisplay,
+  dataSourceView,
+  owner,
+  setDataSourceViewToDisplay,
   setDocumentToDisplay,
 }: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
   dataSourceConfiguration: DataSourceConfiguration;
-  setDataSourceToDisplay: (ds: DataSourceType) => void;
+  dataSourceView: DataSourceViewType;
+  owner: WorkspaceType;
+  setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const dataSourceSelectedNodes = useDataSourceContentNodes({
+  const { dataSource } = dataSourceView;
+
+  // TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
+  const dataSourceViewSelectedNodes = useDataSourceContentNodes({
     owner,
     dataSource,
     internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
@@ -448,7 +452,7 @@ function DataSourceSelectedNodes({
 
   return (
     <>
-      {dataSourceSelectedNodes.nodes.map((node) => (
+      {dataSourceViewSelectedNodes.nodes.map((node) => (
         <Tree.Item
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}
@@ -476,7 +480,7 @@ function DataSourceSelectedNodes({
                 icon={BracesIcon}
                 onClick={() => {
                   if (node.dustDocumentId) {
-                    setDataSourceToDisplay(dataSource);
+                    setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(node.dustDocumentId);
                   }
                 }}
@@ -496,7 +500,7 @@ function DataSourceSelectedNodes({
             permissionFilter="read"
             canUpdatePermissions={true}
             displayDocumentSource={(documentId: string) => {
-              setDataSourceToDisplay(dataSource);
+              setDataSourceViewToDisplay(dataSourceView);
               setDocumentToDisplay(documentId);
             }}
             useConnectorPermissionsHook={useConnectorPermissions}

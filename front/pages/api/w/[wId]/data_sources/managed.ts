@@ -3,6 +3,7 @@ import type { ConnectorType } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorConfigurationTypeSchema,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
@@ -23,6 +24,10 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
+import {
+  isConnectorProviderAllowedForPlan,
+  isConnectorProviderAssistantDefaultSelected,
+} from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -206,47 +211,12 @@ async function handler(
             : `Managed Data Source for ${provider}`;
       }
 
-      let isDataSourceAllowedInPlan: boolean;
-      let assistantDefaultSelected: boolean;
-      switch (provider) {
-        case "confluence":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isConfluenceAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "slack":
-          isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "notion":
-          isDataSourceAllowedInPlan = plan.limits.connections.isNotionAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "github":
-          isDataSourceAllowedInPlan = plan.limits.connections.isGithubAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "google_drive":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isGoogleDriveAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "intercom":
-          isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "microsoft":
-          isDataSourceAllowedInPlan = true;
-          assistantDefaultSelected = true;
-          break;
-        case "webcrawler":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isWebCrawlerAllowed;
-          assistantDefaultSelected = false;
-          break;
-        default:
-          assertNever(provider);
-      }
+      const isDataSourceAllowedInPlan = isConnectorProviderAllowedForPlan(
+        plan,
+        provider
+      );
+      const assistantDefaultSelected =
+        isConnectorProviderAssistantDefaultSelected(provider);
 
       // Enforce plan limits: managed DataSources.
       if (!isDataSourceAllowedInPlan) {
@@ -291,7 +261,8 @@ async function handler(
         });
       }
 
-      const dataSourceEmbedder = owner.defaultEmbeddingProvider ?? "openai";
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
       const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
 
       // Dust managed credentials: managed data source.

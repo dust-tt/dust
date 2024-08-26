@@ -6,13 +6,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetDataSourcesResponseBody = {
+export type GetDataSourceViewsResponseBody = {
   dataSourceViews: DataSourceViewType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDataSourcesResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const user = auth.user();

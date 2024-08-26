@@ -1,12 +1,6 @@
-import React, { useState } from "react";
+import React, { ComponentType, ReactNode, useState } from "react";
 
-import {
-  ChatBubbleBottomCenterText,
-  DocumentText,
-  Folder,
-  Square3Stack3D,
-} from "@sparkle/icons/stroke";
-import { ChevronDownIcon, ChevronRightIcon, Spinner } from "@sparkle/index";
+import { ArrowDownSIcon, ArrowRightSIcon, Spinner } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
@@ -14,12 +8,40 @@ import { Icon } from "./Icon";
 import { IconButton } from "./IconButton";
 
 export interface TreeProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   isBoxed?: boolean;
   isLoading?: boolean;
+  tailwindIconTextColor?: string;
+  variant?: "navigator" | "finder";
 }
 
-export function Tree({ children, isLoading, isBoxed = false }: TreeProps) {
+export function Tree({
+  children,
+  isLoading,
+  isBoxed = false,
+  tailwindIconTextColor,
+  variant = "finder",
+}: TreeProps) {
+  const modifiedChildren = React.Children.map(children, (child) => {
+    // /!\ Limitation: This stops on the first invalid element.
+    // Meaning that if Tree.Item is not the first child, it will not work.
+    if (React.isValidElement<TreeItemProps>(child)) {
+      // Clone the child element and pass the necessary props
+      const childProps: Partial<TreeItemProps> = {};
+
+      if (variant === "navigator") {
+        childProps.isNavigatable = true;
+      }
+
+      if (tailwindIconTextColor) {
+        childProps.tailwindIconTextColor = tailwindIconTextColor;
+      }
+
+      return React.cloneElement(child, childProps);
+    }
+    return child;
+  });
+
   return isLoading ? (
     <div className="s-py-2 s-pl-4">
       <Spinner size="xs" variant="dark" />
@@ -29,28 +51,21 @@ export function Tree({ children, isLoading, isBoxed = false }: TreeProps) {
       className={classNames(
         "s-flex s-flex-col s-gap-1 s-overflow-hidden",
         isBoxed
-          ? "s- s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
+          ? "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
           : ""
       )}
     >
-      {children}
+      {modifiedChildren}
     </div>
   );
 }
 
-const visualTable = {
-  file: DocumentText,
-  folder: Folder,
-  database: Square3Stack3D,
-  channel: ChatBubbleBottomCenterText,
-};
-
 interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
-  variant?: "file" | "folder" | "database" | "channel";
   size?: "sm" | "md";
-  visual?: React.ReactNode;
+  tailwindIconTextColor?: string;
+  visual?: ComponentType<{ className?: string }>;
   checkbox?: CheckboxProps;
   onChevronClick?: () => void;
   collapsed?: boolean;
@@ -58,6 +73,7 @@ interface TreeItemProps {
   className?: string;
   actions?: React.ReactNode;
   areActionsFading?: boolean;
+  isNavigatable?: boolean;
   isSelected?: boolean;
   onItemClick?: () => void;
 }
@@ -76,8 +92,8 @@ Tree.Item = function ({
   label,
   type = "node",
   className = "",
-  variant = "file",
   size = "sm",
+  tailwindIconTextColor = "s-text-element-600",
   visual,
   checkbox,
   onChevronClick,
@@ -87,6 +103,7 @@ Tree.Item = function ({
   areActionsFading = true,
   renderTreeItems,
   children,
+  isNavigatable = false,
   isSelected = false,
   onItemClick,
 }: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
@@ -111,16 +128,34 @@ Tree.Item = function ({
 
   const childrenToRender = getChildren();
 
+  const treeItemStyleClasses = {
+    base: "s-group s-flex s-cursor-default s-flex-row s-items-center",
+    isNavigatableBase:
+      "s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
+    isNavigatableUnselected:
+      "s-border-structure-200/0 s-bg-white/0 hover:s-border-structure-200 hover:s-bg-white",
+    isNavigatableSelected: "s-border-structure-200 s-bg-white",
+  };
+
   return (
     <>
       <div
         className={classNames(
           className ? className : "",
-          "s-group s-flex s-cursor-default s-flex-row s-items-center s-gap-4",
-          size === "sm" ? "s-py-1" : "s-py-2",
+          treeItemStyleClasses.base,
           onItemClick ? "s-cursor-pointer" : "",
-          isSelected
-            ? "s-rounded-md s-border s-border-neutral-200 s-bg-white"
+          isNavigatable ? treeItemStyleClasses.isNavigatableBase : "",
+          isNavigatable
+            ? size === "sm"
+              ? "s-gap-1 s-rounded-lg s-py-1 s-pl-1.5 s-pr-3"
+              : "s-gap-2 s-rounded-lg s-py-2 s-pl-2.5 s-pr-4"
+            : size === "sm"
+              ? "s-gap-1 s-py-1"
+              : "s-gap-2 s-py-2",
+          isNavigatable
+            ? isSelected
+              ? treeItemStyleClasses.isNavigatableSelected
+              : treeItemStyleClasses.isNavigatableUnselected
             : ""
         )}
         onClick={onItemClick ? onItemClick : undefined}
@@ -129,10 +164,10 @@ Tree.Item = function ({
           <IconButton
             icon={
               childrenToRender && !effectiveCollapsed
-                ? ChevronDownIcon
-                : ChevronRightIcon
+                ? ArrowDownSIcon
+                : ArrowRightSIcon
             }
-            size="sm"
+            size="xs"
             variant="secondary"
             onClick={(e) => {
               e.stopPropagation();
@@ -143,50 +178,37 @@ Tree.Item = function ({
           />
         )}
         {type === "leaf" && <div className="s-w-5"></div>}
-        {checkbox && <Checkbox {...checkbox} />}
+        {checkbox && <Checkbox {...checkbox} size="xs" />}
+        <Icon
+          visual={visual}
+          size={size === "sm" ? "sm" : "md"}
+          className={classNames("s-flex-shrink-0", tailwindIconTextColor)}
+        />
 
-        <div className="s-flex s-w-full s-items-center">
+        <div
+          className={classNames(
+            "s-truncate s-font-medium s-text-element-900",
+            size === "sm" ? "s-ml-1 s-text-sm" : "s-ml-1 s-text-base"
+          )}
+        >
+          {label}
+        </div>
+        <div className="s-grow" />
+        {actions && (
           <div
             className={classNames(
-              "s-grid s-w-full s-grid-cols-[auto,1fr,auto] s-items-center",
-              size === "sm" ? "s-gap-1.5" : "s-gap-2"
+              "s-flex s-gap-2 s-pl-4",
+              areActionsFading
+                ? "s-transform s-opacity-0 s-duration-300 group-hover:s-opacity-100"
+                : ""
             )}
           >
-            {visual ? (
-              visual
-            ) : (
-              <Icon
-                visual={visualTable[variant]}
-                size="sm"
-                className="s-flex-shrink-0 s-text-element-700"
-              />
-            )}
-
-            <div
-              className={classNames(
-                "s-truncate s-font-medium s-text-element-900",
-                size === "sm" ? "s-text-sm" : "s-text-base"
-              )}
-            >
-              {label}
-            </div>
-            {actions && (
-              <div
-                className={classNames(
-                  "s-inline-block s-pl-5",
-                  areActionsFading
-                    ? "s-transform s-opacity-0 s-duration-300 group-hover:s-opacity-100"
-                    : ""
-                )}
-              >
-                {actions}
-              </div>
-            )}
+            {actions}
           </div>
-        </div>
+        )}
       </div>
       {React.Children.count(childrenToRender) > 0 && (
-        <div className="s-pl-5">{childrenToRender}</div>
+        <div className="s-pl-2.5">{childrenToRender}</div>
       )}
     </>
   );
