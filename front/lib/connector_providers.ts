@@ -189,14 +189,12 @@ export const isConnectorProviderAllowedForPlan = (
       return plan.limits.connections.isSlackAllowed;
     case "notion":
       return plan.limits.connections.isNotionAllowed;
-      break;
     case "github":
       return plan.limits.connections.isGithubAllowed;
     case "google_drive":
       return plan.limits.connections.isGoogleDriveAllowed;
     case "intercom":
       return plan.limits.connections.isIntercomAllowed;
-      break;
     case "microsoft":
       return true;
     case "webcrawler":
@@ -209,7 +207,6 @@ export const isConnectorProviderAllowedForPlan = (
 export const isConnectorProviderAssistantDefaultSelected = (
   provider: ConnectorProvider
 ): boolean => {
-  let assistantDefaultSelected = false;
   switch (provider) {
     case "confluence":
     case "slack":
@@ -218,15 +215,12 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "google_drive":
     case "intercom":
     case "microsoft":
-      assistantDefaultSelected = true;
-      break;
+      return true;
     case "webcrawler":
-      assistantDefaultSelected = false;
-      break;
+      return false;
     default:
       assertNever(provider);
   }
-  return assistantDefaultSelected;
 };
 
 export function getDefaultDataSourceName(

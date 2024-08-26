@@ -1,4 +1,4 @@
-import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
   ConnectorConfigurationTypeSchema,
@@ -9,8 +9,6 @@ import {
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
-  isConnectorProvider,
-  isDataSourceNameValid,
   sendUserOperationMessage,
   WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
@@ -38,6 +36,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/static";
 
 // Sorcery: Create a union type with at least two elements to satisfy t.union
 export function getConnectorProviderCodec(): t.Mixed {
@@ -54,16 +53,6 @@ const PostManagedDataSourceRequestBodySchema = t.type({
   connectionId: t.union([t.string, t.undefined]),
   configuration: ConnectorConfigurationTypeSchema,
 });
-
-const PostStaticDataSourceRequestBodySchema = t.type({
-  name: t.string,
-  description: t.string,
-  assistantDefaultSelected: t.boolean,
-});
-
-export type PostVaultDataSourceResponseBody = {
-  dataSourceView: DataSourceViewType;
-};
 
 async function handler(
   req: NextApiRequest,
@@ -99,152 +88,8 @@ async function handler(
     });
   }
 
-  const dataSourceEmbedder =
-    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
-  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
   switch (req.method) {
     case "POST": {
-      const isStaticDataSource = typeof req.body.provider !== "string";
-
-      /**
-       * Posting a static data source
-       * (folder)
-       */
-      if (isStaticDataSource) {
-        const bodyValidation = PostStaticDataSourceRequestBodySchema.decode(
-          req.body
-        );
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Invalid request body to post a static data source: ${pathError}`,
-            },
-          });
-        }
-
-        const { name, description, assistantDefaultSelected } =
-          bodyValidation.right;
-
-        if (name.startsWith("managed-")) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "The data source name cannot start with `managed-`.",
-            },
-          });
-        }
-        if (!isDataSourceNameValid(name)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Data source names must only contain letters, numbers, and the characters `._-`, and cannot be empty.",
-            },
-          });
-        }
-        const dataSources = await DataSourceResource.listByWorkspace(auth);
-        if (
-          plan.limits.dataSources.count != -1 &&
-          dataSources.length >= plan.limits.dataSources.count
-        ) {
-          return apiError(req, res, {
-            status_code: 401,
-            api_error: {
-              type: "plan_limit_error",
-              message:
-                "Your plan does not allow you to create managed data sources.",
-            },
-          });
-        }
-
-        const dustProject = await coreAPI.createProject();
-        if (dustProject.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: `Failed to create internal project for the data source.`,
-              data_source_error: dustProject.error,
-            },
-          });
-        }
-
-        const dustDataSource = await coreAPI.createDataSource({
-          projectId: dustProject.value.project.project_id.toString(),
-          dataSourceId: name,
-          config: {
-            qdrant_config: {
-              cluster: DEFAULT_QDRANT_CLUSTER,
-              shadow_write_cluster: null,
-            },
-            embedder_config: {
-              embedder: {
-                max_chunk_size: embedderConfig.max_chunk_size,
-                model_id: embedderConfig.model_id,
-                provider_id: embedderConfig.provider_id,
-                splitter_id: embedderConfig.splitter_id,
-              },
-            },
-          },
-          credentials: dustManagedCredentials(),
-        });
-
-        if (dustDataSource.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Failed to create the data source.",
-              data_source_error: dustDataSource.error,
-            },
-          });
-        }
-
-        const dataSource = await DataSourceResource.makeNew(
-          {
-            name,
-            description,
-            dustAPIProjectId: dustProject.value.project.project_id.toString(),
-            workspaceId: owner.id,
-            assistantDefaultSelected,
-            editedByUserId: user.id,
-          },
-          vault
-        );
-
-        const dataSourceView =
-          await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-            dataSource.vault,
-            dataSource
-          );
-
-        const dataSourceType = await getDataSource(auth, dataSource.name);
-        if (dataSourceType) {
-          void ServerSideTracking.trackDataSourceCreated({
-            user,
-            workspace: owner,
-            dataSource: dataSourceType,
-          });
-        }
-
-        return res.status(201).json({
-          dataSourceView: dataSourceView.toJSON(),
-        });
-      }
-
-      /**
-       * Posting a managed data source
-       * (all providers including webcrawler)
-       */
       const bodyValidation = PostManagedDataSourceRequestBodySchema.decode(
         req.body
       );
@@ -277,43 +122,23 @@ async function handler(
         });
       }
 
-      // Checking that the vault type is correct for the type of data source being posted:
-      // - System vaults only allow managed data sources (provider is set and not webcrawler)
-      // - Regular vaults only allow folder or website data sources
-      // - Global vaults do not allow data sources to be posted
-      const isFolder = !!provider;
-      const isWebsite =
-        isConnectorProvider(provider) && provider === "webcrawler";
-      const isManaged =
-        isConnectorProvider(provider) && provider !== "webcrawler";
-      if (vault.isGlobal()) {
+      // System vaults only for managed data sources that are now webcrawler.
+      if (vault.isSystem() && provider === "webcrawler") {
         return apiError(req, res, {
-          status_code: 403,
+          status_code: 400,
           api_error: {
-            type: "workspace_auth_error",
-            message: "Cannot administrate global vaults.",
+            type: "invalid_request_error",
+            message: `Cannot post a datasource for provider: ${provider} in system vault.`,
           },
         });
-      } else if (vault.isSystem()) {
-        if (!isManaged) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Cannot post a datasource for provider: ${provider} in system vault.`,
-            },
-          });
-        }
-      } else {
-        if (!isFolder && !isWebsite) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Cannot post a datasource for provider: ${provider} in regular vault.`,
-            },
-          });
-        }
+      } else if (!vault.isSystem() && provider !== "webcrawler") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Cannot post a datasource for provider: ${provider} in regular vault.`,
+          },
+        });
       }
 
       // Computing data source name, description & configuration.
@@ -381,6 +206,11 @@ async function handler(
           },
         });
       }
+
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const dustProject = await coreAPI.createProject();
       if (dustProject.isErr()) {
@@ -528,6 +358,7 @@ async function handler(
       }
 
       return res.status(201).json({
+        dataSource: dataSource.toJSON(),
         dataSourceView: dataSourceView.toJSON(),
       });
     }
