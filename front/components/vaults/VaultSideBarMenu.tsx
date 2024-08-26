@@ -112,18 +112,6 @@ const getSectionLabel = (kind: VaultKind) => {
   }
 };
 
-const RootItemIconWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-brand" />;
-};
-
-const SubItemIconItemWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-element-700" />;
-};
-
 // System vault.
 
 const SYSTEM_VAULTS_ITEMS = [
