@@ -10,7 +10,7 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
   ConnectorProvider,
-  DataSourceType,
+  DataSourceViewType,
   GlobalAgentStatus,
 } from "@dust-tt/types";
 import {
@@ -24,33 +24,34 @@ import {
   getSmallWhitelistedModel,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
-  isDevelopment,
   isProviderWhitelisted,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
 
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
-import config from "@app/lib/api/config";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
-
-import { getDataSources } from "../data_sources";
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
   providerId: GPT_4O_MODEL_CONFIG.providerId,
   modelId: GPT_4O_MODEL_CONFIG.modelId,
   temperature: 0,
+};
+
+type PrefetchedDataSourcesType = {
+  dataSourceViews: DataSourceViewType[];
+  workspaceId: string;
 };
 
 class HelperAssistantPrompt {
@@ -86,32 +87,26 @@ class HelperAssistantPrompt {
 async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
 ): Promise<{
-  dataSources: DataSourceType[];
+  dataSourceViews: DataSourceViewType[];
   workspaceId: string;
 }> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (isDevelopment()) {
-    const prodCredentials = await prodAPICredentialsForOwner(owner);
-    const api = new DustAPI(config.getDustAPIConfig(), prodCredentials, logger);
+  const defaultVaults = [await VaultResource.fetchWorkspaceGlobalVault(auth)];
+  const dataSourceViews = await DataSourceViewResource.listByVaults(
+    auth,
+    defaultVaults
+  );
 
-    const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-    if (dsRes.isErr()) {
-      throw new Error("Failed to retrieve data sources.");
-    }
-    return {
-      dataSources: dsRes.value,
-      // We use prodCredentials to make sure we are using the right workspaceId. In development
-      // this is the production Dust use case, in production we use the current workspace.
-      workspaceId: prodCredentials.workspaceId,
-    };
-  } else {
-    const dataSources = await getDataSources(auth);
-    return {
-      dataSources,
-      workspaceId: owner.sId,
-    };
-  }
+  return {
+    dataSourceViews: dataSourceViews.map((dsv) => {
+      return {
+        ...dsv.toJSON(),
+        assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
+      };
+    }),
+    workspaceId: owner.sId,
+  };
 }
 
 /**
@@ -595,10 +590,7 @@ function _getManagedDataSourceAgent(
     description: string;
     instructions: string | null;
     pictureUrl: string;
-    preFetchedDataSources: {
-      dataSources: DataSourceType[];
-      workspaceId: string;
-    };
+    preFetchedDataSources: PrefetchedDataSourcesType;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -641,11 +633,11 @@ function _getManagedDataSourceAgent(
     };
   }
 
-  // Check if there's a data source for this agent
-  const filteredDataSources = preFetchedDataSources.dataSources.filter(
-    (d) => d.connectorProvider === connectorProvider
+  // Check if there's a data source view for this agent
+  const filteredDataSourceViews = preFetchedDataSources.dataSourceViews.filter(
+    (dsView) => dsView.dataSource.connectorProvider === connectorProvider
   );
-  if (filteredDataSources.length === 0) {
+  if (filteredDataSourceViews.length === 0) {
     return {
       id: -1,
       sId: agentId,
@@ -689,10 +681,9 @@ function _getManagedDataSourceAgent(
         query: "auto",
         relativeTimeFrame: "auto",
         topK: "auto",
-        // TODO(GROUPS_INFRA) Prefetch data source views for managed data sources.
-        dataSources: filteredDataSources.map((ds) => ({
-          dataSourceId: ds.name,
-          dataSourceViewId: null,
+        dataSources: filteredDataSourceViews.map((dsView) => ({
+          dataSourceId: dsView.dataSource.name,
+          dataSourceViewId: dsView.sId,
           workspaceId: preFetchedDataSources.workspaceId,
           filter: { tags: null, parents: null },
         })),
@@ -713,10 +704,7 @@ function _getGoogleDriveGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: {
-      dataSources: DataSourceType[];
-      workspaceId: string;
-    };
+    preFetchedDataSources: PrefetchedDataSourcesType;
   }
 ): AgentConfigurationType | null {
   return _getManagedDataSourceAgent(auth, {
@@ -740,10 +728,7 @@ function _getSlackGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: {
-      dataSources: DataSourceType[];
-      workspaceId: string;
-    };
+    preFetchedDataSources: PrefetchedDataSourcesType;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -767,10 +752,7 @@ function _getGithubGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: {
-      dataSources: DataSourceType[];
-      workspaceId: string;
-    };
+    preFetchedDataSources: PrefetchedDataSourcesType;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -795,10 +777,7 @@ function _getNotionGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: {
-      dataSources: DataSourceType[];
-      workspaceId: string;
-    };
+    preFetchedDataSources: PrefetchedDataSourcesType;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -822,10 +801,7 @@ function _getIntercomGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: {
-      dataSources: DataSourceType[];
-      workspaceId: string;
-    };
+    preFetchedDataSources: PrefetchedDataSourcesType;
   }
 ) {
   return _getManagedDataSourceAgent(auth, {
@@ -849,10 +825,7 @@ function _getDustGlobalAgent(
     preFetchedDataSources,
   }: {
     settings: GlobalAgentSettings | null;
-    preFetchedDataSources: {
-      dataSources: DataSourceType[];
-      workspaceId: string;
-    };
+    preFetchedDataSources: PrefetchedDataSourcesType;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -904,11 +877,11 @@ function _getDustGlobalAgent(
     };
   }
 
-  const dataSources = preFetchedDataSources.dataSources.filter(
-    (d) => d.assistantDefaultSelected === true
+  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
+    (dsView) => dsView.dataSource.assistantDefaultSelected === true
   );
 
-  if (dataSources.length === 0) {
+  if (dataSourceViews.length === 0) {
     return {
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST,
@@ -946,10 +919,9 @@ The assistant always respects the mardown format and generates spaces to nest co
       query: "auto",
       relativeTimeFrame: "auto",
       topK: "auto",
-      // TODO(GROUPS_INFRA) Prefetch data source views for managed data sources.
-      dataSources: dataSources.map((ds) => ({
-        dataSourceId: ds.name,
-        dataSourceViewId: null,
+      dataSources: dataSourceViews.map((dsView) => ({
+        dataSourceId: dsView.dataSource.name,
+        dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
         filter: { parents: null },
       })),
@@ -969,26 +941,31 @@ The assistant always respects the mardown format and generates spaces to nest co
     4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.
     The assistant always respects the mardown format and generates spaces to nest content.`;
 
-    dataSources.forEach((ds) => {
-      if (ds.connectorProvider && ds.connectorProvider !== "webcrawler") {
+    dataSourceViews.forEach((dsView) => {
+      if (
+        dsView.dataSource.connectorProvider &&
+        dsView.dataSource.connectorProvider !== "webcrawler"
+      ) {
         actions.push({
           id: -1,
-          sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action-" + ds.name,
+          sId:
+            GLOBAL_AGENTS_SID.DUST +
+            "-datasource-action-" +
+            dsView.dataSource.name,
           type: "retrieval_configuration",
           query: "auto",
           relativeTimeFrame: "auto",
           topK: "auto",
           dataSources: [
             {
-              // TODO(GROUPS_INFRA) Prefetch data source views for managed data sources.
-              dataSourceId: ds.name,
-              dataSourceViewId: null,
+              dataSourceId: dsView.dataSource.name,
+              dataSourceViewId: dsView.sId,
               workspaceId: preFetchedDataSources.workspaceId,
               filter: { parents: null },
             },
           ],
-          name: "search_" + ds.name,
-          description: `The user's ${ds.connectorProvider} data source.`,
+          name: "search_" + dsView.dataSource.name,
+          description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
         });
       }
     });
@@ -1038,10 +1015,7 @@ The assistant always respects the mardown format and generates spaces to nest co
 function getGlobalAgent(
   auth: Authenticator,
   sId: string | number,
-  preFetchedDataSources: {
-    dataSources: DataSourceType[];
-    workspaceId: string;
-  },
+  preFetchedDataSources: PrefetchedDataSourcesType,
   helperPromptInstance: HelperAssistantPrompt,
   globaAgentSettings: GlobalAgentSettings[]
 ): AgentConfigurationType | null {

@@ -26,7 +26,6 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
-import { SharingButton } from "@app/components/assistant/Sharing";
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
@@ -41,6 +40,7 @@ import NamingScreen, {
   validateHandle,
 } from "@app/components/assistant_builder/NamingScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
+import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -79,12 +79,12 @@ export default function AssistantBuilder({
   baseUrl,
   defaultTemplate,
 }: AssistantBuilderProps) {
-  const { dataSources } = useContext(AssistantBuilderContext);
+  const { dataSourceViews } = useContext(AssistantBuilderContext);
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
-  const slackDataSource = dataSources.find(
-    (ds) => ds.connectorProvider === "slack"
+  const slackDataSource = dataSourceViews.find(
+    (dsv) => dsv.dataSource.connectorProvider === "slack"
   );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
@@ -149,7 +149,7 @@ export default function AssistantBuilder({
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
   } = useSlackChannel({
-    dataSources,
+    dataSourceViews,
     initialChannels: [],
     workspaceId: owner.sId,
     isPrivateAssistant: builderState.scope === "private",
@@ -322,7 +322,7 @@ export default function AssistantBuilder({
       });
     } else {
       await mutate(
-        `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
+        `/api/w/${owner.sId}/data_sources/${slackDataSource?.dataSource.name}/managed/slack/channels_linked_with_agent`
       );
 
       // Redirect to the assistant list once saved.

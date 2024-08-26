@@ -1,6 +1,6 @@
 import type {
   ConnectorPermission,
-  GetDataSourceOrViewContentResponseBody,
+  GetDataSourceViewContentResponseBody,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -14,7 +14,7 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetDataSourceOrViewContentResponseBody>
+    WithAPIErrorResponse<GetDataSourceViewContentResponseBody>
   >,
   auth: Authenticator
 ): Promise<void> {

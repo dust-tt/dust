@@ -1,7 +1,12 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { DataSourceViewType, ModelId, Result } from "@dust-tt/types";
+import type {
+  DataSourceViewKind,
+  DataSourceViewType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
@@ -14,7 +19,6 @@ import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { getDataSourceCategory } from "@app/lib/api/vaults";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -23,6 +27,7 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -75,18 +80,18 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     );
   }
 
-  // For now, we create a default view for all data sources in the global vault.
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
     vault: VaultResource,
-    dataSource: DataSourceResource
+    dataSource: DataSourceResource,
+    kind: DataSourceViewKind = "default"
   ) {
     return this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
         workspaceId: vault.workspaceId,
-        kind: "default",
+        kind,
       },
       vault,
       dataSource
@@ -129,11 +134,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   static async listByVault(auth: Authenticator, vault: VaultResource) {
-    return this.baseFetch(auth, {
-      where: {
-        vaultId: vault.id,
-      },
-    });
+    return this.listByVaults(auth, [vault]);
   }
 
   static async listByVaults(auth: Authenticator, vaults: VaultResource[]) {
@@ -190,6 +191,23 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       }
     );
     Object.assign(this, affectedRows[0].get());
+
+    return new Ok(undefined);
+  }
+
+  // TODO(GROUPS_INFRA) Remove once backfilled.
+  async updateKind(auth: Authenticator, kind: DataSourceViewKind) {
+    await this.model.update(
+      {
+        kind,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
+      }
+    );
 
     return new Ok(undefined);
   }
@@ -284,24 +302,17 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Serialization.
 
   toJSON(): DataSourceViewType {
-    const {
-      connectorId,
-      connectorProvider,
-      name: dataSourceName,
-    } = this.dataSource.toJSON();
-
     return {
       category: getDataSourceCategory(this.dataSource),
-      connectorId,
-      connectorProvider,
       createdAt: this.createdAt.getTime(),
+      dataSource: this.dataSource.toJSON(),
       id: this.id,
       kind: this.kind,
-      name: dataSourceName,
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
       usage: 0,
+      vaultId: this.vault.sId,
     };
   }
 }

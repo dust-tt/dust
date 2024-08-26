@@ -1,7 +1,7 @@
 import { Page, ServerIcon } from "@dust-tt/sparkle";
 import type {
-  ContentNode,
-  DataSourceType,
+  DataSourceViewType,
+  LightContentNode,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
@@ -11,29 +11,31 @@ import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSe
 
 export const PickTablesManaged = ({
   owner,
-  dataSource,
+  dataSourceView,
   onSelectionChange,
   selectedNodes,
   parentsById,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   onSelectionChange: (
-    resource: ContentNode,
+    dsView: DataSourceViewType,
+    nodes: LightContentNode[],
+    resource: LightContentNode,
     parents: string[],
     selected: boolean
   ) => void;
   onBack?: () => void;
-  selectedNodes: ContentNode[];
-  parentsById: Record<string, Set<string>>;
+  selectedNodes: LightContentNode[];
+  parentsById: Record<string, Set<string>> | undefined;
 }) => {
   return (
-    <Transition show={true} className="mx-auto max-w-6xl">
+    <Transition show className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select a Table" icon={ServerIcon} />
         <DataSourceResourceSelectorTree
           owner={owner}
-          dataSource={dataSource}
+          dataSourceView={dataSourceView}
           showExpand={true}
           selectedResourceIds={
             selectedNodes
@@ -41,11 +43,23 @@ export const PickTablesManaged = ({
               : []
           }
           selectedParents={[
-            ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
+            ...new Set(Object.values(parentsById || {}).flatMap((c) => [...c])),
           ]}
           filterPermission="read"
-          viewType={"tables"}
-          onSelectChange={onSelectionChange}
+          viewType="tables"
+          onSelectChange={(
+            resource: LightContentNode,
+            parents: string[],
+            selected: boolean
+          ) =>
+            onSelectionChange(
+              dataSourceView,
+              selectedNodes,
+              resource,
+              parents,
+              selected
+            )
+          }
         />
       </Page>
     </Transition>

@@ -16,6 +16,7 @@ import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -70,7 +71,7 @@ async function upsertTable(
   rows: string[][],
   loggerArgs: object
 ) {
-  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const tableName = slugify(
     `${spreadsheet.name?.substring(0, 16)}-${worksheet.name?.substring(0, 16)}`
@@ -100,26 +101,36 @@ async function upsertTable(
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
 }
 
-async function processSheet(
-  client: Client,
-  connector: ConnectorResource,
-  spreadsheet: microsoftgraph.DriveItem,
-  internalId: string,
-  worksheet: microsoftgraph.WorkbookWorksheet,
-  spreadsheetId: string,
-  localLogger: Logger,
-  startSyncTs: number
-): Promise<Result<null, Error>> {
+async function processSheet({
+  client,
+  connector,
+  spreadsheet,
+  spreadsheetInternalId,
+  worksheet,
+  worksheetInternalId,
+  localLogger,
+  startSyncTs,
+}: {
+  client: Client;
+  connector: ConnectorResource;
+  spreadsheet: microsoftgraph.DriveItem;
+  spreadsheetInternalId: string;
+  worksheet: microsoftgraph.WorkbookWorksheet;
+  worksheetInternalId: string;
+  localLogger: Logger;
+  startSyncTs: number;
+}): Promise<Result<null, Error>> {
   if (!worksheet.id) {
     return new Err(new Error("Worksheet has no id"));
   }
   const content = await wrapMicrosoftGraphAPIWithResult(() =>
-    getWorksheetContent(client, internalId)
+    getWorksheetContent(client, worksheetInternalId)
   );
 
   const loggerArgs = {
     sheet: {
-      id: worksheet.id,
+      documentId: spreadsheetInternalId,
+      worksheetId: worksheet.id,
       name: worksheet.name,
     },
   };
@@ -170,25 +181,47 @@ async function processSheet(
     const headers = getSanitizedHeaders(rawHeaders);
 
     const parents = [
-      internalId,
+      worksheetInternalId,
       ...(await getParents({
         connectorId: connector.id,
-        internalId: spreadsheetId,
+        internalId: spreadsheetInternalId,
         startSyncTs,
       })),
     ];
 
-    await upsertTable(
-      connector,
-      internalId,
-      spreadsheet,
-      worksheet,
-      parents,
-      [headers, ...rest],
-      loggerArgs
-    );
+    try {
+      await upsertTable(
+        connector,
+        worksheetInternalId,
+        spreadsheet,
+        worksheet,
+        parents,
+        [headers, ...rest],
+        loggerArgs
+      );
+    } catch (err) {
+      logger.error(
+        { ...loggerArgs, error: err },
+        "[Spreadsheet] Failed to upsert table."
+      );
+      if (err instanceof Error) {
+        throw new ProviderWorkflowError(
+          "microsoft",
+          `Spreadsheet failed to upsert (possibly transient): ${err.message}`,
+          "transient_upstream_activity_error",
+          err
+        );
+      } else {
+        throw err;
+      }
+    }
 
-    await upsertWorksheetInDb(connector, internalId, worksheet, spreadsheetId);
+    await upsertWorksheetInDb(
+      connector,
+      worksheetInternalId,
+      worksheet,
+      spreadsheetInternalId
+    );
 
     return new Ok(null);
   }
@@ -257,19 +290,19 @@ export async function handleSpreadSheet({
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheetsRes.value) {
     if (worksheet.id) {
-      const internalWorkSheetId = getWorksheetInternalId(worksheet, documentId);
-      const importResult = await processSheet(
+      const worksheetInternalId = getWorksheetInternalId(worksheet, documentId);
+      const importResult = await processSheet({
         client,
         connector,
-        file,
-        internalWorkSheetId,
+        spreadsheet: file,
+        spreadsheetInternalId: documentId,
         worksheet,
-        documentId,
+        worksheetInternalId,
         localLogger,
-        startSyncTs
-      );
+        startSyncTs,
+      });
       if (importResult.isOk()) {
-        successfulSheetIdImports.push(internalWorkSheetId);
+        successfulSheetIdImports.push(worksheetInternalId);
       }
     }
   }

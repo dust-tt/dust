@@ -1,7 +1,7 @@
 import { FolderIcon, GlobeAltIcon, Tree } from "@dust-tt/sparkle";
 import type {
-  ContentNode,
-  DataSourceType,
+  DataSourceViewType,
+  LightContentNode,
   WorkspaceType,
 } from "@dust-tt/types";
 
@@ -11,27 +11,27 @@ import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 
 export default function FolderOrWebsiteTree({
   owner,
-  dataSource,
+  dataSourceView,
   type,
   currentConfig,
   onSelectChange,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   type: "folder" | "website";
   currentConfig: AssistantBuilderDataSourceConfiguration | undefined;
   onSelectChange: (
-    ds: DataSourceType,
+    dsView: DataSourceViewType,
     selected: boolean,
-    resource?: ContentNode
+    resource?: LightContentNode
   ) => void;
 }) {
   const selectedResources = currentConfig?.selectedResources ?? [];
 
   const { parentsById, setParentsById } = useParentResourcesById({
     owner,
-    dataSource,
-    selectedResources,
+    dataSource: dataSourceView.dataSource,
+    internalIds: selectedResources.map((r) => r.internalId),
   });
 
   const selectedParents = [
@@ -41,7 +41,7 @@ export default function FolderOrWebsiteTree({
   return (
     <Tree.Item
       type={type === "folder" ? "leaf" : "node"}
-      label={dataSource.name}
+      label={dataSourceView.dataSource.name}
       variant="folder"
       visual={type === "folder" ? <FolderIcon /> : <GlobeAltIcon />}
       className="whitespace-nowrap"
@@ -53,7 +53,7 @@ export default function FolderOrWebsiteTree({
           : false,
         onChange: (checked) => {
           setParentsById({});
-          onSelectChange(dataSource, checked);
+          onSelectChange(dataSourceView, checked);
         },
       }}
     >
@@ -61,7 +61,7 @@ export default function FolderOrWebsiteTree({
         <DataSourceResourceSelectorTree
           showExpand
           owner={owner}
-          dataSource={dataSource}
+          dataSourceView={dataSourceView}
           parentIsSelected={currentConfig?.isSelectAll ?? false}
           selectedParents={selectedParents}
           onSelectChange={(resource, parents, selected) => {
@@ -74,7 +74,7 @@ export default function FolderOrWebsiteTree({
               }
               return newParentsById;
             });
-            onSelectChange(dataSource, selected, resource);
+            onSelectChange(dataSourceView, selected, resource);
           }}
           selectedResourceIds={selectedResources.map((r) => r.internalId)}
         />

@@ -11,7 +11,7 @@ import {
 import type {
   ConnectorProvider,
   DataSourceType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission } from "@dust-tt/types";
 import { useState } from "react";
@@ -62,7 +62,7 @@ export function PermissionTreeChildren({
   useConnectorPermissionsHook,
   isSearchEnabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   permissionFilter?: ConnectorPermission;
@@ -147,6 +147,7 @@ export function PermissionTreeChildren({
                 size="sm"
                 label={selectAllClicked ? "Unselect All" : "Select All"}
                 icon={ListCheckIcon}
+                disabled={search.trim().length === 0}
                 onClick={() => {
                   setSelectAllClicked((prev) => !prev);
                   setLocalStateByInternalId((prev) => {
@@ -290,7 +291,7 @@ export function PermissionTree({
   showExpand,
   isSearchEnabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
   canUpdatePermissions?: boolean;

@@ -20,6 +20,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostConversationsResponseBody = {
@@ -98,7 +99,8 @@ async function handler(
 
   const authenticator = await Authenticator.fromKey(
     keyRes.value,
-    req.query.wId as string
+    req.query.wId as string,
+    getGroupIdsFromHeaders(req.headers)
   );
   let { workspaceAuth } = authenticator;
   const { keyAuth } = authenticator;

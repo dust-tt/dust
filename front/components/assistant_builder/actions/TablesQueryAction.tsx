@@ -46,13 +46,16 @@ export function ActionTablesQuery({
         isOpen={showTableModal}
         setOpen={(isOpen) => setShowTableModal(isOpen)}
         owner={owner}
-        onSave={(tables, dataSource) => {
+        onSave={(tables, dataSourceView) => {
           setEdited(true);
           updateAction((previousAction) => {
             const newTables = { ...previousAction };
-            if (dataSource.connectorId) {
+            if (dataSourceView.dataSource.connectorId) {
               Object.keys(newTables)
-                .filter((k) => newTables[k].dataSourceId === dataSource.name)
+                .filter(
+                  (k) =>
+                    newTables[k].dataSourceId === dataSourceView.dataSource.name
+                )
                 .forEach((k) => delete newTables[k]);
             }
             for (const t of tables) {

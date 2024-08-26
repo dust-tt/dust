@@ -391,9 +391,14 @@ async function botAnswerMessage(
     }
   }
 
-  if (message.trim() === "") {
-    message = "?";
+  const mention = mentions[0];
+  if (mention) {
+    if (!message.includes(":mention")) {
+      // if the message does not contain the mention, we add it as a prefix.
+      message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
+    }
   }
+
   const messageReqBody = {
     content: message,
     mentions: mentions.map((m) => {

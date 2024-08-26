@@ -25,6 +25,7 @@ export class GroupModel extends Model<
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
+
 GroupModel.init(
   {
     id: {

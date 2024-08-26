@@ -1,16 +1,16 @@
 import type { UserType, VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchVaultRequestBodySchema } from "@dust-tt/types";
+import {
+  DATA_SOURCE_VIEW_CATEGORIES,
+  PatchVaultRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSourceInfos } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -64,44 +64,38 @@ async function handler(
     });
   }
 
-  const group = await GroupResource.fetchByModelId(vault.groupId);
-  if (!group) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "vault_not_found",
-        message: "The vault you requested was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
-      const all = [
-        ...(await getDataSourceInfos(auth, vault)),
-        ...(await DataSourceViewResource.listByVault(auth, vault))
-          .map((dsv) => dsv.toJSON())
-          .filter((d) => d.category === "managed" || d.kind !== "default"),
-      ];
-
-      const categories = all.reduce(
-        (acc, dataSource) => {
-          const value = acc[dataSource.category];
-          if (value) {
-            value.count += 1;
-            value.usage += dataSource.usage;
-          } else {
-            acc[dataSource.category] = {
-              count: 1,
-              usage: dataSource.usage,
-            };
-          }
-          return acc;
-        },
-        {} as { [key: string]: VaultCategoryInfo }
+      const dataSourceViews = await DataSourceViewResource.listByVault(
+        auth,
+        vault
       );
 
-      const currentMembers = await group.getActiveMembers(auth);
+      const serializedDatasourceViews = dataSourceViews.map((view) =>
+        view.toJSON()
+      );
+
+      const categories: { [key: string]: VaultCategoryInfo } = {};
+      DATA_SOURCE_VIEW_CATEGORIES.forEach((category) => {
+        categories[category] = {
+          count: 0,
+          usage: 0,
+        };
+      });
+
+      serializedDatasourceViews.forEach((dataSource) => {
+        const value = categories[dataSource.category];
+        if (value) {
+          value.count += 1;
+          value.usage += dataSource.usage;
+        }
+      });
+
+      const currentMembers = (
+        await Promise.all(
+          vault.groups.map((group) => group.getActiveMembers(auth))
+        )
+      ).flat();
       return res.status(200).json({
         vault: {
           ...vault.toJSON(),
@@ -109,6 +103,7 @@ async function handler(
           members: currentMembers.map((member) => member.toJSON()),
         },
       });
+
     case "PATCH":
       if (!auth.isAdmin() || !auth.isBuilder()) {
         // Only admins, or builders who have to the vault, can patch
@@ -135,14 +130,7 @@ async function handler(
         });
       }
 
-      const { memberIds, content } = bodyValidation.right;
-
-      if (memberIds) {
-        const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
-          user.toJSON()
-        );
-        await group.setMembers(auth, users);
-      }
+      const { content } = bodyValidation.right;
 
       if (content) {
         const currentViews = await DataSourceViewResource.listByVault(
@@ -188,6 +176,7 @@ async function handler(
       }
 
       return res.status(200).json({ vault: vault.toJSON() });
+
     default:
       return apiError(req, res, {
         status_code: 405,

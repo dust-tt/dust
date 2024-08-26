@@ -20,6 +20,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
   isActive: t.boolean,
+  dataSourceId: t.union([t.string, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
   typeof PatchLabsTranscriptsConfigurationBodySchema
@@ -109,8 +110,11 @@ async function handler(
         });
       }
 
-      const { agentConfigurationId: patchAgentId, isActive } =
-        patchBodyValidation.right;
+      const {
+        agentConfigurationId: patchAgentId,
+        isActive,
+        dataSourceId,
+      } = patchBodyValidation.right;
 
       if (patchAgentId) {
         await transcriptsConfiguration.setAgentConfigurationId({
@@ -126,6 +130,10 @@ async function handler(
           // Cancel the workflow
           await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         }
+      }
+
+      if (dataSourceId !== undefined) {
+        await transcriptsConfiguration.setDataSourceId(auth, dataSourceId);
       }
 
       return res.status(200).json({ configuration: transcriptsConfiguration });

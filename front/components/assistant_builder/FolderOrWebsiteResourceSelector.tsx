@@ -6,13 +6,15 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
-  ContentNode,
-  DataSourceType,
+  DataSourceViewType,
+  LightContentNode,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isFolder, isWebsite } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import FolderOrWebsiteTree from "@app/components/assistant_builder/FolderOrWebsiteTree";
 import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/types";
 import { subFilter } from "@app/lib/utils";
@@ -20,25 +22,30 @@ import { subFilter } from "@app/lib/utils";
 export default function FolderOrWebsiteResourceSelector({
   owner,
   type,
-  dataSources,
   selectedNodes,
   onSelectChange,
 }: {
   type: "folder" | "website";
   owner: WorkspaceType;
-  dataSources: DataSourceType[];
   selectedNodes: AssistantBuilderDataSourceConfiguration[];
   onSelectChange: (
-    ds: DataSourceType,
+    dsView: DataSourceViewType,
     selected: boolean,
-    resource?: ContentNode
+    resource?: LightContentNode
   ) => void;
 }) {
   const [query, setQuery] = useState<string>("");
+  const { dataSourceViews } = useContext(AssistantBuilderContext);
 
-  const filteredDataSources = dataSources.filter((ds) => {
-    return subFilter(query.toLowerCase(), ds.name.toLowerCase());
-  });
+  const filteredDsViews = dataSourceViews
+    .filter((dsView) =>
+      type === "folder"
+        ? isFolder(dsView.dataSource)
+        : isWebsite(dsView.dataSource)
+    )
+    .filter((ds) => {
+      return subFilter(query.toLowerCase(), ds.dataSource.name.toLowerCase());
+    });
 
   return (
     <Transition show className="mx-auto max-w-6xl pb-8">
@@ -59,21 +66,24 @@ export default function FolderOrWebsiteResourceSelector({
         <div className="flex flex-row gap-32">
           <div className="flex-1">
             <div className="flex flex-row pb-4 text-lg font-semibold text-element-900">
-              <div>Select from available folders:</div>
+              <div>
+                Select from available{" "}
+                {type === "folder" ? "folders" : "websites"}:
+              </div>
             </div>
           </div>
         </div>
         <div>
           <Tree>
-            {filteredDataSources.map((dataSource) => {
+            {filteredDsViews.map((dsView) => {
               const currentConfig = selectedNodes.find(
-                (selectedNode) => selectedNode.dataSource.id === dataSource.id
+                (selectedNode) => selectedNode.dataSourceView.id === dsView.id
               );
               return (
                 <FolderOrWebsiteTree
-                  key={dataSource.id}
+                  key={dsView.id}
                   owner={owner}
-                  dataSource={dataSource}
+                  dataSourceView={dsView}
                   type={type}
                   currentConfig={currentConfig}
                   onSelectChange={onSelectChange}

@@ -5,11 +5,15 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 
-import { useVaultDataSourceOrViewContent } from "@app/lib/swr";
+import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -22,12 +26,12 @@ type RowData = {
 };
 
 type VaultDataSourceViewContentListProps = {
-  owner: WorkspaceType;
+  dataSourceView: DataSourceViewType;
   isAdmin: boolean;
-  vault: VaultType;
-  dataSourceViewId: string;
-  parentId: string | null;
   onSelect: (parentId: string) => void;
+  owner: WorkspaceType;
+  parentId: string | null;
+  vault: VaultType;
 };
 
 const getTableColumns = () => {
@@ -37,45 +41,44 @@ const getTableColumns = () => {
       accessorKey: "title",
       id: "title",
       cell: (info: CellContext<RowData, unknown>) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           // iconClassName="text-brand"
           icon={info.row.original.type === "folder" ? FolderIcon : GlobeAltIcon}
         >
           <span className="font-bold">{info.row.original.title}</span>
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];
 };
 
 export const VaultDataSourceViewContentList = ({
-  owner,
+  dataSourceView,
   isAdmin,
-  vault,
-  dataSourceViewId,
-  parentId,
   onSelect,
+  owner,
+  parentId,
+  vault,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
-  const { vaultContent, isVaultContentLoading } =
-    useVaultDataSourceOrViewContent({
-      workspaceId: owner.sId,
-      vaultId: vault.sId,
-      dataSourceOrViewId: dataSourceViewId,
-      type: "data_source_views",
-      viewType: "documents",
+  const { vaultContent, isVaultContentLoading } = useVaultDataSourceViewContent(
+    {
+      dataSourceView,
       filterPermission: "read",
+      owner,
       parentId,
-    });
+      vaultId: vault.sId,
+      viewType: "documents",
+    }
+  );
 
-  const rows: RowData[] =
-    vaultContent?.map((v) => ({
-      ...v,
-      count: 0,
-      usage: 0,
-      onClick: () => onSelect(v.internalId),
-    })) || [];
+  const rows: RowData[] = vaultContent.map((v) => ({
+    ...v,
+    count: 0,
+    usage: 0,
+    onClick: () => onSelect(v.internalId),
+  }));
 
   if (isVaultContentLoading) {
     return (

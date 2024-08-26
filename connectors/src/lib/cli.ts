@@ -23,10 +23,7 @@ import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
-import {
-  getTemporalClient,
-  terminateAllWorkflowsForConnectorId,
-} from "@connectors/lib/temporal";
+import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -127,11 +124,6 @@ export const connectors = async ({
   switch (command) {
     case "stop": {
       await throwOnError(manager.stop());
-      return { success: true };
-    }
-    case "delete": {
-      await throwOnError(manager.clean({ force: true }));
-      await terminateAllWorkflowsForConnectorId(connector.id);
       return { success: true };
     }
     case "pause": {

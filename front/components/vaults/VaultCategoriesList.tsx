@@ -1,5 +1,4 @@
 import {
-  Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   DataTable,
@@ -10,7 +9,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
-import { DATA_SOURCE_OR_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
+import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType, ReactElement } from "react";
 import { useState } from "react";
@@ -42,28 +41,23 @@ export const CATEGORY_DETAILS: {
     icon: ReactElement<{
       className?: string;
     }>;
-    dataSourceOrView: "data_sources" | "data_source_views";
   };
 } = {
   managed: {
     label: "Connected Data",
     icon: <CloudArrowLeftRightIcon className="text-brand" />,
-    dataSourceOrView: "data_source_views",
   },
-  files: {
+  folder: {
     label: "Folders",
     icon: <FolderIcon className="text-brand" />,
-    dataSourceOrView: "data_sources",
   },
-  webfolder: {
+  website: {
     label: "Websites",
     icon: <GlobeAltIcon className="text-brand" />,
-    dataSourceOrView: "data_sources",
   },
   apps: {
     label: "Apps",
     icon: <CommandLineIcon className="text-brand" />,
-    dataSourceOrView: "data_sources",
   },
 };
 
@@ -73,10 +67,10 @@ const getTableColumns = () => {
       header: "Name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <DataTable.Cell icon={info.row.original.icon}>
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.name}</span> (
           {info.row.original.count} items)
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
@@ -85,9 +79,9 @@ const getTableColumns = () => {
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
-            <DataTable.Cell icon={RobotIcon}>
+            <DataTable.CellContent icon={RobotIcon}>
               {info.row.original.usage}
-            </DataTable.Cell>
+            </DataTable.CellContent>
           ) : null}
         </>
       ),
@@ -110,7 +104,7 @@ export const VaultCategoriesList = ({
 
   const rows: RowData[] = vaultInfo
     ? removeNulls(
-        DATA_SOURCE_OR_VIEW_CATEGORIES.map((category) =>
+        DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
           vaultInfo.categories[category]
             ? {
                 category,
@@ -152,7 +146,6 @@ export const VaultCategoriesList = ({
             }}
           />
         )}
-        <Button label="Add Data" onClick={() => {}} />
       </div>
       {rows.length > 0 ? (
         <DataTable
