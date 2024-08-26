@@ -11,6 +11,7 @@ export interface TreeProps {
   children?: ReactNode;
   isBoxed?: boolean;
   isLoading?: boolean;
+  tailwindIconTextColor?: string;
   variant?: "navigator" | "finder";
 }
 
@@ -18,11 +19,23 @@ export function Tree({
   children,
   isLoading,
   isBoxed = false,
+  tailwindIconTextColor,
   variant = "finder",
 }: TreeProps) {
   const modifiedChildren = React.Children.map(children, (child) => {
-    if (React.isValidElement<TreeItemProps>(child) && variant === "navigator") {
-      return React.cloneElement(child, { isNavigatable: true });
+    if (React.isValidElement<TreeItemProps>(child)) {
+      // Clone the child element and pass the necessary props
+      const childProps: Partial<TreeItemProps> = {};
+
+      if (variant === "navigator") {
+        childProps.isNavigatable = true;
+      }
+
+      if (tailwindIconTextColor) {
+        childProps.tailwindIconTextColor = tailwindIconTextColor;
+      }
+
+      return React.cloneElement(child, childProps);
     }
     return child;
   });
@@ -36,7 +49,7 @@ export function Tree({
       className={classNames(
         "s-flex s-flex-col s-gap-1 s-overflow-hidden",
         isBoxed
-          ? "s- s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
+          ? "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
           : ""
       )}
     >
@@ -49,6 +62,7 @@ interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
   size?: "sm" | "md";
+  tailwindIconTextColor?: string;
   visual?: ComponentType<{ className?: string }>;
   checkbox?: CheckboxProps;
   onChevronClick?: () => void;
@@ -77,6 +91,7 @@ Tree.Item = function ({
   type = "node",
   className = "",
   size = "sm",
+  tailwindIconTextColor = "s-text-element-600",
   visual,
   checkbox,
   onChevronClick,
@@ -165,7 +180,7 @@ Tree.Item = function ({
         <Icon
           visual={visual}
           size={size === "sm" ? "sm" : "md"}
-          className="s-flex-shrink-0 s-text-element-600"
+          className={classNames("s-flex-shrink-0", tailwindIconTextColor)}
         />
 
         <div

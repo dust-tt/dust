@@ -265,7 +265,7 @@ export const TreeExample = () => {
                 isSelected={true}
                 size="md"
               >
-                <Tree variant="navigator">
+                <Tree variant="navigator" tailwindIconTextColor="s-text-brand">
                   <Tree.Item label="item 1" visual={FolderIcon}>
                     <Tree variant="navigator">
                       <Tree.Item label="item 1" visual={FolderIcon} />
@@ -273,14 +273,22 @@ export const TreeExample = () => {
                       <Tree.Item label="item 3" visual={FolderIcon} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="item 2" visual={FolderIcon}>
+                  <Tree.Item
+                    label="item 2"
+                    visual={FolderIcon}
+                    tailwindIconTextColor="s-text-brand"
+                  >
                     <Tree variant="navigator">
                       <Tree.Item label="item 1" visual={FolderIcon} />
                       <Tree.Item label="item 2" visual={FolderIcon} />
                       <Tree.Item label="item 3" visual={FolderIcon} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="item 3" visual={FolderIcon}>
+                  <Tree.Item
+                    label="item 3"
+                    visual={FolderIcon}
+                    tailwindIconTextColor="s-text-brand"
+                  >
                     <Tree variant="navigator">
                       <Tree.Item label="item 1" visual={FolderIcon} />
                       <Tree.Item label="item 2" visual={FolderIcon} />
@@ -583,7 +591,7 @@ export const TreeExample = () => {
                 onItemClick={() => console.log("Clickable")}
                 isSelected={true}
               >
-                <Tree>
+                <Tree tailwindIconTextColor="s-text-brand">
                   <Tree.Item label="item 1" visual={FolderIcon}>
                     <Tree>
                       <Tree.Item label="item 1" visual={FolderIcon} />
