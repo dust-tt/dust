@@ -29,8 +29,8 @@ async function handler(
         }
       : {
           workspaceId: owner.id,
-          // Do not include `unlisted` here.
-          visibility: ["public"],
+          // Do not include 'unlisted' here.
+          visibility: "public",
           sId: req.query.aId,
         },
   });
