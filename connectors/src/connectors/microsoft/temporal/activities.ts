@@ -7,6 +7,7 @@ import { heartbeat } from "@temporalio/activity";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  extractPath,
   getAllPaginatedEntities,
   getDeltaResults,
   getDriveInternalIdFromItem,
@@ -72,15 +73,21 @@ export async function getRootNodesToSync(
         (resource) =>
           resource.nodeType === "folder" || resource.nodeType === "drive"
       )
-      .map(async (resource) =>
-        itemToMicrosoftNode(
+      .map(async (resource) => {
+        const item = await getItem(
+          client,
+          typeAndPathFromInternalId(resource.internalId).itemAPIPath
+        );
+
+        const node = itemToMicrosoftNode(
           resource.nodeType as "folder" | "drive",
-          await getItem(
-            client,
-            typeAndPathFromInternalId(resource.internalId).itemAPIPath
-          )
-        )
-      )
+          item
+        );
+        return {
+          ...node,
+          name: `${node.name} (${extractPath(item)})`,
+        };
+      })
   );
 
   const rootSitePaths: string[] = rootResources
@@ -110,7 +117,13 @@ export async function getRootNodesToSync(
             nextLink
           )
         );
-        return msDrives.map((drive) => itemToMicrosoftNode("drive", drive));
+        return msDrives.map((driveItem) => {
+          const driveNode = itemToMicrosoftNode("drive", driveItem);
+          return {
+            ...driveNode,
+            name: `${driveNode.name} + " (${extractPath(driveItem)})`,
+          };
+        });
       },
       { concurrency: 5 }
     )
