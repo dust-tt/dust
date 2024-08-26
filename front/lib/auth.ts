@@ -605,6 +605,18 @@ export class Authenticator {
     return this._subscription ? this._subscription.plan : null;
   }
 
+  getNonNullablePlan(): PlanType {
+    const plan = this.plan();
+
+    if (!plan) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullablePlan`."
+      );
+    }
+
+    return plan;
+  }
+
   isUpgraded(): boolean {
     return isUpgraded(this.plan());
   }
