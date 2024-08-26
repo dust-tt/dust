@@ -1,5 +1,9 @@
 import { Dialog } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -10,7 +14,7 @@ interface TableDeleteDialogProps {
   onClose: () => void;
   onSave: () => void;
   owner: LightWorkspaceType;
-  tableId: string | null;
+  contentNode?: LightContentNode;
 }
 
 export const TableDeleteDialog = ({
@@ -19,21 +23,21 @@ export const TableDeleteDialog = ({
   onClose,
   onSave,
   owner,
-  tableId,
+  contentNode,
 }: TableDeleteDialogProps) => {
   const [loading, setLoading] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
   const handleDeleteTable = async () => {
     try {
-      if (!tableId) {
+      if (!contentNode?.internalId) {
         return;
       }
 
       setLoading(true);
 
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/${tableId}`,
+        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/${contentNode?.internalId}`,
         {
           method: "DELETE",
         }

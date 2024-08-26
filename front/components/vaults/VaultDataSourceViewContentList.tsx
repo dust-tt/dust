@@ -7,31 +7,27 @@ import {
   DocumentTextIcon,
   DropdownMenu,
   FolderIcon,
-  PencilSquareIcon,
   PlusIcon,
-  Popup,
   Searchbar,
   Spinner,
   TableIcon,
-  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewType,
-  LightContentNode,
   PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
-import { DocumentDeleteDialog } from "@app/components/data_source/DocumentDeleteDialog";
-import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
-import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
-import { TableDeleteDialog } from "@app/components/data_source/TableDeleteDialog";
-import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
+import type { ContentAction } from "@app/components/vaults/ContentActions";
+import {
+  ContentActions,
+  getMenuItems,
+} from "@app/components/vaults/ContentActions";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -61,10 +57,7 @@ const getTableColumns = () => {
       accessorKey: "title",
       id: "title",
       cell: (info: CellContext<RowData, unknown>) => (
-        <DataTable.CellContent
-          // iconClassName="text-brand"
-          icon={info.row.original.icon}
-        >
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.title}</span>
         </DataTable.CellContent>
       ),
@@ -83,89 +76,17 @@ export const VaultDataSourceViewContentList = ({
 }: VaultDataSourceViewContentListProps) => {
   const [currentTab, setCurrentTab] =
     useState<ContentNodesViewType>("documents");
-
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [showDocumentsLimitPopup, setShowDocumentsLimitPopup] = useState(false);
 
-  const [showDocumentUploadOrEditModal, setShowDocumentUploadOrEditModal] =
-    useState(false);
-  const [showDocumentDeleteDialog, setShowDocumentDeleteDialog] =
-    useState(false);
-  const [documentId, setDocumentId] = useState<string | null>(null);
-
-  const [showTableUploadOrEditModal, setShowTableUploadOrEditModal] =
-    useState(false);
-  const [showTableDeleteDialog, setShowTableDeleteDialog] = useState(false);
-  const [tableId, setTableId] = useState<string | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const router = useRouter();
-  const total = 0; // TODO get total number of files
+  const [currentAction, setCurrentAction] = useState<ContentAction | null>(
+    null
+  );
 
   const visualTable = {
     file: DocumentTextIcon,
     folder: FolderIcon,
     database: TableIcon,
     channel: ChatBubbleBottomCenterTextIcon,
-  };
-
-  const getMenuItems = (
-    dataSourceView: DataSourceViewType,
-    contentNode: LightContentNode
-  ) => {
-    if (!dataSourceView.dataSource.connectorProvider) {
-      // Folder data source - only documents and tables
-      if (contentNode.type === "file") {
-        return [
-          {
-            label: "Edit",
-            icon: PencilSquareIcon,
-            onClick: () => {
-              setDocumentId(contentNode.internalId);
-              setShowDocumentUploadOrEditModal(true);
-            },
-          },
-          {
-            label: "Delete",
-            icon: TrashIcon,
-            onClick: () => {
-              setDocumentId(contentNode.internalId);
-              setShowDocumentDeleteDialog(true);
-            },
-            variant: "warning",
-          },
-        ];
-      }
-
-      if (contentNode.type === "database") {
-        return [
-          {
-            label: "Edit",
-            icon: PencilSquareIcon,
-            onClick: () => {
-              setTableId(contentNode.internalId);
-              setShowTableUploadOrEditModal(true);
-            },
-          },
-          {
-            label: "Delete",
-            icon: TrashIcon,
-            onClick: () => {
-              setTableId(contentNode.internalId);
-              setShowTableDeleteDialog(true);
-            },
-            variant: "warning",
-          },
-        ];
-      }
-    } else if (dataSourceView.dataSource.connectorProvider === "webcrawler") {
-      // TODO Actions for webrawler datasource
-    } else {
-      // TODO Actions for managed datasource
-    }
-
-    return null;
   };
 
   const {
@@ -190,7 +111,12 @@ export const VaultDataSourceViewContentList = ({
           onSelect(contentNode.internalId);
         }
       },
-      moreMenuItems: getMenuItems(dataSourceView, contentNode),
+      moreMenuItems: getMenuItems(dataSourceView, contentNode).map((item) => ({
+        ...item,
+        onClick: () => {
+          setCurrentAction({ key: item.key, contentNode });
+        },
+      })),
     })) || [];
 
   if (isVaultContentLoading) {
@@ -226,32 +152,21 @@ export const VaultDataSourceViewContentList = ({
             <DropdownMenu.Item
               icon={DocumentTextIcon}
               onClick={() => {
-                setDocumentId(null);
-                // Enforce plan limits: DataSource documents count.
-                setShowDocumentUploadOrEditModal(true);
-                if (
-                  plan.limits.dataSources.documents.count != -1 &&
-                  total >= plan.limits.dataSources.documents.count
-                ) {
-                  setShowDocumentUploadOrEditModal(false);
-                } else {
-                  setShowDocumentUploadOrEditModal(true);
-                }
+                setCurrentAction({ key: "DocumentUploadOrEditModal" });
               }}
               label={"Create a document"}
             />
             <DropdownMenu.Item
               icon={TableIcon}
               onClick={() => {
-                setTableId(null);
-                setShowTableUploadOrEditModal(true);
+                setCurrentAction({ key: "TableUploadOrEditModal" });
               }}
               label={"Create a table"}
             />
             <DropdownMenu.Item
               icon={CloudArrowUpIcon}
               onClick={() => {
-                fileInputRef.current?.click();
+                setCurrentAction({ key: "MultipleDocumentsUpload" });
               }}
               label={"Upload multiple files"}
             />
@@ -304,59 +219,13 @@ export const VaultDataSourceViewContentList = ({
           filterColumn={"title"}
         />
       )}
-      <Popup
-        show={showDocumentsLimitPopup}
-        chipLabel={`${plan.name} plan`}
-        description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
-        buttonLabel="Check Dust plans"
-        buttonClick={() => {
-          void router.push(`/w/${owner.sId}/subscription`);
-        }}
-        onClose={() => {
-          setShowDocumentsLimitPopup(false);
-        }}
-        className="absolute bottom-8 right-0"
-      />
-      <DocumentUploadOrEditModal
-        isOpen={showDocumentUploadOrEditModal}
-        onClose={() => setShowDocumentUploadOrEditModal(false)}
-        owner={owner}
+      <ContentActions
         dataSourceView={dataSourceView}
+        owner={owner}
         plan={plan}
         onSave={mutateVaultDataSourceViewContent}
-        documentIdToLoad={documentId}
-      />
-      <MultipleDocumentsUpload
-        fileInputRef={fileInputRef}
-        owner={owner}
-        onSave={mutateVaultDataSourceViewContent}
-        plan={plan}
-        dataSourceView={dataSourceView}
-      />
-      <DocumentDeleteDialog
-        isOpen={showDocumentDeleteDialog}
-        onClose={() => setShowDocumentDeleteDialog(false)}
-        onSave={mutateVaultDataSourceViewContent}
-        documentId={documentId}
-        documentName={documentId || ""}
-        owner={owner}
-        dataSourceView={dataSourceView}
-      />
-      <TableUploadOrEditModal
-        isOpen={showTableUploadOrEditModal}
-        onClose={() => setShowTableUploadOrEditModal(false)}
-        onSave={mutateVaultDataSourceViewContent}
-        dataSourceView={dataSourceView}
-        owner={owner}
-        initialTableId={tableId}
-      />
-      <TableDeleteDialog
-        isOpen={showTableDeleteDialog}
-        onClose={() => setShowTableDeleteDialog(false)}
-        onSave={mutateVaultDataSourceViewContent}
-        tableId={tableId}
-        owner={owner}
-        dataSourceView={dataSourceView}
+        currentAction={currentAction}
+        setCurrentAction={setCurrentAction}
       />
     </>
   );

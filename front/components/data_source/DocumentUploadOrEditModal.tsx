@@ -7,14 +7,17 @@ import {
   Modal,
   Page,
   PlusIcon,
+  Popup,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
+  LightContentNode,
   LightWorkspaceType,
   PlanType,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -23,7 +26,7 @@ import { classNames } from "@app/lib/utils";
 
 export interface DocumentUploadOrEditModalProps {
   dataSourceView: DataSourceViewType;
-  documentIdToLoad: string | null;
+  contentNode?: LightContentNode;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -33,7 +36,7 @@ export interface DocumentUploadOrEditModalProps {
 
 export function DocumentUploadOrEditModal({
   dataSourceView,
-  documentIdToLoad,
+  contentNode,
   isOpen,
   onClose,
   onSave,
@@ -54,6 +57,7 @@ export function DocumentUploadOrEditModal({
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
   const sendNotification = useContext(SendNotificationsContext);
+  const documentIdToLoad = contentNode?.internalId;
 
   useEffect(() => {
     setDisabled(!documentId || !text);
@@ -85,6 +89,31 @@ export function DocumentUploadOrEditModal({
       setSourceUrl("");
     }
   }, [dataSourceView.dataSource.name, documentIdToLoad, owner.sId]);
+
+  const router = useRouter();
+
+  // TODO Get the total number of documents
+  const total = 0;
+
+  if (
+    !documentIdToLoad && // If there is no document ID, it means we are creating a new document
+    plan.limits.dataSources.documents.count != -1 &&
+    total >= plan.limits.dataSources.documents.count
+  ) {
+    return (
+      <Popup
+        show={isOpen}
+        chipLabel={`${plan.name} plan`}
+        description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
+        buttonLabel="Check Dust plans"
+        buttonClick={() => {
+          void router.push(`/w/${owner.sId}/subscription`);
+        }}
+        onClose={onClose}
+        className="absolute bottom-8 right-0"
+      />
+    );
+  }
 
   const handleUpsert = async () => {
     setLoading(true);
@@ -174,7 +203,7 @@ export function DocumentUploadOrEditModal({
           : undefined
       }
       isSaving={loading}
-      title={documentIdToLoad ? "Edit document" : "Add a new document"}
+      title={contentNode?.internalId ? "Edit document" : "Add a new document"}
     >
       <Page.Vertical align="stretch">
         <div className="ml-2 mr-2 space-y-2">

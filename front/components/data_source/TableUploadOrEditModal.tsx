@@ -4,14 +4,18 @@ import {
   Input,
   Modal,
   Page,
+  Popup,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
+  LightContentNode,
   LightWorkspaceType,
+  PlanType,
   Result,
 } from "@dust-tt/types";
 import { parseAndStringifyCsv } from "@dust-tt/types";
 import { Err, isSlugified, Ok } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -22,20 +26,22 @@ import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_
 
 interface TableUploadOrEditModalProps {
   dataSourceView: DataSourceViewType;
-  initialTableId: string | null;
+  contentNode?: LightContentNode;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
   owner: LightWorkspaceType;
+  plan: PlanType;
 }
 
 export function TableUploadOrEditModal({
   dataSourceView,
-  initialTableId,
+  contentNode,
   isOpen,
   onClose,
   onSave,
   owner,
+  plan,
 }: TableUploadOrEditModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +53,8 @@ export function TableUploadOrEditModal({
   const [hasChanged, setHasChanged] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
+
+  const initialTableId = contentNode?.internalId;
 
   const { table } = useTable({
     workspaceId: owner.sId,
@@ -75,6 +83,31 @@ export function TableUploadOrEditModal({
     setTableName(table ? table.name : "");
     setTableDescription(table ? table.description : "");
   }, [initialTableId, table]);
+
+  const router = useRouter();
+
+  // TODO Get the total number of documents
+  const total = 0;
+
+  if (
+    !initialTableId && // If there is no document ID, it means we are creating a new document
+    plan.limits.dataSources.documents.count != -1 &&
+    total >= plan.limits.dataSources.documents.count
+  ) {
+    return (
+      <Popup
+        show={isOpen}
+        chipLabel={`${plan.name} plan`}
+        description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
+        buttonLabel="Check Dust plans"
+        buttonClick={() => {
+          void router.push(`/w/${owner.sId}/subscription`);
+        }}
+        onClose={onClose}
+        className="absolute bottom-8 right-0"
+      />
+    );
+  }
 
   const isNameValid = (name: string) => name.trim() !== "" && isSlugified(name);
 

@@ -6,8 +6,7 @@ import type {
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { RefObject } from "react";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -15,7 +14,8 @@ import { ClientSideTracking } from "@app/lib/tracking/client";
 
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
-  fileInputRef: RefObject<HTMLInputElement>;
+  isOpen: boolean;
+  onClose: () => void;
   onSave: () => void;
   owner: LightWorkspaceType;
   plan: PlanType;
@@ -23,11 +23,22 @@ type MultipleDocumentsUploadProps = {
 
 export const MultipleDocumentsUpload = ({
   dataSourceView,
-  fileInputRef,
+  isOpen,
+  onClose,
   onSave,
   owner,
   // plan // TODO check max files upload
 }: MultipleDocumentsUploadProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      fileInputRef.current?.click();
+      // Reset state immediately after opening the dialog, we don't need to keep it set
+      onClose();
+    }
+  }, [isOpen, onClose]);
+
   const [bulkFilesUploading, setBulkFilesUploading] = useState<null | {
     total: number;
     completed: number;
