@@ -39,19 +39,6 @@ async function handler(
   let runId: string | null =
     typeof req.query.runId === "string" ? req.query.runId : null;
 
-  // We allow non builder and hence cross workspace (see withSessionAuthenticationForWorkspace)
-  // users to view the run block status only if the run is the one saved on the app (the app view).
-  if (runId !== "saved" && !auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can view run statuses.",
-      },
-    });
-  }
-
   if (runId === "saved") {
     runId = app.savedRun;
   }
@@ -95,6 +82,9 @@ async function handler(
   }
 }
 
+// We allow anyone with access to the app (getApp returns something) and the runId to retrieve the
+// block status. Note: this means if runIds from our dust-apps are leaked they can be used to
+// retrieve user data.
 export default withSessionAuthenticationForWorkspace(handler, {
   allowUserOutsideCurrentWorkspace: true,
 });
