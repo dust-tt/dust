@@ -24,23 +24,21 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (!auth.isAdmin()) {
-    // Allow Dust Super User to force role for testing
-    const allowForTesting =
-      canForceUserRole(owner) &&
-      auth.isDustSuperUser() &&
-      req.body.force === "true";
+  // Allow Dust Super User to force role for testing
+  const allowForSuperUserTesting =
+    canForceUserRole(owner) &&
+    auth.isDustSuperUser() &&
+    req.body.force === "true";
 
-    if (!allowForTesting) {
-      return apiError(req, res, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can see memberships or modify it.",
-        },
-      });
-    }
+  if (!auth.isAdmin() && !allowForSuperUserTesting) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can see memberships or modify it.",
+      },
+    });
   }
 
   const userId = req.query.uId;

@@ -43,17 +43,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostVaultDataSourceResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can interact with vaults.",
-      },
-    });
-  }
-
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
   const user = auth.getNonNullableUser();

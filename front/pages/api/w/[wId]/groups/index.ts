@@ -15,17 +15,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetGroupsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
       const groups = await GroupResource.listWorkspaceGroups(auth);

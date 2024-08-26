@@ -37,17 +37,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can interact with vaults.",
-      },
-    });
-  }
-
   const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
   // Check if the user has access to the vault - either they are an admin or they have read access

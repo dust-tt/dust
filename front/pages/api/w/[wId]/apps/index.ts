@@ -19,20 +19,20 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostAppResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can create an app.",
+      },
+    });
+  }
+
   const owner = auth.getNonNullableWorkspace();
   switch (req.method) {
     case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can create an app.",
-          },
-        });
-      }
-
       if (
         !req.body ||
         !(typeof req.body.name == "string") ||

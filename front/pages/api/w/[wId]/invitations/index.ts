@@ -44,16 +44,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.user();
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
+  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
 
   if (!auth.isAdmin()) {
     return apiError(req, res, {
@@ -65,8 +57,6 @@ async function handler(
       },
     });
   }
-
-  const owner = auth.getNonNullableWorkspace();
 
   const subscription = auth.subscription();
   const plan = auth.plan();

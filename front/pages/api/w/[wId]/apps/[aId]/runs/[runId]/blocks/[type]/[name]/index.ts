@@ -82,4 +82,9 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+// We allow anyone with access to the app (getApp returns something) and the runId to retrieve the
+// block status. Note: this means if runIds from our dust-apps are leaked they can be used to
+// retrieve user data.
+export default withSessionAuthenticationForWorkspace(handler, {
+  allowUserOutsideCurrentWorkspace: true,
+});

@@ -22,17 +22,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "provider_auth_error",
-        message:
-          "Only the users of a workspace can list models from providers.",
-      },
-    });
-  }
-
   const owner = auth.getNonNullableWorkspace();
 
   const [provider] = await Promise.all([

@@ -34,7 +34,6 @@ async function handler(
           sId: req.query.aId,
         },
   });
-
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -145,4 +144,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  allowUserOutsideCurrentWorkspace: true,
+});

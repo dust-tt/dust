@@ -38,17 +38,8 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const user = auth.user();
-  const plan = auth.plan();
-  if (!plan || !user || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
+  const user = auth.getNonNullableUser();
+  const plan = auth.getNonNullablePlan();
 
   const dataSources = await getDataSources(auth);
 
