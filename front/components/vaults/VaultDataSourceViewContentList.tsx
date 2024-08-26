@@ -18,6 +18,7 @@ import {
 import type {
   ContentNodesViewType,
   DataSourceViewType,
+  LightContentNode,
   PlanType,
   VaultType,
   WorkspaceType,
@@ -109,6 +110,64 @@ export const VaultDataSourceViewContentList = ({
     channel: ChatBubbleBottomCenterTextIcon,
   };
 
+  const getMenuItems = (
+    dataSourceView: DataSourceViewType,
+    contentNode: LightContentNode
+  ) => {
+    if (!dataSourceView.dataSource.connectorProvider) {
+      // Folder data source - only documents and tables
+      if (contentNode.type === "file") {
+        return [
+          {
+            label: "Edit",
+            icon: PencilSquareIcon,
+            onClick: () => {
+              setDocumentId(contentNode.internalId);
+              setShowDocumentUploadOrEditModal(true);
+            },
+          },
+          {
+            label: "Delete",
+            icon: TrashIcon,
+            onClick: () => {
+              setDocumentId(contentNode.internalId);
+              setShowDocumentDeleteDialog(true);
+            },
+            variant: "warning",
+          },
+        ];
+      }
+
+      if (contentNode.type === "database") {
+        return [
+          {
+            label: "Edit",
+            icon: PencilSquareIcon,
+            onClick: () => {
+              setTableId(contentNode.internalId);
+              setShowTableUploadOrEditModal(true);
+            },
+          },
+          {
+            label: "Delete",
+            icon: TrashIcon,
+            onClick: () => {
+              setTableId(contentNode.internalId);
+              setShowTableDeleteDialog(true);
+            },
+            variant: "warning",
+          },
+        ];
+      }
+    } else if (dataSourceView.dataSource.connectorProvider === "webcrawler") {
+      // TODO Actions for webrawler datasource
+    } else {
+      // TODO Actions for managed datasource
+    }
+
+    return null;
+  };
+
   const {
     vaultContent,
     isVaultContentLoading,
@@ -123,43 +182,15 @@ export const VaultDataSourceViewContentList = ({
   });
 
   const rows: RowData[] =
-    vaultContent?.map((v) => ({
-      ...v,
-      icon: visualTable[v.type] || DocumentIcon,
+    vaultContent?.map((contentNode) => ({
+      ...contentNode,
+      icon: visualTable[contentNode.type] || DocumentIcon,
       onClick: () => {
-        if (v.expandable) {
-          onSelect(v.internalId);
+        if (contentNode.expandable) {
+          onSelect(contentNode.internalId);
         }
       },
-      moreMenuItems: [
-        {
-          label: "Edit",
-          icon: PencilSquareIcon,
-          onClick: () => {
-            if (currentTab === "documents") {
-              setDocumentId(v.internalId);
-              setShowDocumentUploadOrEditModal(true);
-            } else {
-              setTableId(v.internalId);
-              setShowTableUploadOrEditModal(true);
-            }
-          },
-        },
-        {
-          label: "Delete",
-          icon: TrashIcon,
-          onClick: () => {
-            if (currentTab === "documents") {
-              setDocumentId(v.internalId);
-              setShowDocumentDeleteDialog(true);
-            } else {
-              setTableId(v.internalId);
-              setShowTableDeleteDialog(true);
-            }
-          },
-          variant: "warning",
-        },
-      ],
+      moreMenuItems: getMenuItems(dataSourceView, contentNode),
     })) || [];
 
   if (isVaultContentLoading) {
