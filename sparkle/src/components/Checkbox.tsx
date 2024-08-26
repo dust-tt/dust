@@ -5,10 +5,12 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
+export type CheckBoxCheckedStatus = "checked" | "unchecked" | "partial";
+
 export interface CheckboxProps {
   variant?: "selectable" | "checkable";
   size?: "xs" | "sm";
-  checked?: "checked" | "unchecked" | "partial";
+  checked?: CheckBoxCheckedStatus;
   disabled?: boolean;
   onChange: (checked: boolean) => void;
   className?: string;
