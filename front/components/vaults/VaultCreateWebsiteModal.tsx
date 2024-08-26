@@ -39,16 +39,19 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useVaultDataSourceViews } from "@app/lib/swr";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostManagedDataSourceRequestBodySchema } from "@app/pages/api/w/[wId]/data_sources/managed";
+import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/static";
 
 const WEBSITE_CAT: DataSourceViewCategory = "website";
 
+// todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
+// this should be refactored to use the new design.
 export default function VaultCreateWebsiteModal({
   isOpen,
   setOpen,
   owner,
   dataSources,
   vault,
-  dataSourceOrView,
+  dataSourceView,
   webCrawlerConfiguration,
 }: {
   isOpen: boolean;
@@ -56,7 +59,7 @@ export default function VaultCreateWebsiteModal({
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
-  dataSourceOrView: DataSourceType | DataSourceViewType | null;
+  dataSourceView: DataSourceViewType | null;
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
 }) {
   const router = useRouter();
@@ -73,9 +76,12 @@ export default function VaultCreateWebsiteModal({
     null
   );
 
-  const [dataSourceName, setDataSourceName] = useState(
-    dataSourceOrView?.name || ""
-  );
+  const dataSourceId = dataSourceView ? dataSourceView.dataSource.id : null;
+  const defaultDataSourceName = dataSourceView
+    ? dataSourceView.dataSource.name
+    : "";
+
+  const [dataSourceName, setDataSourceName] = useState(defaultDataSourceName);
   const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
     null
   );
@@ -142,7 +148,7 @@ export default function VaultCreateWebsiteModal({
 
     // Validate Name
     const nameExists = dataSources.some(
-      (d) => d.name === dataSourceName && d.id !== dataSourceOrView?.id
+      (d) => d.name === dataSourceName && d.id !== dataSourceId
     );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
     if (nameExists) {
@@ -156,7 +162,7 @@ export default function VaultCreateWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceName, dataSources, dataSourceUrl, dataSourceOrView?.id]);
+  }, [dataSourceName, dataSourceId, dataSources, dataSourceUrl]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -174,34 +180,36 @@ export default function VaultCreateWebsiteModal({
     setIsSaving(true);
     if (webCrawlerConfiguration === null) {
       const sanitizedDataSourceUrl = dataSourceUrl.trim();
-      const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          provider: "webcrawler",
-          connectionId: "none",
-          vaultId: vault.sId,
-          name: dataSourceName,
-          configuration: {
-            url: sanitizedDataSourceUrl,
-            maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
-            depth: maxDepth,
-            crawlMode: crawlMode,
-            crawlFrequency: selectedCrawlFrequency,
-            headers: headers.reduce(
-              (acc, { key, value }) => {
-                if (key && value) {
-                  acc[key] = value;
-                }
-                return acc;
-              },
-              {} as Record<string, string>
-            ),
-          } satisfies WebCrawlerConfigurationType,
-        } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
-      });
+      const res = await fetch(
+        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/managed`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider: "webcrawler",
+            connectionId: "none",
+            name: dataSourceName,
+            configuration: {
+              url: sanitizedDataSourceUrl,
+              maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
+              depth: maxDepth,
+              crawlMode: crawlMode,
+              crawlFrequency: selectedCrawlFrequency,
+              headers: headers.reduce(
+                (acc, { key, value }) => {
+                  if (key && value) {
+                    acc[key] = value;
+                  }
+                  return acc;
+                },
+                {} as Record<string, string>
+              ),
+            } satisfies WebCrawlerConfigurationType,
+          } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
+        }
+      );
       if (res.ok) {
         setOpen(false);
         sendNotification({
@@ -210,11 +218,13 @@ export default function VaultCreateWebsiteModal({
           description: "The website has been successfully created.",
         });
         await mutateVaultDataSourceViews();
+        const response: PostVaultDataSourceResponseBody = await res.json();
+        const { dataSourceView } = response;
         await router.push(
-          `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_sources/${dataSourceName}`
+          `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_source_views/${dataSourceView.sId}`
         );
       } else {
-        const err = (await res.json()) as { error: APIError };
+        const err: { error: APIError } = await res.json();
         setIsSaving(false);
         sendNotification({
           title: "Error creating website",
@@ -222,10 +232,11 @@ export default function VaultCreateWebsiteModal({
           description: err.error.message,
         });
       }
-    } else if (dataSourceOrView) {
+    } else if (dataSourceView) {
+      // TODO(GROUPS_INFRA): this should be refactored to use a patch route under /vaults
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSourceOrView.name
+          defaultDataSourceName
         )}/configuration`,
         {
           method: "PATCH",
@@ -276,12 +287,12 @@ export default function VaultCreateWebsiteModal({
   };
 
   const handleDelete = async () => {
-    if (!dataSourceOrView) {
+    if (!dataSourceId) {
       return;
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${encodeURIComponent(dataSourceOrView.name)}`,
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceId}}`,
       {
         method: "DELETE",
       }
@@ -320,7 +331,7 @@ export default function VaultCreateWebsiteModal({
         <div className="overflow-x-auto">
           <Modal
             isOpen={advancedSettingsOpened}
-            title={`Advanced settings`}
+            title="Advanced settings"
             onClose={() => {
               setAdvancedSettingsOpened(false);
             }}
@@ -561,7 +572,7 @@ export default function VaultCreateWebsiteModal({
                   }}
                 ></Button>
               </div>
-              {webCrawlerConfiguration && (
+              {webCrawlerConfiguration && dataSourceId && (
                 <div className="flex py-16">
                   <Button
                     variant="secondaryWarning"

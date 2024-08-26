@@ -76,7 +76,7 @@ export function EditVaultStaticDataSourcesViews({
         owner={owner}
         vault={vault}
         dataSources={dataSources}
-        dataSourceOrView={null} // null for a website creation.
+        dataSourceView={null} // null for a website creation.
         webCrawlerConfiguration={null} // null for a website creation.
       />
       <Button

@@ -36,17 +36,12 @@ import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-export const PostManagedDataSourceRequestBodySchema = t.intersection([
-  t.type({
-    provider: t.string,
-    connectionId: t.string,
-    name: t.union([t.string, t.undefined]),
-    configuration: ConnectorConfigurationTypeSchema,
-  }),
-  t.partial({
-    vaultId: t.string,
-  }),
-]);
+export const PostManagedDataSourceRequestBodySchema = t.type({
+  provider: t.string,
+  connectionId: t.string,
+  name: t.union([t.string, t.undefined]),
+  configuration: ConnectorConfigurationTypeSchema,
+});
 
 export type PostManagedDataSourceRequestBody = t.TypeOf<
   typeof PostManagedDataSourceRequestBodySchema
@@ -102,7 +97,7 @@ async function handler(
       }
 
       let { configuration } = bodyValidation.right;
-      const { connectionId, provider, name, vaultId } = bodyValidation.right;
+      const { connectionId, provider, name } = bodyValidation.right;
 
       if (!isConnectorProvider(provider)) {
         return apiError(req, res, {
@@ -304,35 +299,9 @@ async function handler(
         });
       }
 
-      let vault: VaultResource | null = null;
-      if (provider === "webcrawler" && vaultId) {
-        vault = await VaultResource.fetchById(auth, vaultId);
-      } else if (provider === "webcrawler") {
-        vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-      } else {
-        vault = await VaultResource.fetchWorkspaceSystemVault(auth);
-      }
-
-      if (!vault) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to fetch the vault.",
-          },
-        });
-      }
-      if (!auth.hasPermission([vault.acl()], "write")) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that have `write` permission for the current vault can create a data source.",
-          },
-        });
-      }
-
+      const vault = await (provider === "webcrawler"
+        ? VaultResource.fetchWorkspaceGlobalVault(auth)
+        : VaultResource.fetchWorkspaceSystemVault(auth));
       const dataSource = await DataSourceResource.makeNew(
         {
           assistantDefaultSelected,
