@@ -63,7 +63,10 @@ export function withSessionAuthenticationForWorkspace<T>(
     auth: Authenticator,
     session: SessionWithUser
   ) => Promise<void> | void,
-  opts: { isStreaming?: boolean; allowUserOutsideCurrentWorkspace?: boolean } = {}
+  opts: {
+    isStreaming?: boolean;
+    allowUserOutsideCurrentWorkspace?: boolean;
+  } = {}
 ) {
   return withSessionAuthentication(
     async (
