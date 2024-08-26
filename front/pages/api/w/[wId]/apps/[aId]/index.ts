@@ -61,6 +61,7 @@ async function handler(
         },
       });
       break;
+
     case "POST":
       if (!auth.isBuilder()) {
         return apiError(req, res, {

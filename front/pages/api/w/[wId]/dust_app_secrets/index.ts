@@ -6,7 +6,7 @@ import {
   getDustAppSecret,
   getDustAppSecrets,
 } from "@app/lib/api/dust_app_secrets";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceAsUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
@@ -119,4 +119,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAsUser(handler);

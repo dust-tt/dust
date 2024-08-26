@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { getDatasetHash } from "@app/lib/api/datasets";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceAsUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { Dataset } from "@app/lib/models/apps";
@@ -190,4 +190,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAsUser(handler);

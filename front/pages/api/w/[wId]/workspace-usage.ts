@@ -6,7 +6,7 @@ import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceAsUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
@@ -145,7 +145,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAsUser(handler);
 
 function resolveDates(query: t.TypeOf<typeof GetUsageQueryParamsSchema>) {
   switch (query.mode) {

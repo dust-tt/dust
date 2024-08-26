@@ -2,7 +2,7 @@ import type { APIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceAsUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
@@ -56,7 +56,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAsUser(handler);
 
 interface MemberCountQueryResult {
   member_count: number;

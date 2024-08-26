@@ -109,3 +109,45 @@ export function withSessionAuthenticationForWorkspace<T>(
     opts
   );
 }
+
+/**
+ * This function is a wrapper for API routes that require session authentication for a workspace.
+ * Ensuring the user is a valid member of the workspace.
+ * Ideal for routes that require workspace-specific access control (e.g., /w/[wId]/).
+ *
+ * @param handler
+ * @param opts
+ * @returns
+ */
+export function withSessionAuthenticationForWorkspaceAsUser<T>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    session: SessionWithUser
+  ) => Promise<void> | void,
+  opts: { isStreaming?: boolean } = {}
+) {
+  return withSessionAuthenticationForWorkspace(
+    async (
+      req: NextApiRequest,
+      res: NextApiResponse<WithAPIErrorResponse<T>>,
+      auth: Authenticator,
+      session: SessionWithUser
+    ) => {
+      if (!auth.isUser()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "User is not a member of the workspace and does not have access.",
+          },
+        });
+      }
+
+      return handler(req, res, auth, session);
+    },
+    opts
+  );
+}

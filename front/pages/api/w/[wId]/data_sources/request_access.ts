@@ -4,7 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceAsUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { sendEmailWithTemplate } from "@app/lib/email";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -130,4 +130,4 @@ async function handler(
   return res.status(200).json({ success: true, emailTo: userReceipent.email });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAsUser(handler);

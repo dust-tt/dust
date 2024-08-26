@@ -13,7 +13,7 @@ import {
   deleteEnterpriseConnection,
   getEnterpriseConnectionForWorkspace,
 } from "@app/lib/api/enterprise_connection";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceasUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
@@ -166,4 +166,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceasUser(handler);

@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceAsUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
@@ -91,7 +91,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAsUser(handler);
 
 export async function handlePostTableCsvUpsertRequest(
   auth: Authenticator,

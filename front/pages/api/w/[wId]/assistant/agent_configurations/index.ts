@@ -28,7 +28,7 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
+import { withSessionAuthenticationForWorkspaceAsUser } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
@@ -244,7 +244,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspaceAsUser(handler);
 
 /**
  * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided, it will create a
