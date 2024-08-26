@@ -47,7 +47,7 @@ import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
-import { getConnectorProviderLogo } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import {
@@ -378,7 +378,10 @@ function DataSourceViewsSection({
 
           if (dataSourceView) {
             const { dataSource } = dataSourceView;
-            DsLogo = getConnectorProviderLogo(dataSource.connectorProvider);
+            DsLogo = getConnectorProviderLogoWithFallback(
+              dataSource.connectorProvider,
+              FolderIcon
+            );
             dataSourceName = getDisplayNameForDataSource(dataSource);
           }
 
