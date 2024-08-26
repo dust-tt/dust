@@ -1,4 +1,4 @@
-import { Modal, Tree } from "@dust-tt/sparkle";
+import { FolderIcon, Modal, Tree } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceViewType,
@@ -13,6 +13,7 @@ import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogo,
+  getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 
 export default function VaultManagedDataSourcesViewsModal({
@@ -116,8 +117,9 @@ function VaultManagedDataSourceViewsTree({
     CONNECTOR_CONFIGURATIONS[
       dataSourceView.dataSource.connectorProvider as ConnectorProvider
     ];
-  const LogoComponent = getConnectorProviderLogo(
-    dataSourceView.dataSource.connectorProvider
+  const LogoComponent = getConnectorProviderLogoWithFallback(
+    dataSourceView.dataSource.connectorProvider,
+    FolderIcon
   );
   const selectedNodesInDataSourceView = selectedNodes.find(
     (ds) => ds.name === dataSourceView.dataSource.name
@@ -140,7 +142,7 @@ function VaultManagedDataSourceViewsTree({
     <Tree.Item
       key={dataSourceView.dataSource.name}
       label={config?.name}
-      visual={LogoComponent ?? undefined}
+      visual={LogoComponent}
       type="node"
       checkbox={{
         checked: getCheckedStatus(selectedNodesInDataSourceView),

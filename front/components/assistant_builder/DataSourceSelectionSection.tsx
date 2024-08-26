@@ -2,6 +2,7 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
+  FolderIcon,
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
@@ -13,7 +14,10 @@ import type { AssistantBuilderDataSourceConfiguration } from "@app/components/as
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
-import { getConnectorProviderLogo } from "@app/lib/connector_providers";
+import {
+  getConnectorProviderLogo,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr";
@@ -83,8 +87,9 @@ export default function DataSourceSelectionSection({
         ) : (
           <Tree>
             {Object.values(dataSourceConfigurations).map((dsConfig) => {
-              const LogoComponent = getConnectorProviderLogo(
-                dsConfig.dataSourceView.dataSource.connectorProvider
+              const LogoComponent = getConnectorProviderLogoWithFallback(
+                dsConfig.dataSourceView.dataSource.connectorProvider,
+                FolderIcon
               );
               return (
                 <Tree.Item
@@ -97,7 +102,7 @@ export default function DataSourceSelectionSection({
                   label={getDisplayNameForDataSource(
                     dsConfig.dataSourceView.dataSource
                   )}
-                  visual={LogoComponent ?? undefined}
+                  visual={LogoComponent}
                   className="whitespace-nowrap"
                 >
                   {dsConfig.isSelectAll && (
