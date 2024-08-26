@@ -90,39 +90,25 @@ export const ContentActions = ({
 };
 
 export const getFolderMenuItems = (contentNode: LightContentNode) => {
-  if (contentNode.type === "file") {
-    return [
-      {
-        label: "Edit",
-        icon: PencilSquareIcon,
-        key: "DocumentUploadOrEditModal" as const,
-      },
-      {
-        label: "Delete",
-        icon: TrashIcon,
-        key: "DocumentDeleteDialog" as const,
-        variant: "warning",
-      },
-    ];
-  }
-
-  if (contentNode.type === "database") {
-    return [
-      {
-        label: "Edit",
-        icon: PencilSquareIcon,
-        key: "TableUploadOrEditModal" as const,
-      },
-      {
-        label: "Delete",
-        icon: TrashIcon,
-        key: "TableDeleteDialog" as const,
-        variant: "warning",
-      },
-    ];
-  }
-
-  return [];
+  return [
+    {
+      label: "Edit",
+      icon: PencilSquareIcon,
+      key:
+        contentNode.type === "file"
+          ? ("DocumentUploadOrEditModal" as const)
+          : ("TableUploadOrEditModal" as const),
+    },
+    {
+      label: "Delete",
+      icon: TrashIcon,
+      key:
+        contentNode.type === "file"
+          ? ("DocumentDeleteDialog" as const)
+          : ("TableDeleteDialog" as const),
+      variant: "warning",
+    },
+  ];
 };
 
 export const getWebfolderMenuItems = (

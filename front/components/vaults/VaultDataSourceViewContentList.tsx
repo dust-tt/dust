@@ -89,6 +89,7 @@ export const VaultDataSourceViewContentList = ({
     channel: ChatBubbleBottomCenterTextIcon,
   };
 
+  // TODO: Do not pass viewType, get all document/tables in one call
   const {
     vaultContent,
     isVaultContentLoading,
