@@ -16,6 +16,7 @@ import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/static";
 
 export default function VaultCreateFolderModal({
   isOpen,
@@ -67,22 +68,26 @@ export default function VaultCreateFolderModal({
           return;
         }
 
-        const res = await fetch(`/api/w/${owner.sId}/data_sources`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            description,
-            assistantDefaultSelected: false,
-            vaultId: vault.sId,
-          }),
-        });
+        const res = await fetch(
+          `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/static`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name,
+              description,
+              assistantDefaultSelected: false,
+            }),
+          }
+        );
         if (res.ok) {
           setOpen(false);
+          const response: PostVaultDataSourceResponseBody = await res.json();
+          const { dataSourceView } = response;
           await router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/files/data_sources/${name}`
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
           );
           sendNotification({
             type: "success",
@@ -109,7 +114,7 @@ export default function VaultCreateFolderModal({
             <Page.H>Name</Page.H>
             <div className="w-full">
               <Input
-                placeholder="Folder name"
+                placeholder="folder_name"
                 name="name"
                 value={name}
                 onChange={(value) => {

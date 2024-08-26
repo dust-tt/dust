@@ -1,16 +1,23 @@
-import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  DataSourceViewType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import {
+  CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   isDataSourceNameValid,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
+import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -20,72 +27,78 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetDataSourcesResponseBody = {
-  dataSources: Array<DataSourceType>;
-};
+const PostStaticDataSourceRequestBodySchema = t.type({
+  name: t.string,
+  description: t.string,
+  assistantDefaultSelected: t.boolean,
+});
 
-export type PostDataSourceResponseBody = {
+export type PostVaultDataSourceResponseBody = {
   dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<
-      GetDataSourcesResponseBody | PostDataSourceResponseBody
-    >
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<PostVaultDataSourceResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-  const user = auth.user();
+  const owner = auth.workspace();
   const plan = auth.plan();
-  if (!plan || !user || !auth.isUser()) {
+  const user = auth.user();
+
+  if (!owner || !plan || !user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "workspace_not_found",
+        message: "The workspace you requested was not found.",
       },
     });
   }
 
-  const dataSources = await getDataSources(auth);
+  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
+
+  if (!vault || !auth.hasPermission([vault.acl()], "write")) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "vault_not_found",
+        message: "The vault you requested was not found.",
+      },
+    });
+  }
+
+  if (vault.isSystem()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Cannot post a static datasource in a system vault.`,
+      },
+    });
+  }
 
   switch (req.method) {
-    case "GET":
-      res.status(200).json({ dataSources });
-      return;
-
-    case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `admins` for the current workspace can create a data source.",
-          },
-        });
-      }
-
-      if (
-        !req.body ||
-        !(typeof req.body.name == "string") ||
-        !(typeof req.body.description == "string") ||
-        !(typeof req.body.assistantDefaultSelected === "boolean")
-      ) {
+    case "POST": {
+      const bodyValidation = PostStaticDataSourceRequestBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects { name, description, provider_id, model_id, max_chunk_size, visibility, assistantDefaultSelected }.",
+            message: `Invalid request body to post a static data source: ${pathError}`,
           },
         });
       }
 
-      if (req.body.name.startsWith("managed-")) {
+      const { name, description, assistantDefaultSelected } =
+        bodyValidation.right;
+
+      if (name.startsWith("managed-")) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -94,8 +107,7 @@ async function handler(
           },
         });
       }
-
-      if (!isDataSourceNameValid(req.body.name)) {
+      if (!isDataSourceNameValid(name)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -105,8 +117,7 @@ async function handler(
           },
         });
       }
-
-      // Enforce plan limits: DataSources count.
+      const dataSources = await DataSourceResource.listByWorkspace(auth);
       if (
         plan.limits.dataSources.count != -1 &&
         dataSources.length >= plan.limits.dataSources.count
@@ -121,6 +132,9 @@ async function handler(
         });
       }
 
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
       const dustProject = await coreAPI.createProject();
@@ -135,17 +149,9 @@ async function handler(
         });
       }
 
-      const description = req.body.description ? req.body.description : null;
-
-      // Dust managed credentials: all data sources.
-      const credentials = dustManagedCredentials();
-
-      const dataSourceEmbedder =
-        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
-      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
-        dataSourceId: req.body.name as string,
+        dataSourceId: name,
         config: {
           qdrant_config: {
             cluster: DEFAULT_QDRANT_CLUSTER,
@@ -160,7 +166,7 @@ async function handler(
             },
           },
         },
-        credentials,
+        credentials: dustManagedCredentials(),
       });
 
       if (dustDataSource.isErr()) {
@@ -174,52 +180,25 @@ async function handler(
         });
       }
 
-      let vault = null;
-      if (typeof req.body.vaultId === "string") {
-        vault = await VaultResource.fetchById(auth, req.body.vaultId);
-        if (!vault) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "vault_not_found",
-              message: "The vault you requested was not found.",
-            },
-          });
-        }
-      } else {
-        // If no vault is provided, use the global vault.
-        vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-      }
-
-      if (!auth.hasPermission([vault.acl()], "write")) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that have `write` permission for the current vault can create a data source.",
-          },
-        });
-      }
-
-      const ds = await DataSourceResource.makeNew(
+      const dataSource = await DataSourceResource.makeNew(
         {
-          name: req.body.name,
-          description: description,
+          name,
+          description,
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
           workspaceId: owner.id,
-          assistantDefaultSelected: req.body.assistantDefaultSelected,
+          assistantDefaultSelected,
           editedByUserId: user.id,
         },
         vault
       );
 
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        ds.vault,
-        ds
-      );
+      const dataSourceView =
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          dataSource.vault,
+          dataSource
+        );
 
-      const dataSourceType = await getDataSource(auth, ds.name);
+      const dataSourceType = await getDataSource(auth, dataSource.name);
       if (dataSourceType) {
         void ServerSideTracking.trackDataSourceCreated({
           user,
@@ -228,10 +207,11 @@ async function handler(
         });
       }
 
-      res.status(201).json({
-        dataSource: ds.toJSON(),
+      return res.status(201).json({
+        dataSource: dataSource.toJSON(),
+        dataSourceView: dataSourceView.toJSON(),
       });
-      return;
+    }
 
     default:
       return apiError(req, res, {
