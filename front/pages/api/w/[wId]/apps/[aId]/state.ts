@@ -30,19 +30,13 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
 
   const app = await App.findOne({
-    where: auth.isUser()
-      ? {
-          workspaceId: owner.id,
-          visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
-          },
-          sId: req.query.aId,
-        }
-      : {
-          workspaceId: owner.id,
-          visibility: ["public", "unlisted"],
-          sId: req.query.aId,
-        },
+    where: {
+      workspaceId: owner.id,
+      visibility: {
+        [Op.or]: ["public", "private", "unlisted"],
+      },
+      sId: req.query.aId,
+    },
   });
   if (!app) {
     return apiError(req, res, {
