@@ -150,5 +150,5 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(handler, {
-  allowNonWorksapceUser: true,
+  allowUserOutsideCurrentWorkspace: true,
 });

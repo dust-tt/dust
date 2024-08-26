@@ -63,7 +63,7 @@ export function withSessionAuthenticationForWorkspace<T>(
     auth: Authenticator,
     session: SessionWithUser
   ) => Promise<void> | void,
-  opts: { isStreaming?: boolean; allowNonWorksapceUser?: boolean } = {}
+  opts: { isStreaming?: boolean; allowUserOutsideCurrentWorkspace?: boolean } = {}
 ) {
   return withSessionAuthentication(
     async (
@@ -109,7 +109,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
       // If allowNonWorksaceUser is not set or false then we check that the user is a member of the
       // workspace.
-      if (!auth.isUser() && !opts.allowNonWorksapceUser) {
+      if (!auth.isUser() && !opts.allowUserOutsideCurrentWorkspace) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
