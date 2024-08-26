@@ -24,6 +24,19 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetRunBlockResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  // Only the users that are `builders` for the current workspace can retrieve the content of runs
+  // block outputs.
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can introspect runs.",
+      },
+    });
+  }
+
   const app = await getApp(auth, req.query.aId as string);
 
   if (!app) {
@@ -82,9 +95,4 @@ async function handler(
   }
 }
 
-// We allow anyone with access to the app (getApp returns something) and the runId to retrieve the
-// block status. Note: this means if runIds from our dust-apps are leaked they can be used to
-// retrieve user data.
-export default withSessionAuthenticationForWorkspace(handler, {
-  allowUserOutsideCurrentWorkspace: true,
-});
+export default withSessionAuthenticationForWorkspace(handler);
