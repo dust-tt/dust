@@ -105,7 +105,7 @@ export const VaultDataSourceViewContentList = ({
   const rows: RowData[] =
     vaultContent?.map((contentNode) => ({
       ...contentNode,
-      icon: visualTable[contentNode.type] || DocumentIcon,
+      icon: visualTable[contentNode.type] ?? DocumentIcon,
       onClick: () => {
         if (contentNode.expandable) {
           onSelect(contentNode.internalId);
