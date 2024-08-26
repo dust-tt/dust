@@ -18,17 +18,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetRunStatusResponseBody>>,
   auth: Authenticator
 ) {
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can view run statuses.",
-      },
-    });
-  }
-
   const app = await getApp(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
@@ -94,4 +83,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  allowUserOutsideCurrentWorkspace: true,
+});
