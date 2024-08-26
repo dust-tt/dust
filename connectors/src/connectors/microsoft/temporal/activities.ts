@@ -565,15 +565,21 @@ export async function syncDeltaForRootNodesInDrive({
           internalId,
         });
 
-        const blob = driveItem.root
-          ? itemToMicrosoftNode(
-              "drive",
-              await getItem(
+        const { item, type } = driveItem.root
+          ? {
+              item: await getItem(
                 client,
                 `/drives/${driveItem.parentReference.driveId}`
-              )
-            )
-          : itemToMicrosoftNode("folder", driveItem);
+              ),
+              type: "drive" as const,
+            }
+          : { item: driveItem, type: "folder" as const };
+
+        const blob = itemToMicrosoftNode(type, item);
+
+        if (rootNodeIds.includes(blob.internalId)) {
+          blob.name = blob.name + ` (${extractPath(item)})`;
+        }
 
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
