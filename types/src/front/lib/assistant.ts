@@ -15,7 +15,7 @@ export const MODEL_PROVIDER_IDS = [
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
-export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai" as const;
+export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 export const EMBEDDING_PROVIDER_IDS = [
   DEFAULT_EMBEDDING_PROVIDER_ID,
   "mistral",
