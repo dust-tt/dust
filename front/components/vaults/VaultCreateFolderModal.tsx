@@ -16,7 +16,7 @@ import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/static";
+import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export default function VaultCreateFolderModal({
   isOpen,
@@ -69,7 +69,7 @@ export default function VaultCreateFolderModal({
         }
 
         const res = await fetch(
-          `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/static`,
+          `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
           {
             method: "POST",
             headers: {
@@ -78,7 +78,6 @@ export default function VaultCreateFolderModal({
             body: JSON.stringify({
               name,
               description,
-              assistantDefaultSelected: false,
             }),
           }
         );

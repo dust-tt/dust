@@ -214,6 +214,25 @@ export const isConnectorProviderAssistantDefaultSelected = (
   }
 };
 
+export const isConnectionIdRequiredForProvider = (
+  provider: ConnectorProvider
+): boolean => {
+  switch (provider) {
+    case "confluence":
+    case "slack":
+    case "notion":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "microsoft":
+      return true;
+    case "webcrawler":
+      return false;
+    default:
+      assertNever(provider);
+  }
+};
+
 export function getDefaultDataSourceName(
   provider: ConnectorProvider,
   suffix: string | null
