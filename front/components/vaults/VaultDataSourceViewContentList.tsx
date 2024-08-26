@@ -307,7 +307,7 @@ export const VaultDataSourceViewContentList = ({
         onClose={() => setShowDocumentDeleteDialog(false)}
         onSave={mutateVaultDataSourceViewContent}
         documentId={documentId}
-        documentName={""}
+        documentName={documentId || ""}
         owner={owner}
         dataSourceView={dataSourceView}
       />

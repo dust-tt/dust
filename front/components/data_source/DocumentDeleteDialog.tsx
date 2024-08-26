@@ -31,7 +31,7 @@ export const DocumentDeleteDialog = ({
         return;
       }
       const res = await fetch(
-        `/api/w/${owner.sId}/data_source/${
+        `/api/w/${owner.sId}/data_sources/${
           dataSourceView.dataSource.name
         }/documents/${encodeURIComponent(documentId)}`,
         {
