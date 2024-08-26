@@ -2,11 +2,11 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
+  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   Item,
   LockIcon,
-  PlanetIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -19,7 +19,7 @@ import type {
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
+import type { ComponentType, ReactElement } from "react";
 import { Fragment, useEffect, useState } from "react";
 
 import {
@@ -112,24 +112,13 @@ const getSectionLabel = (kind: VaultKind) => {
   }
 };
 
-const RootItemIconWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-brand" />;
-};
-
-const SubItemIconItemWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-element-700" />;
-};
-
 // System vault.
 
 const SYSTEM_VAULTS_ITEMS = [
   {
     label: "Connection Management",
-    visual: RootItemIconWrapper(CloudArrowLeftRightIcon),
+    visual: CloudArrowLeftRightIcon,
+    tailwindIconTextColor: "text-brand",
     category: "managed" as DataSourceViewCategory,
   },
   // TODO(GROUPS_UI) Add support for Dust apps.
@@ -143,7 +132,7 @@ const SystemVaultMenu = ({
   vault: VaultType;
 }) => {
   return (
-    <>
+    <Tree variant="navigator">
       {SYSTEM_VAULTS_ITEMS.map((item) => (
         <SystemVaultItem
           category={item.category}
@@ -154,9 +143,11 @@ const SystemVaultMenu = ({
           visual={item.visual}
         />
       ))}
-    </>
+    </Tree>
   );
 };
+
+type IconType = ComponentType<{ className?: string }>;
 
 const SystemVaultItem = ({
   category,
@@ -169,7 +160,7 @@ const SystemVaultItem = ({
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
-  visual: ReactElement;
+  visual: IconType;
 }) => {
   const router = useRouter();
 
@@ -192,6 +183,7 @@ const SystemVaultItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       label={label}
       collapsed={!isExpanded}
       onItemClick={() => router.push(itemPath)}
@@ -245,16 +237,14 @@ const VaultMenuItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       label={vault.kind === "global" ? "Company Data" : vault.name}
       collapsed={!isExpanded}
       onItemClick={() => router.push(vaultPath)}
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={
-        vault.kind === "global"
-          ? RootItemIconWrapper(PlanetIcon)
-          : RootItemIconWrapper(LockIcon)
-      }
+      visual={vault.kind === "global" ? CompanyIcon : LockIcon}
+      tailwindIconTextColor="text-brand"
       size="md"
       areActionsFading={false}
     >
@@ -280,27 +270,32 @@ const VaultMenuItem = ({
 
 const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
   [key: string]: {
-    label: string;
-    icon: ReactElement<{
+    icon: ComponentType<{
       className?: string;
     }>;
+    label: string;
+    tailwindIconTextColor: "text-element-700";
   };
 } = {
   managed: {
+    icon: CloudArrowLeftRightIcon,
     label: "Connected Data",
-    icon: SubItemIconItemWrapper(CloudArrowLeftRightIcon),
+    tailwindIconTextColor: "text-element-700",
   },
   folder: {
+    icon: FolderIcon,
     label: "Files",
-    icon: SubItemIconItemWrapper(FolderIcon),
+    tailwindIconTextColor: "text-element-700",
   },
   website: {
+    icon: GlobeAltIcon,
     label: "Websites",
-    icon: SubItemIconItemWrapper(GlobeAltIcon),
+    tailwindIconTextColor: "text-element-700",
   },
   apps: {
+    icon: CommandLineIcon,
     label: "Apps",
-    icon: SubItemIconItemWrapper(CommandLineIcon),
+    tailwindIconTextColor: "text-element-700",
   },
 };
 
@@ -323,6 +318,7 @@ const VaultDataSourceViewItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       type="leaf"
       isSelected={
         router.asPath === dataSourceViewPath ||
@@ -331,7 +327,8 @@ const VaultDataSourceViewItem = ({
       }
       onItemClick={() => router.push(dataSourceViewPath)}
       label={getDataSourceNameFromView(item)}
-      visual={SubItemIconItemWrapper(LogoComponent)}
+      visual={LogoComponent}
+      tailwindIconTextColor="text-element-700"
       areActionsFading={false}
     />
   );
@@ -368,6 +365,7 @@ const VaultCategoryItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
       onItemClick={() => router.push(vaultCategoryPath)}

@@ -9,6 +9,21 @@ import type { AssistantBuilderDataSourceConfiguration } from "@app/components/as
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 
+function getCheckedStatus(
+  config: AssistantBuilderDataSourceConfiguration | undefined
+) {
+  if (!config) {
+    return "unchecked";
+  }
+
+  const { isSelectAll, selectedResources } = config;
+  if (isSelectAll) {
+    return "checked";
+  }
+
+  return selectedResources.length > 0 ? "partial" : "unchecked";
+}
+
 export default function FolderOrWebsiteTree({
   owner,
   dataSourceView,
@@ -42,15 +57,10 @@ export default function FolderOrWebsiteTree({
     <Tree.Item
       type={type === "folder" ? "leaf" : "node"}
       label={dataSourceView.dataSource.name}
-      variant="folder"
-      visual={type === "folder" ? <FolderIcon /> : <GlobeAltIcon />}
+      visual={type === "folder" ? FolderIcon : GlobeAltIcon}
       className="whitespace-nowrap"
       checkbox={{
-        checked: currentConfig?.isSelectAll ?? false,
-        partialChecked: currentConfig
-          ? !currentConfig.isSelectAll &&
-            currentConfig.selectedResources?.length > 0
-          : false,
+        checked: getCheckedStatus(currentConfig),
         onChange: (checked) => {
           setParentsById({});
           onSelectChange(dataSourceView, checked);

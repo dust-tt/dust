@@ -2,6 +2,7 @@ import { Modal, Tree } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceViewType,
+  ManagedDataSourceViewSelectedNode,
   ManagedDataSourceViewsSelectedNodes,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -75,6 +76,23 @@ export default function VaultManagedDataSourcesViewsModal({
   );
 }
 
+function getCheckedStatus(node: ManagedDataSourceViewSelectedNode | undefined) {
+  if (!node) {
+    return "unchecked";
+  }
+
+  const { parentsIn } = node;
+
+  const isSelectAll = parentsIn === null;
+  const isPartiallyChecked = !!(parentsIn?.length && parentsIn?.length > 0);
+
+  if (isSelectAll) {
+    return "checked";
+  }
+
+  return isPartiallyChecked ? "partial" : "unchecked";
+}
+
 function VaultManagedDataSourceViewsTree({
   owner,
   dataSourceView,
@@ -117,21 +135,15 @@ function VaultManagedDataSourceViewsTree({
   ];
 
   const isSelectAll = selectedNodesInDataSourceView?.parentsIn === null;
-  const isPartiallyChecked = !!(
-    selectedNodesInDataSourceView?.parentsIn?.length &&
-    selectedNodesInDataSourceView?.parentsIn?.length > 0
-  );
 
   return (
     <Tree.Item
       key={dataSourceView.dataSource.name}
       label={config?.name}
-      visual={LogoComponent ? <LogoComponent className="s-h-5 s-w-5" /> : null}
-      variant="folder"
+      visual={LogoComponent ?? undefined}
       type="node"
       checkbox={{
-        checked: isSelectAll,
-        partialChecked: isPartiallyChecked,
+        checked: getCheckedStatus(selectedNodesInDataSourceView),
         onChange: (checked) => {
           if (!hasChanged) {
             setHasChanged(true);

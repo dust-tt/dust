@@ -5,6 +5,7 @@ import {
   ContentMessage,
   ElementModal,
   ExternalLinkIcon,
+  FolderIcon,
   Icon,
   IconButton,
   Page,
@@ -47,6 +48,7 @@ import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentM
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogo } from "@app/lib/connector_providers";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import {
   useAgentConfiguration,
@@ -391,8 +393,7 @@ function DataSourceViewsSection({
                   : "leaf"
               }
               label={dataSourceName}
-              visual={DsLogo ? <DsLogo className="s-h-5 s-w-5" /> : null}
-              variant="folder" // in case LogoComponent is null
+              visual={DsLogo ?? FolderIcon}
               className="whitespace-nowrap"
             >
               {dataSourceView && isAllSelected && (
@@ -456,7 +457,7 @@ function DataSourceViewSelectedNodes({
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}
           type={node.expandable ? "node" : "leaf"}
-          variant={node.type}
+          visual={getVisualForContentNode(node)}
           className="whitespace-nowrap"
           actions={
             <div className="mr-8 flex flex-row gap-2">

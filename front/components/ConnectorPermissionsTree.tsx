@@ -17,6 +17,7 @@ import type { ConnectorPermission } from "@dust-tt/types";
 import { useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -179,12 +180,13 @@ export function PermissionTreeChildren({
             parentIsSelected ||
             (localStateByInternalId[r.internalId] ??
               ["read", "read_write"].includes(r.permission));
+
           return (
             <Tree.Item
               key={r.internalId}
               type={r.expandable ? "node" : "leaf"}
               label={r.title}
-              variant={r.type}
+              visual={getVisualForContentNode(r)}
               className="whitespace-nowrap"
               checkbox={
                 r.preventSelection !== true &&
@@ -192,7 +194,7 @@ export function PermissionTreeChildren({
                 onPermissionUpdate
                   ? {
                       disabled: parentIsSelected,
-                      checked: isChecked,
+                      checked: isChecked ? "checked" : "unchecked",
                       onChange: (checked) => {
                         setLocalStateByInternalId((prev) => ({
                           ...prev,
