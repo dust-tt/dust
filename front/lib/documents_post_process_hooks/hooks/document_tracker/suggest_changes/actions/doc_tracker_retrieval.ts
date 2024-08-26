@@ -25,7 +25,6 @@ export async function callDocTrackerRetrievalAction(
     input: { input_text: inputText },
     owner,
     responseValueSchema: DocTrackerRetrievalActionValueSchema,
-    user: null,
   });
 
   if (res.isErr()) {

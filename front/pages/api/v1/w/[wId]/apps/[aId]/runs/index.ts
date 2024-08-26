@@ -11,7 +11,6 @@ import {
   assertNever,
   credentialsFromProviders,
   dustManagedCredentials,
-  DustUserIdHeader,
   rateLimiter,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
@@ -24,7 +23,6 @@ import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import { Provider } from "@app/lib/models/apps";
-import type { KeyResource } from "@app/lib/resources/key_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
@@ -290,11 +288,9 @@ async function handler(
         "App run creation"
       );
 
-      const auth = await getAuthToUse(req, keyAuth, keyRes.value);
-
       const runRes = await coreAPI.createRunStream(
-        auth.getNonNullableWorkspace(),
-        auth.groups(),
+        keyAuth.getNonNullableWorkspace(),
+        keyAuth.groups(),
         {
           projectId: app.dustAPIProjectId,
           runType: "deploy",
@@ -505,24 +501,3 @@ async function handler(
 }
 
 export default withLogging(handler);
-
-async function getAuthToUse(
-  req: NextApiRequest,
-  keyAuth: Authenticator,
-  key: KeyResource
-): Promise<Authenticator> {
-  // If the key is a system key, and the x-dust-user-id is set, return an auth representing the user.
-  if (key.isSystem) {
-    const userId = req.headers[DustUserIdHeader];
-    if (typeof userId === "string") {
-      const auth = await Authenticator.fromUserIdAndWorkspaceId(
-        userId,
-        keyAuth.getNonNullableWorkspace().sId
-      );
-
-      return auth;
-    }
-  }
-
-  return keyAuth;
-}

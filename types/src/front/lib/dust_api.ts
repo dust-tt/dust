@@ -20,7 +20,7 @@ import { WhitelistableFeature } from "../../shared/feature_flags";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 import { ContentFragmentType } from "../content_fragment";
-import { UserType } from "../user";
+import { GroupType } from "../groups";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -139,8 +139,7 @@ export type DustAPICredentials = {
   workspaceId: string;
 };
 
-export const DustUserIdHeader = "x-dust-user-id";
-export const DustGroupIdsHeader = "x-dust-group-ids";
+export const DustGroupIdsHeader = "X-Dust-Group-Ids";
 
 type PublicPostContentFragmentRequestBody = t.TypeOf<
   typeof PublicPostContentFragmentRequestBodySchema
@@ -361,7 +360,7 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runApp(
-    user: UserType | null,
+    groups: GroupType[],
     app: DustAppType,
     config: DustAppConfigType,
     inputs: unknown[],
@@ -380,8 +379,8 @@ export class DustAPI {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
-    if (user) {
-      headers[DustUserIdHeader] = user.sId;
+    if (groups.length > 0) {
+      headers[DustGroupIdsHeader] = groups.map((g) => g.sId).join(",");
     }
 
     const res = await this._fetchWithError(url, {
@@ -413,7 +412,7 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runAppStreamed(
-    user: UserType | null,
+    groups: GroupType[],
     app: DustAppType,
     config: DustAppConfigType,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -433,8 +432,8 @@ export class DustAPI {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
-    if (user) {
-      headers[DustUserIdHeader] = user.sId;
+    if (groups) {
+      headers[DustGroupIdsHeader] = groups.map((g) => g.sId).join(",");
     }
 
     const res = await this._fetchWithError(url, {
