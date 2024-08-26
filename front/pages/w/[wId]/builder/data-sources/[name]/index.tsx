@@ -43,6 +43,7 @@ import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsM
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { RequestDataSourceDialog } from "@app/components/data_source/RequestDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -380,18 +381,11 @@ function DatasourceDocumentsTabView({
         {readOnly ? null : (
           <div className="">
             <div className="relative mt-0 flex-none">
-              <Popup
-                show={showDocumentsLimitPopup}
-                chipLabel={`${plan.name} plan`}
-                description={`You have reached the limit of documents per data source (${plan.limits.dataSources.documents.count} documents). Upgrade your plan for unlimited documents and data sources.`}
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                onClose={() => {
-                  setShowDocumentsLimitPopup(false);
-                }}
-                className="absolute bottom-8 right-0"
+              <DocumentLimitPopup
+                isOpen={showDocumentsLimitPopup}
+                plan={plan}
+                onClose={() => setShowDocumentsLimitPopup(false)}
+                owner={owner}
               />
 
               <>
