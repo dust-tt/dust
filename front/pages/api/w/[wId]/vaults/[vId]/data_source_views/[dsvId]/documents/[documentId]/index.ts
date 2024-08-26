@@ -72,9 +72,17 @@ async function handler(
   switch (req.method) {
     case "GET":
       const document = await coreAPI.getDataSourceDocument({
-        projectId: dataSourceView.dataSource.dustAPIProjectId,
         dataSourceName: dataSourceView.dataSource.name,
         documentId,
+        projectId: dataSourceView.dataSource.dustAPIProjectId,
+        viewFilter: {
+          parents: {
+            in: dataSourceView.parentsIn,
+            not: null,
+          },
+          tags: null,
+          timestamp: null,
+        },
       });
 
       if (document.isErr()) {

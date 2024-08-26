@@ -702,28 +702,43 @@ export class CoreAPI {
   }
 
   async getDataSourceDocument({
-    projectId,
     dataSourceName,
     documentId,
+    projectId,
     versionHash,
+    viewFilter,
   }: {
-    projectId: string;
     dataSourceName: string;
     documentId: string;
+    projectId: string;
     versionHash?: string | null;
+    viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
       document: CoreAPIDocument;
       data_source: CoreAPIDataSource;
     }>
   > {
-    const qs = versionHash ? `?version_hash=${versionHash}` : "";
+    const queryParams = new URLSearchParams();
+
+    if (versionHash) {
+      queryParams.append("version_hash", versionHash);
+    }
+
+    if (viewFilter) {
+      queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
+    const qs = queryParams.toString();
+
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
         dataSourceName
-      )}/documents/${encodeURIComponent(documentId)}${qs}`,
+      )}/documents/${encodeURIComponent(documentId)}${
+        qs ? `?${encodeURIComponent(qs)}` : ""
+      }`,
       {
         method: "GET",
       }
