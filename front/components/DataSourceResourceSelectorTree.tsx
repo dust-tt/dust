@@ -165,10 +165,10 @@ function DataSourceResourceSelectorChildren({
 
         const checkedStatus =
           isSelected || parentIsSelected
-            ? true
+            ? "checked"
             : partiallyChecked
               ? "partial"
-              : false;
+              : "unchecked";
 
         return (
           <Tree.Item

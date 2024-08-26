@@ -180,6 +180,7 @@ export function PermissionTreeChildren({
             parentIsSelected ||
             (localStateByInternalId[r.internalId] ??
               ["read", "read_write"].includes(r.permission));
+
           return (
             <Tree.Item
               key={r.internalId}
@@ -193,7 +194,7 @@ export function PermissionTreeChildren({
                 onPermissionUpdate
                   ? {
                       disabled: parentIsSelected,
-                      checked: isChecked,
+                      checked: isChecked ? "checked" : "unchecked",
                       onChange: (checked) => {
                         setLocalStateByInternalId((prev) => ({
                           ...prev,

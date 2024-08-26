@@ -78,7 +78,7 @@ export default function VaultManagedDataSourcesViewsModal({
 
 function getCheckedStatus(node: ManagedDataSourceViewSelectedNode | undefined) {
   if (!node) {
-    return false;
+    return "unchecked";
   }
 
   const { parentsIn } = node;
@@ -87,10 +87,10 @@ function getCheckedStatus(node: ManagedDataSourceViewSelectedNode | undefined) {
   const isPartiallyChecked = !!(parentsIn?.length && parentsIn?.length > 0);
 
   if (isSelectAll) {
-    return true;
+    return "checked";
   }
 
-  return isPartiallyChecked ? "partial" : false;
+  return isPartiallyChecked ? "partial" : "unchecked";
 }
 
 function VaultManagedDataSourceViewsTree({

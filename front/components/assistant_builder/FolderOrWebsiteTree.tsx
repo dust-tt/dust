@@ -13,15 +13,15 @@ function getCheckedStatus(
   config: AssistantBuilderDataSourceConfiguration | undefined
 ) {
   if (!config) {
-    return false;
+    return "unchecked";
   }
 
   const { isSelectAll, selectedResources } = config;
   if (isSelectAll) {
-    return true;
+    return "checked";
   }
 
-  return selectedResources.length > 0 ? "partial" : false;
+  return selectedResources.length > 0 ? "partial" : "unchecked";
 }
 
 export default function FolderOrWebsiteTree({

@@ -961,7 +961,7 @@ function Capabilities({
     return (
       <div className="flex flex-row gap-2">
         <Checkbox
-          checked={enabled}
+          checked={enabled ? "checked" : "unchecked"}
           onChange={enabled ? onDisable : onEnable}
           variant="checkable"
         />
