@@ -28,28 +28,7 @@ async function handler(
   res: NextApiResponse,
   auth: Authenticator
 ) {
-  const owner = auth.workspace();
-  const user = auth.user();
-
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Only the workspace users can send data sources requests.",
-      },
-    });
-  }
-
-  if (!user || !owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
+  const user = auth.getNonNullableUser();
 
   const { method } = req;
 

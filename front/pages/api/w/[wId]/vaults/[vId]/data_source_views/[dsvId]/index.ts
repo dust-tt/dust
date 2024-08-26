@@ -18,17 +18,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can interact with vaults.",
-      },
-    });
-  }
-
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
     req.query.dsvId as string

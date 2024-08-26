@@ -58,18 +58,12 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+  const user = auth.getNonNullableUser();
 
-  const plan = auth.plan();
-  const user = auth.user();
-  if (
-    !owner ||
-    !plan ||
-    !user ||
-    // No role under "builder" can create a managed data source.
-    // We perform a more detailed check below for each provider,
-    // but this is a first line of defense.
-    !auth.isBuilder()
-  ) {
+  // No role under "builder" can create a managed data source. We perform a more detailed check
+  // below for each provider, but this is a first line of defense.
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

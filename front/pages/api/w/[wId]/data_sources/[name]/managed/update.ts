@@ -28,9 +28,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  const user = auth.user();
-  if (!owner || !user || !auth.isAdmin()) {
+  if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -40,6 +38,9 @@ async function handler(
       },
     });
   }
+
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
 
   // fetchByName enforces through auth the authorization (workspace here mainly).
   const dataSource = await DataSourceResource.fetchByName(

@@ -29,12 +29,10 @@ async function handler(
         }
       : {
           workspaceId: owner.id,
-          // Do not include 'unlisted' here.
-          visibility: "public",
+          visibility: ["public", "unlisted"],
           sId: req.query.aId,
         },
   });
-
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -145,4 +143,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  allowNonWorksapceUser: true,
+});

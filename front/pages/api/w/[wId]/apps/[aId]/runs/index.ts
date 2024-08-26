@@ -32,19 +32,9 @@ async function handler(
   auth: Authenticator,
   session: SessionWithUser
 ) {
-  let owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
+  let owner = auth.getNonNullableWorkspace();
 
   const app = await getApp(auth, req.query.aId as string);
-
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -275,4 +265,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  allowNonWorksapceUser: true,
+});

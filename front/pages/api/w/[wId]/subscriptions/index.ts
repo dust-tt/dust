@@ -80,7 +80,6 @@ async function handler(
           },
         });
       }
-      break;
     }
     case "POST": {
       const bodyValidation = PostSubscriptionRequestBody.decode(req.body);
@@ -111,7 +110,6 @@ async function handler(
           },
         });
       }
-      break;
     }
 
     case "PATCH": {

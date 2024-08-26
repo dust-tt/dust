@@ -49,6 +49,9 @@ export function withSessionAuthentication<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId/]).
  *
+ * opts.allowNonWorksaceUser allows the handler to be called even if the user is not a member of the
+ * workspace. This is useful for routes that share data across workspaces (eg apps runs).
+ *
  * @param handler
  * @param opts
  * @returns
@@ -60,7 +63,7 @@ export function withSessionAuthenticationForWorkspace<T>(
     auth: Authenticator,
     session: SessionWithUser
   ) => Promise<void> | void,
-  opts: { isStreaming?: boolean } = {}
+  opts: { isStreaming?: boolean; allowNonWorksapceUser?: boolean } = {}
 ) {
   return withSessionAuthentication(
     async (
@@ -100,6 +103,18 @@ export function withSessionAuthenticationForWorkspace<T>(
           api_error: {
             type: "workspace_user_not_found",
             message: "Could not find the user of the current session.",
+          },
+        });
+      }
+
+      // If allowNonWorksaceUser is not set or false then we check that the user is a member of the
+      // workspace.
+      if (!auth.isUser() && !opts.allowNonWorksapceUser) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only users of the workspace can access this route.",
           },
         });
       }

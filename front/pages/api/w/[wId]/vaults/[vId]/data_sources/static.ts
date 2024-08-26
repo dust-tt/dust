@@ -45,11 +45,10 @@ async function handler(
 ): Promise<void> {
   if (!auth.isUser()) {
     return apiError(req, res, {
-      status_code: 403,
+      status_code: 401,
       api_error: {
         type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can interact with vaults.",
+        message: "Only users of the workspace can access this route.",
       },
     });
   }
