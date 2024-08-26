@@ -28,16 +28,20 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const plan = auth.plan();
+  if (!auth.isUser()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users of the current workspace can interact with vaults.",
+      },
+    });
+  }
 
   const { dsvId, documentId } = req.query;
 
-  if (
-    !plan ||
-    !auth.isUser() ||
-    typeof dsvId !== "string" ||
-    typeof documentId !== "string"
-  ) {
+  if (typeof dsvId !== "string" || typeof documentId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

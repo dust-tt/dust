@@ -33,18 +33,17 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const userId = auth.user()?.id;
-
-  if (!userId) {
+  if (!auth.isUser()) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace or user was not found.",
+        type: "workspace_auth_error",
+        message:
+          "Only users of the current workspace can interact with Transcripts",
       },
     });
   }
-
+  const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
 
   if (!owner.flags.includes("labs_transcripts")) {
@@ -75,7 +74,7 @@ async function handler(
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
   if (
     !transcriptsConfiguration ||
-    transcriptsConfiguration.userId !== userId ||
+    transcriptsConfiguration.userId !== user.id ||
     transcriptsConfiguration.workspaceId !== owner.id
   ) {
     return apiError(req, res, {
