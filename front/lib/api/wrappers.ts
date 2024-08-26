@@ -49,8 +49,9 @@ export function withSessionAuthentication<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId/]).
  *
- * opts.allowNonWorksaceUser allows the handler to be called even if the user is not a member of the
- * workspace. This is useful for routes that share data across workspaces (eg apps runs).
+ * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the user is not a
+ * member of the workspace. This is useful for routes that share data across workspaces (eg apps
+ * runs).
  *
  * @param handler
  * @param opts
