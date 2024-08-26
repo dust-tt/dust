@@ -16,7 +16,6 @@ import { CreateVaultModal } from "@app/components/vaults/CreateVaultModal";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import {
-  CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
