@@ -1,4 +1,10 @@
-import { Chip, DataTable, FolderIcon, Searchbar, Spinner } from "@dust-tt/sparkle";
+import {
+  Chip,
+  DataTable,
+  FolderIcon,
+  Searchbar,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   DataSourceViewCategory,
