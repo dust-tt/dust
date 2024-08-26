@@ -128,4 +128,3 @@ export { default as UserPlus } from "./UserPlus";
 export { default as Wrench } from "./Wrench";
 export { default as XCircle } from "./XCircle";
 export { default as XMark } from "./XMark";
-

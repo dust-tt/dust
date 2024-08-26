@@ -18,7 +18,7 @@
     "paths": {
       "@sparkle/*": ["./src/*"]
     },
-    "declaration": true,
+    "declaration": true
   },
   "include": [
     "src/**/*.ts",
