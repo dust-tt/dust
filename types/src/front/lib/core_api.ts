@@ -736,9 +736,7 @@ export class CoreAPI {
         projectId
       )}/data_sources/${encodeURIComponent(
         dataSourceName
-      )}/documents/${encodeURIComponent(documentId)}${
-        qs ? `?${encodeURIComponent(qs)}` : ""
-      }`,
+      )}/documents/${encodeURIComponent(documentId)}${qs ? `?${qs}` : ""}`,
       {
         method: "GET",
       }
