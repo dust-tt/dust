@@ -163,12 +163,12 @@ function DataSourceResourceSelectorChildren({
           (!isTablesView || r.type === "database") &&
           r.preventSelection !== true;
 
-        const checkedStatus =
-          isSelected || parentIsSelected
-            ? "checked"
-            : partiallyChecked
-              ? "partial"
-              : "unchecked";
+        let checkedStatus: "checked" | "partial" | "unchecked" = "unchecked";
+        if (isSelected || parentIsSelected) {
+          checkedStatus = "checked";
+        } else if (partiallyChecked) {
+          checkedStatus = "partial";
+        }
 
         return (
           <Tree.Item
