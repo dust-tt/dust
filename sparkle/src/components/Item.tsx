@@ -74,7 +74,7 @@ export function Item({
   disabled = false,
   className = "",
   href,
-  target
+  target,
 }: ItemProps) {
   const { components } = React.useContext(SparkleContext);
 
