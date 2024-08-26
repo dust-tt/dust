@@ -12,7 +12,6 @@ import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSe
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import {
   CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogo,
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 

@@ -155,15 +155,6 @@ export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
 
 type LogoType = ((props: SVGProps<SVGSVGElement>) => JSX.Element) | LucideIcon;
 
-export function getConnectorProviderLogo(
-  provider: ConnectorProvider | null
-): LogoType | null {
-  if (!provider) {
-    return null;
-  }
-  return CONNECTOR_CONFIGURATIONS[provider].logoComponent;
-}
-
 export function getConnectorProviderLogoWithFallback(
   provider: ConnectorProvider | null,
   fallback: LogoType

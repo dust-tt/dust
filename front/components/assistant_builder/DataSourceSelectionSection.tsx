@@ -14,10 +14,7 @@ import type { AssistantBuilderDataSourceConfiguration } from "@app/components/as
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
-import {
-  getConnectorProviderLogo,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr";
