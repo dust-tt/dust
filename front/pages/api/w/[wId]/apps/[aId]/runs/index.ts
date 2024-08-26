@@ -47,6 +47,7 @@ async function handler(
   }
 
   let owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
 
   const app = await getApp(auth, req.query.aId as string);
   if (!app) {
@@ -191,6 +192,16 @@ async function handler(
             },
           });
         }
+
+        logger.info(
+          {
+            owner: owner.sId,
+            targetOwner: targetOwner.sId,
+            user: user.sId,
+            app: app.sId,
+          },
+          "wIdTarget access"
+        );
 
         owner = targetOwner;
       }
