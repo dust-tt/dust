@@ -12,16 +12,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can access chat sessions.",
-      },
-    });
-  }
   if (!(typeof req.query.cId === "string")) {
     return apiError(req, res, {
       status_code: 400,

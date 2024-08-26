@@ -24,6 +24,17 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can modify linked Slack channels.",
+      },
+    });
+  }
+
   const dataSource = await getDataSource(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {
@@ -55,17 +66,6 @@ async function handler(
         type: "data_source_not_managed",
         message:
           "The data source you requested is not managed by a Slack connector.",
-      },
-    });
-  }
-
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can modify linked Slack channels.",
       },
     });
   }

@@ -29,17 +29,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostAgentListStatusResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace are authorized to access this endpoint.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "POST":
       const bodyValidation = PostAgentListStatusRequestBodySchema.decode(

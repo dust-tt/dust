@@ -31,6 +31,7 @@ async function handler(
 
   let runId: string | null =
     typeof req.query.runId === "string" ? req.query.runId : null;
+
   if (runId === "saved") {
     runId = app.savedRun;
   }
@@ -82,4 +83,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  allowUserOutsideCurrentWorkspace: true,
+});

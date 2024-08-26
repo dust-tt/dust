@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { ContentMessage } from "../index_with_tw_base";
+import { ContentMessage, HeartIcon } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/ContentMessage",
@@ -19,8 +19,8 @@ export const ContentExample = () => (
     <ContentMessage title="This is a title" variant="pink">
       This is a message. It can be multiple lines long.
     </ContentMessage>
-    <ContentMessage title="This is a title" variant="emerald">
-      This is a message. It can be multiple lines long.
+    <ContentMessage title="This is a cat" variant="purple" icon={HeartIcon}>
+      This is a Soupinou. It is cute.
     </ContentMessage>
     <h2>Size "sm"</h2>
     <ContentMessage title="This is a title" size="sm">

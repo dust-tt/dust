@@ -26,15 +26,6 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only the workspace users can see Assistants.",
-          },
-        });
-      }
       const bodyValidation = GetAgentConfigurationNameIsAvailable.decode(
         req.query
       );

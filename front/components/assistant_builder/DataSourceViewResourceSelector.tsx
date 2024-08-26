@@ -1,4 +1,4 @@
-import { Page, SliderToggle } from "@dust-tt/sparkle";
+import { FolderIcon, Page, SliderToggle } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceViewType,
@@ -12,7 +12,7 @@ import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSe
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import {
   CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogo,
+  getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 
@@ -52,11 +52,10 @@ export default function DataSourceViewResourceSelector({
           title={`Select Data Sources in ${getDisplayNameForDataSource(
             dataSourceView.dataSource
           )}`}
-          icon={
-            getConnectorProviderLogo(
-              dataSourceView.dataSource.connectorProvider
-            ) ?? undefined
-          }
+          icon={getConnectorProviderLogoWithFallback(
+            dataSourceView.dataSource.connectorProvider,
+            FolderIcon
+          )}
           description="Select the files and folders that will be used by the assistant as a source for its answers."
         />
         {dataSourceView && (

@@ -49,16 +49,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
   const dataSource = await getDataSource(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {
@@ -80,17 +70,6 @@ async function handler(
     });
   }
 
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only users of the current workspace can view the permissions of a data source.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
       return getManagedDataSourcePermissionsHandler(
@@ -101,10 +80,6 @@ async function handler(
         res
       );
     case "POST":
-      const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsAPIConfig(),
-        logger
-      );
       if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
@@ -115,6 +90,11 @@ async function handler(
           },
         });
       }
+
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
 
       const body = req.body;
       if (!body) {

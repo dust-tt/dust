@@ -23,6 +23,8 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDatasetResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+
   const app = await getApp(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
@@ -33,8 +35,6 @@ async function handler(
       },
     });
   }
-
-  const owner = auth.getNonNullableWorkspace();
 
   const [dataset] = await Promise.all([
     Dataset.findOne({

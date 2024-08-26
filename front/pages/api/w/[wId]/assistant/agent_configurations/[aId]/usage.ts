@@ -18,17 +18,6 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are members for the current workspace can access the workspace's assistants.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
       const agentConfiguration = await getAgentConfiguration(

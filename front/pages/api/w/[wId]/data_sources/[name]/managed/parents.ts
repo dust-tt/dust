@@ -46,17 +46,6 @@ async function handler(
     });
   }
 
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users of the current workspace can retrieve parents of connector resources.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "POST":
       // We use post because we need a body, but we don't create anything

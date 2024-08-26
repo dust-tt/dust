@@ -24,6 +24,19 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetRunBlockResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  // Only the users that are `builders` for the current workspace can retrieve the content of runs
+  // block outputs.
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can introspect runs.",
+      },
+    });
+  }
+
   const app = await getApp(auth, req.query.aId as string);
 
   if (!app) {

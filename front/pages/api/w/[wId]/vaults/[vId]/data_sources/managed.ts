@@ -51,6 +51,7 @@ export function getConnectorProviderCodec(): t.Mixed {
 const PostManagedDataSourceRequestBodySchema = t.type({
   provider: getConnectorProviderCodec(),
   connectionId: t.union([t.string, t.undefined]),
+  name: t.union([t.string, t.undefined]),
   configuration: ConnectorConfigurationTypeSchema,
 });
 
@@ -59,17 +60,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostVaultDataSourceResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can interact with vaults.",
-      },
-    });
-  }
-
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
   const user = auth.getNonNullableUser();
@@ -105,7 +95,7 @@ async function handler(
         });
       }
 
-      const { connectionId, provider } = bodyValidation.right;
+      const { connectionId, provider, name } = bodyValidation.right;
 
       // Checking that the provider is allowed for the workspace plan
       const isDataSourceAllowedInPlan = isConnectorProviderAllowedForPlan(
@@ -156,7 +146,7 @@ async function handler(
           },
         });
       }
-      const dataSourceName = getDefaultDataSourceName(provider, suffix);
+      const dataSourceName = name ?? getDefaultDataSourceName(provider, suffix);
       let dataSourceDescription = getDefaultDataSourceDescription(
         provider,
         suffix
