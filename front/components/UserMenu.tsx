@@ -8,16 +8,11 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
-import {
-  isDevelopment,
-  isOnlyAdmin,
-  isOnlyBuilder,
-  isOnlyUser,
-} from "@dust-tt/types";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
 import { useContext, useMemo } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { forceUserRole } from "@app/lib/development";
+import { canForceUserRole, forceUserRole } from "@app/lib/development";
 
 export function UserMenu({
   user,
@@ -83,7 +78,7 @@ export function UserMenu({
             )}
           </>
         )}
-        {isDevelopment() && (
+        {canForceUserRole(owner) && (
           <>
             <DropdownMenu.SectionHeader label="Dev Tools" />
             {!isOnlyAdmin(owner) && (
