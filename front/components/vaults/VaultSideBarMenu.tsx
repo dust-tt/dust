@@ -7,7 +7,6 @@ import {
   GlobeAltIcon,
   Item,
   LockIcon,
-  PlanetIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
