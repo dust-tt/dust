@@ -15,7 +15,10 @@ import { BreadCrumb } from "@app/components/vaults/Breadcrumb";
 import { CreateVaultModal } from "@app/components/vaults/CreateVaultModal";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers";
 import { useDataSourceContentNodes } from "@app/lib/swr";
 
 export interface VaultLayoutProps {
@@ -24,7 +27,6 @@ export interface VaultLayoutProps {
   subscription: SubscriptionType;
   vault: VaultType;
   category?: DataSourceViewCategory;
-  dataSource?: DataSourceType;
   dataSourceView?: DataSourceViewType;
   parentId?: string | null;
 }
@@ -43,7 +45,6 @@ export function VaultLayout({
     subscription,
     vault,
     category,
-    dataSource,
     dataSourceView,
     parentId,
   } = pageProps;
@@ -65,7 +66,6 @@ export function VaultLayout({
           vault={vault}
           category={category}
           owner={owner}
-          dataSource={dataSource}
           dataSourceView={dataSourceView}
           parentId={parentId ?? undefined}
         />
@@ -124,20 +124,16 @@ function VaultBreadCrumbs({
       href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`,
     },
   ];
-
   if (dataSourceView) {
     items.push({
-      icon: dataSourceView.connectorProvider ? (
-        React.createElement(
-          CONNECTOR_CONFIGURATIONS[dataSourceView.connectorProvider]
-            .logoComponent
-        )
-      ) : (
-        <FolderIcon className="text-brand" />
+      icon: getConnectorProviderLogoWithFallback(
+        dataSourceView.dataSource.connectorProvider,
+        FolderIcon
       ),
-      label: dataSourceView.connectorProvider
-        ? CONNECTOR_CONFIGURATIONS[dataSourceView.connectorProvider].name
-        : dataSourceView.name,
+      label: dataSourceView.dataSource.connectorProvider
+        ? CONNECTOR_CONFIGURATIONS[dataSourceView.dataSource.connectorProvider]
+            .name
+        : dataSourceView.dataSource.name,
       href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
     });
 
