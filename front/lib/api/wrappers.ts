@@ -111,8 +111,8 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      // If allowNonWorksaceUser is not set or false then we check that the user is a member of the
-      // workspace.
+      // If `allowUserOutsideCurrentWorkspace` is not set or false then we check that the user is a
+      // member of the workspace.
       if (!auth.isUser() && !opts.allowUserOutsideCurrentWorkspace) {
         return apiError(req, res, {
           status_code: 401,
