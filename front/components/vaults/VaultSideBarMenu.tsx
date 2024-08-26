@@ -112,12 +112,25 @@ const getSectionLabel = (kind: VaultKind) => {
   }
 };
 
+const RootItemIconWrapper = (
+  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
+) => {
+  return <IconComponent className="text-brand" />;
+};
+
+const SubItemIconItemWrapper = (
+  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
+) => {
+  return <IconComponent className="text-element-700" />;
+};
+
 // System vault.
 
 const SYSTEM_VAULTS_ITEMS = [
   {
     label: "Connection Management",
     visual: CloudArrowLeftRightIcon,
+    tailwindIconTextColor: "text-brand",
     category: "managed" as DataSourceViewCategory,
   },
   // TODO(GROUPS_UI) Add support for Dust apps.
@@ -243,6 +256,7 @@ const VaultMenuItem = ({
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={vault.kind === "global" ? PlanetIcon : LockIcon}
+      tailwindIconTextColor="text-brand"
       size="md"
       areActionsFading={false}
     >
@@ -268,27 +282,32 @@ const VaultMenuItem = ({
 
 const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
   [key: string]: {
-    label: string;
     icon: ComponentType<{
       className?: string;
     }>;
+    label: string;
+    tailwindIconTextColor: "text-element-700";
   };
 } = {
   managed: {
-    label: "Connected Data",
     icon: CloudArrowLeftRightIcon,
+    label: "Connected Data",
+    tailwindIconTextColor: "text-element-700",
   },
   folder: {
-    label: "Files",
     icon: FolderIcon,
+    label: "Files",
+    tailwindIconTextColor: "text-element-700",
   },
   website: {
-    label: "Websites",
     icon: GlobeAltIcon,
+    label: "Websites",
+    tailwindIconTextColor: "text-element-700",
   },
   apps: {
-    label: "Apps",
     icon: CommandLineIcon,
+    label: "Apps",
+    tailwindIconTextColor: "text-element-700",
   },
 };
 
@@ -321,6 +340,7 @@ const VaultDataSourceViewItem = ({
       onItemClick={() => router.push(dataSourceViewPath)}
       label={getDataSourceNameFromView(item)}
       visual={LogoComponent}
+      tailwindIconTextColor="text-element-700"
       areActionsFading={false}
     />
   );
