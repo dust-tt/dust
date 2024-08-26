@@ -1,12 +1,12 @@
-import { FolderIcon, LockIcon, PlanetIcon } from "@dust-tt/sparkle";
+import { CompanyIcon, FolderIcon, LockIcon } from "@dust-tt/sparkle";
 import type {
-  DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
   SubscriptionType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { ComponentType } from "react";
 import React, { useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
@@ -18,6 +18,7 @@ import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
+  getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
 import { useDataSourceContentNodes } from "@app/lib/swr";
 
@@ -84,20 +85,18 @@ function VaultBreadCrumbs({
   owner,
   vault,
   category,
-  dataSource,
   dataSourceView,
   parentId,
 }: {
   owner: WorkspaceType;
   vault: VaultType;
   category?: DataSourceViewCategory;
-  dataSource?: DataSourceType;
   dataSourceView?: DataSourceViewType;
   parentId?: string;
 }) {
   const { nodes } = useDataSourceContentNodes({
     owner,
-    dataSource: dataSource,
+    dataSource: dataSourceView?.dataSource,
     internalIds: parentId ? [parentId] : [],
   });
 
@@ -107,14 +106,13 @@ function VaultBreadCrumbs({
     return null;
   }
 
-  const items: { label: string; [key: string]: any }[] = [
+  const items: {
+    label: string;
+    icon?: ComponentType;
+    href?: string;
+  }[] = [
     {
-      icon:
-        vault.kind === "global" ? (
-          <PlanetIcon className="text-brand" />
-        ) : (
-          <LockIcon className="text-brand" />
-        ),
+      icon: vault.kind === "global" ? CompanyIcon : LockIcon,
       label: vault.name,
       href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
     },
@@ -130,10 +128,7 @@ function VaultBreadCrumbs({
         dataSourceView.dataSource.connectorProvider,
         FolderIcon
       ),
-      label: dataSourceView.dataSource.connectorProvider
-        ? CONNECTOR_CONFIGURATIONS[dataSourceView.dataSource.connectorProvider]
-            .name
-        : dataSourceView.dataSource.name,
+      label: getDataSourceNameFromView(dataSourceView),
       href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
     });
 
@@ -146,7 +141,7 @@ function VaultBreadCrumbs({
       }
       items.push({
         label: folderName,
-        icon: <FolderIcon className="text-brand" />,
+        icon: FolderIcon,
       });
     }
   }

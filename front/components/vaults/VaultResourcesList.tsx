@@ -1,4 +1,4 @@
-import { Chip, DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
+import { Chip, DataTable, FolderIcon, Searchbar, Spinner } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   DataSourceViewCategory,
@@ -8,7 +8,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
-import { FolderIcon } from "lucide-react";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useState } from "react";

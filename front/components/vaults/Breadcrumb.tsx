@@ -1,12 +1,12 @@
-import { ChevronRightIcon } from "@dust-tt/sparkle";
+import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import Link from "next/link";
-import type { ReactElement } from "react";
+import type { ComponentType } from "react";
 import React from "react";
 
 type BreadcrumbProps = {
   items: {
     label: string;
-    icon?: ReactElement;
+    icon?: ComponentType<{ className?: string }>;
     href?: string;
   }[];
 };
@@ -16,7 +16,7 @@ export const BreadCrumb = ({ items }: BreadcrumbProps) => {
     <span className="inline-flex items-center gap-2">
       {items.map((item, index) => (
         <React.Fragment key={index}>
-          {item.icon}
+          <Icon visual={item.icon} className="text-brand" />
           <span className="inline-flex">
             {item.href ? (
               <Link

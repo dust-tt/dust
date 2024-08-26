@@ -11,7 +11,7 @@ import {
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
-import type { ComponentType, ReactElement } from "react";
+import type { ComponentType } from "react";
 import { useState } from "react";
 
 import { useVaultInfo } from "@app/lib/swr";
@@ -38,26 +38,26 @@ type VaultCategoriesListProps = {
 export const CATEGORY_DETAILS: {
   [key: string]: {
     label: string;
-    icon: ReactElement<{
+    icon: ComponentType<{
       className?: string;
     }>;
   };
 } = {
   managed: {
     label: "Connected Data",
-    icon: <CloudArrowLeftRightIcon className="text-brand" />,
+    icon: CloudArrowLeftRightIcon,
   },
   folder: {
     label: "Folders",
-    icon: <FolderIcon className="text-brand" />,
+    icon: FolderIcon,
   },
   website: {
     label: "Websites",
-    icon: <GlobeAltIcon className="text-brand" />,
+    icon: GlobeAltIcon,
   },
   apps: {
     label: "Apps",
-    icon: <CommandLineIcon className="text-brand" />,
+    icon: CommandLineIcon,
   },
 };
 
@@ -110,7 +110,7 @@ export const VaultCategoriesList = ({
                 category,
                 ...vaultInfo.categories[category],
                 name: CATEGORY_DETAILS[category].label,
-                icon: CATEGORY_DETAILS[category].icon.type as ComponentType,
+                icon: CATEGORY_DETAILS[category].icon as ComponentType,
                 onClick: () => onSelect(category),
               }
             : null
