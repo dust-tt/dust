@@ -49,7 +49,7 @@ makeScript({}, async ({ execute }, logger) => {
 
     if (execute) {
       await connectorDB.query(
-        `UPDATE slack_bot_whitelist SET "groupIds" = array_appen("groupIds", :groupId) WHERE id = :id`,
+        `UPDATE slack_bot_whitelist SET "groupIds" = array_append("groupIds", :groupId) WHERE id = :id`,
         {
           replacements: {
             groupId: groupId,
