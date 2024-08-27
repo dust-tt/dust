@@ -69,14 +69,27 @@ if [ "$1" != "--force" ]
 then
     ./admin/cli.sh registry dump > /tmp/dust-apps/specs 2> /dev/null
 
-    # Get the number of apps in the registry
-    REGISTRY_COUNT=$(cat /tmp/dust-apps/specs | jq -r '[.[].app.appHash] | join("\n")' | wc -l)
-
+    # Get the appIds in the registry
+    REGISTRY_APP_IDS=$(cat /tmp/dust-apps/specs | jq -r '[.[].app.appId] | sort_by(.) | join("\n")')
     # Reads appHash values from JSON, escapes them for shell usage, and concatenates them with commas for SQL queries.
     IN_CLAUSE=$(jq -r '[.[].app.appHash] | map("\(. | @sh)") | join(",")' /tmp/dust-apps/specs)
-    LOCAL_COUNT=$(psql $CORE_DATABASE_URI -c "copy (select count(distinct(hash)) from specifications where hash in (${IN_CLAUSE})) to stdout")
+    # Get projects matching the current specifications
+    PROJECTS=$(psql $CORE_DATABASE_URI -c "copy (select distinct(project) from specifications where hash in (${IN_CLAUSE})) to stdout" | sed "s/.*/'&'/" | paste -sd, -)
+    # Get appIds matching the specifications
+    LOCAL_APP_IDS=$(psql $FRONT_DATABASE_URI -c "copy (select distinct(\"sId\") from apps where \"dustAPIProjectId\" in (${PROJECTS}) and visibility!='deleted' and \"workspaceId\"=${DUST_APPS_SYNC_WORKSPACE_ID} order by \"sId\") to stdout" | paste -sd\  -)
 
-    if [ $REGISTRY_COUNT -eq $LOCAL_COUNT ]
+    # Check if any app is missing
+    MISSING=false
+    for item in $REGISTRY_APP_IDS
+    do
+        if [[ ! " ${LOCAL_APP_IDS} " =~ " $item " ]]
+        then
+            echo "Missing app $item"
+            MISSING=true
+        fi
+    done
+
+    if [ "$MISSING" == "false" ]
     then
         echo "All apps available, skipping."
         rm -R /tmp/dust-apps
