@@ -33,7 +33,7 @@ async function handler(
     where: {
       workspaceId: owner.id,
       visibility: {
-        [Op.or]: ["public", "private", "unlisted"],
+        [Op.or]: ["public", "private"],
       },
       sId: req.query.aId,
     },
