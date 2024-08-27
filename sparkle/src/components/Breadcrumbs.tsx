@@ -1,7 +1,8 @@
-import { ChevronRightIcon, Icon } from "@sparkle/index";
 import Link from "next/link";
 import type { ComponentType } from "react";
 import React from "react";
+
+import { ChevronRightIcon, Icon } from "@sparkle/index";
 
 type BreadcrumbProps = {
   items: {
