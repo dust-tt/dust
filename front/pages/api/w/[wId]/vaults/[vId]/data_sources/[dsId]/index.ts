@@ -41,13 +41,22 @@ async function handler(
   }
 
   const vault = await VaultResource.fetchById(auth, req.query.vId);
-
-  if (!vault || !auth.hasPermission([vault.acl()], "write")) {
+  if (!vault) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "vault_not_found",
         message: "The vault you requested was not found.",
+      },
+    });
+  }
+  if (!auth.hasPermission([vault.acl()], "write")) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that have `write` permission for the current vault can update a data source.",
       },
     });
   }

@@ -38,8 +38,10 @@ import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSo
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useVaultDataSourceViews } from "@app/lib/swr";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
-import type { PostManagedDataSourceRequestBodySchema } from "@app/pages/api/w/[wId]/data_sources/managed";
-import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/static";
+import type {
+  PostDataSourceWithProviderRequestBodySchema,
+  PostVaultDataSourceResponseBody,
+} from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 const WEBSITE_CAT: DataSourceViewCategory = "website";
 
@@ -181,7 +183,7 @@ export default function VaultCreateWebsiteModal({
     if (webCrawlerConfiguration === null) {
       const sanitizedDataSourceUrl = dataSourceUrl.trim();
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/managed`,
+        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
         {
           method: "POST",
           headers: {
@@ -189,7 +191,6 @@ export default function VaultCreateWebsiteModal({
           },
           body: JSON.stringify({
             provider: "webcrawler",
-            connectionId: "none",
             name: dataSourceName,
             configuration: {
               url: sanitizedDataSourceUrl,
@@ -207,7 +208,9 @@ export default function VaultCreateWebsiteModal({
                 {} as Record<string, string>
               ),
             } satisfies WebCrawlerConfigurationType,
-          } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
+          } satisfies t.TypeOf<
+            typeof PostDataSourceWithProviderRequestBodySchema
+          >),
         }
       );
       if (res.ok) {
