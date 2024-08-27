@@ -21,11 +21,12 @@ import type {
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { ContentAction } from "@app/components/vaults/ContentActions";
 import {
   ContentActions,
+  ContentActionsRef,
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
@@ -77,11 +78,7 @@ export const VaultDataSourceViewContentList = ({
   const [currentTab, setCurrentTab] =
     useState<ContentNodesViewType>("documents");
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-
-  const [currentAction, setCurrentAction] = useState<ContentAction | null>(
-    null
-  );
-
+  const contentActionsRef = useRef<ContentActionsRef>(null);
   const visualTable = {
     file: DocumentTextIcon,
     folder: FolderIcon,
@@ -112,12 +109,11 @@ export const VaultDataSourceViewContentList = ({
           onSelect(contentNode.internalId);
         }
       },
-      moreMenuItems: getMenuItems(dataSourceView, contentNode).map((item) => ({
-        ...item,
-        onClick: () => {
-          setCurrentAction({ key: item.key, contentNode });
-        },
-      })),
+      moreMenuItems: getMenuItems(
+        dataSourceView,
+        contentNode,
+        contentActionsRef
+      ),
     })) || [];
 
   if (isVaultContentLoading) {
@@ -153,21 +149,25 @@ export const VaultDataSourceViewContentList = ({
             <DropdownMenu.Item
               icon={DocumentTextIcon}
               onClick={() => {
-                setCurrentAction({ key: "DocumentUploadOrEditModal" });
+                contentActionsRef.current?.callAction(
+                  "DocumentUploadOrEditModal"
+                );
               }}
               label={"Create a document"}
             />
             <DropdownMenu.Item
               icon={TableIcon}
               onClick={() => {
-                setCurrentAction({ key: "TableUploadOrEditModal" });
+                contentActionsRef.current?.callAction("TableUploadOrEditModal");
               }}
               label={"Create a table"}
             />
             <DropdownMenu.Item
               icon={CloudArrowUpIcon}
               onClick={() => {
-                setCurrentAction({ key: "MultipleDocumentsUpload" });
+                contentActionsRef.current?.callAction(
+                  "MultipleDocumentsUpload"
+                );
               }}
               label={"Upload multiple files"}
             />
@@ -221,12 +221,11 @@ export const VaultDataSourceViewContentList = ({
         />
       )}
       <ContentActions
+        ref={contentActionsRef}
         dataSourceView={dataSourceView}
         owner={owner}
         plan={plan}
         onSave={mutateVaultDataSourceViewContent}
-        currentAction={currentAction}
-        setCurrentAction={setCurrentAction}
       />
     </>
   );

@@ -12,14 +12,18 @@ import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentU
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import { TableDeleteDialog } from "@app/components/data_source/TableDeleteDialog";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
+import React, { RefObject, useImperativeHandle, useState } from "react";
+import { callAction } from "@app/lib/actions/helpers";
+
+type ContentActionKey =
+  | "DocumentUploadOrEditModal"
+  | "MultipleDocumentsUpload"
+  | "DocumentDeleteDialog"
+  | "TableUploadOrEditModal"
+  | "TableDeleteDialog";
 
 export type ContentAction = {
-  key:
-    | "DocumentUploadOrEditModal"
-    | "MultipleDocumentsUpload"
-    | "DocumentDeleteDialog"
-    | "TableUploadOrEditModal"
-    | "TableDeleteDialog";
+  key: ContentActionKey;
   contentNode?: LightContentNode;
 };
 
@@ -28,18 +32,28 @@ type ContentActionsProps = {
   plan: PlanType;
   owner: WorkspaceType;
   onSave: () => void;
-  currentAction: ContentAction | null;
-  setCurrentAction: (action: ContentAction | null) => void;
 };
 
-export const ContentActions = ({
-  dataSourceView,
-  owner,
-  plan,
-  onSave,
-  currentAction,
-  setCurrentAction,
-}: ContentActionsProps) => {
+export type ContentActionsRef = {
+  callAction: (
+    action: ContentActionKey,
+    contentNode?: LightContentNode
+  ) => void;
+};
+
+export const ContentActions = React.forwardRef<
+  ContentActionsRef,
+  ContentActionsProps
+>(({ dataSourceView, owner, plan, onSave }: ContentActionsProps, ref) => {
+  const [currentAction, setCurrentAction] = useState<ContentAction | null>(
+    null
+  );
+  useImperativeHandle(ref, () => ({
+    callAction: (action: ContentActionKey, contentNode?: LightContentNode) => {
+      setCurrentAction({ key: action, contentNode });
+    },
+  }));
+
   const onClose = (save: boolean) => {
     setCurrentAction(null);
     if (save) {
@@ -88,29 +102,40 @@ export const ContentActions = ({
       />
     </>
   );
-};
+});
 
 export const getMenuItems = (
   dataSourceView: DataSourceViewType,
-  contentNode: LightContentNode
+  contentNode: LightContentNode,
+  contentActionsRef: RefObject<ContentActionsRef>
 ) => {
   if (isFolder(dataSourceView.dataSource)) {
     return [
       {
         label: "Edit",
         icon: PencilSquareIcon,
-        key:
-          contentNode.type === "file"
-            ? ("DocumentUploadOrEditModal" as const)
-            : ("TableUploadOrEditModal" as const),
+        onClick: () => {
+          contentActionsRef.current &&
+            contentActionsRef.current?.callAction(
+              contentNode.type === "file"
+                ? ("DocumentUploadOrEditModal" as const)
+                : ("TableUploadOrEditModal" as const),
+              contentNode
+            );
+        },
       },
       {
         label: "Delete",
         icon: TrashIcon,
-        key:
-          contentNode.type === "file"
-            ? ("DocumentDeleteDialog" as const)
-            : ("TableDeleteDialog" as const),
+        onClick: () => {
+          contentActionsRef.current &&
+            contentActionsRef.current?.callAction(
+              contentNode.type === "file"
+                ? ("DocumentDeleteDialog" as const)
+                : ("TableDeleteDialog" as const),
+              contentNode
+            );
+        },
         variant: "warning",
       },
     ];
