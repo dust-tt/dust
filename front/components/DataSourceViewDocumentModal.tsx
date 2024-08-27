@@ -1,5 +1,5 @@
 import { Modal } from "@dust-tt/sparkle";
-import type { DataSourceViewType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { useDataSourceViewDocument } from "@app/lib/swr";
@@ -11,7 +11,7 @@ export default function DataSourceViewDocumentModal({
   isOpen,
   setOpen,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSourceView: DataSourceViewType | null;
   documentId: string | null;
   isOpen: boolean;

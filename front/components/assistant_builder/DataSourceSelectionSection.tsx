@@ -6,14 +6,18 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/types";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
+import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -26,10 +30,7 @@ export default function DataSourceSelectionSection({
   openDataSourceModal,
 }: {
   owner: WorkspaceType;
-  dataSourceConfigurations: Record<
-    string,
-    AssistantBuilderDataSourceConfiguration
-  >;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   openDataSourceModal: () => void;
   onDelete?: (name: string) => void;
 }) {
@@ -83,7 +84,9 @@ export default function DataSourceSelectionSection({
           />
         ) : (
           <Tree>
-            {Object.values(dataSourceConfigurations).map((dsConfig) => {
+            {orderDatasourceViewSelectionConfigurationByImportance(
+              Object.values(dataSourceConfigurations)
+            ).map((dsConfig) => {
               const LogoComponent = getConnectorProviderLogoWithFallback(
                 dsConfig.dataSourceView.dataSource.connectorProvider,
                 FolderIcon

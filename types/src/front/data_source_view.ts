@@ -1,5 +1,8 @@
 import { ModelId } from "../shared/model_id";
-import { DataSourceViewCategory } from "./api_handlers/public/vaults";
+import {
+  DataSourceViewCategory,
+  LightContentNode,
+} from "./api_handlers/public/vaults";
 import { DataSourceType, EditedByUser } from "./data_source";
 
 export interface DataSourceViewType {
@@ -17,6 +20,27 @@ export interface DataSourceViewType {
   usage: number;
   vaultId: string;
 }
+
+export type DataSourceViewSelectionConfiguration = {
+  dataSourceView: DataSourceViewType;
+  selectedResources: LightContentNode[];
+  isSelectAll: boolean;
+};
+
+export function defaultSelectionConfiguration(
+  dataSourceView: DataSourceViewType
+): DataSourceViewSelectionConfiguration {
+  return {
+    dataSourceView: dataSourceView,
+    isSelectAll: false,
+    selectedResources: [],
+  };
+}
+
+export type DataSourceViewSelectionConfigurations = Record<
+  string, // DataSourceView.sId
+  DataSourceViewSelectionConfiguration
+>;
 
 const DATA_SOURCE_VIEW_KINDS = ["default", "custom"] as const;
 export type DataSourceViewKind = (typeof DATA_SOURCE_VIEW_KINDS)[number];

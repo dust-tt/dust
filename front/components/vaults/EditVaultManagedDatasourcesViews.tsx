@@ -1,7 +1,7 @@
 import { Button, PlusIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   APIError,
-  ManagedDataSourceViewsSelectedNodes,
+  DataSourceViewSelectionConfigurations,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -47,37 +47,86 @@ export function EditVaultManagedDataSourcesViews({
   });
 
   const updateVaultDataSourceViews = async (
-    selectedNodes: ManagedDataSourceViewsSelectedNodes
+    selectionConfigurations: DataSourceViewSelectionConfigurations
   ) => {
-    const promisesErrors = await Promise.all(
-      selectedNodes.map(async (sDs) => {
-        const existingViewForDs = vaultDataSourceViews.find(
-          (d) => d.dataSource.name === sDs.name
-        );
+    // Check if a data source view in the vault is no longer in the selection configurations by comparing the data source.
+    // If so, delete it.
+    const deletedViews = vaultDataSourceViews.filter(
+      (dsv) =>
+        !Object.values(selectionConfigurations).find(
+          (sc) => sc.dataSourceView.dataSource.name === dsv.dataSource.name
+        )
+    );
 
-        const body = {
-          name: sDs.name,
-          parentsIn: sDs.parentsIn,
-        };
-
+    const deletePromisesErrors = await Promise.all(
+      deletedViews.map(async (deletedView) => {
         try {
-          let res;
-          if (existingViewForDs) {
-            if (sDs.parentsIn !== null && sDs.parentsIn.length === 0) {
-              res = await fetch(
-                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
-                {
-                  method: "DELETE",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                }
-              );
+          const res = await fetch(
+            `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${deletedView.sId}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          if (!res.ok) {
+            const rawError = (await res.json()) as { error: APIError };
+            return rawError.error.message;
+          }
+        } catch (e) {
+          return null;
+        }
+      })
+    );
+
+    const upsertPromisesErors = await Promise.all(
+      Object.values(selectionConfigurations).map(
+        async (selectionConfiguration) => {
+          const sDsv = selectionConfiguration.dataSourceView;
+          const sDs = sDsv.dataSource;
+          const existingViewForDs = vaultDataSourceViews.find(
+            (d) =>
+              d.dataSource.name ===
+              selectionConfiguration.dataSourceView.dataSource.name
+          );
+
+          const body = {
+            name: sDs.name,
+            parentsIn: selectionConfiguration.isSelectAll
+              ? null
+              : selectionConfiguration.selectedResources.map(
+                  (r) => r.internalId
+                ),
+          };
+
+          try {
+            let res;
+            if (existingViewForDs) {
+              if (
+                !selectionConfiguration.isSelectAll &&
+                selectionConfiguration.selectedResources.length === 0
+              ) {
+                throw new Error(
+                  "We should never have a view with no data in the selection, it should have been removed. Action: check the DataSourceViewSelector component."
+                );
+              } else {
+                res = await fetch(
+                  `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
+                  {
+                    method: "PATCH",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(body),
+                  }
+                );
+              }
             } else {
               res = await fetch(
-                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
+                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views`,
                 {
-                  method: "PATCH",
+                  method: "POST",
                   headers: {
                     "Content-Type": "application/json",
                   },
@@ -85,31 +134,22 @@ export function EditVaultManagedDataSourcesViews({
                 }
               );
             }
-          } else {
-            res = await fetch(
-              `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(body),
-              }
-            );
-          }
 
-          if (!res.ok) {
-            const rawError = (await res.json()) as { error: APIError };
-            return rawError.error.message;
+            if (!res.ok) {
+              const rawError = (await res.json()) as { error: APIError };
+              return rawError.error.message;
+            }
+          } catch (e) {
+            return "An Unknown error occurred while adding data to vault.";
           }
-        } catch (e) {
-          return "An Unknown error occurred while adding data to vault.";
+          return null;
         }
-        return null;
-      })
+      )
     );
 
-    const errors = removeNulls(promisesErrors);
+    const errors = removeNulls(
+      deletePromisesErrors.concat(upsertPromisesErors)
+    );
     if (errors.length) {
       sendNotification({
         title: "Error Adding Data to Vault",
@@ -118,9 +158,9 @@ export function EditVaultManagedDataSourcesViews({
       });
     } else {
       sendNotification({
-        title: "Data Successfully Added to Vault",
+        title: "Data Successfully Updated",
         type: "success",
-        description: "All data sources were successfully updated.",
+        description: "All data sources were successfully updated in the Vault.",
       });
     }
     await mutateVaultDataSourceViews();
@@ -137,6 +177,7 @@ export function EditVaultManagedDataSourcesViews({
   return (
     <>
       <VaultManagedDataSourcesViewsModal
+        vault={vault}
         isOpen={showDataSourcesModal}
         setOpen={(isOpen) => {
           setShowDataSourcesModal(isOpen);
@@ -147,8 +188,8 @@ export function EditVaultManagedDataSourcesViews({
             dsv.dataSource.connectorProvider &&
             dsv.dataSource.connectorProvider !== "webcrawler"
         )}
-        onSave={async (selectedDataSources) => {
-          await updateVaultDataSourceViews(selectedDataSources);
+        onSave={async (selectionConfigurations) => {
+          await updateVaultDataSourceViews(selectionConfigurations);
         }}
         initialSelectedDataSources={vaultDataSourceViews}
       />

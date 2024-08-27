@@ -70,14 +70,14 @@ const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
 };
 
-function useSWRWithDefaults<T>(
-  key: Key,
-  fetcher: Fetcher<T>,
+function useSWRWithDefaults<TKey extends Key, TData>(
+  key: TKey,
+  fetcher: Fetcher<TData, TKey>,
   config?: SWRConfiguration
 ) {
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
 
-  return useSWR<T>(key, fetcher, mergedConfig);
+  return useSWR(key, fetcher, mergedConfig);
 }
 
 const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
@@ -118,6 +118,17 @@ export const postFetcher = async ([url, body]: [string, object]) => {
   });
 
   return resHandler(res);
+};
+
+type UrlsAndOptions = { url: string; options: object };
+
+const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
+  const f = (url: string, options: object) =>
+    fetcher(url, options).then((r) => r);
+
+  return Promise.all<T>(
+    urlsAndOptions.map(({ url, options }) => f(url, options))
+  );
 };
 
 export function useAppStatus() {
@@ -479,6 +490,64 @@ export function useDataSourceContentNodes({
     isNodesLoading: !error && !data,
     isNodesError: !!error,
   };
+}
+
+type DataSourceViewsAndInternalIds = {
+  dataSourceView: DataSourceViewType;
+  internalIds: string[];
+};
+type DataSourceViewsAndNodes = {
+  dataSourceView: DataSourceViewType;
+  nodes: GetContentNodeResponseBody["nodes"];
+};
+
+export function useMultipleDataSourcesContentNodes({
+  owner,
+  dataSourceViewsAndInternalIds,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceViewsAndInternalIds: DataSourceViewsAndInternalIds[];
+}): {
+  dataSourceViewsAndNodes: DataSourceViewsAndNodes[];
+  isNodesLoading: boolean;
+  isNodesError: boolean;
+} {
+  const urlsAndOptions = dataSourceViewsAndInternalIds.map(
+    ({ dataSourceView, internalIds }) => {
+      const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
+        dataSourceView.dataSource.name
+      )}/managed/content_nodes`;
+      const body = JSON.stringify({ internalIds });
+      const options = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      };
+      return { url, options };
+    }
+  );
+
+  const { data: results, error: errors } = useSWRWithDefaults(
+    urlsAndOptions,
+    fetcherMultiple<GetContentNodeResponseBody>
+  );
+
+  const isNodesError = errors?.some((e: boolean | undefined) => !!e) ?? false;
+  const isNodesLoading = results?.some((r) => !r.nodes) ?? true;
+
+  return useMemo(
+    () => ({
+      dataSourceViewsAndNodes: dataSourceViewsAndInternalIds.map(
+        ({ dataSourceView }, i) => ({
+          dataSourceView,
+          nodes: results ? results[i].nodes : [],
+        })
+      ),
+      isNodesError,
+      isNodesLoading,
+    }),
+    [dataSourceViewsAndInternalIds, isNodesError, isNodesLoading, results]
+  );
 }
 
 // TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)

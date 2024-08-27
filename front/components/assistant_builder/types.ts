@@ -2,8 +2,7 @@ import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AppType,
-  DataSourceViewType,
-  LightContentNode,
+  DataSourceViewSelectionConfigurations,
   PlanType,
   ProcessSchemaPropertyType,
   SubscriptionType,
@@ -36,17 +35,6 @@ export const ACTION_MODES = [
 
 // Retrieval configuration
 
-export type AssistantBuilderDataSourceConfiguration = {
-  dataSourceView: DataSourceViewType;
-  selectedResources: LightContentNode[];
-  isSelectAll: boolean;
-};
-
-export type AssistantBuilderDataSourceConfigurations = Record<
-  string,
-  AssistantBuilderDataSourceConfiguration
->;
-
 export type AssistantBuilderTimeFrame = {
   value: number;
   unit: TimeframeUnit;
@@ -57,7 +45,7 @@ export type AssistantBuilderTagsFilter = {
 };
 
 export type AssistantBuilderRetrievalConfiguration = {
-  dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   timeFrame: AssistantBuilderTimeFrame;
 };
 
@@ -85,7 +73,7 @@ export type AssistantBuilderTablesQueryConfiguration = Record<
 // Process configuration
 
 export type AssistantBuilderProcessConfiguration = {
-  dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   timeFrame: AssistantBuilderTimeFrame;
   tagsFilter: AssistantBuilderTagsFilter | null;
   schema: ProcessSchemaPropertyType[];

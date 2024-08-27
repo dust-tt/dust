@@ -171,6 +171,14 @@ function compareByImportance(
           .connectorProvider
     );
 
+  if (aConnector === null && bConnector != null) {
+    return 1;
+  }
+
+  if (bConnector === null && aConnector != null) {
+    return -1;
+  }
+
   if (aConnector === CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider) {
     return 1;
   }
@@ -201,5 +209,16 @@ export function orderDatasourceViewByImportance<
 >(dataSourceViews: Type[]) {
   return dataSourceViews.sort((a, b) => {
     return compareByImportance(a.dataSource, b.dataSource);
+  });
+}
+
+export function orderDatasourceViewSelectionConfigurationByImportance<
+  Type extends { dataSourceView: { dataSource: ComparableByProvider } },
+>(dataSourceViews: Type[]) {
+  return dataSourceViews.sort((a, b) => {
+    return compareByImportance(
+      a.dataSourceView.dataSource,
+      b.dataSourceView.dataSource
+    );
   });
 }
