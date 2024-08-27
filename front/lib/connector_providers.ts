@@ -15,8 +15,7 @@ import type {
   WhitelistableFeature,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import type { LucideIcon } from "lucide-react";
-import type { SVGProps } from "react";
+import type { ComponentType } from "react";
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
@@ -153,12 +152,10 @@ export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
   return dsv.dataSource.name;
 }
 
-type LogoType = ((props: SVGProps<SVGSVGElement>) => JSX.Element) | LucideIcon;
-
 export function getConnectorProviderLogoWithFallback(
   provider: ConnectorProvider | null,
-  fallback: LogoType
-): LogoType {
+  fallback: ComponentType
+): ComponentType {
   if (!provider) {
     return fallback;
   }

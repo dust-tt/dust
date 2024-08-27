@@ -30,7 +30,7 @@ type VaultDataSourceViewContentListProps = {
   isAdmin: boolean;
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
-  parentId: string | null;
+  parentId?: string;
   vault: VaultType;
 };
 
