@@ -19,6 +19,7 @@ export function Map({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -33,6 +34,7 @@ export function Map({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -61,6 +63,7 @@ export function Map({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
@@ -120,6 +123,7 @@ export function Reduce({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -134,6 +138,7 @@ export function Reduce({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -150,6 +155,7 @@ export function Reduce({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}

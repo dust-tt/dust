@@ -26,6 +26,7 @@ export default function SpecRunView({
   owner,
   app,
   readOnly,
+  showOutputs,
   spec,
   run,
   runRequested,
@@ -38,6 +39,7 @@ export default function SpecRunView({
   owner: WorkspaceType;
   app: AppType;
   readOnly: boolean;
+  showOutputs: boolean;
   spec: SpecificationType;
   run: RunType | null;
   runRequested: boolean;
@@ -91,6 +93,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -111,6 +114,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -131,6 +135,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -151,6 +156,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -171,6 +177,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -191,6 +198,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -211,6 +219,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -231,6 +240,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -251,6 +261,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -271,6 +282,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -291,6 +303,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -311,6 +324,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -331,6 +345,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -351,6 +366,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}
@@ -371,6 +387,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
                   onBlockUp={() => handleMoveBlockUp(idx)}

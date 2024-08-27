@@ -24,6 +24,7 @@ export default function Browser({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -38,6 +39,7 @@ export default function Browser({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -127,6 +129,7 @@ export default function Browser({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       canUseCache={true}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

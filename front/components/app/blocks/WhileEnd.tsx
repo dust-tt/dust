@@ -25,6 +25,7 @@ export function While({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -39,6 +40,7 @@ export function While({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -67,6 +69,7 @@ export function While({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
@@ -138,6 +141,7 @@ export function End({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -152,6 +156,7 @@ export function End({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -168,6 +173,7 @@ export function End({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}

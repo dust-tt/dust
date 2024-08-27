@@ -408,6 +408,7 @@ export default function AppView({
             owner={owner}
             app={app}
             readOnly={readOnly}
+            showOutputs={!readOnly}
             spec={spec}
             run={run}
             runRequested={runRequested}
