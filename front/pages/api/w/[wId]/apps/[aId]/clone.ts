@@ -43,7 +43,7 @@ async function handler(
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private", "unlisted"].includes(req.body.visibility) ||
+        !["public", "private"].includes(req.body.visibility) ||
         !(typeof req.body.wId == "string")
       ) {
         return apiError(req, res, {

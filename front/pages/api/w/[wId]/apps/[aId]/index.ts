@@ -23,13 +23,12 @@ async function handler(
       ? {
           workspaceId: owner.id,
           visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
+            [Op.or]: ["public", "private"],
           },
           sId: req.query.aId,
         }
       : {
           workspaceId: owner.id,
-          // Do not include 'unlisted' here.
           visibility: "public",
           sId: req.query.aId,
         },
@@ -76,9 +75,7 @@ async function handler(
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private", "unlisted", "deleted"].includes(
-          req.body.visibility
-        )
+        !["public", "private", "deleted"].includes(req.body.visibility)
       ) {
         return apiError(req, res, {
           status_code: 400,

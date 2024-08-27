@@ -299,8 +299,8 @@ export default function CloneView({
                           >
                             Public
                             <p className="mt-0 text-sm font-normal text-gray-500">
-                              Anyone on the Internet can see the app. Only
-                              builders of your workspace can edit.
+                              Anyone on the Internet with the link can see the
+                              app. Only builders of your workspace can edit.
                             </p>
                           </label>
                         </div>
