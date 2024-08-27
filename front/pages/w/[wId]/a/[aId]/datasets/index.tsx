@@ -17,51 +17,52 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  app: AppType;
-  datasets: DatasetType[];
-  gaTrackingId: string;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps =
+  withDefaultUserAuthRequirementsNoWorkspaceCheck<{
+    owner: WorkspaceType;
+    subscription: SubscriptionType;
+    readOnly: boolean;
+    app: AppType;
+    datasets: DatasetType[];
+    gaTrackingId: string;
+  }>(async (context, auth) => {
+    const owner = auth.workspace();
+    const subscription = auth.subscription();
 
-  if (!owner || !subscription) {
+    if (!owner || !subscription) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const readOnly = !auth.isBuilder();
+
+    const app = await getApp(auth, context.params?.aId as string);
+
+    if (!app) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const datasets = await getDatasets(auth, app);
+
     return {
-      notFound: true,
+      props: {
+        owner,
+        subscription,
+        readOnly,
+        app,
+        datasets,
+        gaTrackingId: GA_TRACKING_ID,
+      },
     };
-  }
-
-  const readOnly = !auth.isBuilder();
-
-  const app = await getApp(auth, context.params?.aId as string);
-
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const datasets = await getDatasets(auth, app);
-
-  return {
-    props: {
-      owner,
-      subscription,
-      readOnly,
-      app,
-      datasets,
-      gaTrackingId: GA_TRACKING_ID,
-    },
-  };
-});
+  });
 
 export default function DatasetsView({
   owner,

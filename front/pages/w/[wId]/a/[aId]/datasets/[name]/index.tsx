@@ -19,65 +19,66 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  app: AppType;
-  dataset: DatasetType;
-  schema: DatasetSchema | null;
-  gaTrackingId: string;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps =
+  withDefaultUserAuthRequirementsNoWorkspaceCheck<{
+    owner: WorkspaceType;
+    subscription: SubscriptionType;
+    readOnly: boolean;
+    app: AppType;
+    dataset: DatasetType;
+    schema: DatasetSchema | null;
+    gaTrackingId: string;
+  }>(async (context, auth) => {
+    const owner = auth.workspace();
+    const subscription = auth.subscription();
 
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
+    if (!owner || !subscription) {
+      return {
+        notFound: true,
+      };
+    }
 
-  const readOnly = !auth.isBuilder();
+    const readOnly = !auth.isBuilder();
 
-  const app = await getApp(auth, context.params?.aId as string);
+    const app = await getApp(auth, context.params?.aId as string);
 
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
+    if (!app) {
+      return {
+        notFound: true,
+      };
+    }
 
-  const dataset = await getDatasetHash(
-    auth,
-    app,
-    context.params?.name as string,
-    "latest"
-  );
-
-  if (!dataset) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const schema = await getDatasetSchema(auth, app, dataset.name);
-
-  return {
-    props: {
-      owner,
-      subscription,
-      readOnly,
+    const dataset = await getDatasetHash(
+      auth,
       app,
-      dataset,
-      schema,
-      gaTrackingId: GA_TRACKING_ID,
-    },
-  };
-});
+      context.params?.name as string,
+      "latest"
+    );
+
+    if (!dataset) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const schema = await getDatasetSchema(auth, app, dataset.name);
+
+    return {
+      props: {
+        owner,
+        subscription,
+        readOnly,
+        app,
+        dataset,
+        schema,
+        gaTrackingId: GA_TRACKING_ID,
+      },
+    };
+  });
 
 export default function ViewDatasetView({
   owner,
