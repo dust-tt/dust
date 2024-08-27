@@ -685,6 +685,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.isAdmin();
   }
 
+  isSystem(): boolean {
+    return this.kind === "system";
+  }
+
   // JSON Serialization
 
   toJSON(): GroupType {

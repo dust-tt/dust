@@ -163,12 +163,16 @@ export const slack = async ({
     }
 
     case "whitelist-bot": {
-      const { wId, botName } = args;
+      const { wId, botName, groupId } = args;
       if (!wId) {
         throw new Error("Missing --wId argument");
       }
       if (!botName) {
         throw new Error("Missing --botName argument");
+      }
+
+      if (!groupId) {
+        throw new Error("Missing --groupId argument");
       }
 
       const connector = await ConnectorModel.findOne({
@@ -188,7 +192,7 @@ export const slack = async ({
         connector.id
       );
       if (slackConfig) {
-        await slackConfig.whitelistBot(botName);
+        await slackConfig.whitelistBot(botName, [groupId]);
       }
 
       return { success: true };

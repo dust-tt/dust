@@ -115,11 +115,15 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     }));
   }
 
-  async whitelistBot(botName: string): Promise<Result<undefined, Error>> {
+  async whitelistBot(
+    botName: string,
+    groupIds: string[]
+  ): Promise<Result<undefined, Error>> {
     await SlackBotWhitelistModel.create({
       connectorId: this.connectorId,
       slackConfigurationId: this.id,
       botName,
+      groupIds,
     });
 
     return new Ok(undefined);

@@ -2,6 +2,7 @@ import {
   Button,
   ContextItem,
   DocumentTextIcon,
+  DropdownMenu,
   EyeIcon,
   Input,
   Page,
@@ -10,6 +11,7 @@ import {
 import type {
   CoreAPIDataSource,
   DataSourceType,
+  GroupType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
 } from "@dust-tt/types";
@@ -29,9 +31,11 @@ import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
+import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { useDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -57,6 +61,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   connector: ConnectorType | null;
   features: FeaturesType;
   temporalWorkspace: string;
+  groupsForSlackBot: GroupType[];
 }>(async (context, auth) => {
   const owner = auth.workspace();
 
@@ -226,6 +231,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     }
   }
 
+  // Getting groups that a Slack bot/workflow can be assigned to
+  const authForSlackBot = await Authenticator.internalAdminForWorkspace(
+    owner.sId
+  );
+  const groupsForSlackBot = (
+    await GroupResource.listWorkspaceGroups(authForSlackBot)
+  )
+    .filter((g) => !g.isSystem())
+    .map((g) => g.toJSON());
+
   return {
     props: {
       owner,
@@ -234,6 +249,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       connector,
       features,
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
+      groupsForSlackBot,
     },
   };
 });
@@ -245,6 +261,7 @@ const DataSourcePage = ({
   connector,
   temporalWorkspace,
   features,
+  groupsForSlackBot,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
   const [offset, setOffset] = useState(0);
@@ -341,7 +358,11 @@ const DataSourcePage = ({
                 configKey="botEnabled"
                 featureKey="slackBotEnabled"
               />
-              <SlackWhitelistBot owner={owner} connectorId={connector?.id} />
+              <SlackWhitelistBot
+                owner={owner}
+                connectorId={connector?.id}
+                groups={groupsForSlackBot}
+              />
               <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
                 <SlackChannelPatternInput
                   initialValue={features.autoReadChannelPattern || ""}
@@ -558,7 +579,11 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
-async function handleWhitelistBot(botName: string, wId: string): Promise<void> {
+async function handleWhitelistBot(
+  botName: string,
+  wId: string,
+  groupId: string
+): Promise<void> {
   const res = await fetch(`/api/poke/admin`, {
     method: "POST",
     headers: {
@@ -570,6 +595,7 @@ async function handleWhitelistBot(botName: string, wId: string): Promise<void> {
       args: {
         botName,
         wId,
+        groupId,
       },
     }),
   });
@@ -791,11 +817,18 @@ const ConfigToggle = ({
 function SlackWhitelistBot({
   owner,
   connectorId,
+  groups,
 }: {
   owner: WorkspaceType;
   connectorId?: string;
+  groups: GroupType[];
 }) {
   const [botName, setBotName] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+
+  const selectedGroupName = groups.find(
+    (group) => group.sId === selectedGroup
+  )?.name;
 
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
@@ -809,11 +842,37 @@ function SlackWhitelistBot({
             name={""}
           />
         </div>
+        <div>
+          <DropdownMenu>
+            <DropdownMenu.Button
+              label={selectedGroupName ?? "Select a group"}
+            />
+
+            <DropdownMenu.Items width={220}>
+              {groups.map((group) => (
+                <DropdownMenu.Item
+                  selected={selectedGroup === group.sId}
+                  key={group.sId}
+                  label={group.name}
+                  onClick={() => setSelectedGroup(group.sId)}
+                />
+              ))}
+            </DropdownMenu.Items>
+          </DropdownMenu>
+        </div>
         <Button
           variant="secondary"
           label="Whitelist"
           onClick={async () => {
-            await handleWhitelistBot(botName, owner.sId);
+            if (!botName) {
+              alert("Please enter a bot name");
+              return;
+            }
+            if (!selectedGroup) {
+              alert("Please select a group");
+              return;
+            }
+            await handleWhitelistBot(botName, owner.sId, selectedGroup);
             setBotName("");
           }}
         />
