@@ -46,6 +46,7 @@ export const ContentActions = ({
       onSave();
     }
   };
+
   return (
     <>
       <DocumentUploadOrEditModal
@@ -89,53 +90,35 @@ export const ContentActions = ({
   );
 };
 
-export const getFolderMenuItems = (contentNode: LightContentNode) => {
-  return [
-    {
-      label: "Edit",
-      icon: PencilSquareIcon,
-      key:
-        contentNode.type === "file"
-          ? ("DocumentUploadOrEditModal" as const)
-          : ("TableUploadOrEditModal" as const),
-    },
-    {
-      label: "Delete",
-      icon: TrashIcon,
-      key:
-        contentNode.type === "file"
-          ? ("DocumentDeleteDialog" as const)
-          : ("TableDeleteDialog" as const),
-      variant: "warning",
-    },
-  ];
-};
-
-export const getWebfolderMenuItems = (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  contentNode: LightContentNode
-) => {
-  // TODO Actions for webrawler datasource
-  return [];
-};
-
-export const getConnectedDataSourceMenuItems = (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  contentNode: LightContentNode
-) => {
-  // TODO Actions for managed datasource
-  return [];
-};
-
 export const getMenuItems = (
   dataSourceView: DataSourceViewType,
   contentNode: LightContentNode
 ) => {
   if (isFolder(dataSourceView.dataSource)) {
-    return getFolderMenuItems(contentNode);
+    return [
+      {
+        label: "Edit",
+        icon: PencilSquareIcon,
+        key:
+          contentNode.type === "file"
+            ? ("DocumentUploadOrEditModal" as const)
+            : ("TableUploadOrEditModal" as const),
+      },
+      {
+        label: "Delete",
+        icon: TrashIcon,
+        key:
+          contentNode.type === "file"
+            ? ("DocumentDeleteDialog" as const)
+            : ("TableDeleteDialog" as const),
+        variant: "warning",
+      },
+    ];
   }
   if (isWebsite(dataSourceView.dataSource)) {
-    return getWebfolderMenuItems(contentNode);
+    // TODO Actions for webrawler datasource
+    return [];
   }
-  return getConnectedDataSourceMenuItems(contentNode);
+  // TODO Actions for managed datasource
+  return [];
 };
