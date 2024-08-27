@@ -74,7 +74,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
-      parentId,
+      // undefined is not allowed in the JSON response
+      ...(parentId && { parentId }),
       subscription,
       vault: vault.toJSON(),
     },
