@@ -15,6 +15,7 @@ import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 
 export function DataSourceViewSelector({
   owner,
@@ -87,7 +88,7 @@ export function DataSourceViewSelector({
   return (
     <Tree.Item
       key={dataSourceView.dataSource.name}
-      label={config?.name ?? dataSourceView.dataSource.name}
+      label={getDisplayNameForDataSource(dataSourceView.dataSource)}
       visual={LogoComponent}
       type="node"
       checkbox={{
