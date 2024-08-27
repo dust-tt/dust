@@ -121,9 +121,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built",
     hide: false,
     description:
-      "Authorize access to Microsoft for indexing shared documents stored in SharePoint, OneDrive, and Office365.",
+      "Authorize Dust to access a Microsoft account and index shared documents stored in SharePoint, OneDrive, and Office365.",
     limitations:
-      "Dust will index the documents shared with the authorized account only. Organizational accounts only are supported. Personal OneDrive are not support.",
+      "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported. At the time, personal OneDrives cannot be synced.",
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     logoComponent: MicrosoftLogo,
     isNested: true,
