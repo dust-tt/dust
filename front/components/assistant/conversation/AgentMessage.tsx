@@ -554,6 +554,7 @@ export function AgentMessage({
               content={agentMessage.chainOfThought}
               isStreaming={false}
               textSize="sm"
+              textColor="purple-800"
             />
           </ContentMessage>
         ) : null}
