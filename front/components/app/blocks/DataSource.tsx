@@ -31,6 +31,7 @@ export default function DataSource({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -45,6 +46,7 @@ export default function DataSource({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -198,6 +200,7 @@ export default function DataSource({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       canUseCache={false}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

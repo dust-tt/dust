@@ -21,6 +21,7 @@ export default function Data({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -35,6 +36,7 @@ export default function Data({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -57,6 +59,7 @@ export default function Data({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}

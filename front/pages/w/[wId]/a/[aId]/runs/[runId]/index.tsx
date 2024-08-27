@@ -25,7 +25,7 @@ const { GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  readOnly: boolean;
+  isBuilder: boolean;
   app: AppType;
   run: RunType;
   spec: SpecificationType;
@@ -40,7 +40,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const readOnly = !auth.isBuilder();
+  const isBuilder = auth.isBuilder();
 
   const app = await getApp(auth, context.params?.aId as string);
   if (!app) {
@@ -61,7 +61,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      readOnly,
+      isBuilder,
       app,
       spec,
       run,
@@ -73,7 +73,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function AppRun({
   owner,
   subscription,
-  readOnly,
+  isBuilder,
   app,
   spec,
   run,
@@ -86,7 +86,7 @@ export default function AppRun({
   const confirm = useContext(ConfirmContext);
 
   const restore = async () => {
-    if (readOnly) {
+    if (!isBuilder) {
       return;
     }
 
@@ -222,6 +222,7 @@ export default function AppRun({
             owner={owner}
             app={app}
             readOnly={true}
+            showOutputs={isBuilder}
             spec={spec}
             run={run}
             runRequested={false}
