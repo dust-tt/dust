@@ -238,7 +238,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const groupsForSlackBot = (
     await GroupResource.listWorkspaceGroups(authForSlackBot)
   )
-    .filter((g) => g.kind !== "system")
+    .filter((g) => !g.isSystem())
     .map((g) => g.toJSON());
 
   return {
