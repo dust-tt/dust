@@ -57,24 +57,13 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can interact with datasets",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
       const showData = req.query.data === "true";
       const datasetHash = showData
         ? await getDatasetHash(auth, app, dataset.name, "latest")
         : null;
-      res.status(200).json({
+      return res.status(200).json({
         dataset: {
           name: dataset.name,
           description: dataset.description,
@@ -82,9 +71,19 @@ async function handler(
           data: showData && datasetHash ? datasetHash.data : null,
         },
       });
-      return;
 
     case "POST":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can interact with datasets",
+          },
+        });
+      }
+
       const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -169,14 +168,13 @@ async function handler(
         },
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         dataset: {
           name: dataset.name,
           description: dataset.description,
           data: null,
         },
       });
-      return;
 
     default:
       return apiError(req, res, {
@@ -190,4 +188,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  allowUserOutsideCurrentWorkspace: true,
+});
