@@ -26,7 +26,6 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -46,7 +45,7 @@ import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-const PostDataSourceWithProviderRequestBodySchema = t.intersection([
+export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   t.type({
     provider: getConnectorProviderCodec(),
     name: t.union([t.string, t.undefined]),
@@ -463,14 +462,12 @@ const handleDataSourceWithProvider = async ({
   await dataSource.update({
     connectorId: connectorsRes.value.id,
   });
-  const dataSourceType = await getDataSource(auth, dataSource.name);
-  if (dataSourceType) {
-    void ServerSideTracking.trackDataSourceCreated({
-      dataSource: dataSourceType,
-      user,
-      workspace: owner,
-    });
-  }
+  const dataSourceType = dataSource.toJSON();
+  void ServerSideTracking.trackDataSourceCreated({
+    dataSource: dataSourceType,
+    user,
+    workspace: owner,
+  });
 
   const email = auth.user()?.email;
   if (email && !isDisposableEmailDomain(email)) {
@@ -487,7 +484,7 @@ const handleDataSourceWithProvider = async ({
   }
 
   return res.status(201).json({
-    dataSource: dataSource.toJSON(),
+    dataSource: dataSourceType,
     dataSourceView: dataSourceView.toJSON(),
   });
 };
@@ -615,17 +612,15 @@ const handleDataSourceWithoutProvider = async ({
       dataSource
     );
 
-  const dataSourceType = await getDataSource(auth, dataSource.name);
-  if (dataSourceType) {
-    void ServerSideTracking.trackDataSourceCreated({
-      user,
-      workspace: owner,
-      dataSource: dataSourceType,
-    });
-  }
+  const dataSourceType = dataSource.toJSON();
+  void ServerSideTracking.trackDataSourceCreated({
+    user,
+    workspace: owner,
+    dataSource: dataSourceType,
+  });
 
   return res.status(201).json({
-    dataSource: dataSource.toJSON(),
+    dataSource: dataSourceType,
     dataSourceView: dataSourceView.toJSON(),
   });
 };
