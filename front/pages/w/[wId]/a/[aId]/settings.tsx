@@ -310,7 +310,7 @@ export default function SettingsView({
                       </div>
                       {appVisibility == "deleted" ? (
                         <p className="mt-4 text-sm font-normal text-gray-500">
-                          This app is currently marked as deleted. Change its ￼
+                          This app is currently marked as deleted. Change its
                           visibility above to restore it.
                         </p>
                       ) : null}
