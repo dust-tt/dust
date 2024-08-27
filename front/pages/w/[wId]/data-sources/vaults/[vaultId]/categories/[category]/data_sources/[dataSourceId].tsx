@@ -22,7 +22,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     category: DataSourceViewCategory;
     dataSource: DataSourceType;
     hasWritePermission: boolean;
-    parentId: string | null;
+    parentId?: string;
     vault: VaultType;
     plan: PlanType;
   }
@@ -62,7 +62,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
   const hasWritePermission =
     auth.isBuilder() && auth.hasPermission([vault.acl()], "write");
-  const parentId = context.query?.parentId as string;
+  const parentId = context.query?.parentId as string | undefined;
 
   return {
     props: {
@@ -71,7 +71,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       gaTrackingId: config.getGaTrackingId(),
       hasWritePermission,
       owner,
-      parentId: parentId || null,
+      parentId,
       subscription,
       vault: vault.toJSON(),
       plan,

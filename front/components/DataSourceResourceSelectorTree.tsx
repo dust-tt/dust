@@ -45,7 +45,6 @@ export default function DataSourceResourceSelectorTree({
       <DataSourceResourceSelectorChildren
         owner={owner}
         dataSourceView={dataSourceView}
-        parentId={null}
         showExpand={showExpand}
         parents={[]}
         parentIsSelected={parentIsSelected}
@@ -99,7 +98,7 @@ function DataSourceResourceSelectorChildren({
 }: {
   owner: LightWorkspaceType;
   dataSourceView: DataSourceViewType;
-  parentId: string | null;
+  parentId?: string;
   parents: string[];
   parentIsSelected?: boolean;
   selectedParents: string[];

@@ -28,7 +28,7 @@ export interface VaultLayoutProps {
   vault: VaultType;
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
-  parentId?: string | null;
+  parentId?: string;
 }
 
 export function VaultLayout({

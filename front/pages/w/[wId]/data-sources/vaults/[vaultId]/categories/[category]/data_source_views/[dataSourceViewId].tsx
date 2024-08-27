@@ -24,7 +24,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
     isAdmin: boolean;
-    parentId: string | null;
+    parentId?: string;
     vault: VaultType;
   }
 >(async (context, auth) => {
@@ -54,7 +54,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
   const isAdmin = auth.isAdmin();
-  const parentId = context.query?.parentId as string;
+  const parentId = context.query?.parentId as string | undefined;
 
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
@@ -74,7 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
-      parentId: parentId || null,
+      parentId,
       subscription,
       vault: vault.toJSON(),
     },

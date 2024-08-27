@@ -110,7 +110,7 @@ export const VaultCategoriesList = ({
                 category,
                 ...vaultInfo.categories[category],
                 name: CATEGORY_DETAILS[category].label,
-                icon: CATEGORY_DETAILS[category].icon as ComponentType,
+                icon: CATEGORY_DETAILS[category].icon,
                 onClick: () => onSelect(category),
               }
             : null

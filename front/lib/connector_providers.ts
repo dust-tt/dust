@@ -152,15 +152,6 @@ export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
   return dsv.dataSource.name;
 }
 
-export function getConnectorProviderLogo(
-  provider: ConnectorProvider | null
-): ComponentType | null {
-  if (!provider) {
-    return null;
-  }
-  return CONNECTOR_CONFIGURATIONS[provider].logoComponent;
-}
-
 export function getConnectorProviderLogoWithFallback(
   provider: ConnectorProvider | null,
   fallback: ComponentType

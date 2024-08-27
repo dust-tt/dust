@@ -1401,7 +1401,7 @@ export function useVaultDataSourceViewContent({
   disabled?: boolean;
   filterPermission: ConnectorPermission;
   owner: LightWorkspaceType;
-  parentId: string | null;
+  parentId?: string;
   vaultId: string;
   viewType: ContentNodesViewType;
 }) {
