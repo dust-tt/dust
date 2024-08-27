@@ -143,10 +143,12 @@ export function RenderMessageMarkdown({
   content,
   isStreaming,
   citationsContext,
+  textSize,
 }: {
   content: string;
   isStreaming: boolean;
   citationsContext?: CitationsContextType;
+  textSize?: "sm" | "base";
 }) {
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
@@ -158,8 +160,10 @@ export function RenderMessageMarkdown({
       a: LinkBlock,
       ul: UlBlock,
       ol: OlBlock,
-      li: LiBlock,
-      p: ParagraphBlock,
+      li: ({ children }) => <LiBlock textSize={textSize}>{children}</LiBlock>,
+      p: ({ children }) => (
+        <ParagraphBlock textSize={textSize}>{children}</ParagraphBlock>
+      ),
       sup: CiteBlock,
       table: TableBlock,
       thead: TableHeadBlock,
@@ -570,16 +574,38 @@ function OlBlock({ children }: { children: React.ReactNode }) {
     </ol>
   );
 }
-function LiBlock({ children }: { children: React.ReactNode }) {
+function LiBlock({
+  textSize,
+  children,
+}: {
+  textSize?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <li className="break-words py-2 text-element-800 first:pt-0 last:pb-0">
+    <li
+      className={classNames(
+        "break-words text-element-800 first:pt-0 last:pb-0",
+        textSize === "sm" ? "py-1" : "py-2"
+      )}
+    >
       {children}
     </li>
   );
 }
-function ParagraphBlock({ children }: { children: React.ReactNode }) {
+function ParagraphBlock({
+  textSize,
+  children,
+}: {
+  textSize?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="whitespace-pre-wrap break-words py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <div
+      className={classNames(
+        "whitespace-pre-wrap break-words font-normal text-element-800 first:pt-0 last:pb-0",
+        textSize === "sm" ? "py-1 text-sm" : "py-2 text-base leading-7"
+      )}
+    >
       {children}
     </div>
   );
