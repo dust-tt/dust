@@ -126,6 +126,14 @@ async function handler(
             case "already_on_role":
               // Should not happen, but we ignore.
               break;
+            case "last_admin":
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: "Cannot remove the last admin of a workspace.",
+                },
+              });
             default:
               assertNever(updateRoleResult.error.type);
           }

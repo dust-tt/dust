@@ -15,6 +15,7 @@ import type {
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { canForceUserRole } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -212,10 +213,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async getMembersCountForWorkspace({
     workspace,
     activeOnly,
+    rolesFilter,
     transaction,
   }: {
     workspace: LightWorkspaceType;
     activeOnly: boolean;
+    rolesFilter?: MembershipRoleType[];
     transaction?: Transaction;
   }): Promise<number> {
     const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
@@ -228,6 +231,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           },
         }
       : {};
+
+    if (rolesFilter && rolesFilter.length !== 0) {
+      where.role = {
+        [Op.in]: rolesFilter,
+      };
+    }
 
     where.workspaceId = workspace.id;
 
@@ -356,7 +365,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     Result<
       void,
       {
-        type: "not_found" | "already_on_role" | "membership_already_terminated";
+        type:
+          | "not_found"
+          | "already_on_role"
+          | "membership_already_terminated"
+          | "last_admin";
       }
     >
   > {
@@ -381,6 +394,32 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       if (previousRole === newRole) {
         return new Err({ type: "already_on_role" });
       }
+
+      // If the previous role was admin, we need to check if there is another admin in the workspace.
+      if (previousRole == "admin") {
+        const adminsCount = await this.getMembersCountForWorkspace({
+          workspace,
+          activeOnly: true,
+          rolesFilter: ["admin"],
+          transaction,
+        });
+
+        if (adminsCount < 2) {
+          if (canForceUserRole(workspace)) {
+            logger.warn(
+              {
+                panic: false,
+                userId: user.id,
+                workspaceId: workspace.id,
+              },
+              "Removing the last admin from the workspace, we are allowing it because canForceUserRole() returns true."
+            );
+          } else {
+            return new Err({ type: "last_admin" });
+          }
+        }
+      }
+
       await MembershipModel.update(
         { role: newRole },
         { where: { id: membership.id }, transaction }
