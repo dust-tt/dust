@@ -12,7 +12,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 
 import { DustConnectorWorkflowError, ExternalOAuthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
-import { cancelWorkflow, getConnectorId } from "./temporal";
+import { getConnectorId, terminateWorkflow } from "./temporal";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -122,8 +122,10 @@ export class ActivityInboundLogInterceptor
           await syncFailed(connectorId, "oauth_token_revoked");
 
           // In case of an invalid token, abort the workflow.
-          this.logger.info("Cancelling workflow because of expired token.");
-          await cancelWorkflow(workflowId);
+          this.logger.info(
+            `Terminating workflow ${workflowId} because of expired token.`
+          );
+          await terminateWorkflow(workflowId, "oauth_token_revoked");
         }
       }
 
