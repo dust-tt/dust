@@ -1,4 +1,9 @@
-import { CompanyIcon, FolderIcon, LockIcon } from "@dust-tt/sparkle";
+import {
+  Breadcrumbs,
+  CompanyIcon,
+  FolderIcon,
+  LockIcon,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
@@ -11,7 +16,6 @@ import React, { useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { BreadCrumb } from "@app/components/vaults/Breadcrumb";
 import { CreateVaultModal } from "@app/components/vaults/CreateVaultModal";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
@@ -147,7 +151,7 @@ function VaultBreadCrumbs({
 
   return (
     <div className="pb-8">
-      <BreadCrumb items={items} />
+      <Breadcrumbs items={items} />
     </div>
   );
 }
