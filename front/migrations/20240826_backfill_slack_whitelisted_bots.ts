@@ -12,7 +12,7 @@ makeScript({}, async ({ execute }, logger) => {
     EnvironmentConfig.getEnvVariable("CONNECTORS_DATABASE_URI")
   );
   const bots: { id: number; workspaceid: string }[] = await connectorDB.query(
-    `SELECT swb.id as id, c."workspaceId" as workspaceid FROM slack_bot_whitelist swb INNER JOIN connectors c ON swb."connectorId" = c.id WHERE c.type = 'slack'`,
+    `SELECT sbw.id as id, c."workspaceId" as workspaceId FROM slack_bot_whitelist sbw INNER JOIN connectors c ON sbw."connectorId" = c.id WHERE c.type = 'slack'`,
     {
       type: QueryTypes.SELECT,
     }
