@@ -20,13 +20,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import { useRef, useState } from "react";
 
-import type { ContentAction } from "@app/components/vaults/ContentActions";
+import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
 import {
   ContentActions,
-  ContentActionsRef,
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";

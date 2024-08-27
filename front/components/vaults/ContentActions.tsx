@@ -6,14 +6,14 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isFolder, isWebsite } from "@dust-tt/types";
+import type { RefObject } from "react";
+import React, { useImperativeHandle, useState } from "react";
 
 import { DocumentDeleteDialog } from "@app/components/data_source/DocumentDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import { TableDeleteDialog } from "@app/components/data_source/TableDeleteDialog";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
-import React, { RefObject, useImperativeHandle, useState } from "react";
-import { callAction } from "@app/lib/actions/helpers";
 
 type ContentActionKey =
   | "DocumentUploadOrEditModal"
@@ -103,6 +103,8 @@ export const ContentActions = React.forwardRef<
     </>
   );
 });
+
+ContentActions.displayName = "ContentActions";
 
 export const getMenuItems = (
   dataSourceView: DataSourceViewType,
