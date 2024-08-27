@@ -1,14 +1,14 @@
 import {
   ArrowPathIcon,
   Button,
+  ChatBubbleThoughtIcon,
   Chip,
   Citation,
   ClipboardIcon,
+  ContentMessage,
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
-  Icon,
-  PuzzleIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
@@ -545,19 +545,18 @@ export function AgentMessage({
         </>
 
         {agentMessage.chainOfThought?.length ? (
-          <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">
-            <div className="flex flex-row gap-2">
-              <Icon size="sm" visual={PuzzleIcon} />
-              <div className="font-semibold">Assistant thoughts</div>
-            </div>
-
-            <div className="italic">
-              <RenderMessageMarkdown
-                content={agentMessage.chainOfThought}
-                isStreaming={false}
-              />
-            </div>
-          </div>
+          <ContentMessage
+            title="Assistant thoughts"
+            variant="purple"
+            icon={ChatBubbleThoughtIcon}
+          >
+            <RenderMessageMarkdown
+              content={agentMessage.chainOfThought}
+              isStreaming={false}
+              textSize="sm"
+              textColor="purple-800"
+            />
+          </ContentMessage>
         ) : null}
 
         {agentMessage.content !== null && (

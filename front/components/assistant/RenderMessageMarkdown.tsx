@@ -143,10 +143,14 @@ export function RenderMessageMarkdown({
   content,
   isStreaming,
   citationsContext,
+  textSize,
+  textColor,
 }: {
   content: string;
   isStreaming: boolean;
   citationsContext?: CitationsContextType;
+  textSize?: "sm" | "base";
+  textColor?: string;
 }) {
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
@@ -158,8 +162,16 @@ export function RenderMessageMarkdown({
       a: LinkBlock,
       ul: UlBlock,
       ol: OlBlock,
-      li: LiBlock,
-      p: ParagraphBlock,
+      li: ({ children }) => (
+        <LiBlock textSize={textSize} textColor={textColor}>
+          {children}
+        </LiBlock>
+      ),
+      p: ({ children }) => (
+        <ParagraphBlock textSize={textSize} textColor={textColor}>
+          {children}
+        </ParagraphBlock>
+      ),
       sup: CiteBlock,
       table: TableBlock,
       thead: TableHeadBlock,
@@ -558,28 +570,52 @@ function PreBlock({
 
 function UlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="list-disc py-2 pl-8 text-element-800 first:pt-0 last:pb-0">
-      {children}
-    </ul>
+    <ul className="list-disc py-2 pl-8 first:pt-0 last:pb-0">{children}</ul>
   );
 }
 function OlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ol className="list-decimal py-3 pl-8 text-element-800 first:pt-0 last:pb-0">
-      {children}
-    </ol>
+    <ol className="list-decimal py-3 pl-8 first:pt-0 last:pb-0">{children}</ol>
   );
 }
-function LiBlock({ children }: { children: React.ReactNode }) {
+function LiBlock({
+  textSize,
+  textColor,
+  children,
+}: {
+  textSize?: string;
+  textColor?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <li className="break-words py-2 text-element-800 first:pt-0 last:pb-0">
+    <li
+      className={classNames(
+        "break-words first:pt-0 last:pb-0",
+        textSize === "sm" ? "py-1" : "py-2",
+        textColor ? textColor : "text-element-800"
+      )}
+    >
       {children}
     </li>
   );
 }
-function ParagraphBlock({ children }: { children: React.ReactNode }) {
+function ParagraphBlock({
+  textSize,
+  textColor,
+  children,
+}: {
+  textSize?: string;
+  textColor?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="whitespace-pre-wrap break-words py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <div
+      className={classNames(
+        "whitespace-pre-wrap break-words font-normal first:pt-0 last:pb-0",
+        textSize === "sm" ? "py-1 text-sm" : "py-2 text-base leading-7",
+        textColor ? textColor : "text-element-800"
+      )}
+    >
       {children}
     </div>
   );
