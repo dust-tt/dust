@@ -13,7 +13,7 @@ export default meta;
 export const BreadcrumbsExample = () => {
   const items1 = [
     { label: "Home", href: "#", icon: HomeIcon },
-    { label: "Vaults", href: "#" },
+    { label: "Vaults", href: ".." },
     { label: "My Vault" },
   ];
   const items2 = [

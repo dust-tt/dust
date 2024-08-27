@@ -1,8 +1,8 @@
-import Link from "next/link";
 import type { ComponentType } from "react";
 import React from "react";
 
-import { ChevronRightIcon, Icon } from "@sparkle/index";
+import { ChevronRightIcon, Icon, SparkleContext } from "@sparkle/index";
+import { SparkleContextLinkType } from "@sparkle/context";
 
 type BreadcrumbProps = {
   items: {
@@ -13,6 +13,10 @@ type BreadcrumbProps = {
 };
 
 export function Breadcrumbs({ items }: BreadcrumbProps) {
+  const { components } = React.useContext(SparkleContext);
+
+  const Link: SparkleContextLinkType = components.link;
+
   return (
     <div className="gap-2 s-flex s-flex-row s-items-center">
       {items.map((item, index) => (
