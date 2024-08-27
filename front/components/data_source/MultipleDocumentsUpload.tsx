@@ -39,7 +39,7 @@ export const MultipleDocumentsUpload = ({
     }
   }, [isOpen, onClose]);
 
-  const [bulkFilesUploading, setBulkFilesUploading] = useState<null | {
+  const [isBulkFilesUploading, setIsBulkFilesUploading] = useState<null | {
     total: number;
     completed: number;
   }>(null);
@@ -106,13 +106,13 @@ export const MultipleDocumentsUpload = ({
         // isSaving is always true since we are showing this Dialog while
         // uploading files only
         isSaving={true}
-        isOpen={bulkFilesUploading !== null}
+        isOpen={isBulkFilesUploading !== null}
         title="Uploading files"
       >
-        {bulkFilesUploading && (
+        {isBulkFilesUploading && (
           <>
-            Processing files {bulkFilesUploading.completed} /{" "}
-            {bulkFilesUploading.total}
+            Processing files {isBulkFilesUploading.completed} /{" "}
+            {isBulkFilesUploading.total}
           </>
         )}
       </Dialog>
@@ -132,7 +132,7 @@ export const MultipleDocumentsUpload = ({
             });
             let i = 0;
             for (const file of files) {
-              setBulkFilesUploading({
+              setIsBulkFilesUploading({
                 total: files.length,
                 completed: i++,
               });
@@ -165,7 +165,7 @@ export const MultipleDocumentsUpload = ({
                 });
               }
             }
-            setBulkFilesUploading(null);
+            setIsBulkFilesUploading(null);
             onClose(true);
           }
         }}

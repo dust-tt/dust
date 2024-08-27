@@ -23,12 +23,12 @@ export const TableDeleteDialog = ({
   owner,
   contentNode,
 }: TableDeleteDialogProps) => {
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
   const handleDeleteTable = async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
 
       //TODO(GROUPS_UI)replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
@@ -45,7 +45,7 @@ export const TableDeleteDialog = ({
       sendNotification({
         type: "success",
         title: "Table successfully deleted",
-        description: `Your table was deleted`,
+        description: `The table ${contentNode.title} was deleted`,
       });
       onClose(true);
     } catch (error) {
@@ -55,13 +55,13 @@ export const TableDeleteDialog = ({
         description: "An error occurred while deleting your table.",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
   return (
     <Dialog
       isOpen={isOpen}
-      isSaving={loading}
+      isSaving={isLoading}
       onCancel={() => onClose(false)}
       onValidate={handleDeleteTable}
       title="Confirm deletion"

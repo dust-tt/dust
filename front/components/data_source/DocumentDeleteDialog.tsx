@@ -24,7 +24,7 @@ export const DocumentDeleteDialog = ({
   owner,
 }: DocumentDeleteDialogProps) => {
   const sendNotification = useContext(SendNotificationsContext);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const handleDeleteDocument = async () => {
     try {
       //TODO(GROUPS_UI)replace endpoint https://github.com/dust-tt/dust/issues/6921
@@ -54,7 +54,7 @@ export const DocumentDeleteDialog = ({
         description: "An error occurred while deleting the document.",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -62,7 +62,7 @@ export const DocumentDeleteDialog = ({
     <Dialog
       isOpen={isOpen}
       onCancel={() => onClose(false)}
-      isSaving={loading}
+      isSaving={isLoading}
       onValidate={handleDeleteDocument}
       title="Confirm deletion"
       validateVariant="primaryWarning"
