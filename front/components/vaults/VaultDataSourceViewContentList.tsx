@@ -1,24 +1,20 @@
 import {
-  Button,
   ChatBubbleBottomCenterTextIcon,
-  CloudArrowUpIcon,
   DataTable,
   DocumentIcon,
   DocumentTextIcon,
-  DropdownMenu,
   FolderIcon,
-  PlusIcon,
   Searchbar,
   Spinner,
   TableIcon,
 } from "@dust-tt/sparkle";
 import type {
-  ContentNodesViewType,
   DataSourceViewType,
   PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isFolder } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useRef, useState } from "react";
 
@@ -27,6 +23,7 @@ import {
   ContentActions,
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
+import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -73,8 +70,6 @@ export const VaultDataSourceViewContentList = ({
   parentId,
   vault,
 }: VaultDataSourceViewContentListProps) => {
-  const [currentTab, setCurrentTab] =
-    useState<ContentNodesViewType>("documents");
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
   const visualTable = {
@@ -84,7 +79,6 @@ export const VaultDataSourceViewContentList = ({
     channel: ChatBubbleBottomCenterTextIcon,
   };
 
-  // TODO: Do not pass viewType, get all document/tables in one call
   const {
     vaultContent,
     isVaultContentLoading,
@@ -95,7 +89,7 @@ export const VaultDataSourceViewContentList = ({
     owner,
     parentId,
     vaultId: vault.sId,
-    viewType: currentTab,
+    viewType: "documents", // TODO(GROUP_UI): Do not pass viewType, get all document/tables in one call
   });
 
   const rows: RowData[] =
@@ -132,45 +126,6 @@ export const VaultDataSourceViewContentList = ({
             : ""
         )}
       >
-        <DropdownMenu>
-          <DropdownMenu.Button>
-            <Button
-              size="sm"
-              label="Add data"
-              icon={PlusIcon}
-              variant="primary"
-              type="menu"
-            />
-          </DropdownMenu.Button>
-
-          <DropdownMenu.Items width={300}>
-            <DropdownMenu.Item
-              icon={DocumentTextIcon}
-              onClick={() => {
-                contentActionsRef.current?.callAction(
-                  "DocumentUploadOrEditModal"
-                );
-              }}
-              label={"Create a document"}
-            />
-            <DropdownMenu.Item
-              icon={TableIcon}
-              onClick={() => {
-                contentActionsRef.current?.callAction("TableUploadOrEditModal");
-              }}
-              label={"Create a table"}
-            />
-            <DropdownMenu.Item
-              icon={CloudArrowUpIcon}
-              onClick={() => {
-                contentActionsRef.current?.callAction(
-                  "MultipleDocumentsUpload"
-                );
-              }}
-              label={"Upload multiple files"}
-            />
-          </DropdownMenu.Items>
-        </DropdownMenu>
         {rows.length > 0 && (
           <>
             <Searchbar
@@ -181,33 +136,10 @@ export const VaultDataSourceViewContentList = ({
                 setDataSourceSearch(s);
               }}
             />
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  size="sm"
-                  label="Type"
-                  icon={PlusIcon}
-                  variant="secondary"
-                  type="menu"
-                />
-              </DropdownMenu.Button>
-
-              <DropdownMenu.Items>
-                <DropdownMenu.Item
-                  onClick={() => {
-                    setCurrentTab("documents");
-                  }}
-                  label={"Documents"}
-                />
-                <DropdownMenu.Item
-                  onClick={() => {
-                    setCurrentTab("tables");
-                  }}
-                  label={"Tables"}
-                />
-              </DropdownMenu.Items>
-            </DropdownMenu>
           </>
+        )}
+        {isFolder(dataSourceView.dataSource) && (
+          <FoldersHeaderMenu contentActionsRef={contentActionsRef} />
         )}
       </div>
       {rows.length > 0 && (
@@ -215,7 +147,7 @@ export const VaultDataSourceViewContentList = ({
           data={rows}
           columns={getTableColumns()}
           filter={dataSourceSearch}
-          filterColumn={"title"}
+          filterColumn="title"
         />
       )}
       <ContentActions

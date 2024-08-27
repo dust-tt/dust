@@ -87,7 +87,7 @@ export function DocumentUploadOrEditModal({
     }
   }, [dataSourceView.dataSource.name, documentIdToLoad, owner.sId]);
 
-  // TODO Get the total number of documents
+  //TODO(GROUPS_UI) Get the total number of documents
   const total = 0;
 
   if (

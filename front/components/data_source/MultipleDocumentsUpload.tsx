@@ -27,7 +27,7 @@ export const MultipleDocumentsUpload = ({
   isOpen,
   onClose,
   owner,
-  // plan // TODO check max files upload
+  // plan //TODO(GROUPS_UI) check max files upload
 }: MultipleDocumentsUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +116,7 @@ export const MultipleDocumentsUpload = ({
           </>
         )}
       </Dialog>
+      {/* TODO(GROUPS_UI) use useFileUploaderService */}
       <input
         className="hidden"
         type="file"

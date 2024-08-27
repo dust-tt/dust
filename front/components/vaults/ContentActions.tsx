@@ -146,9 +146,9 @@ export const getMenuItems = (
     ];
   }
   if (isWebsite(dataSourceView.dataSource)) {
-    // TODO Actions for webrawler datasource
-    return [];
+    // TODO(GROUPS_UI): Actions for webrawler datasource
+    return null;
   }
-  // TODO Actions for managed datasource
-  return [];
+  // TODO(GROUPS_UI): Actions for managed datasource
+  return null;
 };

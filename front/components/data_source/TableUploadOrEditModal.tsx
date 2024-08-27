@@ -81,7 +81,7 @@ export function TableUploadOrEditModal({
     setTableDescription(table ? table.description : "");
   }, [initialTableId, table]);
 
-  // TODO Get the total number of documents
+  //TODO(GROUPS_UI)  Get the total number of documents
   const total = 0;
 
   if (
@@ -194,7 +194,7 @@ export function TableUploadOrEditModal({
         throw new Error("Unreachable: fileContent is null");
       }
 
-      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
+      //TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
       const uploadRes = await fetch(
         `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`,
         {

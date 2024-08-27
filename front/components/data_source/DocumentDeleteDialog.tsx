@@ -27,7 +27,7 @@ export const DocumentDeleteDialog = ({
   const [loading, setLoading] = useState(false);
   const handleDeleteDocument = async () => {
     try {
-      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
+      //TODO(GROUPS_UI)replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSourceView.dataSource.name
@@ -44,7 +44,7 @@ export const DocumentDeleteDialog = ({
       sendNotification({
         type: "success",
         title: "Document successfully deleted",
-        description: `Document ${contentNode.internalId} was successfully deleted`,
+        description: `Document ${contentNode.title} was successfully deleted`,
       });
       onClose(true);
     } catch (error) {
@@ -70,8 +70,7 @@ export const DocumentDeleteDialog = ({
     >
       <div className="mt-1 text-left">
         <p className="mb-4">
-          Are you sure you want to delete the document "{contentNode.internalId}
-          " ?
+          Are you sure you want to delete the document "{contentNode.title}" ?
         </p>
         <p className="mb-4 font-bold text-warning-500">
           This action cannot be undone.
