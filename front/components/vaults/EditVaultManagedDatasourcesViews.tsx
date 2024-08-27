@@ -71,24 +71,25 @@ export function EditVaultManagedDataSourcesViews({
             }
           );
           if (!res.ok) {
-            const rawError = (await res.json()) as { error: APIError };
+            const rawError: { error: APIError } = await res.json();
             return rawError.error.message;
           }
         } catch (e) {
-          return null;
+          return `${e}`;
         }
+        return null;
       })
     );
 
     const upsertPromisesErors = await Promise.all(
       Object.values(selectionConfigurations).map(
         async (selectionConfiguration) => {
-          const sDsv = selectionConfiguration.dataSourceView;
-          const sDs = sDsv.dataSource;
+          const {
+            dataSourceView: { dataSource: sDs },
+          } = selectionConfiguration;
+
           const existingViewForDs = vaultDataSourceViews.find(
-            (d) =>
-              d.dataSource.name ===
-              selectionConfiguration.dataSourceView.dataSource.name
+            (d) => d.dataSource.name === sDs.name
           );
 
           const body = {
@@ -136,11 +137,11 @@ export function EditVaultManagedDataSourcesViews({
             }
 
             if (!res.ok) {
-              const rawError = (await res.json()) as { error: APIError };
+              const rawError: { error: APIError } = await res.json();
               return rawError.error.message;
             }
           } catch (e) {
-            return "An Unknown error occurred while adding data to vault.";
+            return `An Unknown error ${e} occurred while adding data to vault.`;
           }
           return null;
         }

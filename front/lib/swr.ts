@@ -120,11 +120,10 @@ export const postFetcher = async ([url, body]: [string, object]) => {
   return resHandler(res);
 };
 
-type UrlsAndOptions = { url: string; options: object };
+type UrlsAndOptions = { url: string; options: RequestInit };
 
 const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
-  const f = (url: string, options: object) =>
-    fetcher(url, options).then((r) => r);
+  const f = async (url: string, options: RequestInit) => fetcher(url, options);
 
   return Promise.all<T>(
     urlsAndOptions.map(({ url, options }) => f(url, options))
@@ -532,8 +531,8 @@ export function useMultipleDataSourcesContentNodes({
     fetcherMultiple<GetContentNodeResponseBody>
   );
 
-  const isNodesError = errors?.some((e: boolean | undefined) => !!e) ?? false;
-  const isNodesLoading = results?.some((r) => !r.nodes) ?? true;
+  const isNodesError = Boolean(errors?.some(Boolean));
+  const isNodesLoading = !results?.every((r) => r.nodes);
 
   return useMemo(
     () => ({
