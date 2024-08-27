@@ -462,17 +462,16 @@ const handleDataSourceWithProvider = async ({
   await dataSource.update({
     connectorId: connectorsRes.value.id,
   });
-  const dataSourceType = dataSource.toJSON();
 
   res.status(201).json({
-    dataSource: dataSourceType,
+    dataSource: dataSource.toJSON(),
     dataSourceView: dataSourceView.toJSON(),
   });
 
   try {
     // Asynchronous tracking & operations without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
-      dataSource: dataSourceType,
+      dataSource: dataSource.toJSON(),
       user,
       workspace: owner,
     });
@@ -625,10 +624,8 @@ const handleDataSourceWithoutProvider = async ({
       dataSource
     );
 
-  const dataSourceType = dataSource.toJSON();
-
   res.status(201).json({
-    dataSource: dataSourceType,
+    dataSource: dataSource.toJSON(),
     dataSourceView: dataSourceView.toJSON(),
   });
 
@@ -637,7 +634,7 @@ const handleDataSourceWithoutProvider = async ({
     void ServerSideTracking.trackDataSourceCreated({
       user,
       workspace: owner,
-      dataSource: dataSourceType,
+      dataSource: dataSource.toJSON(),
     });
   } catch (error) {
     logger.error(
