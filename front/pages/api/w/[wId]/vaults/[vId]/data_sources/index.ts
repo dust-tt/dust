@@ -463,30 +463,43 @@ const handleDataSourceWithProvider = async ({
     connectorId: connectorsRes.value.id,
   });
   const dataSourceType = dataSource.toJSON();
-  void ServerSideTracking.trackDataSourceCreated({
-    dataSource: dataSourceType,
-    user,
-    workspace: owner,
-  });
 
-  const email = auth.user()?.email;
-  if (email && !isDisposableEmailDomain(email)) {
-    void sendUserOperationMessage({
-      logger,
-      message: `${email} \`${dataSource.name}\`  for workspace \`${
-        owner.name
-      }\` sId: \`${owner.sId}\` connectorId: \`${
-        connectorsRes.value.id
-      }\` provider: \`${provider}\` trialing: \`${
-        auth.subscription()?.trialing ? "true" : "false"
-      }\``,
-    });
-  }
-
-  return res.status(201).json({
+  res.status(201).json({
     dataSource: dataSourceType,
     dataSourceView: dataSourceView.toJSON(),
   });
+
+  try {
+    // Asynchronous tracking & operations without awaiting, handled safely
+    void ServerSideTracking.trackDataSourceCreated({
+      dataSource: dataSourceType,
+      user,
+      workspace: owner,
+    });
+
+    const email = auth.user()?.email;
+    if (email && !isDisposableEmailDomain(email)) {
+      void sendUserOperationMessage({
+        logger,
+        message: `${email} \`${dataSource.name}\`  for workspace \`${
+          owner.name
+        }\` sId: \`${owner.sId}\` connectorId: \`${
+          connectorsRes.value.id
+        }\` provider: \`${provider}\` trialing: \`${
+          auth.subscription()?.trialing ? "true" : "false"
+        }\``,
+      });
+    }
+  } catch (error) {
+    logger.error(
+      {
+        error,
+      },
+      "Failed to track data source creation"
+    );
+  }
+
+  return;
 };
 
 /**
@@ -613,16 +626,29 @@ const handleDataSourceWithoutProvider = async ({
     );
 
   const dataSourceType = dataSource.toJSON();
-  void ServerSideTracking.trackDataSourceCreated({
-    user,
-    workspace: owner,
-    dataSource: dataSourceType,
-  });
 
-  return res.status(201).json({
+  res.status(201).json({
     dataSource: dataSourceType,
     dataSourceView: dataSourceView.toJSON(),
   });
+
+  try {
+    // Asynchronous tracking without awaiting, handled safely
+    void ServerSideTracking.trackDataSourceCreated({
+      user,
+      workspace: owner,
+      dataSource: dataSourceType,
+    });
+  } catch (error) {
+    logger.error(
+      {
+        error,
+      },
+      "Failed to track data source creation"
+    );
+  }
+
+  return;
 };
 
 export default withSessionAuthenticationForWorkspace(handler);
