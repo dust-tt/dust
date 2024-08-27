@@ -10,34 +10,36 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
-  DataSourceType,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
   PlanType,
   PostDataSourceDocumentRequestBody,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
 
+import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { classNames } from "@app/lib/utils";
 
-export interface DocumentUploadModalProps {
+export interface DocumentUploadOrEditModalProps {
+  dataSourceView: DataSourceViewType;
+  contentNode?: LightContentNode;
   isOpen: boolean;
-  onClose: () => void;
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
+  onClose: (save: boolean) => void;
+  owner: LightWorkspaceType;
   plan: PlanType;
-  documentIdToLoad: string | null;
 }
 
-export function DocumentUploadModal({
+export function DocumentUploadOrEditModal({
+  dataSourceView,
+  contentNode,
   isOpen,
   onClose,
   owner,
-  dataSource,
   plan,
-  documentIdToLoad,
-}: DocumentUploadModalProps) {
+}: DocumentUploadOrEditModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [documentId, setDocumentId] = useState("");
@@ -52,6 +54,7 @@ export function DocumentUploadModal({
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
   const sendNotification = useContext(SendNotificationsContext);
+  const documentIdToLoad = contentNode?.internalId;
 
   useEffect(() => {
     setDisabled(!documentId || !text);
@@ -63,7 +66,7 @@ export function DocumentUploadModal({
       setDisabled(true);
       fetch(
         `/api/w/${owner.sId}/data_sources/${
-          dataSource.name
+          dataSourceView.dataSource.name
         }/documents/${encodeURIComponent(documentIdToLoad)}`
       )
         .then(async (res) => {
@@ -82,7 +85,25 @@ export function DocumentUploadModal({
       setTags([]);
       setSourceUrl("");
     }
-  }, [dataSource.name, documentIdToLoad, owner.sId]);
+  }, [dataSourceView.dataSource.name, documentIdToLoad, owner.sId]);
+
+  //TODO(GROUPS_UI) Get the total number of documents
+  const total = 0;
+
+  if (
+    !documentIdToLoad && // If there is no document ID, it means we are creating a new document
+    plan.limits.dataSources.documents.count != -1 &&
+    total >= plan.limits.dataSources.documents.count
+  ) {
+    return (
+      <DocumentLimitPopup
+        isOpen={isOpen}
+        plan={plan}
+        onClose={() => onClose(false)}
+        owner={owner}
+      />
+    );
+  }
 
   const handleUpsert = async () => {
     setLoading(true);
@@ -104,9 +125,10 @@ export function DocumentUploadModal({
     };
 
     try {
+      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${
-          dataSource.name
+          dataSourceView.dataSource.name
         }/documents/${encodeURIComponent(documentId)}`,
         {
           method: "POST",
@@ -125,7 +147,7 @@ export function DocumentUploadModal({
         title: "Document successfully added",
         description: `Your document ${documentId} was successfully added`,
       });
-      onClose();
+      onClose(true);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -160,7 +182,7 @@ export function DocumentUploadModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => onClose(false)}
       hasChanged={hasChanged}
       variant="side-md"
       onSave={
@@ -171,7 +193,7 @@ export function DocumentUploadModal({
           : undefined
       }
       isSaving={loading}
-      title={documentIdToLoad ? "Edit document" : "Add a new document"}
+      title={contentNode?.internalId ? "Edit document" : "Add a new document"}
     >
       <Page.Vertical align="stretch">
         <div className="ml-2 mr-2 space-y-2">

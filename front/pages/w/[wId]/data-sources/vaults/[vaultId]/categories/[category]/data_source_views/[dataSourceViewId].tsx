@@ -3,6 +3,7 @@ import type {
   DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
+  PlanType,
   VaultType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -25,13 +26,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     dataSourceView: DataSourceViewType;
     isAdmin: boolean;
     parentId?: string;
+    plan: PlanType;
     vault: VaultType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
-  if (!subscription) {
+  if (!subscription || !plan) {
     return {
       notFound: true,
     };
@@ -76,6 +79,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       // undefined is not allowed in the JSON response
       ...(parentId && { parentId }),
+      plan,
       subscription,
       vault: vault.toJSON(),
     },
@@ -88,6 +92,7 @@ export default function Vault({
   isAdmin,
   owner,
   parentId,
+  plan,
   vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -95,6 +100,7 @@ export default function Vault({
     <Page.Vertical gap="xl" align="stretch">
       <VaultDataSourceViewContentList
         owner={owner}
+        plan={plan}
         vault={vault}
         isAdmin={isAdmin}
         parentId={parentId}

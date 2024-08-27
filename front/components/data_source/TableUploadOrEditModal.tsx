@@ -5,34 +5,41 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, Result, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+  PlanType,
+  Result,
+} from "@dust-tt/types";
 import { parseAndStringifyCsv } from "@dust-tt/types";
 import { Err, isSlugified, Ok } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
 
+import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useTable } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
 
-interface TableUploadModalProps {
+interface TableUploadOrEditModalProps {
+  dataSourceView: DataSourceViewType;
+  contentNode?: LightContentNode;
   isOpen: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  dataSource: DataSourceType;
-  owner: WorkspaceType;
-  initialTableId: string | null;
+  onClose: (save: boolean) => void;
+  owner: LightWorkspaceType;
+  plan: PlanType;
 }
 
-export function TableUploadModal({
+export function TableUploadOrEditModal({
+  dataSourceView,
+  contentNode,
   isOpen,
-  dataSource,
-  owner,
-  initialTableId,
   onClose,
-  onSave,
-}: TableUploadModalProps) {
+  owner,
+  plan,
+}: TableUploadOrEditModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,9 +51,11 @@ export function TableUploadModal({
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
 
+  const initialTableId = contentNode?.internalId;
+
   const { table } = useTable({
     workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
+    dataSourceName: dataSourceView.dataSource.name,
     tableId: initialTableId ?? null,
   });
 
@@ -71,6 +80,24 @@ export function TableUploadModal({
     setTableName(table ? table.name : "");
     setTableDescription(table ? table.description : "");
   }, [initialTableId, table]);
+
+  //TODO(GROUPS_UI)  Get the total number of documents
+  const total = 0;
+
+  if (
+    !initialTableId && // If there is no document ID, it means we are creating a new document
+    plan.limits.dataSources.documents.count != -1 &&
+    total >= plan.limits.dataSources.documents.count
+  ) {
+    return (
+      <DocumentLimitPopup
+        isOpen={isOpen}
+        plan={plan}
+        onClose={() => onClose(false)}
+        owner={owner}
+      />
+    );
+  }
 
   const isNameValid = (name: string) => name.trim() !== "" && isSlugified(name);
 
@@ -167,8 +194,9 @@ export function TableUploadModal({
         throw new Error("Unreachable: fileContent is null");
       }
 
+      //TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
       const uploadRes = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/csv`,
+        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -192,6 +220,7 @@ export function TableUploadModal({
         title: "Table successfully added",
         description: `Table ${tableName} was successfully added.`,
       });
+      onClose(true);
     } finally {
       setUploading(false);
     }
@@ -200,13 +229,12 @@ export function TableUploadModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => onClose(false)}
       hasChanged={!hasChanged}
       variant="side-md"
       title={initialTableId ? "Edit table" : "Add a new table"}
       onSave={async () => {
         await handleUpload();
-        onSave();
       }}
     >
       <Page.Vertical align="stretch">

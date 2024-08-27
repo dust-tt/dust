@@ -1,24 +1,35 @@
 import {
+  ChatBubbleBottomCenterTextIcon,
   DataTable,
+  DocumentIcon,
+  DocumentTextIcon,
   FolderIcon,
-  GlobeAltIcon,
   Searchbar,
   Spinner,
+  TableIcon,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
+  PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isFolder } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
+import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
+import {
+  ContentActions,
+  getMenuItems,
+} from "@app/components/vaults/ContentActions";
+import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
   internalId: string;
-  type: string;
+  icon: React.ComponentType;
   title: string;
   expandable: boolean;
   lastUpdatedAt: number | null;
@@ -27,6 +38,7 @@ type RowData = {
 
 type VaultDataSourceViewContentListProps = {
   dataSourceView: DataSourceViewType;
+  plan: PlanType;
   isAdmin: boolean;
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
@@ -41,10 +53,7 @@ const getTableColumns = () => {
       accessorKey: "title",
       id: "title",
       cell: (info: CellContext<RowData, unknown>) => (
-        <DataTable.CellContent
-          // iconClassName="text-brand"
-          icon={info.row.original.type === "folder" ? FolderIcon : GlobeAltIcon}
-        >
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.title}</span>
         </DataTable.CellContent>
       ),
@@ -54,6 +63,7 @@ const getTableColumns = () => {
 
 export const VaultDataSourceViewContentList = ({
   dataSourceView,
+  plan,
   isAdmin,
   onSelect,
   owner,
@@ -61,24 +71,42 @@ export const VaultDataSourceViewContentList = ({
   vault,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const contentActionsRef = useRef<ContentActionsRef>(null);
+  const visualTable = {
+    file: DocumentTextIcon,
+    folder: FolderIcon,
+    database: TableIcon,
+    channel: ChatBubbleBottomCenterTextIcon,
+  };
 
-  const { vaultContent, isVaultContentLoading } = useVaultDataSourceViewContent(
-    {
-      dataSourceView,
-      filterPermission: "read",
-      owner,
-      parentId,
-      vaultId: vault.sId,
-      viewType: "documents",
-    }
-  );
+  const {
+    vaultContent,
+    isVaultContentLoading,
+    mutateVaultDataSourceViewContent,
+  } = useVaultDataSourceViewContent({
+    dataSourceView,
+    filterPermission: "read",
+    owner,
+    parentId,
+    vaultId: vault.sId,
+    viewType: "documents", // TODO(GROUP_UI): Do not pass viewType, get all document/tables in one call
+  });
 
-  const rows: RowData[] = vaultContent.map((v) => ({
-    ...v,
-    count: 0,
-    usage: 0,
-    onClick: () => onSelect(v.internalId),
-  }));
+  const rows: RowData[] =
+    vaultContent?.map((contentNode) => ({
+      ...contentNode,
+      icon: visualTable[contentNode.type] ?? DocumentIcon,
+      onClick: () => {
+        if (contentNode.expandable) {
+          onSelect(contentNode.internalId);
+        }
+      },
+      moreMenuItems: getMenuItems(
+        dataSourceView,
+        contentNode,
+        contentActionsRef
+      ),
+    })) || [];
 
   if (isVaultContentLoading) {
     return (
@@ -99,26 +127,36 @@ export const VaultDataSourceViewContentList = ({
         )}
       >
         {rows.length > 0 && (
-          <Searchbar
-            name="search"
-            placeholder="Search (Name)"
-            value={dataSourceSearch}
-            onChange={(s) => {
-              setDataSourceSearch(s);
-            }}
-          />
+          <>
+            <Searchbar
+              name="search"
+              placeholder="Search (Name)"
+              value={dataSourceSearch}
+              onChange={(s) => {
+                setDataSourceSearch(s);
+              }}
+            />
+          </>
+        )}
+        {isFolder(dataSourceView.dataSource) && (
+          <FoldersHeaderMenu contentActionsRef={contentActionsRef} />
         )}
       </div>
-      {rows.length > 0 ? (
+      {rows.length > 0 && (
         <DataTable
           data={rows}
           columns={getTableColumns()}
           filter={dataSourceSearch}
-          filterColumn={"title"}
+          filterColumn="title"
         />
-      ) : (
-        <>No content</>
       )}
+      <ContentActions
+        ref={contentActionsRef}
+        dataSourceView={dataSourceView}
+        owner={owner}
+        plan={plan}
+        onSave={mutateVaultDataSourceViewContent}
+      />
     </>
   );
 };
