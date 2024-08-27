@@ -50,6 +50,17 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can interact with datasets.",
+      },
+    });
+  }
+
   const owner = auth.getNonNullableWorkspace();
 
   const app = await getApp(auth, req.query.aId as string);
@@ -73,17 +84,6 @@ async function handler(
       return;
 
     case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can modify an app.",
-          },
-        });
-      }
-
       const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);

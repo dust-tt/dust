@@ -93,7 +93,7 @@ export default function Data({
                 window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.spec.dataset}`;
               }}
               icon={PencilSquareIcon}
-              label="Edit"
+              label={readOnly ? "View" : "Edit"}
               size="xs"
             />
           )}
