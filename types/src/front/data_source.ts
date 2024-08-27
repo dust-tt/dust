@@ -32,8 +32,6 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
 };
 
-export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
-
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
 export type LabsConnectorProvider = "google_drive" | "gong";
@@ -99,4 +97,31 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
   }
 
   return new Ok(undefined);
+}
+
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "microsoft",
+];
+
+export function isFolder(ds: DataSourceType): boolean {
+  // If there is no connectorProvider, it's a folder.
+  return !ds.connectorProvider;
+}
+
+export function isWebsite(ds: DataSourceType): boolean {
+  return ds.connectorProvider === "webcrawler";
+}
+
+export function isManaged(ds: DataSourceType): boolean {
+  return ds.connectorProvider !== null && !isWebsite(ds);
+}
+
+export function canContainStructuredData(ds: DataSourceType): boolean {
+  return Boolean(
+    isFolder(ds) ||
+      (ds.connectorProvider &&
+        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
+  );
 }

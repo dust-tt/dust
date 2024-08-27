@@ -5,4 +5,12 @@ export type VaultType = {
   name: string;
   sId: string;
   kind: VaultKind;
+  groupIds: string[];
 };
+
+export interface ManagedDataSourceViewSelectedNode {
+  name: string;
+  parentsIn: string[] | null;
+}
+export type ManagedDataSourceViewsSelectedNodes =
+  ManagedDataSourceViewSelectedNode[];

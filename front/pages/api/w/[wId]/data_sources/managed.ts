@@ -3,6 +3,7 @@ import type { ConnectorType } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorConfigurationTypeSchema,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
@@ -23,6 +24,10 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
+import {
+  isConnectorProviderAllowedForPlan,
+  isConnectorProviderAssistantDefaultSelected,
+} from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -53,18 +58,12 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+  const user = auth.getNonNullableUser();
 
-  const plan = auth.plan();
-  const user = auth.user();
-  if (
-    !owner ||
-    !plan ||
-    !user ||
-    // No role under "builder" can create a managed data source.
-    // We perform a more detailed check below for each provider,
-    // but this is a first line of defense.
-    !auth.isBuilder()
-  ) {
+  // No role under "builder" can create a managed data source. We perform a more detailed check
+  // below for each provider, but this is a first line of defense.
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -206,47 +205,12 @@ async function handler(
             : `Managed Data Source for ${provider}`;
       }
 
-      let isDataSourceAllowedInPlan: boolean;
-      let assistantDefaultSelected: boolean;
-      switch (provider) {
-        case "confluence":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isConfluenceAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "slack":
-          isDataSourceAllowedInPlan = plan.limits.connections.isSlackAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "notion":
-          isDataSourceAllowedInPlan = plan.limits.connections.isNotionAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "github":
-          isDataSourceAllowedInPlan = plan.limits.connections.isGithubAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "google_drive":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isGoogleDriveAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "intercom":
-          isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
-          assistantDefaultSelected = true;
-          break;
-        case "microsoft":
-          isDataSourceAllowedInPlan = true;
-          assistantDefaultSelected = true;
-          break;
-        case "webcrawler":
-          isDataSourceAllowedInPlan =
-            plan.limits.connections.isWebCrawlerAllowed;
-          assistantDefaultSelected = false;
-          break;
-        default:
-          assertNever(provider);
-      }
+      const isDataSourceAllowedInPlan = isConnectorProviderAllowedForPlan(
+        plan,
+        provider
+      );
+      const assistantDefaultSelected =
+        isConnectorProviderAssistantDefaultSelected(provider);
 
       // Enforce plan limits: managed DataSources.
       if (!isDataSourceAllowedInPlan) {
@@ -291,7 +255,8 @@ async function handler(
         });
       }
 
-      const dataSourceEmbedder = owner.defaultEmbeddingProvider ?? "openai";
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
       const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
 
       // Dust managed credentials: managed data source.
@@ -344,13 +309,22 @@ async function handler(
         vault
       );
 
-      // For all data sources, we create a default view in the global vault.
-      const globalVault = vault.isGlobal()
-        ? vault
-        : await VaultResource.fetchWorkspaceGlobalVault(auth);
+      // For each data source, we create two views:
+      // - One default view in its associated vault
+      // - If the data source resides in the system vault, we also create a custom view in the global vault until vault are released.
+
+      if (dataSource.vault.isSystem()) {
+        const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          globalVault,
+          dataSource,
+          "custom"
+        );
+      }
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        globalVault,
+        dataSource.vault,
         dataSource
       );
 

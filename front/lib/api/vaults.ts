@@ -3,58 +3,35 @@ import type {
   ConnectorsAPIError,
   ContentNodesViewType,
   CoreAPIError,
-  DataSourceOrViewCategory,
-  DataSourceOrViewInfo,
+  DataSourceViewCategory,
   LightContentNode,
   Result,
 } from "@dust-tt/types";
-import { ConnectorsAPI, CoreAPI, Ok } from "@dust-tt/types";
+import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-
-export const getDataSourceInfo = async (
-  auth: Authenticator,
-  dataSource: DataSourceResource
-): Promise<DataSourceOrViewInfo> => {
-  const usageRes = await dataSource.getUsagesByAgents(auth);
-  return {
-    ...dataSource.toJSON(),
-    usage: usageRes.isOk() ? usageRes.value : 0,
-    category: getDataSourceCategory(dataSource),
-  };
-};
-
-export const getDataSourceInfos = async (
-  auth: Authenticator,
-  vault: VaultResource
-): Promise<DataSourceOrViewInfo[]> => {
-  const dataSources = await DataSourceResource.listByVault(auth, vault);
-
-  return Promise.all(
-    dataSources.map((dataSource) => getDataSourceInfo(auth, dataSource))
-  );
-};
 
 export const getDataSourceCategory = (
   dataSource: DataSourceResource
-): DataSourceOrViewCategory => {
+): DataSourceViewCategory => {
   if (dataSource.isFolder()) {
-    return "files";
+    return "folder";
   }
 
   if (dataSource.isWebcrawler()) {
-    return "webfolder";
+    return "website";
   }
 
   return "managed";
 };
 
 export const getDataSourceContent = async (
+  auth: Authenticator,
   dataSource: DataSourceResource,
+  permission: ConnectorPermission | undefined,
   viewType: ContentNodesViewType,
   rootIds: string[] | null,
   parentId: string | null,
@@ -62,8 +39,9 @@ export const getDataSourceContent = async (
 ): Promise<Result<LightContentNode[], ConnectorsAPIError | CoreAPIError>> => {
   return dataSource.connectorId
     ? getManagedDataSourceContent(
+        auth,
         dataSource.connectorId,
-        "read",
+        permission,
         rootIds,
         parentId,
         viewType
@@ -75,12 +53,42 @@ export const getDataSourceContent = async (
 };
 
 export const getManagedDataSourceContent = async (
+  auth: Authenticator,
   connectorId: string,
-  permission: ConnectorPermission,
+  permission: ConnectorPermission | undefined,
   rootIds: string[] | null,
   parentId: string | null,
   viewType: ContentNodesViewType
 ): Promise<Result<LightContentNode[], ConnectorsAPIError>> => {
+  switch (permission) {
+    case "read":
+      // We let users get the read  permissions of a connector
+      // `read` is used for data source selection when creating personal assitsants
+      break;
+    case "write":
+      // We let builders get the write permissions of a connector.
+      // `write` is used for selection of default slack channel in the workspace assistant
+      // builder.
+      if (!auth.isBuilder()) {
+        return new Err({
+          type: "authorization_error",
+          message:
+            "Only builders of the current workspace can view 'write' permissions of a data source.",
+        });
+      }
+      break;
+    case undefined:
+      // Only admins can browse "all" the resources of a connector.
+      if (!auth.isAdmin()) {
+        return new Err({
+          type: "authorization_error",
+          message:
+            "Only admins of the current workspace can view all permissions of a data source.",
+        });
+      }
+      break;
+  }
+
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
@@ -121,6 +129,8 @@ export const getManagedDataSourceContent = async (
     preventSelection: r.preventSelection,
     dustDocumentId: r.dustDocumentId,
     lastUpdatedAt: r.lastUpdatedAt,
+    titleWithParentsContext: r.titleWithParentsContext,
+    sourceUrl: r.sourceUrl,
   }));
 
   return new Ok(results);
@@ -146,15 +156,17 @@ export const getUnmanagedDataSourceContent = async (
     }
 
     const documentsAsContentNodes = documentsRes.value.documents.map((doc) => ({
-      internalId: doc.document_id,
-      parentInternalId: null,
-      type: "file" as const,
-      title: doc.document_id,
-      expandable: false,
-      preventSelection: false,
       dustDocumentId: doc.document_id,
+      expandable: false,
+      internalId: doc.document_id,
       lastUpdatedAt: doc.timestamp,
+      parentInternalId: null,
+      preventSelection: false,
+      sourceUrl: doc.source_url ?? null,
+      title: doc.document_id,
+      type: "file" as const,
     }));
+
     return new Ok(documentsAsContentNodes);
   } else {
     const tablesRes = await coreAPI.getTables({
@@ -167,14 +179,15 @@ export const getUnmanagedDataSourceContent = async (
     }
 
     const tablesAsContentNodes = tablesRes.value.tables.map((table) => ({
-      internalId: table.table_id,
-      parentInternalId: null,
-      type: "database" as const,
-      title: table.name,
-      expandable: false,
-      preventSelection: false,
       dustDocumentId: table.table_id,
+      expandable: false,
+      internalId: table.table_id,
       lastUpdatedAt: table.timestamp,
+      parentInternalId: null,
+      preventSelection: false,
+      sourceUrl: null,
+      title: table.name,
+      type: "database" as const,
     }));
 
     return new Ok(tablesAsContentNodes);

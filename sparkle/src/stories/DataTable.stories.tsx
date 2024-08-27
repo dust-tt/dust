@@ -82,42 +82,50 @@ export const DataTableExample = () => {
       accessorKey: "name",
       header: "Name",
       cell: (info) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           avatarUrl={info.row.original.avatarUrl}
           icon={info.row.original.icon}
           description={info.row.original.description}
           roundedAvatar={info.row.original.roundedAvatar}
         >
           {info.row.original.name}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
       accessorKey: "usedBy",
       header: "Used by",
       cell: (info) => (
-        <DataTable.Cell>{info.row.original.usedBy}</DataTable.Cell>
+        <DataTable.CellContent>
+          {info.row.original.usedBy}
+        </DataTable.CellContent>
       ),
     },
     {
       accessorKey: "addedBy",
       header: "Added by",
       cell: (info) => (
-        <DataTable.Cell>{info.row.original.addedBy}</DataTable.Cell>
+        <DataTable.CellContent>
+          {info.row.original.addedBy}
+        </DataTable.CellContent>
       ),
     },
     {
       accessorKey: "lastUpdated",
       header: "Last updated",
       cell: (info) => (
-        <DataTable.Cell>{info.row.original.lastUpdated}</DataTable.Cell>
+        <DataTable.CellContent>
+          {info.row.original.lastUpdated}
+        </DataTable.CellContent>
       ),
       enableSorting: false,
     },
     {
       accessorKey: "size",
       header: "Size",
-      cell: (info) => <DataTable.Cell>{info.row.original.size}</DataTable.Cell>,
+      cell: (info) => (
+        <DataTable.CellContent>{info.row.original.size}</DataTable.CellContent>
+      ),
     },
   ];
 

@@ -1,6 +1,5 @@
 import type {
   Attributes,
-  FindOptions,
   ForeignKey,
   Includeable,
   ModelStatic,
@@ -12,7 +11,13 @@ import { Model } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import type { Workspace } from "@app/lib/models/workspace";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import type {
+  InferIncludeType,
+  ResourceFindOptions,
+} from "@app/lib/resources/types";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 
 // Interface to enforce workspaceId and vaultId.
@@ -20,33 +25,6 @@ interface ModelWithVault {
   workspaceId: ForeignKey<Workspace["id"]>;
   vaultId: ForeignKey<VaultModel["id"]>;
   vault: NonAttribute<VaultModel>;
-}
-
-export type NonAttributeKeys<M> = {
-  [K in keyof M]: M[K] extends NonAttribute<Model<any, any>> ? K : never;
-}[keyof M] &
-  string;
-
-type InferIncludeType<M> = {
-  [K in NonAttributeKeys<M>]: M[K] extends NonAttribute<infer T>
-    ? T extends Model<any, any>
-      ? T
-      : never
-    : never;
-};
-
-export type TypedIncludeable<M> = {
-  [K in NonAttributeKeys<M>]: {
-    model: ModelStatic<InferIncludeType<M>[K]>;
-    as: K;
-  };
-}[NonAttributeKeys<M>];
-
-export interface ResourceFindOptions<M extends Model> {
-  includes?: TypedIncludeable<M>[];
-  limit?: number;
-  order?: FindOptions<M>["order"];
-  where?: WhereOptions<M>;
 }
 
 export abstract class ResourceWithVault<
@@ -80,6 +58,7 @@ export abstract class ResourceWithVault<
       {
         model: VaultResource.model,
         as: "vault",
+        include: [{ model: GroupResource.model }],
       },
       ...(includes || []),
     ];
@@ -95,7 +74,13 @@ export abstract class ResourceWithVault<
     });
 
     return blobs.map((b) => {
-      const vault = new VaultResource(VaultResource.model, b.vault.get());
+      const vault = new VaultResource(
+        VaultResource.model,
+        b.vault.get(),
+        b.vault.groups.map(
+          (group) => new GroupResource(GroupModel, group.get())
+        )
+      );
 
       const includedResults = (includes || []).reduce<IncludeType>(
         (acc, current) => {

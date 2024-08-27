@@ -1,28 +1,27 @@
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceType,
+  DataSourceViewType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-} from "@dust-tt/types";
+import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
-import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
+import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
+import {
+  buildInitialActions,
+  getAccessibleSourcesAndApps,
+} from "@app/components/assistant_builder/server_side_props_helpers";
 import type {
   AssistantBuilderInitialState,
   BuilderFlow,
 } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
-import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -30,7 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   gaTrackingId: string;
-  dataSources: DataSourceType[];
+  dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
@@ -52,16 +51,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const allDataSources = await getDataSources(auth);
-
-  const dataSourcesByName = allDataSources.reduce(
-    (acc, ds) => ({ ...acc, [ds.name]: ds }),
-    {} as Record<string, DataSourceType>
-  );
-  const configuration = await getAgentConfiguration(
-    auth,
-    context.params?.aId as string
-  );
+  const [{ dataSourceViews, dustApps }, configuration] = await Promise.all([
+    getAccessibleSourcesAndApps(auth),
+    getAgentConfiguration(auth, context.params?.aId as string),
+  ]);
 
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
@@ -81,19 +74,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
-  const allDustApps = await getApps(auth);
-
   return {
     props: {
       owner,
       plan,
       subscription,
       gaTrackingId: config.getGaTrackingId(),
-      dataSources: allDataSources,
-      dustApps: allDustApps,
+      dataSourceViews,
+      dustApps,
       actions: await buildInitialActions({
-        dataSourcesByName,
-        dustApps: allDustApps,
+        dataSourceViews,
+        dustApps,
         configuration,
       }),
       agentConfiguration: configuration,
@@ -108,40 +99,14 @@ export default function EditAssistant({
   subscription,
   plan,
   gaTrackingId,
-  dataSources,
+  dataSourceViews,
   dustApps,
   actions,
   agentConfiguration,
   flow,
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  agentConfiguration.actions.map((action) => {
-    if (isRetrievalConfiguration(action)) {
-      if (action.query === "none") {
-        if (
-          action.relativeTimeFrame === "auto" ||
-          action.relativeTimeFrame === "none"
-        ) {
-          /** Should never happen. Throw loudly if it does */
-          throw new Error(
-            "Invalid configuration: exhaustive retrieval must have a definite time frame"
-          );
-        }
-      }
-    }
-
-    if (isProcessConfiguration(action)) {
-      if (
-        action.relativeTimeFrame === "auto" ||
-        action.relativeTimeFrame === "none"
-      ) {
-        /** Should never happen as not permitted for now. */
-        throw new Error(
-          "Invalid configuration: process must have a definite time frame"
-        );
-      }
-    }
-  });
+  throwIfInvalidAgentConfiguration(agentConfiguration);
 
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global assistant");
@@ -152,35 +117,38 @@ export default function EditAssistant({
   }
 
   return (
-    <AssistantBuilder
-      owner={owner}
-      subscription={subscription}
-      plan={plan}
-      gaTrackingId={gaTrackingId}
-      dataSources={dataSources}
+    <AssistantBuilderProvider
       dustApps={dustApps}
-      flow={flow}
-      initialBuilderState={{
-        scope: agentConfiguration.scope,
-        handle: agentConfiguration.name,
-        description: agentConfiguration.description,
-        instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
-        avatarUrl: agentConfiguration.pictureUrl,
-        generationSettings: {
-          modelSettings: {
-            modelId: agentConfiguration.model.modelId,
-            providerId: agentConfiguration.model.providerId,
+      dataSourceViews={dataSourceViews}
+    >
+      <AssistantBuilder
+        owner={owner}
+        subscription={subscription}
+        plan={plan}
+        gaTrackingId={gaTrackingId}
+        flow={flow}
+        initialBuilderState={{
+          scope: agentConfiguration.scope,
+          handle: agentConfiguration.name,
+          description: agentConfiguration.description,
+          instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
+          avatarUrl: agentConfiguration.pictureUrl,
+          generationSettings: {
+            modelSettings: {
+              modelId: agentConfiguration.model.modelId,
+              providerId: agentConfiguration.model.providerId,
+            },
+            temperature: agentConfiguration.model.temperature,
           },
-          temperature: agentConfiguration.model.temperature,
-        },
-        actions,
-        visualizationEnabled: agentConfiguration.visualizationEnabled,
-        maxStepsPerRun: agentConfiguration.maxStepsPerRun,
-        templateId: agentConfiguration.templateId,
-      }}
-      agentConfigurationId={agentConfiguration.sId}
-      baseUrl={baseUrl}
-      defaultTemplate={null}
-    />
+          actions,
+          visualizationEnabled: agentConfiguration.visualizationEnabled,
+          maxStepsPerRun: agentConfiguration.maxStepsPerRun,
+          templateId: agentConfiguration.templateId,
+        }}
+        agentConfigurationId={agentConfiguration.sId}
+        baseUrl={baseUrl}
+        defaultTemplate={null}
+      />
+    </AssistantBuilderProvider>
   );
 }

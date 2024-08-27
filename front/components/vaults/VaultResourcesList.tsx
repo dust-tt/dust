@@ -1,17 +1,9 @@
-import {
-  Button,
-  Chip,
-  DataTable,
-  DropdownMenu,
-  PlusIcon,
-  RobotIcon,
-  Searchbar,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Chip, DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
-  DataSourceOrViewCategory,
+  DataSourceViewCategory,
   EditedByUser,
+  PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -23,12 +15,13 @@ import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
-import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
+import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
+import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import {
-  CONNECTOR_CONFIGURATIONS,
-  getDataSourceOrViewName,
+  getConnectorProviderLogoWithFallback,
+  getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useDataSources, useVaultDataSourceOrViews } from "@app/lib/swr";
+import { useDataSources, useVaultDataSourceViews } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -43,16 +36,17 @@ type RowData = {
   workspaceId: string;
   editedByUser?: EditedByUser | null;
   onClick?: () => void;
-  onMoreClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;
 
 type VaultResourcesListProps = {
   owner: WorkspaceType;
+  plan: PlanType;
   isAdmin: boolean;
   vault: VaultType;
-  category: DataSourceOrViewCategory;
+  systemVault: VaultType;
+  category: DataSourceViewCategory;
   onSelect: (sId: string) => void;
 };
 
@@ -63,29 +57,16 @@ const getTableColumns = () => {
       accessorKey: "label",
       id: "label",
       cell: (info: Info) => (
-        <DataTable.Cell icon={info.row.original.icon}>
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold"> {info.row.original.label}</span> (
           {info.row.original.count} items)
-        </DataTable.Cell>
-      ),
-    },
-    {
-      header: "Used by",
-      accessorKey: "usage",
-      cell: (info: Info) => (
-        <>
-          {info.row.original.usage ? (
-            <DataTable.Cell icon={RobotIcon}>
-              {info.row.original.usage}
-            </DataTable.Cell>
-          ) : null}
-        </>
+        </DataTable.CellContent>
       ),
     },
     {
       header: "Managed by",
       cell: (info: Info) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
           roundedAvatar={true}
         />
@@ -95,7 +76,7 @@ const getTableColumns = () => {
       header: "Last sync",
       accessorKey: "editedByUser.editedAt",
       cell: (info: Info) => (
-        <DataTable.Cell className="w-10">
+        <DataTable.CellContent className="pr-2">
           {(() => {
             if (!info.row.original.connector) {
               return <Chip color="amber">Never</Chip>;
@@ -118,7 +99,7 @@ const getTableColumns = () => {
               );
             }
           })()}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];
@@ -126,8 +107,10 @@ const getTableColumns = () => {
 
 export const VaultResourcesList = ({
   owner,
+  plan,
   isAdmin,
   vault,
+  systemVault,
   category,
   onSelect,
 }: VaultResourcesListProps) => {
@@ -135,48 +118,40 @@ export const VaultResourcesList = ({
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
 
-  const managedDataSources = dataSources.filter(
-    (ds) => ds.connectorProvider && ds.connectorProvider !== "webcrawler"
-  );
   const searchBarRef = useRef<HTMLInputElement>(null);
 
-  const { vaultDataSourceOrViews, isVaultDataSourceOrViewsLoading } =
-    useVaultDataSourceOrViews({
+  // DataSources Views of the current vault.
+  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
+    useVaultDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
-      type: CATEGORY_DETAILS[category].dataSourceOrView,
       category: category,
     });
 
   const rows: RowData[] =
-    vaultDataSourceOrViews?.map((r) => ({
+    vaultDataSourceViews?.map((r) => ({
       sId: r.sId,
       category: r.category,
-      label: getDataSourceOrViewName(r),
-      icon: r.connectorProvider
-        ? CONNECTOR_CONFIGURATIONS[r.connectorProvider].logoComponent
-        : FolderIcon,
+      label: getDataSourceNameFromView(r),
+      icon: getConnectorProviderLogoWithFallback(
+        r.dataSource.connectorProvider,
+        FolderIcon
+      ),
       usage: r.usage,
       count: 0,
       editedByUser: r.editedByUser,
       workspaceId: owner.sId,
-      dataSourceName: r.name,
+      dataSourceName: r.dataSource.name,
       onClick: () => onSelect(r.sId),
-      onMoreClick: () => {},
     })) || [];
 
-  if (isDataSourcesLoading || isVaultDataSourceOrViewsLoading) {
+  if (isDataSourcesLoading || isVaultDataSourceViewsLoading) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner size="lg" />
       </div>
     );
   }
-
-  const setUpDataSources = vaultDataSourceOrViews.map((dsv) => dsv.connectorId);
-  const unusedDataSources = managedDataSources.filter(
-    (ds) => !setUpDataSources.includes(ds.connectorId)
-  );
 
   return (
     <>
@@ -199,39 +174,21 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {category === "managed" && unusedDataSources.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenu.Button>
-              <Button
-                label="Add data from connections"
-                variant="primary"
-                icon={PlusIcon}
-                size="sm"
-              />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items width={180}>
-              {unusedDataSources.map((ds) => (
-                <DropdownMenu.Item
-                  key={ds.name}
-                  label={ds.name}
-                  icon={
-                    ds.connectorProvider
-                      ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                          .logoComponent
-                      : FolderIcon
-                  }
-                  // TODO: add select data sources screen
-                  onClick={() => {}}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+        {category === "managed" && (
+          <EditVaultManagedDataSourcesViews
+            owner={owner}
+            vault={vault}
+            systemVault={systemVault}
+          />
         )}
-        {category === "files" && (
-          <Button label="Add folder" onClick={() => {}} icon={PlusIcon} />
-        )}
-        {category === "webfolder" && (
-          <Button label="Add site" onClick={() => {}} icon={PlusIcon} />
+        {(category === "folder" || category === "website") && (
+          <EditVaultStaticDataSourcesViews
+            owner={owner}
+            plan={plan}
+            vault={vault}
+            category={category}
+            dataSources={dataSources}
+          />
         )}
       </div>
       {rows.length > 0 ? (

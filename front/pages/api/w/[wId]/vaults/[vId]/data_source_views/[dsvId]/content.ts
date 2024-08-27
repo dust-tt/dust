@@ -1,5 +1,6 @@
 import type {
-  GetDataSourceOrViewContentResponseBody,
+  ConnectorPermission,
+  GetDataSourceViewContentResponseBody,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -13,21 +14,10 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetDataSourceOrViewContentResponseBody>
+    WithAPIErrorResponse<GetDataSourceViewContentResponseBody>
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
-      },
-    });
-  }
-
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
     req.query.dsvId as string
@@ -76,8 +66,25 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
+      let filterPermission: ConnectorPermission | undefined = undefined;
+      if (
+        req.query.filterPermission &&
+        typeof req.query.filterPermission === "string"
+      ) {
+        switch (req.query.filterPermission) {
+          case "read":
+            filterPermission = "read";
+            break;
+          case "write":
+            filterPermission = "write";
+            break;
+        }
+      }
+
       const contentRes = await getDataSourceContent(
+        auth,
         dataSourceView.dataSource,
+        filterPermission,
         viewType,
         dataSourceView.parentsIn,
         parentId,

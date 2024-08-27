@@ -410,10 +410,9 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
     }
     case "drive": {
       const item = itemRaw as MicrosoftGraph.Drive;
-      const siteName = extractSiteName(item);
       return {
         nodeType,
-        name: (item.name ?? "unknown") + (siteName ? ` (${siteName})` : ""),
+        name: item.name ?? "unknown",
         internalId: getDriveInternalId(item),
         parentInternalId: null,
         mimeType: null,
@@ -531,10 +530,10 @@ export async function wrapMicrosoftGraphAPIWithResult<T>(
   }
 }
 
-export function extractSiteName(item: MicrosoftGraph.BaseItem) {
+export function extractPath(item: MicrosoftGraph.BaseItem) {
   const webUrl = item.webUrl;
   if (webUrl) {
-    const siteName = webUrl.match(/\/sites\/(.+)/);
+    const siteName = webUrl.match(/\/sites\/(.+)\/.*/);
     if (siteName && siteName[1]) {
       return decodeURI(siteName[1]);
     }

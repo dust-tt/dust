@@ -4,20 +4,20 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
-  ContentNode,
   ContentNodesViewType,
-  DataSourceType,
-  WorkspaceType,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useEffect } from "react";
 
-import { useConnectorPermissions } from "@app/lib/swr";
+import { useVaultDataSourceViewContent } from "@app/lib/swr";
 
 export default function DataSourceResourceSelectorTree({
   owner,
-  dataSource,
+  dataSourceView,
   showExpand, //if not, it's flat
   parentIsSelected,
   selectedParents = [],
@@ -26,14 +26,14 @@ export default function DataSourceResourceSelectorTree({
   filterPermission = "read",
   viewType = "documents",
 }: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
+  owner: LightWorkspaceType;
+  dataSourceView: DataSourceViewType;
   showExpand: boolean;
   parentIsSelected?: boolean;
   selectedParents?: string[];
   selectedResourceIds: string[];
   onSelectChange: (
-    resource: ContentNode,
+    resource: LightContentNode,
     parents: string[],
     selected: boolean
   ) => void;
@@ -44,7 +44,7 @@ export default function DataSourceResourceSelectorTree({
     <div className="overflow-x-auto">
       <DataSourceResourceSelectorChildren
         owner={owner}
-        dataSource={dataSource}
+        dataSourceView={dataSourceView}
         parentId={null}
         showExpand={showExpand}
         parents={[]}
@@ -86,7 +86,7 @@ function getIconForType(type: ContentNodeType): IconComponentType {
 
 function DataSourceResourceSelectorChildren({
   owner,
-  dataSource,
+  dataSourceView,
   parentId,
   parents,
   parentIsSelected,
@@ -97,8 +97,8 @@ function DataSourceResourceSelectorChildren({
   filterPermission,
   viewType = "documents",
 }: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
+  owner: LightWorkspaceType;
+  dataSourceView: DataSourceViewType;
   parentId: string | null;
   parents: string[];
   parentIsSelected?: boolean;
@@ -106,41 +106,42 @@ function DataSourceResourceSelectorChildren({
   showExpand: boolean;
   selectedResourceIds: string[];
   onSelectChange: (
-    resource: ContentNode,
+    resource: LightContentNode,
     parents: string[],
     selected: boolean
   ) => void;
   filterPermission: ConnectorPermission;
   viewType: ContentNodesViewType;
 }) {
-  const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissions({
-      owner: owner,
-      dataSource,
-      parentId,
+  const { vaultContent, isVaultContentLoading, isVaultContentError } =
+    useVaultDataSourceViewContent({
+      dataSourceView: dataSourceView,
+      disabled: dataSourceView.dataSource.connectorId === null,
       filterPermission,
-      disabled: dataSource.connectorId === null,
+      owner,
+      parentId,
+      vaultId: dataSourceView.vaultId,
       viewType,
     });
 
   useEffect(() => {
     if (parentIsSelected) {
       // Unselected previously selected children
-      resources
+      vaultContent
         .filter((r) => selectedResourceIds.includes(r.internalId))
         .forEach((r) => {
           onSelectChange(r, parents, false);
         });
     }
   }, [
-    resources,
+    vaultContent,
     parentIsSelected,
     selectedResourceIds,
     onSelectChange,
     parents,
   ]);
 
-  if (isResourcesError) {
+  if (isVaultContentError) {
     return (
       <div className="text-warning text-sm">
         Failed to retrieve resources likely due to a revoked authorization.
@@ -150,8 +151,8 @@ function DataSourceResourceSelectorChildren({
 
   const isTablesView = viewType === "tables";
   return (
-    <Tree isLoading={isResourcesLoading}>
-      {resources.map((r) => {
+    <Tree isLoading={isVaultContentLoading}>
+      {vaultContent.map((r) => {
         const isSelected = selectedResourceIds.includes(r.internalId);
         const partiallyChecked =
           !isSelected &&
@@ -162,20 +163,25 @@ function DataSourceResourceSelectorChildren({
           (!isTablesView || r.type === "database") &&
           r.preventSelection !== true;
 
+        let checkedStatus: "checked" | "partial" | "unchecked" = "unchecked";
+        if (isSelected || parentIsSelected) {
+          checkedStatus = "checked";
+        } else if (partiallyChecked) {
+          checkedStatus = "partial";
+        }
+
         return (
           <Tree.Item
             key={r.internalId}
-            visual={<IconComponent className="s-h-4 s-w-4" />}
+            visual={IconComponent}
             type={r.expandable && showExpand ? "node" : "leaf"}
             label={r.title}
-            variant={r.type}
             className="whitespace-nowrap"
             checkbox={
               checkable || partiallyChecked
                 ? {
                     disabled: parentIsSelected || !checkable,
-                    checked: Boolean(isSelected || parentIsSelected),
-                    partialChecked: partiallyChecked,
+                    checked: checkedStatus,
                     onChange: (checked) => {
                       onSelectChange(r, parents, checked);
                     },
@@ -185,7 +191,7 @@ function DataSourceResourceSelectorChildren({
             renderTreeItems={() => (
               <DataSourceResourceSelectorChildren
                 owner={owner}
-                dataSource={dataSource}
+                dataSourceView={dataSourceView}
                 parentId={r.internalId}
                 showExpand={showExpand}
                 // In table view, only manually selected nodes are considered and hierarchy does not apply.

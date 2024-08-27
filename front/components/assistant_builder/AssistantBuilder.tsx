@@ -22,14 +22,14 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
-import { SharingButton } from "@app/components/assistant/Sharing";
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
@@ -40,6 +40,7 @@ import NamingScreen, {
   validateHandle,
 } from "@app/components/assistant_builder/NamingScreen";
 import { PrevNextButtons } from "@app/components/assistant_builder/PrevNextButtons";
+import { SharingButton } from "@app/components/assistant_builder/Sharing";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
   AssistantBuilderPendingAction,
@@ -71,8 +72,6 @@ export default function AssistantBuilder({
   subscription,
   plan,
   gaTrackingId,
-  dataSources,
-  dustApps,
   initialBuilderState,
   agentConfigurationId,
   flow,
@@ -80,11 +79,12 @@ export default function AssistantBuilder({
   baseUrl,
   defaultTemplate,
 }: AssistantBuilderProps) {
+  const { dataSourceViews } = useContext(AssistantBuilderContext);
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
-  const slackDataSource = dataSources.find(
-    (ds) => ds.connectorProvider === "slack"
+  const slackDataSource = dataSourceViews.find(
+    (dsv) => dsv.dataSource.connectorProvider === "slack"
   );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
@@ -149,7 +149,7 @@ export default function AssistantBuilder({
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
   } = useSlackChannel({
-    dataSources,
+    dataSourceViews,
     initialChannels: [],
     workspaceId: owner.sId,
     isPrivateAssistant: builderState.scope === "private",
@@ -322,7 +322,7 @@ export default function AssistantBuilder({
       });
     } else {
       await mutate(
-        `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
+        `/api/w/${owner.sId}/data_sources/${slackDataSource?.dataSource.name}/managed/slack/channels_linked_with_agent`
       );
 
       // Redirect to the assistant list once saved.
@@ -467,8 +467,6 @@ export default function AssistantBuilder({
                       <ActionsScreen
                         owner={owner}
                         builderState={builderState}
-                        dataSources={dataSources}
-                        dustApps={dustApps}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
                         setAction={setAction}

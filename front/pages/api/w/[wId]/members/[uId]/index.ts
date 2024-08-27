@@ -8,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { canForceUserRole } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -21,7 +22,15 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostMemberResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isAdmin()) {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Allow Dust Super User to force role for testing
+  const allowForSuperUserTesting =
+    canForceUserRole(owner) &&
+    auth.isDustSuperUser() &&
+    req.body.force === "true";
+
+  if (!auth.isAdmin() && !allowForSuperUserTesting) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -31,8 +40,6 @@ async function handler(
       },
     });
   }
-
-  const owner = auth.getNonNullableWorkspace();
 
   const userId = req.query.uId;
   if (!(typeof userId === "string")) {

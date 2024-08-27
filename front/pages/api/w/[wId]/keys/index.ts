@@ -29,11 +29,17 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.user();
+  const user = auth.getNonNullableUser();
 
   if (!auth.isBuilder()) {
-    res.status(403).end();
-    return;
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can interact with keys.",
+      },
+    });
   }
 
   const owner = auth.getNonNullableWorkspace();
@@ -65,11 +71,21 @@ async function handler(
         ? await GroupResource.fetchById(auth, group_id)
         : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
+      if (group.isErr()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "group_not_found",
+            message: "Invalid group",
+          },
+        });
+      }
+
       const key = await KeyResource.makeNew({
         name: name,
         status: "active",
-        userId: user?.id,
-        groupId: group?.id,
+        userId: user.id,
+        groupId: group.value.id,
         workspaceId: owner.id,
         isSystem: false,
       });

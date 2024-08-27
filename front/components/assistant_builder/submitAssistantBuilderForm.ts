@@ -1,16 +1,15 @@
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
-  PostOrPatchAgentConfigurationRequestBodySchema,
+  PostOrPatchAgentConfigurationRequestBody,
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
-import type * as t from "io-ts";
 
-import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
+import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderState,
@@ -56,11 +55,9 @@ export async function submitAssistantBuilderForm({
     }
   }
 
-  type BodyType = t.TypeOf<
-    typeof PostOrPatchAgentConfigurationRequestBodySchema
+  type ActionsType = NonNullable<
+    PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
   >;
-
-  type ActionsType = NonNullable<BodyType["assistant"]["actions"]>;
 
   const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
     switch (a.type) {
@@ -82,10 +79,9 @@ export async function submitAssistantBuilderForm({
             topK: "auto",
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
-            ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-              dataSourceId: dataSource.name,
-              // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
-              dataSourceViewId: null,
+            ).map(({ dataSourceView, selectedResources, isSelectAll }) => ({
+              dataSourceId: dataSourceView.dataSource.name,
+              dataSourceViewId: dataSourceView.sId,
               workspaceId: owner.sId,
               filter: {
                 parents: !isSelectAll
@@ -150,10 +146,9 @@ export async function submitAssistantBuilderForm({
             description: a.description,
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
-            ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-              dataSourceId: dataSource.name,
-              // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
-              dataSourceViewId: null,
+            ).map(({ dataSourceView, selectedResources, isSelectAll }) => ({
+              dataSourceId: dataSourceView.dataSource.name,
+              dataSourceViewId: dataSourceView.sId,
               workspaceId: owner.sId,
               filter: {
                 parents: !isSelectAll
@@ -188,26 +183,25 @@ export async function submitAssistantBuilderForm({
     ? undefined
     : builderState.maxStepsPerRun ?? undefined;
 
-  const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
-    {
-      assistant: {
-        name: removeLeadingAt(handle),
-        pictureUrl: avatarUrl,
-        description: description,
-        instructions: instructions.trim(),
-        status: isDraft ? "draft" : "active",
-        scope: builderState.scope,
-        actions: actionParams,
-        model: {
-          modelId: builderState.generationSettings.modelSettings.modelId,
-          providerId: builderState.generationSettings.modelSettings.providerId,
-          temperature: builderState.generationSettings.temperature,
-        },
-        maxStepsPerRun,
-        visualizationEnabled: builderState.visualizationEnabled,
-        templateId: builderState.templateId,
+  const body: PostOrPatchAgentConfigurationRequestBody = {
+    assistant: {
+      name: removeLeadingAt(handle),
+      pictureUrl: avatarUrl,
+      description: description,
+      instructions: instructions.trim(),
+      status: isDraft ? "draft" : "active",
+      scope: builderState.scope,
+      actions: actionParams,
+      model: {
+        modelId: builderState.generationSettings.modelSettings.modelId,
+        providerId: builderState.generationSettings.modelSettings.providerId,
+        temperature: builderState.generationSettings.temperature,
       },
-    };
+      maxStepsPerRun,
+      visualizationEnabled: builderState.visualizationEnabled,
+      templateId: builderState.templateId,
+    },
+  };
 
   const res = await fetch(
     !agentConfigurationId

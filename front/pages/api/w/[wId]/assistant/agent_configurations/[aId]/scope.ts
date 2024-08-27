@@ -28,17 +28,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only users of the current workspace can access its assistants.",
-      },
-    });
-  }
-
   const assistant = await getAgentConfiguration(auth, req.query.aId as string);
   if (
     !assistant ||

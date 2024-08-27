@@ -34,7 +34,6 @@ export async function callDocTrackerSuggestChangesAction(
     input: { source_document: sourceDocument, target_document: targetDocument },
     owner,
     responseValueSchema: DocTrackerSuggestChangesActionValueSchema,
-    user: null,
   });
 
   if (res.isErr()) {

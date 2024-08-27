@@ -6,27 +6,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetDataSourcesResponseBody = {
+export type GetDataSourceViewsResponseBody = {
   dataSourceViews: DataSourceViewType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDataSourcesResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.user();
-  const plan = auth.plan();
-  if (!plan || !user || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source view you requested was not found.",
-      },
-    });
-  }
-
   const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
 
   switch (req.method) {

@@ -20,6 +20,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
   isActive: t.boolean,
+  dataSourceId: t.union([t.string, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
   typeof PatchLabsTranscriptsConfigurationBodySchema
@@ -32,18 +33,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const userId = auth.user()?.id;
-
-  if (!userId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace or user was not found.",
-      },
-    });
-  }
-
+  const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
 
   if (!owner.flags.includes("labs_transcripts")) {
@@ -74,7 +64,7 @@ async function handler(
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
   if (
     !transcriptsConfiguration ||
-    transcriptsConfiguration.userId !== userId ||
+    transcriptsConfiguration.userId !== user.id ||
     transcriptsConfiguration.workspaceId !== owner.id
   ) {
     return apiError(req, res, {
@@ -109,8 +99,11 @@ async function handler(
         });
       }
 
-      const { agentConfigurationId: patchAgentId, isActive } =
-        patchBodyValidation.right;
+      const {
+        agentConfigurationId: patchAgentId,
+        isActive,
+        dataSourceId,
+      } = patchBodyValidation.right;
 
       if (patchAgentId) {
         await transcriptsConfiguration.setAgentConfigurationId({
@@ -126,6 +119,10 @@ async function handler(
           // Cancel the workflow
           await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         }
+      }
+
+      if (dataSourceId !== undefined) {
+        await transcriptsConfiguration.setDataSourceId(auth, dataSourceId);
       }
 
       return res.status(200).json({ configuration: transcriptsConfiguration });

@@ -27,16 +27,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
-      },
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {
     case "GET":
@@ -89,12 +80,14 @@ async function handler(
         kind: "regular",
       });
 
-      const vault = await VaultResource.makeNew({
-        name,
-        kind: "regular",
-        workspaceId: owner.id,
-        groupId: group.id,
-      });
+      const vault = await VaultResource.makeNew(
+        {
+          name,
+          kind: "regular",
+          workspaceId: owner.id,
+        },
+        group
+      );
 
       if (memberIds) {
         const users = (await UserResource.fetchByIds(memberIds)).map((user) =>

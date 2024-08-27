@@ -16,7 +16,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { truncate } from "@dust-tt/types";
+import { isWebsite, truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -77,10 +77,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     providerFilter: "webcrawler",
   });
 
-  const connectorIds = allDataSources
-    .filter(
-      (ds) => ds.connectorProvider === "webcrawler" && ds.connectorId !== null
-    )
+  const websiteDataSources = allDataSources.filter(isWebsite);
+
+  const connectorIds = websiteDataSources
+    .filter((ds) => ds.connectorId !== null)
     .map((ds) => ds.connectorId) as string[];
 
   const connectorsAPI = new ConnectorsAPI(
@@ -96,29 +96,25 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     throw new Error("Failed to fetch connectors");
   }
 
-  const dataSources = allDataSources
-    .filter((ds) => ds.connectorProvider === "webcrawler")
-    .map((ds) => {
-      const connector = connectorsRes.value.find(
-        (c) => c.id === ds.connectorId
+  const dataSources = websiteDataSources.map((ds) => {
+    const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
+    if (!connector) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          connectorId: ds.connectorId,
+          dataSourceName: ds.name,
+          connectorProvider: ds.connectorProvider,
+        },
+        "Connector not found"
       );
-      if (!connector) {
-        logger.error(
-          {
-            workspaceId: owner.sId,
-            connectorId: ds.connectorId,
-            dataSourceName: ds.name,
-            connectorProvider: ds.connectorProvider,
-          },
-          "Connector not found"
-        );
-        throw new Error("Connector not found");
-      }
-      return {
-        ...ds,
-        connector,
-      };
-    });
+      throw new Error("Connector not found");
+    }
+    return {
+      ...ds,
+      connector,
+    };
+  });
 
   return {
     props: {
@@ -264,12 +260,12 @@ function getTableColumns() {
       id: "name",
       accessorKey: "name",
       cell: (info: Info) => (
-        <DataTable.Cell icon={info.row.original.icon}>
+        <DataTable.CellContent icon={info.row.original.icon}>
           <span className="hidden sm:inline">{info.row.original.name}</span>
           <span className="inline sm:hidden">
             {truncate(info.row.original.name, 30, "...")}
           </span>
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
@@ -277,16 +273,16 @@ function getTableColumns() {
       accessorKey: "usage",
       id: "usage",
       cell: (info: Info) => (
-        <DataTable.Cell icon={RobotIcon}>
+        <DataTable.CellContent icon={RobotIcon}>
           {info.row.original.usage}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
       header: "Added by",
       id: "addedBy",
       cell: (info: Info) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
           roundedAvatar={true}
         />
@@ -297,13 +293,13 @@ function getTableColumns() {
       accessorKey: "editedByUser.editedAt",
       id: "editedAt",
       cell: (info: Info) => (
-        <DataTable.Cell>
+        <DataTable.CellContent>
           {info.row.original.editedByUser?.editedAt
             ? new Date(
                 info.row.original.editedByUser.editedAt
               ).toLocaleDateString()
             : null}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
   ];

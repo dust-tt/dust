@@ -1,5 +1,6 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import {
+  DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
@@ -37,17 +38,8 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const user = auth.user();
-  const plan = auth.plan();
-  if (!plan || !user || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
+  const user = auth.getNonNullableUser();
+  const plan = auth.getNonNullablePlan();
 
   const dataSources = await getDataSources(auth);
 
@@ -139,7 +131,8 @@ async function handler(
       // Dust managed credentials: all data sources.
       const credentials = dustManagedCredentials();
 
-      const dataSourceEmbedder = owner.defaultEmbeddingProvider ?? "openai";
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
       const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
@@ -172,7 +165,34 @@ async function handler(
         });
       }
 
-      const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+      let vault = null;
+      if (typeof req.body.vaultId === "string") {
+        vault = await VaultResource.fetchById(auth, req.body.vaultId);
+        if (!vault) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "vault_not_found",
+              message: "The vault you requested was not found.",
+            },
+          });
+        }
+      } else {
+        // If no vault is provided, use the global vault.
+        vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+      }
+
+      if (!auth.hasPermission([vault.acl()], "write")) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that have `write` permission for the current vault can create a data source.",
+          },
+        });
+      }
+
       const ds = await DataSourceResource.makeNew(
         {
           name: req.body.name,
@@ -182,7 +202,7 @@ async function handler(
           assistantDefaultSelected: req.body.assistantDefaultSelected,
           editedByUserId: user.id,
         },
-        globalVault
+        vault
       );
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(

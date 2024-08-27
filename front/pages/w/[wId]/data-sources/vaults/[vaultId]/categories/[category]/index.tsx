@@ -1,5 +1,9 @@
 import { LockIcon, Page, PlanetIcon } from "@dust-tt/sparkle";
-import type { DataSourceOrViewCategory, VaultType } from "@dust-tt/types";
+import type {
+  DataSourceViewCategory,
+  PlanType,
+  VaultType,
+} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -15,25 +19,29 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
-    category: DataSourceOrViewCategory;
+    category: DataSourceViewCategory;
     isAdmin: boolean;
     vault: VaultType;
+    systemVault: VaultType;
+    plan: PlanType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
-  if (!subscription) {
+  if (!subscription || !plan) {
     return {
       notFound: true,
     };
   }
 
+  const systemVault = await VaultResource.fetchWorkspaceSystemVault(auth);
   const vault = await VaultResource.fetchById(
     auth,
     context.query.vaultId as string
   );
-  if (!vault) {
+  if (!vault || !systemVault) {
     return {
       notFound: true,
     };
@@ -42,12 +50,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      category: context.query.category as DataSourceOrViewCategory,
+      category: context.query.category as DataSourceViewCategory,
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
+      plan,
       subscription,
       vault: vault.toJSON(),
+      systemVault: systemVault.toJSON(),
     },
   };
 });
@@ -56,7 +66,9 @@ export default function Vault({
   category,
   isAdmin,
   owner,
+  plan,
   vault,
+  systemVault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
@@ -82,12 +94,14 @@ export default function Vault({
 
       <VaultResourcesList
         owner={owner}
+        plan={plan}
         vault={vault}
+        systemVault={systemVault}
         isAdmin={isAdmin}
         category={category}
         onSelect={(sId) => {
           void router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/${CATEGORY_DETAILS[category].dataSourceOrView}/${sId}`
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`
           );
         }}
       />

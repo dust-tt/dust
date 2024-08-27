@@ -2,17 +2,20 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
+  FolderIcon,
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useState } from "react";
+import type { DataSourceViewType, WorkspaceType } from "@dust-tt/types";
+import { useContext, useState } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type { AssistantBuilderDataSourceConfiguration } from "@app/components/assistant_builder/types";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -21,7 +24,6 @@ export default function DataSourceSelectionSection({
   owner,
   dataSourceConfigurations,
   openDataSourceModal,
-  canAddDataSource,
 }: {
   owner: WorkspaceType;
   dataSourceConfigurations: Record<
@@ -29,20 +31,22 @@ export default function DataSourceSelectionSection({
     AssistantBuilderDataSourceConfiguration
   >;
   openDataSourceModal: () => void;
-  canAddDataSource: boolean;
   onDelete?: (name: string) => void;
 }) {
+  const { dataSourceViews } = useContext(AssistantBuilderContext);
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
-  const [dataSourceToDisplay, setDataSourceToDisplay] =
-    useState<DataSourceType | null>(null);
+  const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
+    useState<DataSourceViewType | null>(null);
+
+  const canAddDataSource = dataSourceViews.length > 0;
 
   return (
     <>
       <ManagedDataSourceDocumentModal
         owner={owner}
-        dataSource={dataSourceToDisplay}
+        dataSource={dataSourceViewToDisplay?.dataSource ?? null}
         documentId={documentToDisplay}
         isOpen={!!documentToDisplay}
         setOpen={(open) => {
@@ -80,33 +84,33 @@ export default function DataSourceSelectionSection({
         ) : (
           <Tree>
             {Object.values(dataSourceConfigurations).map((dsConfig) => {
-              const LogoComponent = dsConfig.dataSource?.connectorProvider
-                ? CONNECTOR_CONFIGURATIONS[
-                    dsConfig.dataSource.connectorProvider
-                  ].logoComponent
-                : null;
+              const LogoComponent = getConnectorProviderLogoWithFallback(
+                dsConfig.dataSourceView.dataSource.connectorProvider,
+                FolderIcon
+              );
               return (
                 <Tree.Item
-                  key={dsConfig.dataSource.id}
-                  type={dsConfig.dataSource.connectorId ? "node" : "leaf"} // todo make useConnectorPermissions hook work for non managed ds (Folders)
-                  label={getDisplayNameForDataSource(dsConfig.dataSource)}
-                  visual={
-                    LogoComponent ? (
-                      <LogoComponent className="s-h-5 s-w-5" />
-                    ) : null
-                  }
-                  variant="folder" // in case LogoComponent is null
+                  key={dsConfig.dataSourceView.sId}
+                  type={
+                    dsConfig.dataSourceView.dataSource.connectorId
+                      ? "node"
+                      : "leaf"
+                  } // todo make useConnectorPermissions hook work for non managed ds (Folders)
+                  label={getDisplayNameForDataSource(
+                    dsConfig.dataSourceView.dataSource
+                  )}
+                  visual={LogoComponent}
                   className="whitespace-nowrap"
                 >
                   {dsConfig.isSelectAll && (
                     <PermissionTreeChildren
                       owner={owner}
-                      dataSource={dsConfig.dataSource}
+                      dataSource={dsConfig.dataSourceView.dataSource}
                       parentId={null}
                       permissionFilter="read"
                       canUpdatePermissions={true}
                       displayDocumentSource={(documentId: string) => {
-                        setDataSourceToDisplay(dsConfig.dataSource);
+                        setDataSourceViewToDisplay(dsConfig.dataSourceView);
                         setDocumentToDisplay(documentId);
                       }}
                       useConnectorPermissionsHook={useConnectorPermissions}
@@ -116,10 +120,10 @@ export default function DataSourceSelectionSection({
                   {dsConfig.selectedResources.map((node) => {
                     return (
                       <Tree.Item
-                        key={node.internalId}
+                        key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
                         label={node.titleWithParentsContext ?? node.title}
                         type={node.expandable ? "node" : "leaf"}
-                        variant={node.type}
+                        visual={getVisualForContentNode(node)}
                         className="whitespace-nowrap"
                         actions={
                           <div className="mr-8 flex flex-row gap-2">
@@ -144,7 +148,9 @@ export default function DataSourceSelectionSection({
                               icon={BracesIcon}
                               onClick={() => {
                                 if (node.dustDocumentId) {
-                                  setDataSourceToDisplay(dsConfig.dataSource);
+                                  setDataSourceViewToDisplay(
+                                    dsConfig.dataSourceView
+                                  );
                                   setDocumentToDisplay(node.dustDocumentId);
                                 }
                               }}
@@ -161,12 +167,12 @@ export default function DataSourceSelectionSection({
                       >
                         <PermissionTreeChildren
                           owner={owner}
-                          dataSource={dsConfig.dataSource}
+                          dataSource={dsConfig.dataSourceView.dataSource}
                           parentId={node.internalId}
                           permissionFilter="read"
                           canUpdatePermissions={true}
                           displayDocumentSource={(documentId: string) => {
-                            setDataSourceToDisplay(dsConfig.dataSource);
+                            setDataSourceViewToDisplay(dsConfig.dataSourceView);
                             setDocumentToDisplay(documentId);
                           }}
                           useConnectorPermissionsHook={useConnectorPermissions}

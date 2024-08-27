@@ -15,7 +15,7 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -108,8 +108,6 @@ export function hasActionError(
 export default function ActionsScreen({
   owner,
   builderState,
-  dustApps,
-  dataSources,
   setBuilderState,
   setEdited,
   setAction,
@@ -117,8 +115,6 @@ export default function ActionsScreen({
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
-  dataSources: DataSourceType[];
-  dustApps: AppType[];
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -238,8 +234,6 @@ export default function ActionsScreen({
         updateAction={updateAction}
         owner={owner}
         setEdited={setEdited}
-        dataSources={dataSources}
-        dustApps={dustApps}
       />
 
       <div className="flex flex-col gap-8 text-sm text-element-700">
@@ -371,8 +365,6 @@ function NewActionModal({
   onClose,
   owner,
   setEdited,
-  dataSources,
-  dustApps,
   builderState,
 }: {
   isOpen: boolean;
@@ -388,8 +380,6 @@ function NewActionModal({
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
-  dustApps: AppType[];
 }) {
   const [newAction, setNewAction] =
     useState<AssistantBuilderActionConfiguration | null>(null);
@@ -488,8 +478,6 @@ function NewActionModal({
               }}
               owner={owner}
               setEdited={setEdited}
-              dataSources={dataSources}
-              dustApps={dustApps}
               builderState={builderState}
               showInvalidActionNameError={showInvalidActionNameError}
               showInvalidActionDescError={showInvalidActionDescError}
@@ -571,8 +559,6 @@ function ActionCard({
 function ActionConfigEditor({
   owner,
   action,
-  dustApps,
-  dataSources,
   instructions,
   updateAction,
   setEdited,
@@ -581,8 +567,6 @@ function ActionConfigEditor({
 }: {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfiguration;
-  dustApps: AppType[];
-  dataSources: DataSourceType[];
   instructions: string | null;
   updateAction: (args: {
     actionName: string;
@@ -601,7 +585,6 @@ function ActionConfigEditor({
         <ActionDustAppRun
           owner={owner}
           action={action}
-          dustApps={dustApps}
           updateAction={updateAction}
           setEdited={setEdited}
         />
@@ -611,7 +594,6 @@ function ActionConfigEditor({
         <ActionRetrievalSearch
           owner={owner}
           actionConfiguration={action.configuration}
-          dataSources={dataSources}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -628,7 +610,6 @@ function ActionConfigEditor({
         <ActionRetrievalExhaustive
           owner={owner}
           actionConfiguration={action.configuration}
-          dataSources={dataSources}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -646,7 +627,6 @@ function ActionConfigEditor({
           owner={owner}
           instructions={instructions}
           actionConfiguration={action.configuration}
-          dataSources={dataSources}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -665,7 +645,6 @@ function ActionConfigEditor({
         <ActionTablesQuery
           owner={owner}
           actionConfiguration={action.configuration}
-          dataSources={dataSources}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -694,8 +673,6 @@ function ActionEditor({
   updateAction,
   owner,
   setEdited,
-  dataSources,
-  dustApps,
   builderState,
 }: {
   action: AssistantBuilderActionConfiguration;
@@ -713,8 +690,6 @@ function ActionEditor({
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
-  dustApps: AppType[];
   builderState: AssistantBuilderState;
 }) {
   const isDataSourceAction = [
@@ -786,8 +761,6 @@ function ActionEditor({
           <ActionConfigEditor
             owner={owner}
             action={action}
-            dustApps={dustApps}
-            dataSources={dataSources}
             instructions={builderState.instructions}
             updateAction={updateAction}
             setEdited={setEdited}
@@ -988,7 +961,7 @@ function Capabilities({
     return (
       <div className="flex flex-row gap-2">
         <Checkbox
-          checked={enabled}
+          checked={enabled ? "checked" : "unchecked"}
           onChange={enabled ? onDisable : onEnable}
           variant="checkable"
         />

@@ -1,11 +1,10 @@
 import * as t from "io-ts";
 
-import { ConnectorProvider, EditedByUser } from "../../data_source";
 import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
   dataSource: t.string,
-  parentsIn: t.array(t.string),
+  parentsIn: t.union([t.array(t.string), t.null]),
 });
 
 export const PostDataSourceViewSchema = t.type({
@@ -42,46 +41,36 @@ export type PatchVaultRequestBodyType = t.TypeOf<
 >;
 
 export type LightContentNode = {
-  internalId: string;
-  parentInternalId: string | null;
-  type: ContentNodeType;
-  title: string;
-  expandable: boolean;
-  preventSelection?: boolean;
   dustDocumentId: string | null;
+  expandable: boolean;
+  internalId: string;
   lastUpdatedAt: number | null;
+  parentInternalId: string | null;
+  preventSelection?: boolean;
+  sourceUrl: string | null;
+  title: string;
+  titleWithParentsContext?: string;
+  type: ContentNodeType;
 };
 
-export type GetDataSourceOrViewContentResponseBody = {
+export type GetDataSourceViewContentResponseBody = {
   nodes: LightContentNode[];
 };
 
-export const DATA_SOURCE_OR_VIEW_CATEGORIES = [
+export const DATA_SOURCE_VIEW_CATEGORIES = [
   "managed",
-  "files",
-  "webfolder",
+  "folder",
+  "website",
   "apps",
 ] as const;
 
-export type DataSourceOrViewCategory =
-  (typeof DATA_SOURCE_OR_VIEW_CATEGORIES)[number];
+export type DataSourceViewCategory =
+  (typeof DATA_SOURCE_VIEW_CATEGORIES)[number];
 
-export function isDataSourceOrViewCategory(
+export function isDataSourceViewCategory(
   category: string
-): category is DataSourceOrViewCategory {
-  return DATA_SOURCE_OR_VIEW_CATEGORIES.includes(
-    category as DataSourceOrViewCategory
+): category is DataSourceViewCategory {
+  return DATA_SOURCE_VIEW_CATEGORIES.includes(
+    category as DataSourceViewCategory
   );
 }
-
-export type DataSourceOrViewInfo = {
-  createdAt: number;
-  sId: string;
-  name: string;
-  parentsIn?: string[] | null;
-  connectorId?: string | null;
-  connectorProvider?: ConnectorProvider | null;
-  editedByUser?: EditedByUser | null;
-  category: DataSourceOrViewCategory;
-  usage: number;
-};

@@ -27,17 +27,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<FileUploadedRequestResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can update chat sessions.",
-      },
-    });
-  }
-
   const { fileId } = req.query;
   if (typeof fileId !== "string") {
     return apiError(req, res, {

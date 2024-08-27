@@ -216,7 +216,7 @@ export default function Block({
             {` 0 successes 0 errors`}
           </div>
         ) : null}
-        {status && status.status != "running" && run ? (
+        {status && status.status != "running" && run && !readOnly ? (
           <Output owner={owner} runId={run.run_id} block={block} app={app} />
         ) : null}
       </div>

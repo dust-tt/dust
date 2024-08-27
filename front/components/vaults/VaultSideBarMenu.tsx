@@ -2,41 +2,38 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
+  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   Item,
   LockIcon,
-  PlanetIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
-  DataSourceOrView,
-  DataSourceOrViewInfo,
+  DataSourceViewCategory,
+  DataSourceViewType,
   LightWorkspaceType,
+  VaultKind,
   VaultType,
 } from "@dust-tt/types";
-import { assertNever, DATA_SOURCE_OR_VIEW_CATEGORIES } from "@dust-tt/types";
+import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
+import type { ComponentType, ReactElement } from "react";
 import { Fragment, useEffect, useState } from "react";
 
 import {
-  CONNECTOR_CONFIGURATIONS,
-  getDataSourceOrViewName,
+  getConnectorProviderLogoWithFallback,
+  getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import {
-  useVaultDataSourceOrViews,
-  useVaultInfo,
-  useVaults,
-} from "@app/lib/swr";
+import { useVaultDataSourceViews, useVaultInfo, useVaults } from "@app/lib/swr";
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
   setShowVaultCreationModal: (show: boolean) => void;
 }
 
-const VAULTS_SORT_ORDER = ["system", "global", "regular"];
+const VAULTS_SORT_ORDER: VaultKind[] = ["system", "global", "regular"];
 
 export default function VaultSideBarMenu({
   owner,
@@ -50,22 +47,22 @@ export default function VaultSideBarMenu({
 
   // Group by kind and sort.
   const groupedVaults = groupBy(vaults, (vault) => vault.kind);
-  const sortedGroupedVaults = VAULTS_SORT_ORDER.map(
-    (kind) => groupedVaults[kind] || []
-  );
+  const sortedGroupedVaults = VAULTS_SORT_ORDER.map((kind) => ({
+    kind,
+    vaults: groupedVaults[kind] || [],
+  }));
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <div className="flex w-full flex-col px-2">
         <Item.List>
-          {sortedGroupedVaults.map((vaults, index) => {
-            const [vault] = vaults;
-            const sectionLabel = getSectionLabel(vault);
+          {sortedGroupedVaults.map(({ kind, vaults }, index) => {
+            const sectionLabel = getSectionLabel(kind);
 
             return (
               <Fragment key={`vault-section-${index}`}>
                 <div className="flex items-center justify-between">
-                  <Item.SectionHeader label={sectionLabel} key={vault.sId} />
+                  <Item.SectionHeader label={sectionLabel} />
                   {sectionLabel === "PRIVATE" && (
                     <Button
                       className="mt-4"
@@ -99,8 +96,8 @@ const renderVaultItems = (vaults: VaultType[], owner: LightWorkspaceType) =>
     </Fragment>
   ));
 
-const getSectionLabel = (vault: VaultType) => {
-  switch (vault.kind) {
+const getSectionLabel = (kind: VaultKind) => {
+  switch (kind) {
     case "global":
       return "SHARED";
 
@@ -111,20 +108,8 @@ const getSectionLabel = (vault: VaultType) => {
       return "SYSTEM";
 
     default:
-      assertNever(vault.kind);
+      assertNever(kind);
   }
-};
-
-const RootItemIconWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-brand" />;
-};
-
-const SubItemIconItemWrapper = (
-  IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>
-) => {
-  return <IconComponent className="text-element-700" />;
 };
 
 // System vault.
@@ -132,8 +117,9 @@ const SubItemIconItemWrapper = (
 const SYSTEM_VAULTS_ITEMS = [
   {
     label: "Connection Management",
-    visual: RootItemIconWrapper(CloudArrowLeftRightIcon),
-    category: "managed",
+    visual: CloudArrowLeftRightIcon,
+    tailwindIconTextColor: "text-brand",
+    category: "managed" as DataSourceViewCategory,
   },
   // TODO(GROUPS_UI) Add support for Dust apps.
 ];
@@ -146,7 +132,7 @@ const SystemVaultMenu = ({
   vault: VaultType;
 }) => {
   return (
-    <>
+    <Tree variant="navigator">
       {SYSTEM_VAULTS_ITEMS.map((item) => (
         <SystemVaultItem
           category={item.category}
@@ -157,9 +143,11 @@ const SystemVaultMenu = ({
           visual={item.visual}
         />
       ))}
-    </>
+    </Tree>
   );
 };
+
+type IconType = ComponentType<{ className?: string }>;
 
 const SystemVaultItem = ({
   category,
@@ -168,15 +156,15 @@ const SystemVaultItem = ({
   vault,
   visual,
 }: {
-  category: string;
+  category: DataSourceViewCategory;
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
-  visual: ReactElement;
+  visual: IconType;
 }) => {
   const router = useRouter();
 
-  const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_sources`;
+  const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views`;
   const isAncestorToCurrentPage = router.asPath.includes(itemPath);
 
   // Unfold the item if it's an ancestor of the current page.
@@ -185,18 +173,17 @@ const SystemVaultItem = ({
     setIsExpanded(isAncestorToCurrentPage);
   }, [isAncestorToCurrentPage]);
 
-  const { isVaultDataSourceOrViewsLoading, vaultDataSourceOrViews } =
-    useVaultDataSourceOrViews({
+  const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
+    useVaultDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category,
-      // System vault only has data sources.
-      type: "data_sources",
       disabled: !isExpanded,
     });
 
   return (
     <Tree.Item
+      isNavigatable
       label={label}
       collapsed={!isExpanded}
       onItemClick={() => router.push(itemPath)}
@@ -207,18 +194,15 @@ const SystemVaultItem = ({
       areActionsFading={false}
     >
       {isExpanded && (
-        <Tree isLoading={isVaultDataSourceOrViewsLoading}>
-          {vaultDataSourceOrViews &&
-            vaultDataSourceOrViews.map((ds) => (
-              <VaultDataSourceOrViewItem
-                item={ds}
-                key={ds.sId}
-                owner={owner}
-                vault={vault}
-                // System vault only has data sources.
-                viewType="data_sources"
-              />
-            ))}
+        <Tree isLoading={isVaultDataSourceViewsLoading}>
+          {vaultDataSourceViews.map((ds) => (
+            <VaultDataSourceViewItem
+              item={ds}
+              key={ds.sId}
+              owner={owner}
+              vault={vault}
+            />
+          ))}
         </Tree>
       )}
     </Tree.Item>
@@ -253,23 +237,21 @@ const VaultMenuItem = ({
 
   return (
     <Tree.Item
+      isNavigatable
       label={vault.kind === "global" ? "Company Data" : vault.name}
       collapsed={!isExpanded}
       onItemClick={() => router.push(vaultPath)}
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={
-        vault.kind === "global"
-          ? RootItemIconWrapper(PlanetIcon)
-          : RootItemIconWrapper(LockIcon)
-      }
+      visual={vault.kind === "global" ? CompanyIcon : LockIcon}
+      tailwindIconTextColor="text-brand"
       size="md"
       areActionsFading={false}
     >
       {isExpanded && (
         <Tree isLoading={isVaultInfoLoading}>
           {vaultInfo?.categories &&
-            DATA_SOURCE_OR_VIEW_CATEGORIES.map(
+            DATA_SOURCE_VIEW_CATEGORIES.map(
               (c) =>
                 vaultInfo.categories[c] && (
                   <VaultCategoryItem
@@ -288,65 +270,65 @@ const VaultMenuItem = ({
 
 const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
   [key: string]: {
-    label: string;
-    icon: ReactElement<{
+    icon: ComponentType<{
       className?: string;
     }>;
-    dataSourceOrView: DataSourceOrView;
+    label: string;
+    tailwindIconTextColor: "text-element-700";
   };
 } = {
   managed: {
+    icon: CloudArrowLeftRightIcon,
     label: "Connected Data",
-    icon: SubItemIconItemWrapper(CloudArrowLeftRightIcon),
-    dataSourceOrView: "data_source_views",
+    tailwindIconTextColor: "text-element-700",
   },
-  files: {
+  folder: {
+    icon: FolderIcon,
     label: "Files",
-    icon: SubItemIconItemWrapper(FolderIcon),
-    dataSourceOrView: "data_sources",
+    tailwindIconTextColor: "text-element-700",
   },
-  webfolder: {
+  website: {
+    icon: GlobeAltIcon,
     label: "Websites",
-    icon: SubItemIconItemWrapper(GlobeAltIcon),
-    dataSourceOrView: "data_sources",
+    tailwindIconTextColor: "text-element-700",
   },
   apps: {
+    icon: CommandLineIcon,
     label: "Apps",
-    icon: SubItemIconItemWrapper(CommandLineIcon),
-    dataSourceOrView: "data_sources",
+    tailwindIconTextColor: "text-element-700",
   },
 };
 
-const VaultDataSourceOrViewItem = ({
+const VaultDataSourceViewItem = ({
   item,
   owner,
   vault,
-  viewType,
 }: {
-  item: DataSourceOrViewInfo;
+  item: DataSourceViewType;
   owner: LightWorkspaceType;
   vault: VaultType;
-  viewType: "data_sources" | "data_source_views";
 }): ReactElement => {
   const router = useRouter();
-  const configuration = item.connectorProvider
-    ? CONNECTOR_CONFIGURATIONS[item.connectorProvider]
-    : null;
 
-  const LogoComponent = configuration?.logoComponent ?? FolderIcon;
-  const dataSourceOrViewPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${item.category}/${viewType}/${item.sId}`;
+  const LogoComponent = getConnectorProviderLogoWithFallback(
+    item.dataSource.connectorProvider,
+    FolderIcon
+  );
+  const dataSourceViewPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
 
   return (
     <Tree.Item
+      isNavigatable
       type="leaf"
       isSelected={
-        router.asPath === dataSourceOrViewPath ||
-        router.asPath.includes(dataSourceOrViewPath + "/") ||
-        router.asPath.includes(dataSourceOrViewPath + "?")
+        router.asPath === dataSourceViewPath ||
+        router.asPath.includes(dataSourceViewPath + "/") ||
+        router.asPath.includes(dataSourceViewPath + "?")
       }
-      onItemClick={() => router.push(dataSourceOrViewPath)}
-      label={getDataSourceOrViewName(item)}
-      visual={SubItemIconItemWrapper(LogoComponent)}
+      onItemClick={() => router.push(dataSourceViewPath)}
+      label={getDataSourceNameFromView(item)}
+      visual={LogoComponent}
+      tailwindIconTextColor="text-element-700"
       areActionsFading={false}
     />
   );
@@ -359,7 +341,7 @@ const VaultCategoryItem = ({
 }: {
   owner: LightWorkspaceType;
   vault: VaultType;
-  category: string;
+  category: DataSourceViewCategory;
 }) => {
   const router = useRouter();
 
@@ -373,17 +355,17 @@ const VaultCategoryItem = ({
   }, [isAncestorToCurrentPage]);
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
-  const { isVaultDataSourceOrViewsLoading, vaultDataSourceOrViews } =
-    useVaultDataSourceOrViews({
+  const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
+    useVaultDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category,
-      type: categoryDetails.dataSourceOrView,
       disabled: !isExpanded,
     });
 
   return (
     <Tree.Item
+      isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
       onItemClick={() => router.push(vaultCategoryPath)}
@@ -393,17 +375,15 @@ const VaultCategoryItem = ({
       areActionsFading={false}
     >
       {isExpanded && (
-        <Tree isLoading={isVaultDataSourceOrViewsLoading}>
-          {vaultDataSourceOrViews &&
-            vaultDataSourceOrViews.map((ds) => (
-              <VaultDataSourceOrViewItem
-                item={ds}
-                key={ds.sId}
-                owner={owner}
-                vault={vault}
-                viewType={categoryDetails.dataSourceOrView}
-              />
-            ))}
+        <Tree isLoading={isVaultDataSourceViewsLoading}>
+          {vaultDataSourceViews.map((ds) => (
+            <VaultDataSourceViewItem
+              item={ds}
+              key={ds.sId}
+              owner={owner}
+              vault={vault}
+            />
+          ))}
         </Tree>
       )}
     </Tree.Item>

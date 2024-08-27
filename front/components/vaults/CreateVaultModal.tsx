@@ -27,7 +27,6 @@ type RowData = {
   name: string;
   userId: string;
   onClick?: () => void;
-  onMoreClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;
@@ -36,7 +35,6 @@ interface CreateVaultModalProps {
   owner: LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void;
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
@@ -51,7 +49,6 @@ export function CreateVaultModal({
   owner,
   isOpen,
   onClose,
-  onSave,
 }: CreateVaultModalProps) {
   const [vaultName, setVaultName] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -67,9 +64,9 @@ export function CreateVaultModal({
       {
         id: "name",
         cell: (info: Info) => (
-          <DataTable.Cell avatarUrl={info.row.original.icon}>
+          <DataTable.CellContent avatarUrl={info.row.original.icon}>
             {info.row.original.name}
-          </DataTable.Cell>
+          </DataTable.CellContent>
         ),
       },
       {
@@ -78,34 +75,38 @@ export function CreateVaultModal({
           const isSelected = selectedMembers.includes(info.row.original.userId);
           if (isSelected) {
             return (
-              <Button
-                label="Remove"
-                onClick={() =>
-                  setSelectedMembers(
-                    selectedMembers.filter(
-                      (m) => m !== info.row.original.userId
+              <div className="full-width flex justify-end">
+                <Button
+                  label="Remove"
+                  onClick={() =>
+                    setSelectedMembers(
+                      selectedMembers.filter(
+                        (m) => m !== info.row.original.userId
+                      )
                     )
-                  )
-                }
-                variant="tertiary"
-                size="sm"
-                icon={MinusIcon}
-              />
+                  }
+                  variant="tertiary"
+                  size="sm"
+                  icon={MinusIcon}
+                />
+              </div>
             );
           }
           return (
-            <Button
-              label="Add"
-              onClick={() =>
-                setSelectedMembers([
-                  ...selectedMembers,
-                  info.row.original.userId,
-                ])
-              }
-              variant="secondary"
-              size="sm"
-              icon={PlusIcon}
-            />
+            <div className="full-width flex justify-end">
+              <Button
+                label="Add"
+                onClick={() =>
+                  setSelectedMembers([
+                    ...selectedMembers,
+                    info.row.original.userId,
+                  ])
+                }
+                variant="secondary"
+                size="sm"
+                icon={PlusIcon}
+              />
+            </div>
           );
         },
       },
@@ -186,7 +187,7 @@ export function CreateVaultModal({
               "An unexpected error occurred while creating the vault.",
           });
         }
-        onSave();
+        onClose();
       }}
     >
       <Page.Vertical gap="md" sizing="grow">
@@ -206,19 +207,20 @@ export function CreateVaultModal({
         </div>
         <div className="flex w-full grow flex-col gap-y-4 overflow-y-hidden border-t p-4">
           <Page.SectionHeader title="Vault members" />
-          <Searchbar
-            className="grow-0"
-            name="search"
-            placeholder="Search members"
-            value={searchTerm}
-            onChange={setSearchTerm}
-          />
+          <div className="flex w-full">
+            <Searchbar
+              name="search"
+              placeholder="Search members"
+              value={searchTerm}
+              onChange={setSearchTerm}
+            />
+          </div>
           {isMembersLoading ? (
             <div className="mt-8 flex justify-center">
               <Spinner size="lg" variant="color" />
             </div>
           ) : (
-            <div className="flex grow flex-col overflow-y-auto">
+            <div className="flex grow flex-col overflow-y-auto p-4">
               <DataTable
                 data={rows}
                 columns={columns}
