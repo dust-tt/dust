@@ -443,16 +443,19 @@ export function useDataSourceContentNodes({
   internalIds,
 }: {
   owner: LightWorkspaceType;
-  dataSource: DataSourceType;
+  dataSource?: DataSourceType;
   internalIds: string[];
 }): {
   nodes: GetContentNodeResponseBody["nodes"];
   isNodesLoading: boolean;
   isNodesError: boolean;
 } {
-  const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-    dataSource.name
-  )}/managed/content_nodes`;
+  const url =
+    dataSource && internalIds.length > 0
+      ? `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
+          dataSource.name
+        )}/managed/content_nodes`
+      : null;
   const body = JSON.stringify({ internalIds });
 
   const fetchKey = useMemo(() => {
@@ -465,6 +468,9 @@ export function useDataSourceContentNodes({
       headers: { "Content-Type": "application/json" },
       body,
     };
+    if (!url) {
+      return null;
+    }
     return fetcher(url, options);
   });
 
@@ -1395,7 +1401,7 @@ export function useVaultDataSourceViewContent({
   disabled?: boolean;
   filterPermission: ConnectorPermission;
   owner: LightWorkspaceType;
-  parentId: string | null;
+  parentId?: string;
   vaultId: string;
   viewType: ContentNodesViewType;
 }) {
