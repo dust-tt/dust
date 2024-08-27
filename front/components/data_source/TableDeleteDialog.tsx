@@ -13,7 +13,7 @@ interface TableDeleteDialogProps {
   isOpen: boolean;
   onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
-  contentNode?: LightContentNode;
+  contentNode: LightContentNode;
 }
 
 export const TableDeleteDialog = ({
@@ -28,15 +28,11 @@ export const TableDeleteDialog = ({
 
   const handleDeleteTable = async () => {
     try {
-      if (!contentNode?.internalId) {
-        return;
-      }
-
       setLoading(true);
 
       // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/${contentNode?.internalId}`,
+        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/${contentNode.internalId}`,
         {
           method: "DELETE",
         }

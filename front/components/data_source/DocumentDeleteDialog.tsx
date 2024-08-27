@@ -10,7 +10,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface DocumentDeleteDialogProps {
   dataSourceView: DataSourceViewType;
-  contentNode?: LightContentNode;
+  contentNode: LightContentNode;
   isOpen: boolean;
   onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
@@ -27,14 +27,11 @@ export const DocumentDeleteDialog = ({
   const [loading, setLoading] = useState(false);
   const handleDeleteDocument = async () => {
     try {
-      if (!contentNode?.internalId) {
-        return;
-      }
       // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${
           dataSourceView.dataSource.name
-        }/documents/${encodeURIComponent(contentNode?.internalId)}`,
+        }/documents/${encodeURIComponent(contentNode.internalId)}`,
         {
           method: "DELETE",
         }
@@ -47,7 +44,7 @@ export const DocumentDeleteDialog = ({
       sendNotification({
         type: "success",
         title: "Document successfully deleted",
-        description: `Document ${contentNode?.internalId} was successfully deleted`,
+        description: `Document ${contentNode.internalId} was successfully deleted`,
       });
       onClose(true);
     } catch (error) {
@@ -73,8 +70,8 @@ export const DocumentDeleteDialog = ({
     >
       <div className="mt-1 text-left">
         <p className="mb-4">
-          Are you sure you want to delete the document "
-          {contentNode?.internalId}"?
+          Are you sure you want to delete the document "{contentNode.internalId}
+          " ?
         </p>
         <p className="mb-4 font-bold text-warning-500">
           This action cannot be undone.

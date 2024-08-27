@@ -23,7 +23,7 @@ type ContentActionKey =
   | "TableDeleteDialog";
 
 export type ContentAction = {
-  key: ContentActionKey;
+  action?: ContentActionKey;
   contentNode?: LightContentNode;
 };
 
@@ -45,17 +45,16 @@ export const ContentActions = React.forwardRef<
   ContentActionsRef,
   ContentActionsProps
 >(({ dataSourceView, owner, plan, onSave }: ContentActionsProps, ref) => {
-  const [currentAction, setCurrentAction] = useState<ContentAction | null>(
-    null
-  );
+  const [currentAction, setCurrentAction] = useState<ContentAction>({});
   useImperativeHandle(ref, () => ({
     callAction: (action: ContentActionKey, contentNode?: LightContentNode) => {
-      setCurrentAction({ key: action, contentNode });
+      setCurrentAction({ action, contentNode });
     },
   }));
 
   const onClose = (save: boolean) => {
-    setCurrentAction(null);
+    // Keep current to have it during closing animation
+    setCurrentAction({ contentNode: currentAction.contentNode });
     if (save) {
       onSave();
     }
@@ -64,42 +63,46 @@ export const ContentActions = React.forwardRef<
   return (
     <>
       <DocumentUploadOrEditModal
-        contentNode={currentAction?.contentNode}
+        contentNode={currentAction.contentNode}
         dataSourceView={dataSourceView}
-        isOpen={currentAction?.key === "DocumentUploadOrEditModal"}
+        isOpen={currentAction.action === "DocumentUploadOrEditModal"}
         onClose={onClose}
         owner={owner}
         plan={plan}
       />
       <MultipleDocumentsUpload
         dataSourceView={dataSourceView}
-        isOpen={currentAction?.key === "MultipleDocumentsUpload"}
+        isOpen={currentAction.action === "MultipleDocumentsUpload"}
         onClose={onClose}
         owner={owner}
         plan={plan}
       />
-      <DocumentDeleteDialog
-        contentNode={currentAction?.contentNode}
-        dataSourceView={dataSourceView}
-        isOpen={currentAction?.key === "DocumentDeleteDialog"}
-        onClose={onClose}
-        owner={owner}
-      />
+      {currentAction.contentNode && (
+        <DocumentDeleteDialog
+          contentNode={currentAction.contentNode}
+          dataSourceView={dataSourceView}
+          isOpen={currentAction.action === "DocumentDeleteDialog"}
+          onClose={onClose}
+          owner={owner}
+        />
+      )}
       <TableUploadOrEditModal
-        contentNode={currentAction?.contentNode}
+        contentNode={currentAction.contentNode}
         dataSourceView={dataSourceView}
-        isOpen={currentAction?.key === "TableUploadOrEditModal"}
+        isOpen={currentAction.action === "TableUploadOrEditModal"}
         onClose={onClose}
         owner={owner}
         plan={plan}
       />
-      <TableDeleteDialog
-        contentNode={currentAction?.contentNode}
-        dataSourceView={dataSourceView}
-        isOpen={currentAction?.key === "TableDeleteDialog"}
-        onClose={onClose}
-        owner={owner}
-      />
+      {currentAction.contentNode && (
+        <TableDeleteDialog
+          contentNode={currentAction.contentNode}
+          dataSourceView={dataSourceView}
+          isOpen={currentAction.action === "TableDeleteDialog"}
+          onClose={onClose}
+          owner={owner}
+        />
+      )}
     </>
   );
 });
