@@ -295,7 +295,6 @@ export async function syncOneFile({
             startSyncTs,
           })),
         ];
-        parents.reverse();
 
         await upsertToDatasource({
           dataSourceConfig,
@@ -304,7 +303,7 @@ export async function syncOneFile({
           documentUrl: file.webUrl ?? undefined,
           timestampMs: upsertTimestampMs,
           tags,
-          parents: parents,
+          parents,
           upsertContext: {
             sync_type: isBatchSync ? "batch" : "incremental",
           },
