@@ -224,7 +224,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
                     ressourceType: "folder",
                   })
                 : null,
-              title: getDisplayNameForPage(page.url),
+              title: getDisplayNameForPage(page),
               sourceUrl: page.url,
               expandable: isFileAndFolder ? true : false,
               permission: "read",
@@ -280,7 +280,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         provider: "webcrawler",
         internalId: page.documentId,
         parentInternalId: page.parentUrl,
-        title: page.title ?? page.url,
+        title: getDisplayNameForPage(page),
         sourceUrl: page.url,
         expandable: false,
         permission: "read",
