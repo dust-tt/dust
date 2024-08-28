@@ -4,6 +4,7 @@ import type {
   IntercomCheckTeamsResponseType,
   IntercomCommandType,
   IntercomFetchConversationResponseType,
+  IntercomForceResyncArticlesResponseType,
 } from "@dust-tt/types";
 import { Op } from "sequelize";
 
@@ -14,6 +15,7 @@ import {
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
+  IntercomArticle,
   IntercomConversation,
   IntercomTeam,
 } from "@connectors/lib/models/intercom";
@@ -28,24 +30,37 @@ export const intercom = async ({
   | IntercomFetchConversationResponseType
   | IntercomCheckTeamsResponseType
   | IntercomCheckMissingConversationsResponseType
+  | IntercomForceResyncArticlesResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "intercom", command, args });
 
-  if (!args.connectorId) {
-    throw new Error("Missing --connectorId argument");
-  }
-  const connectorId = args.connectorId.toString();
-
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`Connector ${connectorId} not found`);
-  }
-  if (connector.type !== "intercom") {
+  const connectorId = args.connectorId ? args.connectorId.toString() : null;
+  const connector = connectorId
+    ? await ConnectorResource.fetchById(connectorId)
+    : null;
+  if (connector && connector.type !== "intercom") {
     throw new Error(`Connector ${args.connectorId} is not of type intercom`);
   }
 
   switch (command) {
+    case "force-resync-articles": {
+      const force = args.force === "true";
+      if (!force) {
+        throw new Error("[Admin] Need to pass --force=true to force resync");
+      }
+      logger.info("[Admin] Forcing resync of articles");
+      const updated = await IntercomArticle.update(
+        { lastUpsertedTs: null },
+        { where: {} } // Targets all records
+      );
+      return {
+        affectedCount: updated[0],
+      };
+    }
     case "check-conversation": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
       if (!args.conversationId) {
         throw new Error("Missing --conversationId argument");
       }
@@ -66,7 +81,7 @@ export const intercom = async ({
       const conversationOnDB = await IntercomConversation.findOne({
         where: {
           conversationId,
-          connectorId,
+          connectorId: connector.id,
         },
       });
 
@@ -78,6 +93,9 @@ export const intercom = async ({
       };
     }
     case "fetch-conversation": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
       if (!args.conversationId) {
         throw new Error("Missing --conversationId argument");
       }
@@ -96,6 +114,9 @@ export const intercom = async ({
       };
     }
     case "check-missing-conversations": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
       if (!args.day) {
         throw new Error("Missing --day argument");
       }
@@ -133,7 +154,7 @@ export const intercom = async ({
       // Fetch all conversations for the day from DB
       const convosOnDB = await IntercomConversation.findAll({
         where: {
-          connectorId,
+          connectorId: connector.id,
           conversationCreatedAt: {
             [Op.gte]: startOfDay,
             [Op.lte]: endOfDay,
@@ -157,12 +178,15 @@ export const intercom = async ({
       };
     }
     case "check-teams": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
       logger.info("[Admin] Checking teams");
       const accessToken = await getIntercomAccessToken(connector.connectionId);
       const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
       const teamsOnDb = await IntercomTeam.findAll({
         where: {
-          connectorId,
+          connectorId: connector.id,
         },
       });
 
