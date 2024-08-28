@@ -5,7 +5,7 @@ import useSWR from "swr";
 
 import { fetcher } from "@app/lib/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
-import type {GetDocumentsResponseBody} from "@app/pages/api/poke/workspaces/[wId]/data_sources/[name]/documents";
+import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[name]/documents";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 
 export function usePokeAssistantTemplates() {
@@ -95,4 +95,3 @@ export function useDocuments(
     mutateDocuments: mutate,
   };
 }
-

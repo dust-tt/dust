@@ -20,8 +20,8 @@ async function handler(
 ): Promise<void> {
   const session = await getSession(req, res);
 
-  const { wId, name  } = req.query;
-  if(typeof wId !== "string" || typeof name !== "string") {
+  const { wId, name } = req.query;
+  if (typeof wId !== "string" || typeof name !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -31,10 +31,7 @@ async function handler(
     });
   }
 
-  const auth = await Authenticator.fromSuperUserSession(
-    session,
-    wId,
-  );
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
   const owner = auth.workspace();
 
   if (!owner || !auth.isDustSuperUser()) {

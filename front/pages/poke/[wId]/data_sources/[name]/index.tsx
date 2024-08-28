@@ -38,7 +38,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import {useDocuments} from "@app/poke/swr";
+import { useDocuments } from "@app/poke/swr";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
