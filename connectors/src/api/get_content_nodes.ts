@@ -96,6 +96,8 @@ const _getContentNodes = async (
       });
     }
 
+    const nodesWithParentIds: ContentNodeWithParentIds[] = [];
+
     for (const { internalId, parentInternalIds } of parentsRes.value) {
       const node = contentNodes.find((n) => n.internalId === internalId);
 
@@ -105,9 +107,13 @@ const _getContentNodes = async (
           parentInternalIds,
         };
 
-        return nodeWithParentIds;
+        nodesWithParentIds.push(nodeWithParentIds);
       }
     }
+
+    return res.status(200).json({
+      nodes: nodesWithParentIds,
+    });
   }
 
   return res.status(200).json({
