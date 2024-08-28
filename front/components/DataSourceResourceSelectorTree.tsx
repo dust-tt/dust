@@ -1,6 +1,9 @@
 import {
+  BracesIcon,
   ChatBubbleLeftRightIcon,
   DocumentTextIcon,
+  ExternalLinkIcon,
+  IconButton,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -11,9 +14,11 @@ import type {
 } from "@dust-tt/types";
 import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 
 export default function DataSourceResourceSelectorTree({
   owner,
@@ -115,7 +120,6 @@ function DataSourceResourceSelectorChildren({
   const { vaultContent, isVaultContentLoading, isVaultContentError } =
     useVaultDataSourceViewContent({
       dataSourceView: dataSourceView,
-      disabled: dataSourceView.dataSource.connectorId === null,
       filterPermission,
       owner,
       parentId,
@@ -140,6 +144,10 @@ function DataSourceResourceSelectorChildren({
     parents,
   ]);
 
+  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
+    null
+  );
+
   if (isVaultContentError) {
     return (
       <div className="text-warning text-sm">
@@ -149,63 +157,109 @@ function DataSourceResourceSelectorChildren({
   }
 
   const isTablesView = viewType === "tables";
+
   return (
-    <Tree isLoading={isVaultContentLoading}>
-      {vaultContent.map((r) => {
-        const isSelected = selectedResourceIds.includes(r.internalId);
-        const partiallyChecked =
-          !isSelected &&
-          Boolean(selectedParents.find((id) => id === r.internalId));
+    <>
+      <DataSourceViewDocumentModal
+        owner={owner}
+        dataSourceView={dataSourceView}
+        documentId={documentToDisplay}
+        isOpen={!!documentToDisplay}
+        setOpen={(open) => {
+          if (!open) {
+            setDocumentToDisplay(null);
+          }
+        }}
+      />
+      <Tree isLoading={isVaultContentLoading}>
+        {vaultContent.map((r) => {
+          const isSelected = selectedResourceIds.includes(r.internalId);
+          const partiallyChecked =
+            !isSelected &&
+            Boolean(selectedParents.find((id) => id === r.internalId));
 
-        const IconComponent = getIconForType(r.type);
-        const checkable =
-          (!isTablesView || r.type === "database") &&
-          r.preventSelection !== true;
+          const IconComponent = getIconForType(r.type);
+          const checkable =
+            (!isTablesView || r.type === "database") &&
+            r.preventSelection !== true;
 
-        let checkedStatus: "checked" | "partial" | "unchecked" = "unchecked";
-        if (isSelected || parentIsSelected) {
-          checkedStatus = "checked";
-        } else if (partiallyChecked) {
-          checkedStatus = "partial";
-        }
+          let checkedStatus: "checked" | "partial" | "unchecked" = "unchecked";
+          if (isSelected || parentIsSelected) {
+            checkedStatus = "checked";
+          } else if (partiallyChecked) {
+            checkedStatus = "partial";
+          }
 
-        return (
-          <Tree.Item
-            key={r.internalId}
-            visual={IconComponent}
-            type={r.expandable && showExpand ? "node" : "leaf"}
-            label={r.title}
-            className="whitespace-nowrap"
-            checkbox={
-              checkable || partiallyChecked
-                ? {
-                    disabled: parentIsSelected || !checkable,
-                    checked: checkedStatus,
-                    onChange: (checked) => {
-                      onSelectChange(r, parents, checked);
-                    },
-                  }
-                : undefined
-            }
-            renderTreeItems={() => (
-              <DataSourceResourceSelectorChildren
-                owner={owner}
-                dataSourceView={dataSourceView}
-                parentId={r.internalId}
-                showExpand={showExpand}
-                // In table view, only manually selected nodes are considered and hierarchy does not apply.
-                selectedParents={selectedParents}
-                selectedResourceIds={selectedResourceIds}
-                onSelectChange={onSelectChange}
-                parents={[...parents, r.internalId]}
-                parentIsSelected={parentIsSelected || isSelected}
-                filterPermission={filterPermission}
-                viewType={viewType}
-              />
-            )}
-          />
-        );
-      })}
-    </Tree>
+          return (
+            <Tree.Item
+              key={r.internalId}
+              visual={IconComponent}
+              type={r.expandable && showExpand ? "node" : "leaf"}
+              label={r.title}
+              className="whitespace-nowrap"
+              checkbox={
+                checkable || partiallyChecked
+                  ? {
+                      disabled: parentIsSelected || !checkable,
+                      checked: checkedStatus,
+                      onChange: (checked) => {
+                        onSelectChange(r, parents, checked);
+                      },
+                    }
+                  : undefined
+              }
+              renderTreeItems={() => (
+                <DataSourceResourceSelectorChildren
+                  owner={owner}
+                  dataSourceView={dataSourceView}
+                  parentId={r.internalId}
+                  showExpand={showExpand}
+                  // In table view, only manually selected nodes are considered and hierarchy does not apply.
+                  selectedParents={selectedParents}
+                  selectedResourceIds={selectedResourceIds}
+                  onSelectChange={onSelectChange}
+                  parents={[...parents, r.internalId]}
+                  parentIsSelected={parentIsSelected || isSelected}
+                  filterPermission={filterPermission}
+                  viewType={viewType}
+                />
+              )}
+              actions={
+                <div className="mr-8 flex flex-row gap-2">
+                  <IconButton
+                    size="xs"
+                    icon={ExternalLinkIcon}
+                    onClick={() => {
+                      if (r.sourceUrl) {
+                        window.open(r.sourceUrl, "_blank");
+                      }
+                    }}
+                    className={classNames(
+                      r.sourceUrl ? "" : "pointer-events-none opacity-0"
+                    )}
+                    disabled={!r.sourceUrl}
+                    variant="tertiary"
+                  />
+                  <IconButton
+                    size="xs"
+                    icon={BracesIcon}
+                    onClick={() => {
+                      if (r.dustDocumentId) {
+                        setDocumentToDisplay(r.dustDocumentId);
+                      }
+                    }}
+                    className={classNames(
+                      r.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                    )}
+                    disabled={!r.dustDocumentId}
+                    variant="tertiary"
+                  />
+                </div>
+              }
+            />
+          );
+        })}
+      </Tree>
+    </>
   );
 }

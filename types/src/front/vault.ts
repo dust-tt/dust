@@ -7,10 +7,3 @@ export type VaultType = {
   kind: VaultKind;
   groupIds: string[];
 };
-
-export interface ManagedDataSourceViewSelectedNode {
-  name: string;
-  parentsIn: string[] | null;
-}
-export type ManagedDataSourceViewsSelectedNodes =
-  ManagedDataSourceViewSelectedNode[];

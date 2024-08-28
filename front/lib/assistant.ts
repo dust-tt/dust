@@ -150,15 +150,8 @@ export function compareAgentsForSort(
   return 0; // Default: keep the original order
 }
 
-type ComparableByProvider = { connectorProvider: ConnectorProvider | null };
-function compareByImportance(
-  a: ComparableByProvider,
-  b: ComparableByProvider
-): number {
-  const aConnector = a.connectorProvider;
-  const bConnector = b.connectorProvider;
-
-  const order = Object.keys(CONNECTOR_CONFIGURATIONS)
+function getConnectorOrder() {
+  return Object.keys(CONNECTOR_CONFIGURATIONS)
     .filter(
       (key) =>
         CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
@@ -170,23 +163,48 @@ function compareByImportance(
         CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
           .connectorProvider
     );
+}
 
-  if (aConnector === CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider) {
-    return 1;
+type ComparableByProvider = { connectorProvider: ConnectorProvider | null };
+function compareByImportance(
+  a: ComparableByProvider,
+  b: ComparableByProvider
+): number {
+  const aConnector = a.connectorProvider;
+  const bConnector = b.connectorProvider;
+
+  const order = getConnectorOrder();
+
+  // Handle null cases.
+  if (aConnector === null) {
+    return bConnector === null ? 0 : 1;
   }
-
-  if (bConnector === CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider) {
+  if (bConnector === null) {
     return -1;
   }
 
-  const indexA = aConnector ? order.indexOf(aConnector) : order.length;
-  const indexB = bConnector ? order.indexOf(bConnector) : order.length;
+  // Handle webcrawler cases.
+  if (aConnector === "webcrawler") {
+    return 1;
+  }
+  if (bConnector === "webcrawler") {
+    return -1;
+  }
 
+  // Get indices in sorted connectors.
+  const indexA = order.indexOf(aConnector);
+  const indexB = order.indexOf(bConnector);
+
+  // If both are not found, they are considered equal.
   if (indexA === -1 && indexB === -1) {
     return 0;
   }
 
-  return indexA - indexB;
+  // Compare indices, treating not found as less important.
+  return (
+    (indexA === -1 ? order.length : indexA) -
+    (indexB === -1 ? order.length : indexB)
+  );
 }
 
 // Order in the following format : connectorProvider > empty > webcrawler
@@ -201,5 +219,16 @@ export function orderDatasourceViewByImportance<
 >(dataSourceViews: Type[]) {
   return dataSourceViews.sort((a, b) => {
     return compareByImportance(a.dataSource, b.dataSource);
+  });
+}
+
+export function orderDatasourceViewSelectionConfigurationByImportance<
+  Type extends { dataSourceView: { dataSource: ComparableByProvider } },
+>(dataSourceViews: Type[]) {
+  return dataSourceViews.sort((a, b) => {
+    return compareByImportance(
+      a.dataSourceView.dataSource,
+      b.dataSourceView.dataSource
+    );
   });
 }

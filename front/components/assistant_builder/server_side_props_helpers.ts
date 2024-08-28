@@ -2,6 +2,8 @@ import type {
   AgentConfigurationType,
   AppType,
   CoreAPITable,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
@@ -22,7 +24,6 @@ import {
 
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderDataSourceConfiguration,
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import {
@@ -68,7 +69,7 @@ export async function buildInitialActions({
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  // Helper function to compute AssistantBuilderDataSourceConfigurations
+  // Helper function to compute DataSourceViewSelectionConfigurations
   const renderDataSourcesConfigurations = async (
     action: RetrievalConfigurationType | ProcessConfigurationType
   ) => {
@@ -86,10 +87,10 @@ export async function buildInitialActions({
       });
     }
 
-    const dataSourceConfigurationsArray: AssistantBuilderDataSourceConfiguration[] =
+    const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
       await Promise.all(
         selectedResources.map(
-          async (sr): Promise<AssistantBuilderDataSourceConfiguration> => {
+          async (sr): Promise<DataSourceViewSelectionConfiguration> => {
             const dataSourceView = dataSourceViews.find(
               (dsv) => dsv.sId === sr.dataSourceViewId
             );
@@ -135,7 +136,7 @@ export async function buildInitialActions({
         ...acc,
         [curr.dataSourceView.sId]: curr,
       }),
-      {} as Record<string, AssistantBuilderDataSourceConfiguration>
+      {} as DataSourceViewSelectionConfigurations
     );
 
     return dataSourceConfigurations;
