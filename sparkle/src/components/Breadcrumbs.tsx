@@ -12,6 +12,7 @@ import {
 
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const LABEL_TRUNCATE_LENGTH_END = 30;
+const ELLIPSIS_STRING = "...";
 
 type BreadcrumbItem = {
   label: string;
@@ -23,21 +24,26 @@ type BreadcrumbProps = {
   items: BreadcrumbItem[];
 };
 
+type BreadcrumbsAccumulator = {
+  itemsShown: BreadcrumbItem[];
+  itemsHidden: BreadcrumbItem[];
+};
+
 export function Breadcrumbs({ items }: BreadcrumbProps) {
   const { components } = React.useContext(SparkleContext);
 
   const { itemsShown, itemsHidden } = items.reduce(
-    (acc, item, index) => {
+    (acc: BreadcrumbsAccumulator, item, index) => {
       if (items.length <= 5 || index < 2 || index >= items.length - 2) {
         acc.itemsShown.push(item);
       } else if (index === 2) {
-        acc.itemsShown.push({ label: "..." });
+        acc.itemsShown.push({ label: ELLIPSIS_STRING });
       } else {
         acc.itemsHidden.push(item);
       }
       return acc;
     },
-    { itemsShown: [] as typeof items, itemsHidden: [] as typeof items }
+    { itemsShown: [], itemsHidden: [] }
   );
 
   return (
@@ -49,9 +55,9 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
             className="s-flex s-flex-row s-items-center s-gap-1"
           >
             <Icon visual={item.icon} className="s-text-brand" />
-            {item.label === "..." ? (
+            {item.label === ELLIPSIS_STRING ? (
               <DropdownMenu>
-                <DropdownMenu.Button>...</DropdownMenu.Button>
+                <DropdownMenu.Button>${ELLIPSIS_STRING}</DropdownMenu.Button>
                 <DropdownMenu.Items origin="topLeft">
                   {itemsHidden.map((item, index) => (
                     <DropdownMenu.Item
@@ -102,11 +108,9 @@ function getLinkForItem(
   );
 }
 
-function truncateWithTooltip(text: string, length: number, omission = "...") {
+function truncateWithTooltip(text: string, length: number) {
   return text.length > length ? (
-    <Tooltip label={text}>
-      {`${text.substring(0, length - omission.length)}${omission}`}
-    </Tooltip>
+    <Tooltip label={text}>{`${text.substring(0, length - 1)}…`}</Tooltip>
   ) : (
     text
   );
