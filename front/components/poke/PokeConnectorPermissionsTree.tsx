@@ -4,7 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { usePokeConnectorPermissions } from "@app/lib/swr";
 
 export function PokePermissionTree({
@@ -33,7 +33,7 @@ export function PokePermissionTree({
   return (
     <>
       <div className="overflow-x-auto">
-        <PermissionTreeChildren
+        <DataSourcePermissionTreeChildren
           owner={owner}
           dataSource={dataSource}
           parentId={null}

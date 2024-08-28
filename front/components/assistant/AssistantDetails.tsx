@@ -43,7 +43,7 @@ import AssistantListActions from "@app/components/assistant/AssistantListActions
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
-import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentScope } from "@app/lib/client/dust_api";
@@ -54,7 +54,6 @@ import {
   useAgentConfiguration,
   useAgentUsage,
   useApp,
-  useConnectorPermissions,
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr";
@@ -400,17 +399,15 @@ function DataSourceViewsSection({
               className="whitespace-nowrap"
             >
               {dataSourceView && isAllSelected && (
-                <PermissionTreeChildren
+                <DataSourceViewPermissionTreeChildren
                   owner={owner}
-                  dataSource={dataSourceView.dataSource}
+                  dataSourceView={dataSourceView}
                   parentId={null}
-                  permissionFilter="read"
                   canUpdatePermissions={false}
                   displayDocumentSource={(documentId: string) => {
                     setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(documentId);
                   }}
-                  useConnectorPermissionsHook={useConnectorPermissions}
                   isSearchEnabled={false}
                 />
               )}
@@ -444,8 +441,6 @@ function DataSourceViewSelectedNodes({
   setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const { dataSource } = dataSourceView;
-
   const dataSourceViewSelectedNodes = useDataSourceViewContentNodes({
     owner,
     dataSourceView,
@@ -495,17 +490,15 @@ function DataSourceViewSelectedNodes({
             </div>
           }
         >
-          <PermissionTreeChildren
+          <DataSourceViewPermissionTreeChildren
             owner={owner}
-            dataSource={dataSource}
+            dataSourceView={dataSourceView}
             parentId={node.internalId}
-            permissionFilter="read"
             canUpdatePermissions={true}
             displayDocumentSource={(documentId: string) => {
               setDataSourceViewToDisplay(dataSourceView);
               setDocumentToDisplay(documentId);
             }}
-            useConnectorPermissionsHook={useConnectorPermissions}
             isSearchEnabled={false}
           />
         </Tree.Item>

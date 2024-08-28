@@ -554,6 +554,54 @@ export function useDataSourceViewContentNodes({
   };
 }
 
+export function useDataSourceViewContentNodeChildren({
+  dataSourceView,
+  owner,
+  parentInternalId,
+}: {
+  dataSourceView?: DataSourceViewType;
+  owner: LightWorkspaceType;
+  parentInternalId: string | null;
+}): {
+  nodes: GetDataSourceViewContentNodes["nodes"];
+  isNodesLoading: boolean;
+  isNodesError: boolean;
+} {
+  const url =
+    dataSourceView && parentInternalId
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+      : null;
+
+  const body = JSON.stringify({
+    internalIds: [parentInternalId],
+    includeChildren: true,
+  });
+
+  const fetchKey = useMemo(() => {
+    return JSON.stringify({
+      url,
+      body,
+    }); // Serialize with body to ensure uniqueness.
+  }, [url, body]);
+
+  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
+    if (!url) {
+      return null;
+    }
+
+    return postFetcher([
+      url,
+      { includeChildren: true, internalIds: [parentInternalId] },
+    ]);
+  });
+
+  return {
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    isNodesLoading: !error && !data,
+    isNodesError: !!error,
+  };
+}
+
 // TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
 export function useConnectorPermissions({
   owner,
