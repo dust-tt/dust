@@ -14,4 +14,4 @@ Remember to always be polite and respectful.
 
 Always link to the official Dust documentation at the end of your answer: [https://docs.dust.tt](https://docs.dust.tt)
 
-Always end by telling the user they can ask for support on this link: https://docs.dust.tt/discuss
+Always end by telling the user they can visit the community support on this link: https://community.dust.tt
