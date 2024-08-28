@@ -43,7 +43,6 @@ import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sou
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
-import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content_nodes";
 import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
@@ -453,7 +452,7 @@ type DataSourceViewsAndInternalIds = {
 };
 type DataSourceViewsAndNodes = {
   dataSourceView: DataSourceViewType;
-  nodes: GetContentNodeResponseBody["nodes"];
+  nodes: GetDataSourceViewContentNodes["nodes"];
 };
 
 export function useMultipleDataSourceViewsContentNodes({
