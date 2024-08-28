@@ -246,11 +246,20 @@ async function botAnswerMessage(
     throw new Error("DUST_FRONT_API environment variable is not defined");
   }
 
+  let requestedGroups: string[] | undefined = undefined;
+
+  if (slackUserInfo.is_bot) {
+    const botName = slackUserInfo.real_name || slackUserInfo.display_name;
+    if (typeof botName === "string") {
+      requestedGroups = await slackConfig.getBotGroupIds(botName);
+    }
+  }
   const dustAPI = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
+      groups: requestedGroups,
     },
     logger,
     {
