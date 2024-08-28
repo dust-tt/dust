@@ -7,7 +7,7 @@ import {
   LightbulbIcon,
   Modal,
   Page,
-  QuestionMarkCircleIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -215,7 +215,7 @@ export function HelpDrawer({
               title: "Community Support",
               href: "https://community.dust.tt",
               description: "Stuck? Ask your questions to the community",
-              icon: QuestionMarkCircleIcon,
+              icon: UserGroupIcon,
             },
           ]}
         />
