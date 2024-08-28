@@ -7,6 +7,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 
 import config from "@app/lib/api/config";
+import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -89,18 +90,21 @@ export async function getPendingMembershipInvitationWithWorkspaceForEmail(
   });
 
   if (pendingInvitation) {
+    const workspace = renderLightWorkspaceType({
+      workspace: pendingInvitation.workspace,
+    });
+
     return {
       invitation: {
         createdAt: pendingInvitation.createdAt.getTime(),
         id: pendingInvitation.id,
         initialRole: pendingInvitation.initialRole,
+        inviteLink: getMembershipInvitationUrl(workspace, pendingInvitation.id),
         inviteEmail: pendingInvitation.inviteEmail,
         sId: pendingInvitation.sId,
         status: pendingInvitation.status,
       },
-      workspace: renderLightWorkspaceType({
-        workspace: pendingInvitation.workspace,
-      }),
+      workspace,
     };
   }
 
