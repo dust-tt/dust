@@ -526,12 +526,11 @@ export function useMultipleDataSourcesContentNodes({
     }
   );
 
-  const { data: results, error: errors } = useSWRWithDefaults(
+  const { data: results, error } = useSWRWithDefaults(
     urlsAndOptions,
     fetcherMultiple<GetContentNodeResponseBody>
   );
-
-  const isNodesError = Boolean(errors?.some(Boolean));
+  const isNodesError = !!error;
   const isNodesLoading = !results?.every((r) => r.nodes);
 
   return useMemo(
