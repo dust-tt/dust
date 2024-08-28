@@ -36,7 +36,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { useDocuments } from "@app/lib/swr";
+import { usePokeDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -267,7 +267,7 @@ const DataSourcePage = ({
   const [offset, setOffset] = useState(0);
 
   const { documents, total, isDocumentsLoading, isDocumentsError } =
-    useDocuments(owner, dataSource, limit, offset, true);
+    usePokeDocuments(owner, dataSource, limit, offset);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
