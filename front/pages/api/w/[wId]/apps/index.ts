@@ -2,6 +2,7 @@ import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,29 +11,37 @@ import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
+export type GetAppsResponseBody = {
+  apps: AppType[];
+};
 export type PostAppResponseBody = {
   app: AppType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostAppResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetAppsResponseBody | PostAppResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can create an app.",
-      },
-    });
-  }
-
   const owner = auth.getNonNullableWorkspace();
   switch (req.method) {
+    case "GET":
+      const apps = await getApps(auth);
+      res.status(200).json({ apps });
+      return;
     case "POST":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can create an app.",
+          },
+        });
+      }
       if (
         !req.body ||
         !(typeof req.body.name == "string") ||

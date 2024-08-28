@@ -55,7 +55,7 @@ import {
   useAgentUsage,
   useApp,
   useConnectorPermissions,
-  useDataSourceContentNodes,
+  useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -446,10 +446,9 @@ function DataSourceViewSelectedNodes({
 }) {
   const { dataSource } = dataSourceView;
 
-  // TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
-  const dataSourceViewSelectedNodes = useDataSourceContentNodes({
+  const dataSourceViewSelectedNodes = useDataSourceViewContentNodes({
     owner,
-    dataSource,
+    dataSourceView,
     internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
   });
 

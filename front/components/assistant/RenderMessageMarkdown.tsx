@@ -217,7 +217,7 @@ export function RenderMessageMarkdown({
         return <MentionBlock agentName={agentName} />;
       },
     }),
-    [isStreaming]
+    [isStreaming, textSize, textColor]
   );
 
   const markdownPlugins = useMemo(

@@ -8,6 +8,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+import { VaultAppsList } from "@app/components/vaults/VaultAppsList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import { VaultResourcesList } from "@app/components/vaults/VaultResourcesList";
@@ -74,20 +75,29 @@ export default function Vault({
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <VaultResourcesList
-        dustClientFacingUrl={dustClientFacingUrl}
-        owner={owner}
-        plan={plan}
-        vault={vault}
-        systemVault={systemVault}
-        isAdmin={isAdmin}
-        category={category}
-        onSelect={(sId) => {
-          void router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`
-          );
-        }}
-      />
+      {category === "apps" ? (
+        <VaultAppsList
+          owner={owner}
+          onSelect={(sId) => {
+            void router.push(`/w/${owner.sId}/a/${sId}`);
+          }}
+        />
+      ) : (
+        <VaultResourcesList
+          dustClientFacingUrl={dustClientFacingUrl}
+          owner={owner}
+          plan={plan}
+          vault={vault}
+          systemVault={systemVault}
+          isAdmin={isAdmin}
+          category={category}
+          onSelect={(sId) => {
+            void router.push(
+              `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`
+            );
+          }}
+        />
+      )}
     </Page.Vertical>
   );
 }

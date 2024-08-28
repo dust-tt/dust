@@ -9,6 +9,7 @@ export type MembershipInvitationType = {
   id: ModelId;
   status: "pending" | "consumed" | "revoked";
   inviteEmail: string;
+  inviteLink: string;
   initialRole: ActiveRoleType;
   createdAt: number;
 };

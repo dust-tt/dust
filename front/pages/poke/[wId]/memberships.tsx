@@ -3,6 +3,7 @@ import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import React from "react";
 
+import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getMembers } from "@app/lib/api/workspace";
@@ -45,6 +46,9 @@ const MembershipsPage = ({
         <h1 className="mb-8 text-2xl font-bold">{owner.name}</h1>
         <div className="flex justify-center">
           <MembersDataTable members={members} owner={owner} user={user} />
+        </div>
+        <div className="flex justify-center">
+          <InvitationsDataTable owner={owner} />
         </div>
       </div>
     </div>

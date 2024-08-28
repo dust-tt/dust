@@ -26,15 +26,15 @@ import logger from "@app/logger/logger";
 // Make token expires after 7 days
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
 
-sgMail.setApiKey(config.getSendgridApiKey());
-
 function typeFromModel(
+  owner: WorkspaceType,
   invitation: MembershipInvitation
 ): MembershipInvitationType {
   return {
     sId: invitation.sId,
     id: invitation.id,
     inviteEmail: invitation.inviteEmail,
+    inviteLink: getMembershipInvitationUrl(owner, invitation.id),
     status: invitation.status,
     initialRole: invitation.initialRole,
     createdAt: invitation.createdAt.getTime(),
@@ -65,7 +65,7 @@ export async function getInvitation(
     return null;
   }
 
-  return typeFromModel(invitation);
+  return typeFromModel(owner, invitation);
 }
 
 export async function updateInvitationStatusAndRole(
@@ -101,7 +101,7 @@ export async function updateInvitationStatusAndRole(
     initialRole: role,
   });
 
-  return typeFromModel(existingInvitation);
+  return typeFromModel(owner, existingInvitation);
 }
 
 export async function updateOrCreateInvitation(
@@ -122,10 +122,11 @@ export async function updateOrCreateInvitation(
     await existingInvitation.update({
       initialRole,
     });
-    return typeFromModel(existingInvitation);
+    return typeFromModel(owner, existingInvitation);
   }
 
   return typeFromModel(
+    owner,
     await MembershipInvitation.create({
       sId: generateLegacyModelSId(),
       workspaceId: owner.id,
@@ -136,23 +137,29 @@ export async function updateOrCreateInvitation(
   );
 }
 
-export function getMembershipInvitationToken(
-  invitation: MembershipInvitationType
-) {
+function getMembershipInvitationToken(invitationId: number) {
   return sign(
     {
-      membershipInvitationId: invitation.id,
+      membershipInvitationId: invitationId,
       exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME_SEC,
     },
     config.getDustInviteTokenSecret()
   );
 }
 
-export function getMembershipInvitationUrlForToken(
+function getMembershipInvitationUrlForToken(
   owner: LightWorkspaceType,
   invitationToken: string
 ) {
   return `${config.getClientFacingUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
+}
+
+export function getMembershipInvitationUrl(
+  owner: LightWorkspaceType,
+  invitationId: number
+) {
+  const invitationToken = getMembershipInvitationToken(invitationId);
+  return getMembershipInvitationUrlForToken(owner, invitationToken);
 }
 
 export async function sendWorkspaceInvitationEmail(
@@ -160,12 +167,6 @@ export async function sendWorkspaceInvitationEmail(
   user: UserType,
   invitation: MembershipInvitationType
 ) {
-  const invitationToken = getMembershipInvitationToken(invitation);
-  const invitationUrl = getMembershipInvitationUrlForToken(
-    owner,
-    invitationToken
-  );
-
   // Send invite email.
   const message = {
     to: invitation.inviteEmail,
@@ -175,11 +176,13 @@ export async function sendWorkspaceInvitationEmail(
     },
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
-      inviteLink: invitationUrl,
+      inviteLink: invitation.inviteLink,
       inviterName: user.fullName,
       workspaceName: owner.name,
     },
   };
+
+  sgMail.setApiKey(config.getSendgridApiKey());
   await sgMail.send(message);
 }
 /**
@@ -214,6 +217,7 @@ export async function getPendingInvitations(
       id: i.id,
       status: i.status,
       inviteEmail: i.inviteEmail,
+      inviteLink: getMembershipInvitationUrl(owner, i.id),
       initialRole: i.initialRole,
       createdAt: i.createdAt.getTime(),
     };
@@ -272,6 +276,7 @@ export async function getRecentPendingAndRevokedInvitations(
       id: i.id,
       status,
       inviteEmail: i.inviteEmail,
+      inviteLink: getMembershipInvitationUrl(owner, i.id),
       initialRole: i.initialRole,
       createdAt: i.createdAt.getTime(),
     });

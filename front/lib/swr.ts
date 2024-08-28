@@ -27,6 +27,7 @@ import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { GetAppsResponseBody } from "@app/pages/api/v1/w/[wId]/apps";
 import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets/[name]";
@@ -43,7 +44,6 @@ import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sou
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
-import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content_nodes";
 import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
@@ -62,6 +62,7 @@ import type {
   GetVaultDataSourceViewsResponseBody,
   GetVaultDataSourceViewWithConnectorsResponseBody,
 } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
@@ -145,6 +146,21 @@ export function useAppStatus() {
     appStatus: useMemo(() => (data ? data : null), [data]),
     isAppStatusLoading: !error && !data,
     isAppStatusError: !!error,
+  };
+}
+
+export function useApps(owner: LightWorkspaceType) {
+  const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/apps`,
+    appsFetcher
+  );
+
+  return {
+    apps: useMemo(() => (data ? data.apps : []), [data]),
+    isAppsLoading: !error && !data,
+    isAppsError: !!error,
   };
 }
 
@@ -449,61 +465,16 @@ export function useUserMetadata(key: string) {
   };
 }
 
-// TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
-export function useDataSourceContentNodes({
-  owner,
-  dataSource,
-  internalIds,
-}: {
-  owner: LightWorkspaceType;
-  dataSource?: DataSourceType;
-  internalIds: string[];
-}): {
-  nodes: GetContentNodeResponseBody["nodes"];
-  isNodesLoading: boolean;
-  isNodesError: boolean;
-} {
-  const url =
-    dataSource && internalIds.length > 0
-      ? `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource.name
-        )}/managed/content_nodes`
-      : null;
-  const body = JSON.stringify({ internalIds });
-
-  const fetchKey = useMemo(() => {
-    return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness
-  }, [url, body]);
-
-  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
-    const options = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    };
-    if (!url) {
-      return null;
-    }
-    return fetcher(url, options);
-  });
-
-  return {
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
-    isNodesLoading: !error && !data,
-    isNodesError: !!error,
-  };
-}
-
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
   internalIds: string[];
 };
 type DataSourceViewsAndNodes = {
   dataSourceView: DataSourceViewType;
-  nodes: GetContentNodeResponseBody["nodes"];
+  nodes: GetDataSourceViewContentNodes["nodes"];
 };
 
-export function useMultipleDataSourcesContentNodes({
+export function useMultipleDataSourceViewsContentNodes({
   owner,
   dataSourceViewsAndInternalIds,
 }: {
@@ -516,9 +487,7 @@ export function useMultipleDataSourcesContentNodes({
 } {
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
-      const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-        dataSourceView.dataSource.name
-      )}/managed/content_nodes`;
+      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
       const body = JSON.stringify({ internalIds });
       const options = {
         method: "POST",
@@ -529,12 +498,11 @@ export function useMultipleDataSourcesContentNodes({
     }
   );
 
-  const { data: results, error: errors } = useSWRWithDefaults(
+  const { data: results, error } = useSWRWithDefaults(
     urlsAndOptions,
-    fetcherMultiple<GetContentNodeResponseBody>
+    fetcherMultiple<GetDataSourceViewContentNodes>
   );
-
-  const isNodesError = Boolean(errors?.some(Boolean));
+  const isNodesError = !!error;
   const isNodesLoading = !results?.every((r) => r.nodes);
 
   return useMemo(
@@ -550,6 +518,43 @@ export function useMultipleDataSourcesContentNodes({
     }),
     [dataSourceViewsAndInternalIds, isNodesError, isNodesLoading, results]
   );
+}
+
+export function useDataSourceViewContentNodes({
+  owner,
+  dataSourceView,
+  internalIds,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceView?: DataSourceViewType;
+  internalIds: string[];
+}): {
+  nodes: GetDataSourceViewContentNodes["nodes"];
+  isNodesLoading: boolean;
+  isNodesError: boolean;
+} {
+  const url =
+    dataSourceView && internalIds.length > 0
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+      : null;
+
+  const fetchKey = useMemo(() => {
+    return JSON.stringify({ url, body: { internalIds } }); // Serialize with body to ensure uniqueness.
+  }, [url, internalIds]);
+
+  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
+    if (!url) {
+      return null;
+    }
+
+    return postFetcher([url, { internalIds }]);
+  });
+
+  return {
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    isNodesLoading: !error && !data,
+    isNodesError: !!error,
+  };
 }
 
 // TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)

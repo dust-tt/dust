@@ -6,10 +6,6 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getMembershipInvitationToken,
-  getMembershipInvitationUrlForToken,
-} from "@app/lib/api/invitation";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
@@ -368,16 +364,9 @@ async function handler(
       const pendingInvitationAndWorkspace =
         await getPendingMembershipInvitationWithWorkspaceForEmail(user.email);
       if (pendingInvitationAndWorkspace) {
-        const { invitation: pendingInvitation, workspace } =
-          pendingInvitationAndWorkspace;
+        const { invitation: pendingInvitation } = pendingInvitationAndWorkspace;
 
-        const invitationToken = getMembershipInvitationToken(pendingInvitation);
-        const invitationUrl = getMembershipInvitationUrlForToken(
-          workspace,
-          invitationToken
-        );
-
-        res.redirect(invitationUrl);
+        res.redirect(pendingInvitation.inviteLink);
         return;
       }
     }

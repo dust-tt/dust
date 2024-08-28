@@ -299,6 +299,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return getDataSourceViewUsage({ auth, dataSourceView: this.toJSON() });
   };
 
+  // Permissions.
+
+  canRead(auth: Authenticator) {
+    return auth.isAdmin() || auth.canRead([this.vault.acl()]);
+  }
+
   // Serialization.
 
   toJSON(): DataSourceViewType {
