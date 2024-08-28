@@ -10,7 +10,7 @@ services:
     ports:
       - 5432:5432
   qdrant_primary:
-    image: "qdrant/qdrant"
+    image: "qdrant/qdrant:v1.7.2"
     volumes:
       - qdrant_primary:/qdrant/storage
     ports:
@@ -29,7 +29,7 @@ services:
       timeout: 10s
       retries: 1 # Only retry once to minimize delay
   qdrant_secondary:
-    image: "qdrant/qdrant"
+    image: "qdrant/qdrant:v1.7.2"
     volumes:
       - qdrant_secondary:/qdrant/storage
     environment:
