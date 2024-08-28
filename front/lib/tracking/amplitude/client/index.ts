@@ -8,6 +8,7 @@ import {
   ampli,
   AssistantBuilderOpened,
   AssistantBuilderStepViewed,
+  HelpDrawerOpened,
   MultiFilesUploadUsed,
   PageViewed,
 } from "@app/lib/tracking/amplitude/client/generated";
@@ -211,4 +212,25 @@ export class AmplitudeClientSideTracking {
 
     return AmplitudeClientSideTracking.flush();
   }
+
+
+  static trackHelpDrawerOpened({
+    workspaceId,
+  }: {
+    workspaceId: string;
+  }) {
+    const client = getBrowserClient();
+    const event = new HelpDrawerOpened();
+    client.track({
+      ...event,
+      groups: workspaceId
+        ? {
+            [GROUP_TYPE]: workspaceId,
+          }
+        : undefined,
+    });
+
+    return AmplitudeClientSideTracking.flush();
+  }
+
 }

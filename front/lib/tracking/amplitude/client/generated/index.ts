@@ -155,6 +155,11 @@ export class AssistantBuilderStepViewed implements BaseEvent {
   }
 }
 
+
+export class HelpDrawerOpened implements BaseEvent {
+  event_type = "HelpDrawerOpened";
+}
+
 export class ClickedEnterpriseContactUs implements BaseEvent {
   event_type = "ClickedEnterpriseContactUs";
 
