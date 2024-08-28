@@ -1,15 +1,12 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import logger from "@connectors/logger/logger";
-import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
-import { makeScript } from "scripts/helpers";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { execute } from "fp-ts/lib/StateT";
 
 makeScript({}, async ({ execute }) => {
   const connectors = await ConnectorResource.listByType("microsoft", {});
@@ -53,7 +50,7 @@ async function updateParentsFieldForConnector(
         return true;
       }
 
-      return await updateDocumentParentsField({
+      return updateDocumentParentsField({
         dataSourceConfig: {
           dataSourceName: connector.dataSourceName,
           workspaceId: connector.workspaceId,
