@@ -261,8 +261,8 @@ export async function confluenceCheckAndUpsertPageActivity({
   const page = await client.getPageById(pageId);
   if (!page) {
     localLogger.info("Confluence page not found.");
-    // Return true so we still try to import the child pages.
-    return true;
+    // Return false to skip the child pages.
+    return false;
   }
 
   const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
