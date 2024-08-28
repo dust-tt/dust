@@ -321,7 +321,11 @@ export default function AppView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            if (window.history.length > 1) {
+              void router.back();
+            } else {
+              void router.push(`/w/${owner.sId}/a`);
+            }
           }}
         />
       }

@@ -1,17 +1,12 @@
 import {
+  Button,
   Chip,
   CommandLineIcon,
   DataTable,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorType,
-  DataSourceViewCategory,
-  PlanType,
-  VaultType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { ConnectorType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { useRef } from "react";
@@ -19,11 +14,10 @@ import { useState } from "react";
 import * as React from "react";
 
 import { useApps } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
 
 type RowData = {
   category: string;
-  label: string;
+  name: string;
   icon: ComponentType;
   connector?: ConnectorType;
   fetchConnectorError?: string;
@@ -32,48 +26,35 @@ type RowData = {
   onClick?: () => void;
 };
 
-type Info = CellContext<RowData, unknown>;
-
-type VaultResourcesListProps = {
+type VaultAppListProps = {
   owner: WorkspaceType;
-  plan: PlanType;
-  isAdmin: boolean;
-  vault: VaultType;
-  systemVault: VaultType;
-  category: DataSourceViewCategory;
   onSelect: (sId: string) => void;
 };
 
 const getTableColumns = () => {
   return [
     {
-      header: "Name",
-      accessorKey: "label",
-      id: "label",
-      cell: (info: Info) => (
+      id: "Name",
+      cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
-          <span className="font-bold">{info.row.original.label}</span>
+          {info.getValue()}
         </DataTable.CellContent>
       ),
+      accessorFn: (row: RowData) => row.name,
     },
     {
-      header: "Visibility",
-      cell: (info: Info) => (
+      id: "Visibility",
+      cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
-          <Chip color="slate">
-            {info.row.original.visibility === "private" ? "Private" : "Public"}
-          </Chip>
+          <Chip color="slate">{info.getValue()}</Chip>
         </DataTable.CellContent>
       ),
+      accessorFn: (row: RowData) => row.visibility,
     },
   ];
 };
 
-export const VaultAppsList = ({
-  owner,
-  isAdmin,
-  onSelect,
-}: VaultResourcesListProps) => {
+export const VaultAppsList = ({ owner, onSelect }: VaultAppListProps) => {
   const [appSearch, setAppSearch] = useState<string>("");
 
   const { apps, isAppsLoading } = useApps(owner);
@@ -84,10 +65,10 @@ export const VaultAppsList = ({
     apps?.map((app) => ({
       sId: app.sId,
       category: "apps",
-      label: app.name,
+      name: app.name,
       icon: CommandLineIcon,
       workspaceId: owner.sId,
-      visibility: app.visibility,
+      visibility: app.visibility === "private" ? "Private" : "Public",
       onClick: () => onSelect(app.sId),
     })) || [];
 
@@ -99,38 +80,38 @@ export const VaultAppsList = ({
     );
   }
 
+  if (rows.length === 0) {
+    return (
+      <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg border bg-structure-50">
+        <Button
+          label="Create App"
+          onClick={() => {
+            alert("Not implemented"); // Check which role should be allowed to create an app or disable button.
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={classNames(
-        "flex gap-2",
-        rows.length === 0 && isAdmin
-          ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
-          : ""
-      )}
-    >
-      {rows.length > 0 ? (
-        <>
-          <Searchbar
-            name="search"
-            ref={searchBarRef}
-            placeholder="Search (Name)"
-            value={appSearch}
-            onChange={(s) => {
-              setAppSearch(s);
-            }}
-          />
-          <DataTable
-            data={rows}
-            columns={getTableColumns()}
-            filter={appSearch}
-            filterColumn="label"
-          />
-        </>
-      ) : (
-        <div className="flex items-center justify-center text-sm font-normal text-element-700">
-          No available Dust Apps
-        </div>
-      )}
-    </div>
+    <>
+      <div className="gap-2">
+        <Searchbar
+          name="search"
+          ref={searchBarRef}
+          placeholder="Search (Name)"
+          value={appSearch}
+          onChange={(s) => {
+            setAppSearch(s);
+          }}
+        />
+      </div>
+      <DataTable
+        data={rows}
+        columns={getTableColumns()}
+        filter={appSearch}
+        filterColumn="label"
+      />
+    </>
   );
 };

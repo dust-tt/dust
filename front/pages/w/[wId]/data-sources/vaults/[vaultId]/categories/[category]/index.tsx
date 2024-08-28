@@ -75,13 +75,8 @@ export default function Vault({
       {category === "apps" ? (
         <VaultAppsList
           owner={owner}
-          plan={plan}
-          vault={vault}
-          systemVault={systemVault}
-          isAdmin={isAdmin}
-          category={category}
-          onSelect={() => {
-            alert("Not implemented");
+          onSelect={(sId) => {
+            void router.push(`/w/${owner.sId}/a/${sId}`);
           }}
         />
       ) : (
