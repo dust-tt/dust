@@ -21,9 +21,7 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
       email: t.union([t.string, t.null]),
       profilePictureUrl: t.union([t.string, t.null]),
       origin: t.union([
-        t.literal("slack"),
-        t.literal("web"),
-        t.literal("api"),
+        t.string,
         t.null,
         t.undefined,
       ]),

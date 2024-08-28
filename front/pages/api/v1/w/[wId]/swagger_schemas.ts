@@ -92,7 +92,7 @@
  *           description: URL of the user's profile picture
  *         origin:
  *           type: string
- *           description: Origin of the context (e.g., 'slack', 'web')
+ *           description: Origin of the context (e.g., 'api')
  *     AgentConfiguration:
  *       type: object
  *       properties:

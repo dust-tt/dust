@@ -53,7 +53,7 @@ export type MessageWithRankType = WithRank<MessageType>;
  * User messages
  */
 
-export type UserMessageOrigin = "slack" | "web" | "api";
+export type UserMessageOrigin = string;
 
 export type UserMessageContext = {
   username: string;
