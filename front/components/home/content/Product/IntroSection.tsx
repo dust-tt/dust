@@ -1,6 +1,13 @@
-import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Div3D,
+  Hover3D,
+  PlayIcon,
+  RocketIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   Grid,
@@ -12,39 +19,93 @@ import {
 import { classNames } from "@app/lib/utils";
 
 export function IntroSection() {
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [showSpinner, setShowSpinner] = useState(false);
+
+  useEffect(() => {
+    if (isVideoOpen) {
+      setShowSpinner(true);
+      const timer = setTimeout(() => {
+        setShowSpinner(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVideoOpen]);
+
   const MainVisualImage = () => (
-    <Hover3D depth={-40} perspective={1000} className="relative">
-      <Div3D depth={-30}>
-        <img
-          src="/static/landing/mainVisual/MainVisual1.png"
-          alt="MainVisual1"
-        />
-      </Div3D>
-      <Div3D depth={-10} className="absolute top-0">
-        <img
-          src="/static/landing/mainVisual/MainVisual2.png"
-          alt="MainVisual2"
-        />
-      </Div3D>
-      <Div3D depth={40} className="absolute top-0">
-        <img
-          src="/static/landing/mainVisual/MainVisual3.png"
-          alt="MainVisual3"
-        />
-      </Div3D>
-      <Div3D depth={-5} className="absolute top-0">
-        <img
-          src="/static/landing/mainVisual/MainVisual4.png"
-          alt="MainVisual4"
-        />
-      </Div3D>
-      <Div3D depth={120} className="absolute top-0">
-        <img
-          src="/static/landing/mainVisual/MainVisual5.png"
-          alt="MainVisual5"
-        />
-      </Div3D>
-    </Hover3D>
+    <>
+      {showSpinner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black opacity-50 backdrop-blur-md"></div>
+          <Spinner size="xl" />
+        </div>
+      )}
+      {isVideoOpen && !showSpinner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black opacity-50 backdrop-blur-md"
+            onClick={() => setIsVideoOpen(false)}
+          ></div>
+          <div className="z-10 overflow-hidden rounded-lg">
+            <iframe
+              src="https://www.veed.io/embed/70c8862a-67a9-4159-8aee-76e98d203e68?watermark=0&color=default&sharing=0&title=0"
+              width="744"
+              height="504"
+              frameBorder="0"
+              title="Product Tour"
+              allowFullScreen
+              className="rounded-lg"
+            ></iframe>
+          </div>
+        </div>
+      )}
+
+      <Hover3D depth={-40} perspective={1000} className="relative">
+        <Div3D depth={-30}>
+          <img
+            src="/static/landing/mainVisual/MainVisual1.png"
+            alt="MainVisual1"
+          />
+        </Div3D>
+        <Div3D depth={-10} className="absolute top-0">
+          <img
+            src="/static/landing/mainVisual/MainVisual2.png"
+            alt="MainVisual2"
+          />
+        </Div3D>
+        <Div3D depth={40} className="absolute top-0">
+          <img
+            src="/static/landing/mainVisual/MainVisual3.png"
+            alt="MainVisual3"
+          />
+        </Div3D>
+        <Div3D depth={-5} className="absolute top-0">
+          <img
+            src="/static/landing/mainVisual/MainVisual4.png"
+            alt="MainVisual4"
+          />
+        </Div3D>
+        <Div3D depth={100} className="absolute top-0">
+          <img
+            src="/static/landing/mainVisual/MainVisual5.png"
+            alt="MainVisual5"
+          />
+        </Div3D>
+        <Div3D
+          depth={150}
+          className="absolute top-0 flex h-full w-full items-center justify-center"
+        >
+          <Button
+            icon={PlayIcon}
+            variant="primary"
+            size="md"
+            label="Watch Product Tour"
+            className="shadow-xl"
+            onClick={() => setIsVideoOpen(true)}
+          />
+        </Div3D>
+      </Hover3D>
+    </>
   );
 
   return (
@@ -122,7 +183,7 @@ export function IntroSection() {
           )}
         >
           <P size="md" dotCSS="text-amber-300" shape="triangle">
-            Connect <Strong>your team’s data</Strong> and{" "}
+            Connect <Strong>your team's data</Strong> and{" "}
             <Strong>break&nbsp;down knowledge silos</Strong> with
             context&#8209;aware&nbsp;assistants.
           </P>
