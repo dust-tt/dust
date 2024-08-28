@@ -26,8 +26,6 @@ import logger from "@app/logger/logger";
 // Make token expires after 7 days
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;
 
-sgMail.setApiKey(config.getSendgridApiKey());
-
 function typeFromModel(
   owner: WorkspaceType,
   invitation: MembershipInvitation
@@ -183,6 +181,8 @@ export async function sendWorkspaceInvitationEmail(
       workspaceName: owner.name,
     },
   };
+
+  sgMail.setApiKey(config.getSendgridApiKey());
   await sgMail.send(message);
 }
 /**
