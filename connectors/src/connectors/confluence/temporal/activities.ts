@@ -257,6 +257,11 @@ export async function confluenceCheckAndUpsertPageActivity({
   localLogger.info("Upserting Confluence page.");
 
   const page = await client.getPageById(pageId);
+  if (!page) {
+    localLogger.info("Confluence page not found.");
+    return false;
+  }
+
   const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
   if (hasReadRestrictions) {
     localLogger.info("Skipping restricted Confluence page.");
