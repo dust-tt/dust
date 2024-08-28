@@ -256,7 +256,15 @@ export async function confluenceCheckAndUpsertPageActivity({
 
   localLogger.info("Upserting Confluence page.");
 
+  // There is a small delta between the page being listed and the page being imported.
+  // If the page has been deleted in the meantime, we should ignore it.
   const page = await client.getPageById(pageId);
+  if (!page) {
+    localLogger.info("Confluence page not found.");
+    // Return true so we still try to import the child pages.
+    return true;
+  }
+
   const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
   if (hasReadRestrictions) {
     localLogger.info("Skipping restricted Confluence page.");

@@ -415,10 +415,19 @@ export class ConfluenceClient {
       "include-labels": "true", // Include labels.
     });
 
-    return this.request(
-      `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
-      ConfluencePageWithBodyCodec
-    );
+    try {
+      return await this.request(
+        `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
+        ConfluencePageWithBodyCodec
+      );
+    } catch (err) {
+      if (err instanceof ConfluenceClientError && err.status === 404) {
+        // If the page is not found, return null.
+        return null;
+      }
+
+      throw err;
+    }
   }
 
   async getPageReadRestrictions(pageId: string) {
