@@ -11,6 +11,7 @@ import {
   QuestionMarkCircleIcon,
   RobotIcon,
   ShapesIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
@@ -41,6 +42,7 @@ export type SubNavigationAssistantsId =
   | "data_sources_url"
   | "developers"
   | "documentation"
+  | "community"
   | "vaults";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
@@ -256,6 +258,14 @@ export const subNavigationBuild = ({
         icon: QuestionMarkCircleIcon,
         href: `https://docs.dust.tt`,
         current: current === "documentation",
+        target: "_blank",
+      },
+      {
+        id: "community",
+        label: "Community Support",
+        icon: UserGroupIcon,
+        href: `https://community.dust.tt`,
+        current: current === "community",
         target: "_blank",
       },
     ],
