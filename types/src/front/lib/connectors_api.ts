@@ -83,10 +83,6 @@ export type ContentNode = {
   internalId: string;
   // The direct parent ID of this content node
   parentInternalId: string | null;
-
-  // A list of all parent IDs up to the root node, including the direct parent
-  // Note: When includeParents is true, this list will be populated
-  parentInternalIds: string[] | null;
   type: ContentNodeType;
   title: string;
   titleWithParentsContext?: string;
@@ -97,6 +93,17 @@ export type ContentNode = {
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
 };
+
+export type ContentNodeWithParentIds = ContentNode & {
+  // A list of all parent IDs up to the root node, including the direct parent
+  // Note: When includeParents is true, this list will be populated
+  parentInternalIds: string[] | null;
+};
+
+type GetContentNodesReturnType<IncludeParents extends boolean> =
+  IncludeParents extends true
+    ? ConnectorsAPIResponse<{ nodes: ContentNodeWithParentIds[] }>
+    : ConnectorsAPIResponse<{ nodes: ContentNode[] }>;
 
 export type GoogleDriveFolderType = {
   id: string;
@@ -446,21 +453,17 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getContentNodes({
+  async getContentNodes<IncludeParents extends boolean>({
     connectorId,
     includeParents,
     internalIds,
     viewType = "documents",
   }: {
     connectorId: string;
-    includeParents?: boolean;
+    includeParents?: IncludeParents;
     internalIds: string[];
     viewType?: ContentNodesViewType;
-  }): Promise<
-    ConnectorsAPIResponse<{
-      nodes: ContentNode[];
-    }>
-  > {
+  }): Promise<GetContentNodesReturnType<IncludeParents>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(
         connectorId
@@ -476,7 +479,9 @@ export class ConnectorsAPI {
       }
     );
 
-    return this._resultFromResponse(res);
+    const response = await this._resultFromResponse(res);
+
+    return response as GetContentNodesReturnType<IncludeParents>;
   }
 
   async linkSlackChannelsWithAgent({

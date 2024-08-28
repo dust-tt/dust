@@ -88,16 +88,17 @@ async function handler(
   }
 
   const { internalIds } = bodyValidation.right;
+
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
   );
+
   const connectorsRes = await connectorsAPI.getContentNodes({
     connectorId: dataSource.connectorId,
     includeParents: true,
     internalIds,
   });
-
   if (connectorsRes.isErr()) {
     return apiError(req, res, {
       status_code: 500,

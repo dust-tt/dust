@@ -1,5 +1,6 @@
 import type {
   ContentNode,
+  ContentNodeWithParentIds,
   Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
@@ -24,7 +25,7 @@ type GetContentNodesRequestBody = t.TypeOf<
 >;
 
 type GetContentNodesResponseBody = WithConnectorsAPIErrorReponse<{
-  nodes: ContentNode[];
+  nodes: (ContentNode | ContentNodeWithParentIds)[];
 }>;
 
 const _getContentNodes = async (
@@ -97,8 +98,14 @@ const _getContentNodes = async (
 
     for (const { internalId, parentInternalIds } of parentsRes.value) {
       const node = contentNodes.find((n) => n.internalId === internalId);
+
       if (node) {
-        node.parentInternalIds = parentInternalIds;
+        const nodeWithParentIds: ContentNodeWithParentIds = {
+          ...node,
+          parentInternalIds,
+        };
+
+        return nodeWithParentIds;
       }
     }
   }
