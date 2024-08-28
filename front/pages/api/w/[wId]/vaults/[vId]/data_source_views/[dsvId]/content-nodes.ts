@@ -97,6 +97,8 @@ async function handler(
 
   const { includeChildren, internalIds } = bodyValidation.right;
 
+  let contentNodes: ContentNodeWithParentIds[];
+
   // If the request is for children, we need to fetch the children of the internal ids.
   if (includeChildren) {
     if (internalIds.length !== 1) {
@@ -112,7 +114,7 @@ async function handler(
 
     const [parentInternalId] = internalIds;
 
-    const connectorRes = await connectorsAPI.getConnectorPermissions({
+    const connectorsRes = await connectorsAPI.getConnectorPermissions({
       connectorId: dataSource.connectorId,
       filterPermission: "read",
       includeParents: true,
@@ -120,7 +122,7 @@ async function handler(
       viewType: "documents",
     });
 
-    if (connectorRes.isErr()) {
+    if (connectorsRes.isErr()) {
       return apiError(req, res, {
         status_code: 500,
         api_error: {
@@ -131,35 +133,30 @@ async function handler(
       });
     }
 
-    const contentNodesInView = filterAndCropContentNodesByView(
-      dataSourceView,
-      connectorRes.value.resources
-    );
-
-    return res.status(200).json({
-      nodes: contentNodesInView,
+    contentNodes = connectorsRes.value.resources;
+  } else {
+    const connectorsRes = await connectorsAPI.getContentNodes({
+      connectorId: dataSource.connectorId,
+      includeParents: true,
+      internalIds,
     });
-  }
+    if (connectorsRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message:
+            "An error occurred while fetching the resources' content nodes.",
+        },
+      });
+    }
 
-  const connectorsRes = await connectorsAPI.getContentNodes({
-    connectorId: dataSource.connectorId,
-    includeParents: true,
-    internalIds,
-  });
-  if (connectorsRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message:
-          "An error occurred while fetching the resources' content nodes.",
-      },
-    });
+    contentNodes = connectorsRes.value.nodes;
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(
     dataSourceView,
-    connectorsRes.value.nodes
+    contentNodes
   );
 
   return res.status(200).json({

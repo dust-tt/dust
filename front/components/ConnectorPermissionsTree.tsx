@@ -220,8 +220,8 @@ function PermissionTreeChildren({
         ?.unselected) ||
     "none";
 
-  const resourcesFiltered = nodes.filter(
-    (r) => search.trim().length === 0 || r.title.includes(search)
+  const filteredNodes = nodes.filter(
+    (n) => search.trim().length === 0 || n.title.includes(search)
   );
 
   return (
@@ -256,15 +256,15 @@ function PermissionTreeChildren({
                   setSelectAllClicked((prev) => !prev);
                   setLocalStateByInternalId((prev) => {
                     const newState = { ...prev };
-                    resourcesFiltered.forEach((r) => {
-                      newState[r.internalId] = !selectAllClicked;
+                    filteredNodes.forEach((n) => {
+                      newState[n.internalId] = !selectAllClicked;
                     });
                     return newState;
                   });
                   if (onPermissionUpdate) {
-                    resourcesFiltered.forEach((r) => {
+                    filteredNodes.forEach((n) => {
                       onPermissionUpdate({
-                        internalId: r.internalId,
+                        internalId: n.internalId,
                         permission: !selectAllClicked
                           ? selectedPermission
                           : unselectedPermission,
@@ -278,21 +278,21 @@ function PermissionTreeChildren({
         </>
       )}
       <Tree isLoading={isLoading}>
-        {resourcesFiltered.map((r, i) => {
+        {filteredNodes.map((n, i) => {
           const isChecked =
             parentIsSelected ||
-            (localStateByInternalId[r.internalId] ??
-              ["read", "read_write"].includes(r.permission));
+            (localStateByInternalId[n.internalId] ??
+              ["read", "read_write"].includes(n.permission));
 
           return (
             <Tree.Item
-              key={r.internalId}
-              type={r.expandable ? "node" : "leaf"}
-              label={r.title}
-              visual={getVisualForContentNode(r)}
+              key={n.internalId}
+              type={n.expandable ? "node" : "leaf"}
+              label={n.title}
+              visual={getVisualForContentNode(n)}
               className="whitespace-nowrap"
               checkbox={
-                r.preventSelection !== true &&
+                n.preventSelection !== true &&
                 canUpdatePermissions &&
                 onPermissionUpdate
                   ? {
@@ -301,10 +301,10 @@ function PermissionTreeChildren({
                       onChange: (checked) => {
                         setLocalStateByInternalId((prev) => ({
                           ...prev,
-                          [r.internalId]: checked,
+                          [n.internalId]: checked,
                         }));
                         onPermissionUpdate({
-                          internalId: r.internalId,
+                          internalId: n.internalId,
                           permission: checked
                             ? selectedPermission
                             : unselectedPermission,
@@ -315,17 +315,17 @@ function PermissionTreeChildren({
               }
               actions={
                 <div className="mr-8 flex flex-row gap-2">
-                  {r.lastUpdatedAt ? (
+                  {n.lastUpdatedAt ? (
                     <Tooltip
                       contentChildren={
                         <span>
-                          {new Date(r.lastUpdatedAt).toLocaleString()}
+                          {new Date(n.lastUpdatedAt).toLocaleString()}
                         </span>
                       }
                       position={i === 0 ? "below" : "above"}
                     >
                       <span className="text-xs text-gray-500">
-                        {timeAgoFrom(r.lastUpdatedAt)} ago
+                        {timeAgoFrom(n.lastUpdatedAt)} ago
                       </span>
                     </Tooltip>
                   ) : null}
@@ -333,38 +333,38 @@ function PermissionTreeChildren({
                     size="xs"
                     icon={ExternalLinkIcon}
                     onClick={() => {
-                      if (r.sourceUrl) {
-                        window.open(r.sourceUrl, "_blank");
+                      if (n.sourceUrl) {
+                        window.open(n.sourceUrl, "_blank");
                       }
                     }}
                     className={classNames(
-                      r.sourceUrl ? "" : "pointer-events-none opacity-0"
+                      n.sourceUrl ? "" : "pointer-events-none opacity-0"
                     )}
-                    disabled={!r.sourceUrl}
+                    disabled={!n.sourceUrl}
                     variant="tertiary"
                   />
                   <IconButton
                     size="xs"
                     icon={BracesIcon}
                     onClick={() => {
-                      if (r.dustDocumentId) {
-                        displayDocumentSource(r.dustDocumentId);
+                      if (n.dustDocumentId) {
+                        displayDocumentSource(n.dustDocumentId);
                       }
                     }}
                     className={classNames(
-                      r.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                      n.dustDocumentId ? "" : "pointer-events-none opacity-0"
                     )}
-                    disabled={!r.dustDocumentId}
+                    disabled={!n.dustDocumentId}
                     variant="tertiary"
                   />
                 </div>
               }
               renderTreeItems={() => {
                 const isParentNodeSelected =
-                  (parentIsSelected || localStateByInternalId[r.internalId]) ??
-                  ["read", "read_write"].includes(r.permission);
+                  (parentIsSelected || localStateByInternalId[n.internalId]) ??
+                  ["read", "read_write"].includes(n.permission);
 
-                return renderChildItem(r, { isParentNodeSelected });
+                return renderChildItem(n, { isParentNodeSelected });
               }}
             />
           );
