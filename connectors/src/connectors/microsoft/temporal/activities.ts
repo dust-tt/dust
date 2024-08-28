@@ -212,10 +212,10 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       );
 
       if (!node) {
-        throw new Error(`Node ${nodeId} not found`);
+        logger.warn({ nodeId }, `Node not found while saving delta, skipping`);
+      } else {
+        await node.update({ deltaLink });
       }
-
-      await node.update({ deltaLink });
     }
   }
 }
