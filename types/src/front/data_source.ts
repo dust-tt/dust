@@ -1,4 +1,3 @@
-import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
 import { ConnectorType } from "./lib/connectors_api";
