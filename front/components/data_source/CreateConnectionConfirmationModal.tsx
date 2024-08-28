@@ -5,9 +5,10 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import type { ConnectorProviderConfiguration } from "@dust-tt/types";
 import Link from "next/link";
 import { useState } from "react";
+
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
 export function CreateConnectionConfirmationModal({
   connectorProviderConfiguration,

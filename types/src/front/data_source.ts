@@ -34,19 +34,6 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
 };
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
-export type ConnectorProviderConfiguration = {
-  name: string;
-  connectorProvider: ConnectorProvider;
-  status: "preview" | "built" | "rolling_out";
-  rollingOutFlag?: WhitelistableFeature;
-  hide: boolean;
-  logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
-  description: string;
-  limitations: string | null;
-  guideLink: string | null;
-  isNested: boolean;
-  isSearchEnabled: boolean;
-};
 
 export type LabsConnectorProvider = "google_drive" | "gong";
 

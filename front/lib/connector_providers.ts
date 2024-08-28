@@ -10,12 +10,26 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  ConnectorProviderConfiguration,
   DataSourceViewType,
   PlanType,
+  WhitelistableFeature,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
+
+export type ConnectorProviderConfiguration = {
+  name: string;
+  connectorProvider: ConnectorProvider;
+  status: "preview" | "built" | "rolling_out";
+  rollingOutFlag?: WhitelistableFeature;
+  hide: boolean;
+  logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  description: string;
+  limitations: string | null;
+  guideLink: string | null;
+  isNested: boolean;
+  isSearchEnabled: boolean;
+};
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
