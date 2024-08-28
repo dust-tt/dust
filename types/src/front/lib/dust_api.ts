@@ -138,7 +138,7 @@ export type DustAPICredentials = {
   workspaceId: string;
   // Dust system API keys can request to be authenticated as a list of specific group IDs.
   // This is for internal use only.
-  groups?: string[];
+  groupIds?: string[];
 };
 
 export const DustGroupIdsHeader = "X-Dust-Group-Ids";
