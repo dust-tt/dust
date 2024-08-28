@@ -27,6 +27,7 @@ import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { GetAppsResponseBody } from "@app/pages/api/v1/w/[wId]/apps";
 import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets/[name]";
@@ -142,6 +143,21 @@ export function useAppStatus() {
     appStatus: useMemo(() => (data ? data : null), [data]),
     isAppStatusLoading: !error && !data,
     isAppStatusError: !!error,
+  };
+}
+
+export function useApps(owner: LightWorkspaceType) {
+  const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/apps`,
+    appsFetcher
+  );
+
+  return {
+    apps: useMemo(() => (data ? data.apps : []), [data]),
+    isAppsLoading: !error && !data,
+    isAppsError: !!error,
   };
 }
 
