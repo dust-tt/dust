@@ -249,10 +249,8 @@ async function botAnswerMessage(
   let requestedGroups: string[] | undefined = undefined;
 
   if (slackUserInfo.is_bot) {
-    const botName = slackUserInfo.real_name || slackUserInfo.display_name;
-    if (typeof botName === "string") {
-      requestedGroups = await slackConfig.getBotGroupIds(botName);
-    }
+    const botName = slackUserInfo.real_name;
+    requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
   const dustAPI = new DustAPI(
     apiConfig.getDustAPIConfig(),

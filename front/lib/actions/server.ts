@@ -86,18 +86,14 @@ export async function runActionStreamed(
   const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    prodCredentials,
+    { ...prodCredentials, groups: requestedGroupIds },
     logger
   );
 
-  const res = await api.runAppStreamed(
-    auth.groups(),
-    action.app,
-    config,
-    inputs
-  );
+  const res = await api.runAppStreamed(action.app, config, inputs);
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);
@@ -203,13 +199,14 @@ export async function runAction(
   const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    prodCredentials,
+    { ...prodCredentials, groups: requestedGroupIds },
     logger
   );
 
-  const res = await api.runApp(auth.groups(), action.app, config, inputs);
+  const res = await api.runApp(action.app, config, inputs);
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);
