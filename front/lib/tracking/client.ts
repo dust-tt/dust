@@ -118,11 +118,7 @@ export class ClientSideTracking {
     });
   }
 
-  static trackHelpDrawerOpened({
-    workspaceId,
-  }: {
-    workspaceId: string;
-  }) {
+  static trackHelpDrawerOpened({ workspaceId }: { workspaceId: string }) {
     return AmplitudeClientSideTracking.trackHelpDrawerOpened({
       workspaceId,
     });

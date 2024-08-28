@@ -213,12 +213,7 @@ export class AmplitudeClientSideTracking {
     return AmplitudeClientSideTracking.flush();
   }
 
-
-  static trackHelpDrawerOpened({
-    workspaceId,
-  }: {
-    workspaceId: string;
-  }) {
+  static trackHelpDrawerOpened({ workspaceId }: { workspaceId: string }) {
     const client = getBrowserClient();
     const event = new HelpDrawerOpened();
     client.track({
@@ -232,5 +227,4 @@ export class AmplitudeClientSideTracking {
 
     return AmplitudeClientSideTracking.flush();
   }
-
 }

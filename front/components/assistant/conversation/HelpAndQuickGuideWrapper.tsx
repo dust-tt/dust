@@ -44,7 +44,6 @@ export function HelpAndQuickGuideWrapper({
     }
   }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
 
-
   useEffect(() => {
     if (isHelpDrawerOpen) {
       void ClientSideTracking.trackHelpDrawerOpened({
