@@ -312,16 +312,13 @@ export function useDocuments(
   owner: LightWorkspaceType,
   dataSource: { name: string },
   limit: number,
-  offset: number,
-  asDustSuperUser?: boolean
+  offset: number
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/data_sources/${
       dataSource.name
-    }/documents?limit=${limit}&offset=${offset}${
-      asDustSuperUser ? "&asDustSuperUser=true" : ""
-    }`,
+    }/documents?limit=${limit}&offset=${offset}`,
     documentsFetcher
   );
 
@@ -624,6 +621,29 @@ export function usePokeConnectorPermissions({
     resources: useMemo(() => (data ? data.resources : []), [data]),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
+  };
+}
+
+export function usePokeDocuments(
+  owner: LightWorkspaceType,
+  dataSource: { name: string },
+  limit: number,
+  offset: number
+) {
+  const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(
+      dataSource.name
+    )}/documents?limit=${limit}&offset=${offset}`,
+    documentsFetcher
+  );
+
+  return {
+    documents: useMemo(() => (data ? data.documents : []), [data]),
+    total: data ? data.total : 0,
+    isDocumentsLoading: !error && !data,
+    isDocumentsError: error,
+    mutateDocuments: mutate,
   };
 }
 
