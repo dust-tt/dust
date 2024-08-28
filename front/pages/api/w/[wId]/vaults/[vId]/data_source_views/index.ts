@@ -1,4 +1,5 @@
 import type {
+  ConnectorType,
   DataSourceViewType,
   DataSourceViewWithConnectorType,
   WithAPIErrorResponse,
@@ -86,6 +87,9 @@ async function handler(
                 "Unexpected empty `connectorId or `connectorProvider` for managed data sources"
               );
             }
+            let connector: ConnectorType | null = null;
+            let fetchConnectorError = false;
+            let fetchConnectorErrorMessage: string | null = null;
             try {
               const connectorsAPI = new ConnectorsAPI(
                 config.getConnectorsAPIConfig(),
@@ -95,43 +99,29 @@ async function handler(
                 dataSource.connectorId
               );
               if (statusRes.isErr()) {
-                return {
-                  ...dataSourceView,
-                  dataSource: {
-                    ...dataSource,
-                    connectorProvider: dataSource.connectorProvider,
-                    connector: null,
-                    fetchConnectorError: true,
-                    fetchConnectorErrorMessage: statusRes.error.message,
-                  },
-                };
+                fetchConnectorError = true;
+                fetchConnectorErrorMessage = statusRes.error.message;
+              } else {
+                connector = statusRes.value;
               }
-
-              return {
-                ...dataSourceView,
-                dataSource: {
-                  ...dataSource,
-                  connectorProvider: dataSource.connectorProvider,
-                  connector: statusRes.value,
-                  fetchConnectorError: false,
-                  fetchConnectorErrorMessage: null,
-                },
-              };
             } catch (e) {
               // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
               // the datasources (eventual actions will fail but a 500 just at display is not desirable).
               // When that happens the managed data sources are shown as failed.
-              return {
-                ...dataSourceView,
-                dataSource: {
-                  ...dataSource,
-                  connectorProvider: dataSource.connectorProvider,
-                  connector: null,
-                  fetchConnectorError: true,
-                  fetchConnectorErrorMessage: "Synchonization service is down",
-                },
-              };
+              fetchConnectorError = true;
+              fetchConnectorErrorMessage = "Synchonization service is down";
             }
+
+            return {
+              ...dataSourceView,
+              dataSource: {
+                ...dataSource,
+                connectorProvider: dataSource.connectorProvider,
+                connector,
+                fetchConnectorError,
+                fetchConnectorErrorMessage,
+              },
+            };
           })
         );
         return res.status(200).json({
