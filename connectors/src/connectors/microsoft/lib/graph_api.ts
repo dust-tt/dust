@@ -533,9 +533,8 @@ export async function wrapMicrosoftGraphAPIWithResult<T>(
 export function extractPath(item: MicrosoftGraph.BaseItem) {
   const webUrl = item.webUrl;
   if (webUrl) {
-    const siteName = webUrl.match(/\/sites\/(.+)\/.*/);
-    if (siteName && siteName[1]) {
-      return decodeURI(siteName[1]);
-    }
+    return decodeURI(webUrl);
+  } else {
+    return "unknown";
   }
 }
