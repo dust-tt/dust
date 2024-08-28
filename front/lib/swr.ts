@@ -519,23 +519,17 @@ export function useDataSourceViewContentNodes({
     dataSourceView && internalIds.length > 0
       ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
       : null;
-  const body = JSON.stringify({ internalIds });
 
   const fetchKey = useMemo(() => {
-    return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness.
-  }, [url, body]);
+    return JSON.stringify({ url, body: { internalIds } }); // Serialize with body to ensure uniqueness.
+  }, [url, internalIds]);
 
   const { data, error } = useSWRWithDefaults(fetchKey, async () => {
-    const options = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    };
     if (!url) {
       return null;
     }
 
-    return fetcher(url, options);
+    return postFetcher([url, { internalIds }]);
   });
 
   return {
