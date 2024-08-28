@@ -136,7 +136,7 @@ export type DustAppRunFunctionCallArgumentsTokensEvent = {
 export type DustAPICredentials = {
   apiKey: string;
   workspaceId: string;
-  // Dust system API keys can request to be authenticated as list of specific group id.
+  // Dust system API keys can request to be authenticated as a list of specific group IDs.
   // This is for internal use only.
   groups?: string[];
 };
