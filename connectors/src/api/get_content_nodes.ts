@@ -9,10 +9,13 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { getConnectorManager } from "@connectors/connectors";
+import { getParentIdsForContentNodes } from "@connectors/lib/api/content_nodes";
+import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const GetContentNodesRequestBodySchema = t.type({
+  includeParents: t.union([t.boolean, t.undefined]),
   internalIds: t.array(t.string),
   viewType: t.union([t.literal("tables"), t.literal("documents")]),
 });
@@ -55,7 +58,7 @@ const _getContentNodes = async (
     });
   }
 
-  const { internalIds, viewType } = bodyValidation.right;
+  const { includeParents, internalIds, viewType } = bodyValidation.right;
 
   const contentNodesRes: Result<ContentNode[], Error> =
     await getConnectorManager({
@@ -74,6 +77,31 @@ const _getContentNodes = async (
   }
 
   const contentNodes = contentNodesRes.value;
+
+  if (includeParents) {
+    const contentNodeInternalIds = contentNodes.map((node) => node.internalId);
+    const parentsRes = await getParentIdsForContentNodes(
+      connector,
+      contentNodeInternalIds
+    );
+    if (parentsRes.isErr()) {
+      logger.error(parentsRes.error, "Failed to get content node parents");
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: parentsRes.error.message,
+        },
+      });
+    }
+
+    for (const { internalId, parentInternalIds } of parentsRes.value) {
+      const node = contentNodes.find((n) => n.internalId === internalId);
+      if (node) {
+        node.parentInternalIds = parentInternalIds;
+      }
+    }
+  }
 
   return res.status(200).json({
     nodes: contentNodes,

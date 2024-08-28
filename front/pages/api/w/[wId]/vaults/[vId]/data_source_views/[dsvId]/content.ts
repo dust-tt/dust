@@ -32,8 +32,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "data_source_view_not_found",
+        message: "The data source view you requested was not found.",
       },
     });
   }

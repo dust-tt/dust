@@ -81,7 +81,12 @@ export type ContentNodeType = "file" | "folder" | "database" | "channel";
 export type ContentNode = {
   provider: ConnectorProvider;
   internalId: string;
+  // The direct parent ID of this content node
   parentInternalId: string | null;
+
+  // A list of all parent IDs up to the root node, including the direct parent
+  // Note: When includeParents is true, this list will be populated
+  parentInternalIds: string[] | null;
   type: ContentNodeType;
   title: string;
   titleWithParentsContext?: string;
@@ -443,10 +448,12 @@ export class ConnectorsAPI {
 
   async getContentNodes({
     connectorId,
+    includeParents,
     internalIds,
     viewType = "documents",
   }: {
     connectorId: string;
+    includeParents?: boolean;
     internalIds: string[];
     viewType?: ContentNodesViewType;
   }): Promise<
@@ -462,6 +469,7 @@ export class ConnectorsAPI {
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
+          includeParents,
           internalIds,
           viewType,
         }),
