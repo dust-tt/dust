@@ -13,8 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
+  DataSourceWithConnectorType,
   LightWorkspaceType,
   PlanType,
   Result,
@@ -54,11 +53,7 @@ import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-type ManagedDataSourceType = DataSourceType & {
-  connectorProvider: ConnectorProvider;
-  connector: ConnectorType | null;
-  fetchConnectorError: boolean;
-  fetchConnectorErrorMessage: string | null;
+type DataSourceWithConnectorAndUsageType = DataSourceWithConnectorType & {
   usage: number | null;
 };
 
@@ -69,7 +64,7 @@ type DataSourceIntegration = {
 
 type RowData = {
   isAdmin: boolean;
-  managedDataSource: ManagedDataSourceType;
+  managedDataSource: DataSourceWithConnectorAndUsageType;
   disabled: boolean;
   isLoading: boolean;
   readOnly: boolean;
@@ -81,7 +76,7 @@ type RowData = {
 };
 
 type GetTableRowParams = {
-  managedDataSource: ManagedDataSourceType;
+  managedDataSource: DataSourceWithConnectorAndUsageType;
   isAdmin: boolean;
   isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
   router: NextRouter;
@@ -125,7 +120,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   isAdmin: boolean;
   integrations: DataSourceIntegration[];
-  managedDataSources: ManagedDataSourceType[];
+  managedDataSources: DataSourceWithConnectorAndUsageType[];
   plan: PlanType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
@@ -145,64 +140,65 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
 
-  const managedDataSources: ManagedDataSourceType[] = await Promise.all(
-    allDataSources
-      .filter((ds) => isManaged(ds))
-      .map(async (managedDataSource) => {
-        if (
-          !managedDataSource.connectorId ||
-          !managedDataSource.connectorProvider
-        ) {
-          throw new Error(
-            // Should never happen, but we need to make eslint happy
-            "Unexpected empty `connectorId or `connectorProvider` for managed data sources"
-          );
-        }
-        try {
-          const connectorsAPI = new ConnectorsAPI(
-            config.getConnectorsAPIConfig(),
-            logger
-          );
-          const statusRes = await connectorsAPI.getConnector(
-            managedDataSource.connectorId
-          );
-          if (statusRes.isErr()) {
+  const managedDataSources: DataSourceWithConnectorAndUsageType[] =
+    await Promise.all(
+      allDataSources
+        .filter((ds) => isManaged(ds))
+        .map(async (managedDataSource) => {
+          if (
+            !managedDataSource.connectorId ||
+            !managedDataSource.connectorProvider
+          ) {
+            throw new Error(
+              // Should never happen, but we need to make eslint happy
+              "Unexpected empty `connectorId or `connectorProvider` for managed data sources"
+            );
+          }
+          try {
+            const connectorsAPI = new ConnectorsAPI(
+              config.getConnectorsAPIConfig(),
+              logger
+            );
+            const statusRes = await connectorsAPI.getConnector(
+              managedDataSource.connectorId
+            );
+            if (statusRes.isErr()) {
+              return {
+                ...managedDataSource,
+                connectorProvider: managedDataSource.connectorProvider,
+                connector: null,
+                fetchConnectorError: true,
+                fetchConnectorErrorMessage: statusRes.error.message,
+                usage: 0,
+              };
+            }
+            const usageRes = await getDataSourceUsage({
+              auth,
+              dataSource: managedDataSource,
+            });
+            return {
+              ...managedDataSource,
+              connectorProvider: managedDataSource.connectorProvider,
+              connector: statusRes.value,
+              fetchConnectorError: false,
+              fetchConnectorErrorMessage: null,
+              usage: usageRes.isOk() ? usageRes.value : 0,
+            };
+          } catch (e) {
+            // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
+            // the datasources (eventual actions will fail but a 500 just at display is not desirable).
+            // When that happens the managed data sources are shown as failed.
             return {
               ...managedDataSource,
               connectorProvider: managedDataSource.connectorProvider,
               connector: null,
               fetchConnectorError: true,
-              fetchConnectorErrorMessage: statusRes.error.message,
-              usage: 0,
+              fetchConnectorErrorMessage: "Synchonization service is down",
+              usage: null,
             };
           }
-          const usageRes = await getDataSourceUsage({
-            auth,
-            dataSource: managedDataSource,
-          });
-          return {
-            ...managedDataSource,
-            connectorProvider: managedDataSource.connectorProvider,
-            connector: statusRes.value,
-            fetchConnectorError: false,
-            fetchConnectorErrorMessage: null,
-            usage: usageRes.isOk() ? usageRes.value : 0,
-          };
-        } catch (e) {
-          // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
-          // the datasources (eventual actions will fail but a 500 just at display is not desirable).
-          // When that happens the managed data sources are shown as failed.
-          return {
-            ...managedDataSource,
-            connectorProvider: managedDataSource.connectorProvider,
-            connector: null,
-            fetchConnectorError: true,
-            fetchConnectorErrorMessage: "Synchonization service is down",
-            usage: null,
-          };
-        }
-      })
-  );
+        })
+    );
 
   let setupWithSuffix: {
     connector: ConnectorProvider;
@@ -367,10 +363,8 @@ export default function DataSourcesView({
             <AddConnectionMenu
               owner={owner}
               plan={plan}
-              isAdmin={isAdmin}
               existingDataSources={managedDataSources}
               dustClientFacingUrl={dustClientFacingUrl}
-              isLoadingByProvider={isLoadingByProvider}
               setIsProviderLoading={(provider, isLoading) =>
                 setIsLoadingByProvider((prev) => ({
                   ...prev,

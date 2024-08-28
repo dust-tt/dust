@@ -3,6 +3,7 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
+  DataSourceWithConnectorType,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -17,7 +18,6 @@ import { CreateConnectionConfirmationModal } from "@app/components/data_source/C
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   CONNECTOR_CONFIGURATIONS,
-  getDefaultDataSourceName,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
@@ -34,20 +34,16 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
-  isAdmin: boolean;
-  existingDataSources: DataSourceType[];
+  existingDataSources: DataSourceWithConnectorType[];
   dustClientFacingUrl: string;
-  isLoadingByProvider: Record<ConnectorProvider, boolean>;
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
 };
 
 export const AddConnectionMenu = ({
   owner,
   plan,
-  isAdmin,
   existingDataSources,
   dustClientFacingUrl,
-  isLoadingByProvider,
   setIsProviderLoading,
 }: AddConnectionMenuProps) => {
   const sendNotification = useContext(SendNotificationsContext);
@@ -158,16 +154,15 @@ export const AddConnectionMenu = ({
       (configuration.status === "rolling_out" &&
         !!configuration.rollingOutFlag &&
         owner.flags.includes(configuration.rollingOutFlag));
-    const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
     const isProviderAllowed = isConnectorProviderAllowed(
       configuration.connectorProvider,
       plan.limits.connections
     );
 
-    const existingView = existingDataSources.find(
+    const existingDataSource = existingDataSources.find(
       (view) => view.connectorProvider === connectorProvider
     );
-    if (!existingView) {
+    if (!existingDataSource || !existingDataSource.connector) {
       if (!isProviderAllowed) {
         setShowUpgradePopup(true);
       } else {
@@ -183,13 +178,6 @@ export const AddConnectionMenu = ({
           });
         }
       }
-    } else {
-      window.alert("Data source already exists");
-      !isDisabled
-        ? void router.push(
-            `/w/${owner.sId}/builder/data-sources/${getDefaultDataSourceName(connectorProvider, null)}`
-          )
-        : null;
     }
   };
 

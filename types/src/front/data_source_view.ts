@@ -3,7 +3,11 @@ import {
   DataSourceViewCategory,
   LightContentNode,
 } from "./api_handlers/public/vaults";
-import { DataSourceType, EditedByUser } from "./data_source";
+import {
+  DataSourceType,
+  DataSourceWithConnectorType,
+  EditedByUser,
+} from "./data_source";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
@@ -20,6 +24,10 @@ export interface DataSourceViewType {
   usage: number;
   vaultId: string;
 }
+
+export type DataSourceViewWithConnectorType = DataSourceViewType & {
+  dataSource: DataSourceWithConnectorType;
+};
 
 export type DataSourceViewSelectionConfiguration = {
   dataSourceView: DataSourceViewType;

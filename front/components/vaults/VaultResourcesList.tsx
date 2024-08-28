@@ -1,5 +1,8 @@
 import {
+  Button,
   Chip,
+  CloudArrowLeftRightIcon,
+  Cog6ToothIcon,
   DataTable,
   FolderIcon,
   Searchbar,
@@ -7,14 +10,14 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  ConnectorType,
   DataSourceViewCategory,
-  DataSourceViewType,
+  DataSourceViewWithConnectorType,
   PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useState } from "react";
@@ -28,20 +31,20 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useDataSources, useVaultDataSourceViews } from "@app/lib/swr";
+import {
+  useDataSources,
+  useVaultDataSourceViewsWithConnector,
+} from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
-  dataSourceView: DataSourceViewType;
-  // category: string;
+  dataSourceView: DataSourceViewWithConnectorType;
   label: string;
   icon: ComponentType;
-  connectorDetails?: {
-    connector: ConnectorType | null;
-    fetchConnectorError: boolean;
-    fetchConnectorErrorMessage: string | null;
-  };
   workspaceId: string;
+  isAdmin: boolean;
+  isLoading?: boolean;
+  buttonOnClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
 };
 
@@ -56,7 +59,13 @@ type VaultResourcesListProps = {
   onSelect: (sId: string) => void;
 };
 
-const getTableColumns = ({ isManaged }: { isManaged: boolean }) => {
+const getTableColumns = ({
+  isManaged,
+  isSystemVault,
+}: {
+  isManaged: boolean;
+  isSystemVault: boolean;
+}) => {
   const nameColumn = {
     header: "Name",
     accessorKey: "label",
@@ -81,13 +90,15 @@ const getTableColumns = ({ isManaged }: { isManaged: boolean }) => {
   const lastSyncedColumn = {
     header: "Last sync",
     accessorFn: (row: RowData) =>
-      row.connectorDetails?.connector?.lastSyncSuccessfulTime,
+      row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.CellContent className="pr-2">
         {(() => {
-          if (!info.row.original.connectorDetails?.connector) {
+          if (!info.row.original.dataSourceView.dataSource.connector) {
             return <Chip color="amber">Never</Chip>;
-          } else if (info.row.original.connectorDetails.fetchConnectorError) {
+          } else if (
+            info.row.original.dataSourceView.dataSource.fetchConnectorError
+          ) {
             return (
               <Chip color="warning">
                 Error loading the connector. Try again in a few minutes.
@@ -98,7 +109,9 @@ const getTableColumns = ({ isManaged }: { isManaged: boolean }) => {
               info.row.original.workspaceId &&
               info.row.original.dataSourceView.dataSource.name && (
                 <ConnectorSyncingChip
-                  initialState={info.row.original.connectorDetails.connector}
+                  initialState={
+                    info.row.original.dataSourceView.dataSource.connector
+                  }
                   workspaceId={info.row.original.workspaceId}
                   dataSourceName={
                     info.row.original.dataSourceView.dataSource.name
@@ -112,7 +125,44 @@ const getTableColumns = ({ isManaged }: { isManaged: boolean }) => {
     ),
   };
 
+  const actionColumn = {
+    id: "action",
+    cell: (info: CellContext<RowData, unknown>) => {
+      const original = info.row.original;
+      const disabled = original.isLoading || !original.isAdmin;
+
+      if (!original.dataSourceView.dataSource.connector) {
+        return (
+          <DataTable.CellContent>
+            <Button
+              variant="primary"
+              icon={CloudArrowLeftRightIcon}
+              disabled={disabled}
+              onClick={original.buttonOnClick}
+              label={original.isLoading ? "Connecting..." : "Connect"}
+            />
+          </DataTable.CellContent>
+        );
+      } else {
+        return (
+          <DataTable.CellContent>
+            <Button
+              variant="secondary"
+              icon={Cog6ToothIcon}
+              disabled={disabled}
+              onClick={original.buttonOnClick}
+              label={original.isAdmin ? "Manage" : "View"}
+            />
+          </DataTable.CellContent>
+        );
+      }
+    },
+  };
+
   // TODO(GROUPS_UI) Add usage column.
+  if (isSystemVault && isManaged) {
+    return [nameColumn, managedByColumn, lastSyncedColumn, actionColumn];
+  }
   return isManaged
     ? [nameColumn, managedByColumn, lastSyncedColumn]
     : [nameColumn, managedByColumn];
@@ -141,17 +191,15 @@ export const VaultResourcesList = ({
     {} as Record<ConnectorProvider, boolean>
   );
 
+  const router = useRouter();
+
   // DataSources Views of the current vault.
-  const {
-    vaultDataSourceViews,
-    connectorDetails,
-    isVaultDataSourceViewsLoading,
-  } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
-    vaultId: vault.sId,
-    category: category,
-    includeConnectorDetails: isManaged,
-  });
+  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
+    useVaultDataSourceViewsWithConnector({
+      workspaceId: owner.sId,
+      vaultId: vault.sId,
+      category: category,
+    });
 
   const rows: RowData[] =
     vaultDataSourceViews?.map((r) => ({
@@ -161,10 +209,15 @@ export const VaultResourcesList = ({
         r.dataSource.connectorProvider,
         FolderIcon
       ),
-      connectorDetails: connectorDetails?.find(
-        (c) => c.name === r.dataSource.name
-      ),
       workspaceId: owner.sId,
+      isAdmin,
+      isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
+      buttonOnClick: (e) => {
+        e.stopPropagation();
+        void router.push(
+          `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
+        );
+      },
       onClick: () => onSelect(r.sId),
     })) || [];
 
@@ -203,11 +256,9 @@ export const VaultResourcesList = ({
               owner={owner}
               dustClientFacingUrl={dustClientFacingUrl}
               plan={plan}
-              isAdmin={isAdmin}
               existingDataSources={vaultDataSourceViews.map(
                 (v) => v.dataSource
               )}
-              isLoadingByProvider={isLoadingByProvider}
               setIsProviderLoading={(provider, isLoading) =>
                 setIsLoadingByProvider((prev) => ({
                   ...prev,
@@ -238,7 +289,7 @@ export const VaultResourcesList = ({
       {rows.length > 0 ? (
         <DataTable
           data={rows}
-          columns={getTableColumns({ isManaged })}
+          columns={getTableColumns({ isManaged, isSystemVault })}
           filter={dataSourceSearch}
           filterColumn="label"
         />
