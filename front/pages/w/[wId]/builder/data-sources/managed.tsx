@@ -5,8 +5,6 @@ import {
   Cog6ToothIcon,
   ContentMessage,
   DataTable,
-  Dialog,
-  DropdownMenu,
   Hoverable,
   Page,
   PlusIcon,
@@ -18,7 +16,6 @@ import type {
   ConnectorType,
   DataSourceType,
   LightWorkspaceType,
-  ManageDataSourcesLimitsType,
   PlanType,
   Result,
   SubscriptionType,
@@ -29,7 +26,6 @@ import {
   ConnectorsAPI,
   Err,
   isConnectorProvider,
-  isConnectorProviderAllowed,
   isManaged,
   isOAuthProvider,
   Ok,
@@ -40,15 +36,14 @@ import type { InferGetServerSidePropsType } from "next";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import * as React from "react";
-import { useContext, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
 import { ShowAdmininistratorsModal } from "@app/components/data_source/ShowAdmininistratorsModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -56,7 +51,6 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -94,29 +88,6 @@ type GetTableRowParams = {
   owner: WorkspaceType;
   readOnly: boolean;
 };
-
-type HandleConnectionClickParams = {
-  integration: DataSourceIntegration;
-  isAdmin: boolean;
-  isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
-  router: NextRouter;
-  owner: WorkspaceType;
-  limits: ManageDataSourcesLimitsType;
-  setShowUpgradePopup: (show: boolean) => void;
-  setShowConfirmConnection: (integration: DataSourceIntegration | null) => void;
-  setShowPreviewPopupForProvider: (providerPreview: {
-    show: boolean;
-    connector: ConnectorProvider | null;
-  }) => void;
-};
-
-const REDIRECT_TO_EDIT_PERMISSIONS = [
-  "confluence",
-  "google_drive",
-  "microsoft",
-  "slack",
-  "intercom",
-];
 
 export async function setupConnection({
   dustClientFacingUrl,
@@ -293,91 +264,13 @@ export default function DataSourcesView({
   gaTrackingId,
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const sendNotification = useContext(SendNotificationsContext);
-  const [isLoadingByProvider, setIsLoadingByProvider] = useState<
-    Record<ConnectorProvider, boolean | undefined>
-  >({} as Record<ConnectorProvider, boolean | undefined>);
+  const [isLoadingByProvider, setIsLoadingByProvider] = useState(
+    {} as Record<ConnectorProvider, boolean>
+  );
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
-  const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
-    useState<{ show: boolean; connector: ConnectorProvider | null }>({
-      show: false,
-      connector: null,
-    });
-  const [showConfirmConnection, setShowConfirmConnection] =
-    useState<DataSourceIntegration | null>(null);
   const [isRequestDataSourceModalOpen, setIsRequestDataSourceModalOpen] =
     useState(false);
-
-  const planConnectionsLimits = plan.limits.connections;
-  const handleEnableManagedDataSource = async (
-    provider: ConnectorProvider,
-    suffix: string | null
-  ) => {
-    try {
-      const connectionIdRes = await setupConnection({
-        dustClientFacingUrl,
-        owner,
-        provider,
-      });
-      if (connectionIdRes.isErr()) {
-        throw connectionIdRes.error;
-      }
-
-      setShowConfirmConnection(null);
-      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
-
-      const res = await fetch(
-        suffix
-          ? `/api/w/${
-              owner.sId
-            }/data_sources/managed?suffix=${encodeURIComponent(suffix)}`
-          : `/api/w/${owner.sId}/data_sources/managed`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider,
-            connectionId: connectionIdRes.value,
-            name: undefined,
-            configuration: null,
-          } satisfies PostManagedDataSourceRequestBody),
-        }
-      );
-
-      if (res.ok) {
-        const createdManagedDataSource: {
-          dataSource: DataSourceType;
-          connector: ConnectorType;
-        } = await res.json();
-        // Once the connection is enabled, redirect to the data source page.
-        void router.push(
-          `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}` +
-            (REDIRECT_TO_EDIT_PERMISSIONS.includes(provider)
-              ? `?edit_permissions=true`
-              : "")
-        );
-      } else {
-        const responseText = await res.text();
-        sendNotification({
-          type: "error",
-          title: `Failed to enable connection (${provider})`,
-          description: `Got: ${responseText}`,
-        });
-      }
-    } catch (e) {
-      setShowConfirmConnection(null);
-      sendNotification({
-        type: "error",
-        title: `Failed to enable connection (${provider})`,
-      });
-    } finally {
-      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
-    }
-  };
 
   const searchBarRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -421,21 +314,6 @@ export default function DataSourcesView({
           isOpen={showAdminsModal}
           onClose={() => setShowAdminsModal(false)}
           owner={owner}
-        />
-      )}
-      {showConfirmConnection && (
-        <CreateConnectionConfirmationModal
-          connectorProviderConfiguration={
-            CONNECTOR_CONFIGURATIONS[showConfirmConnection.connectorProvider]
-          }
-          isOpen={true}
-          onClose={() => setShowConfirmConnection(null)}
-          onConfirm={async () => {
-            await handleEnableManagedDataSource(
-              showConfirmConnection.connectorProvider as ConnectorProvider,
-              showConfirmConnection.setupWithSuffix
-            );
-          }}
         />
       )}
       <Page.Vertical gap="xl" align="stretch">
@@ -486,44 +364,20 @@ export default function DataSourcesView({
           )}
 
           {isAdmin && integrations.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  label="Add Connections"
-                  variant="primary"
-                  icon={PlusIcon}
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items width={180}>
-                {integrations.map((integration) => (
-                  <DropdownMenu.Item
-                    key={integration.connectorProvider}
-                    label={
-                      CONNECTOR_CONFIGURATIONS[integration.connectorProvider]
-                        .name
-                    }
-                    icon={
-                      CONNECTOR_CONFIGURATIONS[integration.connectorProvider]
-                        .logoComponent
-                    }
-                    onClick={() => {
-                      handleConnectionClick({
-                        integration,
-                        isAdmin,
-                        isLoadingByProvider,
-                        router,
-                        owner,
-                        limits: planConnectionsLimits,
-                        setShowUpgradePopup,
-                        setShowConfirmConnection,
-                        setShowPreviewPopupForProvider,
-                      });
-                    }}
-                  />
-                ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
+            <AddConnectionMenu
+              owner={owner}
+              plan={plan}
+              isAdmin={isAdmin}
+              existingDataSources={managedDataSources}
+              dustClientFacingUrl={dustClientFacingUrl}
+              isLoadingByProvider={isLoadingByProvider}
+              setIsProviderLoading={(provider, isLoading) =>
+                setIsLoadingByProvider((prev) => ({
+                  ...prev,
+                  [provider]: isLoading,
+                }))
+              }
+            />
           )}
         </div>
         {connectionRows.length > 0 ? (
@@ -552,38 +406,6 @@ export default function DataSourcesView({
           owner={owner}
         />
       </Page.Vertical>
-      {showUpgradePopup && (
-        <Dialog
-          isOpen={showUpgradePopup}
-          onCancel={() => setShowUpgradePopup(false)}
-          title={`${plan.name} plan`}
-          onValidate={() => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          }}
-        >
-          <p>Unlock this managed data source by upgrading your plan.</p>
-        </Dialog>
-      )}
-      {showPreviewPopupForProvider && (
-        <Dialog
-          isOpen={showPreviewPopupForProvider.show}
-          title="Coming Soon!"
-          validateLabel="Contact us"
-          onValidate={() => {
-            window.open(
-              `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`
-            );
-          }}
-          onCancel={() => {
-            setShowPreviewPopupForProvider({
-              show: false,
-              connector: null,
-            });
-          }}
-        >
-          Please email us at support@dust.tt for early access.
-        </Dialog>
-      )}
     </AppLayout>
   );
 }
@@ -728,49 +550,4 @@ function getTableRow({
     disabled: isDisabled,
     isLoading: isLoadingByProvider[connectorProvider] ?? false,
   };
-}
-
-function handleConnectionClick({
-  integration,
-  limits,
-  isAdmin,
-  isLoadingByProvider,
-  setShowUpgradePopup,
-  setShowConfirmConnection,
-  setShowPreviewPopupForProvider,
-  router,
-  owner,
-}: HandleConnectionClickParams) {
-  const connectorProvider = integration.connectorProvider;
-  const configuration = CONNECTOR_CONFIGURATIONS[integration.connectorProvider];
-  const isBuilt =
-    configuration.status === "built" ||
-    (configuration.status === "rolling_out" &&
-      !!configuration.rollingOutFlag &&
-      owner.flags.includes(configuration.rollingOutFlag));
-  // const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
-  const isProviderAllowed = isConnectorProviderAllowed(
-    integration.connectorProvider,
-    limits
-  );
-  // if (!integration.connector) {
-  if (!isProviderAllowed) {
-    setShowUpgradePopup(true);
-  } else {
-    if (isBuilt) {
-      setShowConfirmConnection(integration);
-    } else {
-      setShowPreviewPopupForProvider({
-        show: true,
-        connector: connectorProvider,
-      });
-    }
-  }
-  // } else {
-  //   !isDisabled
-  //     ? void router.push(
-  //         `/w/${owner.sId}/builder/data-sources/${integration.dataSourceName}`
-  //       )
-  //     : null;
-  // }
 }

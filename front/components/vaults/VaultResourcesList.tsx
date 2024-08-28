@@ -6,6 +6,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
+  ConnectorProvider,
   ConnectorType,
   DataSourceViewCategory,
   DataSourceViewType,
@@ -136,6 +137,10 @@ export const VaultResourcesList = ({
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
 
+  const [isLoadingByProvider, setIsLoadingByProvider] = useState(
+    {} as Record<ConnectorProvider, boolean>
+  );
+
   // DataSources Views of the current vault.
   const {
     vaultDataSourceViews,
@@ -171,8 +176,6 @@ export const VaultResourcesList = ({
     );
   }
 
-  console.log(vaultDataSourceViews);
-
   return (
     <>
       <div
@@ -201,8 +204,16 @@ export const VaultResourcesList = ({
               dustClientFacingUrl={dustClientFacingUrl}
               plan={plan}
               isAdmin={isAdmin}
-              vault={vault}
-              existingViews={vaultDataSourceViews}
+              existingDataSources={vaultDataSourceViews.map(
+                (v) => v.dataSource
+              )}
+              isLoadingByProvider={isLoadingByProvider}
+              setIsProviderLoading={(provider, isLoading) =>
+                setIsLoadingByProvider((prev) => ({
+                  ...prev,
+                  [provider]: isLoading,
+                }))
+              }
             />
           </div>
         )}

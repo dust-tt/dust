@@ -3,9 +3,7 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  DataSourceViewType,
   PlanType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -36,22 +34,22 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
-  vault: VaultType;
   isAdmin: boolean;
-  existingViews: DataSourceViewType[];
+  existingDataSources: DataSourceType[];
   dustClientFacingUrl: string;
+  isLoadingByProvider: Record<ConnectorProvider, boolean>;
+  setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
 };
 
 export const AddConnectionMenu = ({
   owner,
   plan,
   isAdmin,
-  existingViews,
+  existingDataSources,
   dustClientFacingUrl,
+  isLoadingByProvider,
+  setIsProviderLoading,
 }: AddConnectionMenuProps) => {
-  const [isLoadingByProvider, setIsLoadingByProvider] = useState<
-    Record<ConnectorProvider, boolean | undefined>
-  >({} as Record<ConnectorProvider, boolean | undefined>);
   const sendNotification = useContext(SendNotificationsContext);
   const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
@@ -73,8 +71,8 @@ export const AddConnectionMenu = ({
   );
 
   const nonSetUpConnectors = allConnectors.filter((connectorProvider) =>
-    existingViews.every(
-      (view) => view.dataSource.connectorProvider !== connectorProvider
+    existingDataSources.every(
+      (view) => view.connectorProvider !== connectorProvider
     )
   );
 
@@ -96,7 +94,7 @@ export const AddConnectionMenu = ({
         isOpen: false,
         connector: prev.connector,
       }));
-      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: true }));
+      setIsProviderLoading(provider, true);
 
       const res = await fetch(
         suffix
@@ -148,7 +146,7 @@ export const AddConnectionMenu = ({
         title: `Failed to enable connection (${provider})`,
       });
     } finally {
-      setIsLoadingByProvider((prev) => ({ ...prev, [provider]: false }));
+      setIsProviderLoading(provider, false);
     }
   };
 
@@ -166,8 +164,8 @@ export const AddConnectionMenu = ({
       plan.limits.connections
     );
 
-    const existingView = existingViews.find(
-      (view) => view.dataSource.connectorProvider === connectorProvider
+    const existingView = existingDataSources.find(
+      (view) => view.connectorProvider === connectorProvider
     );
     if (!existingView) {
       if (!isProviderAllowed) {
