@@ -209,6 +209,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       dataSourceName: this.dataSourceName,
       lastSyncStatus: this.lastSyncStatus,
       lastSyncStartTime: this.lastSyncStartTime?.getTime(),
+      lastSyncFinishTime: this.lastSyncFinishTime?.getTime(),
       lastSyncSuccessfulTime: this.lastSyncSuccessfulTime?.getTime(),
       firstSuccessfulSyncTime: this.firstSuccessfulSyncTime?.getTime(),
       firstSyncProgress: this.firstSyncProgress,
@@ -216,7 +217,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       configuration: this.configuration
         ? this.strategy.configurationJSON(this.configuration)
         : null,
-      pausedAt: this.pausedAt,
+      pausedAt: this.pausedAt?.getTime(),
       updatedAt: this.updatedAt.getTime(),
     };
   }

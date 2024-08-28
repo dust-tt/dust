@@ -36,6 +36,15 @@ export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
 export type LabsConnectorProvider = "google_drive" | "gong";
 
+export const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = [
+  "slack",
+  "github",
+];
+
+export function isWebhookBasedProvider(provider: ConnectorProvider): boolean {
+  return WEBHOOK_BASED_CONNECTORS.includes(provider);
+}
+
 export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
 }
