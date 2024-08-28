@@ -49,6 +49,17 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can see or edit the permissions of a data source.",
+      },
+    });
+  }
+
   const dataSource = await getDataSource(auth, req.query.name as string);
   if (!dataSource) {
     return apiError(req, res, {
@@ -79,18 +90,8 @@ async function handler(
         req,
         res
       );
-    case "POST":
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
-          },
-        });
-      }
 
+    case "POST":
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),
         logger
