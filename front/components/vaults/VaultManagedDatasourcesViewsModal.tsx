@@ -10,7 +10,7 @@ import type { SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
-import { useMultipleDataSourcesContentNodes } from "@app/lib/swr";
+import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr";
 
 export default function VaultManagedDataSourcesViewsModal({
   vault,
@@ -40,7 +40,7 @@ export default function VaultManagedDataSourcesViewsModal({
     [initialSelectedDataSources]
   );
 
-  const initialConfigurations = useMultipleDataSourcesContentNodes({
+  const initialConfigurations = useMultipleDataSourceViewsContentNodes({
     owner,
     dataSourceViewsAndInternalIds,
   });
