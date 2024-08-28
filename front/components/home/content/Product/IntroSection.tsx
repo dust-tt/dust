@@ -1,6 +1,13 @@
-import { Button, Div3D, Hover3D, PlayIcon, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Div3D,
+  Hover3D,
+  PlayIcon,
+  RocketIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   Grid,
@@ -12,17 +19,34 @@ import {
 import { classNames } from "@app/lib/utils";
 
 export function IntroSection() {
-  const [isVideoOpen, setIsVideoOpen] = React.useState(false);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [showSpinner, setShowSpinner] = useState(false);
+
+  useEffect(() => {
+    if (isVideoOpen) {
+      setShowSpinner(true);
+      const timer = setTimeout(() => {
+        setShowSpinner(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVideoOpen]);
 
   const MainVisualImage = () => (
     <>
-      {isVideoOpen && (
+      {showSpinner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black opacity-50 backdrop-blur-md"></div>
+          <Spinner size="xl" />
+        </div>
+      )}
+      {isVideoOpen && !showSpinner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black opacity-50 backdrop-blur-md"
             onClick={() => setIsVideoOpen(false)}
           ></div>
-          <div className="z-10">
+          <div className="z-10 overflow-hidden rounded-lg">
             <iframe
               src="https://www.veed.io/embed/70c8862a-67a9-4159-8aee-76e98d203e68?watermark=0&color=default&sharing=0&title=0"
               width="744"
@@ -30,6 +54,7 @@ export function IntroSection() {
               frameBorder="0"
               title="Product Tour"
               allowFullScreen
+              className="rounded-lg"
             ></iframe>
           </div>
         </div>
