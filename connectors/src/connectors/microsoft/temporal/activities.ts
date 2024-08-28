@@ -4,6 +4,7 @@ import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
+import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -909,10 +910,7 @@ export async function microsoftGarbageCollectionActivity({
     method: "GET",
   }));
 
-  const chunkedRequests = [];
-  while (requests.length) {
-    chunkedRequests.push(requests.splice(0, 20));
-  }
+  const chunkedRequests = _.chunk(requests, 20);
 
   for (const chunk of chunkedRequests) {
     const batchRes = await client.api("/$batch").post({ requests: chunk });
