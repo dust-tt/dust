@@ -2,8 +2,9 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import type { Drive, DriveItem } from "@microsoft/microsoft-graph-types";
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
+import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -878,7 +879,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 100,
+    pageSize: 300,
     idCursor,
   });
 
@@ -903,69 +904,70 @@ export async function microsoftGarbageCollectionActivity({
         n.nodeType === "file"
     );
 
-  // Explicitly not using concurrency here to avoid too many calls to the api
-  // This is a long running workflow that does not require high throughput
-  for (const node of nodesToCheck) {
-    const { itemAPIPath } = typeAndPathFromInternalId(node.internalId);
+  const requests = nodesToCheck.map((n, i) => ({
+    id: `${i}`,
+    url: typeAndPathFromInternalId(n.internalId).itemAPIPath,
+    method: "GET",
+  }));
 
-    let driveOrItem: DriveItem | undefined | Drive = undefined;
-    try {
-      driveOrItem = await getItem(client, itemAPIPath);
-    } catch (e) {
-      // if the entity is not found, we can go on and delete
-      if (!(e instanceof GraphError && e.statusCode === 404)) {
-        throw e;
-      }
-    }
+  const chunkedRequests = _.chunk(requests, 20);
 
-    switch (node.nodeType) {
-      case "drive":
-        if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
-          await deleteFolder({ connectorId, internalId: node.internalId });
+  for (const chunk of chunkedRequests) {
+    const batchRes = await client.api("/$batch").post({ requests: chunk });
+    for (const res of batchRes.responses) {
+      const node = nodesToCheck[Number(res.id)];
+      if (node && (res.status === 200 || res.status === 404)) {
+        const driveOrItem = res.status === 200 ? res.body : null;
+        switch (node.nodeType) {
+          case "drive":
+            if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
+              await deleteFolder({ connectorId, internalId: node.internalId });
+            }
+            break;
+          case "folder": {
+            const folder = driveOrItem as DriveItem;
+            if (
+              !folder ||
+              folder.deleted ||
+              // isOutsideRootNodes
+              (await isOutsideRootNodes({
+                client,
+                driveItem: folder,
+                rootNodeIds,
+                startGarbageCollectionTs,
+              }))
+            ) {
+              await deleteFolder({ connectorId, internalId: node.internalId });
+            }
+            break;
+          }
+          case "file": {
+            const file = driveOrItem as DriveItem;
+            if (
+              !file ||
+              file.deleted ||
+              // isOutsideRootNodes
+              (await isOutsideRootNodes({
+                client,
+                driveItem: file,
+                rootNodeIds,
+                startGarbageCollectionTs,
+              }))
+            ) {
+              await deleteFile({
+                connectorId,
+                internalId: node.internalId,
+                dataSourceConfig,
+              });
+            }
+            break;
+          }
+          default:
+            throw new Error(
+              `Unreachable: Deletion not implemented for node type: ${node.nodeType}`
+            );
         }
-        break;
-      case "folder": {
-        const folder = driveOrItem as DriveItem;
-        if (
-          !folder ||
-          folder.deleted ||
-          // isOutsideRootNodes
-          (await isOutsideRootNodes({
-            client,
-            driveItem: folder,
-            rootNodeIds,
-            startGarbageCollectionTs,
-          }))
-        ) {
-          await deleteFolder({ connectorId, internalId: node.internalId });
-        }
-        break;
       }
-      case "file": {
-        const file = driveOrItem as DriveItem;
-        if (
-          !file ||
-          file.deleted ||
-          // isOutsideRootNodes
-          (await isOutsideRootNodes({
-            client,
-            driveItem: file,
-            rootNodeIds,
-            startGarbageCollectionTs,
-          }))
-        ) {
-          await deleteFile({
-            connectorId,
-            internalId: node.internalId,
-            dataSourceConfig,
-          });
-        }
-        break;
-      }
-      default:
-        throw new Error(
-          `Unreachable: Deletion not implemented for node type: ${node.nodeType}`
-        );
     }
   }
 
