@@ -9,6 +9,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { DataSource } from "@app/lib/models/data_source";
+import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
@@ -21,6 +22,10 @@ export class DataSourceViewModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  // Corresponds to the ID of the last user to configure the connection.
+  declare editedByUserId: ForeignKey<User["id"]>;
+  declare editedAt: CreationOptional<Date>;
+
   declare kind: DataSourceViewKind;
   declare parentsIn: string[] | null;
 
@@ -29,6 +34,7 @@ export class DataSourceViewModel extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare dataSourceForView: NonAttribute<DataSource>;
+  declare editedByUser: NonAttribute<User>;
   declare vault: NonAttribute<VaultModel>;
   declare workspace: NonAttribute<Workspace>;
 }
@@ -42,6 +48,12 @@ DataSourceViewModel.init(
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    editedAt: {
+      type: DataTypes.DATE,
+      // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
+      allowNull: true,
       defaultValue: DataTypes.NOW,
     },
     kind: {
@@ -89,4 +101,10 @@ DataSource.hasMany(DataSourceViewModel, {
 DataSourceViewModel.belongsTo(DataSource, {
   as: "dataSourceForView",
   foreignKey: { name: "dataSourceId", allowNull: false },
+});
+
+DataSourceViewModel.belongsTo(User, {
+  as: "editedByUser",
+  // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });

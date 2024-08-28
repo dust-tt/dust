@@ -148,6 +148,7 @@ async function handler(
       }
       const dataSourceView =
         await DataSourceViewResource.createViewInVaultFromDataSource(
+          auth,
           vault,
           dataSource,
           parentsIn

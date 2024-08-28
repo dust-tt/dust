@@ -1481,12 +1481,14 @@ export function useVaultDataSourceViews<
   category,
   disabled,
   includeConnectorDetails,
+  includeEditedBy,
   vaultId,
   workspaceId,
 }: {
   category: DataSourceViewCategory;
   disabled?: boolean;
   includeConnectorDetails?: IncludeConnectorDetails;
+  includeEditedBy?: boolean;
   vaultId: string;
   workspaceId: string;
 }) {
@@ -1500,6 +1502,9 @@ export function useVaultDataSourceViews<
 
   if (includeConnectorDetails) {
     queryParams.set("includeConnectorDetails", "true");
+  }
+  if (includeEditedBy) {
+    queryParams.set("includeEditedBy", "true");
   }
 
   const { data, error, mutate } = useSWRWithDefaults(

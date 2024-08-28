@@ -154,6 +154,7 @@ async function handler(
             );
             if (dataSource) {
               await DataSourceViewResource.createViewInVaultFromDataSource(
+                auth,
                 vault,
                 dataSource,
                 dataSourceConfig.parentsIn
