@@ -51,6 +51,14 @@ export function ContentBlockWrapper({
     const rawContent: ClipboardContent =
       typeof content === "string" ? { "text/plain": content } : content;
 
+    // Replace invisible non-breaking space with regular space
+    if (rawContent["text/plain"]) {
+      rawContent["text/plain"] = rawContent["text/plain"].replaceAll(
+        "\xa0",
+        " "
+      );
+    }
+
     const data = new ClipboardItem(
       Object.entries(rawContent).reduce(
         (acc, [type, data]) => {
