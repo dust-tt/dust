@@ -59,7 +59,7 @@ const _getContentNodesParents = async (
 
   const parentsRes = await getParentIdsForContentNodes(connector, internalIds);
   if (parentsRes.isErr()) {
-    logger.error(parentsRes.error, "Failed to get content node parents");
+    logger.error(parentsRes.error, "Failed to get content node parents.");
     return apiError(req, res, {
       status_code: 500,
       api_error: {

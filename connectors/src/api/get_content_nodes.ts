@@ -10,7 +10,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { getConnectorManager } from "@connectors/connectors";
-import { getParentIdsForContentNodes } from "@connectors/lib/api/content_nodes";
+import { augmentContentNodesWithParentIds } from "@connectors/lib/api/content_nodes";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -80,13 +80,13 @@ const _getContentNodes = async (
   const contentNodes = contentNodesRes.value;
 
   if (includeParents) {
-    const contentNodeInternalIds = contentNodes.map((node) => node.internalId);
-    const parentsRes = await getParentIdsForContentNodes(
+    const parentsRes = await augmentContentNodesWithParentIds(
       connector,
-      contentNodeInternalIds
+      contentNodes
     );
     if (parentsRes.isErr()) {
-      logger.error(parentsRes.error, "Failed to get content node parents");
+      logger.error(parentsRes.error, "Failed to get content node parents.");
+
       return apiError(req, res, {
         status_code: 500,
         api_error: {
@@ -96,21 +96,8 @@ const _getContentNodes = async (
       });
     }
 
-    const nodesWithParentIds: ContentNodeWithParentIds[] = [];
-
-    for (const { internalId, parentInternalIds } of parentsRes.value) {
-      const node = contentNodes.find((n) => n.internalId === internalId);
-
-      if (node) {
-        nodesWithParentIds.push({
-          ...node,
-          parentInternalIds,
-        });
-      }
-    }
-
     return res.status(200).json({
-      nodes: nodesWithParentIds,
+      nodes: parentsRes.value,
     });
   }
 

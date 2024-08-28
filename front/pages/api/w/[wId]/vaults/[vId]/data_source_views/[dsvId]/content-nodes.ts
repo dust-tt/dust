@@ -17,6 +17,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 const GetContentNodesRequestBodySchema = t.type({
+  // TODO(2024-08-28 flav) Remove optional once the frontend is updated to use the new API.
+  includeChildren: t.union([t.boolean, t.undefined]),
   internalIds: t.array(t.string),
 });
 
@@ -24,6 +26,10 @@ export type GetDataSourceViewContentNodes = {
   nodes: ContentNodeWithParentIds[];
 };
 
+// This endpoints serves two purposes:
+// 1. Fetch content nodes for a given data source view.
+// 2. Fetch children of a given content node.
+// It always apply the data source view filter to the content nodes.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewContentNodes>>,
@@ -84,12 +90,56 @@ async function handler(
     });
   }
 
-  const { internalIds } = bodyValidation.right;
-
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
   );
+
+  const { includeChildren, internalIds } = bodyValidation.right;
+
+  // If the request is for children, we need to fetch the children of the internal ids.
+  if (includeChildren) {
+    if (internalIds.length !== 1) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "When fetching children, only one internal id should be provided.",
+        },
+      });
+    }
+
+    const [parentInternalId] = internalIds;
+
+    const connectorRes = await connectorsAPI.getConnectorPermissions({
+      connectorId: dataSource.connectorId,
+      filterPermission: "read",
+      includeParents: true,
+      parentId: parentInternalId,
+      viewType: "documents",
+    });
+
+    if (connectorRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message:
+            "An error occurred while fetching the resources' children content nodes.",
+        },
+      });
+    }
+
+    const contentNodesInView = filterAndCropContentNodesByView(
+      dataSourceView,
+      connectorRes.value.resources
+    );
+
+    return res.status(200).json({
+      nodes: contentNodesInView,
+    });
+  }
 
   const connectorsRes = await connectorsAPI.getContentNodes({
     connectorId: dataSource.connectorId,
