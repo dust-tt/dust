@@ -158,7 +158,7 @@ export function ViewDataSourceTable({
                             {connector?.lastSyncStatus}
                             {connector.lastSyncStatus === "failed" && (
                               <span className="text-warning-500">
-                                {connector.errorType}
+                                &nbsp;{connector.errorType}
                               </span>
                             )}
                           </span>
