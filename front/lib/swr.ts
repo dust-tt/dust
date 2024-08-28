@@ -446,51 +446,6 @@ export function useUserMetadata(key: string) {
   };
 }
 
-// TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
-export function useDataSourceContentNodes({
-  owner,
-  dataSource,
-  internalIds,
-}: {
-  owner: LightWorkspaceType;
-  dataSource?: DataSourceType;
-  internalIds: string[];
-}): {
-  nodes: GetContentNodeResponseBody["nodes"];
-  isNodesLoading: boolean;
-  isNodesError: boolean;
-} {
-  const url =
-    dataSource && internalIds.length > 0
-      ? `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource.name
-        )}/managed/content_nodes`
-      : null;
-  const body = JSON.stringify({ internalIds });
-
-  const fetchKey = useMemo(() => {
-    return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness
-  }, [url, body]);
-
-  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
-    const options = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    };
-    if (!url) {
-      return null;
-    }
-    return fetcher(url, options);
-  });
-
-  return {
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
-    isNodesLoading: !error && !data,
-    isNodesError: !!error,
-  };
-}
-
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
   internalIds: string[];
@@ -547,6 +502,49 @@ export function useMultipleDataSourcesContentNodes({
     }),
     [dataSourceViewsAndInternalIds, isNodesError, isNodesLoading, results]
   );
+}
+
+export function useDataSourceViewContentNodes({
+  owner,
+  dataSourceView,
+  internalIds,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceView?: DataSourceViewType;
+  internalIds: string[];
+}): {
+  nodes: GetContentNodeResponseBody["nodes"];
+  isNodesLoading: boolean;
+  isNodesError: boolean;
+} {
+  const url =
+    dataSourceView && internalIds.length > 0
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+      : null;
+  const body = JSON.stringify({ internalIds });
+
+  const fetchKey = useMemo(() => {
+    return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness.
+  }, [url, body]);
+
+  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
+    const options = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    };
+    if (!url) {
+      return null;
+    }
+
+    return fetcher(url, options);
+  });
+
+  return {
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    isNodesLoading: !error && !data,
+    isNodesError: !!error,
+  };
 }
 
 // TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)

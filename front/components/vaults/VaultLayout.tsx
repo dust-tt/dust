@@ -23,7 +23,7 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useDataSourceContentNodes } from "@app/lib/swr";
+import { useDataSourceViewContentNodes } from "@app/lib/swr";
 
 export interface VaultLayoutProps {
   gaTrackingId: string;
@@ -97,9 +97,9 @@ function VaultBreadCrumbs({
   dataSourceView?: DataSourceViewType;
   parentId?: string;
 }) {
-  const { nodes } = useDataSourceContentNodes({
+  const { nodes } = useDataSourceViewContentNodes({
     owner,
-    dataSource: dataSourceView?.dataSource,
+    dataSourceView,
     internalIds: parentId ? [parentId] : [],
   });
 
