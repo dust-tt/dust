@@ -102,12 +102,10 @@ const _getContentNodes = async (
       const node = contentNodes.find((n) => n.internalId === internalId);
 
       if (node) {
-        const nodeWithParentIds: ContentNodeWithParentIds = {
+        nodesWithParentIds.push({
           ...node,
           parentInternalIds,
-        };
-
-        nodesWithParentIds.push(nodeWithParentIds);
+        });
       }
     }
 
