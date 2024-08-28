@@ -137,7 +137,6 @@ export async function googleDriveFullSync({
       memo: workflowInfo().memo,
     });
   }
-  console.log("googleDriveFullSync done for connectorId", connectorId);
 }
 
 export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
@@ -186,8 +185,8 @@ export async function googleDriveIncrementalSync(
       memo: workflowInfo().memo,
     });
   }
+
   await syncSucceeded(connectorId);
-  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
 export async function googleDriveGarbageCollectorWorkflow(

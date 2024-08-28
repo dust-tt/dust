@@ -116,6 +116,8 @@ export async function incrementalSyncWorkflow({
     });
   }
 
+  await syncSucceeded(connectorId);
+
   await sleep("5 minutes");
   await continueAsNew<typeof incrementalSyncWorkflow>({
     connectorId,
