@@ -2,6 +2,7 @@ import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
 import { ConnectorType } from "./lib/connectors_api";
+import { ManageDataSourcesLimitsType } from "./plan";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -33,6 +34,19 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
 };
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
+export type ConnectorProviderConfiguration = {
+  name: string;
+  connectorProvider: ConnectorProvider;
+  status: "preview" | "built" | "rolling_out";
+  rollingOutFlag?: WhitelistableFeature;
+  hide: boolean;
+  logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  description: string;
+  limitations: string | null;
+  guideLink: string | null;
+  isNested: boolean;
+  isSearchEnabled: boolean;
+};
 
 export type LabsConnectorProvider = "google_drive" | "gong";
 
@@ -69,24 +83,6 @@ export type DataSourceType = {
   dustAPIProjectId: string;
   connectorId: string | null;
   connectorProvider: ConnectorProvider | null;
-  editedByUser?: EditedByUser | null;
-};
-
-export type DataSourceIntegration = {
-  name: string;
-  dataSourceName: string | null;
-  connector: ConnectorType | null;
-  fetchConnectorError: boolean;
-  fetchConnectorErrorMessage?: string | null;
-  status: "preview" | "built" | "rolling_out";
-  rollingOutFlag: WhitelistableFeature | null;
-  connectorProvider: ConnectorProvider;
-  description: string;
-  limitations: string | null;
-  guideLink: string | null;
-  synchronizedAgo: string | null;
-  setupWithSuffix: string | null;
-  usage: number | null;
   editedByUser?: EditedByUser | null;
 };
 
@@ -133,4 +129,38 @@ export function canContainStructuredData(ds: DataSourceType): boolean {
       (ds.connectorProvider &&
         STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
   );
+}
+
+export function isConnectorProviderAllowed(
+  provider: ConnectorProvider,
+  limits: ManageDataSourcesLimitsType
+): boolean {
+  switch (provider) {
+    case "confluence": {
+      return limits.isConfluenceAllowed;
+    }
+    case "slack": {
+      return limits.isSlackAllowed;
+    }
+    case "notion": {
+      return limits.isNotionAllowed;
+    }
+    case "github": {
+      return limits.isGithubAllowed;
+    }
+    case "google_drive": {
+      return limits.isGoogleDriveAllowed;
+    }
+    case "intercom": {
+      return limits.isIntercomAllowed;
+    }
+    case "microsoft": {
+      return true;
+    }
+    case "webcrawler": {
+      return false;
+    }
+    default:
+      throw new Error(`Unknown connector provider ${provider}`);
+  }
 }

@@ -1,5 +1,5 @@
 import { Button, DropdownMenu, Modal, TextArea } from "@dust-tt/sparkle";
-import type { DataSourceIntegration, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import React, { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -10,31 +10,28 @@ import logger from "@app/logger/logger";
 interface RequestDataSourcesProps {
   isOpen: boolean;
   onClose: () => void;
-  dataSourceIntegrations: DataSourceIntegration[];
+  dataSources: DataSourceType[];
   owner: WorkspaceType;
 }
 
 export function RequestDataSourcesModal({
   isOpen,
   onClose,
-  dataSourceIntegrations,
+  dataSources,
   owner,
 }: RequestDataSourcesProps) {
-  const [selectedDataSourceIntegration, setSelectedDataSourceIntegration] =
-    useState<DataSourceIntegration | null>(null);
+  const [selectedDataSource, setSelectedDataSource] =
+    useState<DataSourceType | null>(null);
   const [message, setMessage] = useState("");
   const sendNotification = useContext(SendNotificationsContext);
 
-  const filteredDataSourceIntegrations = dataSourceIntegrations.filter(
-    (ds) => ds.connector
-  );
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => {
         onClose();
         setMessage("");
-        setSelectedDataSourceIntegration(null);
+        setSelectedDataSource(null);
       }}
       hasChanged={false}
       variant="side-md"
@@ -43,26 +40,26 @@ export function RequestDataSourcesModal({
       <div className="flex flex-col gap-4 p-4">
         <div className="flex items-center gap-2">
           <label className="block text-sm font-medium text-element-800">
-            {filteredDataSourceIntegrations.length ? (
+            {dataSources.length ? (
               <p>Where are the requested Data hosted?</p>
             ) : (
               <p>You have no connection set up. Ask an admin to set one up.</p>
             )}
           </label>
-          {!!filteredDataSourceIntegrations.length && (
+          {!!dataSources.length && (
             <DropdownMenu>
               <DropdownMenu.Button>
-                {selectedDataSourceIntegration ? (
+                {selectedDataSource && selectedDataSource.connectorProvider ? (
                   <Button
                     variant="tertiary"
                     label={
                       CONNECTOR_CONFIGURATIONS[
-                        selectedDataSourceIntegration.connectorProvider
+                        selectedDataSource.connectorProvider
                       ].name
                     }
                     icon={
                       CONNECTOR_CONFIGURATIONS[
-                        selectedDataSourceIntegration.connectorProvider
+                        selectedDataSource.connectorProvider
                       ].logoComponent
                     }
                   />
@@ -76,37 +73,41 @@ export function RequestDataSourcesModal({
                 )}
               </DropdownMenu.Button>
               <DropdownMenu.Items width={180}>
-                {filteredDataSourceIntegrations.map((ds) => (
-                  <DropdownMenu.Item
-                    key={ds.dataSourceName}
-                    label={ds.name}
-                    onClick={() => setSelectedDataSourceIntegration(ds)}
-                    icon={
-                      CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                        .logoComponent
-                    }
-                  />
-                ))}
+                {dataSources.map(
+                  (dataSource) =>
+                    dataSource.connectorProvider && (
+                      <DropdownMenu.Item
+                        key={dataSource.name}
+                        label={
+                          CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
+                            .name
+                        }
+                        onClick={() => setSelectedDataSource(dataSource)}
+                        icon={
+                          CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider]
+                            .logoComponent
+                        }
+                      />
+                    )
+                )}
               </DropdownMenu.Items>
             </DropdownMenu>
           )}
         </div>
 
-        {selectedDataSourceIntegration && (
+        {selectedDataSource && (
           <div>
             <p className="s-mb-2 s-text-sm s-text-element-700">
               The administrator for{" "}
-              {
-                CONNECTOR_CONFIGURATIONS[
-                  selectedDataSourceIntegration.connectorProvider
-                ].name
-              }{" "}
-              is {selectedDataSourceIntegration.editedByUser?.fullName}. Send an
-              email to {selectedDataSourceIntegration.editedByUser?.fullName},
-              explaining your request.
+              {selectedDataSource.connectorProvider &&
+                CONNECTOR_CONFIGURATIONS[selectedDataSource.connectorProvider]
+                  .name}{" "}
+              is {selectedDataSource.editedByUser?.fullName}. Send an email to{" "}
+              {selectedDataSource.editedByUser?.fullName}, explaining your
+              request.
             </p>
             <TextArea
-              placeholder={`Hello ${selectedDataSourceIntegration.editedByUser?.fullName},`}
+              placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
               value={message}
               onChange={setMessage}
               className="s-mb-2"
@@ -116,9 +117,8 @@ export function RequestDataSourcesModal({
               variant="primary"
               size="sm"
               onClick={async () => {
-                const userToId =
-                  selectedDataSourceIntegration?.editedByUser?.userId;
-                if (!userToId || !selectedDataSourceIntegration) {
+                const userToId = selectedDataSource?.editedByUser?.userId;
+                if (!userToId || !selectedDataSource) {
                   sendNotification({
                     type: "error",
                     title: "Error sending email",
@@ -130,13 +130,13 @@ export function RequestDataSourcesModal({
                     await sendRequestDataSourceEmail({
                       userTo: userToId,
                       emailMessage: message,
-                      dataSourceName: selectedDataSourceIntegration.name,
+                      dataSourceName: selectedDataSource.name,
                       owner,
                     });
                     sendNotification({
                       type: "success",
                       title: "Email sent!",
-                      description: `Your request was sent to ${selectedDataSourceIntegration?.editedByUser?.fullName}.`,
+                      description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
                     });
                   } catch (e) {
                     sendNotification({
@@ -148,14 +148,14 @@ export function RequestDataSourcesModal({
                     logger.error(
                       {
                         userToId,
-                        dataSourceName: selectedDataSourceIntegration.name,
+                        dataSourceName: selectedDataSource.name,
                         error: e,
                       },
                       "Error sending email"
                     );
                   }
                   setMessage("");
-                  setSelectedDataSourceIntegration(null);
+                  setSelectedDataSource(null);
                   onClose();
                 }
               }}

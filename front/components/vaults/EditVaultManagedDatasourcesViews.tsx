@@ -8,6 +8,7 @@ import type {
 import { removeNulls } from "@dust-tt/types";
 import React, { useState } from "react";
 
+import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
 import { useVaultDataSourceViews } from "@app/lib/swr";
@@ -16,14 +17,18 @@ export function EditVaultManagedDataSourcesViews({
   owner,
   vault,
   systemVault,
+  isAdmin,
 }: {
   owner: WorkspaceType;
   vault: VaultType;
   systemVault: VaultType;
+  isAdmin: boolean;
 }) {
   const sendNotification = React.useContext(SendNotificationsContext);
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [showRequestDataSourceModal, setShowRequestDataSourceModal] =
+    useState(false);
 
   // DataSources Views of the current vault.
   const {
@@ -194,15 +199,32 @@ export function EditVaultManagedDataSourcesViews({
         }}
         initialSelectedDataSources={vaultDataSourceViews}
       />
-      <Button
-        label="Add data from connections"
-        variant="primary"
-        icon={PlusIcon}
-        size="sm"
-        onClick={() => {
-          setShowDataSourcesModal(true);
-        }}
-      />
+
+      {isAdmin ? (
+        <>
+          <Button
+            label="Add data from connections"
+            variant="primary"
+            icon={PlusIcon}
+            size="sm"
+            onClick={() => {
+              setShowDataSourcesModal(true);
+            }}
+          />
+          <RequestDataSourcesModal
+            isOpen={showRequestDataSourceModal}
+            onClose={() => setShowRequestDataSourceModal(false)}
+            dataSources={vaultDataSourceViews.map((view) => view.dataSource)}
+            owner={owner}
+          />
+        </>
+      ) : (
+        <Button
+          label="Request"
+          icon={PlusIcon}
+          onClick={() => setShowRequestDataSourceModal(true)}
+        />
+      )}
     </>
   );
 }

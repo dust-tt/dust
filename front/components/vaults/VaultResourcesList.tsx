@@ -8,7 +8,7 @@ import {
 import type {
   ConnectorType,
   DataSourceViewCategory,
-  EditedByUser,
+  DataSourceViewType,
   PlanType,
   VaultType,
   WorkspaceType,
@@ -20,6 +20,7 @@ import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import {
@@ -30,22 +31,21 @@ import { useDataSources, useVaultDataSourceViews } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
-  category: string;
+  dataSourceView: DataSourceViewType;
+  // category: string;
   label: string;
   icon: ComponentType;
-  usage: number;
-  count: number;
-  connector?: ConnectorType;
-  fetchConnectorError?: string;
-  dataSourceName: string;
+  connectorDetails?: {
+    connector: ConnectorType | null;
+    fetchConnectorError: boolean;
+    fetchConnectorErrorMessage: string | null;
+  };
   workspaceId: string;
-  editedByUser?: EditedByUser | null;
   onClick?: () => void;
 };
 
-type Info = CellContext<RowData, unknown>;
-
 type VaultResourcesListProps = {
+  dustClientFacingUrl: string;
   owner: WorkspaceType;
   plan: PlanType;
   isAdmin: boolean;
@@ -55,65 +55,73 @@ type VaultResourcesListProps = {
   onSelect: (sId: string) => void;
 };
 
-const getTableColumns = () => {
-  return [
-    {
-      header: "Name",
-      accessorKey: "label",
-      id: "label",
-      cell: (info: Info) => (
-        <DataTable.CellContent icon={info.row.original.icon}>
-          <span className="font-bold"> {info.row.original.label}</span> (
-          {info.row.original.count} items)
-        </DataTable.CellContent>
-      ),
-    },
-    {
-      header: "Managed by",
-      cell: (info: Info) => (
-        <DataTable.CellContent
-          avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
-          roundedAvatar={true}
-        />
-      ),
-    },
-    {
-      header: "Last sync",
-      accessorKey: "editedByUser.editedAt",
-      cell: (info: Info) => (
-        <DataTable.CellContent className="pr-2">
-          {(() => {
-            if (!info.row.original.connector) {
-              return <Chip color="amber">Never</Chip>;
-            } else if (info.row.original.fetchConnectorError) {
-              return (
-                <Chip color="warning">
-                  Error loading the connector. Try again in a few minutes.
-                </Chip>
-              );
-            } else {
-              return (
-                info.row.original.workspaceId &&
-                info.row.original.dataSourceName && (
-                  <ConnectorSyncingChip
-                    initialState={info.row.original.connector}
-                    workspaceId={info.row.original.workspaceId}
-                    dataSourceName={info.row.original.dataSourceName}
-                  />
-                )
-              );
-            }
-          })()}
-        </DataTable.CellContent>
-      ),
-    },
-  ];
+const getTableColumns = ({ isManaged }: { isManaged: boolean }) => {
+  const nameColumn = {
+    header: "Name",
+    accessorKey: "label",
+    id: "label",
+    cell: (info: CellContext<RowData, string>) => (
+      <DataTable.CellContent icon={info.row.original.icon}>
+        <span className="font-bold"> {info.getValue()}</span>
+      </DataTable.CellContent>
+    ),
+  };
+
+  const managedByColumn = {
+    header: "Managed by",
+    accessorFn: (row: RowData) =>
+      row.dataSourceView.dataSource.editedByUser?.imageUrl ?? "",
+    id: "managedBy",
+    cell: (info: CellContext<RowData, string>) => (
+      <DataTable.CellContent avatarUrl={info.getValue()} roundedAvatar={true} />
+    ),
+  };
+
+  const lastSyncedColumn = {
+    header: "Last sync",
+    accessorFn: (row: RowData) =>
+      row.connectorDetails?.connector?.lastSyncSuccessfulTime,
+    cell: (info: CellContext<RowData, number>) => (
+      <DataTable.CellContent className="pr-2">
+        {(() => {
+          if (!info.row.original.connectorDetails?.connector) {
+            return <Chip color="amber">Never</Chip>;
+          } else if (info.row.original.connectorDetails.fetchConnectorError) {
+            return (
+              <Chip color="warning">
+                Error loading the connector. Try again in a few minutes.
+              </Chip>
+            );
+          } else {
+            return (
+              info.row.original.workspaceId &&
+              info.row.original.dataSourceView.dataSource.name && (
+                <ConnectorSyncingChip
+                  initialState={info.row.original.connectorDetails.connector}
+                  workspaceId={info.row.original.workspaceId}
+                  dataSourceName={
+                    info.row.original.dataSourceView.dataSource.name
+                  }
+                />
+              )
+            );
+          }
+        })()}
+      </DataTable.CellContent>
+    ),
+  };
+
+  // TODO(GROUPS_UI) Add usage column.
+  return isManaged
+    ? [nameColumn, managedByColumn, lastSyncedColumn]
+    : [nameColumn, managedByColumn];
 };
 
 export const VaultResourcesList = ({
   owner,
   plan,
   isAdmin,
+  dustClientFacingUrl,
   vault,
   systemVault,
   category,
@@ -125,28 +133,33 @@ export const VaultResourcesList = ({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
+  const isSystemVault = systemVault.sId === vault.sId;
+  const isManaged = category === "managed";
+
   // DataSources Views of the current vault.
-  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
-    useVaultDataSourceViews({
-      workspaceId: owner.sId,
-      vaultId: vault.sId,
-      category: category,
-    });
+  const {
+    vaultDataSourceViews,
+    connectorDetails,
+    isVaultDataSourceViewsLoading,
+  } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vault.sId,
+    category: category,
+    includeConnectorDetails: isManaged,
+  });
 
   const rows: RowData[] =
     vaultDataSourceViews?.map((r) => ({
-      sId: r.sId,
-      category: r.category,
+      dataSourceView: r,
       label: getDataSourceNameFromView(r),
       icon: getConnectorProviderLogoWithFallback(
         r.dataSource.connectorProvider,
         FolderIcon
       ),
-      usage: r.usage,
-      count: 0,
-      editedByUser: r.editedByUser,
+      connectorDetails: connectorDetails?.find(
+        (c) => c.name === r.dataSource.name
+      ),
       workspaceId: owner.sId,
-      dataSourceName: r.dataSource.name,
       onClick: () => onSelect(r.sId),
     })) || [];
 
@@ -157,6 +170,8 @@ export const VaultResourcesList = ({
       </div>
     );
   }
+
+  console.log(vaultDataSourceViews);
 
   return (
     <>
@@ -179,11 +194,24 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {category === "managed" && (
+        {isSystemVault && category === "managed" && (
+          <div className="flex items-center justify-center text-sm font-normal text-element-700">
+            <AddConnectionMenu
+              owner={owner}
+              dustClientFacingUrl={dustClientFacingUrl}
+              plan={plan}
+              isAdmin={isAdmin}
+              vault={vault}
+              existingViews={vaultDataSourceViews}
+            />
+          </div>
+        )}
+        {!isSystemVault && category === "managed" && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
             systemVault={systemVault}
+            isAdmin={isAdmin}
           />
         )}
         {(category === "folder" || category === "website") && (
@@ -199,7 +227,7 @@ export const VaultResourcesList = ({
       {rows.length > 0 ? (
         <DataTable
           data={rows}
-          columns={getTableColumns()}
+          columns={getTableColumns({ isManaged })}
           filter={dataSourceSearch}
           filterColumn="label"
         />
