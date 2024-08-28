@@ -87,7 +87,22 @@ export function normalizeFolderUrl(url: string) {
 }
 
 export function getDisplayNameForPage(page: WebCrawlerPage): string {
-  return page.title ?? page.url;
+  const parsed = new URL(page.url);
+  let result = "";
+  const fragments = parsed.pathname.split("/").filter((x) => x);
+  const lastFragment = fragments.pop();
+  if (lastFragment) {
+    result += lastFragment;
+  }
+  if (parsed.search.length > 0) {
+    result += parsed.search;
+  }
+
+  if (!result) {
+    result = parsed.origin;
+  }
+
+  return result;
 }
 
 export async function getIpAddressForUrl(url: string) {
