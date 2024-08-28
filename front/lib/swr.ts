@@ -624,29 +624,6 @@ export function usePokeConnectorPermissions({
   };
 }
 
-export function usePokeDocuments(
-  owner: LightWorkspaceType,
-  dataSource: { name: string },
-  limit: number,
-  offset: number
-) {
-  const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(
-      dataSource.name
-    )}/documents?limit=${limit}&offset=${offset}`,
-    documentsFetcher
-  );
-
-  return {
-    documents: useMemo(() => (data ? data.documents : []), [data]),
-    total: data ? data.total : 0,
-    isDocumentsLoading: !error && !data,
-    isDocumentsError: error,
-    mutateDocuments: mutate,
-  };
-}
-
 export function useConnectorConfig({
   owner,
   dataSource,

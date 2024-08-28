@@ -19,9 +19,21 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
+
+  const { wId, name  } = req.query;
+  if(typeof wId !== "string" || typeof name !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The request query parameters are invalid.",
+      },
+    });
+  }
+
   const auth = await Authenticator.fromSuperUserSession(
     session,
-    req.query.wId as string
+    wId,
   );
   const owner = auth.workspace();
 
@@ -35,7 +47,7 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, req.query.name as string);
+  const dataSource = await getDataSource(auth, name);
 
   if (!dataSource) {
     return apiError(req, res, {
