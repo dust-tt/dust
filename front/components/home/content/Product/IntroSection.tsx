@@ -18,6 +18,20 @@ import {
 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
+const ResponsiveIframe = () => {
+  return (
+    <div className="relative h-[70vh] w-[70vw]">
+      <iframe
+        src="https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=false"
+        title="Dust product tour"
+        allow="autoplay; fullscreen"
+        frameBorder="0"
+        className="absolute left-0 top-0 h-full w-full rounded-lg"
+      ></iframe>
+    </div>
+  );
+};
+
 export function IntroSection() {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [showSpinner, setShowSpinner] = useState(false);
@@ -47,15 +61,7 @@ export function IntroSection() {
             onClick={() => setIsVideoOpen(false)}
           ></div>
           <div className="z-10 overflow-hidden rounded-lg">
-            <iframe
-              src="https://www.veed.io/embed/70c8862a-67a9-4159-8aee-76e98d203e68?watermark=0&color=default&sharing=0&title=0"
-              width="744"
-              height="504"
-              frameBorder="0"
-              title="Product Tour"
-              allowFullScreen
-              className="rounded-lg"
-            ></iframe>
+            <ResponsiveIframe />
           </div>
         </div>
       )}

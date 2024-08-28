@@ -57,11 +57,12 @@ export function QuickStartGuide({
             <div className="w-full">
               <div className="relative w-full overflow-hidden rounded-lg pb-[56.20%]">
                 <iframe
-                  src="https://www.veed.io/embed/70c8862a-67a9-4159-8aee-76e98d203e68?watermark=0&color=white&sharing=0&title=0"
-                  title="Dust - Quick Start Guide for members"
-                  className="absolute left-0 top-0 h-full w-full"
-                  allowFullScreen
-                />
+                  src="https://fast.wistia.net/embed/iframe/j7w4t4ysr3?seo=true&videoFoam=false"
+                  title="Dust product tour"
+                  allow="autoplay; fullscreen"
+                  frameBorder="0"
+                  className="absolute left-0 top-0 h-full w-full rounded-lg"
+                ></iframe>
               </div>
             </div>
           </div>
