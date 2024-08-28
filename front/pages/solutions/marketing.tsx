@@ -70,7 +70,7 @@ export default function Marketing() {
         <SolutionSection
           title={
             <>
-              Generate content fast
+              Generate content fast and well
               <br />
               that remains on brand.
             </>
