@@ -20,11 +20,7 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
       fullName: t.union([t.string, t.null]),
       email: t.union([t.string, t.null]),
       profilePictureUrl: t.union([t.string, t.null]),
-      origin: t.union([
-        t.string,
-        t.null,
-        t.undefined,
-      ]),
+      origin: t.union([t.string, t.null, t.undefined]),
     }),
   }),
   t.partial({
