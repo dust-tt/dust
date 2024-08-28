@@ -1430,24 +1430,35 @@ export function useVaultDataSourceViews({
   disabled,
   vaultId,
   workspaceId,
+  includeConnectorDetails,
 }: {
   category: DataSourceViewCategory;
   disabled?: boolean;
   vaultId: string;
   workspaceId: string;
+  includeConnectorDetails?: boolean;
 }) {
+  const urlSearchParams = new URLSearchParams();
+  urlSearchParams.append("category", category);
+  if (includeConnectorDetails) {
+    urlSearchParams.append("includeConnectorDetails", "true");
+  }
   const vaultsDataSourceViewsFetcher: Fetcher<GetVaultDataSourceViewsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?category=${category}`,
+      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${urlSearchParams.toString()}`,
     vaultsDataSourceViewsFetcher
   );
 
   return {
     vaultDataSourceViews: useMemo(
       () => (data ? data.dataSourceViews : []),
+      [data]
+    ),
+    connectorDetails: useMemo(
+      () => (data ? data.connectorDetails : []),
       [data]
     ),
     mutateVaultDataSourceViews: mutate,
