@@ -47,10 +47,11 @@ export function HelpAndQuickGuideWrapper({
   useEffect(() => {
     if (isHelpDrawerOpen) {
       void ClientSideTracking.trackHelpDrawerOpened({
+        email: user.email,
         workspaceId: owner.sId,
       });
     }
-  }, [isHelpDrawerOpen, owner.sId]);
+  }, [isHelpDrawerOpen, user.email, owner.sId]);
 
   return (
     <>
