@@ -284,22 +284,5 @@ export function getDelimitersConfiguration({
         incompleteDelimiterPatterns: [],
       };
 
-  if (agentConfiguration.visualizationEnabled) {
-    delimitersConfig.delimiters.push({
-      openingPattern: "<visualization>",
-      closingPattern: "</visualization>",
-      classification: "visualization",
-      swallow: false,
-    });
-    const incompleteXmlTagRegex = /<\/?[a-zA-Z_]*$/;
-    if (
-      !delimitersConfig.incompleteDelimiterPatterns.some(
-        (r) => r.source === incompleteXmlTagRegex.source
-      )
-    ) {
-      delimitersConfig.incompleteDelimiterPatterns.push(incompleteXmlTagRegex);
-    }
-  }
-
   return delimitersConfig;
 }

@@ -89,7 +89,7 @@ export type ModelConversationTypeMultiActions = {
  */
 
 // Event sent when tokens are streamed as the the agent is generating a message.
-type TokensClassification = "tokens" | "chain_of_thought" | "visualization";
+type TokensClassification = "tokens" | "chain_of_thought";
 export type GenerationTokensEvent = {
   type: "generation_tokens";
   created: number;

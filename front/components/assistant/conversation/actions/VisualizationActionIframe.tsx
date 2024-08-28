@@ -131,11 +131,9 @@ function useVisualizationDataHandler({
 export function VisualizationActionIframe({
   owner,
   visualization,
-  onRetry,
 }: {
   owner: WorkspaceType;
   visualization: Visualization;
-  onRetry: () => void;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [isErrored, setIsErrored] = useState(false);
@@ -220,6 +218,7 @@ export function VisualizationActionIframe({
         >
           <div className="flex h-full w-full shrink-0" ref={codeRef}>
             <RenderMessageMarkdown
+              owner={owner}
               content={"```javascript\n" + (code ?? "") + "\n```"}
               isStreaming={!codeFullyGenerated}
             />
@@ -252,8 +251,8 @@ export function VisualizationActionIframe({
                 <div className="text-sm text-element-800">
                   An error occured while rendering the visualization.
                 </div>
-                <div>
-                  <Button label="Retry" onClick={onRetry} size="sm" />
+                <div className="text-sm text-element-800">
+                  The assistant message can be retried.
                 </div>
               </div>
             )}

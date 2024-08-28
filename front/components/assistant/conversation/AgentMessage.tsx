@@ -43,7 +43,6 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -86,10 +85,6 @@ export function AgentMessage({
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
-  const [visualizations, setVisualizations] = useState<
-    { code: string; complete: boolean }[]
-  >([]);
-
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
 
@@ -100,17 +95,6 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
   >([]);
-
-  useEffect(() => {
-    if (message.status === "succeeded") {
-      setVisualizations(
-        message.visualizations.map((v) => ({
-          code: v,
-          complete: true,
-        }))
-      );
-    }
-  }, [message.status, message.visualizations]);
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -211,27 +195,12 @@ export function AgentMessage({
             ...event.message,
           };
         });
-        // Mark the last viz as complete if it is not already.
-        setVisualizations((v) =>
-          v.map((item, index) =>
-            index === v.length - 1 ? { ...item, complete: true } : item
-          )
-        );
         break;
       }
 
       case "generation_tokens": {
         switch (event.classification) {
           case "closing_delimiter":
-            if (event.delimiterClassification === "visualization") {
-              // If we receive a closing delimiter for a visualization, we can
-              // consider the last viz to be complete.
-              setVisualizations((v) =>
-                v.map((item, index) =>
-                  index === v.length - 1 ? { ...item, complete: true } : item
-                )
-              );
-            }
             break;
           case "opening_delimiter":
             break;
@@ -250,23 +219,6 @@ export function AgentMessage({
                 ...m,
                 chainOfThought: currentChainOfThought + event.text,
               };
-            });
-            break;
-          case "visualization":
-            // Append new content to the last viz, or create a new one if there
-            // is none or the last one is complete.
-            setVisualizations((v) => {
-              const lastViz = v[v.length - 1];
-              if (lastViz && !lastViz.complete) {
-                return [
-                  ...v.slice(0, v.length - 1),
-                  {
-                    code: lastViz.code + event.text,
-                    complete: false,
-                  },
-                ];
-              }
-              return [...v, { code: event.text, complete: false }];
             });
             break;
           default:
@@ -491,7 +443,6 @@ export function AgentMessage({
           references: references,
           streaming: shouldStream,
           lastTokenClassification: lastTokenClassification,
-          visualizations,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -504,13 +455,11 @@ export function AgentMessage({
     references,
     streaming,
     lastTokenClassification,
-    visualizations,
   }: {
     agentMessage: AgentMessageType;
     references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
-    visualizations: { code: string; complete: boolean }[];
   }) {
     if (agentMessage.status === "failed") {
       return (
@@ -531,18 +480,6 @@ export function AgentMessage({
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />
-        <>
-          {visualizations.map((v, i) => {
-            return (
-              <VisualizationActionIframe
-                visualization={{ ...v, identifier: `${agentMessage.sId}_${i}` }}
-                key={i}
-                onRetry={() => retryHandler(agentMessage)}
-                owner={owner}
-              />
-            );
-          })}
-        </>
 
         {agentMessage.chainOfThought?.length ? (
           <ContentMessage
@@ -551,6 +488,7 @@ export function AgentMessage({
             icon={ChatBubbleThoughtIcon}
           >
             <RenderMessageMarkdown
+              owner={owner}
               content={agentMessage.chainOfThought}
               isStreaming={false}
               textSize="sm"
@@ -569,6 +507,7 @@ export function AgentMessage({
             ) : (
               <>
                 <RenderMessageMarkdown
+                  owner={owner}
                   content={agentMessage.content}
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"

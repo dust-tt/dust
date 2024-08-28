@@ -77,7 +77,8 @@ export async function getVisualizationPrompt({
   let prompt = visualizationSystemPrompt.trim() + "\n\n";
 
   if (contentFragmentMessages.length > 0) {
-    prompt += "Files accessible to the <visualization> environment:\n";
+    prompt +=
+      "Files accessible to the :::visualization directive environment:\n";
     prompt += contentFragmentMessages
       .map((m) => {
         return `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n${contentFragmentTextByMessageId[m.sId]?.join("\n")}(truncated...)</file>`;
@@ -85,16 +86,16 @@ export async function getVisualizationPrompt({
       .join("\n");
   } else {
     prompt +=
-      "No files are accessible to the <visualization> environment so far in this conversation.";
+      "No files are currently accessible to the :::visualization directive environment in this conversation.";
   }
 
   return prompt;
 }
 
 export const visualizationSystemPrompt = `\
-It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the <visualization> tag.
+It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
-Guidelines using the <visualization> tag:
+Guidelines using the :::visualization tag:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
 - Supported React features:
@@ -147,9 +148,9 @@ if (file) {
 
 General example of a visualization component:
 
-In response of a user asking a plot of sine and cosine functions the following <visualization> tag can be inlined anywhere in the assistant response:
+In response of a user asking a plot of sine and cosine functions the following :::visualization directive can be inlined anywhere in the assistant response:
 
-<visualization>
+:::visualization
 import React from "react";
 import {
   LineChart,
@@ -224,5 +225,5 @@ const SineCosineChart = () => {
 };
 
 export default SineCosineChart;
-</visualization>
+:::
 `;

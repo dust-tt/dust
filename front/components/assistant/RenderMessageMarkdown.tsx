@@ -1,5 +1,5 @@
 import { IconButton, SparklesIcon, WrenchIcon } from "@dust-tt/sparkle";
-import type { WebsearchResultType } from "@dust-tt/types";
+import type { WebsearchResultType, WorkspaceType } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
@@ -33,6 +33,8 @@ import {
 import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
 import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { classNames } from "@app/lib/utils";
+
+import { VisualizationActionIframe } from "./conversation/actions/VisualizationActionIframe";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -92,6 +94,20 @@ function citeDirective() {
   };
 }
 
+function visualizationDirective() {
+  return (tree: any) => {
+    visit(tree, ["containerDirective"], (node) => {
+      if (node.name === "visualization") {
+        const data = node.data || (node.data = {});
+        data.hName = "visualization";
+        data.hProperties = {
+          position: node.position,
+        };
+      }
+    });
+  };
+}
+
 function addClosingBackticks(str: string): string {
   // Regular expression to find either a single backtick or triple backticks
   const regex = /(`{1,3})/g;
@@ -140,18 +156,25 @@ export const CitationsContext = React.createContext<CitationsContextType>({
 });
 
 export function RenderMessageMarkdown({
+  owner,
   content,
   isStreaming,
   citationsContext,
   textSize,
   textColor,
 }: {
+  owner: WorkspaceType;
   content: string;
   isStreaming: boolean;
   citationsContext?: CitationsContextType;
   textSize?: "sm" | "base";
   textColor?: string;
 }) {
+  const processedContent = useMemo(
+    () => addClosingBackticks(content),
+    [content]
+  );
+
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
     () => ({
@@ -216,14 +239,32 @@ export function RenderMessageMarkdown({
       mention: ({ agentName }) => {
         return <MentionBlock agentName={agentName} />;
       },
+      // @ts-expect-error - `mention` is a custom tag, currently refused by
+      // react-markdown types although the functionality is supported
+      visualization: ({ position }) => {
+        return (
+          <VisualizationActionIframe
+            owner={owner}
+            visualization={{
+              code: processedContent
+                .split("\n")
+                .slice(position.start.line, position.end.line - 1)
+                .join("\n"),
+              complete: position.end.line < processedContent.split("\n").length,
+              identifier: `foo-${position.start.line}`,
+            }}
+          />
+        );
+      },
     }),
-    [isStreaming, textSize, textColor]
+    [isStreaming, textSize, textColor, processedContent, owner]
   );
 
   const markdownPlugins = useMemo(
     () => [
       remarkDirective,
       mentionDirective,
+      visualizationDirective,
       citeDirective(),
       remarkGfm,
       remarkMath,
@@ -249,7 +290,7 @@ export function RenderMessageMarkdown({
             remarkPlugins={markdownPlugins}
             rehypePlugins={[rehypeKatex] as PluggableList}
           >
-            {addClosingBackticks(content)}
+            {processedContent}
           </ReactMarkdown>
         </MermaidDisplayProvider>
       </CitationsContext.Provider>
