@@ -1,4 +1,4 @@
-import type { ContentNode, ContentNodeWithParentIds } from "@dust-tt/types";
+import type { ContentNodeWithParentIds } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -6,7 +6,7 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
   contentNodes: ContentNodeWithParentIds[]
-): ContentNode[] {
+): ContentNodeWithParentIds[] {
   const viewHasParents = dataSourceView.parentsIn !== null;
 
   // Filter out content nodes that are not in the view.

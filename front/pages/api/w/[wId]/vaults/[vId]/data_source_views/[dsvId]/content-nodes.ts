@@ -1,6 +1,5 @@
 import type {
-  GetDataSourceViewContentResponseBody,
-  LightContentNode,
+  ContentNodeWithParentIds,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
@@ -21,15 +20,13 @@ const GetContentNodesRequestBodySchema = t.type({
   internalIds: t.array(t.string),
 });
 
-export type GetContentNodeResponseBody = {
-  nodes: LightContentNode[];
+export type GetDataSourceViewContentNodes = {
+  nodes: ContentNodeWithParentIds[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetDataSourceViewContentResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewContentNodes>>,
   auth: Authenticator
 ): Promise<void> {
   const dataSourceView = await DataSourceViewResource.fetchById(

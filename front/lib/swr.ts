@@ -59,6 +59,7 @@ import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscr
 import type { GetVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
@@ -513,7 +514,7 @@ export function useDataSourceViewContentNodes({
   dataSourceView?: DataSourceViewType;
   internalIds: string[];
 }): {
-  nodes: GetContentNodeResponseBody["nodes"];
+  nodes: GetDataSourceViewContentNodes["nodes"];
   isNodesLoading: boolean;
   isNodesError: boolean;
 } {
