@@ -2,9 +2,8 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import type { Drive, DriveItem } from "@microsoft/microsoft-graph-types";
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
-import { request } from "http";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
