@@ -456,7 +456,7 @@ type DataSourceViewsAndNodes = {
   nodes: GetContentNodeResponseBody["nodes"];
 };
 
-export function useMultipleDataSourcesContentNodes({
+export function useMultipleDataSourceViewsContentNodes({
   owner,
   dataSourceViewsAndInternalIds,
 }: {
@@ -469,9 +469,7 @@ export function useMultipleDataSourcesContentNodes({
 } {
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
-      const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-        dataSourceView.dataSource.name
-      )}/managed/content_nodes`;
+      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
       const body = JSON.stringify({ internalIds });
       const options = {
         method: "POST",
@@ -484,7 +482,7 @@ export function useMultipleDataSourcesContentNodes({
 
   const { data: results, error: errors } = useSWRWithDefaults(
     urlsAndOptions,
-    fetcherMultiple<GetContentNodeResponseBody>
+    fetcherMultiple<GetDataSourceViewContentNodes>
   );
 
   const isNodesError = Boolean(errors?.some(Boolean));
