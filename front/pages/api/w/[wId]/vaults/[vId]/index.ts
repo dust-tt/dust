@@ -65,7 +65,13 @@ async function handler(
       );
 
       const categories: { [key: string]: VaultCategoryInfo } = {};
-      DATA_SOURCE_VIEW_CATEGORIES.forEach((category) => {
+
+      // TODO(GROUPS_INFRA)[DUST_APPS_MIGRATED_TO_VAULTS]: Remove the filter on categories once apps are moved to vaults.
+      const allCategories = vault.isGlobal()
+        ? DATA_SOURCE_VIEW_CATEGORIES
+        : DATA_SOURCE_VIEW_CATEGORIES.filter((category) => category !== "apps");
+
+      allCategories.forEach((category) => {
         categories[category] = {
           count: 0,
           usage: 0,
