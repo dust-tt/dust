@@ -17,6 +17,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 const GetContentNodesRequestBodySchema = t.type({
+  // TODO(2024-08-28 flav) Remove optional once the frontend is updated to use the new API.
+  includeChildren: t.union([t.boolean, t.undefined]),
   internalIds: t.array(t.string),
 });
 
@@ -24,6 +26,10 @@ export type GetDataSourceViewContentNodes = {
   nodes: ContentNodeWithParentIds[];
 };
 
+// This endpoints serves two purposes:
+// 1. Fetch content nodes for a given data source view.
+// 2. Fetch children of a given content node.
+// It always apply the data source view filter to the content nodes.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewContentNodes>>,
@@ -84,32 +90,73 @@ async function handler(
     });
   }
 
-  const { internalIds } = bodyValidation.right;
-
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
   );
 
-  const connectorsRes = await connectorsAPI.getContentNodes({
-    connectorId: dataSource.connectorId,
-    includeParents: true,
-    internalIds,
-  });
-  if (connectorsRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message:
-          "An error occurred while fetching the resources' content nodes.",
-      },
+  const { includeChildren, internalIds } = bodyValidation.right;
+
+  let contentNodes: ContentNodeWithParentIds[];
+
+  // If the request is for children, we need to fetch the children of the internal ids.
+  if (includeChildren) {
+    if (internalIds.length !== 1) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "When fetching children, only one internal id should be provided.",
+        },
+      });
+    }
+
+    const [parentInternalId] = internalIds;
+
+    const connectorsRes = await connectorsAPI.getConnectorPermissions({
+      connectorId: dataSource.connectorId,
+      filterPermission: "read",
+      includeParents: true,
+      parentId: parentInternalId,
+      viewType: "documents",
     });
+
+    if (connectorsRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message:
+            "An error occurred while fetching the resources' children content nodes.",
+        },
+      });
+    }
+
+    contentNodes = connectorsRes.value.resources;
+  } else {
+    const connectorsRes = await connectorsAPI.getContentNodes({
+      connectorId: dataSource.connectorId,
+      includeParents: true,
+      internalIds,
+    });
+    if (connectorsRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message:
+            "An error occurred while fetching the resources' content nodes.",
+        },
+      });
+    }
+
+    contentNodes = connectorsRes.value.nodes;
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(
     dataSourceView,
-    connectorsRes.value.nodes
+    contentNodes
   );
 
   return res.status(200).json({

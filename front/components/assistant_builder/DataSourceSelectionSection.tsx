@@ -14,14 +14,13 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourceSelectionSection({
@@ -106,17 +105,15 @@ export default function DataSourceSelectionSection({
                   className="whitespace-nowrap"
                 >
                   {dsConfig.isSelectAll && (
-                    <PermissionTreeChildren
+                    <DataSourceViewPermissionTreeChildren
                       owner={owner}
-                      dataSource={dsConfig.dataSourceView.dataSource}
+                      dataSourceView={dsConfig.dataSourceView}
                       parentId={null}
-                      permissionFilter="read"
                       canUpdatePermissions={true}
                       displayDocumentSource={(documentId: string) => {
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
                         setDocumentToDisplay(documentId);
                       }}
-                      useConnectorPermissionsHook={useConnectorPermissions}
                       isSearchEnabled={false}
                     />
                   )}
@@ -168,17 +165,15 @@ export default function DataSourceSelectionSection({
                           </div>
                         }
                       >
-                        <PermissionTreeChildren
+                        <DataSourceViewPermissionTreeChildren
                           owner={owner}
-                          dataSource={dsConfig.dataSourceView.dataSource}
+                          dataSourceView={dsConfig.dataSourceView}
                           parentId={node.internalId}
-                          permissionFilter="read"
                           canUpdatePermissions={true}
                           displayDocumentSource={(documentId: string) => {
                             setDataSourceViewToDisplay(dsConfig.dataSourceView);
                             setDocumentToDisplay(documentId);
                           }}
-                          useConnectorPermissionsHook={useConnectorPermissions}
                           isSearchEnabled={false}
                         />
                       </Tree.Item>

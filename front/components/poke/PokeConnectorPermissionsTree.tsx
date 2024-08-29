@@ -4,7 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { usePokeConnectorPermissions } from "@app/lib/swr";
 
 export function PokePermissionTree({
@@ -31,22 +31,20 @@ export function PokePermissionTree({
   displayDocumentSource: (documentId: string) => void;
 }) {
   return (
-    <>
-      <div className="overflow-x-auto">
-        <PermissionTreeChildren
-          owner={owner}
-          dataSource={dataSource}
-          parentId={null}
-          permissionFilter={permissionFilter}
-          canUpdatePermissions={canUpdatePermissions}
-          onPermissionUpdate={onPermissionUpdate}
-          showExpand={showExpand}
-          parentIsSelected={false}
-          displayDocumentSource={displayDocumentSource}
-          useConnectorPermissionsHook={usePokeConnectorPermissions}
-          isSearchEnabled={false}
-        />
-      </div>
-    </>
+    <div className="overflow-x-auto">
+      <DataSourcePermissionTreeChildren
+        owner={owner}
+        dataSource={dataSource}
+        parentId={null}
+        permissionFilter={permissionFilter}
+        canUpdatePermissions={canUpdatePermissions}
+        onPermissionUpdate={onPermissionUpdate}
+        showExpand={showExpand}
+        parentIsSelected={false}
+        displayDocumentSource={displayDocumentSource}
+        useConnectorPermissionsHook={usePokeConnectorPermissions}
+        isSearchEnabled={false}
+      />
+    </div>
   );
 }

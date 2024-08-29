@@ -10,7 +10,9 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
+  ContentNode,
   DataSourceType,
+  DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
 import type { ConnectorPermission } from "@dust-tt/types";
@@ -18,7 +20,10 @@ import { useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useConnectorPermissions } from "@app/lib/swr";
+import {
+  useConnectorPermissions,
+  useDataSourceViewContentNodeChildren,
+} from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
@@ -50,24 +55,9 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   webcrawler: undefined,
 };
 
-export function PermissionTreeChildren({
-  owner,
-  dataSource,
-  parentId,
-  permissionFilter,
-  canUpdatePermissions,
-  onPermissionUpdate,
-  parentIsSelected,
-  showExpand,
-  displayDocumentSource,
-  useConnectorPermissionsHook,
-  isSearchEnabled,
-}: {
-  owner: LightWorkspaceType;
-  dataSource: DataSourceType;
-  parentId: string | null;
-  permissionFilter?: ConnectorPermission;
+interface PermissionTreeChildrenBaseProps {
   canUpdatePermissions?: boolean;
+  displayDocumentSource: (documentId: string) => void;
   onPermissionUpdate?: ({
     internalId,
     permission,
@@ -75,18 +65,27 @@ export function PermissionTreeChildren({
     internalId: string;
     permission: ConnectorPermission;
   }) => void;
+  isSearchEnabled: boolean;
+  owner: LightWorkspaceType;
+  parentId: string | null;
   parentIsSelected?: boolean;
   showExpand?: boolean;
-  displayDocumentSource: (documentId: string) => void;
-  useConnectorPermissionsHook: typeof useConnectorPermissions;
-  isSearchEnabled: boolean;
-}) {
-  const [search, setSearch] = useState("");
-  // This is to control when to dislpay the "Select All" vs "unselect All" button.
-  // If the user pressed "select all", we want to display "unselect all" and vice versa.
-  // But if the user types in the search bar, we want to reset the button to "select all".
-  const [selectAllClicked, setSelectAllClicked] = useState(false);
+}
 
+type DataSourcePermissionTreeChildrenProps = PermissionTreeChildrenBaseProps & {
+  dataSource: DataSourceType;
+  permissionFilter?: ConnectorPermission;
+  useConnectorPermissionsHook: typeof useConnectorPermissions;
+};
+
+export function DataSourcePermissionTreeChildren({
+  dataSource,
+  owner,
+  parentId,
+  permissionFilter,
+  useConnectorPermissionsHook,
+  ...props
+}: DataSourcePermissionTreeChildrenProps) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissionsHook({
       owner,
@@ -94,6 +93,118 @@ export function PermissionTreeChildren({
       parentId,
       filterPermission: permissionFilter || null,
     });
+
+  if (isResourcesError) {
+    return (
+      <div className="text-warning text-sm">
+        Failed to retrieve permissions likely due to a revoked authorization.
+      </div>
+    );
+  }
+
+  return (
+    <PermissionTreeChildren
+      dataSource={dataSource}
+      isLoading={isResourcesLoading}
+      nodes={resources}
+      owner={owner}
+      parentId={parentId}
+      renderChildItem={(node: ContentNode, { isParentNodeSelected }) => (
+        <DataSourcePermissionTreeChildren
+          dataSource={dataSource}
+          owner={owner}
+          parentId={node.internalId}
+          parentIsSelected={isParentNodeSelected}
+          permissionFilter={permissionFilter}
+          useConnectorPermissionsHook={useConnectorPermissionsHook}
+          {...props}
+          // Disable search for children.
+          isSearchEnabled={false}
+        />
+      )}
+      {...props}
+    />
+  );
+}
+
+type DataSourceViewPermissionTreeChildrenProps =
+  PermissionTreeChildrenBaseProps & {
+    dataSourceView: DataSourceViewType;
+    permissionFilter?: ConnectorPermission;
+  };
+
+export function DataSourceViewPermissionTreeChildren({
+  dataSourceView,
+  owner,
+  parentId,
+  ...props
+}: DataSourceViewPermissionTreeChildrenProps) {
+  const { nodes, isNodesLoading, isNodesError } =
+    useDataSourceViewContentNodeChildren({
+      owner,
+      dataSourceView,
+      parentInternalId: parentId,
+    });
+
+  if (isNodesError) {
+    return (
+      <div className="text-warning text-sm">
+        Failed to retrieve permissions likely due to a revoked authorization.
+      </div>
+    );
+  }
+
+  const { dataSource } = dataSourceView;
+
+  return (
+    <PermissionTreeChildren
+      dataSource={dataSource}
+      isLoading={isNodesLoading}
+      nodes={nodes}
+      owner={owner}
+      parentId={parentId}
+      renderChildItem={(node: ContentNode, { isParentNodeSelected }) => (
+        <DataSourceViewPermissionTreeChildren
+          dataSourceView={dataSourceView}
+          owner={owner}
+          parentId={node.internalId}
+          parentIsSelected={isParentNodeSelected}
+          {...props}
+          // Disable search for children.
+          isSearchEnabled={false}
+        />
+      )}
+      {...props}
+    />
+  );
+}
+
+type PermissionTreeChildrenProps = PermissionTreeChildrenBaseProps & {
+  dataSource: DataSourceType;
+  isLoading: boolean;
+  nodes: ContentNode[];
+  renderChildItem: (
+    r: ContentNode,
+    { isParentNodeSelected }: { isParentNodeSelected: boolean }
+  ) => React.ReactNode;
+};
+
+function PermissionTreeChildren({
+  canUpdatePermissions,
+  dataSource,
+  displayDocumentSource,
+  isLoading,
+  isSearchEnabled,
+  nodes,
+  onPermissionUpdate,
+  parentIsSelected,
+  renderChildItem,
+}: PermissionTreeChildrenProps) {
+  const [search, setSearch] = useState("");
+  // This is to control when to dislpay the "Select All" vs "unselect All" button.
+  // If the user pressed "select all", we want to display "unselect all" and vice versa.
+  // But if the user types in the search bar, we want to reset the button to "select all".
+  const [selectAllClicked, setSelectAllClicked] = useState(false);
 
   const [localStateByInternalId, setLocalStateByInternalId] = useState<
     Record<string, boolean>
@@ -109,16 +220,8 @@ export function PermissionTreeChildren({
         ?.unselected) ||
     "none";
 
-  if (isResourcesError) {
-    return (
-      <div className="text-warning text-sm">
-        Failed to retrieve permissions likely due to a revoked authorization.
-      </div>
-    );
-  }
-
-  const resourcesFiltered = resources.filter(
-    (r) => search.trim().length === 0 || r.title.includes(search)
+  const filteredNodes = nodes.filter(
+    (n) => search.trim().length === 0 || n.title.includes(search)
   );
 
   return (
@@ -153,15 +256,15 @@ export function PermissionTreeChildren({
                   setSelectAllClicked((prev) => !prev);
                   setLocalStateByInternalId((prev) => {
                     const newState = { ...prev };
-                    resourcesFiltered.forEach((r) => {
-                      newState[r.internalId] = !selectAllClicked;
+                    filteredNodes.forEach((n) => {
+                      newState[n.internalId] = !selectAllClicked;
                     });
                     return newState;
                   });
                   if (onPermissionUpdate) {
-                    resourcesFiltered.forEach((r) => {
+                    filteredNodes.forEach((n) => {
                       onPermissionUpdate({
-                        internalId: r.internalId,
+                        internalId: n.internalId,
                         permission: !selectAllClicked
                           ? selectedPermission
                           : unselectedPermission,
@@ -174,22 +277,22 @@ export function PermissionTreeChildren({
           </div>
         </>
       )}
-      <Tree isLoading={isResourcesLoading}>
-        {resourcesFiltered.map((r, i) => {
+      <Tree isLoading={isLoading}>
+        {filteredNodes.map((n, i) => {
           const isChecked =
             parentIsSelected ||
-            (localStateByInternalId[r.internalId] ??
-              ["read", "read_write"].includes(r.permission));
+            (localStateByInternalId[n.internalId] ??
+              ["read", "read_write"].includes(n.permission));
 
           return (
             <Tree.Item
-              key={r.internalId}
-              type={r.expandable ? "node" : "leaf"}
-              label={r.title}
-              visual={getVisualForContentNode(r)}
+              key={n.internalId}
+              type={n.expandable ? "node" : "leaf"}
+              label={n.title}
+              visual={getVisualForContentNode(n)}
               className="whitespace-nowrap"
               checkbox={
-                r.preventSelection !== true &&
+                n.preventSelection !== true &&
                 canUpdatePermissions &&
                 onPermissionUpdate
                   ? {
@@ -198,10 +301,10 @@ export function PermissionTreeChildren({
                       onChange: (checked) => {
                         setLocalStateByInternalId((prev) => ({
                           ...prev,
-                          [r.internalId]: checked,
+                          [n.internalId]: checked,
                         }));
                         onPermissionUpdate({
-                          internalId: r.internalId,
+                          internalId: n.internalId,
                           permission: checked
                             ? selectedPermission
                             : unselectedPermission,
@@ -212,17 +315,17 @@ export function PermissionTreeChildren({
               }
               actions={
                 <div className="mr-8 flex flex-row gap-2">
-                  {r.lastUpdatedAt ? (
+                  {n.lastUpdatedAt ? (
                     <Tooltip
                       contentChildren={
                         <span>
-                          {new Date(r.lastUpdatedAt).toLocaleString()}
+                          {new Date(n.lastUpdatedAt).toLocaleString()}
                         </span>
                       }
                       position={i === 0 ? "below" : "above"}
                     >
                       <span className="text-xs text-gray-500">
-                        {timeAgoFrom(r.lastUpdatedAt)} ago
+                        {timeAgoFrom(n.lastUpdatedAt)} ago
                       </span>
                     </Tooltip>
                   ) : null}
@@ -230,52 +333,39 @@ export function PermissionTreeChildren({
                     size="xs"
                     icon={ExternalLinkIcon}
                     onClick={() => {
-                      if (r.sourceUrl) {
-                        window.open(r.sourceUrl, "_blank");
+                      if (n.sourceUrl) {
+                        window.open(n.sourceUrl, "_blank");
                       }
                     }}
                     className={classNames(
-                      r.sourceUrl ? "" : "pointer-events-none opacity-0"
+                      n.sourceUrl ? "" : "pointer-events-none opacity-0"
                     )}
-                    disabled={!r.sourceUrl}
+                    disabled={!n.sourceUrl}
                     variant="tertiary"
                   />
                   <IconButton
                     size="xs"
                     icon={BracesIcon}
                     onClick={() => {
-                      if (r.dustDocumentId) {
-                        displayDocumentSource(r.dustDocumentId);
+                      if (n.dustDocumentId) {
+                        displayDocumentSource(n.dustDocumentId);
                       }
                     }}
                     className={classNames(
-                      r.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                      n.dustDocumentId ? "" : "pointer-events-none opacity-0"
                     )}
-                    disabled={!r.dustDocumentId}
+                    disabled={!n.dustDocumentId}
                     variant="tertiary"
                   />
                 </div>
               }
-              renderTreeItems={() => (
-                <PermissionTreeChildren
-                  owner={owner}
-                  dataSource={dataSource}
-                  parentId={r.internalId}
-                  permissionFilter={permissionFilter}
-                  canUpdatePermissions={canUpdatePermissions}
-                  onPermissionUpdate={onPermissionUpdate}
-                  showExpand={showExpand}
-                  parentIsSelected={
-                    (parentIsSelected ||
-                      localStateByInternalId[r.internalId]) ??
-                    ["read", "read_write"].includes(r.permission)
-                  }
-                  displayDocumentSource={displayDocumentSource}
-                  useConnectorPermissionsHook={useConnectorPermissionsHook}
-                  // Disable search for children
-                  isSearchEnabled={false}
-                />
-              )}
+              renderTreeItems={() => {
+                const isParentNodeSelected =
+                  (parentIsSelected || localStateByInternalId[n.internalId]) ??
+                  ["read", "read_write"].includes(n.permission);
+
+                return renderChildItem(n, { isParentNodeSelected });
+              }}
             />
           );
         })}
@@ -326,7 +416,7 @@ export function PermissionTree({
       />
 
       <div className="overflow-x-auto">
-        <PermissionTreeChildren
+        <DataSourcePermissionTreeChildren
           owner={owner}
           dataSource={dataSource}
           parentId={null}

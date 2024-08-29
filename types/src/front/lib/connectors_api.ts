@@ -100,10 +100,12 @@ export type ContentNodeWithParentIds = ContentNode & {
   parentInternalIds: string[] | null;
 };
 
-type GetContentNodesReturnType<IncludeParents extends boolean> =
-  IncludeParents extends true
-    ? ConnectorsAPIResponse<{ nodes: ContentNodeWithParentIds[] }>
-    : ConnectorsAPIResponse<{ nodes: ContentNode[] }>;
+type GetContentNodesReturnType<
+  IncludeParents extends boolean,
+  Key extends string
+> = IncludeParents extends true
+  ? ConnectorsAPIResponse<{ [K in Key]: ContentNodeWithParentIds[] }>
+  : ConnectorsAPIResponse<{ [K in Key]: ContentNode[] }>;
 
 export type GoogleDriveFolderType = {
   id: string;
@@ -287,33 +289,47 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getConnectorPermissions({
+  async getConnectorPermissions<IncludeParents extends boolean>({
     connectorId,
-    parentId,
     filterPermission,
+    includeParents,
+    parentId,
     viewType = "documents",
   }: {
     connectorId: string;
-    parentId?: string;
     filterPermission?: ConnectorPermission;
+    includeParents?: IncludeParents;
+    parentId?: string;
     viewType?: ContentNodesViewType;
-  }): Promise<ConnectorsAPIResponse<{ resources: ContentNode[] }>> {
-    let url = `${this._url}/connectors/${encodeURIComponent(
-      connectorId
-    )}/permissions?viewType=${viewType}`;
+  }): Promise<GetContentNodesReturnType<IncludeParents, "resources">> {
+    const queryParams = new URLSearchParams();
+
     if (parentId) {
-      url += `&parentId=${encodeURIComponent(parentId)}`;
+      queryParams.append("parentId", parentId);
     }
+
     if (filterPermission) {
-      url += `&filterPermission=${encodeURIComponent(filterPermission)}`;
+      queryParams.append("filterPermission", filterPermission);
     }
+
+    if (includeParents) {
+      queryParams.append("includeParents", "true");
+    }
+
+    const qs = queryParams.toString();
+
+    const url = `${this._url}/connectors/${encodeURIComponent(
+      connectorId
+    )}/permissions?viewType=${viewType}&${qs}`;
 
     const res = await this._fetchWithError(url, {
       method: "GET",
       headers: this.getDefaultHeaders(),
     });
 
-    return this._resultFromResponse(res);
+    const response = await this._resultFromResponse(res);
+
+    return response as GetContentNodesReturnType<IncludeParents, "resources">;
   }
 
   async setConnectorPermissions({
@@ -463,7 +479,7 @@ export class ConnectorsAPI {
     includeParents?: IncludeParents;
     internalIds: string[];
     viewType?: ContentNodesViewType;
-  }): Promise<GetContentNodesReturnType<IncludeParents>> {
+  }): Promise<GetContentNodesReturnType<IncludeParents, "nodes">> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/${encodeURIComponent(
         connectorId
@@ -481,7 +497,7 @@ export class ConnectorsAPI {
 
     const response = await this._resultFromResponse(res);
 
-    return response as GetContentNodesReturnType<IncludeParents>;
+    return response as GetContentNodesReturnType<IncludeParents, "nodes">;
   }
 
   async linkSlackChannelsWithAgent({
