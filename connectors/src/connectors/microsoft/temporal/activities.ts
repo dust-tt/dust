@@ -645,7 +645,7 @@ function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
 
 /**
  * Order items as follows:
- * - first those whose parentInternalId is not in the changedList, or the root drive
+ * - first the node in the changedList matching rootid, or the drive root folder if no rootId is specified
  * - then those whose parentInternalId is in in the list above;
  * - then those whose parentInternalId is in the updated list above, and so on
  *
