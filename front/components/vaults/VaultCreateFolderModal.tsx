@@ -110,7 +110,7 @@ export default function VaultCreateFolderModal({
       <Page variant="modal">
         <div className="w-full">
           <Page.Vertical sizing="grow">
-            <Page.H>Name</Page.H>
+            <Page.SectionHeader title="Name" />
             <div className="w-full">
               <Input
                 placeholder="folder_name"
@@ -130,7 +130,7 @@ export default function VaultCreateFolderModal({
             </div>
 
             <Page.Separator />
-            <Page.H>Description</Page.H>
+            <Page.SectionHeader title="Description" />
             <div className="w-full">
               <TextArea
                 placeholder="Folder description"

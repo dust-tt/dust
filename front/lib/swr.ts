@@ -149,7 +149,7 @@ export function useAppStatus() {
 export function useApps(owner: LightWorkspaceType) {
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/apps`,
     appsFetcher
   );
@@ -158,6 +158,7 @@ export function useApps(owner: LightWorkspaceType) {
     apps: useMemo(() => (data ? data.apps : []), [data]),
     isAppsLoading: !error && !data,
     isAppsError: !!error,
+    mutateApps: mutate,
   };
 }
 

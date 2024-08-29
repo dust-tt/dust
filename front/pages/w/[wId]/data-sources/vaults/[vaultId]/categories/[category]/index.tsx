@@ -20,6 +20,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
     category: DataSourceViewCategory;
     isAdmin: boolean;
+    isBuilder: boolean;
     vault: VaultType;
     systemVault: VaultType;
     plan: PlanType;
@@ -46,12 +47,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
   const isAdmin = auth.isAdmin();
+  const isBuilder = auth.isBuilder();
 
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
+      isBuilder,
       owner,
       plan,
       subscription,
@@ -64,6 +67,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 export default function Vault({
   category,
   isAdmin,
+  isBuilder,
   owner,
   plan,
   vault,
@@ -75,6 +79,7 @@ export default function Vault({
       {category === "apps" ? (
         <VaultAppsList
           owner={owner}
+          isBuilder={isBuilder}
           onSelect={(sId) => {
             void router.push(`/w/${owner.sId}/a/${sId}`);
           }}
