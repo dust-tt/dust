@@ -1,6 +1,12 @@
 name: Deploy And test Front Qa
 
 on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
   workflow_dispatch:
 
 concurrency:
@@ -116,3 +122,12 @@ jobs:
 
           echo "Timeout: Playwright tests did not complete within 45 minutes"
           exit 1
+
+      - name: Post Failure Message to Slack
+        id: slack-notification
+        if: failure()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: '{"text": "Playwright tests failed for commit ${{ github.sha }} in ${{ github.repository }}. Check ID: $CHECK_ID"}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.PLAYWRIGHT_TESTS_SLACK_WEBHOOK_URL }}
