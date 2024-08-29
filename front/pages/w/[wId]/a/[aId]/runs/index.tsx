@@ -53,6 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   // `wIdTarget` is used to change the workspace owning the runs of the apps we're looking at.
   // Mostly useful for debugging as an example our use of `dust-apps` as `dust`.
   const wIdTarget = (context.query?.wIdTarget as string) || null;
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
 
   return {
     props: {
@@ -61,7 +62,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app,
       wIdTarget,
-      dustAppsListUrl: await getDustAppsListUrl(auth),
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };

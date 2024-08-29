@@ -59,6 +59,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
   const { run, spec } = r;
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
@@ -67,7 +69,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app,
       spec,
       run,
-      dustAppsListUrl: await getDustAppsListUrl(auth),
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };

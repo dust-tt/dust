@@ -68,6 +68,7 @@ export const getServerSideProps =
     }
 
     const schema = await getDatasetSchema(auth, app, dataset.name);
+    const dustAppsListUrl = await getDustAppsListUrl(auth);
 
     return {
       props: {
@@ -77,7 +78,7 @@ export const getServerSideProps =
         app,
         dataset,
         schema,
-        dustAppsListUrl: await getDustAppsListUrl(auth),
+        dustAppsListUrl,
         gaTrackingId: GA_TRACKING_ID,
       },
     };

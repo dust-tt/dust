@@ -31,11 +31,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
       subscription,
-      dustAppsListUrl: await getDustAppsListUrl(auth),
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };

@@ -50,6 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const datasets = await getDatasets(auth, app);
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
 
   return {
     props: {
@@ -57,7 +58,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       app,
       datasets,
-      dustAppsListUrl: await getDustAppsListUrl(auth),
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };

@@ -74,6 +74,8 @@ export const getServerSideProps =
       };
     }
 
+    const dustAppsListUrl = await getDustAppsListUrl(auth);
+
     return {
       props: {
         user: auth.user(),
@@ -81,7 +83,7 @@ export const getServerSideProps =
         subscription,
         readOnly,
         url: config.getClientFacingUrl(),
-        dustAppsListUrl: await getDustAppsListUrl(auth),
+        dustAppsListUrl,
         app,
         gaTrackingId: config.getGaTrackingId(),
       },
