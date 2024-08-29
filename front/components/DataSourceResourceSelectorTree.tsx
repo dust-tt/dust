@@ -1,7 +1,5 @@
 import {
   BracesIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentTextIcon,
   ExternalLinkIcon,
   IconButton,
   Tree,
@@ -12,8 +10,7 @@ import type {
   LightContentNode,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
-import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
+import type { ConnectorPermission } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";

@@ -8,10 +8,8 @@ import {
   DustIcon,
   IconButton,
   LockIcon,
-  Modal,
   Page,
   PlanetIcon,
-  SlackLogo,
   SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
@@ -26,10 +24,7 @@ import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
-import {
-  SlackAssistantDefaultManager,
-  SlackIntegration,
-} from "@app/components/assistant_builder/SlackIntegration";
+import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
 type ConfirmationModalDataType = {
