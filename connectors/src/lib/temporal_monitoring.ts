@@ -136,7 +136,13 @@ export class ActivityInboundLogInterceptor
               connectorProvider: connector.type,
             });
 
-            await connectorManager?.stop();
+            if (connectorManager) {
+              await connectorManager.stop();
+            } else {
+              this.logger.error(
+                `Connector manager not found for connector ${connector.id}`
+              );
+            }
           }
         }
       }
