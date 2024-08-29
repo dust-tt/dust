@@ -45,7 +45,6 @@ export const PickTablesManaged = ({
           selectedParents={[
             ...new Set(Object.values(parentsById || {}).flatMap((c) => [...c])),
           ]}
-          filterPermission="read"
           viewType="tables"
           onSelectChange={(
             resource: LightContentNode,

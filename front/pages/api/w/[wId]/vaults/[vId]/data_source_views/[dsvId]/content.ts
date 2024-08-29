@@ -11,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
+// TODO(2024-08-29 flav) Remove `filterPermission` from here once front-end is updated.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -26,8 +27,7 @@ async function handler(
   if (
     !dataSourceView ||
     req.query.vId !== dataSourceView.vault.sId ||
-    (!auth.isAdmin() &&
-      !auth.hasPermission([dataSourceView.vault.acl()], "read"))
+    !dataSourceView.canRead(auth)
   ) {
     return apiError(req, res, {
       status_code: 404,

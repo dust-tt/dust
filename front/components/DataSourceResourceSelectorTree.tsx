@@ -26,7 +26,6 @@ export default function DataSourceResourceSelectorTree({
   selectedParents = [],
   selectedResourceIds,
   onSelectChange,
-  filterPermission = "read",
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
@@ -40,7 +39,6 @@ export default function DataSourceResourceSelectorTree({
     parents: string[],
     selected: boolean
   ) => void;
-  filterPermission?: ConnectorPermission;
   viewType?: ContentNodesViewType;
 }) {
   return (
@@ -56,7 +54,6 @@ export default function DataSourceResourceSelectorTree({
         onSelectChange={(resource, parents, selected) => {
           onSelectChange(resource, parents, selected);
         }}
-        filterPermission={filterPermission}
         viewType={viewType}
       />
     </div>
@@ -73,7 +70,6 @@ function DataSourceResourceSelectorChildren({
   showExpand,
   selectedResourceIds,
   onSelectChange,
-  filterPermission,
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
@@ -89,13 +85,11 @@ function DataSourceResourceSelectorChildren({
     parents: string[],
     selected: boolean
   ) => void;
-  filterPermission: ConnectorPermission;
   viewType: ContentNodesViewType;
 }) {
   const { vaultContent, isVaultContentLoading, isVaultContentError } =
     useVaultDataSourceViewContent({
       dataSourceView: dataSourceView,
-      filterPermission,
       owner,
       parentId,
       vaultId: dataSourceView.vaultId,
@@ -194,7 +188,6 @@ function DataSourceResourceSelectorChildren({
                   onSelectChange={onSelectChange}
                   parents={[...parents, r.internalId]}
                   parentIsSelected={parentIsSelected || isSelected}
-                  filterPermission={filterPermission}
                   viewType={viewType}
                 />
               )}
