@@ -108,7 +108,10 @@ function visualizationDirective() {
   };
 }
 
-function addClosingBackticks(str: string): string {
+function sanitizeContent(str: string): string {
+  // (1) Add closing backticks if they are missing such that we render a code block during
+  // streaming.
+
   // Regular expression to find either a single backtick or triple backticks
   const regex = /(`{1,3})/g;
   let singleBackticks = 0;
@@ -135,6 +138,12 @@ function addClosingBackticks(str: string): string {
   } else if (singleBackticks % 2 !== 0) {
     str += "`";
   }
+
+  // (2) Replace legacy <visualization> XML tags by the markdown directive syntax.
+
+  str = str.replace(/^<visualization>$/gm, ":::visualization");
+  str = str.replace(/^<\/visualization>$/gm, ":::");
+
   return str;
 }
 
@@ -170,10 +179,7 @@ export function RenderMessageMarkdown({
   textSize?: "sm" | "base";
   textColor?: string;
 }) {
-  const processedContent = useMemo(
-    () => addClosingBackticks(content),
-    [content]
-  );
+  const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
@@ -239,7 +245,7 @@ export function RenderMessageMarkdown({
       mention: ({ agentName }) => {
         return <MentionBlock agentName={agentName} />;
       },
-      // @ts-expect-error - `mention` is a custom tag, currently refused by
+      // @ts-expect-error - `visualization` is a custom tag, currently refused by
       // react-markdown types although the functionality is supported
       visualization: ({ position }) => {
         return (
