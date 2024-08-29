@@ -39,6 +39,7 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  isAdmin: boolean;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
@@ -111,32 +112,34 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
+      actions,
+      agentConfiguration: configuration,
+      baseUrl: config.getClientFacingUrl(),
+      dataSourceViews,
+      dustApps,
+      flow,
+      gaTrackingId: config.getGaTrackingId(),
+      isAdmin: auth.isAdmin(),
       owner,
       plan,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
-      dataSourceViews,
-      dustApps,
-      actions,
-      agentConfiguration: configuration,
-      flow,
-      baseUrl: config.getClientFacingUrl(),
       templateId,
     },
   };
 });
 
 export default function CreateAssistant({
-  owner,
-  subscription,
-  plan,
-  gaTrackingId,
-  dataSourceViews,
-  dustApps,
   actions,
   agentConfiguration,
-  flow,
   baseUrl,
+  dataSourceViews,
+  dustApps,
+  flow,
+  gaTrackingId,
+  isAdmin,
+  owner,
+  plan,
+  subscription,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({
@@ -194,6 +197,7 @@ export default function CreateAssistant({
             : null
         }
         agentConfigurationId={null}
+        isAdmin={isAdmin}
         defaultIsEdited={true}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}

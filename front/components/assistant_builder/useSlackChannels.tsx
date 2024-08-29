@@ -4,23 +4,25 @@ import { useEffect, useState } from "react";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 
-export function useSlackChannel({
-  dataSourceViews,
-  initialChannels,
-  workspaceId,
-  isPrivateAssistant,
-  isBuilder,
-  isEdited,
-  agentConfigurationId,
-}: {
+interface useSlackChannelProps {
+  agentConfigurationId: string | null;
   dataSourceViews: DataSourceViewType[];
   initialChannels: SlackChannel[];
-  workspaceId: string;
-  isPrivateAssistant: boolean;
   isBuilder: boolean;
   isEdited: boolean;
-  agentConfigurationId: string | null;
-}) {
+  isPrivateAssistant: boolean;
+  workspaceId: string;
+}
+
+export function useSlackChannel({
+  agentConfigurationId,
+  dataSourceViews,
+  initialChannels,
+  isBuilder,
+  isEdited,
+  isPrivateAssistant,
+  workspaceId,
+}: useSlackChannelProps) {
   // This state stores the slack channels that should have the current agent as default.
   const [selectedSlackChannels, setSelectedSlackChannels] =
     useState<SlackChannel[]>(initialChannels);

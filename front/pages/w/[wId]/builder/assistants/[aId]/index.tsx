@@ -25,16 +25,17 @@ import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  plan: PlanType;
-  gaTrackingId: string;
-  dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
-  flow: BuilderFlow;
   baseUrl: string;
+  dataSourceViews: DataSourceViewType[];
+  dustApps: AppType[];
+  flow: BuilderFlow;
+  gaTrackingId: string;
+  isAdmin: boolean;
+  owner: WorkspaceType;
+  plan: PlanType;
+  subscription: SubscriptionType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -74,37 +75,41 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
+  const actions = await buildInitialActions({
+    dataSourceViews,
+    dustApps,
+    configuration,
+  });
+
   return {
     props: {
+      actions,
+      agentConfiguration: configuration,
+      baseUrl: config.getClientFacingUrl(),
+      dataSourceViews,
+      dustApps,
+      flow,
+      gaTrackingId: config.getGaTrackingId(),
+      isAdmin: auth.isAdmin(),
       owner,
       plan,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
-      dataSourceViews,
-      dustApps,
-      actions: await buildInitialActions({
-        dataSourceViews,
-        dustApps,
-        configuration,
-      }),
-      agentConfiguration: configuration,
-      flow,
-      baseUrl: config.getClientFacingUrl(),
     },
   };
 });
 
 export default function EditAssistant({
-  owner,
-  subscription,
-  plan,
-  gaTrackingId,
-  dataSourceViews,
-  dustApps,
   actions,
   agentConfiguration,
-  flow,
   baseUrl,
+  dataSourceViews,
+  dustApps,
+  flow,
+  gaTrackingId,
+  isAdmin,
+  owner,
+  plan,
+  subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
 
@@ -147,6 +152,7 @@ export default function EditAssistant({
         }}
         agentConfigurationId={agentConfiguration.sId}
         baseUrl={baseUrl}
+        isAdmin={isAdmin}
         defaultTemplate={null}
       />
     </AssistantBuilderProvider>

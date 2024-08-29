@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 
 export default function DataSourceResourceSelectorTree({
   owner,
@@ -63,29 +64,6 @@ export default function DataSourceResourceSelectorTree({
       />
     </div>
   );
-}
-
-export type IconComponentType =
-  | typeof DocumentTextIcon
-  | typeof FolderIcon
-  | typeof CircleStackIcon
-  | typeof ChatBubbleLeftRightIcon;
-
-function getIconForType(type: ContentNodeType): IconComponentType {
-  switch (type) {
-    case "file":
-      return DocumentTextIcon;
-    case "folder":
-      return FolderIcon;
-    case "database":
-      return CircleStackIcon;
-    case "channel":
-      return ChatBubbleLeftRightIcon;
-    default:
-      ((n: never) => {
-        throw new Error("Unreachable " + n);
-      })(type);
-  }
 }
 
 function DataSourceResourceSelectorChildren({
@@ -178,7 +156,6 @@ function DataSourceResourceSelectorChildren({
             !isSelected &&
             Boolean(selectedParents.find((id) => id === r.internalId));
 
-          const IconComponent = getIconForType(r.type);
           const checkable =
             (!isTablesView || r.type === "database") &&
             r.preventSelection !== true;
@@ -193,7 +170,7 @@ function DataSourceResourceSelectorChildren({
           return (
             <Tree.Item
               key={r.internalId}
-              visual={IconComponent}
+              visual={getVisualForContentNode(r)}
               type={r.expandable && showExpand ? "node" : "leaf"}
               label={r.title}
               className="whitespace-nowrap"

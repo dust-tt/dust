@@ -12,7 +12,6 @@ export function PokePermissionTree({
   dataSource,
   permissionFilter,
   canUpdatePermissions,
-  onPermissionUpdate,
   showExpand,
   displayDocumentSource,
 }: {
@@ -20,13 +19,6 @@ export function PokePermissionTree({
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
   canUpdatePermissions?: boolean;
-  onPermissionUpdate?: ({
-    internalId,
-    permission,
-  }: {
-    internalId: string;
-    permission: ConnectorPermission;
-  }) => void;
   showExpand?: boolean;
   displayDocumentSource: (documentId: string) => void;
 }) {
@@ -38,7 +30,6 @@ export function PokePermissionTree({
         parentId={null}
         permissionFilter={permissionFilter}
         canUpdatePermissions={canUpdatePermissions}
-        onPermissionUpdate={onPermissionUpdate}
         showExpand={showExpand}
         parentIsSelected={false}
         displayDocumentSource={displayDocumentSource}
