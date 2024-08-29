@@ -45,6 +45,7 @@ impl Block for End {
         _name: &str,
         _env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
+        _project_id: i64,
     ) -> Result<BlockResult> {
         // No-op the block outputs within the while|if/end are coallesced, the output of end is
         // ignored and not stored in the environment as it has the same name as the while|if block.
