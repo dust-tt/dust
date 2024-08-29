@@ -4,7 +4,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   WorkspaceType,
 } from "@dust-tt/types";
-import { defaultSelectionConfiguration } from "@dust-tt/types";
+import { defaultSelectionConfiguration, isFolder } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
@@ -90,7 +90,7 @@ export function DataSourceViewSelector({
       key={dataSourceView.dataSource.name}
       label={getDisplayNameForDataSource(dataSourceView.dataSource)}
       visual={LogoComponent}
-      type="node"
+      type={isFolder(dataSourceView.dataSource) ? "leaf" : "node"}
       checkbox={{
         checked: checkedStatus,
         onChange: onToggleSelectAll,
