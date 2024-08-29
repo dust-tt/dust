@@ -515,7 +515,6 @@ export async function syncDeltaForRootNodesInDrive({
         getItem(client, typeAndPathFromInternalId(rootNodeId).itemAPIPath),
       { concurrency: 5 }
     );
-
     microsoftNodes.forEach((rootNode) => {
       sortedChangedItems.push(
         ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
@@ -530,7 +529,6 @@ export async function syncDeltaForRootNodesInDrive({
         !sortedChangedItems.includes(item) && item.deleted?.state === "deleted"
     )
   );
-
   for (const driveItem of sortedChangedItems) {
     heartbeat();
     if (!driveItem.parentReference) {
@@ -663,8 +661,7 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     return [];
   }
 
-  const internalIds = changedList.map((item) => getDriveItemInternalId(item));
-
+  // Initial list - either the root folder of the drive if no rootId, of the item identified by rootId
   const sortedItemList = changedList.filter((item) => {
     if (rootId && item.id === rootId) {
       // Found selected root
@@ -676,16 +673,12 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
       return true;
     }
 
-    if (!item.parentReference) {
-      return false;
-    }
-
-    const parentInternalId = getParentReferenceInternalId(item.parentReference);
-    return !internalIds.includes(parentInternalId);
+    return false;
   });
 
   for (;;) {
     const nextLevel = changedList.filter((item) => {
+      // Already in the list - skip
       if (sortedItemList.includes(item)) {
         return false;
       }
@@ -695,9 +688,20 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
         return true;
       }
 
+      // get the parentInternalId of the item
+      // warning : if node is in the root folder of a drive, we'll get the drive id instead of root folder id
       const parentInternalId = getParentReferenceInternalId(
         item.parentReference
       );
+
+      // hack here as parentInternalId is the drive and no rootId specified,
+      // but we only have the drive root folder in the list
+      if (
+        typeAndPathFromInternalId(parentInternalId).nodeType === "drive" &&
+        !rootId
+      ) {
+        return true;
+      }
 
       return sortedItemList.some(
         (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
