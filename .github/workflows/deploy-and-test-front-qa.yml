@@ -1,6 +1,12 @@
 name: Deploy And test Front Qa
 
 on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +19,9 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
+    # We skip running the build and deploy if the PR contains a migration represented by the 'migration-ack' label.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'migration-ack') }}
 
     steps:
       - name: Checkout code
@@ -53,7 +62,12 @@ jobs:
 
   run-playwright-tests:
     needs: build-and-deploy
+
     runs-on: ubuntu-latest
+
+    # We skip running the build and deploy if the PR contains a migration represented by the 'migration-ack' label.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'migration-ack') }}
+
     steps:
       - name: Run Playwright Tests
         id: trigger-tests
@@ -116,3 +130,28 @@ jobs:
 
           echo "Timeout: Playwright tests did not complete within 45 minutes"
           exit 1
+
+      - name: Post Failure Message to Slack
+        id: slack-notification
+        if: failure()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: $CHECK_ID",
+              "attachments": [
+                {
+                  "text": "View Report",
+                  "actions": [
+                    {
+                      "type": "button",
+                      "text": "View Report",
+                      "url": "$PLAYWRIGHT_REPORT_URL"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          PLAYWRIGHT_REPORT_URL: ${{ secrets.PLAYWRIGHT_REPORT_BASE_URL }}/${{ env.CHECK_ID }}/playwright-report/index.html
+          SLACK_WEBHOOK_URL: ${{ secrets.PLAYWRIGHT_TESTS_SLACK_WEBHOOK_URL }}
