@@ -306,7 +306,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     const requestedGroupIds = auth.groups().map((g) => g.sId);
     const api = new DustAPI(
       config.getDustAPIConfig(),
-      { ...prodCredentials, groups: requestedGroupIds },
+      { ...prodCredentials, groupIds: requestedGroupIds },
       logger,
       {
         useLocalInDev: true,

@@ -89,7 +89,7 @@ export async function runActionStreamed(
   const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    { ...prodCredentials, groups: requestedGroupIds },
+    { ...prodCredentials, groupIds: requestedGroupIds },
     logger
   );
 
@@ -202,7 +202,7 @@ export async function runAction(
   const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    { ...prodCredentials, groups: requestedGroupIds },
+    { ...prodCredentials, groupIds: requestedGroupIds },
     logger
   );
 

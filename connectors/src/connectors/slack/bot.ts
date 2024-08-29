@@ -257,7 +257,7 @@ async function botAnswerMessage(
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
-      groups: requestedGroups,
+      groupIds: requestedGroups,
     },
     logger,
     {

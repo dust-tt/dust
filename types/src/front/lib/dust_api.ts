@@ -380,8 +380,8 @@ export class DustAPI {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
-    if (this._credentials.groups) {
-      headers[DustGroupIdsHeader] = this._credentials.groups.join(",");
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
 
     const res = await this._fetchWithError(url, {
@@ -432,8 +432,8 @@ export class DustAPI {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
-    if (this._credentials.groups) {
-      headers[DustGroupIdsHeader] = this._credentials.groups.join(",");
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
 
     const res = await this._fetchWithError(url, {
@@ -559,8 +559,8 @@ export class DustAPI {
     if (userEmailHeader) {
       headers["x-api-user-email"] = userEmailHeader;
     }
-    if (this._credentials.groups) {
-      headers[DustGroupIdsHeader] = this._credentials.groups.join(",");
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
 
     const res = await this._fetchWithError(
@@ -598,8 +598,8 @@ export class DustAPI {
     if (userEmailHeader) {
       headers["x-api-user-email"] = userEmailHeader;
     }
-    if (this._credentials.groups) {
-      headers[DustGroupIdsHeader] = this._credentials.groups.join(",");
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
 
     const res = await this._fetchWithError(
