@@ -98,6 +98,11 @@ export interface FairUsageDialogViewedProperties {
   workspaceName: string;
 }
 
+export interface HelpDrawerOpenedProperties {
+  email: string;
+  workspaceId: string;
+}
+
 export interface InputBarFileUploadUsedProperties {
   /**
    * | Rule | Value |
@@ -167,6 +172,14 @@ export class FairUsageDialogViewed implements BaseEvent {
   event_type = "FairUsageDialogViewed";
 
   constructor(public event_properties: FairUsageDialogViewedProperties) {
+    this.event_properties = event_properties;
+  }
+}
+
+export class HelpDrawerOpened implements BaseEvent {
+  event_type = "HelpDrawerOpened";
+
+  constructor(public event_properties: HelpDrawerOpenedProperties) {
     this.event_properties = event_properties;
   }
 }
@@ -386,6 +399,23 @@ export class Ampli {
     options?: EventOptions,
   ) {
     return this.track(new FairUsageDialogViewed(properties), options);
+  }
+
+  /**
+   * HelpDrawerOpened
+   *
+   * [View in Tracking Plan](https://data.amplitude.com/dust-tt/dust-prod/events/main/latest/HelpDrawerOpened)
+   *
+   * Event has no description in tracking plan.
+   *
+   * @param properties The event's properties (e.g. email)
+   * @param options Amplitude event options.
+   */
+  helpDrawerOpened(
+    properties: HelpDrawerOpenedProperties,
+    options?: EventOptions,
+  ) {
+    return this.track(new HelpDrawerOpened(properties), options);
   }
 
   /**
