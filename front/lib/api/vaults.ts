@@ -7,7 +7,14 @@ import type {
   LightContentNode,
   Result,
 } from "@dust-tt/types";
-import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  Err,
+  isFolder,
+  isWebsite,
+  Ok,
+} from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,13 +22,14 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import logger from "@app/logger/logger";
 
 export const getDataSourceCategory = (
-  dataSource: DataSourceResource
+  dataSourceResource: DataSourceResource
 ): DataSourceViewCategory => {
-  if (dataSource.isFolder()) {
+  const dataSource = dataSourceResource.toJSON();
+  if (isFolder(dataSource)) {
     return "folder";
   }
 
-  if (dataSource.isWebcrawler()) {
+  if (isWebsite(dataSource)) {
     return "website";
   }
 

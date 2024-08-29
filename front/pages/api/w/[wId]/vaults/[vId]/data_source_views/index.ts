@@ -81,12 +81,6 @@ async function handler(
               return dataSourceView;
             }
 
-            if (!dataSource.connectorId || !dataSource.connectorProvider) {
-              throw new Error(
-                // Should never happen, but we need to make eslint happy
-                "Unexpected empty `connectorId or `connectorProvider` for managed data sources"
-              );
-            }
             let connector: ConnectorType | null = null;
             let fetchConnectorError = false;
             let fetchConnectorErrorMessage: string | null = null;

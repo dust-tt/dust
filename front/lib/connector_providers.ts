@@ -1,6 +1,7 @@
 import {
   ConfluenceLogo,
   DriveLogo,
+  FolderIcon,
   GithubLogo,
   GlobeAltIcon,
   IntercomLogo,
@@ -10,11 +11,12 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
+  DataSourceType,
   DataSourceViewType,
   PlanType,
   WhitelistableFeature,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, isManaged } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
 export type ConnectorProviderConfiguration = {
@@ -147,16 +149,20 @@ export const CONNECTOR_CONFIGURATIONS: Record<
 };
 
 export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
-  if (dsv.category === "managed" && dsv.dataSource.connectorProvider) {
-    return CONNECTOR_CONFIGURATIONS[dsv.dataSource.connectorProvider].name;
+  return getDataSourceName(dsv.dataSource);
+}
+
+export function getDataSourceName(ds: DataSourceType): string {
+  if (isManaged(ds)) {
+    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
   }
 
-  return dsv.dataSource.name;
+  return ds.name;
 }
 
 export function getConnectorProviderLogoWithFallback(
   provider: ConnectorProvider | null,
-  fallback: ComponentType
+  fallback: ComponentType = FolderIcon
 ): ComponentType {
   if (!provider) {
     return fallback;

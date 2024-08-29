@@ -1,4 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import { isManaged } from "@dust-tt/types";
 import assert from "assert";
 
 import { Authenticator } from "@app/lib/auth";
@@ -30,7 +31,7 @@ async function deleteUnmanagedDataSourceViewsForWorkspace(
     assert(ds, `Data source ${dataSourceView.dataSourceId} not found.`);
 
     // If data source is not managed, delete the view.
-    if (!ds.isManaged()) {
+    if (!isManaged(ds.toJSON())) {
       viewsToDelete.push(dataSourceView);
     }
   }

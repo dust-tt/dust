@@ -18,6 +18,7 @@ import { CreateConnectionConfirmationModal } from "@app/components/data_source/C
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   CONNECTOR_CONFIGURATIONS,
+  isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
@@ -63,7 +64,9 @@ export const AddConnectionMenu = ({
 
   const router = useRouter();
   const allConnectors = CONNECTOR_PROVIDERS.filter(
-    (f) => isConnectorProviderAllowedForPlan(plan, f) && f !== "webcrawler"
+    (f) =>
+      isConnectorProviderAllowedForPlan(plan, f) &&
+      isConnectionIdRequiredForProvider(f)
   );
 
   const nonSetUpConnectors = allConnectors.filter((connectorProvider) =>
@@ -195,28 +198,28 @@ export const AddConnectionMenu = ({
           <p>Unlock this managed data source by upgrading your plan.</p>
         </Dialog>
 
-        <CreateConnectionConfirmationModal
-          connectorProviderConfiguration={
-            showConfirmConnection.connector
-              ? CONNECTOR_CONFIGURATIONS[showConfirmConnection.connector]
-              : CONNECTOR_CONFIGURATIONS.confluence
-          }
-          isOpen={showConfirmConnection.isOpen}
-          onClose={() =>
-            setShowConfirmConnection((prev) => ({
-              isOpen: false,
-              connector: prev.connector,
-            }))
-          }
-          onConfirm={async () => {
-            if (showConfirmConnection.connector) {
-              await handleEnableManagedDataSource(
-                showConfirmConnection.connector,
-                null // suffix
-              );
+        {showConfirmConnection.connector && (
+          <CreateConnectionConfirmationModal
+            connectorProviderConfiguration={
+              CONNECTOR_CONFIGURATIONS[showConfirmConnection.connector]
             }
-          }}
-        />
+            isOpen={showConfirmConnection.isOpen}
+            onClose={() =>
+              setShowConfirmConnection((prev) => ({
+                isOpen: false,
+                connector: prev.connector,
+              }))
+            }
+            onConfirm={async () => {
+              if (showConfirmConnection.connector) {
+                await handleEnableManagedDataSource(
+                  showConfirmConnection.connector,
+                  null // suffix
+                );
+              }
+            }}
+          />
+        )}
         <Dialog
           isOpen={showPreviewPopupForProvider.isOpen}
           title="Coming Soon!"

@@ -10,17 +10,19 @@ import { useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
+type CreateConnectionConfirmationModalProps = {
+  connectorProviderConfiguration: ConnectorProviderConfiguration;
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+};
+
 export function CreateConnectionConfirmationModal({
   connectorProviderConfiguration,
   isOpen,
   onClose,
   onConfirm,
-}: {
-  connectorProviderConfiguration: ConnectorProviderConfiguration;
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
+}: CreateConnectionConfirmationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   return (
@@ -118,20 +120,17 @@ export function CreateConnectionConfirmationModal({
                 }
               />
               {connectorProviderConfiguration.guideLink && (
-                <Button
-                  label="Read our guide"
-                  size="md"
-                  variant="tertiary"
-                  icon={BookOpenIcon}
-                  onClick={() => {
-                    if (connectorProviderConfiguration.guideLink) {
-                      window.open(
-                        connectorProviderConfiguration.guideLink,
-                        "_blank"
-                      );
-                    }
-                  }}
-                />
+                <a
+                  href={connectorProviderConfiguration.guideLink}
+                  target="_blank"
+                >
+                  <Button
+                    label="Read our guide"
+                    size="md"
+                    variant="tertiary"
+                    icon={BookOpenIcon}
+                  />
+                </a>
               )}
             </Button.List>
           </div>

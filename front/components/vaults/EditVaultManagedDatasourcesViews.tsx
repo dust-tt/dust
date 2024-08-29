@@ -8,7 +8,7 @@ import type {
 import { removeNulls } from "@dust-tt/types";
 import React, { useState } from "react";
 
-import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
+import { RequestDataSourcesButton } from "@app/components/data_source/RequestDataSourcesButton";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
 import { useVaultDataSourceViews } from "@app/lib/swr";
@@ -27,8 +27,6 @@ export function EditVaultManagedDataSourcesViews({
   const sendNotification = React.useContext(SendNotificationsContext);
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-  const [showRequestDataSourceModal, setShowRequestDataSourceModal] =
-    useState(false);
 
   // DataSources Views of the current vault.
   const {
@@ -211,19 +209,10 @@ export function EditVaultManagedDataSourcesViews({
           }}
         />
       ) : (
-        <>
-          <Button
-            label="Request"
-            icon={PlusIcon}
-            onClick={() => setShowRequestDataSourceModal(true)}
-          />
-          <RequestDataSourcesModal
-            isOpen={showRequestDataSourceModal}
-            onClose={() => setShowRequestDataSourceModal(false)}
-            dataSources={vaultDataSourceViews.map((view) => view.dataSource)}
-            owner={owner}
-          />
-        </>
+        <RequestDataSourcesButton
+          dataSources={vaultDataSourceViews.map((view) => view.dataSource)}
+          owner={owner}
+        />
       )}
     </>
   );

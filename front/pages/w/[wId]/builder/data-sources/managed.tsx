@@ -3,11 +3,8 @@ import {
   Chip,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
-  ContentMessage,
   DataTable,
-  Hoverable,
   Page,
-  PlusIcon,
   RobotIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
@@ -28,6 +25,7 @@ import {
   isManaged,
   isOAuthProvider,
   Ok,
+  removeNulls,
   setupOAuthConnection,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -38,7 +36,7 @@ import * as React from "react";
 import { useMemo, useRef, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
-import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
+import { RequestDataSourcesButton } from "@app/components/data_source/RequestDataSourcesButton";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
@@ -139,65 +137,58 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
 
-  const managedDataSources: DataSourceWithConnectorAndUsageType[] =
+  const managedDataSources: DataSourceWithConnectorAndUsageType[] = removeNulls(
     await Promise.all(
-      allDataSources
-        .filter((ds) => isManaged(ds))
-        .map(async (managedDataSource) => {
-          if (
-            !managedDataSource.connectorId ||
-            !managedDataSource.connectorProvider
-          ) {
-            throw new Error(
-              // Should never happen, but we need to make eslint happy
-              "Unexpected empty `connectorId or `connectorProvider` for managed data sources"
-            );
-          }
-          try {
-            const connectorsAPI = new ConnectorsAPI(
-              config.getConnectorsAPIConfig(),
-              logger
-            );
-            const statusRes = await connectorsAPI.getConnector(
-              managedDataSource.connectorId
-            );
-            if (statusRes.isErr()) {
-              return {
-                ...managedDataSource,
-                connectorProvider: managedDataSource.connectorProvider,
-                connector: null,
-                fetchConnectorError: true,
-                fetchConnectorErrorMessage: statusRes.error.message,
-                usage: 0,
-              };
-            }
-            const usageRes = await getDataSourceUsage({
-              auth,
-              dataSource: managedDataSource,
-            });
-            return {
-              ...managedDataSource,
-              connectorProvider: managedDataSource.connectorProvider,
-              connector: statusRes.value,
-              fetchConnectorError: false,
-              fetchConnectorErrorMessage: null,
-              usage: usageRes.isOk() ? usageRes.value : 0,
-            };
-          } catch (e) {
-            // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
-            // the datasources (eventual actions will fail but a 500 just at display is not desirable).
-            // When that happens the managed data sources are shown as failed.
+      allDataSources.map(async (managedDataSource) => {
+        if (!isManaged(managedDataSource)) {
+          return null;
+        }
+        try {
+          const connectorsAPI = new ConnectorsAPI(
+            config.getConnectorsAPIConfig(),
+            logger
+          );
+          const statusRes = await connectorsAPI.getConnector(
+            managedDataSource.connectorId
+          );
+          if (statusRes.isErr()) {
             return {
               ...managedDataSource,
               connectorProvider: managedDataSource.connectorProvider,
               connector: null,
               fetchConnectorError: true,
-              fetchConnectorErrorMessage: "Synchonization service is down",
-              usage: null,
+              fetchConnectorErrorMessage: statusRes.error.message,
+              usage: 0,
             };
           }
-        })
-    );
+          const usageRes = await getDataSourceUsage({
+            auth,
+            dataSource: managedDataSource,
+          });
+          return {
+            ...managedDataSource,
+            connectorProvider: managedDataSource.connectorProvider,
+            connector: statusRes.value,
+            fetchConnectorError: false,
+            fetchConnectorErrorMessage: null,
+            usage: usageRes.isOk() ? usageRes.value : 0,
+          };
+        } catch (e) {
+          // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
+          // the datasources (eventual actions will fail but a 500 just at display is not desirable).
+          // When that happens the managed data sources are shown as failed.
+          return {
+            ...managedDataSource,
+            connectorProvider: managedDataSource.connectorProvider,
+            connector: null,
+            fetchConnectorError: true,
+            fetchConnectorErrorMessage: "Synchonization service is down",
+            usage: null,
+          };
+        }
+      })
+    )
+  );
 
   let setupWithSuffix: {
     connector: ConnectorProvider;
@@ -263,8 +254,6 @@ export default function DataSourcesView({
     {} as Record<ConnectorProvider, boolean>
   );
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [isRequestDataSourceModalOpen, setIsRequestDataSourceModalOpen] =
-    useState(false);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -318,10 +307,9 @@ export default function DataSourcesView({
           )}
         >
           {!isAdmin && (
-            <Button
-              label="Request"
-              icon={PlusIcon}
-              onClick={() => setIsRequestDataSourceModalOpen(true)}
+            <RequestDataSourcesButton
+              dataSources={managedDataSources}
+              owner={owner}
             />
           )}
           {connectionRows.length > 0 && (
@@ -370,14 +358,8 @@ export default function DataSourcesView({
             No available connection
           </div>
         ) : (
-          <></>
+          false
         )}
-        <RequestDataSourcesModal
-          isOpen={isRequestDataSourceModalOpen}
-          onClose={() => setIsRequestDataSourceModalOpen(false)}
-          dataSources={managedDataSources}
-          owner={owner}
-        />
       </Page.Vertical>
     </AppLayout>
   );

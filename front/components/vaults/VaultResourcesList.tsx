@@ -93,34 +93,29 @@ const getTableColumns = ({
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.CellContent className="pr-2">
-        {(() => {
-          if (!info.row.original.dataSourceView.dataSource.connector) {
-            return <Chip color="amber">Never</Chip>;
-          } else if (
-            info.row.original.dataSourceView.dataSource.fetchConnectorError
-          ) {
-            return (
-              <Chip color="warning">
-                Error loading the connector. Try again in a few minutes.
-              </Chip>
-            );
-          } else {
-            return (
-              info.row.original.workspaceId &&
-              info.row.original.dataSourceView.dataSource.name && (
-                <ConnectorSyncingChip
-                  initialState={
-                    info.row.original.dataSourceView.dataSource.connector
-                  }
-                  workspaceId={info.row.original.workspaceId}
-                  dataSourceName={
-                    info.row.original.dataSourceView.dataSource.name
-                  }
-                />
-              )
-            );
-          }
-        })()}
+        <>
+          {!info.row.original.dataSourceView.dataSource.connector &&
+            !info.row.original.dataSourceView.dataSource
+              .fetchConnectorError && <Chip color="amber">Never</Chip>}
+          {info.row.original.dataSourceView.dataSource.fetchConnectorError && (
+            <Chip color="warning">
+              Error loading the connector. Try again in a few minutes.
+            </Chip>
+          )}
+          {info.row.original.dataSourceView.dataSource.connector &&
+            info.row.original.workspaceId &&
+            info.row.original.dataSourceView.dataSource.name && (
+              <ConnectorSyncingChip
+                initialState={
+                  info.row.original.dataSourceView.dataSource.connector
+                }
+                workspaceId={info.row.original.workspaceId}
+                dataSourceName={
+                  info.row.original.dataSourceView.dataSource.name
+                }
+              />
+            )}
+        </>
       </DataTable.CellContent>
     ),
   };
@@ -187,9 +182,9 @@ export const VaultResourcesList = ({
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
 
-  const [isLoadingByProvider, setIsLoadingByProvider] = useState(
-    {} as Record<ConnectorProvider, boolean>
-  );
+  const [isLoadingByProvider, setIsLoadingByProvider] = useState<
+    Partial<Record<ConnectorProvider, boolean>>
+  >({});
 
   const router = useRouter();
 
