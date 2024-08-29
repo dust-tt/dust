@@ -328,16 +328,13 @@ export function useDocuments(
   owner: LightWorkspaceType,
   dataSource: { name: string },
   limit: number,
-  offset: number,
-  asDustSuperUser?: boolean
+  offset: number
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/data_sources/${
       dataSource.name
-    }/documents?limit=${limit}&offset=${offset}${
-      asDustSuperUser ? "&asDustSuperUser=true" : ""
-    }`,
+    }/documents?limit=${limit}&offset=${offset}`,
     documentsFetcher
   );
 
