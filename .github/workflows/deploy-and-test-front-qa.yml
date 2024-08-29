@@ -139,24 +139,24 @@ jobs:
           payload: |
             {
               "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: ${{ env.CHECK_ID }}",
-              	"blocks": [
-                  {
-                    "type": "section",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: ${{ env.CHECK_ID }}",
+                    "emoji": true
+                  },
+                  "accessory": {
+                    "type": "button",
                     "text": {
                       "type": "plain_text",
-                      "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: ${{ env.CHECK_ID }}",
-                      "emoji": true
+                      "text": "View Report"
                     },
-                    "accessory": {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Report"
-                      },
-                      "url": "$PLAYWRIGHT_REPORT_URL"
-                    }
+                    "url": "$PLAYWRIGHT_REPORT_URL"
                   }
-                ]
+                }
+              ]
             }
         env:
           PLAYWRIGHT_REPORT_URL: ${{ secrets.PLAYWRIGHT_REPORT_BASE_URL }}/${{ env.CHECK_ID }}/playwright-report/index.html
