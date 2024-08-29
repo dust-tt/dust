@@ -83,7 +83,9 @@ export default function AssistantBuilder({
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
-  const slackDataSource = dataSourceViews.find(
+
+  // TODO(GROUPS_INFRA) We should find the slack data source view from the system vault!
+  const slackDataSourceView = dataSourceViews.find(
     (dsv) => dsv.dataSource.connectorProvider === "slack"
   );
   const defaultScope =
@@ -322,7 +324,7 @@ export default function AssistantBuilder({
       });
     } else {
       await mutate(
-        `/api/w/${owner.sId}/data_sources/${slackDataSource?.dataSource.name}/managed/slack/channels_linked_with_agent`
+        `/api/w/${owner.sId}/data_sources/${slackDataSourceView?.dataSource.name}/managed/slack/channels_linked_with_agent`
       );
 
       // Redirect to the assistant list once saved.
@@ -425,7 +427,7 @@ export default function AssistantBuilder({
                 <div className="flex flex-row gap-2 self-end pt-0.5">
                   <SharingButton
                     showSlackIntegration={showSlackIntegration}
-                    slackDataSource={slackDataSource || null}
+                    slackDataSourceView={slackDataSourceView || null}
                     owner={owner}
                     agentConfigurationId={agentConfigurationId}
                     initialScope={initialBuilderState?.scope ?? defaultScope}

@@ -10,23 +10,25 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
 
-export function SlackIntegration({
-  slackDataSource,
-  owner,
-  existingSelection,
-  assistantHandle,
-  show,
-  onSave,
-  onClose,
-}: {
-  slackDataSource: DataSourceViewType;
-  owner: WorkspaceType;
-  existingSelection: SlackChannel[];
-  show: boolean;
-  onSave: (channels: SlackChannel[]) => void;
-  onClose: () => void;
+interface SlacIntegrationProps {
   assistantHandle?: string;
-}) {
+  existingSelection: SlackChannel[];
+  onClose: () => void;
+  onSave: (channels: SlackChannel[]) => void;
+  owner: WorkspaceType;
+  show: boolean;
+  slackDataSourceView: DataSourceViewType;
+}
+
+export function SlackIntegration({
+  assistantHandle,
+  existingSelection,
+  onClose,
+  onSave,
+  owner,
+  show,
+  slackDataSourceView,
+}: SlacIntegrationProps) {
   const [newSelection, setNewSelection] = useState<SlackChannel[] | null>(null);
 
   const [hasChanged, setHasChanged] = useState(false);
@@ -69,7 +71,7 @@ export function SlackIntegration({
           />
           <DataSourceResourceSelectorTree
             owner={owner}
-            dataSourceView={slackDataSource}
+            dataSourceView={slackDataSourceView}
             selectedResourceIds={selectedChannelIds}
             onSelectChange={(node, parents, selected) => {
               setHasChanged(true);

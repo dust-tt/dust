@@ -100,6 +100,19 @@ export const SCOPE_INFO: Record<
 
 type NonGlobalScope = Exclude<AgentConfigurationScope, "global">;
 
+interface SharingButtonProps {
+  agentConfigurationId: string | null;
+  baseUrl: string;
+  initialScope: NonGlobalScope;
+  newScope: NonGlobalScope;
+  owner: WorkspaceType;
+  setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
+  setNewScope: (scope: NonGlobalScope) => void;
+  showSlackIntegration: boolean;
+  slackChannelSelected: SlackChannel[];
+  slackDataSourceView: DataSourceViewType | null;
+}
+
 export function SharingButton({
   owner,
   agentConfigurationId,
@@ -108,21 +121,10 @@ export function SharingButton({
   setNewScope,
   baseUrl,
   showSlackIntegration,
-  slackDataSource,
+  slackDataSourceView,
   slackChannelSelected,
   setNewLinkedSlackChannels,
-}: {
-  owner: WorkspaceType;
-  agentConfigurationId: string | null;
-  initialScope: NonGlobalScope;
-  newScope: NonGlobalScope;
-  setNewScope: (scope: NonGlobalScope) => void;
-  baseUrl: string;
-  showSlackIntegration: boolean;
-  slackDataSource: DataSourceViewType | null;
-  slackChannelSelected: SlackChannel[];
-  setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
-}) {
+}: SharingButtonProps) {
   const { agentUsage, isAgentUsageLoading, isAgentUsageError } = useAgentUsage({
     workspaceId: owner.sId,
     agentConfigurationId,
@@ -149,10 +151,10 @@ export function SharingButton({
 
   return (
     <>
-      {slackDataSource && (
+      {slackDataSourceView && (
         <SlackIntegrationDrawer
           existingSelection={slackChannelSelected}
-          slackDataSource={slackDataSource}
+          slackDataSourceView={slackDataSourceView}
           owner={owner}
           onSave={(slackChannels: SlackChannel[]) => {
             setNewLinkedSlackChannels(slackChannels);
@@ -453,28 +455,30 @@ function ScopeChangeModal({
   );
 }
 
-function SlackIntegrationDrawer({
-  slackDataSource,
-  owner,
-  existingSelection,
-  onSave,
-  assistantHandle,
-  show,
-  onClose,
-}: {
-  show: boolean;
-  onClose: () => void;
-  slackDataSource: DataSourceViewType;
-  owner: WorkspaceType;
-  existingSelection: SlackChannel[];
-  onSave: (channels: SlackChannel[]) => void;
+interface SlackIntegrationDrawerProps {
   assistantHandle?: string;
-}) {
+  existingSelection: SlackChannel[];
+  onClose: () => void;
+  onSave: (channels: SlackChannel[]) => void;
+  owner: WorkspaceType;
+  show: boolean;
+  slackDataSourceView: DataSourceViewType;
+}
+
+function SlackIntegrationDrawer({
+  assistantHandle,
+  existingSelection,
+  onClose,
+  onSave,
+  owner,
+  show,
+  slackDataSourceView,
+}: SlackIntegrationDrawerProps) {
   const [slackIntegrationOpened, setSlackIntegrationOpened] = useState(false);
   return (
     <>
       <SlackIntegration
-        slackDataSource={slackDataSource}
+        slackDataSourceView={slackDataSourceView}
         owner={owner}
         existingSelection={existingSelection}
         onSave={(slackChannels) => {
