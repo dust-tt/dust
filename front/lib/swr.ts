@@ -564,10 +564,9 @@ export function useDataSourceViewContentNodeChildren({
   isNodesLoading: boolean;
   isNodesError: boolean;
 } {
-  const url =
-    dataSourceView && parentInternalId
-      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
-      : null;
+  const url = dataSourceView
+    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+    : null;
 
   const body = JSON.stringify({
     internalIds: [parentInternalId],

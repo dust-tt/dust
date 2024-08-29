@@ -17,10 +17,19 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 const GetContentNodesRequestBodySchema = t.type({
-  // TODO(2024-08-28 flav) Remove optional once the frontend is updated to use the new API.
-  includeChildren: t.union([t.boolean, t.undefined]),
+  includeChildren: t.undefined,
   internalIds: t.array(t.string),
 });
+
+const GetContentNodeChildrenRequestBodySchema = t.type({
+  includeChildren: t.literal(true),
+  internalIds: t.array(t.union([t.string, t.null])),
+});
+
+const GetContentNodesOrChildrenRequestBody = t.union([
+  GetContentNodeChildrenRequestBodySchema,
+  GetContentNodesRequestBodySchema,
+]);
 
 export type GetDataSourceViewContentNodes = {
   nodes: ContentNodeWithParentIds[];
@@ -77,7 +86,7 @@ async function handler(
     });
   }
 
-  const bodyValidation = GetContentNodesRequestBodySchema.decode(req.body);
+  const bodyValidation = GetContentNodesOrChildrenRequestBody.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
@@ -101,7 +110,7 @@ async function handler(
 
   // If the request is for children, we need to fetch the children of the internal ids.
   if (includeChildren) {
-    if (internalIds.length !== 1) {
+    if (internalIds.length > 1) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
@@ -118,7 +127,7 @@ async function handler(
       connectorId: dataSource.connectorId,
       filterPermission: "read",
       includeParents: true,
-      parentId: parentInternalId,
+      parentId: parentInternalId ?? undefined,
       viewType: "documents",
     });
 
