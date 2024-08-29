@@ -12,6 +12,7 @@ fi
 
 # If env var DUST_LINT_ON_COMMIT = 1, run the linter
 if [ -z "$DUST_LINT_ON_COMMIT" ]; then
+    echo "Please set DUST_LINT_ON_COMMIT if you want to locally run the lint, type check etc.. before committing."
     exit 0
 fi
 
