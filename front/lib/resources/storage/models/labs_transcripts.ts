@@ -71,10 +71,6 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
-    dataSourceId: {
-      type: DataTypes.NUMBER,
-      allowNull: true,
-    },
   },
   {
     modelName: "labs_transcripts_configuration",
