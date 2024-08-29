@@ -44,27 +44,54 @@ export function ensureFileSize(
 }
 
 // Supported content types for plain text.
-const supportedPlainTextContentTypes = [
-  "application/pdf",
-  "text/comma-separated-values",
-  "text/csv",
-  "text/markdown",
-  "text/plain",
-  "text/tab-separated-values",
-  "text/tsv",
-] as const;
+const supportedPlainText = {
+  "application/msword": [".doc", ".docx"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".doc",
+    ".docx",
+  ],
+  "application/pdf": [".pdf"],
+  "text/comma-separated-values": [".csv"],
+  "text/csv": [".csv"],
+  "text/markdown": [".md"],
+  "text/x-markdown": [".md"],
+  "text/plain": [".txt"],
+  "text/tab-separated-values": [".tsv"],
+  "text/tsv": [".tsv"],
+} as const;
 
 // Supported content types for images.
-const supportedImageContentTypes = ["image/jpeg", "image/png"] as const;
+const supportedImage = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+} as const;
 
-const supportedUploadableContentType = [
+const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
+
+export const supportedPlainTextExtensions = uniq(
+  Object.values(supportedPlainText).flat()
+);
+
+export const supportedImageExtensions = uniq(
+  Object.values(supportedImage).flat()
+);
+
+export const supportedFileExtensions = uniq([
+  ...supportedPlainTextExtensions,
+  ...supportedImageExtensions,
+]);
+
+export const supportedPlainTextContentTypes = Object.keys(supportedPlainText);
+export const supportedImageContentTypes = Object.keys(supportedImage);
+
+export const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
   ...supportedImageContentTypes,
 ];
 
 // Infer types from the arrays.
-type PlainTextContentType = (typeof supportedPlainTextContentTypes)[number];
-type ImageContentType = (typeof supportedImageContentTypes)[number];
+export type PlainTextContentType = keyof typeof supportedPlainText;
+export type ImageContentType = keyof typeof supportedImage;
 
 // Union type for all supported content types.
 export type SupportedFileContentType = PlainTextContentType | ImageContentType;

@@ -24,6 +24,7 @@ interface PageContent {
 // Before adding a new content type, make sure to test it.
 const supportedContentTypes = [
   "application/pdf",
+  "application/msword",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;

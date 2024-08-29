@@ -2,6 +2,14 @@ import * as t from "io-ts";
 
 import { ModelId } from "../shared/model_id";
 import { MessageType, MessageVisibility } from "./assistant/conversation";
+import {
+  ImageContentType,
+  PlainTextContentType,
+  SupportedFileContentType,
+  supportedImageContentTypes,
+  supportedPlainTextContentTypes,
+  supportedUploadableContentType,
+} from "./files";
 
 export type ContentFragmentContextType = {
   username: string | null;
@@ -10,38 +18,8 @@ export type ContentFragmentContextType = {
   profilePictureUrl: string | null;
 };
 
-// TODO (26/06/2024 jules): remove "slack_thread_content" and "file_attachment"
-// after backfilling data
-const supportedTextContentFragmentType = [
-  "text/plain",
-  "text/csv",
-  "text/tsv",
-  "text/comma-separated-values",
-  "text/tab-separated-values",
-  "text/markdown",
-  "application/pdf",
-  "file_attachment",
-] as const;
-
-export type SupportedTextContentFragmentType =
-  (typeof supportedTextContentFragmentType)[number];
-
-const supportedImagesContentFragmentType = ["image/jpeg", "image/png"] as const;
-
-export type SupportedImagesContentFragmentType =
-  (typeof supportedImagesContentFragmentType)[number];
-
-// Content fragment types that users are allowed to upload.
-const supportedUploadableContentFragmentType = [
-  ...supportedTextContentFragmentType,
-  ...supportedImagesContentFragmentType,
-] as const;
-
-export type SupportedUploadableContentFragmentType =
-  (typeof supportedUploadableContentFragmentType)[number];
-
 export const supportedContentFragmentType = [
-  ...supportedUploadableContentFragmentType,
+  ...supportedUploadableContentType,
   "slack_thread_content",
   "dust-application/slack",
 ] as const;
@@ -98,25 +76,21 @@ export function isSupportedContentFragmentType(
 
 export function isSupportedTextContentFragmentType(
   format: unknown
-): format is SupportedTextContentFragmentType {
+): format is PlainTextContentType {
   return (
     typeof format === "string" &&
-    supportedTextContentFragmentType.includes(
-      format as SupportedTextContentFragmentType
-    )
+    supportedPlainTextContentTypes.includes(format as PlainTextContentType)
   );
 }
 
 export function isSupportedUploadableContentFragmentType(
   format: string
-): format is SupportedUploadableContentFragmentType {
-  return supportedUploadableContentFragmentType.includes(
-    format as SupportedUploadableContentFragmentType
+): format is SupportedFileContentType {
+  return supportedUploadableContentType.includes(
+    format as SupportedFileContentType
   );
 }
 
 export function isSupportedImageContentFragmentType(format: string) {
-  return supportedImagesContentFragmentType.includes(
-    format as SupportedImagesContentFragmentType
-  );
+  return supportedImageContentTypes.includes(format as ImageContentType);
 }
