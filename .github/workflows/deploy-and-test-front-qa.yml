@@ -138,19 +138,25 @@ jobs:
         with:
           payload: |
             {
-              "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: $CHECK_ID",
-              "attachments": [
-                {
-                  "text": "View Report",
-                  "actions": [
-                    {
+              "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: ${{ env.CHECK_ID }}",
+              	"blocks": [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: ${{ env.CHECK_ID }}",
+                      "emoji": true
+                    },
+                    "accessory": {
                       "type": "button",
-                      "text": "View Report",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Report"
+                      },
                       "url": "$PLAYWRIGHT_REPORT_URL"
                     }
-                  ]
-                }
-              ]
+                  }
+                ]
             }
         env:
           PLAYWRIGHT_REPORT_URL: ${{ secrets.PLAYWRIGHT_REPORT_BASE_URL }}/${{ env.CHECK_ID }}/playwright-report/index.html
