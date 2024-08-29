@@ -37,7 +37,7 @@ type VaultAppListProps = {
 const getTableColumns = () => {
   return [
     {
-      id: "Name",
+      id: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
           {info.getValue()}
@@ -46,7 +46,7 @@ const getTableColumns = () => {
       accessorFn: (row: RowData) => row.name,
     },
     {
-      id: "Visibility",
+      id: "visibility",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <Chip color="slate">{info.getValue()}</Chip>
@@ -135,7 +135,7 @@ export const VaultAppsList = ({
         data={rows}
         columns={getTableColumns()}
         filter={appSearch}
-        filterColumn="Name"
+        filterColumn="name"
       />
     </>
   );

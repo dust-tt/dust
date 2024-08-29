@@ -34,6 +34,60 @@ export const VaultCreateAppModal = ({
 
   const { apps, mutateApps } = useApps(owner);
 
+  const onSave = async () => {
+    if (!name || name.trim() === "") {
+      setNameError("Name is required.");
+    } else if (!name.match(/^[a-zA-Z0-9._-]+$/)) {
+      setNameError(
+        "App name must only contain letters, numbers, and the characters `._-`"
+      );
+    } else if (apps.find((app) => app.name === name)) {
+      setNameError("An App with this name already exists.");
+    }
+
+    if (!description || description.trim() === "") {
+      setDescriptionError(
+        "A description is required for your app to be selectable in the Assistant Builder."
+      );
+    }
+
+    if (name && description && !nameError && !descriptionError) {
+      const res = await fetch(`/api/w/${owner.sId}/apps`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.slice(0, MODELS_STRING_MAX_LENGTH),
+          description: description.slice(0, MODELS_STRING_MAX_LENGTH),
+          visibility,
+        }),
+      });
+      if (res.ok) {
+        await mutateApps();
+        setIsOpen(false);
+        // @todo Daph next PR: rework the modal detail so we can propertly redirect
+        // on the edition view.
+        // const response: PostAppResponseBody = await res.json();
+        // const { app } = response;
+        // await router.push(`/w/${owner.sId}/a/${app.sId}`);
+
+        sendNotification({
+          type: "success",
+          title: "Successfully created app",
+          description: "App was successfully created.",
+        });
+      } else {
+        const err: { error: APIError } = await res.json();
+        sendNotification({
+          title: "Error Saving App",
+          type: "error",
+          description: `Error: ${err.error.message}`,
+        });
+      }
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -41,57 +95,7 @@ export const VaultCreateAppModal = ({
         setIsOpen(false);
       }}
       onSave={async () => {
-        if (!name || name.trim() === "") {
-          setNameError("Name is required.");
-        } else if (!name.match(/^[a-zA-Z0-9._-]+$/)) {
-          setNameError(
-            "App name must only contain letters, numbers, and the characters `._-`"
-          );
-        } else if (apps.find((app) => app.name === name)) {
-          setNameError("An App with this name already exists.");
-        }
-
-        if (!description || description.trim() === "") {
-          setDescriptionError(
-            "A description is required for your app to be selectable in the Assistant Builder."
-          );
-        }
-
-        if (name && description && !nameError && !descriptionError) {
-          const res = await fetch(`/api/w/${owner.sId}/apps`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name: name.slice(0, MODELS_STRING_MAX_LENGTH),
-              description: description.slice(0, MODELS_STRING_MAX_LENGTH),
-              visibility,
-            }),
-          });
-          if (res.ok) {
-            await mutateApps();
-            setIsOpen(false);
-            // @todo Daph next PR: rework the modal detail so we can propertly redirect
-            // on the edition view.
-            // const response: PostAppResponseBody = await res.json();
-            // const { app } = response;
-            // await router.push(`/w/${owner.sId}/a/${app.sId}`);
-
-            sendNotification({
-              type: "success",
-              title: "Successfully created app",
-              description: "App was successfully created.",
-            });
-          } else {
-            const err = (await res.json()) as { error: APIError };
-            sendNotification({
-              title: "Error Saving App",
-              type: "error",
-              description: `Error: ${err.error.message}`,
-            });
-          }
-        }
+        await onSave();
       }}
       hasChanged={name !== null || description !== null}
       title="Create a new App"
@@ -137,7 +141,7 @@ export const VaultCreateAppModal = ({
             <Page.Separator />
             <Page.SectionHeader title="Visibility" />
             <RadioButton
-              name="test2"
+              name="visibility"
               className="s-flex-col"
               choices={[
                 {
