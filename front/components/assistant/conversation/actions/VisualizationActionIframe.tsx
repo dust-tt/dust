@@ -7,13 +7,14 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
+  LightWorkspaceType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isVisualizationRPCRequest } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { classNames } from "@app/lib/utils";
@@ -132,12 +133,11 @@ export function VisualizationActionIframe({
   owner,
   visualization,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   visualization: Visualization;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [isErrored, setIsErrored] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(1);
 
   const vizIframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -157,45 +157,16 @@ export function VisualizationActionIframe({
   const { code, complete: codeFullyGenerated } = visualization;
 
   const iframeLoaded = contentHeight > 0;
-  const showSpinner =
-    ((!codeFullyGenerated && !code) || (codeFullyGenerated && !iframeLoaded)) &&
-    !isErrored;
-
-  useEffect(() => {
-    if (!codeFullyGenerated) {
-      setActiveIndex(0);
-    } else {
-      setActiveIndex(1);
-    }
-  }, [codeFullyGenerated, code]);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-
-    if (activeIndex === 0) {
-      // Set height of the container to the height of the code block if the code is fully generated
-      // Otherwise, set the height to 100% to allow the code to grow as it gets generated.
-      containerRef.current.style.height = codeFullyGenerated
-        ? `${codeRef.current?.scrollHeight}px`
-        : "100%";
-    } else if (activeIndex === 1) {
-      if (isErrored && errorRef.current) {
-        containerRef.current.style.height = `${errorRef.current.scrollHeight}px`;
-      } else if (!isErrored) {
-        containerRef.current.style.height = `${contentHeight}px`;
-      }
-    }
-  }, [activeIndex, contentHeight, codeFullyGenerated, isErrored]);
+  const showSpinner = useMemo(
+    () =>
+      ((!codeFullyGenerated && !code) ||
+        (codeFullyGenerated && !iframeLoaded)) &&
+      !isErrored,
+    [code, codeFullyGenerated, iframeLoaded, isErrored]
+  );
 
   return (
     <div className="relative flex flex-col">
-      <ViewCodeSwitcher
-        disabled={!codeFullyGenerated}
-        activeIndex={activeIndex}
-        onTabClick={setActiveIndex}
-      />
       {showSpinner && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white bg-opacity-75">
           <Spinner />
@@ -203,101 +174,60 @@ export function VisualizationActionIframe({
       )}
       <div
         className={classNames(
-          "transition-height relative w-full overflow-hidden duration-500 ease-in-out",
+          "relative w-full overflow-hidden",
           codeFullyGenerated && !isErrored ? "min-h-96" : "",
-          isErrored ? "h-full" : "",
-          activeIndex === 1 ? "max-h-[60vh]" : ""
+          isErrored ? "h-full" : ""
+          //activeIndex === 1 ? "max-h-[60vh]" : ""
         )}
         ref={containerRef}
       >
-        <div
-          className="flex transition-transform duration-500 ease-out"
-          style={{
-            transform: `translateX(-${activeIndex * 100}%)`,
-          }}
-        >
-          <div className="flex h-full w-full shrink-0" ref={codeRef}>
-            <RenderMessageMarkdown
-              owner={owner}
-              content={"```javascript\n" + (code ?? "") + "\n```"}
-              isStreaming={!codeFullyGenerated}
-            />
-          </div>
-          <div className="relative flex h-full w-full shrink-0 items-center justify-center">
-            {codeFullyGenerated && !isErrored && (
-              <div
-                style={{
-                  height: !isErrored ? `${contentHeight}px` : "100%",
-                  minHeight: !isErrored ? "96" : undefined,
-                }}
-                className={classNames("max-h-[60vh] w-full")}
-              >
-                <iframe
-                  ref={vizIframeRef}
-                  className={classNames(
-                    "h-full w-full",
-                    !isErrored ? "min-h-96" : ""
-                  )}
-                  src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
-                  sandbox="allow-scripts"
-                />
-              </div>
-            )}
-            {isErrored && (
-              <div
-                className="flex h-full w-full flex-col items-center gap-4 py-8"
-                ref={errorRef}
-              >
-                <div className="text-sm text-element-800">
-                  An error occured while rendering the visualization.
+        <div className="flex">
+          {!codeFullyGenerated ? (
+            <div className="flex h-full w-full shrink-0" ref={codeRef}>
+              <RenderMessageMarkdown
+                owner={owner}
+                content={"```javascript\n" + (code ?? "") + "\n```"}
+                isStreaming={!codeFullyGenerated}
+              />
+            </div>
+          ) : (
+            <div className="relative flex h-full w-full shrink-0 items-center justify-center">
+              {codeFullyGenerated && !isErrored && (
+                <div
+                  style={{
+                    height: !isErrored ? `${contentHeight}px` : "100%",
+                    minHeight: !isErrored ? "96" : undefined,
+                  }}
+                  className={classNames("max-h-[60vh] w-full")}
+                >
+                  <iframe
+                    ref={vizIframeRef}
+                    className={classNames(
+                      "h-full w-full",
+                      !isErrored ? "min-h-96" : ""
+                    )}
+                    src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
+                    sandbox="allow-scripts"
+                  />
                 </div>
-                <div className="text-sm text-element-800">
-                  The assistant message can be retried.
+              )}
+              {isErrored && (
+                <div
+                  className="flex h-full w-full flex-col items-center gap-4 py-8"
+                  ref={errorRef}
+                >
+                  <div className="text-sm text-element-800">
+                    An error occured while rendering the visualization.
+                  </div>
+                  <div className="text-sm text-element-800">
+                    The assistant message can be retried.
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-const ViewCodeSwitcher = ({
-  activeIndex,
-  disabled,
-  onTabClick,
-}: {
-  activeIndex: number;
-  disabled: boolean;
-  onTabClick: (tabIndex: number) => void;
-}) => {
-  return (
-    <div className="flex justify-end pb-2">
-      <Tab
-        tabs={[
-          {
-            label: "Code",
-            id: "code",
-            disabled,
-            current: activeIndex === 0,
-            icon: CommandLineIcon,
-            sizing: "expand",
-          },
-          {
-            label: "View",
-            id: "view",
-            disabled,
-            current: activeIndex === 1,
-            icon: PlayStrokeIcon,
-            sizing: "expand",
-          },
-        ]}
-        setCurrentTab={(tabId, event) => {
-          event.preventDefault();
-          onTabClick(tabId === "code" ? 0 : 1);
-        }}
-      />
-    </div>
-  );
-};

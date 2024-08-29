@@ -1,5 +1,9 @@
 import { IconButton, SparklesIcon, WrenchIcon } from "@dust-tt/sparkle";
-import type { WebsearchResultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  WebsearchResultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
@@ -172,7 +176,7 @@ export function RenderMessageMarkdown({
   textSize,
   textColor,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   content: string;
   isStreaming: boolean;
   citationsContext?: CitationsContextType;
@@ -248,16 +252,17 @@ export function RenderMessageMarkdown({
       // @ts-expect-error - `visualization` is a custom tag, currently refused by
       // react-markdown types although the functionality is supported
       visualization: ({ position }) => {
+        const code = processedContent
+          .split("\n")
+          .slice(position.start.line, position.end.line - 1)
+          .join("\n");
         return (
           <VisualizationActionIframe
             owner={owner}
             visualization={{
-              code: processedContent
-                .split("\n")
-                .slice(position.start.line, position.end.line - 1)
-                .join("\n"),
+              code,
               complete: position.end.line < processedContent.split("\n").length,
-              identifier: `foo-${position.start.line}`,
+              identifier: `visualization-${position.start.line}`,
             }}
           />
         );
