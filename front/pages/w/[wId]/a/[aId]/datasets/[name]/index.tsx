@@ -20,6 +20,7 @@ import { getApp } from "@app/lib/api/app";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -31,6 +32,7 @@ export const getServerSideProps =
     app: AppType;
     dataset: DatasetType;
     schema: DatasetSchema | null;
+    dustAppsListUrl: string;
     gaTrackingId: string;
   }>(async (context, auth) => {
     const owner = auth.workspace();
@@ -75,6 +77,7 @@ export const getServerSideProps =
         app,
         dataset,
         schema,
+        dustAppsListUrl: await getDustAppsListUrl(auth),
         gaTrackingId: GA_TRACKING_ID,
       },
     };
@@ -87,6 +90,7 @@ export default function ViewDatasetView({
   app,
   dataset,
   schema,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -174,7 +178,7 @@ export default function ViewDatasetView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

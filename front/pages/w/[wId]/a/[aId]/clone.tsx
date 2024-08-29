@@ -24,6 +24,7 @@ import { getApp } from "@app/lib/api/app";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -33,6 +34,7 @@ export const getServerSideProps =
     owner: WorkspaceType;
     subscription: SubscriptionType;
     app: AppType;
+    dustAppsListUrl: string;
     gaTrackingId: string;
   }>(async (context, auth, session) => {
     // This is a rare case where we need the full user object as we need to know the user available
@@ -67,6 +69,7 @@ export const getServerSideProps =
         owner,
         subscription,
         app,
+        dustAppsListUrl: await getDustAppsListUrl(auth),
         gaTrackingId: GA_TRACKING_ID,
       },
     };
@@ -77,6 +80,7 @@ export default function CloneView({
   owner,
   subscription,
   app,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -150,7 +154,7 @@ export default function CloneView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

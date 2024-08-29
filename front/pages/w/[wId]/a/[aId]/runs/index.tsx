@@ -18,6 +18,7 @@ import { getApp } from "@app/lib/api/app";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useRuns } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -27,6 +28,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   app: AppType;
   wIdTarget: string | null;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -59,6 +61,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app,
       wIdTarget,
+      dustAppsListUrl: await getDustAppsListUrl(auth),
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -86,6 +89,7 @@ export default function RunsView({
   readOnly,
   app,
   wIdTarget,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [runType, setRunType] = useState(
@@ -134,7 +138,7 @@ export default function RunsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }
