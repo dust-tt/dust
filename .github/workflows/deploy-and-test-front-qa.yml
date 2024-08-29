@@ -128,6 +128,22 @@ jobs:
         if: failure()
         uses: slackapi/slack-github-action@v1.27.0
         with:
-          payload: '{"text": "Playwright tests failed for commit ${{ github.sha }} in ${{ github.repository }}. Check ID: $CHECK_ID"}'
+          payload: |
+            {
+              "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: $CHECK_ID",
+              "attachments": [
+                {
+                  "text": "View Report",
+                  "actions": [
+                    {
+                      "type": "button",
+                      "text": "View Report",
+                      "url": "$PLAYWRIGHT_REPORT_URL"
+                    }
+                  ]
+                }
+              ]
+            }
         env:
+          PLAYWRIGHT_REPORT_URL: ${{ secrets.PLAYWRIGHT_REPORT_BASE_URL }}/${{ env.CHECK_ID }}/playwright-report/index.html
           SLACK_WEBHOOK_URL: ${{ secrets.PLAYWRIGHT_TESTS_SLACK_WEBHOOK_URL }}
