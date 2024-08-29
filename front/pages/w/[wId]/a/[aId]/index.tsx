@@ -42,6 +42,7 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps =
   withDefaultUserAuthRequirementsNoWorkspaceCheck<{
@@ -50,6 +51,7 @@ export const getServerSideProps =
     subscription: SubscriptionType;
     readOnly: boolean;
     url: string;
+    dustAppsListUrl: string;
     app: AppType;
     gaTrackingId: string;
   }>(async (context, auth) => {
@@ -72,6 +74,8 @@ export const getServerSideProps =
       };
     }
 
+    const dustAppsListUrl = await getDustAppsListUrl(auth);
+
     return {
       props: {
         user: auth.user(),
@@ -79,6 +83,7 @@ export const getServerSideProps =
         subscription,
         readOnly,
         url: config.getClientFacingUrl(),
+        dustAppsListUrl,
         app,
         gaTrackingId: config.getGaTrackingId(),
       },
@@ -146,6 +151,7 @@ export default function AppView({
   readOnly,
   app,
   url,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
@@ -321,11 +327,7 @@ export default function AppView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            if (window.history.length > 1) {
-              void router.back();
-            } else {
-              void router.push(`/w/${owner.sId}/a`);
-            }
+            void router.push(dustAppsListUrl);
           }}
         />
       }

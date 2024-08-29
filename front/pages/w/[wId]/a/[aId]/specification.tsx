@@ -14,6 +14,7 @@ import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { dumpSpecification } from "@app/lib/specification";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -24,6 +25,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   app: AppType;
   specification: string;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -65,6 +67,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     latestDatasets
   );
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
@@ -72,6 +76,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app,
       specification: spec,
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -82,6 +87,7 @@ export default function Specification({
   subscription,
   app,
   specification,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -99,7 +105,7 @@ export default function Specification({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }
