@@ -1,6 +1,8 @@
+import type { DustRegistryActionName } from "@dust-tt/types";
 import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   ConnectorsAPI,
+  DustProdActionRegistry,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
@@ -560,6 +562,19 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const registry = async (command: string) => {
+  switch (command) {
+    case "dump": {
+      console.log(JSON.stringify(DustProdActionRegistry));
+      return;
+    }
+
+    default:
+      console.log(`Unknown registry command: ${command}`);
+      console.log("Possible values: `dump`");
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -589,6 +604,8 @@ const main = async () => {
       return conversation(command, argv);
     case "transcripts":
       return transcripts(command, argv);
+    case "registry":
+      return registry(command);
     default:
       console.log(
         "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`, `transcripts`"
