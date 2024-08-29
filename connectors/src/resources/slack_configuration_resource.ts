@@ -129,6 +129,19 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
+  // Get the Dust group IDs that the bot is whitelisted for.
+  async getBotGroupIds(botName: string): Promise<string[]> {
+    const bot = await SlackBotWhitelistModel.findOne({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+      },
+    });
+
+    return bot ? bot.groupIds : [];
+  }
+
   static async listAll() {
     const blobs = await SlackConfigurationResource.model.findAll({});
 

@@ -303,9 +303,10 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     const prodCredentials = await prodAPICredentialsForOwner(owner, {
       useLocalInDev: true,
     });
+    const requestedGroupIds = auth.groups().map((g) => g.sId);
     const api = new DustAPI(
       config.getDustAPIConfig(),
-      prodCredentials,
+      { ...prodCredentials, groupIds: requestedGroupIds },
       logger,
       {
         useLocalInDev: true,
@@ -315,7 +316,6 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     // As we run the app (using a system API key here), we do force using the workspace credentials so
     // that the app executes in the exact same conditions in which they were developed.
     const runRes = await api.runAppStreamed(
-      auth.groups(),
       {
         workspaceId: actionConfiguration.appWorkspaceId,
         appId: actionConfiguration.appId,

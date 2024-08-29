@@ -123,7 +123,7 @@ export type SlackUserInfo = {
   email: string | null;
   is_bot: boolean;
   display_name?: string;
-  real_name?: string;
+  real_name: string;
   is_restricted: boolean;
   is_stranger: boolean;
   is_ultra_restricted: boolean;
@@ -142,6 +142,10 @@ export async function getSlackUserInfo(
     throw res.error;
   }
 
+  if (!res.user?.profile?.real_name) {
+    throw new Error(`Slack user with id ${userId} has no real name`);
+  }
+
   return {
     // Slack has two concepts for bots:
     // - Bots, that you can get through slackClient.bots.info() and
@@ -152,7 +156,7 @@ export async function getSlackUserInfo(
     is_bot: res.user?.is_bot || false,
     email: res.user?.profile?.email || null,
     display_name: res.user?.profile?.display_name,
-    real_name: res.user?.profile?.real_name,
+    real_name: res.user.profile.real_name,
     is_restricted: res.user?.is_restricted || false,
     is_stranger: res.user?.is_stranger || false,
     is_ultra_restricted: res.user?.is_ultra_restricted || false,
@@ -170,10 +174,13 @@ export async function getSlackBotInfo(
   if (slackBot.error) {
     throw slackBot.error;
   }
+  if (!slackBot.bot?.name) {
+    throw new Error(`Slack bot with id ${botId} has no name`);
+  }
 
   return {
     display_name: slackBot.bot?.name,
-    real_name: slackBot.bot?.name,
+    real_name: slackBot.bot.name,
     email: null,
     image_512: slackBot.bot?.icons?.image_72 || null,
     tz: null,

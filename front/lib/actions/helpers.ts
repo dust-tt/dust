@@ -59,7 +59,7 @@ export async function callAction<V extends t.Mixed>({
   );
 
   // @TODO(GROUPS_INFRA) The doc tracker apps are running without any group privileges for now.
-  const r = await prodAPI.runApp([], app, config, [input]);
+  const r = await prodAPI.runApp(app, config, [input]);
 
   if (r.isErr()) {
     return r;
