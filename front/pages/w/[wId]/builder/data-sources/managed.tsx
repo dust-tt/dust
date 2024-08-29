@@ -262,7 +262,6 @@ export default function DataSourcesView({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState(
     {} as Record<ConnectorProvider, boolean>
   );
-  const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [isRequestDataSourceModalOpen, setIsRequestDataSourceModalOpen] =
     useState(false);
@@ -310,18 +309,6 @@ export default function DataSourcesView({
           icon={CloudArrowLeftRightIcon}
           description="Manage connections to your products and the real-time data feeds Dust has access to."
         />
-        {!isAdmin && (
-          <ContentMessage title="How are connections managed?">
-            <b>Workspace administrators</b> control access to connections for
-            all members.{" "}
-            <Hoverable
-              variant="primary"
-              onClick={() => setShowAdminsModal(true)}
-            >
-              View the list of administrators here.
-            </Hoverable>
-          </ContentMessage>
-        )}
         <div
           className={classNames(
             "flex gap-2",
