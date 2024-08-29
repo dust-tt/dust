@@ -6,13 +6,15 @@ import type {
 } from "@temporalio/worker";
 import tracer from "dd-trace";
 
+import { getConnectorManager } from "@connectors/connectors";
 import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import { DustConnectorWorkflowError, ExternalOAuthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
-import { getConnectorId, terminateWorkflow } from "./temporal";
+import { getConnectorId } from "./temporal";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -121,11 +123,21 @@ export class ActivityInboundLogInterceptor
         if (connectorId) {
           await syncFailed(connectorId, "oauth_token_revoked");
 
-          // In case of an invalid token, abort the workflow.
+          // In case of an invalid token, stop all workflows for the connector.
           this.logger.info(
-            `Terminating workflow ${workflowId} because of expired token.`
+            `Stopping connector manager because of expired token.`
           );
-          await terminateWorkflow(workflowId, "oauth_token_revoked");
+
+          const connector = await ConnectorResource.fetchById(connectorId);
+
+          if (connector) {
+            const connectorManager = getConnectorManager({
+              connectorId: connector.id,
+              connectorProvider: connector.type,
+            });
+
+            await connectorManager?.stop();
+          }
         }
       }
 
