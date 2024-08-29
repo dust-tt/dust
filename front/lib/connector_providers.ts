@@ -118,13 +118,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   microsoft: {
     name: "Microsoft",
     connectorProvider: "microsoft",
-    status: "rolling_out",
-    rollingOutFlag: "microsoft_connector",
+    status: "built",
     hide: false,
     description:
-      "Authorize access to Microsoft for indexing shared documents stored in SharePoint, OneDrive, and Office365, and Teams discussions.",
+      "Authorize Dust to access a Microsoft account and index shared documents stored in SharePoint, OneDrive, and Office365.",
     limitations:
-      "Dust will index the documents shared with the authorized account only. Only Teams publi cchannels will be indexed.",
+      "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported. At the time, personal OneDrives cannot be synced.",
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     logoComponent: MicrosoftLogo,
     isNested: true,
