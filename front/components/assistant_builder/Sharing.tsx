@@ -26,7 +26,10 @@ import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
-import { SlackIntegration } from "@app/components/assistant_builder/SlackIntegration";
+import {
+  SlackAssistantDefaultManager,
+  SlackIntegration,
+} from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
 type ConfirmationModalDataType = {
@@ -104,6 +107,7 @@ interface SharingButtonProps {
   agentConfigurationId: string | null;
   baseUrl: string;
   initialScope: NonGlobalScope;
+  isAdmin: boolean;
   newScope: NonGlobalScope;
   owner: WorkspaceType;
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
@@ -114,16 +118,17 @@ interface SharingButtonProps {
 }
 
 export function SharingButton({
-  owner,
   agentConfigurationId,
-  initialScope,
-  newScope,
-  setNewScope,
   baseUrl,
-  showSlackIntegration,
-  slackDataSourceView,
-  slackChannelSelected,
+  initialScope,
+  isAdmin,
+  newScope,
+  owner,
   setNewLinkedSlackChannels,
+  setNewScope,
+  showSlackIntegration,
+  slackChannelSelected,
+  slackDataSourceView,
 }: SharingButtonProps) {
   const { agentUsage, isAgentUsageLoading, isAgentUsageError } = useAgentUsage({
     workspaceId: owner.sId,
@@ -152,7 +157,7 @@ export function SharingButton({
   return (
     <>
       {slackDataSourceView && (
-        <SlackIntegrationDrawer
+        <SlackAssistantDefaultManager
           existingSelection={slackChannelSelected}
           slackDataSourceView={slackDataSourceView}
           owner={owner}
@@ -160,6 +165,7 @@ export function SharingButton({
             setNewLinkedSlackChannels(slackChannels);
           }}
           assistantHandle="@Dust"
+          isAdmin={isAdmin}
           show={slackDrawerOpened}
           onClose={() => setSlackDrawerOpened(false)}
         />
@@ -452,73 +458,5 @@ function ScopeChangeModal({
         <div className="font-bold">Are you sure you want to proceed ?</div>
       </div>
     </Dialog>
-  );
-}
-
-interface SlackIntegrationDrawerProps {
-  assistantHandle?: string;
-  existingSelection: SlackChannel[];
-  onClose: () => void;
-  onSave: (channels: SlackChannel[]) => void;
-  owner: WorkspaceType;
-  show: boolean;
-  slackDataSourceView: DataSourceViewType;
-}
-
-function SlackIntegrationDrawer({
-  assistantHandle,
-  existingSelection,
-  onClose,
-  onSave,
-  owner,
-  show,
-  slackDataSourceView,
-}: SlackIntegrationDrawerProps) {
-  const [slackIntegrationOpened, setSlackIntegrationOpened] = useState(false);
-  return (
-    <>
-      <SlackIntegration
-        slackDataSourceView={slackDataSourceView}
-        owner={owner}
-        existingSelection={existingSelection}
-        onSave={(slackChannels) => {
-          onSave(slackChannels);
-          setSlackIntegrationOpened(false);
-        }}
-        onClose={() => setSlackIntegrationOpened(false)}
-        show={slackIntegrationOpened}
-        assistantHandle={assistantHandle}
-      />
-      <Modal
-        isOpen={show}
-        title={`Slack Integration`}
-        onClose={onClose}
-        hasChanged={false}
-        variant="side-sm"
-      >
-        <div className="pt-8">
-          <Page.Vertical gap="lg" align="stretch">
-            <div className="flex flex-col gap-y-2">
-              <div className="grow text-sm font-medium text-element-800">
-                <SlackLogo className="h-8 w-8" />
-              </div>
-              <div className="text-sm font-normal text-element-900">
-                Set this assistant as the default assistant on one or several of
-                your Slack channels. It will answer by default when the{" "}
-                <span className="font-bold">{assistantHandle}</span> Slack bot
-                is mentionned in these channels.
-              </div>
-              <div className="justify-end pt-2">
-                <Button
-                  hasMagnifying={false}
-                  label="Select channels"
-                  onClick={() => setSlackIntegrationOpened(true)}
-                />
-              </div>
-            </div>
-          </Page.Vertical>
-        </div>
-      </Modal>
-    </>
   );
 }

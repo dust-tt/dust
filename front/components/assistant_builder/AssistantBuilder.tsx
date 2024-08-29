@@ -78,6 +78,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
+  isAdmin,
 }: AssistantBuilderProps) {
   const { dataSourceViews } = useContext(AssistantBuilderContext);
   const router = useRouter();
@@ -426,13 +427,14 @@ export default function AssistantBuilder({
                 <Tab tabs={tabs} variant="stepper" />
                 <div className="flex flex-row gap-2 self-end pt-0.5">
                   <SharingButton
-                    showSlackIntegration={showSlackIntegration}
-                    slackDataSourceView={slackDataSourceView || null}
-                    owner={owner}
                     agentConfigurationId={agentConfigurationId}
                     initialScope={initialBuilderState?.scope ?? defaultScope}
-                    slackChannelSelected={selectedSlackChannels || []}
+                    isAdmin={isAdmin}
                     newScope={builderState.scope}
+                    owner={owner}
+                    showSlackIntegration={showSlackIntegration}
+                    slackChannelSelected={selectedSlackChannels || []}
+                    slackDataSourceView={slackDataSourceView || null}
                     setNewScope={(
                       scope: Exclude<AgentConfigurationScope, "global">
                     ) => {

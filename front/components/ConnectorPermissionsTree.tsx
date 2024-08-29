@@ -63,7 +63,7 @@ type onPermissionUpdateType = (
 interface PermissionTreeChildrenBaseProps {
   canUpdatePermissions?: boolean;
   customIsNodeChecked?: (node: BaseContentNode) => boolean;
-  displayDocumentSource: (documentId: string) => void;
+  displayDocumentSource?: (documentId: string) => void;
   onPermissionUpdate?: onPermissionUpdateType;
   isSearchEnabled: boolean;
   owner: LightWorkspaceType;
@@ -116,30 +116,28 @@ export function DataSourcePermissionTreeChildren({
   }
 
   return (
-    <div className="border-2 border-red-500">
-      <PermissionTreeChildren
-        dataSource={dataSource}
-        isNodeChecked={isNodeChecked}
-        isLoading={isResourcesLoading}
-        nodes={resources}
-        owner={owner}
-        parentId={parentId}
-        renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
-          <DataSourcePermissionTreeChildren
-            dataSource={dataSource}
-            owner={owner}
-            parentId={node.internalId}
-            parentIsSelected={isParentNodeSelected}
-            permissionFilter={permissionFilter}
-            useConnectorPermissionsHook={useConnectorPermissionsHook}
-            {...props}
-            // Disable search for children.
-            isSearchEnabled={false}
-          />
-        )}
-        {...props}
-      />
-    </div>
+    <PermissionTreeChildren
+      dataSource={dataSource}
+      isNodeChecked={isNodeChecked}
+      isLoading={isResourcesLoading}
+      nodes={resources}
+      owner={owner}
+      parentId={parentId}
+      renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
+        <DataSourcePermissionTreeChildren
+          dataSource={dataSource}
+          owner={owner}
+          parentId={node.internalId}
+          parentIsSelected={isParentNodeSelected}
+          permissionFilter={permissionFilter}
+          useConnectorPermissionsHook={useConnectorPermissionsHook}
+          {...props}
+          // Disable search for children.
+          isSearchEnabled={false}
+        />
+      )}
+      {...props}
+    />
   );
 }
 
@@ -173,27 +171,25 @@ export function DataSourceViewPermissionTreeChildren({
   const { dataSource } = dataSourceView;
 
   return (
-    <div className="border-2 border-green-500">
-      <PermissionTreeChildren
-        dataSource={dataSource}
-        isLoading={isNodesLoading}
-        nodes={nodes}
-        owner={owner}
-        parentId={parentId}
-        renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
-          <DataSourceViewPermissionTreeChildren
-            dataSourceView={dataSourceView}
-            owner={owner}
-            parentId={node.internalId}
-            parentIsSelected={isParentNodeSelected}
-            {...props}
-            // Disable search for children.
-            isSearchEnabled={false}
-          />
-        )}
-        {...props}
-      />
-    </div>
+    <PermissionTreeChildren
+      dataSource={dataSource}
+      isLoading={isNodesLoading}
+      nodes={nodes}
+      owner={owner}
+      parentId={parentId}
+      renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
+        <DataSourceViewPermissionTreeChildren
+          dataSourceView={dataSourceView}
+          owner={owner}
+          parentId={node.internalId}
+          parentIsSelected={isParentNodeSelected}
+          {...props}
+          // Disable search for children.
+          isSearchEnabled={false}
+        />
+      )}
+      {...props}
+    />
   );
 }
 
@@ -379,20 +375,22 @@ function PermissionTreeChildren({
                     disabled={!n.sourceUrl}
                     variant="tertiary"
                   />
-                  <IconButton
-                    size="xs"
-                    icon={BracesIcon}
-                    onClick={() => {
-                      if (n.dustDocumentId) {
-                        displayDocumentSource(n.dustDocumentId);
-                      }
-                    }}
-                    className={classNames(
-                      n.dustDocumentId ? "" : "pointer-events-none opacity-0"
-                    )}
-                    disabled={!n.dustDocumentId}
-                    variant="tertiary"
-                  />
+                  {displayDocumentSource && (
+                    <IconButton
+                      size="xs"
+                      icon={BracesIcon}
+                      onClick={() => {
+                        if (n.dustDocumentId) {
+                          displayDocumentSource(n.dustDocumentId);
+                        }
+                      }}
+                      className={classNames(
+                        n.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                      )}
+                      disabled={!n.dustDocumentId}
+                      variant="tertiary"
+                    />
+                  )}
                 </div>
               }
               renderTreeItems={() => {
