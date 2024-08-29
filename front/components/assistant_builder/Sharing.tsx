@@ -229,6 +229,8 @@ export function SharingButton({
                   <div className="pt-4">
                     <SliderToggle
                       selected={slackChannelSelected.length > 0}
+                      // If not admins, but there are channels selected, prevent from removing.
+                      disabled={slackChannelSelected.length > 0 && !isAdmin}
                       onClick={() => {
                         if (slackChannelSelected.length > 0) {
                           setNewLinkedSlackChannels([]);
