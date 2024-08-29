@@ -56,7 +56,7 @@ async function updateParentsFieldForConnector(
           workspaceId: connector.workspaceId,
           workspaceAPIKey: connector.workspaceAPIKey,
         },
-        documentId: `microsoft-${node.internalId}`,
+        documentId: node.internalId,
         parents,
       });
     },
