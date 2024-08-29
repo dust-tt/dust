@@ -112,8 +112,8 @@ Guidelines using the :::visualization tag:
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
-  - Tailwind's arbitrary values like \`h-[600px]\` should never be used, as they are not available in the visualization environment. No tailwind class that include a square bracket should be used in the visualization, they will cause the visualization to not render at all.
-  - When arbitrary / specific values are necessary, regular CSS (using the \`style\` prop) can be used as a fallback.
+  - Tailwind's arbitrary values like \`h-[600px]\` must never be used, as they are not available in the visualization environment. No tailwind class that include a square bracket should ever be used in the visualization code, as they will cause the visualization to fail for the user.
+  - When arbitrary / specific values are required, regular CSS (using the \`style\` prop) can be used as a fallback.
   - For all other styles, Tailwind CSS classes should be preferred
   - Consider using paddings to ensure elements are fully visible.
 - Using files from the conversation when available:

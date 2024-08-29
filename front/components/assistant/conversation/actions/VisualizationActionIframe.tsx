@@ -1,16 +1,9 @@
-import {
-  Button,
-  CommandLineIcon,
-  PlayStrokeIcon,
-  Spinner,
-  Tab,
-} from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   LightWorkspaceType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isVisualizationRPCRequest } from "@dust-tt/types";
 import type { SetStateAction } from "react";
@@ -19,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { classNames } from "@app/lib/utils";
 
-type Visualization = {
+export type Visualization = {
   code: string;
   complete: boolean;
   identifier: string;
@@ -140,15 +133,10 @@ export function VisualizationActionIframe({
   const [isErrored, setIsErrored] = useState(false);
 
   const vizIframeRef = useRef<HTMLIFrameElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const codeRef = useRef<HTMLDivElement>(null);
-  const errorRef = useRef<HTMLDivElement>(null);
-
-  const workspaceId = owner.sId;
 
   useVisualizationDataHandler({
     visualization,
-    workspaceId,
+    workspaceId: owner.sId,
     setContentHeight,
     setIsErrored,
     vizIframeRef,
@@ -158,17 +146,14 @@ export function VisualizationActionIframe({
 
   const iframeLoaded = contentHeight > 0;
   const showSpinner = useMemo(
-    () =>
-      ((!codeFullyGenerated && !code) ||
-        (codeFullyGenerated && !iframeLoaded)) &&
-      !isErrored,
-    [code, codeFullyGenerated, iframeLoaded, isErrored]
+    () => codeFullyGenerated && !iframeLoaded && !isErrored,
+    [codeFullyGenerated, iframeLoaded, isErrored]
   );
 
   return (
     <div className="relative flex flex-col">
       {showSpinner && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white bg-opacity-75">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white">
           <Spinner />
         </div>
       )}
@@ -179,13 +164,11 @@ export function VisualizationActionIframe({
           isErrored ? "h-full" : ""
           //activeIndex === 1 ? "max-h-[60vh]" : ""
         )}
-        ref={containerRef}
       >
         <div className="flex">
           {!codeFullyGenerated ? (
-            <div className="flex h-full w-full shrink-0" ref={codeRef}>
+            <div className="flex h-full w-full shrink-0">
               <RenderMessageMarkdown
-                owner={owner}
                 content={"```javascript\n" + (code ?? "") + "\n```"}
                 isStreaming={!codeFullyGenerated}
               />
@@ -212,10 +195,7 @@ export function VisualizationActionIframe({
                 </div>
               )}
               {isErrored && (
-                <div
-                  className="flex h-full w-full flex-col items-center gap-4 py-8"
-                  ref={errorRef}
-                >
+                <div className="flex h-full w-full flex-col items-center gap-4 py-8">
                   <div className="text-sm text-element-800">
                     An error occured while rendering the visualization.
                   </div>

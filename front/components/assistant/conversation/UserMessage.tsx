@@ -51,7 +51,6 @@ export function UserMessage({
       <div className="flex flex-col gap-4">
         <div>
           <RenderMessageMarkdown
-            owner={owner}
             content={message.content}
             isStreaming={false}
           />

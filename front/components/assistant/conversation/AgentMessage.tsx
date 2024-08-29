@@ -43,6 +43,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -488,7 +489,6 @@ export function AgentMessage({
             icon={ChatBubbleThoughtIcon}
           >
             <RenderMessageMarkdown
-              owner={owner}
               content={agentMessage.chainOfThought}
               isStreaming={false}
               textSize="sm"
@@ -507,7 +507,6 @@ export function AgentMessage({
             ) : (
               <>
                 <RenderMessageMarkdown
-                  owner={owner}
                   content={agentMessage.content}
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"
@@ -516,6 +515,21 @@ export function AgentMessage({
                     references,
                     updateActiveReferences,
                     setHoveredReference: setLastHoveredReference,
+                  }}
+                  customRenderer={{
+                    visualization: (code, complete, lineStart) => {
+                      return (
+                        <VisualizationActionIframe
+                          owner={owner}
+                          visualization={{
+                            code,
+                            complete,
+                            identifier: `viz-${agentMessage.sId}-${lineStart}`,
+                          }}
+                          key={`viz-${agentMessage.sId}-${lineStart}`}
+                        />
+                      );
+                    },
                   }}
                 />
                 {activeReferences.length > 0 && (

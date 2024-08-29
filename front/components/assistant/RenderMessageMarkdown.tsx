@@ -1,14 +1,10 @@
 import { IconButton, SparklesIcon, WrenchIcon } from "@dust-tt/sparkle";
-import type {
-  LightWorkspaceType,
-  WebsearchResultType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { WebsearchResultType } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import React, { useEffect, useMemo } from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
@@ -38,12 +34,12 @@ import type { GetContentToDownloadFunction } from "@app/components/misc/ContentB
 import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { classNames } from "@app/lib/utils";
 
-import { VisualizationActionIframe } from "./conversation/actions/VisualizationActionIframe";
-
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
 );
+
+const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
 function mentionDirective() {
   return (tree: any) => {
@@ -143,12 +139,30 @@ function sanitizeContent(str: string): string {
     str += "`";
   }
 
-  // (2) Replace legacy <visualization> XML tags by the markdown directive syntax.
+  const lines = str.split("\n");
 
-  str = str.replace(/^<visualization>$/gm, ":::visualization");
-  str = str.replace(/^<\/visualization>$/gm, ":::");
+  let openVisualization = false;
+  for (let i = 0; i < lines.length; i++) {
+    // (2) Replace legacy <visualization> XML tags by the markdown directive syntax.
+    if (lines[i].trim() === "<visualization>") {
+      lines[i] = ":::visualization";
+    }
+    if (lines[i].trim() === "</visualization>") {
+      lines[i] = ":::";
+    }
 
-  return str;
+    // (3) Prepend closing visualization markdow directive with a magic word to detect that the
+    // visualization is complete solely based on its content during token streaming.
+    if (lines[i].trim().startsWith(":::visualization")) {
+      openVisualization = true;
+    }
+    if (openVisualization && lines[i].trim() === ":::") {
+      lines.splice(i, 0, VISUALIZATION_MAGIC_LINE);
+      openVisualization = false; // Reset the flag after inserting the magic line
+    }
+  }
+
+  return lines.join("\n");
 }
 
 type CitationsContextType = {
@@ -168,29 +182,53 @@ export const CitationsContext = React.createContext<CitationsContextType>({
   setHoveredReference: () => null,
 });
 
+export const MarkDownContentContext = React.createContext<{
+  content: string;
+  isStreaming: boolean;
+}>({
+  content: "",
+  isStreaming: false,
+});
+
+export type CustomRenderer = {
+  visualization: (
+    code: string,
+    complete: boolean,
+    lineStart: number
+  ) => React.JSX.Element;
+};
+
 export function RenderMessageMarkdown({
-  owner,
   content,
   isStreaming,
   citationsContext,
   textSize,
   textColor,
+  customRenderer,
 }: {
-  owner: LightWorkspaceType;
   content: string;
   isStreaming: boolean;
   citationsContext?: CitationsContextType;
   textSize?: "sm" | "base";
   textColor?: string;
+  customRenderer?: CustomRenderer;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
+  const visualizationRenderer = useMemo(() => {
+    return (
+      customRenderer?.visualization ||
+      (() => (
+        <div className="pb-2 pt-4 font-medium text-red-600">
+          Visualization not available
+        </div>
+      ))
+    );
+  }, [customRenderer]);
 
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
     () => ({
-      pre: ({ children }) => (
-        <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
-      ),
+      pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       code: CodeBlockWithExtendedSupport,
       a: LinkBlock,
       ul: UlBlock,
@@ -252,23 +290,23 @@ export function RenderMessageMarkdown({
       // @ts-expect-error - `visualization` is a custom tag, currently refused by
       // react-markdown types although the functionality is supported
       visualization: ({ position }) => {
-        const code = processedContent
+        /* eslint-disable-next-line react-hooks/rules-of-hooks */
+        const { content } = useContext(MarkDownContentContext);
+        let code = content
           .split("\n")
           .slice(position.start.line, position.end.line - 1)
           .join("\n");
-        return (
-          <VisualizationActionIframe
-            owner={owner}
-            visualization={{
-              code,
-              complete: position.end.line < processedContent.split("\n").length,
-              identifier: `visualization-${position.start.line}`,
-            }}
-          />
-        );
+        let complete = false;
+        if (code.includes(VISUALIZATION_MAGIC_LINE)) {
+          code = code.replace(VISUALIZATION_MAGIC_LINE, "");
+          complete = true;
+        }
+        return visualizationRenderer(code, complete, position.start.line);
       },
     }),
-    [isStreaming, textSize, textColor, processedContent, owner]
+    // Not depending visualizationRenderer prevents unnecessary re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [textSize, textColor]
   );
 
   const markdownPlugins = useMemo(
@@ -294,16 +332,20 @@ export function RenderMessageMarkdown({
           }
         }
       >
-        <MermaidDisplayProvider>
-          <ReactMarkdown
-            linkTarget="_blank"
-            components={markdownComponents}
-            remarkPlugins={markdownPlugins}
-            rehypePlugins={[rehypeKatex] as PluggableList}
-          >
-            {processedContent}
-          </ReactMarkdown>
-        </MermaidDisplayProvider>
+        <MarkDownContentContext.Provider
+          value={{ content: processedContent, isStreaming }}
+        >
+          <MermaidDisplayProvider>
+            <ReactMarkdown
+              linkTarget="_blank"
+              components={markdownComponents}
+              remarkPlugins={markdownPlugins}
+              rehypePlugins={[rehypeKatex] as PluggableList}
+            >
+              {processedContent}
+            </ReactMarkdown>
+          </MermaidDisplayProvider>
+        </MarkDownContentContext.Provider>
       </CitationsContext.Provider>
     </div>
   );
@@ -505,13 +547,7 @@ const detectLanguage = (children: React.ReactNode) => {
   return "text";
 };
 
-function PreBlock({
-  children,
-  isStreaming,
-}: {
-  children: React.ReactNode;
-  isStreaming: boolean;
-}) {
+function PreBlock({ children }: { children: React.ReactNode }) {
   const validChildrenContent =
     Array.isArray(children) && children[0]
       ? children[0].props.children[0]
@@ -543,6 +579,8 @@ function PreBlock({
 
   const { isValidMermaid, showMermaid, setIsValidMermaid, setShowMermaid } =
     useMermaidDisplay();
+
+  const { isStreaming } = useContext(MarkDownContentContext);
 
   useEffect(() => {
     if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
