@@ -60,7 +60,7 @@ async function updateParentsFieldForConnector(
         parents,
       });
     },
-    { concurrency: 10 }
+    { concurrency: 64 }
   );
 
   logger.info(
