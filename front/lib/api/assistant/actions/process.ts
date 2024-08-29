@@ -18,9 +18,11 @@ import {
   BaseAction,
   cloneBaseConfig,
   DustProdActionRegistry,
+  isCustomDustAppsWorkspaceId,
   isDevelopment,
   Ok,
   PROCESS_ACTION_TOP_K,
+  PRODUCTION_DUST_WORKSPACE_ID,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
 
@@ -36,7 +38,6 @@ import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/acti
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/development";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
@@ -255,9 +256,10 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     // Handle data sources list and parents/tags filtering.
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
-        workspace_id: isDevelopment()
-          ? PRODUCTION_DUST_WORKSPACE_ID
-          : d.workspaceId,
+        workspace_id:
+          isDevelopment() && !isCustomDustAppsWorkspaceId()
+            ? PRODUCTION_DUST_WORKSPACE_ID
+            : d.workspaceId,
 
         // Use dataSourceViewId if it exists; otherwise, use dataSourceId.
         // Note: This value is passed to the registry for lookup.

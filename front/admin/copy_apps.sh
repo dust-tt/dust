@@ -48,11 +48,13 @@ function import {
     psql ${uri} -c "drop table if exists __copy;"
 }
 
-if [ -z "$DUST_APPS_SYNC_WORKSPACE_ID" ] 
+if [ -z "$DUST_APPS_WORKSPACE_ID" ] 
 then
-    echo "Please set DUST_APPS_SYNC_WORKSPACE_ID if you want to synchronize dust-apps."
+    echo "Please set DUST_APPS_WORKSPACE_ID with your workspace sId if you want to synchronize dust-apps."
     exit 0
 fi
+
+DUST_APPS_SYNC_WORKSPACE_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DUST_APPS_WORKSPACE_ID}') TO STDOUT")
 
 mkdir -p /tmp/dust-apps
 
