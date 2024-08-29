@@ -20,6 +20,9 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    # We skip running the build and deploy if the PR contains a migration represented by the 'migration-ack' label.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'migration-ack') }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -59,7 +62,12 @@ jobs:
 
   run-playwright-tests:
     needs: build-and-deploy
+
     runs-on: ubuntu-latest
+
+    # We skip running the build and deploy if the PR contains a migration represented by the 'migration-ack' label.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'migration-ack') }}
+
     steps:
       - name: Run Playwright Tests
         id: trigger-tests
