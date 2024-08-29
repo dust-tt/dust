@@ -54,7 +54,7 @@ then
     exit 0
 fi
 
-DUST_APPS_SYNC_WORKSPACE_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DUST_APPS_WORKSPACE_ID}') TO STDOUT")
+DUST_APPS_WORKSPACE_NUMERIC_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DUST_APPS_WORKSPACE_ID}') TO STDOUT")
 
 mkdir -p /tmp/dust-apps
 
@@ -78,7 +78,7 @@ then
     # Get projects matching the current specifications
     PROJECTS=$(psql $CORE_DATABASE_URI -c "copy (select distinct(project) from specifications where hash in (${IN_CLAUSE})) to stdout" | sed "s/.*/'&'/" | paste -sd, -)
     # Get appIds matching the specifications
-    LOCAL_APP_IDS=$(psql $FRONT_DATABASE_URI -c "copy (select distinct(\"sId\") from apps where \"dustAPIProjectId\" in (${PROJECTS}) and visibility!='deleted' and \"workspaceId\"=${DUST_APPS_SYNC_WORKSPACE_ID} order by \"sId\") to stdout" | paste -sd\  -)
+    LOCAL_APP_IDS=$(psql $FRONT_DATABASE_URI -c "copy (select distinct(\"sId\") from apps where \"dustAPIProjectId\" in (${PROJECTS}) and visibility!='deleted' and \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} order by \"sId\") to stdout" | paste -sd\  -)
 
     # Check if any app is missing
     MISSING=false
@@ -99,7 +99,7 @@ then
     fi
 fi
 
-echo "Will copy apps into workspace ${DUST_APPS_SYNC_WORKSPACE_ID}..."
+echo "Will copy apps into workspace ${DUST_APPS_WORKSPACE_NUMERIC_ID}..."
 echo "You'll have to manually update front/lib/api/config.ts to use localhost:3000 instead of dust.tt,"
 echo "and front/lib/development.ts / types/src/front/lib/actions/registry.ts to set your workspace sId in PRODUCTION_DUST_APPS_WORKSPACE_ID"
 echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."
@@ -116,12 +116,12 @@ fetch FRONT datasets "id createdAt updatedAt name description schema appId works
 
 
 # ---- apps
-cat /tmp/dust-apps/FRONT_apps.csv | cut -f1-11 | sed -E "s/^(.*)$/\1\t${DUST_APPS_SYNC_WORKSPACE_ID}/g" > /tmp/dust-apps/FRONT_apps_transformed.csv
+cat /tmp/dust-apps/FRONT_apps.csv | cut -f1-11 | sed -E "s/^(.*)$/\1\t${DUST_APPS_WORKSPACE_NUMERIC_ID}/g" > /tmp/dust-apps/FRONT_apps_transformed.csv
 mv /tmp/dust-apps/FRONT_apps_transformed.csv /tmp/dust-apps/FRONT_apps.csv
 import FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "updatedAt name description visibility savedSpecification savedConfig savedRun dustAPIProjectId"
 
 # ---- datasets
-cat /tmp/dust-apps/FRONT_datasets.csv | cut -f1-7 | sed -E "s/^(.*)$/\1\t${DUST_APPS_SYNC_WORKSPACE_ID}/g" > /tmp/dust-apps/FRONT_datasets_transformed.csv
+cat /tmp/dust-apps/FRONT_datasets.csv | cut -f1-7 | sed -E "s/^(.*)$/\1\t${DUST_APPS_WORKSPACE_NUMERIC_ID}/g" > /tmp/dust-apps/FRONT_datasets_transformed.csv
 mv /tmp/dust-apps/FRONT_datasets_transformed.csv /tmp/dust-apps/FRONT_datasets.csv
 import FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "updatedAt name description schema"
 
