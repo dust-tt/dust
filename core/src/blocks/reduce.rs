@@ -47,6 +47,7 @@ impl Block for Reduce {
         _name: &str,
         _env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
+        _project_id: i64,
     ) -> Result<BlockResult> {
         // No-op the block outputs within the map/reduce will be coallesced, the output of reduce is
         // ignored and not stored in the environment as it has the same name as the map block.

@@ -155,6 +155,7 @@ pub trait Block {
         name: &str,
         env: &Env,
         event_sender: Option<UnboundedSender<Value>>,
+        project_id: i64,
     ) -> Result<BlockResult>;
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send>;

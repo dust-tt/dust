@@ -58,6 +58,7 @@ impl Block for Code {
         _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
+        _project_id: i64,
     ) -> Result<BlockResult> {
         // Assumes there is a _fun function defined in `source`.
         // TODO(spolu): revisit, not sure this is optimal.
