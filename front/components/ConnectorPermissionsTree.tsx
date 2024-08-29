@@ -9,8 +9,8 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  BaseContentNode,
   ConnectorProvider,
-  ContentNode,
   DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
@@ -109,7 +109,7 @@ export function DataSourcePermissionTreeChildren({
       nodes={resources}
       owner={owner}
       parentId={parentId}
-      renderChildItem={(node: ContentNode, { isParentNodeSelected }) => (
+      renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
         <DataSourcePermissionTreeChildren
           dataSource={dataSource}
           owner={owner}
@@ -163,7 +163,7 @@ export function DataSourceViewPermissionTreeChildren({
       nodes={nodes}
       owner={owner}
       parentId={parentId}
-      renderChildItem={(node: ContentNode, { isParentNodeSelected }) => (
+      renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
         <DataSourceViewPermissionTreeChildren
           dataSourceView={dataSourceView}
           owner={owner}
@@ -182,9 +182,9 @@ export function DataSourceViewPermissionTreeChildren({
 type PermissionTreeChildrenProps = PermissionTreeChildrenBaseProps & {
   dataSource: DataSourceType;
   isLoading: boolean;
-  nodes: ContentNode[];
+  nodes: BaseContentNode[];
   renderChildItem: (
-    r: ContentNode,
+    r: BaseContentNode,
     { isParentNodeSelected }: { isParentNodeSelected: boolean }
   ) => React.ReactNode;
 };

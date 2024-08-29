@@ -321,4 +321,15 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       vaultId: this.vault.sId,
     };
   }
+
+  toViewFilter() {
+    return {
+      parents: {
+        in: this.parentsIn,
+        not: null,
+      },
+      tags: null,
+      timestamp: null,
+    };
+  }
 }

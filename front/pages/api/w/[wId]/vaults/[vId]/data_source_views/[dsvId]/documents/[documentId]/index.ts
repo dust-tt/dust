@@ -64,14 +64,7 @@ async function handler(
         dataSourceName: dataSourceView.dataSource.name,
         documentId,
         projectId: dataSourceView.dataSource.dustAPIProjectId,
-        viewFilter: {
-          parents: {
-            in: dataSourceView.parentsIn,
-            not: null,
-          },
-          tags: null,
-          timestamp: null,
-        },
+        viewFilter: dataSourceView.toViewFilter(),
       });
 
       if (document.isErr()) {

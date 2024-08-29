@@ -1,19 +1,21 @@
 import type {
-  ContentNodeWithParentIds,
+  DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import config from "@app/lib/api/config";
-import { filterAndCropContentNodesByView } from "@app/lib/api/data_source_view";
+import {
+  filterAndCropContentNodesByView,
+  getContentNodesForManagedDataSourceView,
+  getContentNodesForStaticDataSourceView,
+} from "@app/lib/api/data_source_view";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 const GetContentNodesRequestBodySchema = t.type({
@@ -32,7 +34,7 @@ const GetContentNodesOrChildrenRequestBody = t.union([
 ]);
 
 export type GetDataSourceViewContentNodes = {
-  nodes: ContentNodeWithParentIds[];
+  nodes: DataSourceViewContentNode[];
 };
 
 // This endpoints serves two purposes:
@@ -99,68 +101,70 @@ async function handler(
     });
   }
 
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-
   const { includeChildren, internalIds } = bodyValidation.right;
 
-  let contentNodes: ContentNodeWithParentIds[];
+  if (includeChildren && internalIds.length > 1) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "When fetching children, only one internal id should be provided.",
+      },
+    });
+  }
 
-  // If the request is for children, we need to fetch the children of the internal ids.
-  if (includeChildren) {
-    if (internalIds.length > 1) {
+  let contentNodes: DataSourceViewContentNode[];
+
+  if (dataSourceView.dataSource.connectorId) {
+    const contentNodesRes = await getContentNodesForManagedDataSourceView(
+      dataSourceView,
+      {
+        includeChildren: includeChildren === true,
+        internalIds: removeNulls(internalIds),
+      }
+    );
+
+    if (contentNodesRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: contentNodesRes.error.message,
+        },
+      });
+    }
+
+    contentNodes = contentNodesRes.value;
+  } else {
+    if (internalIds.length > 0) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message:
-            "When fetching children, only one internal id should be provided.",
+            "Internal ids should not be provided for static data sources.",
         },
       });
     }
 
-    const [parentInternalId] = internalIds;
+    const contentNodesRes = await getContentNodesForStaticDataSourceView(
+      dataSourceView,
+      // TODO: Move to query params.
+      { limit: 100, offset: 0 }
+    );
 
-    const connectorsRes = await connectorsAPI.getConnectorPermissions({
-      connectorId: dataSource.connectorId,
-      filterPermission: "read",
-      includeParents: true,
-      parentId: parentInternalId ?? undefined,
-      viewType: "documents",
-    });
-
-    if (connectorsRes.isErr()) {
+    if (contentNodesRes.isErr()) {
       return apiError(req, res, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message:
-            "An error occurred while fetching the resources' children content nodes.",
+          message: contentNodesRes.error.message,
         },
       });
     }
 
-    contentNodes = connectorsRes.value.resources;
-  } else {
-    const connectorsRes = await connectorsAPI.getContentNodes({
-      connectorId: dataSource.connectorId,
-      includeParents: true,
-      internalIds,
-    });
-    if (connectorsRes.isErr()) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message:
-            "An error occurred while fetching the resources' content nodes.",
-        },
-      });
-    }
-
-    contentNodes = connectorsRes.value.nodes;
+    contentNodes = contentNodesRes.value;
   }
 
   const contentNodesInView = filterAndCropContentNodesByView(
