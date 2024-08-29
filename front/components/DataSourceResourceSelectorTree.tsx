@@ -10,13 +10,12 @@ import type {
   LightContentNode,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
 
 export default function DataSourceResourceSelectorTree({
   owner,
