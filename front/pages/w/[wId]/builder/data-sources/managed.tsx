@@ -39,7 +39,6 @@ import { useMemo, useRef, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourcesModal } from "@app/components/data_source/RequestDataSourcesModal";
-import { ShowAdmininistratorsModal } from "@app/components/data_source/ShowAdmininistratorsModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
@@ -305,13 +304,6 @@ export default function DataSourcesView({
         current: "data_sources_managed",
       })}
     >
-      {!isAdmin && (
-        <ShowAdmininistratorsModal
-          isOpen={showAdminsModal}
-          onClose={() => setShowAdminsModal(false)}
-          owner={owner}
-        />
-      )}
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Connections"
