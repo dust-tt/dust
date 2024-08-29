@@ -3,6 +3,7 @@ import {
   Chip,
   CommandLineIcon,
   DataTable,
+  KeyIcon,
   PlusIcon,
   Searchbar,
   Spinner,
@@ -14,6 +15,7 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
+import { AppSecretsModal } from "@app/components/app/AppSecretsModal";
 import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
 import { useApps } from "@app/lib/swr";
 
@@ -63,6 +65,8 @@ export const VaultAppsList = ({
   onSelect,
 }: VaultAppListProps) => {
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
+  const [isAppSecretsModalOpened, setIsAppSecretsModalOpened] = useState(false);
+
   const [appSearch, setAppSearch] = useState<string>("");
 
   const { apps, isAppsLoading } = useApps(owner);
@@ -109,6 +113,11 @@ export const VaultAppsList = ({
         isOpen={isCreateAppModalOpened}
         setIsOpen={setIsCreateAppModalOpened}
       />
+      <AppSecretsModal
+        owner={owner}
+        isOpen={isAppSecretsModalOpened}
+        setIsOpen={setIsAppSecretsModalOpened}
+      />
       <div className="flex gap-2">
         <Searchbar
           name="search"
@@ -120,15 +129,26 @@ export const VaultAppsList = ({
           }}
         />
         {isBuilder && (
-          <Button
-            label="New App"
-            variant="primary"
-            icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setIsCreateAppModalOpened(true);
-            }}
-          />
+          <>
+            <Button
+              label="New App"
+              variant="primary"
+              icon={PlusIcon}
+              size="sm"
+              onClick={() => {
+                setIsCreateAppModalOpened(true);
+              }}
+            />
+            <Button
+              label="Dev secrets"
+              variant="primary"
+              icon={KeyIcon}
+              size="sm"
+              onClick={() => {
+                setIsAppSecretsModalOpened(true);
+              }}
+            />
+          </>
         )}
       </div>
       <DataTable
