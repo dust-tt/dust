@@ -201,15 +201,21 @@ export function EditVaultManagedDataSourcesViews({
       />
 
       {isAdmin ? (
+        <Button
+          label="Add data from connections"
+          variant="primary"
+          icon={PlusIcon}
+          size="sm"
+          onClick={() => {
+            setShowDataSourcesModal(true);
+          }}
+        />
+      ) : (
         <>
           <Button
-            label="Add data from connections"
-            variant="primary"
+            label="Request"
             icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setShowDataSourcesModal(true);
-            }}
+            onClick={() => setShowRequestDataSourceModal(true)}
           />
           <RequestDataSourcesModal
             isOpen={showRequestDataSourceModal}
@@ -218,12 +224,6 @@ export function EditVaultManagedDataSourcesViews({
             owner={owner}
           />
         </>
-      ) : (
-        <Button
-          label="Request"
-          icon={PlusIcon}
-          onClick={() => setShowRequestDataSourceModal(true)}
-        />
       )}
     </>
   );
