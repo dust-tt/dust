@@ -62,6 +62,8 @@ type onPermissionUpdateType = (
 
 interface PermissionTreeChildrenBaseProps {
   canUpdatePermissions?: boolean;
+  // Custom function to determine if a node is checked.
+  // This is used to override the default behavior of checking if a node has read or read_write permissions.
   customIsNodeChecked?: (node: BaseContentNode) => boolean;
   displayDocumentSource?: (documentId: string) => void;
   onPermissionUpdate?: onPermissionUpdateType;
@@ -240,26 +242,29 @@ function PermissionTreeChildren({
     (n) => search.trim().length === 0 || n.title.includes(search)
   );
 
-  function isNodeSelected(node: BaseContentNode) {
-    // If the parent is selected, the node is considered selected.
-    if (parentIsSelected) {
-      return true;
-    }
+  const isNodeSelected = useCallback(
+    (node: BaseContentNode, stateByInternalId: Record<string, boolean>) => {
+      // If the parent is selected, the node is considered selected.
+      if (parentIsSelected) {
+        return true;
+      }
 
-    // Check if there is a local state for this node.
-    const localState = localStateByInternalId[node.internalId];
-    if (localState !== undefined) {
-      return localState;
-    }
+      // Check if there is a local state for this node.
+      const localState = stateByInternalId[node.internalId];
+      if (localState !== undefined) {
+        return localState;
+      }
 
-    // If a custom isNodeChecked function is provided, use it.
-    if (isNodeChecked) {
-      return isNodeChecked(node);
-    }
+      // If a custom isNodeChecked function is provided, use it.
+      if (isNodeChecked) {
+        return isNodeChecked(node);
+      }
 
-    // Return false if no custom function is provided.
-    return false;
-  }
+      // Return false if no custom function is provided.
+      return false;
+    },
+    [isNodeChecked, parentIsSelected]
+  );
 
   return (
     <>
@@ -315,7 +320,7 @@ function PermissionTreeChildren({
       )}
       <Tree isLoading={isLoading}>
         {filteredNodes.map((n, i) => {
-          const isChecked = isNodeSelected(n);
+          const isChecked = isNodeSelected(n, localStateByInternalId);
 
           return (
             <Tree.Item
@@ -394,7 +399,10 @@ function PermissionTreeChildren({
                 </div>
               }
               renderTreeItems={() => {
-                const isParentNodeSelected = isNodeSelected(n);
+                const isParentNodeSelected = isNodeSelected(
+                  n,
+                  localStateByInternalId
+                );
 
                 return renderChildItem(n, { isParentNodeSelected });
               }}
