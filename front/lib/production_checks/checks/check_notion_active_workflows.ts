@@ -64,7 +64,7 @@ async function areTemporalWorkflowsRunning(
   try {
     const { descriptions, histories } = await withRetries(
       getDescriptionsAndHistories,
-      { retries: 3 }
+      { retries: 10 }
     )({
       client,
       notionConnector,
