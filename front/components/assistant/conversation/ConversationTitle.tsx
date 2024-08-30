@@ -29,7 +29,7 @@ export function ConversationTitle({
   owner: WorkspaceType;
   conversation: ConversationType;
   shareLink: string;
-  onDelete?: () => void;
+  onDelete?: (conversationId: string) => void;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -86,7 +86,7 @@ export function ConversationTitle({
           onClose={() => setShowDeleteDialog(false)}
           onDelete={() => {
             setShowDeleteDialog(false);
-            onDelete();
+            onDelete(conversation.sId);
           }}
         />
       )}
