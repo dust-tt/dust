@@ -90,8 +90,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "Workspace ID not found",
+            message: "Workspace ID not found",
           },
         });
       }
