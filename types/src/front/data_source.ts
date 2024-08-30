@@ -103,26 +103,6 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "microsoft",
 ];
 
-export function isFolder(
-  ds: DataSourceType
-): ds is DataSourceType & { connectorProvider: null } {
-  // If there is no connectorProvider, it's a folder.
-  return !ds.connectorProvider;
-}
-
-export function isWebsite(
-  ds: DataSourceType
-): ds is DataSourceType & { connectorProvider: "webcrawler" } {
-  return ds.connectorProvider === "webcrawler";
-}
-
-export function isManaged(ds: DataSourceType): ds is DataSourceType & {
-  connectorProvider: ConnectorProvider;
-  connectorId: string;
-} {
-  return ds.connectorProvider !== null && !isWebsite(ds);
-}
-
 export function canContainStructuredData(ds: DataSourceType): boolean {
   return Boolean(
     isFolder(ds) ||
