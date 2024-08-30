@@ -1,4 +1,4 @@
-import { Button, KeyIcon, Modal, Page } from "@dust-tt/sparkle";
+import { BracesIcon, Button, Modal, Page } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
@@ -16,7 +16,7 @@ export const ManageAppSecretsButtonModal = ({
       <Button
         label="Dev secrets"
         variant="primary"
-        icon={KeyIcon}
+        icon={BracesIcon}
         size="sm"
         onClick={() => {
           setIsOpen(true);
