@@ -50,7 +50,7 @@ function import {
 
 if [ -z "$DUST_APPS_WORKSPACE_ID" ] 
 then
-    echo "Please set DUST_APPS_WORKSPACE_ID with your workspace sId if you want to synchronize dust-apps."
+    echo "Please set DUST_APPS_WORKSPACE_ID with your local workspace sId if you want to synchronize there dust-apps from production."
     exit 0
 fi
 
