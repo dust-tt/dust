@@ -2152,7 +2152,8 @@
           },
           "origin": {
             "type": "string",
-            "description": "Origin of the context (e.g., 'slack', 'web')"
+            "description": "Origin of the context",
+            "default": "api"
           }
         }
       },
