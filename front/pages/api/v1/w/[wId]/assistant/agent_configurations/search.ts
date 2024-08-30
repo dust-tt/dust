@@ -79,6 +79,16 @@ async function handler(
 
   const { workspaceAuth } = await Authenticator.fromKey(keyRes.value, wId);
 
+  if (!workspaceAuth || !workspaceAuth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "workspace_not_found",
+        message: "Workspace not found or not enough permissions",
+      },
+    });
+  }
+
   const owner = workspaceAuth.workspace();
   if (!owner) {
     return apiError(req, res, {
