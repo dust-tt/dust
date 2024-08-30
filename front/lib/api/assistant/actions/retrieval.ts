@@ -25,7 +25,7 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/api/config";
+import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentRetrievalAction,
@@ -35,7 +35,7 @@ import {
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
-  isProductionDustAppsWorkspaceId,
+  PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
@@ -436,7 +436,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
         workspace_id:
-          isDevelopment() && isProductionDustAppsWorkspaceId()
+          isDevelopment() && !apiConfig.getDevelopmentDustAppsWorkspaceId()
             ? PRODUCTION_DUST_WORKSPACE_ID
             : d.workspaceId,
         // Use dataSourceViewId if it exists; otherwise, use dataSourceId.
