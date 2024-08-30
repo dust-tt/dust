@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import {
+  CancelledFailure,
   executeChild,
   proxyActivities,
   workflowInfo,
@@ -16,28 +17,43 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
 export async function retrieveNewTranscriptsWorkflow(
   transcriptsConfigurationId: ModelId
 ) {
-  const filesToProcess = await retrieveNewTranscriptsActivity(
-    transcriptsConfigurationId
-  );
+  try {
+    const filesToProcess = await retrieveNewTranscriptsActivity(
+      transcriptsConfigurationId
+    );
 
-  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
+    const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  for (const fileId of filesToProcess) {
-    const workflowId = makeProcessTranscriptWorkflowId({
-      transcriptsConfigurationId,
-      fileId,
-    });
-    await executeChild(processTranscriptWorkflow, {
-      workflowId,
-      searchAttributes: parentSearchAttributes,
-      args: [
-        {
-          fileId,
-          transcriptsConfigurationId,
-        },
-      ],
-      memo,
-    });
+    for (const fileId of filesToProcess) {
+      const workflowId = makeProcessTranscriptWorkflowId({
+        transcriptsConfigurationId,
+        fileId,
+      });
+      try {
+        await executeChild(processTranscriptWorkflow, {
+          workflowId,
+          searchAttributes: parentSearchAttributes,
+          args: [
+            {
+              fileId,
+              transcriptsConfigurationId,
+            },
+          ],
+          memo,
+        });
+      } catch (error) {
+        if (error instanceof CancelledFailure) {
+          console.log(`Child workflow ${workflowId} was cancelled`);
+        } else {
+          console.error(`Error in child workflow ${workflowId}:`, error);
+          throw error;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error in retrieveNewTranscriptsWorkflow:", error);
+    // Mark the workflow as failed
+    throw error;
   }
 }
 
@@ -48,5 +64,11 @@ export async function processTranscriptWorkflow({
   fileId: string;
   transcriptsConfigurationId: ModelId;
 }): Promise<void> {
-  await processTranscriptActivity(transcriptsConfigurationId, fileId);
+  try {
+    await processTranscriptActivity(transcriptsConfigurationId, fileId);
+  } catch (error) {
+    console.error(`Error processing transcript ${fileId}:`, error);
+    // Mark the workflow as failed
+    throw error;
+  }
 }
