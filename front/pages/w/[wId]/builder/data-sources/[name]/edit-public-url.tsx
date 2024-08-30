@@ -14,8 +14,6 @@ import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
-const { GA_TRACKING_ID = "" } = process.env;
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -74,7 +72,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSource,
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },
   };

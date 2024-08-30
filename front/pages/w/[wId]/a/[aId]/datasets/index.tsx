@@ -16,12 +16,11 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps =
   withDefaultUserAuthRequirementsNoWorkspaceCheck<{
@@ -63,7 +62,7 @@ export const getServerSideProps =
         app,
         datasets,
         dustAppsListUrl,
-        gaTrackingId: GA_TRACKING_ID,
+        gaTrackingId: config.getGaTrackingId(),
       },
     };
   });

@@ -49,8 +49,6 @@ import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
-const { GA_TRACKING_ID = "" } = process.env;
-
 type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
     usage: number | null;
@@ -203,7 +201,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       managedDataSources,
       integrations,
       plan,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       dustClientFacingUrl: config.getClientFacingUrl(),
     },
   };
