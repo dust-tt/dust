@@ -11,7 +11,6 @@ import {
 import type {
   DataSourceViewType,
   PlanType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isFolder } from "@dust-tt/types";

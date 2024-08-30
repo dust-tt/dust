@@ -4,7 +4,6 @@ import type {
   DataSourceViewCategory,
   DataSourceViewType,
   PlanType,
-  VaultType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
