@@ -129,12 +129,8 @@ export async function getAgentConfiguration(
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,
   name: string
-): Promise<AgentConfiguration[] | null> {
-  const owner = auth.workspace();
-
-  if (!owner || !auth.isUser()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+): Promise<AgentConfiguration[] | []> {
+  const owner = auth.getNonNullableWorkspace();
 
   const agentConfigurations = await AgentConfiguration.findAll({
     where: {
@@ -144,7 +140,7 @@ export async function searchAgentConfigurationsByName(
       },
     },
   });
-  return agentConfigurations || null;
+  return agentConfigurations || [];
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {

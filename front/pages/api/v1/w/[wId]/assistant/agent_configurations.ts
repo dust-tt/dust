@@ -66,17 +66,6 @@ async function handler(
 
   const { workspaceAuth } = await Authenticator.fromKey(keyRes.value, wId);
 
-  const owner = workspaceAuth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const agentConfigurations = await getAgentConfigurations({

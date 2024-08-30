@@ -8,9 +8,9 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 /**
  * @swagger
- * /api/v1/w/{wId}/assistant/agent_configurations/{name}:
+ * /api/v1/w/{wId}/assistant/agent_configurations/search:
  *   get:
- *     summary: Search agent configuration by name
+ *     summary: Search agent configurations by name
  *     description: Search for agent configurations by name in the workspace identified by {wId}.
  *     tags:
  *       - Assistant
@@ -21,30 +21,32 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: path
- *         name: name
+ *       - in: query
+ *         name: q
  *         required: true
- *         description: Name of the agent configuration
+ *         description: Search query for agent configuration names
  *         schema:
  *           type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully retrieved agent configuration
+ *         description: Successfully retrieved agent configurations
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 agentConfiguration:
- *                   $ref: '#/components/schemas/AgentConfiguration'
+ *                 agentConfigurations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AgentConfiguration'
  *       400:
- *         description: Bad Request. The Assistant API is only available on your own workspace.
+ *         description: Bad Request. Invalid or missing parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
- *         description: Agent configuration not found.
+ *         description: Workspace not found.
  *       405:
  *         description: Method not supported. Only GET is expected.
  *       500:
@@ -52,7 +54,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  */
 
 type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: AgentConfiguration[] | null;
+  agentConfigurations: AgentConfiguration[];
 };
 
 async function handler(
@@ -64,7 +66,7 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { wId } = req.query;
+  const { wId, q } = req.query;
   if (typeof wId !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -90,31 +92,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const wId = workspaceAuth.workspace()?.id;
-
-      if (!wId) {
+      if (typeof q !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Workspace ID not found",
-          },
-        });
-      }
-
-      if (typeof req.query.name !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Name of the agent configuration not found",
+            message: "Search query not found",
           },
         });
       }
 
       const agentConfigurations = await searchAgentConfigurationsByName(
         workspaceAuth,
-        req.query.name
+        q
       );
       return res.status(200).json({
         agentConfigurations,
