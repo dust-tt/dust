@@ -215,16 +215,20 @@ export function RenderMessageMarkdown({
   customRenderer?: CustomRenderer;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
-  const visualizationRenderer = useMemo(() => {
-    return (
-      customRenderer?.visualization ||
-      (() => (
-        <div className="pb-2 pt-4 font-medium text-red-600">
-          Visualization not available
-        </div>
-      ))
-    );
-  }, [customRenderer]);
+
+  // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
+  // AST parsing rounds (happening at each token being streamed).
+  //
+  // When adding a new directive and associated component that depends on external data (eg
+  // workspace or message), you can use the customRenderer.visualization pattern. It is essential
+  // for the customRenderer argument to be memoized to avoid re-renderings through the
+  // markdownComponents memoization dependency on `customRenderer`.
+  //
+  // Make sure to spend some time understanding the re-rendering or lack thereof through the parser
+  // rounds.
+  //
+  // Minimal test whenever editing this code: ensure that code block content of a streaming message
+  // can be selected without blinking.
 
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
@@ -291,23 +295,15 @@ export function RenderMessageMarkdown({
       // @ts-expect-error - `visualization` is a custom tag, currently refused by
       // react-markdown types although the functionality is supported
       visualization: ({ position }) => {
-        /* eslint-disable-next-line react-hooks/rules-of-hooks */
-        const { content } = useContext(MarkDownContentContext);
-        let code = content
-          .split("\n")
-          .slice(position.start.line, position.end.line - 1)
-          .join("\n");
-        let complete = false;
-        if (code.includes(VISUALIZATION_MAGIC_LINE)) {
-          code = code.replace(VISUALIZATION_MAGIC_LINE, "");
-          complete = true;
-        }
-        return visualizationRenderer(code, complete, position.start.line);
+        return (
+          <VisualizationBlock
+            position={position}
+            customRenderer={customRenderer}
+          />
+        );
       },
     }),
-    // Not depending visualizationRenderer prevents unnecessary re-renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [textSize, textColor]
+    [textSize, textColor, customRenderer]
   );
 
   const markdownPlugins = useMemo(
@@ -350,6 +346,38 @@ export function RenderMessageMarkdown({
       </CitationsContext.Provider>
     </div>
   );
+}
+
+function VisualizationBlock({
+  position,
+  customRenderer,
+}: {
+  position: { start: { line: number }; end: { line: number } };
+  customRenderer?: CustomRenderer;
+}) {
+  const { content } = useContext(MarkDownContentContext);
+
+  const visualizationRenderer = useMemo(() => {
+    return (
+      customRenderer?.visualization ||
+      (() => (
+        <div className="pb-2 pt-4 font-medium text-red-600">
+          Visualization not available
+        </div>
+      ))
+    );
+  }, [customRenderer]);
+
+  let code = content
+    .split("\n")
+    .slice(position.start.line, position.end.line - 1)
+    .join("\n");
+  let complete = false;
+  if (code.includes(VISUALIZATION_MAGIC_LINE)) {
+    code = code.replace(VISUALIZATION_MAGIC_LINE, "");
+    complete = true;
+  }
+  return visualizationRenderer(code, complete, position.start.line);
 }
 
 function MentionBlock({ agentName }: { agentName: string }) {

@@ -38,7 +38,14 @@ import {
 } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
@@ -439,7 +446,7 @@ export function AgentMessage({
       size={size}
     >
       <div>
-        {renderAgentMessage({
+        {RenderAgentMessage({
           agentMessage: agentMessageToRender,
           references: references,
           streaming: shouldStream,
@@ -451,7 +458,7 @@ export function AgentMessage({
     </ConversationMessage>
   );
 
-  function renderAgentMessage({
+  function RenderAgentMessage({
     agentMessage,
     references,
     streaming,
@@ -462,6 +469,24 @@ export function AgentMessage({
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
+    const customRenderer = useMemo(() => {
+      return {
+        visualization: (code: string, complete: boolean, lineStart: number) => {
+          return (
+            <VisualizationActionIframe
+              owner={owner}
+              visualization={{
+                code,
+                complete,
+                identifier: `viz-${agentMessage.sId}-${lineStart}`,
+              }}
+              key={`viz-${agentMessage.sId}-${lineStart}`}
+            />
+          );
+        },
+      };
+    }, [agentMessage.sId]);
+
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage
@@ -516,21 +541,7 @@ export function AgentMessage({
                     updateActiveReferences,
                     setHoveredReference: setLastHoveredReference,
                   }}
-                  customRenderer={{
-                    visualization: (code, complete, lineStart) => {
-                      return (
-                        <VisualizationActionIframe
-                          owner={owner}
-                          visualization={{
-                            code,
-                            complete,
-                            identifier: `viz-${agentMessage.sId}-${lineStart}`,
-                          }}
-                          key={`viz-${agentMessage.sId}-${lineStart}`}
-                        />
-                      );
-                    },
-                  }}
+                  customRenderer={customRenderer}
                 />
                 {activeReferences.length > 0 && (
                   <Citations
