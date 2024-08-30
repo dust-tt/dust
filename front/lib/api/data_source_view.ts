@@ -140,7 +140,7 @@ export async function getContentNodesForStaticDataSourceView(
       internalId: doc.document_id,
       lastUpdatedAt: doc.timestamp,
       parentInternalId: null,
-      parentInternalIds: null,
+      parentInternalIds: [],
       permission: "read",
       preventSelection: false,
       sourceUrl: doc.source_url ?? null,
