@@ -2,6 +2,7 @@ import type {
   ContentNodesViewType,
   CoreAPIError,
   DataSourceViewContentNode,
+  DataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
@@ -48,7 +49,7 @@ export function filterAndCropContentNodesByView(
 }
 
 export async function getContentNodesForManagedDataSourceView(
-  dataSourceView: DataSourceViewResource,
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
     includeChildren,
     internalIds,
