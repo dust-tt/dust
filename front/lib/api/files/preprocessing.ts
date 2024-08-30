@@ -9,6 +9,7 @@ import {
   Err,
   isTextExtractionSupportedContentType,
   Ok,
+  pagePrefixesPerMimeType,
   TextExtraction,
 } from "@dust-tt/types";
 import { parse } from "csv-parse";
@@ -136,32 +137,15 @@ async function createFileTextStream(buffer: Buffer, contentType: string) {
   if (pages.length === 0) {
     throw new Error("no_text_found");
   }
-  return new Readable({
-    async read() {
-      for (const page of pages) {
-        this.push(page.content);
-      }
-      this.push(null);
-    },
-  });
-}
 
-async function createPdfTextStream(buffer: Buffer) {
-  const extractionRes = await new TextExtraction(
-    config.getTextExtractionUrl()
-  ).fromBuffer(buffer, "application/pdf");
-
-  if (extractionRes.isErr()) {
-    // We must throw here, stream does not support Result type.
-    throw extractionRes.error;
-  }
-
-  const pages = extractionRes.value;
+  const prefix = pagePrefixesPerMimeType[contentType];
 
   return new Readable({
     async read() {
       for (const page of pages) {
-        const pageText = `$pdfPage: ${page.pageNumber}/${pages.length}\n${page.content}\n\n`;
+        const pageText = prefix
+          ? `${prefix}: ${page.pageNumber}/${pages.length}\n${page.content}\n\n`
+          : page.content;
         this.push(pageText);
       }
       this.push(null);
@@ -216,55 +200,6 @@ const extractTextFromFile: PreprocessingFunction = async (
 
     return new Err(
       new Error(`Failed extracting text from File. ${errorMessage}`)
-    );
-  }
-};
-
-// PDF preprocessing.
-const extractTextFromPDF: PreprocessingFunction = async (
-  auth: Authenticator,
-  file: FileResource
-) => {
-  try {
-    const readStream = file.getReadStream({
-      auth,
-      version: "original",
-    });
-    // Load file in memory.
-    const arrayBuffer = await buffer(readStream);
-
-    const writeStream = file.getWriteStream({
-      auth,
-      version: "processed",
-    });
-    const pdfTextStream = await createPdfTextStream(arrayBuffer);
-
-    await pipeline(
-      pdfTextStream,
-      async function* (source) {
-        for await (const chunk of source) {
-          yield chunk;
-        }
-      },
-      writeStream
-    );
-
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        error: err,
-      },
-      "Failed to extract text from PDF."
-    );
-
-    const errorMessage =
-      err instanceof Error ? err.message : "Unexpected error";
-
-    return new Err(
-      new Error(`Failed extracting text from PDF. ${errorMessage}`)
     );
   }
 };
@@ -404,7 +339,7 @@ const processingPerContentType: PreprocessingPerContentType = {
     avatar: notSupportedError,
   },
   "application/pdf": {
-    conversation: extractTextFromPDF,
+    conversation: extractTextFromFile,
     avatar: notSupportedError,
   },
   "image/jpeg": {
@@ -424,10 +359,6 @@ const processingPerContentType: PreprocessingPerContentType = {
     avatar: notSupportedError,
   },
   "text/markdown": {
-    conversation: storeRawText,
-    avatar: notSupportedError,
-  },
-  "text/x-markdown": {
     conversation: storeRawText,
     avatar: notSupportedError,
   },
