@@ -8,12 +8,12 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 
 /**
  * @swagger
- * /api/v1/w/{wId}/assistant/agent_configuration/{name}:
+ * /api/v1/w/{wId}/assistant/agent_configurations:
  *   get:
- *     summary: Get agent configuration
- *     description: Retrieve a specific agent configuration for the workspace identified by {wId} and {name}.
+ *     summary: List assistants
+ *     description: Get the agent configurations for the workspace identified by {wId}.
  *     tags:
- *       - Assistant
+ *       - Workspace
  *     parameters:
  *       - in: path
  *         name: wId
@@ -21,34 +21,27 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: ID of the workspace
  *         schema:
  *           type: string
- *       - in: path
- *         name: name
- *         required: true
- *         description: Name of the agent configuration
- *         schema:
- *           type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully retrieved agent configuration
+ *         description: Agent configurations for the workspace
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 agentConfiguration:
- *                   $ref: '#/components/schemas/AgentConfiguration'
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/AgentConfiguration'
  *       400:
- *         description: Bad Request. The Assistant API is only available on your own workspace.
+ *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
- *       404:
- *         description: Agent configuration not found.
- *       405:
- *         description: Method not supported. Only GET is expected.
  *       500:
  *         description: Internal Server Error.
+ *       404:
+ *         description: Workspace not found.
+ *       405:
+ *         description: Method not supported. Only GET is expected.
  */
 
 async function handler(
