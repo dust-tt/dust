@@ -118,7 +118,6 @@
     "remark-directive": "^2.0.1",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",
-    "remark-stringify": "^11.0.0",
     "sanitize-html": "^2.13.0",
     "sequelize": "^6.31.0",
     "sharp": "^0.33.4",
