@@ -20,7 +20,6 @@ export type ContentFragmentContextType = {
 
 export const supportedContentFragmentType = [
   ...supportedUploadableContentType,
-  "slack_thread_content",
   "dust-application/slack",
 ] as const;
 
