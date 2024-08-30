@@ -22,12 +22,12 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetVaultDataSourceViewWithConnectorsResponseBody = {
-  dataSourceViews: DataSourceViewWithConnectorType[];
-};
-
-export type GetVaultDataSourceViewsResponseBody = {
-  dataSourceViews: DataSourceViewType[];
+export type GetVaultDataSourceViewsResponseBody<
+  IncludeConnectorDetails extends boolean = boolean,
+> = {
+  dataSourceViews: IncludeConnectorDetails extends true
+    ? DataSourceViewWithConnectorType[]
+    : DataSourceViewType[];
 };
 
 export type PostVaultDataSourceViewsResponseBody = {
@@ -38,9 +38,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetVaultDataSourceViewsResponseBody
-      | GetVaultDataSourceViewWithConnectorsResponseBody
-      | PostVaultDataSourceViewsResponseBody
+      GetVaultDataSourceViewsResponseBody | PostVaultDataSourceViewsResponseBody
     >
   >,
   auth: Authenticator
