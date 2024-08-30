@@ -20,10 +20,17 @@ interface PageContent {
   content: string;
 }
 
+export const pagePrefixesPerMimeType: Record<string, string> = {
+  "application/pdf": "$pdfPage",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "$slideNumber",
+};
+
 // All those content types are supported by the Tika server.
 // Before adding a new content type, make sure to test it.
 const supportedContentTypes = [
   "application/pdf",
+  "application/msword",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ] as const;
