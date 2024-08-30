@@ -78,8 +78,7 @@ export type ContentNodeType = "file" | "folder" | "database" | "channel";
  * information. More details here:
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
-export type ContentNode = {
-  provider: ConnectorProvider;
+export interface BaseContentNode {
   internalId: string;
   // The direct parent ID of this content node
   parentInternalId: string | null;
@@ -92,6 +91,10 @@ export type ContentNode = {
   permission: ConnectorPermission;
   dustDocumentId: string | null;
   lastUpdatedAt: number | null;
+}
+
+export type ContentNode = BaseContentNode & {
+  provider: ConnectorProvider;
 };
 
 export type ContentNodeWithParentIds = ContentNode & {

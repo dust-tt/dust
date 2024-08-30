@@ -312,16 +312,17 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export type AssistantBuilderProps = {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  plan: PlanType;
+  agentConfigurationId: string | null;
+  baseUrl: string;
+  defaultIsEdited?: boolean;
+  defaultTemplate: FetchAssistantTemplateResponse | null;
+  flow: BuilderFlow;
   gaTrackingId: string;
   initialBuilderState: AssistantBuilderInitialState | null;
-  agentConfigurationId: string | null;
-  flow: BuilderFlow;
-  defaultIsEdited?: boolean;
-  baseUrl: string;
-  defaultTemplate: FetchAssistantTemplateResponse | null;
+  isAdmin: boolean;
+  owner: WorkspaceType;
+  plan: PlanType;
+  subscription: SubscriptionType;
 };
 
 export const BUILDER_SCREENS = {

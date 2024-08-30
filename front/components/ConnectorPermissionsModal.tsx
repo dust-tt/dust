@@ -128,10 +128,12 @@ export function ConnectorPermissionsModal({
                 owner={owner}
                 dataSource={dataSource}
                 canUpdatePermissions={canUpdatePermissions}
-                onPermissionUpdate={({ internalId, permission }) => {
+                onPermissionUpdate={(node, { newPermission }) => {
+                  const { internalId } = node;
+
                   setUpdatedPermissionByInternalId((prev) => ({
                     ...prev,
-                    [internalId]: permission,
+                    [internalId]: newPermission,
                   }));
                 }}
                 showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}

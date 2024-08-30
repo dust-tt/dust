@@ -1,5 +1,5 @@
 import {
-  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
   DocumentTextIcon,
   FolderIcon,
   Square3Stack3DIcon,
@@ -10,7 +10,7 @@ import { assertNever } from "@dust-tt/types";
 export function getVisualForContentNode(node: ContentNode | LightContentNode) {
   switch (node.type) {
     case "channel":
-      return ChatBubbleBottomCenterTextIcon;
+      return ChatBubbleLeftRightIcon;
 
     case "database":
       return Square3Stack3DIcon;

@@ -8,10 +8,8 @@ import {
   DustIcon,
   IconButton,
   LockIcon,
-  Modal,
   Page,
   PlanetIcon,
-  SlackLogo,
   SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
@@ -26,7 +24,7 @@ import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
-import { SlackIntegration } from "@app/components/assistant_builder/SlackIntegration";
+import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
 type ConfirmationModalDataType = {
@@ -100,29 +98,33 @@ export const SCOPE_INFO: Record<
 
 type NonGlobalScope = Exclude<AgentConfigurationScope, "global">;
 
-export function SharingButton({
-  owner,
-  agentConfigurationId,
-  initialScope,
-  newScope,
-  setNewScope,
-  baseUrl,
-  showSlackIntegration,
-  slackDataSource,
-  slackChannelSelected,
-  setNewLinkedSlackChannels,
-}: {
-  owner: WorkspaceType;
+interface SharingButtonProps {
   agentConfigurationId: string | null;
-  initialScope: NonGlobalScope;
-  newScope: NonGlobalScope;
-  setNewScope: (scope: NonGlobalScope) => void;
   baseUrl: string;
-  showSlackIntegration: boolean;
-  slackDataSource: DataSourceViewType | null;
-  slackChannelSelected: SlackChannel[];
+  initialScope: NonGlobalScope;
+  isAdmin: boolean;
+  newScope: NonGlobalScope;
+  owner: WorkspaceType;
   setNewLinkedSlackChannels: (channels: SlackChannel[]) => void;
-}) {
+  setNewScope: (scope: NonGlobalScope) => void;
+  showSlackIntegration: boolean;
+  slackChannelSelected: SlackChannel[];
+  slackDataSourceView: DataSourceViewType | null;
+}
+
+export function SharingButton({
+  agentConfigurationId,
+  baseUrl,
+  initialScope,
+  isAdmin,
+  newScope,
+  owner,
+  setNewLinkedSlackChannels,
+  setNewScope,
+  showSlackIntegration,
+  slackChannelSelected,
+  slackDataSourceView,
+}: SharingButtonProps) {
   const { agentUsage, isAgentUsageLoading, isAgentUsageError } = useAgentUsage({
     workspaceId: owner.sId,
     agentConfigurationId,
@@ -149,15 +151,16 @@ export function SharingButton({
 
   return (
     <>
-      {slackDataSource && (
-        <SlackIntegrationDrawer
+      {slackDataSourceView && (
+        <SlackAssistantDefaultManager
           existingSelection={slackChannelSelected}
-          slackDataSource={slackDataSource}
+          slackDataSourceView={slackDataSourceView}
           owner={owner}
           onSave={(slackChannels: SlackChannel[]) => {
             setNewLinkedSlackChannels(slackChannels);
           }}
           assistantHandle="@Dust"
+          isAdmin={isAdmin}
           show={slackDrawerOpened}
           onClose={() => setSlackDrawerOpened(false)}
         />
@@ -226,6 +229,8 @@ export function SharingButton({
                   <div className="pt-4">
                     <SliderToggle
                       selected={slackChannelSelected.length > 0}
+                      // If not admins, but there are channels selected, prevent from removing.
+                      disabled={slackChannelSelected.length > 0 && !isAdmin}
                       onClick={() => {
                         if (slackChannelSelected.length > 0) {
                           setNewLinkedSlackChannels([]);
@@ -450,71 +455,5 @@ function ScopeChangeModal({
         <div className="font-bold">Are you sure you want to proceed ?</div>
       </div>
     </Dialog>
-  );
-}
-
-function SlackIntegrationDrawer({
-  slackDataSource,
-  owner,
-  existingSelection,
-  onSave,
-  assistantHandle,
-  show,
-  onClose,
-}: {
-  show: boolean;
-  onClose: () => void;
-  slackDataSource: DataSourceViewType;
-  owner: WorkspaceType;
-  existingSelection: SlackChannel[];
-  onSave: (channels: SlackChannel[]) => void;
-  assistantHandle?: string;
-}) {
-  const [slackIntegrationOpened, setSlackIntegrationOpened] = useState(false);
-  return (
-    <>
-      <SlackIntegration
-        slackDataSource={slackDataSource}
-        owner={owner}
-        existingSelection={existingSelection}
-        onSave={(slackChannels) => {
-          onSave(slackChannels);
-          setSlackIntegrationOpened(false);
-        }}
-        onClose={() => setSlackIntegrationOpened(false)}
-        show={slackIntegrationOpened}
-        assistantHandle={assistantHandle}
-      />
-      <Modal
-        isOpen={show}
-        title={`Slack Integration`}
-        onClose={onClose}
-        hasChanged={false}
-        variant="side-sm"
-      >
-        <div className="pt-8">
-          <Page.Vertical gap="lg" align="stretch">
-            <div className="flex flex-col gap-y-2">
-              <div className="grow text-sm font-medium text-element-800">
-                <SlackLogo className="h-8 w-8" />
-              </div>
-              <div className="text-sm font-normal text-element-900">
-                Set this assistant as the default assistant on one or several of
-                your Slack channels. It will answer by default when the{" "}
-                <span className="font-bold">{assistantHandle}</span> Slack bot
-                is mentionned in these channels.
-              </div>
-              <div className="justify-end pt-2">
-                <Button
-                  hasMagnifying={false}
-                  label="Select channels"
-                  onClick={() => setSlackIntegrationOpened(true)}
-                />
-              </div>
-            </div>
-          </Page.Vertical>
-        </div>
-      </Modal>
-    </>
   );
 }

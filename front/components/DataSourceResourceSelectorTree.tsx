@@ -1,7 +1,5 @@
 import {
   BracesIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentTextIcon,
   ExternalLinkIcon,
   IconButton,
   Tree,
@@ -12,11 +10,10 @@ import type {
   LightContentNode,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
-import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -28,7 +25,6 @@ export default function DataSourceResourceSelectorTree({
   selectedParents = [],
   selectedResourceIds,
   onSelectChange,
-  filterPermission = "read",
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
@@ -42,7 +38,6 @@ export default function DataSourceResourceSelectorTree({
     parents: string[],
     selected: boolean
   ) => void;
-  filterPermission?: ConnectorPermission;
   viewType?: ContentNodesViewType;
 }) {
   return (
@@ -58,34 +53,10 @@ export default function DataSourceResourceSelectorTree({
         onSelectChange={(resource, parents, selected) => {
           onSelectChange(resource, parents, selected);
         }}
-        filterPermission={filterPermission}
         viewType={viewType}
       />
     </div>
   );
-}
-
-export type IconComponentType =
-  | typeof DocumentTextIcon
-  | typeof FolderIcon
-  | typeof CircleStackIcon
-  | typeof ChatBubbleLeftRightIcon;
-
-function getIconForType(type: ContentNodeType): IconComponentType {
-  switch (type) {
-    case "file":
-      return DocumentTextIcon;
-    case "folder":
-      return FolderIcon;
-    case "database":
-      return CircleStackIcon;
-    case "channel":
-      return ChatBubbleLeftRightIcon;
-    default:
-      ((n: never) => {
-        throw new Error("Unreachable " + n);
-      })(type);
-  }
 }
 
 function DataSourceResourceSelectorChildren({
@@ -98,7 +69,6 @@ function DataSourceResourceSelectorChildren({
   showExpand,
   selectedResourceIds,
   onSelectChange,
-  filterPermission,
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
@@ -114,13 +84,11 @@ function DataSourceResourceSelectorChildren({
     parents: string[],
     selected: boolean
   ) => void;
-  filterPermission: ConnectorPermission;
   viewType: ContentNodesViewType;
 }) {
   const { vaultContent, isVaultContentLoading, isVaultContentError } =
     useVaultDataSourceViewContent({
       dataSourceView: dataSourceView,
-      filterPermission,
       owner,
       parentId,
       vaultId: dataSourceView.vaultId,
@@ -178,7 +146,6 @@ function DataSourceResourceSelectorChildren({
             !isSelected &&
             Boolean(selectedParents.find((id) => id === r.internalId));
 
-          const IconComponent = getIconForType(r.type);
           const checkable =
             (!isTablesView || r.type === "database") &&
             r.preventSelection !== true;
@@ -193,7 +160,7 @@ function DataSourceResourceSelectorChildren({
           return (
             <Tree.Item
               key={r.internalId}
-              visual={IconComponent}
+              visual={getVisualForContentNode(r)}
               type={r.expandable && showExpand ? "node" : "leaf"}
               label={r.title}
               className="whitespace-nowrap"
@@ -220,7 +187,6 @@ function DataSourceResourceSelectorChildren({
                   onSelectChange={onSelectChange}
                   parents={[...parents, r.internalId]}
                   parentIsSelected={parentIsSelected || isSelected}
-                  filterPermission={filterPermission}
                   viewType={viewType}
                 />
               )}
