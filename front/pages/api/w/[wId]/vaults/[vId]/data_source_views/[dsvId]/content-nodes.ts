@@ -13,10 +13,13 @@ import {
   getContentNodesForManagedDataSourceView,
   getContentNodesForStaticDataSourceView,
 } from "@app/lib/api/data_source_view";
+import { getOffsetPaginationParams } from "@app/lib/api/pagination";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+
+const DEFAULT_LIMIT = 100;
 
 const GetContentNodesRequestBodySchema = t.type({
   includeChildren: t.undefined,
@@ -48,14 +51,22 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDataSourceViewContentNodes>>,
   auth: Authenticator
 ): Promise<void> {
-  const dataSourceView = await DataSourceViewResource.fetchById(
-    auth,
-    req.query.dsvId as string
-  );
+  const { dsvId, vId } = req.query;
+  if (typeof dsvId !== "string" || typeof vId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid request query parameters.",
+      },
+    });
+  }
+
+  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
 
   if (
     !dataSourceView ||
-    req.query.vId !== dataSourceView.vault.sId ||
+    vId !== dataSourceView.vault.sId ||
     !dataSourceView.canRead(auth)
   ) {
     return apiError(req, res, {
@@ -116,6 +127,20 @@ async function handler(
     });
   }
 
+  const paginationRes = getOffsetPaginationParams(req, {
+    defaultLimit: DEFAULT_LIMIT,
+    defaultOffset: 0,
+  });
+  if (paginationRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_pagination_parameters",
+        message: "Invalid pagination parameters",
+      },
+    });
+  }
+
   let contentNodes: DataSourceViewContentNode[];
 
   if (dataSourceView.dataSource.connectorId) {
@@ -153,8 +178,7 @@ async function handler(
 
     const contentNodesRes = await getContentNodesForStaticDataSourceView(
       dataSourceView,
-      // TODO: Move to query params.
-      { limit: 100, offset: 0 }
+      paginationRes.value
     );
 
     if (contentNodesRes.isErr()) {

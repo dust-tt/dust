@@ -83,3 +83,50 @@ export function getPaginationParams(
 
   return new Ok(queryValidation.right);
 }
+
+// Offset pagination.
+
+const OffsetPaginationParamsCodec = t.type({
+  limit: LimitCodec,
+  offset: t.number,
+});
+
+interface OffsetPaginationParams {
+  limit: number;
+  offset: number;
+}
+
+interface OffsetPaginationOptions {
+  defaultLimit: number;
+  defaultOffset: 0;
+}
+
+export function getOffsetPaginationParams(
+  req: NextApiRequest,
+  defaults: OffsetPaginationOptions
+): Result<OffsetPaginationParams, InvalidPaginationParamsError> {
+  const rawParams = {
+    limit: req.query.limit
+      ? parseInt(req.query.limit as string)
+      : defaults.defaultLimit,
+    offset: req.query.offset
+      ? parseInt(req.query.offset as string)
+      : defaults.defaultOffset,
+  };
+
+  const queryValidation = OffsetPaginationParamsCodec.decode(rawParams);
+
+  // Validate and decode the raw parameters.
+  if (isLeft(queryValidation)) {
+    const pathError = reporter.formatValidationErrors(queryValidation.left);
+
+    return new Err(
+      new InvalidPaginationParamsError(
+        "Invalid pagination parameters",
+        pathError.join(",")
+      )
+    );
+  }
+
+  return new Ok(queryValidation.right);
+}

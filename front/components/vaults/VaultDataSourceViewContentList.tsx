@@ -43,7 +43,6 @@ type VaultDataSourceViewContentListProps = {
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
-  vault: VaultType;
 };
 
 const getTableColumns = () => {
@@ -84,7 +83,7 @@ export const VaultDataSourceViewContentList = ({
       owner,
       internalIds: parentId ? [parentId] : [],
       includeChildren: true,
-      viewType: "documents", // TODO(GROUP_UI): Do not pass viewType, get all document/tables in one call
+      viewType: "documents",
     });
 
   const rows: RowData[] =
