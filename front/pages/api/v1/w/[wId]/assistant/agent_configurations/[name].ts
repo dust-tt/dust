@@ -8,7 +8,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 /**
  * @swagger
- * /api/v1/w/{wId}/assistant/agent_configuration/{name}:
+ * /api/v1/w/{wId}/assistant/agent_configurations/{name}:
  *   get:
  *     summary: Get a single agent configuration by name
  *     description: Retrieve a specific agent configuration for the workspace identified by {wId} and {name}.
