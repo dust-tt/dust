@@ -88,19 +88,6 @@ async function handler(
     });
   }
 
-  const { dataSource } = dataSourceView;
-
-  // Only managed data sources can be queried for content nodes.
-  if (dataSource.connectorId === null) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "data_source_not_managed",
-        message: "The data source view you requested is not managed.",
-      },
-    });
-  }
-
   const bodyValidation = GetContentNodesOrChildrenRequestBody.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
