@@ -66,7 +66,7 @@ const getTableColumns = ({
   const nameColumn = {
     header: "Name",
     accessorKey: "label",
-    id: "label",
+    id: "name",
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent icon={info.row.original.icon}>
         <span className="font-bold"> {info.getValue()}</span>
@@ -284,7 +284,7 @@ export const VaultResourcesList = ({
           data={rows}
           columns={getTableColumns({ isManaged, isSystemVault })}
           filter={dataSourceSearch}
-          filterColumn="label"
+          filterColumn="name"
         />
       ) : !isAdmin ? (
         <div className="flex items-center justify-center text-sm font-normal text-element-700">
