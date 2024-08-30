@@ -18,6 +18,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 import {
   retrieveGongTranscriptContent,
   retrieveGongTranscripts,
@@ -54,6 +55,8 @@ export async function retrieveNewTranscriptsActivity(
   });
 
   if (!workspace) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
@@ -62,6 +65,8 @@ export async function retrieveNewTranscriptsActivity(
   const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
 
   if (!auth.workspace()) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     localLogger.error(
       {},
       "[retrieveNewTranscripts] Workspace not found. Stopping."
@@ -119,6 +124,8 @@ export async function processTranscriptActivity(
   });
 
   if (!workspace) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
@@ -129,6 +136,8 @@ export async function processTranscriptActivity(
   );
 
   if (!user) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
@@ -140,12 +149,16 @@ export async function processTranscriptActivity(
   );
 
   if (!auth.workspace()) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
 
   if (!auth.user() || !auth.isUser()) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
@@ -262,12 +275,16 @@ export async function processTranscriptActivity(
       {},
       "[processTranscriptActivity] No owner found. Stopping."
     );
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     return;
   }
 
   const { agentConfigurationId } = transcriptsConfiguration;
 
   if (!agentConfigurationId) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     localLogger.error(
       {},
       "[processTranscriptActivity] No agent configuration id found. Stopping."
@@ -278,6 +295,8 @@ export async function processTranscriptActivity(
   const agent = await getAgentConfiguration(auth, agentConfigurationId);
 
   if (!agent) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.setIsActive(false);
     localLogger.error(
       {},
       "[processTranscriptActivity] Agent configuration not found. Stopping."
