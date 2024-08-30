@@ -31,10 +31,7 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import {
-  useDataSources,
-  useVaultDataSourceViewsWithConnector,
-} from "@app/lib/swr";
+import { useDataSources, useVaultDataSourceViews } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -190,10 +187,11 @@ export const VaultResourcesList = ({
 
   // DataSources Views of the current vault.
   const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
-    useVaultDataSourceViewsWithConnector({
+    useVaultDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category: category,
+      includeConnectorDetails: true,
     });
 
   const rows: RowData[] =

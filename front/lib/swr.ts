@@ -1433,31 +1433,53 @@ export function useVaultInfo({
   };
 }
 
-export function useVaultDataSourceViews({
+type GetVaultDataSourceViewsReturnType<
+  IncludeConnectorDetails extends boolean,
+> = IncludeConnectorDetails extends true
+  ? GetVaultDataSourceViewWithConnectorsResponseBody
+  : GetVaultDataSourceViewsResponseBody;
+
+export function useVaultDataSourceViews<
+  IncludeConnectorDetails extends boolean,
+>({
   category,
   disabled,
+  includeConnectorDetails,
   vaultId,
   workspaceId,
 }: {
   category: DataSourceViewCategory;
   disabled?: boolean;
+  includeConnectorDetails?: IncludeConnectorDetails;
   vaultId: string;
   workspaceId: string;
 }) {
-  const vaultsDataSourceViewsFetcher: Fetcher<GetVaultDataSourceViewsResponseBody> =
-    fetcher;
+  const vaultsDataSourceViewsFetcher: Fetcher<
+    GetVaultDataSourceViewsReturnType<IncludeConnectorDetails>
+  > = fetcher;
+
+  const queryParams = new URLSearchParams({
+    category,
+  });
+
+  if (includeConnectorDetails) {
+    queryParams.set("includeConnectorDetails", "true");
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?category=${category}`,
+      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
     vaultsDataSourceViewsFetcher
   );
 
+  const vaultDataSourceViews = useMemo(() => {
+    return (data?.dataSourceViews ??
+      []) as GetVaultDataSourceViewsReturnType<IncludeConnectorDetails>["dataSourceViews"];
+  }, [data]);
+
   return {
-    vaultDataSourceViews: useMemo(
-      () => (data ? data.dataSourceViews : []),
-      [data]
-    ),
+    vaultDataSourceViews,
     mutateVaultDataSourceViews: mutate,
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
