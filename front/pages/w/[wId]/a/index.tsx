@@ -538,7 +538,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       <>
         <Page.SectionHeader
           title="Model Providers"
-          description="Model providers available to your apps."
+          description="Model providers available to your Dust apps."
         />
         <ul role="list" className="pt-4">
           {filteredProviders.map((provider) => (
@@ -617,7 +617,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
 
         <Page.SectionHeader
           title="Service Providers"
-          description="Service providers enable your apps to query external data or write to&nbsp;external&nbsp;services."
+          description="Service providers enable your Dust Apps to query external data or write to&nbsp;external&nbsp;services."
         />
 
         <ul role="list" className="pt-4">

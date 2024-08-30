@@ -6,10 +6,9 @@ import React from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { APIKeys } from "@app/pages/w/[wId]/a";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -18,10 +17,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
   gaTrackingId: string;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const user = auth.user();
-  if (!owner || !auth.isAdmin() || !subscription || !user) {
+  const owner = auth.getNonNullableWorkspace();
+  const subscription = auth.getNonNullableSubscription();
+  const user = auth.getNonNullableUser();
+  if (!auth.isAdmin()) {
     return {
       notFound: true,
     };
@@ -34,7 +33,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       groups,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       user,
     },
   };
