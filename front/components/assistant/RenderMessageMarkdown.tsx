@@ -191,7 +191,7 @@ export const MarkDownContentContext = React.createContext<{
   isStreaming: false,
 });
 
-export type CustomRenderer = {
+export type CustomRenderers = {
   visualization: (
     code: string,
     complete: boolean,
@@ -212,7 +212,7 @@ export function RenderMessageMarkdown({
   citationsContext?: CitationsContextType;
   textSize?: "sm" | "base";
   textColor?: string;
-  customRenderer?: CustomRenderer;
+  customRenderer?: CustomRenderers;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
@@ -353,7 +353,7 @@ function VisualizationBlock({
   customRenderer,
 }: {
   position: { start: { line: number }; end: { line: number } };
-  customRenderer?: CustomRenderer;
+  customRenderer?: CustomRenderers;
 }) {
   const { content } = useContext(MarkDownContentContext);
 
