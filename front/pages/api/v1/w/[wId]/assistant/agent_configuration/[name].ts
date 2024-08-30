@@ -50,7 +50,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: Internal Server Error.
  */
 
-
 type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfiguration | null;
 };
@@ -91,7 +90,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The Assistant API is only available on your own workspace.",
+            message:
+              "The Assistant API is only available on your own workspace.",
           },
         });
       }

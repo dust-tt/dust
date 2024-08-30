@@ -51,7 +51,6 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: Internal Server Error.
  */
 
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationsResponseBody>>
