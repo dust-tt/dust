@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceWithConnectorType,
+  DataSourceWithConnectorDetailsType,
   LightWorkspaceType,
   PlanType,
   Result,
@@ -19,7 +19,6 @@ import type {
 } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
-  ConnectorsAPI,
   Err,
   isConnectorProvider,
   isOAuthProvider,
@@ -41,18 +40,21 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
+import {
+  augmentDataSourceWithConnectorDetails,
+  getDataSources,
+} from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
-import logger from "@app/logger/logger";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
-type DataSourceWithConnectorAndUsageType = DataSourceWithConnectorType & {
-  usage: number | null;
-};
+type DataSourceWithConnectorAndUsageType =
+  DataSourceWithConnectorDetailsType & {
+    usage: number | null;
+  };
 
 type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -143,49 +145,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         if (!isManaged(managedDataSource)) {
           return null;
         }
-        try {
-          const connectorsAPI = new ConnectorsAPI(
-            config.getConnectorsAPIConfig(),
-            logger
-          );
-          const statusRes = await connectorsAPI.getConnector(
-            managedDataSource.connectorId
-          );
-          if (statusRes.isErr()) {
-            return {
-              ...managedDataSource,
-              connectorProvider: managedDataSource.connectorProvider,
-              connector: null,
-              fetchConnectorError: true,
-              fetchConnectorErrorMessage: statusRes.error.message,
-              usage: 0,
-            };
-          }
-          const usageRes = await getDataSourceUsage({
-            auth,
-            dataSource: managedDataSource,
-          });
-          return {
-            ...managedDataSource,
-            connectorProvider: managedDataSource.connectorProvider,
-            connector: statusRes.value,
-            fetchConnectorError: false,
-            fetchConnectorErrorMessage: null,
-            usage: usageRes.isOk() ? usageRes.value : 0,
-          };
-        } catch (e) {
-          // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
-          // the datasources (eventual actions will fail but a 500 just at display is not desirable).
-          // When that happens the managed data sources are shown as failed.
-          return {
-            ...managedDataSource,
-            connectorProvider: managedDataSource.connectorProvider,
-            connector: null,
-            fetchConnectorError: true,
-            fetchConnectorErrorMessage: "Synchonization service is down",
-            usage: null,
-          };
-        }
+        const augmentedDataSource =
+          await augmentDataSourceWithConnectorDetails(managedDataSource);
+
+        const usageRes = await getDataSourceUsage({
+          auth,
+          dataSource: managedDataSource,
+        });
+        return {
+          ...augmentedDataSource,
+          usage: usageRes.isOk() ? usageRes.value : 0,
+        };
       })
     )
   );

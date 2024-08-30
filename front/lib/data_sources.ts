@@ -2,6 +2,7 @@ import type {
   ConnectorProvider,
   CoreAPIDocument,
   DataSourceType,
+  WithConnector,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
@@ -54,10 +55,7 @@ export function isWebsite(
   return ds.connectorProvider === "webcrawler";
 }
 
-export function isManaged(ds: DataSource): ds is DataSource & {
-  connectorProvider: ConnectorProvider;
-  connectorId: string;
-} {
+export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
   return ds.connectorProvider !== null && !isWebsite(ds);
 }
 

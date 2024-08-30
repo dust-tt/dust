@@ -8,7 +8,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { enhanceDataSourceWithConnector } from "@app/lib/api/data_sources";
+import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
@@ -73,11 +73,11 @@ async function handler(
             if (!isManaged(dataSource)) {
               return dataSourceView;
             }
-            const enhancedDataSource =
-              await enhanceDataSourceWithConnector(dataSource);
+            const augmentedDataSource =
+              await augmentDataSourceWithConnectorDetails(dataSource);
             return {
               ...dataSourceView,
-              dataSource: enhancedDataSource,
+              dataSource: augmentedDataSource,
             };
           })
         );

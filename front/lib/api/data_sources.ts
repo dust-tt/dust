@@ -2,8 +2,9 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  DataSourceWithConnectorType,
+  DataSourceWithConnectorDetailsType,
   Result,
+  WithConnector,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 
@@ -177,12 +178,9 @@ async function warnPostDeletion(
   }
 }
 
-export async function enhanceDataSourceWithConnector(
-  dataSource: DataSourceType & {
-    connectorProvider: ConnectorProvider;
-    connectorId: string;
-  }
-): Promise<DataSourceWithConnectorType> {
+export async function augmentDataSourceWithConnectorDetails(
+  dataSource: DataSourceType & WithConnector
+): Promise<DataSourceWithConnectorDetailsType> {
   let connector: ConnectorType | null = null;
   let fetchConnectorError = false;
   let fetchConnectorErrorMessage: string | null = null;
@@ -208,7 +206,6 @@ export async function enhanceDataSourceWithConnector(
 
   return {
     ...dataSource,
-    connectorProvider: dataSource.connectorProvider,
     connector,
     fetchConnectorError,
     fetchConnectorErrorMessage,

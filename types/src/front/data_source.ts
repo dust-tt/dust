@@ -72,12 +72,17 @@ export type DataSourceType = {
   editedByUser?: EditedByUser | null;
 };
 
-export type DataSourceWithConnectorType = DataSourceType & {
+export type WithConnector = {
   connectorProvider: ConnectorProvider;
-  connector: ConnectorType | null;
-  fetchConnectorError: boolean;
-  fetchConnectorErrorMessage: string | null;
+  connectorId: string;
 };
+
+export type DataSourceWithConnectorDetailsType = DataSourceType &
+  WithConnector & {
+    connector: ConnectorType | null;
+    fetchConnectorError: boolean;
+    fetchConnectorErrorMessage: string | null;
+  };
 
 export function isDataSourceNameValid(name: string): Result<void, string> {
   const trimmed = name.trim();

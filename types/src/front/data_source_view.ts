@@ -5,7 +5,7 @@ import {
 } from "./api_handlers/public/vaults";
 import {
   DataSourceType,
-  DataSourceWithConnectorType,
+  DataSourceWithConnectorDetailsType,
   EditedByUser,
 } from "./data_source";
 
@@ -26,7 +26,7 @@ export interface DataSourceViewType {
 }
 
 export type DataSourceViewWithConnectorType = DataSourceViewType & {
-  dataSource: DataSourceWithConnectorType;
+  dataSource: DataSourceWithConnectorDetailsType;
 };
 
 export type DataSourceViewSelectionConfiguration = {

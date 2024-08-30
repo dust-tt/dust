@@ -3,7 +3,7 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  DataSourceWithConnectorType,
+  DataSourceWithConnectorDetailsType,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -36,7 +36,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
-  existingDataSources: DataSourceWithConnectorType[];
+  existingDataSources: DataSourceWithConnectorDetailsType[];
   dustClientFacingUrl: string;
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
 };
