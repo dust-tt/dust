@@ -1,5 +1,4 @@
 import type {
-  ConnectorPermission,
   GetDataSourceViewContentResponseBody,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -26,8 +25,7 @@ async function handler(
   if (
     !dataSourceView ||
     req.query.vId !== dataSourceView.vault.sId ||
-    (!auth.isAdmin() &&
-      !auth.hasPermission([dataSourceView.vault.acl()], "read"))
+    !dataSourceView.canRead(auth)
   ) {
     return apiError(req, res, {
       status_code: 404,
@@ -66,25 +64,9 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
-      let filterPermission: ConnectorPermission | undefined = undefined;
-      if (
-        req.query.filterPermission &&
-        typeof req.query.filterPermission === "string"
-      ) {
-        switch (req.query.filterPermission) {
-          case "read":
-            filterPermission = "read";
-            break;
-          case "write":
-            filterPermission = "write";
-            break;
-        }
-      }
-
       const contentRes = await getDataSourceContent(
         auth,
         dataSourceView.dataSource,
-        filterPermission,
         viewType,
         dataSourceView.parentsIn,
         parentId,

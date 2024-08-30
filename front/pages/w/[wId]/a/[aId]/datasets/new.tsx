@@ -20,6 +20,7 @@ import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -28,6 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   app: AppType;
   datasets: DatasetType[];
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -48,6 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const datasets = await getDatasets(auth, app);
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
 
   return {
     props: {
@@ -55,6 +58,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       app,
       datasets,
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -65,6 +69,7 @@ export default function NewDatasetView({
   subscription,
   app,
   datasets,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -136,7 +141,7 @@ export default function NewDatasetView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

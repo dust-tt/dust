@@ -19,6 +19,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getApp } from "@app/lib/api/app";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -26,6 +27,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -53,11 +55,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
       subscription,
       app,
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -67,6 +72,7 @@ export default function SettingsView({
   owner,
   subscription,
   app,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -112,7 +118,7 @@ export default function SettingsView({
         method: "DELETE",
       });
       if (res.ok) {
-        await router.push(`/w/${owner.sId}/a`);
+        await router.push(dustAppsListUrl);
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
@@ -169,7 +175,7 @@ export default function SettingsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

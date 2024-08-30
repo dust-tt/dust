@@ -1,5 +1,4 @@
 import type {
-  ConnectorPermission,
   ConnectorsAPIError,
   ContentNodesViewType,
   CoreAPIError,
@@ -7,7 +6,7 @@ import type {
   LightContentNode,
   Result,
 } from "@dust-tt/types";
-import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
+import { ConnectorsAPI, CoreAPI, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -31,7 +30,6 @@ export const getDataSourceCategory = (
 export const getDataSourceContent = async (
   auth: Authenticator,
   dataSource: DataSourceResource,
-  permission: ConnectorPermission | undefined,
   viewType: ContentNodesViewType,
   rootIds: string[] | null,
   parentId: string | null,
@@ -41,7 +39,6 @@ export const getDataSourceContent = async (
     ? getManagedDataSourceContent(
         auth,
         dataSource.connectorId,
-        permission,
         rootIds,
         parentId,
         viewType
@@ -55,40 +52,10 @@ export const getDataSourceContent = async (
 export const getManagedDataSourceContent = async (
   auth: Authenticator,
   connectorId: string,
-  permission: ConnectorPermission | undefined,
   rootIds: string[] | null,
   parentId: string | null,
   viewType: ContentNodesViewType
 ): Promise<Result<LightContentNode[], ConnectorsAPIError>> => {
-  switch (permission) {
-    case "read":
-      // We let users get the read  permissions of a connector
-      // `read` is used for data source selection when creating personal assitsants
-      break;
-    case "write":
-      // We let builders get the write permissions of a connector.
-      // `write` is used for selection of default slack channel in the workspace assistant
-      // builder.
-      if (!auth.isBuilder()) {
-        return new Err({
-          type: "authorization_error",
-          message:
-            "Only builders of the current workspace can view 'write' permissions of a data source.",
-        });
-      }
-      break;
-    case undefined:
-      // Only admins can browse "all" the resources of a connector.
-      if (!auth.isAdmin()) {
-        return new Err({
-          type: "authorization_error",
-          message:
-            "Only admins of the current workspace can view all permissions of a data source.",
-        });
-      }
-      break;
-  }
-
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
@@ -97,7 +64,7 @@ export const getManagedDataSourceContent = async (
   if (parentId || !rootIds) {
     const nodesResults = await connectorsAPI.getConnectorPermissions({
       connectorId,
-      filterPermission: permission,
+      filterPermission: "read",
       parentId: parentId ?? undefined,
       viewType,
     });

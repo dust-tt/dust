@@ -3,6 +3,7 @@ import {
   Chip,
   CommandLineIcon,
   DataTable,
+  PlusIcon,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -13,6 +14,8 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
+import { ManageAppSecretsButtonModal } from "@app/components/app/ManageAppSecretsButtonModal";
+import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
 import { useApps } from "@app/lib/swr";
 
 type RowData = {
@@ -28,13 +31,14 @@ type RowData = {
 
 type VaultAppListProps = {
   owner: WorkspaceType;
+  isBuilder: boolean;
   onSelect: (sId: string) => void;
 };
 
 const getTableColumns = () => {
   return [
     {
-      id: "Name",
+      id: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
           {info.getValue()}
@@ -43,7 +47,7 @@ const getTableColumns = () => {
       accessorFn: (row: RowData) => row.name,
     },
     {
-      id: "Visibility",
+      id: "visibility",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <Chip color="slate">{info.getValue()}</Chip>
@@ -54,7 +58,13 @@ const getTableColumns = () => {
   ];
 };
 
-export const VaultAppsList = ({ owner, onSelect }: VaultAppListProps) => {
+export const VaultAppsList = ({
+  owner,
+  isBuilder,
+  onSelect,
+}: VaultAppListProps) => {
+  const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
+
   const [appSearch, setAppSearch] = useState<string>("");
 
   const { apps, isAppsLoading } = useApps(owner);
@@ -85,8 +95,9 @@ export const VaultAppsList = ({ owner, onSelect }: VaultAppListProps) => {
       <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg border bg-structure-50">
         <Button
           label="Create App"
+          disabled={!isBuilder}
           onClick={() => {
-            alert("Not implemented"); // Check which role should be allowed to create an app or disable button.
+            setIsCreateAppModalOpened(true);
           }}
         />
       </div>
@@ -95,7 +106,12 @@ export const VaultAppsList = ({ owner, onSelect }: VaultAppListProps) => {
 
   return (
     <>
-      <div className="gap-2">
+      <VaultCreateAppModal
+        owner={owner}
+        isOpen={isCreateAppModalOpened}
+        setIsOpen={setIsCreateAppModalOpened}
+      />
+      <div className="flex gap-2">
         <Searchbar
           name="search"
           ref={searchBarRef}
@@ -105,12 +121,26 @@ export const VaultAppsList = ({ owner, onSelect }: VaultAppListProps) => {
             setAppSearch(s);
           }}
         />
+        {isBuilder && (
+          <>
+            <Button
+              label="New App"
+              variant="primary"
+              icon={PlusIcon}
+              size="sm"
+              onClick={() => {
+                setIsCreateAppModalOpened(true);
+              }}
+            />
+            <ManageAppSecretsButtonModal owner={owner} />
+          </>
+        )}
       </div>
       <DataTable
         data={rows}
         columns={getTableColumns()}
         filter={appSearch}
-        filterColumn="label"
+        filterColumn="name"
       />
     </>
   );

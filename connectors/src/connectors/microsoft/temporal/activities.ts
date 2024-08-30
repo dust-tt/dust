@@ -515,21 +515,20 @@ export async function syncDeltaForRootNodesInDrive({
         getItem(client, typeAndPathFromInternalId(rootNodeId).itemAPIPath),
       { concurrency: 5 }
     );
-
     microsoftNodes.forEach((rootNode) => {
       sortedChangedItems.push(
         ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
       );
     });
-  }
 
-  // Finally add all removed items, which may not have been included even if they are in the selected roots
-  sortedChangedItems.push(
-    ...uniqueChangedItems.filter(
-      (item) =>
-        !sortedChangedItems.includes(item) && item.deleted?.state === "deleted"
-    )
-  );
+    // if only parts of the drive are selected, look for folders that may
+    // have been removed from selection and scrub them
+    await scrubRemovedFolders({
+      connector,
+      uniqueChangedItems,
+      sortedChangedItems,
+    });
+  }
 
   for (const driveItem of sortedChangedItems) {
     heartbeat();
@@ -647,7 +646,7 @@ function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
 
 /**
  * Order items as follows:
- * - first those whose parentInternalId is not in the changedList, or the root drive
+ * - first the node in the changedList matching rootid, or the drive root folder if no rootId is specified
  * - then those whose parentInternalId is in in the list above;
  * - then those whose parentInternalId is in the updated list above, and so on
  *
@@ -663,8 +662,7 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     return [];
   }
 
-  const internalIds = changedList.map((item) => getDriveItemInternalId(item));
-
+  // Initial list - either the root folder of the drive if no rootId, of the item identified by rootId
   const sortedItemList = changedList.filter((item) => {
     if (rootId && item.id === rootId) {
       // Found selected root
@@ -676,16 +674,12 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
       return true;
     }
 
-    if (!item.parentReference) {
-      return false;
-    }
-
-    const parentInternalId = getParentReferenceInternalId(item.parentReference);
-    return !internalIds.includes(parentInternalId);
+    return false;
   });
 
   for (;;) {
     const nextLevel = changedList.filter((item) => {
+      // Already in the list - skip
       if (sortedItemList.includes(item)) {
         return false;
       }
@@ -695,9 +689,20 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
         return true;
       }
 
+      // get the parentInternalId of the item
+      // warning : if node is in the root folder of a drive, we'll get the drive id instead of root folder id
       const parentInternalId = getParentReferenceInternalId(
         item.parentReference
       );
+
+      // hack here as parentInternalId is the drive and no rootId specified,
+      // but we only have the drive root folder in the list
+      if (
+        typeAndPathFromInternalId(parentInternalId).nodeType === "drive" &&
+        !rootId
+      ) {
+        return true;
+      }
 
       return sortedItemList.some(
         (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
@@ -1048,4 +1053,60 @@ async function isOutsideRootNodes({
   } while (parentInternalId !== null);
 
   return true;
+}
+
+/**
+ * Detect files & folders moved out of toplevel folders and delete them
+ * Such a case is e.g.:
+ * - only folder A is selected for sync, not the whole drive
+ * - folder B is not selected for sync
+ * - folder C was a subfolder of A and is moved out of A into B
+ * In that case, C should be deleted from the sync
+ */
+async function scrubRemovedFolders({
+  connector,
+  uniqueChangedItems,
+  sortedChangedItems,
+}: {
+  connector: ConnectorResource;
+  uniqueChangedItems: DriveItem[];
+  sortedChangedItems: DriveItem[];
+}) {
+  // all elements from the changelist that are in uniqueChangedItems but not in
+  // sortedChangedItems are out of the selected roots
+  // we use a set to avoid O(n^2) complexity
+  const sortedChangedItemsSet = new Set(
+    sortedChangedItems.map((item) => item.id)
+  );
+  const outOfRoots = uniqueChangedItems.filter(
+    // the drive root folder is always in the list but we never need to delete it
+    (item) => !sortedChangedItemsSet.has(item.id) && !item.root
+  );
+
+  const outOfRootsInternalIds = outOfRoots.map((item) =>
+    getDriveItemInternalId(item)
+  );
+
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connector.id,
+    outOfRootsInternalIds
+  );
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  for (const node of nodes) {
+    if (node.nodeType === "file") {
+      await deleteFile({
+        connectorId: connector.id,
+        internalId: node.internalId,
+        dataSourceConfig,
+      });
+    } else if (node.nodeType === "folder") {
+      await recursiveNodeDeletion(
+        node.internalId,
+        connector.id,
+        dataSourceConfig
+      );
+    }
+  }
 }

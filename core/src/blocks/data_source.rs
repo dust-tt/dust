@@ -80,13 +80,14 @@ impl DataSource {
         top_k: usize,
         filter: Option<SearchFilter>,
         target_document_tokens: Option<usize>,
+        project_id: i64,
     ) -> Result<Vec<Document>> {
         let (data_source_project, view_filter, data_source_id) =
             get_data_source_project_and_view_filter(
                 &workspace_id,
                 &data_source_or_data_source_view_id,
                 env,
-                "data_source",
+                format!("data_source_project_id_{}", project_id).as_str(),
             )
             .await?;
 
@@ -185,6 +186,7 @@ impl Block for DataSource {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
+        project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -330,6 +332,7 @@ impl Block for DataSource {
                 top_k,
                 filter.clone(),
                 target_document_tokens,
+                project_id,
             ));
         }
 

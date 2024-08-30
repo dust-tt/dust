@@ -149,7 +149,7 @@ export function useAppStatus() {
 export function useApps(owner: LightWorkspaceType) {
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/apps`,
     appsFetcher
   );
@@ -158,6 +158,7 @@ export function useApps(owner: LightWorkspaceType) {
     apps: useMemo(() => (data ? data.apps : []), [data]),
     isAppsLoading: !error && !data,
     isAppsError: !!error,
+    mutateApps: mutate,
   };
 }
 
@@ -1508,7 +1509,6 @@ export function useVaultDataSourceViews({
 export function useVaultDataSourceViewContent({
   dataSourceView,
   disabled,
-  filterPermission,
   owner,
   parentId,
   vaultId,
@@ -1516,7 +1516,6 @@ export function useVaultDataSourceViewContent({
 }: {
   dataSourceView: DataSourceViewType;
   disabled?: boolean;
-  filterPermission: ConnectorPermission;
   owner: LightWorkspaceType;
   parentId?: string;
   vaultId: string;
@@ -1524,14 +1523,19 @@ export function useVaultDataSourceViewContent({
 }) {
   const vaultsDataSourcesFetcher: Fetcher<GetDataSourceViewContentResponseBody> =
     fetcher;
-  const qs =
-    `?viewType=${viewType}` +
-    `&filterPermission=${filterPermission}` +
-    (parentId ? `&parentId=${parentId}` : "");
+
+  const queryParams = new URLSearchParams({
+    viewType,
+  });
+
+  if (parentId) {
+    queryParams.set("parentId", parentId);
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceView.sId}/content${qs}`,
+      : `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceView.sId}/content?${queryParams.toString()}`,
     vaultsDataSourcesFetcher
   );
 

@@ -19,6 +19,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -29,6 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   app: AppType;
   run: RunType;
   spec: SpecificationType;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -57,6 +59,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
   const { run, spec } = r;
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
@@ -65,6 +69,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app,
       spec,
       run,
+      dustAppsListUrl,
       gaTrackingId: GA_TRACKING_ID,
     },
   };
@@ -77,6 +82,7 @@ export default function AppRun({
   app,
   spec,
   run,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [savedRunId, setSavedRunId] = useState<string | null | undefined>(
@@ -151,7 +157,7 @@ export default function AppRun({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

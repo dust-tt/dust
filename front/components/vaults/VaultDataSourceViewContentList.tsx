@@ -85,7 +85,6 @@ export const VaultDataSourceViewContentList = ({
     mutateVaultDataSourceViewContent,
   } = useVaultDataSourceViewContent({
     dataSourceView,
-    filterPermission: "read",
     owner,
     parentId,
     vaultId: vault.sId,
