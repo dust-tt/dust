@@ -4,7 +4,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   WorkspaceType,
 } from "@dust-tt/types";
-import { defaultSelectionConfiguration, isFolder } from "@dust-tt/types";
+import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
@@ -15,7 +15,7 @@ import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isFolder } from "@app/lib/data_sources";
 
 export function DataSourceViewSelector({
   owner,
