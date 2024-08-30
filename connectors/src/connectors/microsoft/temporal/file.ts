@@ -337,6 +337,9 @@ export async function syncOneFile({
   }
 }
 
+/**
+ * Startsyncts is used to cache the parent ids for a given sync
+ */
 export async function getParents({
   connectorId,
   internalId,
