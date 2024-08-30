@@ -35,10 +35,75 @@ export default function VaultCreateFolderModal({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [name, setName] = useState<string | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
-
   const [description, setDescription] = useState<string | null>(null);
-  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+
+  const [errors, setErrors] = useState<{
+    name: string | null;
+    description: string | null;
+  }>({
+    name: null,
+    description: null,
+  });
+
+  const onSave = async () => {
+    let nameError: string | null = null;
+    let descriptionError: string | null = null;
+
+    if (!name) {
+      nameError = "Name is required.";
+    } else if (isDataSourceNameValid(name).isErr()) {
+      nameError = "Name is invalid, must be multiple characters with no space.";
+    } else if (dataSources.find((ds) => ds.name === name)) {
+      nameError = "A data source with this name already exists.";
+    }
+
+    if (!description || description.trim() === "") {
+      descriptionError = "Description is required.";
+    }
+
+    if (nameError || descriptionError) {
+      setErrors({
+        name: nameError,
+        description: descriptionError,
+      });
+      return;
+    }
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      setOpen(false);
+      const response: PostVaultDataSourceResponseBody = await res.json();
+      const { dataSourceView } = response;
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+      );
+      sendNotification({
+        type: "success",
+        title: "Successfully created folder",
+        description: "Folder was successfully created.",
+      });
+    } else {
+      const err = (await res.json()) as { error: APIError };
+      sendNotification({
+        title: "Error Saving Folder",
+        type: "error",
+        description: `Error: ${err.error.message}`,
+      });
+      return;
+    }
+  };
 
   return (
     <Modal
@@ -46,63 +111,7 @@ export default function VaultCreateFolderModal({
       onClose={() => {
         setOpen(false);
       }}
-      onSave={async () => {
-        if (!name) {
-          setNameError("Name is required.");
-          return;
-        }
-        const nameValidRes = isDataSourceNameValid(name);
-        if (nameValidRes.isErr()) {
-          setNameError(
-            "Name is invalid, must be multiple characters with no space."
-          );
-          return;
-        }
-        if (dataSources.find((ds) => ds.name === name)) {
-          setNameError("A data source with this name already exists.");
-          return;
-        }
-
-        if (!description || description.trim() === "") {
-          setDescriptionError("Description is required.");
-          return;
-        }
-
-        const res = await fetch(
-          `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name,
-              description,
-            }),
-          }
-        );
-        if (res.ok) {
-          setOpen(false);
-          const response: PostVaultDataSourceResponseBody = await res.json();
-          const { dataSourceView } = response;
-          await router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
-          );
-          sendNotification({
-            type: "success",
-            title: "Successfully created folder",
-            description: "Folder was successfully created.",
-          });
-        } else {
-          const err = (await res.json()) as { error: APIError };
-          sendNotification({
-            title: "Error Saving Folder",
-            type: "error",
-            description: `Error: ${err.error.message}`,
-          });
-          return;
-        }
-      }}
+      onSave={onSave}
       hasChanged={name !== null || description !== null}
       variant="side-sm"
       title="Create a folder"
@@ -118,9 +127,11 @@ export default function VaultCreateFolderModal({
                 value={name}
                 onChange={(value) => {
                   setName(value);
-                  setNameError(null);
+                  if (errors.name) {
+                    setErrors({ ...errors, name: null });
+                  }
                 }}
-                error={nameError}
+                error={errors.name}
                 showErrorLabel
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
@@ -137,9 +148,11 @@ export default function VaultCreateFolderModal({
                 value={description}
                 onChange={(value) => {
                   setDescription(value);
-                  setDescriptionError(null);
+                  if (errors.description) {
+                    setErrors({ ...errors, description: null });
+                  }
                 }}
-                error={descriptionError}
+                error={errors.description}
                 showErrorLabel
               />
             </div>

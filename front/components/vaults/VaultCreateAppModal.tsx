@@ -28,31 +28,41 @@ export const VaultCreateAppModal = ({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [name, setName] = useState<string | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
-
   const [description, setDescription] = useState<string | null>(null);
-  const [descriptionError, setDescriptionError] = useState<string | null>(null);
-
   const [visibility, setVisibility] = useState<AppVisibility>("private");
+
+  const [errors, setErrors] = useState<{
+    name: string | null;
+    description: string | null;
+  }>({
+    name: null,
+    description: null,
+  });
 
   const { apps, mutateApps } = useApps(owner);
 
   const onSave = async () => {
+    let nameError: string | null = null;
+    let descriptionError: string | null = null;
+
     if (!name || name.trim() === "") {
-      setNameError("Name is required.");
+      nameError = "Name is required.";
     } else if (!name.match(/^[a-zA-Z0-9._-]+$/)) {
-      setNameError(
-        "App name must only contain letters, numbers, and the characters `._-`"
-      );
+      nameError =
+        "Name must only contain letters, numbers, and the characters `._-`";
     } else if (apps.find((app) => app.name === name)) {
-      setNameError("An App with this name already exists.");
+      nameError = "An App with this name already exists.";
     }
 
     if (!description || description.trim() === "") {
-      setDescriptionError(
-        "A description is required for your app to be selectable in the Assistant Builder."
-      );
+      descriptionError =
+        "A description is required for your app to be selectable in the Assistant Builder.";
     }
+
+    setErrors({
+      name: nameError,
+      description: descriptionError,
+    });
 
     if (name && description && !nameError && !descriptionError) {
       const res = await fetch(`/api/w/${owner.sId}/apps`, {
@@ -95,9 +105,7 @@ export const VaultCreateAppModal = ({
       onClose={() => {
         setIsOpen(false);
       }}
-      onSave={async () => {
-        await onSave();
-      }}
+      onSave={onSave}
       hasChanged={name !== null || description !== null}
       title="Create a new App"
       variant="side-sm"
@@ -113,9 +121,11 @@ export const VaultCreateAppModal = ({
                 value={name}
                 onChange={(value) => {
                   setName(value);
-                  setNameError(null);
+                  if (errors.name) {
+                    setErrors({ ...errors, name: null });
+                  }
                 }}
-                error={nameError}
+                error={errors.name}
                 showErrorLabel
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
@@ -133,9 +143,11 @@ export const VaultCreateAppModal = ({
                 value={description}
                 onChange={(value) => {
                   setDescription(value);
-                  setDescriptionError(null);
+                  if (errors.description) {
+                    setErrors({ ...errors, description: null });
+                  }
                 }}
-                error={descriptionError}
+                error={errors.description}
                 showErrorLabel
               />
             </div>
