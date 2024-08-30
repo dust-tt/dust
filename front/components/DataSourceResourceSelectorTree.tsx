@@ -16,7 +16,6 @@ import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentM
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
 
 export default function DataSourceResourceSelectorTree({
   owner,
