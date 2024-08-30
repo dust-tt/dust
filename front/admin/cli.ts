@@ -70,7 +70,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const w = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!w) {
@@ -92,7 +92,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const w = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!w) {
@@ -119,7 +119,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         console.log(`Pausing connectors for workspace: wId=${wId}`);
         const w = await Workspace.findOne({
           where: {
-            sId: wId,
+            sId: `${wId}`,
           },
         });
         if (!w) {
@@ -158,7 +158,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       for (const wId of wIds) {
         const w = await Workspace.findOne({
           where: {
-            sId: wId,
+            sId: `${wId}`,
           },
         });
         if (!w) {
@@ -268,7 +268,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const workspace = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!workspace) {
@@ -388,9 +388,10 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.documentId) {
         throw new Error("Missing --documentId argument");
       }
+
       const workspace = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!workspace) {
