@@ -18,6 +18,7 @@ import { CreateConnectionConfirmationModal } from "@app/components/data_source/C
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
@@ -252,7 +253,7 @@ export const AddConnectionMenu = ({
               <DropdownMenu.Item
                 key={connectorProvider}
                 label={CONNECTOR_CONFIGURATIONS[connectorProvider].name}
-                icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
+                icon={getConnectorProviderLogoWithFallback(connectorProvider)}
                 onClick={() => {
                   handleConnectionClick(connectorProvider);
                 }}
