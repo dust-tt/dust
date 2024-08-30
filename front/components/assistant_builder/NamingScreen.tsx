@@ -99,20 +99,16 @@ export async function validateHandle({
   handleValid: boolean;
   handleErrorMessage: string | null;
 }> {
+  let errorMessage: string | null = null;
+
   if (!handle || handle === "@") {
-    return { handleValid: false, handleErrorMessage: null };
+    errorMessage = "The name cannot be empty";
   } else {
     if (!assistantHandleIsValid(handle)) {
       if (handle.length > 30) {
-        return {
-          handleValid: false,
-          handleErrorMessage: "The name must be 30 characters or less",
-        };
+        errorMessage = "The name must be 30 characters or less";
       } else {
-        return {
-          handleValid: false,
-          handleErrorMessage: "Only letters, numbers, _ and - allowed",
-        };
+        errorMessage = "Only letters, numbers, _ and - allowed";
       }
     } else if (
       !(await assistantHandleIsAvailable({
@@ -122,14 +118,14 @@ export async function validateHandle({
         checkUsernameTimeout,
       }))
     ) {
-      return {
-        handleValid: false,
-        handleErrorMessage: "This handle is already taken",
-      };
-    } else {
-      return { handleValid: true, handleErrorMessage: null };
+      errorMessage = "This name is already taken";
     }
   }
+
+  return {
+    handleValid: !errorMessage,
+    handleErrorMessage: errorMessage,
+  };
 }
 
 export default function NamingScreen({
@@ -139,6 +135,7 @@ export default function NamingScreen({
   setBuilderState,
   setEdited,
   assistantHandleError,
+  descriptionError,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -148,6 +145,7 @@ export default function NamingScreen({
   ) => void;
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
+  descriptionError: string | null;
 }) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useContext(SendNotificationsContext);
@@ -414,6 +412,7 @@ export default function NamingScreen({
                   }));
                 }}
                 name="assistantDescription"
+                error={descriptionError}
                 className="text-sm"
                 disabled={generatingDescription}
               />
