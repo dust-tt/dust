@@ -207,6 +207,7 @@ export const VaultResourcesList = ({
       isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
       buttonOnClick: (e) => {
         e.stopPropagation();
+        // TODO(GROUPS_UI) Link to data source view.
         void router.push(
           `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
         );
