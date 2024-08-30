@@ -22,7 +22,6 @@ import {
   ConnectorsAPI,
   Err,
   isConnectorProvider,
-  isManaged,
   isOAuthProvider,
   Ok,
   removeNulls,
@@ -44,6 +43,7 @@ import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";

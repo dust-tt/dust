@@ -3,7 +3,7 @@ import type {
   DataSourceViewWithConnectorType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { isManaged, PostDataSourceViewSchema } from "@dust-tt/types";
+import { PostDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { enhanceDataSourceWithConnector } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";

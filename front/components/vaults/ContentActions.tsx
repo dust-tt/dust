@@ -5,7 +5,6 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isFolder, isWebsite } from "@dust-tt/types";
 import type { RefObject } from "react";
 import React, { useImperativeHandle, useState } from "react";
 
@@ -14,6 +13,7 @@ import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentU
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import { TableDeleteDialog } from "@app/components/data_source/TableDeleteDialog";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 
 type ContentActionKey =
   | "DocumentUploadOrEditModal"

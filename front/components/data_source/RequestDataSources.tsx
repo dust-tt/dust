@@ -6,7 +6,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { isManaged } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -14,6 +13,7 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceName,
 } from "@app/lib/connector_providers";
+import { isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
 

@@ -16,8 +16,10 @@ import type {
   PlanType,
   WhitelistableFeature,
 } from "@dust-tt/types";
-import { assertNever, isManaged } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
+
+import { isManaged } from "@app/lib/data_sources";
 
 export type ConnectorProviderConfiguration = {
   name: string;

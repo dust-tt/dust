@@ -14,7 +14,6 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isFolder } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useRef, useState } from "react";
 
@@ -24,6 +23,7 @@ import {
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
+import { isFolder } from "@app/lib/data_sources";
 import { useVaultDataSourceViewContent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
