@@ -44,7 +44,6 @@ import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
-import { RequestDataSourceDialog } from "@app/components/data_source/RequestDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -1006,7 +1005,6 @@ function ManagedDataSourceView({
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showEditionModal, setShowEditionModal] = useState(false);
-  const [showRequestDialog, setShowRequestDialog] = useState(false);
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -1301,7 +1299,6 @@ function ManagedDataSourceView({
             });
           }}
           dustClientFacingUrl={dustClientFacingUrl}
-          onRequestFromDataSourceClick={() => setShowRequestDialog(true)}
         />
         <ConnectorPermissionsModal
           owner={owner}
@@ -1309,12 +1306,6 @@ function ManagedDataSourceView({
           dataSource={dataSource}
           isOpen={showPermissionModal}
           onClose={() => setShowPermissionModal(false)}
-        />
-        <RequestDataSourceDialog
-          isOpen={showRequestDialog}
-          onClose={() => setShowRequestDialog(false)}
-          dataSource={dataSource}
-          owner={owner}
         />
       </div>
     </>

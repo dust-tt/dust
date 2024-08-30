@@ -35,7 +35,7 @@ import * as React from "react";
 import { useMemo, useRef, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
-import { RequestDataSources } from "@app/components/data_source/RequestDataSources";
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
@@ -307,7 +307,7 @@ export default function DataSourcesView({
           )}
         >
           {!isAdmin && (
-            <RequestDataSources
+            <RequestDataSourceModal
               dataSources={managedDataSources}
               owner={owner}
             />
