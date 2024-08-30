@@ -1,8 +1,9 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 /**
@@ -50,33 +51,39 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *         description: Internal Server Error.
  */
 
-type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfiguration | null;
+type GetAgentConfigurationsResponseBody = {
+  agentConfigurations: AgentConfiguration[] | null;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationsResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
     return apiError(req, res, keyRes.error);
   }
 
-  const { workspaceAuth, keyAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
+  const { wId } = req.query;
+  if (typeof wId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
+        message: "Workspace ID not found",
+      },
+    });
+  }
+
+  const { workspaceAuth } = await Authenticator.fromKey(keyRes.value, wId);
+
+  const owner = workspaceAuth.workspace();
+  if (!owner) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
     });
   }
@@ -95,11 +102,22 @@ async function handler(
         });
       }
 
-      const agentConfiguration = await AgentConfiguration.findOne({
-        where: { workspaceId: wId, name: req.query.name },
-      });
+      if (typeof req.query.name !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Name of the agent configuration not found",
+          },
+        });
+      }
+
+      const agentConfigurations = await searchAgentConfigurationsByName(
+        workspaceAuth,
+        req.query.name
+      );
       return res.status(200).json({
-        agentConfiguration,
+        agentConfigurations,
       });
     }
     default:

@@ -53,20 +53,26 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { workspaceAuth, keyAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
+  const { wId } = req.query;
+  if (typeof wId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
+        message: "Workspace ID not found",
+      },
+    });
+  }
+
+  const { workspaceAuth } = await Authenticator.fromKey(keyRes.value, wId);
+
+  const owner = workspaceAuth.workspace();
+  if (!owner) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
     });
   }
