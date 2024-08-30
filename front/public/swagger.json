@@ -15,7 +15,9 @@
       "get": {
         "summary": "Get an app run",
         "description": "Retrieve a run for an app in the workspace identified by {wId}.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -73,7 +75,9 @@
       "post": {
         "summary": "Create an app run",
         "description": "Create and execute a run for an app in the specified workspace.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -105,7 +109,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["specification_hash", "config", "inputs"],
+                "required": [
+                  "specification_hash",
+                  "config",
+                  "inputs"
+                ],
                 "properties": {
                   "specification_hash": {
                     "type": "string",
@@ -205,7 +213,9 @@
       "get": {
         "summary": "List apps",
         "description": "Get all apps of a workspace.",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -297,17 +307,28 @@
         }
       }
     },
-    "/api/v1/w/{wId}/assistant/agent_configurations": {
+    "/api/v1/w/{wId}/assistant/agent_configuration/{name}": {
       "get": {
-        "summary": "List assistants",
-        "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "summary": "Get agent configuration",
+        "description": "Retrieve a specific agent configuration for the workspace identified by {wId} and {name}.",
+        "tags": [
+          "Assistant"
+        ],
         "parameters": [
           {
             "in": "path",
             "name": "wId",
             "required": true,
             "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "description": "Name of the agent configuration",
             "schema": {
               "type": "string"
             }
@@ -320,26 +341,28 @@
         ],
         "responses": {
           "200": {
-            "description": "Agent configurations for the workspace",
+            "description": "Successfully retrieved agent configuration",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AgentConfiguration"
+                  "type": "object",
+                  "properties": {
+                    "agentConfiguration": {
+                      "$ref": "#/components/schemas/AgentConfiguration"
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Bad Request. Missing or invalid parameters."
+            "description": "Bad Request. The Assistant API is only available on your own workspace."
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
           },
           "404": {
-            "description": "Workspace not found."
+            "description": "Agent configuration not found."
           },
           "405": {
             "description": "Method not supported. Only GET is expected."
@@ -354,7 +377,9 @@
       "post": {
         "summary": "Create a content fragment",
         "description": "Create a new content fragment in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -417,7 +442,9 @@
       "get": {
         "summary": "Get the events for a conversation",
         "description": "Get the events for a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -469,7 +496,9 @@
       "get": {
         "summary": "Get a conversation",
         "description": "Get a conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -528,7 +557,9 @@
       "get": {
         "summary": "Get events for a message",
         "description": "Get events for a message in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -622,7 +653,9 @@
       "post": {
         "summary": "Create a message",
         "description": "Create a message in the workspace identified by {wId} in the conversation identified by {cId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -685,7 +718,9 @@
       "post": {
         "summary": "Create a new conversation",
         "description": "Create a new conversation in the workspace identified by {wId}.",
-        "tags": ["Conversations"],
+        "tags": [
+          "Conversations"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -729,7 +764,10 @@
                   "visibility": {
                     "type": "string",
                     "description": "The visibility of the conversation (The API only accepts `unlisted`)",
-                    "enum": ["workspace", "unlisted"],
+                    "enum": [
+                      "workspace",
+                      "unlisted"
+                    ],
                     "example": "unlisted"
                   }
                 }
@@ -764,7 +802,9 @@
       "get": {
         "summary": "Retrieve a document from a data source",
         "description": "Retrieve a document from a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -835,7 +875,9 @@
       "post": {
         "summary": "Upsert a document in a data source",
         "description": "Upsert a document in a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -930,7 +972,9 @@
       "delete": {
         "summary": "Delete a document from a data source",
         "description": "Delete a document from a data source in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -988,7 +1032,9 @@
       "post": {
         "summary": "Update the parents of a document",
         "description": "Update the parents of a document in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1068,7 +1114,9 @@
       "get": {
         "summary": "Get documents",
         "description": "Get documents in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1145,7 +1193,9 @@
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1333,7 +1383,9 @@
       "get": {
         "summary": "Get a table",
         "description": "Get a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1390,7 +1442,9 @@
       "delete": {
         "summary": "Delete a table",
         "description": "Delete a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1442,7 +1496,9 @@
       "get": {
         "summary": "Get a row",
         "description": "Get a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1508,7 +1564,9 @@
       "delete": {
         "summary": "Delete a row",
         "description": "Delete a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1569,7 +1627,9 @@
       "get": {
         "summary": "List rows",
         "description": "List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1642,7 +1702,9 @@
       "post": {
         "summary": "Upsert rows",
         "description": "Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1711,7 +1773,9 @@
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": ["datetime"]
+                                    "enum": [
+                                      "datetime"
+                                    ]
                                   },
                                   "epoch": {
                                     "type": "number"
@@ -1766,7 +1830,9 @@
       "get": {
         "summary": "Get tables",
         "description": "Get tables in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1811,7 +1877,9 @@
       "post": {
         "summary": "Upsert a table",
         "description": "Upsert a table in the data source identified by {name} in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1885,7 +1953,9 @@
       "get": {
         "summary": "Get data sources",
         "description": "Get data sources in the workspace identified by {wId}.",
-        "tags": ["Datasources"],
+        "tags": [
+          "Datasources"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1934,7 +2004,9 @@
       "get": {
         "summary": "Get workspace usage data",
         "description": "Get usage data for the workspace identified by {wId} in CSV format.",
-        "tags": ["Workspace"],
+        "tags": [
+          "Workspace"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -1975,7 +2047,10 @@
             "description": "The mode of date range selection ('month' or 'range')",
             "schema": {
               "type": "string",
-              "enum": ["month", "range"]
+              "enum": [
+                "month",
+                "range"
+              ]
             }
           },
           {

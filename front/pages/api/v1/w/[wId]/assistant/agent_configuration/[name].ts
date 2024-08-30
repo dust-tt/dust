@@ -1,16 +1,15 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configuration/{name}:
  *   get:
- *     summary: Get agent configuration
+ *     summary: Get a single agent configuration by name
  *     description: Retrieve a specific agent configuration for the workspace identified by {wId} and {name}.
  *     tags:
  *       - Assistant
@@ -52,9 +51,13 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  */
 
 
+type GetAgentConfigurationResponseBody = {
+  agentConfiguration: AgentConfiguration | null;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationResponseBody>>
 ): Promise<void> {
   const keyRes = await getAPIKey(req);
   if (keyRes.isErr()) {
@@ -81,13 +84,23 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const agentConfigurations = await getAgentConfigurations({
-        auth: workspaceAuth,
-        agentsGetView: "all",
-        variant: "light",
+      const wId = workspaceAuth.workspace()?.id;
+
+      if (!wId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The Assistant API is only available on your own workspace.",
+          },
+        });
+      }
+
+      const agentConfiguration = await AgentConfiguration.findOne({
+        where: { workspaceId: wId, name: req.query.name },
       });
       return res.status(200).json({
-        agentConfigurations,
+        agentConfiguration,
       });
     }
     default:
