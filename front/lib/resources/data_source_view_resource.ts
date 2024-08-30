@@ -91,10 +91,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       dataSource
     );
 
-    const user = auth.user();
-    if (user) {
-      await dataSourceView.setEditedBy(user);
-    }
+    await dataSourceView.setEditedBy(auth);
 
     return dataSourceView;
   }
@@ -253,11 +250,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     blob: Partial<Attributes<DataSourceViewModel>>
   ): Promise<[affectedCount: number]> {
-    blob.editedAt = new Date();
-    const user = auth.user();
-    if (user) {
-      blob.editedByUserId = user.id;
-    }
     const [affectedCount, affectedRows] = await this.model.update(blob, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -268,6 +260,28 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     // Update the current instance with the new values to avoid stale data
     Object.assign(this, affectedRows[0].get());
     return [affectedCount];
+  }
+
+  // TODO(GROUPS_INFRA) Remove once backfilled.
+  async updateKind(auth: Authenticator, kind: DataSourceViewKind) {
+    await this.model.update(
+      {
+        kind,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
+      }
+    );
+  }
+
+  async setEditedBy(auth: Authenticator) {
+    await this.update(auth, {
+      editedByUserId: auth.getNonNullableUser().id,
+      editedAt: new Date(),
+    });
   }
 
   private makeEditedBy(

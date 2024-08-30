@@ -61,7 +61,9 @@ async function handler(
           : null;
 
       const dataSourceViews = (
-        await DataSourceViewResource.listByVault(auth, vault)
+        await DataSourceViewResource.listByVault(auth, vault, {
+          includeEditedBy: !!req.query.includeEditedBy,
+        })
       )
         .map((ds) => ds.toJSON())
         .filter((d) => !category || d.category === category);

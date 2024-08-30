@@ -77,7 +77,9 @@ const getTableColumns = ({
   const managedByColumn = {
     header: "Managed by",
     accessorFn: (row: RowData) =>
-      row.dataSourceView.dataSource.editedByUser?.imageUrl ?? "",
+      (row.dataSourceView.kind === "default"
+        ? row.dataSourceView.dataSource.editedByUser?.imageUrl
+        : row.dataSourceView.editedByUser?.imageUrl) ?? "",
     id: "managedBy",
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent avatarUrl={info.getValue()} roundedAvatar={true} />
@@ -191,6 +193,7 @@ export const VaultResourcesList = ({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category: category,
+      includeEditedBy: true,
       includeConnectorDetails: true,
     });
 

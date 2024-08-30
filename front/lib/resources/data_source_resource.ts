@@ -3,7 +3,6 @@ import type {
   DataSourceType,
   ModelId,
   Result,
-  UserType,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
@@ -228,9 +227,9 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return [affectedCount];
   }
 
-  async setEditedBy(user: UserType) {
+  async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: user.id,
+      editedByUserId: auth.getNonNullableUser().id,
       editedAt: new Date(),
     });
   }
