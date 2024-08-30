@@ -1535,7 +1535,7 @@ export function useVaultDataSourceViewContent({
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceView.sId}/content${queryParams.toString()}`,
+      : `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceView.sId}/content?${queryParams.toString()}`,
     vaultsDataSourcesFetcher
   );
 
