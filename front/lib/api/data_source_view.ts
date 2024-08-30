@@ -1,12 +1,20 @@
-import type { ContentNodeWithParentIds } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import type {
+  ContentNodesViewType,
+  CoreAPIError,
+  DataSourceViewContentNode,
+  Result,
+} from "@dust-tt/types";
+import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
+import assert from "assert";
 
+import config from "@app/lib/api/config";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import logger from "@app/logger/logger";
 
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
-  contentNodes: ContentNodeWithParentIds[]
-): ContentNodeWithParentIds[] {
+  contentNodes: DataSourceViewContentNode[]
+): DataSourceViewContentNode[] {
   const viewHasParents = dataSourceView.parentsIn !== null;
 
   // Filter out content nodes that are not in the view.
@@ -37,4 +45,108 @@ export function filterAndCropContentNodesByView(
   });
 
   return removeNulls(contentNodesInView);
+}
+
+export async function getContentNodesForManagedDataSourceView(
+  dataSourceView: DataSourceViewResource,
+  {
+    includeChildren,
+    internalIds,
+    viewType,
+  }: {
+    includeChildren: boolean;
+    internalIds: string[];
+    viewType: ContentNodesViewType;
+  }
+): Promise<Result<DataSourceViewContentNode[], Error>> {
+  const { dataSource } = dataSourceView;
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  assert(
+    dataSource.connectorId,
+    "Connector ID is required for managed data sources."
+  );
+
+  // If the request is for children, we need to fetch the children of the internal ids.
+  if (includeChildren) {
+    const [parentInternalId] = internalIds;
+
+    const connectorsRes = await connectorsAPI.getConnectorPermissions({
+      connectorId: dataSource.connectorId,
+      filterPermission: "read",
+      includeParents: true,
+      parentId: parentInternalId ?? undefined,
+      viewType,
+    });
+
+    if (connectorsRes.isErr()) {
+      return new Err(
+        new Error(
+          "An error occurred while fetching the resources' children content nodes."
+        )
+      );
+    }
+
+    return new Ok(connectorsRes.value.resources);
+  } else {
+    const connectorsRes = await connectorsAPI.getContentNodes({
+      connectorId: dataSource.connectorId,
+      includeParents: true,
+      internalIds,
+      viewType,
+    });
+    if (connectorsRes.isErr()) {
+      return new Err(
+        new Error(
+          "An error occurred while fetching the resources' content nodes."
+        )
+      );
+    }
+
+    return new Ok(connectorsRes.value.nodes);
+  }
+}
+
+// Static data sources are data sources that are not managed by a connector.
+// They are flat and do not have a hierarchy.
+export async function getContentNodesForStaticDataSourceView(
+  dataSourceView: DataSourceViewResource,
+  { limit, offset }: { limit: number; offset: number }
+): Promise<Result<DataSourceViewContentNode[], Error | CoreAPIError>> {
+  const { dataSource } = dataSourceView;
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const documentsRes = await coreAPI.getDataSourceDocuments({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceName: dataSource.name,
+    limit,
+    offset,
+    viewFilter: dataSourceView.toViewFilter(),
+  });
+
+  if (documentsRes.isErr()) {
+    return documentsRes;
+  }
+
+  const documentsAsContentNodes: DataSourceViewContentNode[] =
+    documentsRes.value.documents.map((doc) => ({
+      dustDocumentId: doc.document_id,
+      expandable: false,
+      internalId: doc.document_id,
+      lastUpdatedAt: doc.timestamp,
+      parentInternalId: null,
+      parentInternalIds: [],
+      permission: "read",
+      preventSelection: false,
+      sourceUrl: doc.source_url ?? null,
+      title: doc.document_id,
+      type: "file" as const,
+    }));
+
+  return new Ok(documentsAsContentNodes);
 }

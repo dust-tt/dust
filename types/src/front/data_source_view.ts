@@ -8,6 +8,7 @@ import {
   DataSourceWithConnectorDetailsType,
   EditedByUser,
 } from "./data_source";
+import { BaseContentNode } from "./lib/connectors_api";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
@@ -52,3 +53,7 @@ export type DataSourceViewSelectionConfigurations = Record<
 
 const DATA_SOURCE_VIEW_KINDS = ["default", "custom"] as const;
 export type DataSourceViewKind = (typeof DATA_SOURCE_VIEW_KINDS)[number];
+
+export type DataSourceViewContentNode = BaseContentNode & {
+  parentInternalIds: string[] | null;
+};

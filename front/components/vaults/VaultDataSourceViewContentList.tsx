@@ -1,17 +1,7 @@
-import {
-  ChatBubbleBottomCenterTextIcon,
-  DataTable,
-  DocumentIcon,
-  DocumentTextIcon,
-  FolderIcon,
-  Searchbar,
-  Spinner,
-  TableIcon,
-} from "@dust-tt/sparkle";
+import { DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   PlanType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -23,8 +13,9 @@ import {
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder } from "@app/lib/data_sources";
-import { useVaultDataSourceViewContent } from "@app/lib/swr";
+import { useDataSourceViewContentNodes } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -43,7 +34,6 @@ type VaultDataSourceViewContentListProps = {
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
-  vault: VaultType;
 };
 
 const getTableColumns = () => {
@@ -68,33 +58,23 @@ export const VaultDataSourceViewContentList = ({
   onSelect,
   owner,
   parentId,
-  vault,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
-  const visualTable = {
-    file: DocumentTextIcon,
-    folder: FolderIcon,
-    database: TableIcon,
-    channel: ChatBubbleBottomCenterTextIcon,
-  };
 
-  const {
-    vaultContent,
-    isVaultContentLoading,
-    mutateVaultDataSourceViewContent,
-  } = useVaultDataSourceViewContent({
-    dataSourceView,
-    owner,
-    parentId,
-    vaultId: vault.sId,
-    viewType: "documents", // TODO(GROUP_UI): Do not pass viewType, get all document/tables in one call
-  });
+  const { isNodesLoading, mutateDataSourceViewContentNodes, nodes } =
+    useDataSourceViewContentNodes({
+      dataSourceView,
+      owner,
+      internalIds: parentId ? [parentId] : [],
+      includeChildren: true,
+      viewType: "documents",
+    });
 
   const rows: RowData[] =
-    vaultContent?.map((contentNode) => ({
+    nodes?.map((contentNode) => ({
       ...contentNode,
-      icon: visualTable[contentNode.type] ?? DocumentIcon,
+      icon: getVisualForContentNode(contentNode),
       onClick: () => {
         if (contentNode.expandable) {
           onSelect(contentNode.internalId);
@@ -107,7 +87,7 @@ export const VaultDataSourceViewContentList = ({
       ),
     })) || [];
 
-  if (isVaultContentLoading) {
+  if (isNodesLoading) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner />
@@ -154,7 +134,7 @@ export const VaultDataSourceViewContentList = ({
         dataSourceView={dataSourceView}
         owner={owner}
         plan={plan}
-        onSave={mutateVaultDataSourceViewContent}
+        onSave={mutateDataSourceViewContentNodes}
       />
     </>
   );

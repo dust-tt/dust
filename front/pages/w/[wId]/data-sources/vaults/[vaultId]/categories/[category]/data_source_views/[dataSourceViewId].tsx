@@ -4,7 +4,6 @@ import type {
   DataSourceViewCategory,
   DataSourceViewType,
   PlanType,
-  VaultType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -17,7 +16,6 @@ import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
@@ -27,7 +25,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isAdmin: boolean;
     parentId?: string;
     plan: PlanType;
-    vault: VaultType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -40,11 +37,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const vault = await VaultResource.fetchById(
-    auth,
-    context.query.vaultId as string
-  );
-  if (!vault) {
+  const { vaultId } = context.query;
+  if (typeof vaultId !== "string") {
     return {
       notFound: true,
     };
@@ -63,7 +57,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     auth,
     dataSourceViewId
   );
-  if (!dataSourceView || !dataSourceView.dataSource) {
+  if (
+    !dataSourceView ||
+    dataSourceView.vault.sId !== vaultId ||
+    !dataSourceView.canRead(auth)
+  ) {
     return {
       notFound: true,
     };
@@ -81,7 +79,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       ...(parentId && { parentId }),
       plan,
       subscription,
-      vault: vault.toJSON(),
+      vault: dataSourceView.vault.toJSON(),
     },
   };
 });
@@ -93,7 +91,6 @@ export default function Vault({
   owner,
   parentId,
   plan,
-  vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
@@ -101,13 +98,12 @@ export default function Vault({
       <VaultDataSourceViewContentList
         owner={owner}
         plan={plan}
-        vault={vault}
         isAdmin={isAdmin}
         parentId={parentId}
         dataSourceView={dataSourceView}
         onSelect={(parentId) => {
           void router.push(
-            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
+            `/w/${owner.sId}/data-sources/vaults/${dataSourceView.vaultId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
           );
         }}
       />

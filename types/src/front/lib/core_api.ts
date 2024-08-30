@@ -671,15 +671,17 @@ export class CoreAPI {
   }
 
   async getDataSourceDocuments({
-    projectId,
     dataSourceName,
     limit,
     offset,
+    projectId,
+    viewFilter,
   }: {
-    projectId: string;
     dataSourceName: string;
     limit: number;
     offset: number;
+    projectId: string;
+    viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
       offset: number;
@@ -688,12 +690,21 @@ export class CoreAPI {
       documents: CoreAPIDocument[];
     }>
   > {
+    const queryParams = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+
+    if (viewFilter) {
+      queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
         dataSourceName
-      )}/documents?limit=${limit}&offset=${offset}`,
+      )}/documents?${queryParams.toString()}`,
       {
         method: "GET",
       }

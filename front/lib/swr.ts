@@ -9,14 +9,13 @@ import type {
   DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
-  GetDataSourceViewContentResponseBody,
   LightContentNode,
   LightWorkspaceType,
   RunRunType,
   WorkspaceEnterpriseConnection,
 } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher, Key, SWRConfiguration } from "swr";
+import type { Fetcher, Key, KeyedMutator, SWRConfiguration } from "swr";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
@@ -515,63 +514,33 @@ export function useMultipleDataSourceViewsContentNodes({
   );
 }
 
+// TODO(GROUPS_INFRA) Implement pagination.
 export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
   internalIds,
+  includeChildren = false,
+  viewType = "documents",
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
   internalIds: string[];
+  includeChildren?: boolean;
+  viewType?: ContentNodesViewType;
 }): {
-  nodes: GetDataSourceViewContentNodes["nodes"];
-  isNodesLoading: boolean;
   isNodesError: boolean;
-} {
-  const url =
-    dataSourceView && internalIds.length > 0
-      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
-      : null;
-
-  const fetchKey = useMemo(() => {
-    return JSON.stringify({ url, body: { internalIds } }); // Serialize with body to ensure uniqueness.
-  }, [url, internalIds]);
-
-  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
-    if (!url) {
-      return null;
-    }
-
-    return postFetcher([url, { internalIds }]);
-  });
-
-  return {
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
-    isNodesLoading: !error && !data,
-    isNodesError: !!error,
-  };
-}
-
-export function useDataSourceViewContentNodeChildren({
-  dataSourceView,
-  owner,
-  parentInternalId,
-}: {
-  dataSourceView?: DataSourceViewType;
-  owner: LightWorkspaceType;
-  parentInternalId: string | null;
-}): {
-  nodes: GetDataSourceViewContentNodes["nodes"];
   isNodesLoading: boolean;
-  isNodesError: boolean;
+  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
+  nodes: GetDataSourceViewContentNodes["nodes"];
 } {
   const url = dataSourceView
     ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
     : null;
 
   const body = JSON.stringify({
-    internalIds: [parentInternalId],
-    includeChildren: true,
+    internalIds,
+    includeChildren,
+    viewType,
   });
 
   const fetchKey = useMemo(() => {
@@ -581,21 +550,19 @@ export function useDataSourceViewContentNodeChildren({
     }); // Serialize with body to ensure uniqueness.
   }, [url, body]);
 
-  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
+  const { data, error, mutate } = useSWRWithDefaults(fetchKey, async () => {
     if (!url) {
       return null;
     }
 
-    return postFetcher([
-      url,
-      { includeChildren: true, internalIds: [parentInternalId] },
-    ]);
+    return postFetcher([url, { internalIds, includeChildren, viewType }]);
   });
 
   return {
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
-    isNodesLoading: !error && !data,
     isNodesError: !!error,
+    isNodesLoading: !error && !data,
+    mutateDataSourceViewContentNodes: mutate,
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
   };
 }
 
@@ -1519,47 +1486,6 @@ export function useVaultDataSourceViews<
     mutateVaultDataSourceViews: mutate,
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
-  };
-}
-
-export function useVaultDataSourceViewContent({
-  dataSourceView,
-  disabled,
-  owner,
-  parentId,
-  vaultId,
-  viewType,
-}: {
-  dataSourceView: DataSourceViewType;
-  disabled?: boolean;
-  owner: LightWorkspaceType;
-  parentId?: string;
-  vaultId: string;
-  viewType: ContentNodesViewType;
-}) {
-  const vaultsDataSourcesFetcher: Fetcher<GetDataSourceViewContentResponseBody> =
-    fetcher;
-
-  const queryParams = new URLSearchParams({
-    viewType,
-  });
-
-  if (parentId) {
-    queryParams.set("parentId", parentId);
-  }
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceView.sId}/content?${queryParams.toString()}`,
-    vaultsDataSourcesFetcher
-  );
-
-  return {
-    vaultContent: useMemo(() => data?.nodes ?? [], [data]),
-    mutateVaultDataSourceViewContent: mutate,
-    isVaultContentLoading: !error && !data,
-    isVaultContentError: error,
   };
 }
 
