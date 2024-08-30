@@ -91,7 +91,7 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "The Assistant API is only available on your own workspace.",
+              "Workspace ID not found",
           },
         });
       }
