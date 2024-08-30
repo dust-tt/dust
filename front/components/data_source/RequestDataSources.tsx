@@ -18,15 +18,12 @@ import {
 import { sendRequestDataSourceEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
 
-interface RequestDataSourcesProps {
+interface RequestDataSources {
   dataSources: DataSourceType[];
   owner: WorkspaceType;
 }
 
-export function RequestDataSourcesButton({
-  dataSources,
-  owner,
-}: RequestDataSourcesProps) {
+export function RequestDataSources({ dataSources, owner }: RequestDataSources) {
   const [showRequestDataSourceModal, setShowRequestDataSourceModal] =
     useState(false);
 

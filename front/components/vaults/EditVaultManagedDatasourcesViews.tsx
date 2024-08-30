@@ -8,7 +8,7 @@ import type {
 import { removeNulls } from "@dust-tt/types";
 import React, { useState } from "react";
 
-import { RequestDataSourcesButton } from "@app/components/data_source/RequestDataSourcesButton";
+import { RequestDataSources } from "@app/components/data_source/RequestDataSources";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
 import { useVaultDataSourceViews } from "@app/lib/swr";
@@ -209,7 +209,7 @@ export function EditVaultManagedDataSourcesViews({
           }}
         />
       ) : (
-        <RequestDataSourcesButton
+        <RequestDataSources
           dataSources={vaultDataSourceViews.map((view) => view.dataSource)}
           owner={owner}
         />
