@@ -21,17 +21,24 @@ import { apiError } from "@app/logger/withlogging";
 
 const DEFAULT_LIMIT = 100;
 
-const GetContentNodesRequestBodySchema = t.type({
-  includeChildren: t.undefined,
-  internalIds: t.array(t.string),
-  viewType: ContentNodesViewTypeCodec,
-});
-
-const GetContentNodeChildrenRequestBodySchema = t.type({
-  includeChildren: t.literal(true),
+const GetContentNodesRequestBodyBaseSchema = t.type({
   internalIds: t.array(t.union([t.string, t.null])),
   viewType: ContentNodesViewTypeCodec,
 });
+
+const GetContentNodesRequestBodySchema = t.intersection([
+  GetContentNodesRequestBodyBaseSchema,
+  t.type({
+    includeChildren: t.undefined,
+  }),
+]);
+
+const GetContentNodeChildrenRequestBodySchema = t.intersection([
+  GetContentNodesRequestBodyBaseSchema,
+  t.type({
+    includeChildren: t.literal(true),
+  }),
+]);
 
 const GetContentNodesOrChildrenRequestBody = t.union([
   GetContentNodeChildrenRequestBodySchema,
@@ -165,6 +172,7 @@ async function handler(
 
     const contentNodesRes = await getContentNodesForStaticDataSourceView(
       dataSourceView,
+      viewType,
       paginationRes.value
     );
 

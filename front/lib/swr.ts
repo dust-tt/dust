@@ -519,7 +519,7 @@ export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
   internalIds,
-  includeChildren = false,
+  includeChildren,
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
