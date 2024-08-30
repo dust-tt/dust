@@ -134,10 +134,6 @@ async function createFileTextStream(buffer: Buffer, contentType: string) {
 
   const pages = extractionRes.value;
 
-  if (pages.length === 0) {
-    throw new Error("no_text_found");
-  }
-
   const prefix = pagePrefixesPerMimeType[contentType];
 
   return new Readable({
