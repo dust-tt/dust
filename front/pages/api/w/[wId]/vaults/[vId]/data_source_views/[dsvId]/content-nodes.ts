@@ -21,20 +21,20 @@ import { apiError } from "@app/logger/withlogging";
 
 const DEFAULT_LIMIT = 100;
 
-const GetContentNodesRequestBodBaseSchema = t.type({
+const GetContentNodesRequestBodyBaseSchema = t.type({
   internalIds: t.array(t.union([t.string, t.null])),
   viewType: ContentNodesViewTypeCodec,
 });
 
 const GetContentNodesRequestBodySchema = t.intersection([
-  GetContentNodesRequestBodBaseSchema,
+  GetContentNodesRequestBodyBaseSchema,
   t.type({
     includeChildren: t.undefined,
   }),
 ]);
 
 const GetContentNodeChildrenRequestBodySchema = t.intersection([
-  GetContentNodesRequestBodBaseSchema,
+  GetContentNodesRequestBodyBaseSchema,
   t.type({
     includeChildren: t.literal(true),
   }),
