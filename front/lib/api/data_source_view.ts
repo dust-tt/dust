@@ -18,14 +18,22 @@ export function filterAndCropContentNodesByView(
       return null;
     }
 
-    // We stop at the first parent that is in the view.
+    // At the first parent that is in the view, we know the content node is in the view
     const indexToSplit = parentInternalIds.findIndex((p) =>
       dataSourceView.parentsIn?.includes(p)
     );
     const isInView = !viewHasParents || indexToSplit !== -1;
 
     if (isInView) {
-      const parentIdsInView = parentInternalIds.slice(0, indexToSplit);
+      // for parents, we include all those up to the last one in the view
+      // (or all of them if the view has no parents)
+      const lastParentInViewIndex = parentInternalIds.findLastIndex((p) =>
+        dataSourceView.parentsIn?.includes(p)
+      );
+
+      const parentIdsInView = !viewHasParents
+        ? parentInternalIds
+        : parentInternalIds.slice(0, lastParentInViewIndex + 1);
 
       return {
         ...node,
