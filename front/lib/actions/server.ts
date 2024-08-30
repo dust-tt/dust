@@ -1,12 +1,12 @@
-import type { DustRegistryActionName } from "@dust-tt/types";
 import type { DustAppConfigType, DustAppType } from "@dust-tt/types";
-import { DustProdActionRegistry } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import type { DustRegistryActionName } from "@app/lib/registry";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 

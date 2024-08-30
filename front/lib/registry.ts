@@ -1,26 +1,18 @@
-import { DustAppType } from "../../../front/lib/dust_api";
-import { EnvironmentConfig } from "../../../shared/utils/config";
+import type { DustAppType } from "@dust-tt/types";
 
-export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
-export const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
+import config, { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/api/config";
 
-const DUST_APPS_WORKSPACE_ID =
-  EnvironmentConfig.getOptionalEnvVariable("DUST_APPS_WORKSPACE_ID") ??
-  PRODUCTION_DUST_APPS_WORKSPACE_ID;
+const DUST_APPS_WORKSPACE_ID = config.getDustAppsWorkspaceId();
 
-export const isCustomDustAppsWorkspaceId = () =>
-  PRODUCTION_DUST_WORKSPACE_ID !== DUST_APPS_WORKSPACE_ID;
+export const isProductionDustAppsWorkspaceId = () =>
+  PRODUCTION_DUST_WORKSPACE_ID === DUST_APPS_WORKSPACE_ID;
 
 export type Action = {
   app: DustAppType;
   config: { [key: string]: unknown };
 };
 
-const createActionRegistry = <K extends string, R extends Record<K, Action>>(
-  registry: R
-) => registry;
-
-export const DustProdActionRegistry = createActionRegistry({
+export const DustProdActionRegistry = {
   "assistant-v2-multi-actions-agent": {
     app: {
       workspaceId: DUST_APPS_WORKSPACE_ID,
@@ -257,7 +249,7 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-});
+};
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;
 

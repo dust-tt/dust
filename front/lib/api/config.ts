@@ -1,5 +1,9 @@
 import { EnvironmentConfig } from "@dust-tt/types";
 
+export const PRODUCTION_DUST_API = "https://dust.tt";
+export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
+export const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
+
 const config = {
   getClientFacingUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
@@ -82,7 +86,7 @@ const config = {
       // Dust production API URL is hardcoded for now.
       url:
         EnvironmentConfig.getOptionalEnvVariable("DUST_PROD_API") ??
-        "https://dust.tt",
+        PRODUCTION_DUST_API,
       nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
     };
   },
@@ -91,6 +95,12 @@ const config = {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
+  },
+  getDustAppsWorkspaceId: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DUST_APPS_WORKSPACE_ID") ??
+      PRODUCTION_DUST_APPS_WORKSPACE_ID
+    );
   },
   // OAuth
   getOAuthGithubApp: (): string => {

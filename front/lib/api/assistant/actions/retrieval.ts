@@ -16,14 +16,7 @@ import type {
 } from "@dust-tt/types";
 import type { AgentActionSpecification } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import {
-  BaseAction,
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  isCustomDustAppsWorkspaceId,
-  isDevelopment,
-  PRODUCTION_DUST_WORKSPACE_ID,
-} from "@dust-tt/types";
+import { BaseAction, isDevelopment } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -32,12 +25,18 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import { PRODUCTION_DUST_WORKSPACE_ID } from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentRetrievalAction,
   RetrievalDocument,
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
+import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+  isProductionDustAppsWorkspaceId,
+} from "@app/lib/registry";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 
@@ -437,7 +436,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
         workspace_id:
-          isDevelopment() && !isCustomDustAppsWorkspaceId()
+          isDevelopment() && isProductionDustAppsWorkspaceId()
             ? PRODUCTION_DUST_WORKSPACE_ID
             : d.workspaceId,
         // Use dataSourceViewId if it exists; otherwise, use dataSourceId.

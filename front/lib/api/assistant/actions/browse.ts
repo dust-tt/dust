@@ -11,13 +11,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import {
-  BaseAction,
-  BrowseActionOutputSchema,
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  Ok,
-} from "@dust-tt/types";
+import { BaseAction, BrowseActionOutputSchema, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -26,6 +20,7 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 interface BrowseActionBlob {

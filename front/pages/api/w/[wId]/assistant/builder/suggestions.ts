@@ -8,8 +8,6 @@ import {
   assertNever,
   BuilderEmojiSuggestionsResponseBodySchema,
   BuilderSuggestionsResponseBodySchema,
-  cloneBaseConfig,
-  DustProdActionRegistry,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
@@ -22,6 +20,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { runAction } from "@app/lib/actions/server";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 
 async function handler(
