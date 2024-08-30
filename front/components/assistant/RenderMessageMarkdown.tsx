@@ -109,8 +109,8 @@ function visualizationDirective() {
 }
 
 function sanitizeContent(str: string): string {
-  // (1) Add closing backticks if they are missing such that we render a code block during
-  // streaming.
+  // (1) Add closing backticks if they are missing such that we render a code block or inline
+  // element during streaming.
 
   // Regular expression to find either a single backtick or triple backticks
   const regex = /(`{1,3})/g;
@@ -143,7 +143,8 @@ function sanitizeContent(str: string): string {
 
   let openVisualization = false;
   for (let i = 0; i < lines.length; i++) {
-    // (2) Replace legacy <visualization> XML tags by the markdown directive syntax.
+    // (2) Replace legacy <visualization> XML tags by the markdown directive syntax for backward
+    // compatibility with older <visualization> tags.
     if (lines[i].trim() === "<visualization>") {
       lines[i] = ":::visualization";
     }
@@ -158,7 +159,7 @@ function sanitizeContent(str: string): string {
     }
     if (openVisualization && lines[i].trim() === ":::") {
       lines.splice(i, 0, VISUALIZATION_MAGIC_LINE);
-      openVisualization = false; // Reset the flag after inserting the magic line
+      openVisualization = false;
     }
   }
 
