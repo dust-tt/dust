@@ -56,7 +56,6 @@ export async function retrieveNewTranscriptsActivity(
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
@@ -66,7 +65,6 @@ export async function retrieveNewTranscriptsActivity(
 
   if (!auth.workspace()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     localLogger.error(
       {},
       "[retrieveNewTranscripts] Workspace not found. Stopping."
@@ -125,7 +123,6 @@ export async function processTranscriptActivity(
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
@@ -137,7 +134,6 @@ export async function processTranscriptActivity(
 
   if (!user) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
@@ -150,7 +146,6 @@ export async function processTranscriptActivity(
 
   if (!auth.workspace()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
@@ -158,7 +153,6 @@ export async function processTranscriptActivity(
 
   if (!auth.user() || !auth.isUser()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     throw new Error(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
@@ -276,7 +270,6 @@ export async function processTranscriptActivity(
       "[processTranscriptActivity] No owner found. Stopping."
     );
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     return;
   }
 
@@ -284,7 +277,6 @@ export async function processTranscriptActivity(
 
   if (!agentConfigurationId) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     localLogger.error(
       {},
       "[processTranscriptActivity] No agent configuration id found. Stopping."
@@ -296,7 +288,6 @@ export async function processTranscriptActivity(
 
   if (!agent) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-    await transcriptsConfiguration.setIsActive(false);
     localLogger.error(
       {},
       "[processTranscriptActivity] Agent configuration not found. Stopping."

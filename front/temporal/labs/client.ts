@@ -58,6 +58,7 @@ export async function stopRetrieveTranscriptsWorkflow(
         throw e;
       }
     }
+    await transcriptsConfiguration.setIsActive(false);
     return new Ok(undefined);
   } catch (e) {
     logger.error(
