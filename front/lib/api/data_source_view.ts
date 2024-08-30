@@ -26,14 +26,20 @@ export function filterAndCropContentNodesByView(
       return null;
     }
 
-    // We stop at the first parent that is in the view.
-    const indexToSplit = parentInternalIds.findIndex((p) =>
+    // Ensure that the node, or at least one of its ancestors, is within the
+    // view. For parentInternalIds, include all of them  up to the highest one
+    // in the hierarchy that is in the view, (which is last index, since parents
+    // are ordered from leaf to root), or all of them  if the view is "full",
+    // that is,  parentsIn is null.
+    const indexToSplit = parentInternalIds.findLastIndex((p) =>
       dataSourceView.parentsIn?.includes(p)
     );
     const isInView = !viewHasParents || indexToSplit !== -1;
 
     if (isInView) {
-      const parentIdsInView = parentInternalIds.slice(0, indexToSplit);
+      const parentIdsInView = !viewHasParents
+        ? parentInternalIds
+        : parentInternalIds.slice(0, indexToSplit + 1);
 
       return {
         ...node,
