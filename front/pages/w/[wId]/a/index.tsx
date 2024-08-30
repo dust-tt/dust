@@ -38,6 +38,7 @@ import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getApps } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -47,8 +48,6 @@ import {
 } from "@app/lib/providers";
 import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -75,7 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       groups,
       subscription,
       apps,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });

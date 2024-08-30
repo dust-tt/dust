@@ -17,8 +17,6 @@ import { dumpSpecification } from "@app/lib/specification";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 import logger from "@app/logger/logger";
 
-const { GA_TRACKING_ID = "" } = process.env;
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -77,7 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app,
       specification: spec,
       dustAppsListUrl,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });

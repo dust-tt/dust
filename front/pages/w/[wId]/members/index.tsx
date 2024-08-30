@@ -51,8 +51,6 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { useMembers } from "@app/lib/swr";
 
-const { GA_TRACKING_ID = "" } = process.env;
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
   owner: WorkspaceType;
@@ -95,7 +93,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       perSeatPricing,
       enterpriseConnectionStrategyDetails,
       plan,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       workspaceHasAvailableSeats,
       workspaceVerifiedDomain,
     },

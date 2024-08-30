@@ -36,8 +36,6 @@ import { isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
-const { GA_TRACKING_ID = "" } = process.env;
-
 type DataSourceWithConnector = DataSourceType & {
   connector: ConnectorType;
 };
@@ -124,7 +122,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       readOnly,
       dataSources,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       dataSourcesUsage,
     },
   };

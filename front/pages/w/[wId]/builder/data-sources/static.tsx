@@ -27,11 +27,10 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -67,7 +66,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       readOnly,
       dataSources,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       dataSourcesUsage,
     },
   };

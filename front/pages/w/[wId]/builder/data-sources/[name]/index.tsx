@@ -62,8 +62,6 @@ import logger from "@app/logger/logger";
 
 import { setupConnection } from "../managed";
 
-const { GA_TRACKING_ID = "" } = process.env;
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -133,7 +131,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       connector,
       standardView,
       dustClientFacingUrl: config.getClientFacingUrl(),
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       user,
     },
   };
