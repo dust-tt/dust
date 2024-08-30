@@ -520,15 +520,16 @@ export async function syncDeltaForRootNodesInDrive({
         ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
       );
     });
+
+    // if only parts of the drive are selected, look for folders that may
+    // have been removed from selection and scrub them
+    await scrubRemovedFolders({
+      connector,
+      uniqueChangedItems,
+      sortedChangedItems,
+    });
   }
 
-  // Finally add all removed items, which may not have been included even if they are in the selected roots
-  sortedChangedItems.push(
-    ...uniqueChangedItems.filter(
-      (item) =>
-        !sortedChangedItems.includes(item) && item.deleted?.state === "deleted"
-    )
-  );
   for (const driveItem of sortedChangedItems) {
     heartbeat();
     if (!driveItem.parentReference) {
@@ -1052,4 +1053,60 @@ async function isOutsideRootNodes({
   } while (parentInternalId !== null);
 
   return true;
+}
+
+/**
+ * Detect files & folders moved out of toplevel folders and delete them
+ * Such a case is e.g.:
+ * - only folder A is selected for sync, not the whole drive
+ * - folder B is not selected for sync
+ * - folder C was a subfolder of A and is moved out of A into B
+ * In that case, C should be deleted from the sync
+ */
+async function scrubRemovedFolders({
+  connector,
+  uniqueChangedItems,
+  sortedChangedItems,
+}: {
+  connector: ConnectorResource;
+  uniqueChangedItems: DriveItem[];
+  sortedChangedItems: DriveItem[];
+}) {
+  // all elements from the changelist that are in uniqueChangedItems but not in
+  // sortedChangedItems are out of the selected roots
+  // we use a set to avoid O(n^2) complexity
+  const sortedChangedItemsSet = new Set(
+    sortedChangedItems.map((item) => item.id)
+  );
+  const outOfRoots = uniqueChangedItems.filter(
+    // the drive root folder is always in the list but we never need to delete it
+    (item) => !sortedChangedItemsSet.has(item.id) && !item.root
+  );
+
+  const outOfRootsInternalIds = outOfRoots.map((item) =>
+    getDriveItemInternalId(item)
+  );
+
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connector.id,
+    outOfRootsInternalIds
+  );
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  for (const node of nodes) {
+    if (node.nodeType === "file") {
+      await deleteFile({
+        connectorId: connector.id,
+        internalId: node.internalId,
+        dataSourceConfig,
+      });
+    } else if (node.nodeType === "folder") {
+      await recursiveNodeDeletion(
+        node.internalId,
+        connector.id,
+        dataSourceConfig
+      );
+    }
+  }
 }
