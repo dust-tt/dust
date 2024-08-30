@@ -7,11 +7,13 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { APIError, AppVisibility, WorkspaceType } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useApps } from "@app/lib/swr";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
+import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/apps";
 
 export const VaultCreateAppModal = ({
   owner,
@@ -22,6 +24,7 @@ export const VaultCreateAppModal = ({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) => {
+  const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
   const [name, setName] = useState<string | null>(null);
@@ -65,12 +68,10 @@ export const VaultCreateAppModal = ({
       });
       if (res.ok) {
         await mutateApps();
+        const response: PostAppResponseBody = await res.json();
+        const { app } = response;
+        await router.push(`/w/${owner.sId}/a/${app.sId}`);
         setIsOpen(false);
-        // @todo Daph next PR: rework the modal detail so we can propertly redirect
-        // on the edition view.
-        // const response: PostAppResponseBody = await res.json();
-        // const { app } = response;
-        // await router.push(`/w/${owner.sId}/a/${app.sId}`);
 
         sendNotification({
           type: "success",
