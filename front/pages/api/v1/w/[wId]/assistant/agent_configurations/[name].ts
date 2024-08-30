@@ -10,8 +10,8 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations/{name}:
  *   get:
- *     summary: Get a single agent configuration by name
- *     description: Retrieve a specific agent configuration for the workspace identified by {wId} and {name}.
+ *     summary: Search agent configuration by name
+ *     description: Search for agent configurations by name in the workspace identified by {wId}.
  *     tags:
  *       - Assistant
  *     parameters:
