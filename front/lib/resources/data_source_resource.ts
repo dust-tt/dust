@@ -39,7 +39,7 @@ export interface DataSourceResource
 export class DataSourceResource extends ResourceWithVault<DataSource> {
   static model: ModelStatic<DataSource> = DataSource;
 
-  readonly editedByUser: Attributes<User> | undefined;
+  readonly editedByUser?: Attributes<User>;
 
   constructor(
     model: ModelStatic<DataSource>,

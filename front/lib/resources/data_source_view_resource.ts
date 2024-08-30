@@ -45,7 +45,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
   private ds?: DataSourceResource;
-  readonly editedByUser: Attributes<User> | undefined;
+  readonly editedByUser?: Attributes<User>;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
