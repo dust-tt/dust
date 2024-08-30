@@ -521,25 +521,14 @@ export async function syncDeltaForRootNodesInDrive({
       );
     });
 
+    // if only parts of the drive are selected, look for folders that may
+    // have been removed from selection and scrub them
     await scrubRemovedFolders({
       connector,
       uniqueChangedItems,
       sortedChangedItems,
     });
   }
-
-  // @thomas - I don't get that code block below; the deleted items should
-  // already be in sortedChangedItems if they're in the selected roots, right?
-  // maybe it's legacy and we can now delete it?
-
-  // Finally add all removed items, which may not have been included even if they are in
-  // the selected roots
-  sortedChangedItems.push(
-    ...uniqueChangedItems.filter(
-      (item) =>
-        !sortedChangedItems.includes(item) && item.deleted?.state === "deleted"
-    )
-  );
 
   for (const driveItem of sortedChangedItems) {
     heartbeat();
