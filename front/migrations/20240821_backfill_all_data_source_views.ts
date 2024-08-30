@@ -70,9 +70,9 @@ async function backfillDataSourceViewsForWorkspace(
           globalVault
         );
       if (dataSourceViews.length > 0) {
-        const [dataSourceView] = dataSourceViews;
-
-        await dataSourceView.updateKind(auth, "custom");
+        // Method `updateKind` removed from `DataSourceViewResource`
+        // const [dataSourceView] = dataSourceViews;
+        // await dataSourceView.updateKind(auth, "custom");
       }
     }
 

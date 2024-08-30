@@ -262,21 +262,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return [affectedCount];
   }
 
-  // TODO(GROUPS_INFRA) Remove once backfilled.
-  async updateKind(auth: Authenticator, kind: DataSourceViewKind) {
-    await this.model.update(
-      {
-        kind,
-      },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: this.id,
-        },
-      }
-    );
-  }
-
   async setEditedBy(auth: Authenticator) {
     await this.update(auth, {
       editedByUserId: auth.getNonNullableUser().id,
