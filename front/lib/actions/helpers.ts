@@ -1,6 +1,5 @@
-import type { Action, DustAPIResponse, WorkspaceType } from "@dust-tt/types";
+import type { DustAPIResponse, WorkspaceType } from "@dust-tt/types";
 import type { DustAppConfigType } from "@dust-tt/types";
-import { cloneBaseConfig } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { isLeft, isRight } from "fp-ts/lib/Either";
@@ -13,6 +12,8 @@ import {
 } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import type { Action } from "@app/lib/registry";
+import { cloneBaseConfig } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 interface CallActionParams<V extends t.Mixed> {

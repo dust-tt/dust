@@ -35,8 +35,6 @@ import {
   md5,
 } from "@dust-tt/types";
 import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
   Err,
   getTimeframeSecondsFromLiteral,
   isAgentMention,
@@ -71,6 +69,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";

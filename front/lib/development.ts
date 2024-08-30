@@ -1,10 +1,12 @@
 import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 
-export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
-const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
+import {
+  PRODUCTION_DUST_APPS_WORKSPACE_ID,
+  PRODUCTION_DUST_WORKSPACE_ID,
+} from "@app/lib/registry";
 
-export function isADustProdWorkspace(owner: LightWorkspaceType) {
+function isADustProdWorkspace(owner: LightWorkspaceType) {
   return (
     owner.sId === PRODUCTION_DUST_WORKSPACE_ID ||
     owner.sId === PRODUCTION_DUST_APPS_WORKSPACE_ID

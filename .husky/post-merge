@@ -1,5 +1,11 @@
 #!/bin/sh
 
+if [ -z "$ENABLE_AUTO_SYNC_ON_PULL" ]
+then
+  echo "You can enable dust-apps auto sync by setting ENABLE_AUTO_SYNC_ON_PULL"
+  exit 0
+fi
+
 current_branch=$(git symbolic-ref --short HEAD)
 if [ "$current_branch" = "main" ]
 then

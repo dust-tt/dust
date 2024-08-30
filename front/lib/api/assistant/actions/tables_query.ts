@@ -12,12 +12,7 @@ import type {
   TablesQueryParamsEvent,
   TablesQuerySuccessEvent,
 } from "@dust-tt/types";
-import {
-  BaseAction,
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  Ok,
-} from "@dust-tt/types";
+import { BaseAction, Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -27,6 +22,7 @@ import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/g
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 

@@ -3,19 +3,18 @@ import type {
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
-  cloneBaseConfig,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   ioTsParsePayload,
   PROCESS_SCHEMA_ALLOWED_TYPES,
 } from "@dust-tt/types";
 import { InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema } from "@dust-tt/types";
-import { DustProdActionRegistry } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 
 async function handler(

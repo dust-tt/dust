@@ -1,6 +1,8 @@
 #!/bin/bash
 DIR=$(dirname $0)
 
+set -e
+
 function escaped_columns_list {
     echo $* | sed -E 's/ /,/g'| sed -E 's/([a-zA-Z_]+)/\\"\1\\"/g'
 }
@@ -48,11 +50,13 @@ function import {
     psql ${uri} -c "drop table if exists __copy;"
 }
 
-if [ -z "$DUST_APPS_SYNC_WORKSPACE_ID" ] 
+if [ -z "$DEVELOPMENT_DUST_APPS_WORKSPACE_ID" ] 
 then
-    echo "Please set DUST_APPS_SYNC_WORKSPACE_ID if you want to synchronize dust-apps."
+    echo "Please set DEVELOPMENT_DUST_APPS_WORKSPACE_ID with your local workspace sId if you want to synchronize there dust-apps from production."
     exit 0
 fi
+
+DUST_APPS_WORKSPACE_NUMERIC_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}') TO STDOUT")
 
 mkdir -p /tmp/dust-apps
 
@@ -76,7 +80,7 @@ then
     # Get projects matching the current specifications
     PROJECTS=$(psql $CORE_DATABASE_URI -c "copy (select distinct(project) from specifications where hash in (${IN_CLAUSE})) to stdout" | sed "s/.*/'&'/" | paste -sd, -)
     # Get appIds matching the specifications
-    LOCAL_APP_IDS=$(psql $FRONT_DATABASE_URI -c "copy (select distinct(\"sId\") from apps where \"dustAPIProjectId\" in (${PROJECTS}) and visibility!='deleted' and \"workspaceId\"=${DUST_APPS_SYNC_WORKSPACE_ID} order by \"sId\") to stdout" | paste -sd\  -)
+    LOCAL_APP_IDS=$(psql $FRONT_DATABASE_URI -c "copy (select distinct(\"sId\") from apps where \"dustAPIProjectId\" in (${PROJECTS}) and visibility!='deleted' and \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} order by \"sId\") to stdout" | paste -sd\  -)
 
     # Check if any app is missing
     MISSING=false
@@ -97,11 +101,12 @@ then
     fi
 fi
 
-echo "Will copy apps into workspace ${DUST_APPS_SYNC_WORKSPACE_ID}..."
-echo "You'll have to manually update front/lib/api/config.ts to use localhost:3000 instead of dust.tt,"
-echo "and front/lib/development.ts / types/src/front/lib/actions/registry.ts to set your workspace sId in PRODUCTION_DUST_APPS_WORKSPACE_ID"
-echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."
-set -e
+echo
+echo "Checking gcp access..."
+gcloud container clusters list
+
+echo
+echo "Will copy apps into workspace ${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}..."
 
 echo "Fetching prodbox pod..."
 PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox |cut -d \  -f1)
@@ -114,12 +119,12 @@ fetch FRONT datasets "id createdAt updatedAt name description schema appId works
 
 
 # ---- apps
-cat /tmp/dust-apps/FRONT_apps.csv | cut -f1-11 | sed -E "s/^(.*)$/\1\t${DUST_APPS_SYNC_WORKSPACE_ID}/g" > /tmp/dust-apps/FRONT_apps_transformed.csv
+cat /tmp/dust-apps/FRONT_apps.csv | cut -f1-11 | sed -E "s/^(.*)$/\1\t${DUST_APPS_WORKSPACE_NUMERIC_ID}/g" > /tmp/dust-apps/FRONT_apps_transformed.csv
 mv /tmp/dust-apps/FRONT_apps_transformed.csv /tmp/dust-apps/FRONT_apps.csv
 import FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "updatedAt name description visibility savedSpecification savedConfig savedRun dustAPIProjectId"
 
 # ---- datasets
-cat /tmp/dust-apps/FRONT_datasets.csv | cut -f1-7 | sed -E "s/^(.*)$/\1\t${DUST_APPS_SYNC_WORKSPACE_ID}/g" > /tmp/dust-apps/FRONT_datasets_transformed.csv
+cat /tmp/dust-apps/FRONT_datasets.csv | cut -f1-7 | sed -E "s/^(.*)$/\1\t${DUST_APPS_WORKSPACE_NUMERIC_ID}/g" > /tmp/dust-apps/FRONT_datasets_transformed.csv
 mv /tmp/dust-apps/FRONT_datasets_transformed.csv /tmp/dust-apps/FRONT_datasets.csv
 import FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "updatedAt name description schema"
 
@@ -145,3 +150,7 @@ import CORE datasets_points "id hash json" "hash json" "on conflict(hash) do not
 import CORE datasets_joins "id dataset point point_idx" "point point_idx" "" "and __copy.point in (select id from datasets_points)"
 
 rm -R /tmp/dust-apps
+
+echo
+echo "You can now start front server with DEVELOPMENT_DUST_APPS_WORKSPACE_ID=\"${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}\" and DUST_PROD_API=\"http://localhost:3000\" to run apps locally."
+echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."

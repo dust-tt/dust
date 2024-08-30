@@ -43,7 +43,6 @@ export * from "./front/dust_app_secret";
 export * from "./front/files";
 export * from "./front/groups";
 export * from "./front/key";
-export * from "./front/lib/actions/registry";
 export * from "./front/lib/actions/types";
 export * from "./front/lib/api/assistant/actions/browse";
 export * from "./front/lib/api/assistant/actions/dust_app_run";

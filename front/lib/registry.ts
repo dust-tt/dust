@@ -1,6 +1,10 @@
-import { DustAppType } from "../../../front/lib/dust_api";
+import type { DustAppType } from "@dust-tt/types";
+import { isDevelopment } from "@dust-tt/types";
 
-const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
+import config from "@app/lib/api/config";
+
+export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
+export const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
 export type Action = {
   app: DustAppType;
@@ -9,7 +13,18 @@ export type Action = {
 
 const createActionRegistry = <K extends string, R extends Record<K, Action>>(
   registry: R
-) => registry;
+) => {
+  const developmentWorkspaceId = config.getDevelopmentDustAppsWorkspaceId();
+
+  if (isDevelopment() && developmentWorkspaceId) {
+    const actions: Action[] = Object.values(registry);
+    actions.forEach((action) => {
+      action.app.workspaceId = developmentWorkspaceId;
+    });
+  }
+
+  return registry;
+};
 
 export const DustProdActionRegistry = createActionRegistry({
   "assistant-v2-multi-actions-agent": {

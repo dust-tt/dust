@@ -1,8 +1,6 @@
-import type { DustRegistryActionName } from "@dust-tt/types";
 import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   ConnectorsAPI,
-  DustProdActionRegistry,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
@@ -23,6 +21,7 @@ import {
   internalSubscribeWorkspaceToFreeNoPlan,
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";

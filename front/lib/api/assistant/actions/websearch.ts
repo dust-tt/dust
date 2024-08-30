@@ -14,13 +14,7 @@ import type {
   WebsearchResultType,
   WebsearchSuccessEvent,
 } from "@dust-tt/types";
-import {
-  BaseAction,
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  Ok,
-  WebsearchAppActionOutputSchema,
-} from "@dust-tt/types";
+import { BaseAction, Ok, WebsearchAppActionOutputSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -31,6 +25,7 @@ import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import { getRunnerforActionConfiguration } from "./runners";
