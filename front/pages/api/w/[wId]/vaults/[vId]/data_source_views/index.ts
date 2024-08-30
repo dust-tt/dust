@@ -1,25 +1,19 @@
 import type {
-  ConnectorType,
   DataSourceViewType,
   DataSourceViewWithConnectorType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  isManaged,
-  PostDataSourceViewSchema,
-} from "@dust-tt/types";
+import { isManaged, PostDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import config from "@app/lib/api/config";
+import { enhanceDataSourceWithConnector } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourceViewsResponseBody<
@@ -78,41 +72,11 @@ async function handler(
             if (!isManaged(dataSource)) {
               return dataSourceView;
             }
-
-            let connector: ConnectorType | null = null;
-            let fetchConnectorError = false;
-            let fetchConnectorErrorMessage: string | null = null;
-            try {
-              const connectorsAPI = new ConnectorsAPI(
-                config.getConnectorsAPIConfig(),
-                logger
-              );
-              const statusRes = await connectorsAPI.getConnector(
-                dataSource.connectorId
-              );
-              if (statusRes.isErr()) {
-                fetchConnectorError = true;
-                fetchConnectorErrorMessage = statusRes.error.message;
-              } else {
-                connector = statusRes.value;
-              }
-            } catch (e) {
-              // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
-              // the datasources (eventual actions will fail but a 500 just at display is not desirable).
-              // When that happens the managed data sources are shown as failed.
-              fetchConnectorError = true;
-              fetchConnectorErrorMessage = "Synchonization service is down";
-            }
-
+            const enhancedDataSource =
+              await enhanceDataSourceWithConnector(dataSource);
             return {
               ...dataSourceView,
-              dataSource: {
-                ...dataSource,
-                connectorProvider: dataSource.connectorProvider,
-                connector,
-                fetchConnectorError,
-                fetchConnectorErrorMessage,
-              },
+              dataSource: enhancedDataSource,
             };
           })
         );

@@ -1,4 +1,10 @@
-import type { ConnectorProvider, DataSourceType, Result } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+  DataSourceWithConnectorType,
+  Result,
+} from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
@@ -169,4 +175,42 @@ async function warnPostDeletion(
     default:
       break;
   }
+}
+
+export async function enhanceDataSourceWithConnector(
+  dataSource: DataSourceType & {
+    connectorProvider: ConnectorProvider;
+    connectorId: string;
+  }
+): Promise<DataSourceWithConnectorType> {
+  let connector: ConnectorType | null = null;
+  let fetchConnectorError = false;
+  let fetchConnectorErrorMessage: string | null = null;
+  try {
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const statusRes = await connectorsAPI.getConnector(dataSource.connectorId);
+    if (statusRes.isErr()) {
+      fetchConnectorError = true;
+      fetchConnectorErrorMessage = statusRes.error.message;
+    } else {
+      connector = statusRes.value;
+    }
+  } catch (e) {
+    // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
+    // the datasources (eventual actions will fail but a 500 just at display is not desirable).
+    // When that happens the managed data sources are shown as failed.
+    fetchConnectorError = true;
+    fetchConnectorErrorMessage = "Synchonization service is down";
+  }
+
+  return {
+    ...dataSource,
+    connectorProvider: dataSource.connectorProvider,
+    connector,
+    fetchConnectorError,
+    fetchConnectorErrorMessage,
+  };
 }
