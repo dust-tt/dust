@@ -1098,25 +1098,30 @@ export class CoreAPI {
   }
 
   async getTables({
-    projectId,
     dataSourceName,
-    filter,
+    projectId,
+    viewFilter,
   }: {
-    projectId: string;
     dataSourceName: string;
-    filter?: CoreAPISearchFilter | null;
+    projectId: string;
+    viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
       tables: CoreAPITable[];
     }>
   > {
-    const qs = filter
-      ? `?view_filter=${encodeURIComponent(JSON.stringify(filter))}`
-      : "";
+    const queryParams = new URLSearchParams();
+
+    if (viewFilter) {
+      queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}/tables${qs}`,
+      )}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}/tables?${queryParams.toString()}`,
       {
         method: "GET",
       }

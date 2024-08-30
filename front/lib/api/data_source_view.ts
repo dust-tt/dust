@@ -115,38 +115,68 @@ export async function getContentNodesForManagedDataSourceView(
 // They are flat and do not have a hierarchy.
 export async function getContentNodesForStaticDataSourceView(
   dataSourceView: DataSourceViewResource,
+  viewType: ContentNodesViewType,
   { limit, offset }: { limit: number; offset: number }
 ): Promise<Result<DataSourceViewContentNode[], Error | CoreAPIError>> {
   const { dataSource } = dataSourceView;
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const documentsRes = await coreAPI.getDataSourceDocuments({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
-    limit,
-    offset,
-    viewFilter: dataSourceView.toViewFilter(),
-  });
+  if (viewType === "documents") {
+    const documentsRes = await coreAPI.getDataSourceDocuments({
+      dataSourceName: dataSource.name,
+      limit,
+      offset,
+      projectId: dataSource.dustAPIProjectId,
+      viewFilter: dataSourceView.toViewFilter(),
+    });
 
-  if (documentsRes.isErr()) {
-    return documentsRes;
+    if (documentsRes.isErr()) {
+      return documentsRes;
+    }
+
+    const documentsAsContentNodes: DataSourceViewContentNode[] =
+      documentsRes.value.documents.map((doc) => ({
+        dustDocumentId: doc.document_id,
+        expandable: false,
+        internalId: doc.document_id,
+        lastUpdatedAt: doc.timestamp,
+        parentInternalId: null,
+        parentInternalIds: [],
+        permission: "read",
+        preventSelection: false,
+        sourceUrl: doc.source_url ?? null,
+        title: doc.document_id,
+        type: "file",
+      }));
+
+    return new Ok(documentsAsContentNodes);
+  } else {
+    const tablesRes = await coreAPI.getTables({
+      dataSourceName: dataSource.name,
+      projectId: dataSource.dustAPIProjectId,
+      viewFilter: dataSourceView.toViewFilter(),
+    });
+
+    if (tablesRes.isErr()) {
+      return tablesRes;
+    }
+
+    const tablesAsContentNodes: DataSourceViewContentNode[] =
+      tablesRes.value.tables.map((table) => ({
+        dustDocumentId: table.table_id,
+        expandable: false,
+        internalId: table.table_id,
+        lastUpdatedAt: table.timestamp,
+        parentInternalId: null,
+        parentInternalIds: [],
+        permission: "read",
+        preventSelection: false,
+        sourceUrl: null,
+        title: table.name,
+        type: "database",
+      }));
+
+    return new Ok(tablesAsContentNodes);
   }
-
-  const documentsAsContentNodes: DataSourceViewContentNode[] =
-    documentsRes.value.documents.map((doc) => ({
-      dustDocumentId: doc.document_id,
-      expandable: false,
-      internalId: doc.document_id,
-      lastUpdatedAt: doc.timestamp,
-      parentInternalId: null,
-      parentInternalIds: [],
-      permission: "read",
-      preventSelection: false,
-      sourceUrl: doc.source_url ?? null,
-      title: doc.document_id,
-      type: "file" as const,
-    }));
-
-  return new Ok(documentsAsContentNodes);
 }

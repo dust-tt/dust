@@ -60,6 +60,8 @@ export const ContentActions = React.forwardRef<
     }
   };
 
+  // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
+  // tables and documents which currently leads to 5xx.
   return (
     <>
       <DocumentUploadOrEditModal
@@ -86,14 +88,16 @@ export const ContentActions = React.forwardRef<
           owner={owner}
         />
       )}
-      <TableUploadOrEditModal
-        contentNode={currentAction.contentNode}
-        dataSourceView={dataSourceView}
-        isOpen={currentAction.action === "TableUploadOrEditModal"}
-        onClose={onClose}
-        owner={owner}
-        plan={plan}
-      />
+      {currentAction.contentNode?.type === "database" && (
+        <TableUploadOrEditModal
+          contentNode={currentAction.contentNode}
+          dataSourceView={dataSourceView}
+          isOpen={currentAction.action === "TableUploadOrEditModal"}
+          onClose={onClose}
+          owner={owner}
+          plan={plan}
+        />
+      )}
       {currentAction.contentNode && (
         <TableDeleteDialog
           contentNode={currentAction.contentNode}

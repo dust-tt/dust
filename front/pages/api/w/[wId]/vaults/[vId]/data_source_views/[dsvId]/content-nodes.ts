@@ -23,7 +23,7 @@ const DEFAULT_LIMIT = 100;
 
 const GetContentNodesRequestBodySchema = t.type({
   includeChildren: t.undefined,
-  internalIds: t.array(t.string),
+  internalIds: t.array(t.union([t.string, t.null])),
   viewType: ContentNodesViewTypeCodec,
 });
 
@@ -165,6 +165,7 @@ async function handler(
 
     const contentNodesRes = await getContentNodesForStaticDataSourceView(
       dataSourceView,
+      viewType,
       paginationRes.value
     );
 
