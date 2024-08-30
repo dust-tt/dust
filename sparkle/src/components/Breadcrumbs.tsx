@@ -110,7 +110,10 @@ function getLinkForItem(
 
 function truncateWithTooltip(text: string, length: number) {
   return text.length > length ? (
-    <Tooltip label={text}>{`${text.substring(0, length - 1)}…`}</Tooltip>
+    <Tooltip
+      label={text}
+      position="below"
+    >{`${text.substring(0, length - 1)}…`}</Tooltip>
   ) : (
     text
   );
