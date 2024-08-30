@@ -3,7 +3,6 @@ import {
   Chip,
   CommandLineIcon,
   DataTable,
-  KeyIcon,
   PlusIcon,
   Searchbar,
   Spinner,
@@ -15,7 +14,7 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
-import { AppSecretsModal } from "@app/components/app/AppSecretsModal";
+import { ManageAppSecretsButtonModal } from "@app/components/app/ManageAppSecretsButtonModal";
 import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
 import { useApps } from "@app/lib/swr";
 
@@ -65,7 +64,6 @@ export const VaultAppsList = ({
   onSelect,
 }: VaultAppListProps) => {
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
-  const [isAppSecretsModalOpened, setIsAppSecretsModalOpened] = useState(false);
 
   const [appSearch, setAppSearch] = useState<string>("");
 
@@ -113,11 +111,6 @@ export const VaultAppsList = ({
         isOpen={isCreateAppModalOpened}
         setIsOpen={setIsCreateAppModalOpened}
       />
-      <AppSecretsModal
-        owner={owner}
-        isOpen={isAppSecretsModalOpened}
-        setIsOpen={setIsAppSecretsModalOpened}
-      />
       <div className="flex gap-2">
         <Searchbar
           name="search"
@@ -139,15 +132,7 @@ export const VaultAppsList = ({
                 setIsCreateAppModalOpened(true);
               }}
             />
-            <Button
-              label="Dev secrets"
-              variant="primary"
-              icon={KeyIcon}
-              size="sm"
-              onClick={() => {
-                setIsAppSecretsModalOpened(true);
-              }}
-            />
+            <ManageAppSecretsButtonModal owner={owner} />
           </>
         )}
       </div>
