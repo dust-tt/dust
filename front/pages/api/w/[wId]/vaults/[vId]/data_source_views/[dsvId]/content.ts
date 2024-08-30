@@ -1,5 +1,4 @@
 import type {
-  ConnectorPermission,
   GetDataSourceViewContentResponseBody,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -11,7 +10,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
-// TODO(2024-08-29 flav) Remove `filterPermission` from here once front-end is updated.
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -66,25 +64,9 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
-      let filterPermission: ConnectorPermission | undefined = undefined;
-      if (
-        req.query.filterPermission &&
-        typeof req.query.filterPermission === "string"
-      ) {
-        switch (req.query.filterPermission) {
-          case "read":
-            filterPermission = "read";
-            break;
-          case "write":
-            filterPermission = "write";
-            break;
-        }
-      }
-
       const contentRes = await getDataSourceContent(
         auth,
         dataSourceView.dataSource,
-        filterPermission,
         viewType,
         dataSourceView.parentsIn,
         parentId,
