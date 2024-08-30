@@ -164,7 +164,7 @@ const SystemVaultItem = ({
 }) => {
   const router = useRouter();
 
-  const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views`;
+  const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
   const isAncestorToCurrentPage = router.asPath.includes(itemPath);
 
   // Unfold the item if it's an ancestor of the current page.

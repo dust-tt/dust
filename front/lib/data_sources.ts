@@ -1,7 +1,13 @@
-import type { CoreAPIDocument, DataSourceType } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  CoreAPIDocument,
+  DataSourceType,
+  WithConnector,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";
@@ -32,4 +38,37 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
   } else {
     return ds.name;
   }
+}
+
+type DataSource = DataSourceType | DataSourceResource;
+
+export function isFolder(
+  ds: DataSource
+): ds is DataSource & { connectorProvider: null } {
+  // If there is no connectorProvider, it's a folder.
+  return !ds.connectorProvider;
+}
+
+export function isWebsite(
+  ds: DataSource
+): ds is DataSource & { connectorProvider: "webcrawler" } {
+  return ds.connectorProvider === "webcrawler";
+}
+
+export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
+  return ds.connectorProvider !== null && !isWebsite(ds);
+}
+
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "microsoft",
+];
+
+export function canContainStructuredData(ds: DataSource): boolean {
+  return Boolean(
+    isFolder(ds) ||
+      (ds.connectorProvider &&
+        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
+  );
 }

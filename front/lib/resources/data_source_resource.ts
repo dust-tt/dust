@@ -249,22 +249,6 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     };
   }
 
-  isManaged(): boolean {
-    return (
-      this.name.startsWith("managed-") &&
-      this.connectorProvider !== null &&
-      this.connectorProvider !== "webcrawler"
-    );
-  }
-
-  isFolder() {
-    return !this.connectorProvider;
-  }
-
-  isWebcrawler() {
-    return this.connectorProvider === "webcrawler";
-  }
-
   getUsagesByAgents(auth: Authenticator) {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
   }

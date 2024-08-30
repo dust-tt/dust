@@ -6,7 +6,6 @@ import {
   ServerIcon,
 } from "@dust-tt/sparkle";
 import type { DataSourceViewType } from "@dust-tt/types";
-import { canContainStructuredData } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useContext, useMemo, useState } from "react";
@@ -14,7 +13,10 @@ import { useContext, useMemo, useState } from "react";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  canContainStructuredData,
+  getDisplayNameForDataSource,
+} from "@app/lib/data_sources";
 import { subFilter } from "@app/lib/utils";
 
 export default function PickDataSourceForTable({

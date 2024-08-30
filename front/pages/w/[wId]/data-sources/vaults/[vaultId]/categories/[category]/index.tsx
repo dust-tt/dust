@@ -19,6 +19,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
     category: DataSourceViewCategory;
+    dustClientFacingUrl: string;
     isAdmin: boolean;
     isBuilder: boolean;
     vault: VaultType;
@@ -52,6 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
+      dustClientFacingUrl: config.getClientFacingUrl(),
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       isBuilder,
@@ -66,6 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function Vault({
   category,
+  dustClientFacingUrl,
   isAdmin,
   isBuilder,
   owner,
@@ -86,6 +89,7 @@ export default function Vault({
         />
       ) : (
         <VaultResourcesList
+          dustClientFacingUrl={dustClientFacingUrl}
           owner={owner}
           plan={plan}
           vault={vault}

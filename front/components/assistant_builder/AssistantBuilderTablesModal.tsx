@@ -9,7 +9,6 @@ import {
   getGoogleSheetContentNodeInternalIdFromTableId,
   getMicrosoftSheetContentNodeInternalIdFromTableId,
   getNotionDatabaseContentNodeInternalIdFromTableId,
-  isFolder,
 } from "@dust-tt/types";
 import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -19,6 +18,7 @@ import { PickTableInFolder } from "@app/components/assistant_builder/PickTableIn
 import { PickTablesManaged } from "@app/components/assistant_builder/PickTablesManaged";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
+import { isFolder } from "@app/lib/data_sources";
 import { useDataSourceNodes } from "@app/lib/swr";
 
 export default function AssistantBuilderTablesModal({

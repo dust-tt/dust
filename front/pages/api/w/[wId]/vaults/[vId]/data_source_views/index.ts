@@ -1,18 +1,28 @@
-import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  DataSourceViewWithConnectorType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { PostDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type GetVaultDataSourceViewsResponseBody = {
-  dataSourceViews: DataSourceViewType[];
+export type GetVaultDataSourceViewsResponseBody<
+  IncludeConnectorDetails extends boolean = boolean,
+> = {
+  dataSourceViews: IncludeConnectorDetails extends true
+    ? DataSourceViewWithConnectorType[]
+    : DataSourceViewType[];
 };
 
 export type PostVaultDataSourceViewsResponseBody = {
@@ -50,15 +60,36 @@ async function handler(
           ? req.query.category
           : null;
 
-      const dataSourceViews = await DataSourceViewResource.listByVault(
-        auth,
-        vault
-      );
+      const dataSourceViews = (
+        await DataSourceViewResource.listByVault(auth, vault)
+      )
+        .map((ds) => ds.toJSON())
+        .filter((d) => !category || d.category === category);
+
+      if (req.query.includeConnectorDetails) {
+        const enhancedDataSourceViews = await Promise.all(
+          dataSourceViews.map(async (dataSourceView) => {
+            const dataSource = dataSourceView.dataSource;
+            if (!isManaged(dataSource)) {
+              return dataSourceView;
+            }
+            const augmentedDataSource =
+              await augmentDataSourceWithConnectorDetails(dataSource);
+            return {
+              ...dataSourceView,
+              dataSource: augmentedDataSource,
+            };
+          })
+        );
+        return res.status(200).json({
+          dataSourceViews: enhancedDataSourceViews,
+        });
+      }
 
       return res.status(200).json({
-        dataSourceViews: dataSourceViews
-          .map((dsv) => dsv.toJSON())
-          .filter((d) => !category || d.category === category),
+        dataSourceViews: dataSourceViews.filter(
+          (d) => !category || d.category === category
+        ),
       });
     }
 
