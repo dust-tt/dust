@@ -154,7 +154,7 @@ export function VisualizationActionIframe({
     <div className="relative flex flex-col">
       {showSpinner && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white">
-          <Spinner />
+          <Spinner size="xl" />
         </div>
       )}
       <div
@@ -162,7 +162,6 @@ export function VisualizationActionIframe({
           "relative w-full overflow-hidden",
           codeFullyGenerated && !isErrored ? "min-h-96" : "",
           isErrored ? "h-full" : ""
-          //activeIndex === 1 ? "max-h-[60vh]" : ""
         )}
       >
         <div className="flex">
