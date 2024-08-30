@@ -121,7 +121,6 @@ export type AgentMessageType = {
   actions: AgentActionType[];
   content: string | null;
   chainOfThought: string | null;
-  visualizations: string[];
   rawContents: Array<{
     step: number;
     content: string;
