@@ -1,6 +1,8 @@
 #!/bin/bash
 DIR=$(dirname $0)
 
+set -e
+
 function escaped_columns_list {
     echo $* | sed -E 's/ /,/g'| sed -E 's/([a-zA-Z_]+)/\\"\1\\"/g'
 }
@@ -48,13 +50,13 @@ function import {
     psql ${uri} -c "drop table if exists __copy;"
 }
 
-if [ -z "$DUST_APPS_WORKSPACE_ID" ] 
+if [ -z "$DEVELOPMENT_DUST_APPS_WORKSPACE_ID" ] 
 then
-    echo "Please set DUST_APPS_WORKSPACE_ID with your local workspace sId if you want to synchronize there dust-apps from production."
+    echo "Please set DEVELOPMENT_DUST_APPS_WORKSPACE_ID with your local workspace sId if you want to synchronize there dust-apps from production."
     exit 0
 fi
 
-DUST_APPS_WORKSPACE_NUMERIC_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DUST_APPS_WORKSPACE_ID}') TO STDOUT")
+DUST_APPS_WORKSPACE_NUMERIC_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}') TO STDOUT")
 
 mkdir -p /tmp/dust-apps
 
@@ -99,11 +101,12 @@ then
     fi
 fi
 
-echo "Will copy apps into workspace ${DUST_APPS_WORKSPACE_NUMERIC_ID}..."
-echo "You'll have to manually update front/lib/api/config.ts to use localhost:3000 instead of dust.tt,"
-echo "and front/lib/development.ts / types/src/front/lib/actions/registry.ts to set your workspace sId in PRODUCTION_DUST_APPS_WORKSPACE_ID"
-echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."
-set -e
+echo
+echo "Checking gcp access..."
+gcloud container clusters list
+
+echo
+echo "Will copy apps into workspace ${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}..."
 
 echo "Fetching prodbox pod..."
 PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox |cut -d \  -f1)
@@ -147,3 +150,7 @@ import CORE datasets_points "id hash json" "hash json" "on conflict(hash) do not
 import CORE datasets_joins "id dataset point point_idx" "point point_idx" "" "and __copy.point in (select id from datasets_points)"
 
 rm -R /tmp/dust-apps
+
+echo
+echo "You can now start front server with DEVELOPMENT_DUST_APPS_WORKSPACE_ID=\"${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}\" and DUST_PROD_API=\"http://localhost:3000\" to run apps locally."
+echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."
