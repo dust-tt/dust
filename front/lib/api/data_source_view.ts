@@ -18,11 +18,11 @@ export function filterAndCropContentNodesByView(
       return null;
     }
 
-    // check that the node or at least a parent is in the view we know the
-    // content node is in the view
-    // for parents, we include all those up to the last one in the view
-    // (or all of them if the view has no parents)
-
+    // Ensure that the node, or at least one of its ancestors, is within the
+    // view. For parentInternalIds, include all of them  up to the highest one
+    // in the hierarchy that is in the view, (which is last index, since parents
+    // are ordered from leaf to root), or all of them  if the view is "full",
+    // that is,  parentsIn is null.
     const indexToSplit = parentInternalIds.findLastIndex((p) =>
       dataSourceView.parentsIn?.includes(p)
     );
