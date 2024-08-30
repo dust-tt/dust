@@ -4,10 +4,10 @@ import {
   FolderIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
-import type { ContentNode, LightContentNode } from "@dust-tt/types";
+import type { BaseContentNode } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
-export function getVisualForContentNode(node: ContentNode | LightContentNode) {
+export function getVisualForContentNode(node: BaseContentNode) {
   switch (node.type) {
     case "channel":
       return ChatBubbleLeftRightIcon;
