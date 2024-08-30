@@ -414,6 +414,24 @@ export function AgentMessage({
 
   const { configuration: agentConfiguration } = agentMessageToRender;
 
+  const customRenderer = useMemo(() => {
+    return {
+      visualization: (code: string, complete: boolean, lineStart: number) => {
+        return (
+          <VisualizationActionIframe
+            owner={owner}
+            visualization={{
+              code,
+              complete,
+              identifier: `viz-${message.sId}-${lineStart}`,
+            }}
+            key={`viz-${message.sId}-${lineStart}`}
+          />
+        );
+      },
+    };
+  }, [message.sId, owner]);
+
   return (
     <ConversationMessage
       owner={owner}
@@ -446,7 +464,7 @@ export function AgentMessage({
       size={size}
     >
       <div>
-        {RenderAgentMessage({
+        {renderAgentMessage({
           agentMessage: agentMessageToRender,
           references: references,
           streaming: shouldStream,
@@ -458,7 +476,7 @@ export function AgentMessage({
     </ConversationMessage>
   );
 
-  function RenderAgentMessage({
+  function renderAgentMessage({
     agentMessage,
     references,
     streaming,
@@ -469,24 +487,6 @@ export function AgentMessage({
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
-    const customRenderer = useMemo(() => {
-      return {
-        visualization: (code: string, complete: boolean, lineStart: number) => {
-          return (
-            <VisualizationActionIframe
-              owner={owner}
-              visualization={{
-                code,
-                complete,
-                identifier: `viz-${agentMessage.sId}-${lineStart}`,
-              }}
-              key={`viz-${agentMessage.sId}-${lineStart}`}
-            />
-          );
-        },
-      };
-    }, [agentMessage.sId]);
-
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage
