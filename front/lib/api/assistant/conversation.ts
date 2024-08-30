@@ -865,7 +865,10 @@ export async function* postUserMessage(
 
   // TODO(2024-08-30 flav) Remove once debugging is done.
   const groups = auth.groups();
-  if (groups.length === 1 && groups[0].kind === "system") {
+  if (
+    groups.length === 0 ||
+    (groups.length === 1 && groups[0].kind === "system")
+  ) {
     logger.info(
       {
         agentMessages: {
