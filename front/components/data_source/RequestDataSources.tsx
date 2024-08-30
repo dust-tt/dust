@@ -7,11 +7,10 @@ import {
 } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { isManaged } from "@dust-tt/types";
-import React, { useContext, useState } from "react";
+import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
-  CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
   getDataSourceName,
 } from "@app/lib/connector_providers";
@@ -106,11 +105,8 @@ export function RequestDataSources({ dataSources, owner }: RequestDataSources) {
           {selectedDataSource && (
             <div>
               <p className="s-mb-2 s-text-sm s-text-element-700">
-                The administrator for{" "}
-                {selectedDataSource.connectorProvider &&
-                  CONNECTOR_CONFIGURATIONS[selectedDataSource.connectorProvider]
-                    .name}{" "}
-                is {selectedDataSource.editedByUser?.fullName}. Send an email to{" "}
+                The administrator for {getDataSourceName(selectedDataSource)}
+                is {selectedDataSource.editedByUser?.fullName}. Send an email to
                 {selectedDataSource.editedByUser?.fullName}, explaining your
                 request.
               </p>
