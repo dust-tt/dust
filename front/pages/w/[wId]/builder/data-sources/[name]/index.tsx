@@ -1064,6 +1064,21 @@ function ManagedDataSourceView({
     };
   };
 
+  const {
+    displayEditionModal,
+    displayManageConnectionButton,
+    addDataWithConnection,
+    displayAddDataButton,
+    displayWebcrawlerSettingsButton,
+    guideLink,
+    postPermissionsUpdateMessage,
+  } = getRenderingConfigForConnectorProvider(connectorProvider);
+
+  const [
+    postPermissionsUpdateDialogIsOpen,
+    setPostPermissionsUpdateDialogIsOpen,
+  ] = useState(false);
+
   const handleUpdatePermissions = async () => {
     if (!connector) {
       console.error("No connector");
@@ -1095,23 +1110,12 @@ function ManagedDataSourceView({
         title: "Failed to update the permissions of the Data Source",
         description: updateRes.error,
       });
+      return;
     }
+
+    // If the update permission was successful show the post permission update dialog.
+    postPermissionsUpdateMessage && setPostPermissionsUpdateDialogIsOpen(true);
   };
-
-  const {
-    displayEditionModal,
-    displayManageConnectionButton,
-    addDataWithConnection,
-    displayAddDataButton,
-    displayWebcrawlerSettingsButton,
-    guideLink,
-    postPermissionsUpdateMessage,
-  } = getRenderingConfigForConnectorProvider(connectorProvider);
-
-  const [
-    postPermissionsUpdateDialogIsOpen,
-    setPostPermissionsUpdateDialogIsOpen,
-  ] = useState(false);
 
   return (
     <>
@@ -1293,10 +1297,7 @@ function ManagedDataSourceView({
           owner={owner}
           user={user}
           onEditPermissionsClick={() => {
-            void handleUpdatePermissions().then(() => {
-              postPermissionsUpdateMessage &&
-                setPostPermissionsUpdateDialogIsOpen(true);
-            });
+            void handleUpdatePermissions();
           }}
           dustClientFacingUrl={dustClientFacingUrl}
         />
