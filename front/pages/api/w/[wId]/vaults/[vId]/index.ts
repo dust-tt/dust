@@ -146,6 +146,7 @@ async function handler(
           if (view) {
             // Update existing view
             await view.updateParents(auth, dataSourceConfig.parentsIn);
+            await view.setEditedBy(auth);
           } else {
             // Create a new view
             const dataSource = await DataSourceResource.fetchByName(
@@ -154,6 +155,7 @@ async function handler(
             );
             if (dataSource) {
               await DataSourceViewResource.createViewInVaultFromDataSource(
+                auth,
                 vault,
                 dataSource,
                 dataSourceConfig.parentsIn

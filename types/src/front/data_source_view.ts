@@ -14,7 +14,6 @@ export interface DataSourceViewType {
   category: DataSourceViewCategory;
   createdAt: number;
   dataSource: DataSourceType;
-  // TODO(GROUPS_INFRA) Add support for edited by on data source view.
   editedByUser?: EditedByUser | null;
   id: ModelId;
   kind: DataSourceViewKind;

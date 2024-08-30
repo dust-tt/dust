@@ -82,6 +82,8 @@ async function handler(
           },
         });
       }
+
+      await dataSourceView.setEditedBy(auth);
       return res.status(200).json({
         dataSourceView: dataSourceView.toJSON(),
       });

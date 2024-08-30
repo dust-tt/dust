@@ -3,7 +3,6 @@ import type {
   DataSourceType,
   ModelId,
   Result,
-  UserType,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import type {
@@ -40,7 +39,7 @@ export interface DataSourceResource
 export class DataSourceResource extends ResourceWithVault<DataSource> {
   static model: ModelStatic<DataSource> = DataSource;
 
-  readonly editedByUser: Attributes<User> | undefined;
+  readonly editedByUser?: Attributes<User>;
 
   constructor(
     model: ModelStatic<DataSource>,
@@ -118,8 +117,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return dataSource ?? null;
   }
 
-  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    options?: FetchDataSourceOptions
+  ) {
     return this.baseFetchWithAuthorization(auth, {
+      ...this.getOptions(options),
       where: {
         id: ids,
       },
@@ -223,9 +227,9 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return [affectedCount];
   }
 
-  async setEditedBy(user: UserType) {
+  async setEditedBy(auth: Authenticator) {
     await this.update({
-      editedByUserId: user.id,
+      editedByUserId: auth.getNonNullableUser().id,
       editedAt: new Date(),
     });
   }
