@@ -125,7 +125,18 @@ function VaultBreadCrumbs({
       href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`,
     },
   ];
+
   if (dataSourceView) {
+    if (category === "managed") {
+      // Remove the "Connected data" from breadcrumbs to avoid hiding the actual
+      // managed connection name
+
+      // Showing the actual managed connection name (e.g. microsoft, slack...) is
+      // more important and implies clearly that we are dealing with connected
+      // data
+      items.pop();
+    }
+
     items.push({
       icon: getConnectorProviderLogoWithFallback(
         dataSourceView.dataSource.connectorProvider,
