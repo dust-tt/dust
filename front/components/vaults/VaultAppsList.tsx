@@ -14,6 +14,7 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
+import { ManageAppSecretsButtonModal } from "@app/components/app/ManageAppSecretsButtonModal";
 import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
 import { useApps } from "@app/lib/swr";
 
@@ -63,6 +64,7 @@ export const VaultAppsList = ({
   onSelect,
 }: VaultAppListProps) => {
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
+
   const [appSearch, setAppSearch] = useState<string>("");
 
   const { apps, isAppsLoading } = useApps(owner);
@@ -120,15 +122,18 @@ export const VaultAppsList = ({
           }}
         />
         {isBuilder && (
-          <Button
-            label="New App"
-            variant="primary"
-            icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setIsCreateAppModalOpened(true);
-            }}
-          />
+          <>
+            <Button
+              label="New App"
+              variant="primary"
+              icon={PlusIcon}
+              size="sm"
+              onClick={() => {
+                setIsCreateAppModalOpened(true);
+              }}
+            />
+            <ManageAppSecretsButtonModal owner={owner} />
+          </>
         )}
       </div>
       <DataTable
