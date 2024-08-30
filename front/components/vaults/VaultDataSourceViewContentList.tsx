@@ -24,7 +24,7 @@ import {
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
-import { useVaultDataSourceViewContent } from "@app/lib/swr";
+import { useDataSourceViewContentNodes } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -68,7 +68,6 @@ export const VaultDataSourceViewContentList = ({
   onSelect,
   owner,
   parentId,
-  vault,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
@@ -79,20 +78,17 @@ export const VaultDataSourceViewContentList = ({
     channel: ChatBubbleBottomCenterTextIcon,
   };
 
-  const {
-    vaultContent,
-    isVaultContentLoading,
-    mutateVaultDataSourceViewContent,
-  } = useVaultDataSourceViewContent({
-    dataSourceView,
-    owner,
-    parentId,
-    vaultId: vault.sId,
-    viewType: "documents", // TODO(GROUP_UI): Do not pass viewType, get all document/tables in one call
-  });
+  const { isNodesLoading, mutateDataSourceViewContentNodes, nodes } =
+    useDataSourceViewContentNodes({
+      dataSourceView,
+      owner,
+      internalIds: parentId ? [parentId] : [],
+      includeChildren: true,
+      viewType: "documents", // TODO(GROUP_UI): Do not pass viewType, get all document/tables in one call
+    });
 
   const rows: RowData[] =
-    vaultContent?.map((contentNode) => ({
+    nodes?.map((contentNode) => ({
       ...contentNode,
       icon: visualTable[contentNode.type] ?? DocumentIcon,
       onClick: () => {
@@ -107,7 +103,7 @@ export const VaultDataSourceViewContentList = ({
       ),
     })) || [];
 
-  if (isVaultContentLoading) {
+  if (isNodesLoading) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner />
@@ -154,7 +150,7 @@ export const VaultDataSourceViewContentList = ({
         dataSourceView={dataSourceView}
         owner={owner}
         plan={plan}
-        onSave={mutateVaultDataSourceViewContent}
+        onSave={mutateDataSourceViewContentNodes}
       />
     </>
   );

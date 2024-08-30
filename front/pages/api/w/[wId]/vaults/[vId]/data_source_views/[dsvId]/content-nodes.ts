@@ -2,7 +2,7 @@ import type {
   DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { ContentNodesViewTypeCodec, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -21,11 +21,13 @@ import { apiError } from "@app/logger/withlogging";
 const GetContentNodesRequestBodySchema = t.type({
   includeChildren: t.undefined,
   internalIds: t.array(t.string),
+  viewType: ContentNodesViewTypeCodec,
 });
 
 const GetContentNodeChildrenRequestBodySchema = t.type({
   includeChildren: t.literal(true),
   internalIds: t.array(t.union([t.string, t.null])),
+  viewType: ContentNodesViewTypeCodec,
 });
 
 const GetContentNodesOrChildrenRequestBody = t.union([
@@ -101,7 +103,7 @@ async function handler(
     });
   }
 
-  const { includeChildren, internalIds } = bodyValidation.right;
+  const { includeChildren, internalIds, viewType } = bodyValidation.right;
 
   if (includeChildren && internalIds.length > 1) {
     return apiError(req, res, {
@@ -122,6 +124,7 @@ async function handler(
       {
         includeChildren: includeChildren === true,
         internalIds: removeNulls(internalIds),
+        viewType,
       }
     );
 

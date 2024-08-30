@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useVaultDataSourceViewContent } from "@app/lib/swr";
+import { useDataSourceViewContentNodes } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourceResourceSelectorTree({
@@ -86,37 +86,32 @@ function DataSourceResourceSelectorChildren({
   ) => void;
   viewType: ContentNodesViewType;
 }) {
-  const { vaultContent, isVaultContentLoading, isVaultContentError } =
-    useVaultDataSourceViewContent({
+  const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
+    {
       dataSourceView: dataSourceView,
       owner,
-      parentId,
-      vaultId: dataSourceView.vaultId,
+      internalIds: parentId ? [parentId] : [],
+      includeChildren: true,
       viewType,
-    });
+    }
+  );
 
   useEffect(() => {
     if (parentIsSelected) {
       // Unselected previously selected children
-      vaultContent
+      nodes
         .filter((r) => selectedResourceIds.includes(r.internalId))
         .forEach((r) => {
           onSelectChange(r, parents, false);
         });
     }
-  }, [
-    vaultContent,
-    parentIsSelected,
-    selectedResourceIds,
-    onSelectChange,
-    parents,
-  ]);
+  }, [nodes, parentIsSelected, selectedResourceIds, onSelectChange, parents]);
 
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
 
-  if (isVaultContentError) {
+  if (isNodesError) {
     return (
       <div className="text-warning text-sm">
         Failed to retrieve resources likely due to a revoked authorization.
@@ -139,8 +134,8 @@ function DataSourceResourceSelectorChildren({
           }
         }}
       />
-      <Tree isLoading={isVaultContentLoading}>
-        {vaultContent.map((r) => {
+      <Tree isLoading={isNodesLoading}>
+        {nodes.map((r) => {
           const isSelected = selectedResourceIds.includes(r.internalId);
           const partiallyChecked =
             !isSelected &&

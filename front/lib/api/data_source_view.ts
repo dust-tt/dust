@@ -1,4 +1,5 @@
 import type {
+  ContentNodesViewType,
   CoreAPIError,
   DataSourceViewContentNode,
   Result,
@@ -51,9 +52,11 @@ export async function getContentNodesForManagedDataSourceView(
   {
     includeChildren,
     internalIds,
+    viewType,
   }: {
     includeChildren: boolean;
     internalIds: string[];
+    viewType: ContentNodesViewType;
   }
 ): Promise<Result<DataSourceViewContentNode[], Error>> {
   const { dataSource } = dataSourceView;
@@ -77,7 +80,7 @@ export async function getContentNodesForManagedDataSourceView(
       filterPermission: "read",
       includeParents: true,
       parentId: parentInternalId ?? undefined,
-      viewType: "documents",
+      viewType,
     });
 
     if (connectorsRes.isErr()) {
@@ -94,6 +97,7 @@ export async function getContentNodesForManagedDataSourceView(
       connectorId: dataSource.connectorId,
       includeParents: true,
       internalIds,
+      viewType,
     });
     if (connectorsRes.isErr()) {
       return new Err(

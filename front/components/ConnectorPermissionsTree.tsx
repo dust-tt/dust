@@ -22,7 +22,7 @@ import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDoc
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
   useConnectorPermissions,
-  useDataSourceViewContentNodeChildren,
+  useDataSourceViewContentNodes,
 } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -155,12 +155,14 @@ export function DataSourceViewPermissionTreeChildren({
   parentId,
   ...props
 }: DataSourceViewPermissionTreeChildrenProps) {
-  const { nodes, isNodesLoading, isNodesError } =
-    useDataSourceViewContentNodeChildren({
+  const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
+    {
       owner,
       dataSourceView,
-      parentInternalId: parentId,
-    });
+      internalIds: parentId ? [parentId] : [],
+      includeChildren: true,
+    }
+  );
 
   if (isNodesError) {
     return (
