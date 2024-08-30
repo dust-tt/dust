@@ -95,7 +95,7 @@ export async function* runAgent(
   }
 }
 
-export async function* runMultiActionsAgentLoop(
+async function* runMultiActionsAgentLoop(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   conversation: ConversationType,

@@ -863,6 +863,23 @@ export async function* postUserMessage(
     message: userMessage,
   };
 
+  // TODO(2024-08-30 flav) Remove once debugging is done.
+  const groups = auth.groups();
+  if (groups.length === 1 && groups[0].kind === "system") {
+    logger.info(
+      {
+        agentMessages: {
+          sIds: agentMessages.map((m) => m.sId),
+        },
+        err: new Error("Authenticating as system group only."),
+        userMessage: {
+          sId: userMessage.sId,
+        },
+      },
+      "Authenticating as system group only."
+    );
+  }
+
   for (let i = 0; i < agentMessages.length; i++) {
     const agentMessage = agentMessages[i];
 
