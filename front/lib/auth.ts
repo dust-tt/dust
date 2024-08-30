@@ -601,6 +601,18 @@ export class Authenticator {
     return this._subscription;
   }
 
+  getNonNullableSubscription(): SubscriptionType {
+    const subscription = this.subscription();
+
+    if (!subscription) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullableSubscription`."
+      );
+    }
+
+    return subscription;
+  }
+
   plan(): PlanType | null {
     return this._subscription ? this._subscription.plan : null;
   }

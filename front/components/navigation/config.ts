@@ -6,6 +6,7 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  LockIcon,
   PlanetIcon,
   PuzzleIcon,
   QuestionMarkCircleIcon,
@@ -45,7 +46,12 @@ export type SubNavigationAssistantsId =
   | "community"
   | "vaults";
 
-export type SubNavigationAdminId = "subscription" | "workspace" | "members";
+export type SubNavigationAdminId =
+  | "subscription"
+  | "workspace"
+  | "members"
+  | "providers"
+  | "api_keys";
 
 export type SubNavigationAppId =
   | "specification"
@@ -326,6 +332,34 @@ export const subNavigationAdmin = ({
         },
       ],
     });
+
+    if (owner.flags.includes("data_vaults_feature")) {
+      nav.push({
+        id: "developers",
+        label: "Developers",
+        variant: "secondary",
+        menus: [
+          {
+            id: "providers",
+            label: "Providers",
+            icon: ShapesIcon,
+            href: `/w/${owner.sId}/developers/providers`,
+            current: current === "providers",
+            subMenuLabel: current === "providers" ? subMenuLabel : undefined,
+            subMenu: current === "providers" ? subMenu : undefined,
+          },
+          {
+            id: "api_keys",
+            label: "API Keys",
+            icon: LockIcon,
+            href: `/w/${owner.sId}/developers/api-keys`,
+            current: current === "api_keys",
+            subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+            subMenu: current === "api_keys" ? subMenu : undefined,
+          },
+        ],
+      });
+    }
   }
 
   return nav;
