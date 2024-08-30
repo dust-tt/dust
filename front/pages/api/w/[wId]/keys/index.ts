@@ -30,19 +30,26 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
 
-  if (!auth.isBuilder()) {
+  // With Vaults we're moving API keys management to the Admin role.
+  const isVaultsFeatureEnabled = owner.flags.includes("data_vaults_feature");
+  const hasValidRole = isVaultsFeatureEnabled
+    ? auth.isAdmin()
+    : auth.isBuilder();
+
+  if (!hasValidRole) {
+    const errorMessage = isVaultsFeatureEnabled
+      ? "Only the users that are `admins` for the current workspace can interact with keys"
+      : "Only the users that are `builders` for the current workspace can interact with keys.";
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can interact with keys.",
+        message: errorMessage,
       },
     });
   }
-
-  const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {
     case "GET":

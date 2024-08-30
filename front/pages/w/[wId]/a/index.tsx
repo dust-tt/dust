@@ -538,7 +538,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       <>
         <Page.SectionHeader
           title="Model Providers"
-          description="Model providers available to your apps. These providers are not required to run our assistant apps, only your own custom large language model apps."
+          description="Model providers available to your apps."
         />
         <ul role="list" className="pt-4">
           {filteredProviders.map((provider) => (
