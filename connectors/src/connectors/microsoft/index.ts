@@ -41,6 +41,7 @@ import {
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
+import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -52,7 +53,6 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   static async create({
