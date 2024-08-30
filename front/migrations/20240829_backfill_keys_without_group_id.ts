@@ -18,19 +18,6 @@ async function backfillApiKeys(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   if (execute) {
-    const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
-    if (globalGroup.isOk()) {
-      await KeyResource.model.update(
-        { groupId: globalGroup.value.id },
-        {
-          where: {
-            workspaceId: workspace.id,
-            isSystem: false,
-          },
-        }
-      );
-    }
-
     const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
     if (systemGroup.isOk()) {
       await KeyResource.model.update(
