@@ -15,6 +15,7 @@ import type {
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useState } from "react";
 
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -48,7 +49,6 @@ interface DataSourceEditionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEditPermissionsClick: () => void;
-  onRequestFromDataSourceClick: () => void;
   owner: LightWorkspaceType;
   user: UserType;
 }
@@ -58,7 +58,7 @@ export function DataSourceEditionModal({
   isOpen,
   onClose,
   onEditPermissionsClick,
-  onRequestFromDataSourceClick,
+  owner,
   user,
 }: DataSourceEditionModalProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -125,11 +125,9 @@ export function DataSourceEditionModal({
           </div>
           {!isDataSourceOwner && (
             <div className="flex items-center justify-center gap-2">
-              <Button
-                label={`Request from ${dataSourceOwner?.fullName ?? ""}`}
-                onClick={() => {
-                  onRequestFromDataSourceClick();
-                }}
+              <RequestDataSourceModal
+                dataSources={[dataSource]}
+                owner={owner}
               />
             </div>
           )}

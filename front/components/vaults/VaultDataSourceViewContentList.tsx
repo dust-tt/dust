@@ -1,19 +1,9 @@
-import {
-  ChatBubbleBottomCenterTextIcon,
-  DataTable,
-  DocumentIcon,
-  DocumentTextIcon,
-  FolderIcon,
-  Searchbar,
-  Spinner,
-  TableIcon,
-} from "@dust-tt/sparkle";
+import { DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isFolder } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useRef, useState } from "react";
 
@@ -23,6 +13,8 @@ import {
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { isFolder } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -69,12 +61,6 @@ export const VaultDataSourceViewContentList = ({
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
-  const visualTable = {
-    file: DocumentTextIcon,
-    folder: FolderIcon,
-    database: TableIcon,
-    channel: ChatBubbleBottomCenterTextIcon,
-  };
 
   const { isNodesLoading, mutateDataSourceViewContentNodes, nodes } =
     useDataSourceViewContentNodes({
@@ -88,7 +74,7 @@ export const VaultDataSourceViewContentList = ({
   const rows: RowData[] =
     nodes?.map((contentNode) => ({
       ...contentNode,
-      icon: visualTable[contentNode.type] ?? DocumentIcon,
+      icon: getVisualForContentNode(contentNode),
       onClick: () => {
         if (contentNode.expandable) {
           onSelect(contentNode.internalId);

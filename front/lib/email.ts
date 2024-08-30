@@ -2,7 +2,7 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
-import type { Result, WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
@@ -274,7 +274,7 @@ export async function sendRequestDataSourceEmail({
   userTo: string;
   emailMessage: string;
   dataSourceName: string;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }) {
   const res = await fetch(`/api/w/${owner.sId}/data_sources/request_access`, {
     method: "POST",

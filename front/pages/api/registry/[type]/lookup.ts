@@ -3,6 +3,7 @@ import { Err, groupHasPermission, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator } from "@app/lib/auth";
+import { isManaged } from "@app/lib/data_sources";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -243,7 +244,7 @@ async function handleDataSource(
 
   // Until we pass the data source view id for managed data sources, we need to fetch it here.
   // TODO(2024-08-02 flav) Remove once dust apps rely on the data source view id for managed data sources.
-  if (dataSource.isManaged()) {
+  if (isManaged(dataSource)) {
     const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
     const dataSourceView =
       await DataSourceViewResource.listForDataSourcesInVault(

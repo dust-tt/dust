@@ -1,7 +1,7 @@
-import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
 import { ConnectorType } from "./lib/connectors_api";
+import { ManageDataSourcesLimitsType } from "./plan";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -72,23 +72,17 @@ export type DataSourceType = {
   editedByUser?: EditedByUser | null;
 };
 
-export type DataSourceIntegration = {
-  name: string;
-  dataSourceName: string | null;
-  connector: ConnectorType | null;
-  fetchConnectorError: boolean;
-  fetchConnectorErrorMessage?: string | null;
-  status: "preview" | "built" | "rolling_out";
-  rollingOutFlag: WhitelistableFeature | null;
+export type WithConnector = {
   connectorProvider: ConnectorProvider;
-  description: string;
-  limitations: string | null;
-  guideLink: string | null;
-  synchronizedAgo: string | null;
-  setupWithSuffix: string | null;
-  usage: number | null;
-  editedByUser?: EditedByUser | null;
+  connectorId: string;
 };
+
+export type DataSourceWithConnectorDetailsType = DataSourceType &
+  WithConnector & {
+    connector: ConnectorType | null;
+    fetchConnectorError: boolean;
+    fetchConnectorErrorMessage: string | null;
+  };
 
 export function isDataSourceNameValid(name: string): Result<void, string> {
   const trimmed = name.trim();
@@ -108,29 +102,36 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
   return new Ok(undefined);
 }
 
-const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
-  "google_drive",
-  "notion",
-  "microsoft",
-];
-
-export function isFolder(ds: DataSourceType): boolean {
-  // If there is no connectorProvider, it's a folder.
-  return !ds.connectorProvider;
-}
-
-export function isWebsite(ds: DataSourceType): boolean {
-  return ds.connectorProvider === "webcrawler";
-}
-
-export function isManaged(ds: DataSourceType): boolean {
-  return ds.connectorProvider !== null && !isWebsite(ds);
-}
-
-export function canContainStructuredData(ds: DataSourceType): boolean {
-  return Boolean(
-    isFolder(ds) ||
-      (ds.connectorProvider &&
-        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
-  );
+export function isConnectorProviderAllowed(
+  provider: ConnectorProvider,
+  limits: ManageDataSourcesLimitsType
+): boolean {
+  switch (provider) {
+    case "confluence": {
+      return limits.isConfluenceAllowed;
+    }
+    case "slack": {
+      return limits.isSlackAllowed;
+    }
+    case "notion": {
+      return limits.isNotionAllowed;
+    }
+    case "github": {
+      return limits.isGithubAllowed;
+    }
+    case "google_drive": {
+      return limits.isGoogleDriveAllowed;
+    }
+    case "intercom": {
+      return limits.isIntercomAllowed;
+    }
+    case "microsoft": {
+      return true;
+    }
+    case "webcrawler": {
+      return false;
+    }
+    default:
+      throw new Error(`Unknown connector provider ${provider}`);
+  }
 }

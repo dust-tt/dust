@@ -8,6 +8,7 @@ import type {
 import { removeNulls } from "@dust-tt/types";
 import React, { useState } from "react";
 
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
 import { useVaultDataSourceViews } from "@app/lib/swr";
@@ -16,10 +17,12 @@ export function EditVaultManagedDataSourcesViews({
   owner,
   vault,
   systemVault,
+  isAdmin,
 }: {
   owner: WorkspaceType;
   vault: VaultType;
   systemVault: VaultType;
+  isAdmin: boolean;
 }) {
   const sendNotification = React.useContext(SendNotificationsContext);
 
@@ -194,15 +197,23 @@ export function EditVaultManagedDataSourcesViews({
         }}
         initialSelectedDataSources={vaultDataSourceViews}
       />
-      <Button
-        label="Add data from connections"
-        variant="primary"
-        icon={PlusIcon}
-        size="sm"
-        onClick={() => {
-          setShowDataSourcesModal(true);
-        }}
-      />
+
+      {isAdmin ? (
+        <Button
+          label="Add data from connections"
+          variant="primary"
+          icon={PlusIcon}
+          size="sm"
+          onClick={() => {
+            setShowDataSourcesModal(true);
+          }}
+        />
+      ) : (
+        <RequestDataSourceModal
+          dataSources={vaultDataSourceViews.map((view) => view.dataSource)}
+          owner={owner}
+        />
+      )}
     </>
   );
 }

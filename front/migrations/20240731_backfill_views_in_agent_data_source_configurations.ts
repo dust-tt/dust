@@ -2,6 +2,7 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import assert from "assert";
 
 import { Authenticator } from "@app/lib/auth";
+import { isManaged } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -20,7 +21,7 @@ async function backfillViewsInAgentDataSourceConfigurationForWorkspace(
   const dataSources = await DataSourceResource.listByWorkspace(auth);
 
   // Filter managed data sources.
-  const managedDataSources = dataSources.filter((ds) => ds.isManaged());
+  const managedDataSources = dataSources.filter((ds) => isManaged(ds));
 
   logger.info(
     `Found ${managedDataSources.length} managed data sources for workspace(${workspace.sId}).`

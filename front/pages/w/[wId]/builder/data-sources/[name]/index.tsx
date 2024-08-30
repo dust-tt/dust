@@ -31,7 +31,7 @@ import type {
 import type { ConnectorType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
-import { assertNever, Err, isWebsite, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -44,7 +44,6 @@ import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
-import { RequestDataSourceDialog } from "@app/components/data_source/RequestDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -54,7 +53,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { getDisplayNameForDocument, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig, useDocuments, useTables } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
@@ -1006,7 +1005,6 @@ function ManagedDataSourceView({
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showEditionModal, setShowEditionModal] = useState(false);
-  const [showRequestDialog, setShowRequestDialog] = useState(false);
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -1301,7 +1299,6 @@ function ManagedDataSourceView({
             });
           }}
           dustClientFacingUrl={dustClientFacingUrl}
-          onRequestFromDataSourceClick={() => setShowRequestDialog(true)}
         />
         <ConnectorPermissionsModal
           owner={owner}
@@ -1309,12 +1306,6 @@ function ManagedDataSourceView({
           dataSource={dataSource}
           isOpen={showPermissionModal}
           onClose={() => setShowPermissionModal(false)}
-        />
-        <RequestDataSourceDialog
-          isOpen={showRequestDialog}
-          onClose={() => setShowRequestDialog(false)}
-          dataSource={dataSource}
-          owner={owner}
         />
       </div>
     </>

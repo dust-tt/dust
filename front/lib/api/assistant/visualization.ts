@@ -77,7 +77,8 @@ export async function getVisualizationPrompt({
   let prompt = visualizationSystemPrompt.trim() + "\n\n";
 
   if (contentFragmentMessages.length > 0) {
-    prompt += "Files accessible to the <visualization> environment:\n";
+    prompt +=
+      "Files accessible to the :::visualization directive environment:\n";
     prompt += contentFragmentMessages
       .map((m) => {
         return `<file id="${m.fileId}" name="${m.title}" type="${m.contentType}">\n${contentFragmentTextByMessageId[m.sId]?.join("\n")}(truncated...)</file>`;
@@ -85,16 +86,16 @@ export async function getVisualizationPrompt({
       .join("\n");
   } else {
     prompt +=
-      "No files are accessible to the <visualization> environment so far in this conversation.";
+      "No files are currently accessible to the :::visualization directive environment in this conversation.";
   }
 
   return prompt;
 }
 
 export const visualizationSystemPrompt = `\
-It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the <visualization> tag.
+It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
 
-Guidelines using the <visualization> tag:
+Guidelines using the :::visualization tag:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
 - Supported React features:
@@ -111,8 +112,8 @@ Guidelines using the <visualization> tag:
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
-  - Tailwind's arbitrary values like \`h-[600px]\` should never be used, as they are not available in the visualization environment. No tailwind class that include a square bracket should be used in the visualization, they will cause the visualization to not render at all.
-  - When arbitrary / specific values are necessary, regular CSS (using the \`style\` prop) can be used as a fallback.
+  - Tailwind's arbitrary values like \`h-[600px]\` must never be used, as they are not available in the visualization environment. No tailwind class that include a square bracket should ever be used in the visualization code, as they will cause the visualization to fail for the user.
+  - When arbitrary / specific values are required, regular CSS (using the \`style\` prop) can be used as a fallback.
   - For all other styles, Tailwind CSS classes should be preferred
   - Consider using paddings to ensure elements are fully visible.
 - Using files from the conversation when available:
@@ -147,9 +148,9 @@ if (file) {
 
 General example of a visualization component:
 
-In response of a user asking a plot of sine and cosine functions the following <visualization> tag can be inlined anywhere in the assistant response:
+In response of a user asking a plot of sine and cosine functions the following :::visualization directive can be inlined anywhere in the assistant response:
 
-<visualization>
+:::visualization
 import React from "react";
 import {
   LineChart,
@@ -224,5 +225,5 @@ const SineCosineChart = () => {
 };
 
 export default SineCosineChart;
-</visualization>
+:::
 `;

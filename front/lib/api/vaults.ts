@@ -1,15 +1,16 @@
 import type { DataSourceViewCategory } from "@dust-tt/types";
 
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 
 export const getDataSourceCategory = (
-  dataSource: DataSourceResource
+  dataSourceResource: DataSourceResource
 ): DataSourceViewCategory => {
-  if (dataSource.isFolder()) {
+  if (isFolder(dataSourceResource)) {
     return "folder";
   }
 
-  if (dataSource.isWebcrawler()) {
+  if (isWebsite(dataSourceResource)) {
     return "website";
   }
 
