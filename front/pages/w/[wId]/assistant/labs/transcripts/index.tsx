@@ -31,6 +31,7 @@ import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/la
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import {
   useAgentConfigurations,
+  useConversations,
   useLabsTranscriptsConfiguration,
 } from "@app/lib/swr";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
@@ -110,6 +111,10 @@ export default function LabsTranscriptsIndex({
     isTranscriptsConfigurationLoading,
     mutateTranscriptsConfiguration,
   } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
+
+  const { conversations, isConversationsError } = useConversations({
+    workspaceId: owner.sId,
+  });
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
@@ -454,7 +459,13 @@ export default function LabsTranscriptsIndex({
       owner={owner}
       gaTrackingId={gaTrackingId}
       pageTitle="Dust - Transcripts processing"
-      navChildren={<AssistantSidebarMenu owner={owner} />}
+      navChildren={
+        <AssistantSidebarMenu
+          owner={owner}
+          conversations={conversations}
+          isConversationsError={isConversationsError}
+        />
+      }
     >
       <Dialog
         isOpen={isDeleteProviderDialogOpened}
