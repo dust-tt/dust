@@ -63,21 +63,17 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                 <DropdownMenu.Button>{ELLIPSIS_STRING}</DropdownMenu.Button>
                 <DropdownMenu.Items origin="topLeft">
                   {itemsHidden.map((item, index) => (
-                    <Link
+                    <DropdownMenu.Item
+                      icon={item.icon}
+                      label={item.label}
                       href={item.href || "#"}
-                      className={"s-text-element-700"}
+                      key={`breadcrumbs-hidden-${index}`}
                     >
-                      <DropdownMenu.Item
-                        key={`breadcrumbs-hidden-${index}`}
-                        icon={item.icon}
-                        label={item.label}
-                      >
-                        {truncateWithTooltip(
-                          item.label,
-                          LABEL_TRUNCATE_LENGTH_MIDDLE
-                        )}
-                      </DropdownMenu.Item>
-                    </Link>
+                      {truncateWithTooltip(
+                        item.label,
+                        LABEL_TRUNCATE_LENGTH_MIDDLE
+                      )}
+                    </DropdownMenu.Item>
                   ))}
                 </DropdownMenu.Items>
               </DropdownMenu>
