@@ -1,8 +1,4 @@
-import type {
-  ConversationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useEffect, useState } from "react";
 
@@ -118,8 +114,7 @@ export default function ConversationLayout({
           ...prevState,
           conversations:
             prevState?.conversations.filter(
-              (conversation: ConversationType) =>
-                conversation.sId !== conversationId
+              (conversation) => conversation.sId !== conversationId
             ) ?? [],
         };
       });
