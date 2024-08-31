@@ -111,15 +111,15 @@ function VaultBreadCrumbs({
     internalIds: currentFolder?.parentInternalIds || [],
   });
 
-  if (!category) {
-    return null;
-  }
-
   const items: {
     label: string;
     icon?: ComponentType;
     href?: string;
   }[] = useMemo(() => {
+    if (!category) {
+      return [];
+    }
+
     const items = [
       {
         icon: vault.kind === "global" ? CompanyIcon : LockIcon,
@@ -163,6 +163,10 @@ function VaultBreadCrumbs({
     }
     return items;
   }, [owner, vault, category, dataSourceView, folders]);
+
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
     <div className="pb-8">
