@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import React from "react";
 
-import { noHrefLink, SparkleContextLinkType } from "@sparkle/context";
+import { SparkleContextLinkType } from "@sparkle/context";
 import {
   ChevronRightIcon,
   DropdownMenu,
@@ -32,12 +32,15 @@ type BreadcrumbsAccumulator = {
 export function Breadcrumbs({ items }: BreadcrumbProps) {
   const { components } = React.useContext(SparkleContext);
 
+  const Link: SparkleContextLinkType = components.link;
+
   const { itemsShown, itemsHidden } = items.reduce(
     (acc: BreadcrumbsAccumulator, item, index) => {
       if (items.length <= 5 || index < 2 || index >= items.length - 2) {
         acc.itemsShown.push(item);
       } else if (index === 2) {
         acc.itemsShown.push({ label: ELLIPSIS_STRING });
+        acc.itemsHidden.push(item);
       } else {
         acc.itemsHidden.push(item);
       }
@@ -57,26 +60,40 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
             <Icon visual={item.icon} className="s-text-brand" />
             {item.label === ELLIPSIS_STRING ? (
               <DropdownMenu>
-                <DropdownMenu.Button>${ELLIPSIS_STRING}</DropdownMenu.Button>
+                <DropdownMenu.Button>{ELLIPSIS_STRING}</DropdownMenu.Button>
                 <DropdownMenu.Items origin="topLeft">
                   {itemsHidden.map((item, index) => (
                     <DropdownMenu.Item
-                      key={`breadcrumbs-hidden-${index}`}
                       icon={item.icon}
                       label={item.label}
+                      href={item.href || "#"}
+                      key={`breadcrumbs-hidden-${index}`}
                     >
-                      {getLinkForItem(item, false, components.link)}
+                      {truncateWithTooltip(
+                        item.label,
+                        LABEL_TRUNCATE_LENGTH_MIDDLE
+                      )}
                     </DropdownMenu.Item>
                   ))}
                 </DropdownMenu.Items>
               </DropdownMenu>
             ) : (
               <div>
-                {getLinkForItem(
-                  item,
-                  index === itemsShown.length - 1,
-                  components.link
-                )}
+                <Link
+                  href={item.href || "#"}
+                  className={
+                    index === items.length - 1
+                      ? "s-text-element-900"
+                      : "s-text-element-700"
+                  }
+                >
+                  {index === items.length - 1
+                    ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
+                    : truncateWithTooltip(
+                        item.label,
+                        LABEL_TRUNCATE_LENGTH_MIDDLE
+                      )}
+                </Link>
               </div>
             )}
             {index === itemsShown.length - 1 ? null : (
@@ -86,25 +103,6 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
         );
       })}
     </div>
-  );
-}
-
-function getLinkForItem(
-  item: BreadcrumbItem,
-  isLast: boolean,
-  link: SparkleContextLinkType
-) {
-  const Link: SparkleContextLinkType = item.href ? link : noHrefLink;
-
-  return (
-    <Link
-      href={item.href || "#"}
-      className={isLast ? "s-text-element-900" : "s-text-element-700"}
-    >
-      {isLast
-        ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
-        : truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_MIDDLE)}
-    </Link>
   );
 }
 

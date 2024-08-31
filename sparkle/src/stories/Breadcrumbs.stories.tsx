@@ -36,7 +36,7 @@ export const BreadcrumbsExample = () => {
       icon: CompanyIcon,
     },
     { label: "My Vault", href: "#" },
-    { label: "Data Sources" },
+    { label: "Data Sources", href: ".." },
     { label: "Folder1", href: "#", icon: FolderIcon },
     { label: "With ellipsis", href: "#" },
   ];
