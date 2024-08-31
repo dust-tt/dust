@@ -1,10 +1,10 @@
-import {
-  removeNulls,
-  type ContentNode,
-  type ContentNodeWithParentIds,
-  type Result,
-  type WithConnectorsAPIErrorReponse,
+import type {
+  ContentNode,
+  ContentNodeWithParentIds,
+  Result,
+  WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
