@@ -10,7 +10,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations/search:
  *   get:
- *     summary: Search agent configurations by name
+ *     summary: Search assistants by name
  *     description: Search for agent configurations by name in the workspace identified by {wId}.
  *     tags:
  *       - Assistants
