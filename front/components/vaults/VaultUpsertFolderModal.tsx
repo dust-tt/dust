@@ -18,24 +18,31 @@ import { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
-export default function VaultCreateFolderModal({
+export default function VaultFolderModal({
   isOpen,
   setOpen,
   owner,
   vault,
   dataSources,
+  folder,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
+  folder: DataSourceType | null;
 }) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
-  const [name, setName] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null);
+  const defaultName = folder?.name ?? null;
+  const defaultDescription = folder?.description ?? null;
+
+  const [name, setName] = useState<string | null>(defaultName);
+  const [description, setDescription] = useState<string | null>(
+    defaultDescription
+  );
 
   const [errors, setErrors] = useState<{
     name: string | null;
@@ -45,6 +52,72 @@ export default function VaultCreateFolderModal({
     description: null,
   });
 
+  const postCreateFolder = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      onClose();
+      const response: PostVaultDataSourceResponseBody = await res.json();
+      const { dataSourceView } = response;
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+      );
+      sendNotification({
+        type: "success",
+        title: "Successfully created folder",
+        description: "Folder was successfully created.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error creating Folder",
+        description: `Error: ${err.error.message}`,
+      });
+    }
+  };
+
+  const patchUpdateFolder = async (folderId: string) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folderId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      onClose();
+      sendNotification({
+        type: "success",
+        title: "Successfully updated folder",
+        description: "Folder was successfully updated.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error updating Folder",
+        description: `Error: ${err.error.message}`,
+      });
+    }
+  };
+
   const onSave = async () => {
     let nameError: string | null = null;
     let descriptionError: string | null = null;
@@ -53,7 +126,10 @@ export default function VaultCreateFolderModal({
       nameError = "Name is required.";
     } else if (isDataSourceNameValid(name).isErr()) {
       nameError = "Name is invalid, must be multiple characters with no space.";
-    } else if (dataSources.find((ds) => ds.name === name)) {
+    } else if (
+      (folder === null || folder.name !== name) &&
+      dataSources.find((ds) => ds.name === name)
+    ) {
       nameError = "A data source with this name already exists.";
     }
 
@@ -69,52 +145,32 @@ export default function VaultCreateFolderModal({
       return;
     }
 
-    const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          description,
-        }),
-      }
-    );
-    if (res.ok) {
-      setOpen(false);
-      const response: PostVaultDataSourceResponseBody = await res.json();
-      const { dataSourceView } = response;
-      await router.push(
-        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
-      );
-      sendNotification({
-        type: "success",
-        title: "Successfully created folder",
-        description: "Folder was successfully created.",
-      });
+    if (folder === null) {
+      await postCreateFolder();
     } else {
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        title: "Error Saving Folder",
-        type: "error",
-        description: `Error: ${err.error.message}`,
-      });
-      return;
+      await patchUpdateFolder(folder.sId);
     }
   };
+
+  const onClose = () => {
+    setOpen(false);
+    setName(defaultName);
+    setDescription(defaultDescription);
+  };
+
+  const hasChanged =
+    folder === null
+      ? name !== null || description !== null
+      : description !== folder.description;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => {
-        setOpen(false);
-      }}
+      onClose={onClose}
       onSave={onSave}
-      hasChanged={name !== null || description !== null}
+      hasChanged={hasChanged}
       variant="side-sm"
-      title="Create a folder"
+      title={folder === null ? "Create Folder" : "Edit Folder"}
     >
       <Page variant="modal">
         <div className="w-full">
@@ -132,11 +188,14 @@ export default function VaultCreateFolderModal({
                   }
                 }}
                 error={errors.name}
+                disabled={folder !== null} // We cannot change the name of a datasource
                 showErrorLabel
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                <ExclamationCircleStrokeIcon /> Folder name must be unique and
-                not use spaces.
+                <ExclamationCircleStrokeIcon />{" "}
+                {folder === null
+                  ? "Folder name must be unique and not use spaces."
+                  : "Folder name cannot be changed."}
               </p>
             </div>
 
