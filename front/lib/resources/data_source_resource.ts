@@ -267,6 +267,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       name: this.name,
       description: this.description,
       dustAPIProjectId: this.dustAPIProjectId,
+      dustAPIDataSourceId: this.dustAPIDataSourceId,
       connectorId: this.connectorId,
       connectorProvider: this.connectorProvider,
       assistantDefaultSelected: this.assistantDefaultSelected,
