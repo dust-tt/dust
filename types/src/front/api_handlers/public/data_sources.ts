@@ -1,7 +1,6 @@
 import * as t from "io-ts";
 
 import { CoreAPIDataSourceDocumentSection } from "../../../core/data_source";
-import { SlugifiedString } from "../../../shared/utils/iots_utils";
 
 export const UpsertContextSchema = t.type({
   sync_type: t.union([

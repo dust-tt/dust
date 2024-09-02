@@ -14,9 +14,7 @@ import type {
   LightContentNode,
   LightWorkspaceType,
   PlanType,
-  PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { init } from "dd-trace";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
