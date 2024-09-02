@@ -117,7 +117,6 @@ DataSource.belongsTo(User, {
 });
 
 DataSource.belongsTo(VaultModel, {
-  // TODO(2024-07-27 thomas) Set `allowNull` to `false` once backfilled.
-  foreignKey: { name: "vaultId", allowNull: true },
+  foreignKey: { name: "vaultId", allowNull: false },
   onDelete: "RESTRICT",
 });
