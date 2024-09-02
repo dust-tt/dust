@@ -272,12 +272,6 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
   }
 
-  // sId logic.
-
-  get sId(): string {
-    return this.name;
-  }
-
   // Serialization.
 
   toJSON(): DataSourceType {

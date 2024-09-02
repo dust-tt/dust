@@ -27,6 +27,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
 } from "@dust-tt/types";
+import assert from "assert";
 import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
@@ -1179,17 +1180,11 @@ async function _createAgentDataSourcesConfigData(
   // Although we have the capability to support multiple workspaces,
   // currently, we only support one workspace, which is the one the user is in.
   // This allows us to use the current authenticator to fetch resources.
-  const allWorkspaceIds = [
-    ...new Set(dataSourceConfigurations.map((dsc) => dsc.workspaceId)),
-  ];
-  const hasUniqueAccessibleWorkspace =
-    allWorkspaceIds.length === 1 &&
-    auth.getNonNullableWorkspace().sId === allWorkspaceIds[0];
-  if (!hasUniqueAccessibleWorkspace) {
-    throw new Error(
-      "Can't create AgentDataSourcesConfig for retrieval: Multiple workspaces."
-    );
-  }
+  assert(
+    dataSourceConfigurations.every(
+      (dsc) => dsc.workspaceId === auth.getNonNullableWorkspace().sId
+    )
+  );
 
   // dsConfig contains this format:
   // [

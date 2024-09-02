@@ -97,20 +97,15 @@ export async function createTableDataSourceConfiguration(
   // Although we have the capability to support multiple workspaces,
   // currently, we only support one workspace, which is the one the user is in.
   // This allows us to use the current authenticator to fetch resources.
-  const allWorkspaceIds = [
-    ...new Set(tableConfigurations.map((tc) => tc.workspaceId)),
-  ];
-  const hasUniqueAccessibleWorkspace =
-    allWorkspaceIds.length === 1 &&
-    auth.getNonNullableWorkspace().sId === allWorkspaceIds[0];
-
   assert(
-    hasUniqueAccessibleWorkspace,
-    "Can't create TableDataSourceConfiguration for query tables: Multiple workspaces."
+    tableConfigurations.every(
+      (tc) => tc.workspaceId === auth.getNonNullableWorkspace().sId
+    )
   );
 
   const dataSourceIds = tableConfigurations.map((tc) => tc.dataSourceId);
   const [globalVault, dataSources] = await Promise.all([
+    // TODO(GROUPS_INFRA): Remove fetching global vault once the UI passes the data source view.
     VaultResource.fetchWorkspaceGlobalVault(auth),
     DataSourceResource.fetchByNames(
       // We can use `auth` because we limit to one workspace.
@@ -157,14 +152,14 @@ export async function createTableDataSourceConfiguration(
         "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
       );
       assert(
-        dataSourceView.dataSource.sId === tc.dataSourceId,
+        dataSourceView.dataSource.name === tc.dataSourceId,
         "Can't create TableDataSourceConfiguration for query tables: data source view does not belong to the data source."
       );
 
       await AgentTablesQueryConfigurationTable.create(
         {
           // TODO(GROUPS_INFRA) Use ModelId for dataSourceId.
-          dataSourceId: dataSource.sId,
+          dataSourceId: dataSource.name,
           dataSourceViewId: dataSourceView.id,
           dataSourceWorkspaceId: tc.workspaceId,
           tableId: tc.tableId,

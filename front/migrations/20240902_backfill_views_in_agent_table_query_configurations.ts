@@ -39,7 +39,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
     await AgentTablesQueryConfigurationTable.count({
       where: {
         // /!\ `dataSourceId` is the data source's name, not the id.
-        dataSourceId: dataSources.map((ds) => ds.sId),
+        dataSourceId: dataSources.map((ds) => ds.name),
         dataSourceViewId: {
           [Op.is]: null,
         },
@@ -68,7 +68,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
       {
         where: {
           // /!\ `dataSourceId` is the data source's name, not the id.
-          dataSourceId: ds.sId,
+          dataSourceId: ds.name,
         },
       }
     );
