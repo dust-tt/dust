@@ -1,6 +1,5 @@
 import {
   Button,
-  Dialog,
   DocumentPlusIcon,
   ExclamationCircleIcon,
   EyeIcon,
@@ -9,6 +8,7 @@ import {
   Modal,
   Page,
   PlusIcon,
+  Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -19,7 +19,7 @@ import type {
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import { Err, isSlugified, parseAndStringifyCsv } from "@dust-tt/types";
-import { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -36,6 +36,15 @@ interface DocumentOrTableUploadOrEditModalProps {
   plan: PlanType;
 }
 
+type TableOrDocument = {
+  name: string;
+  description: string;
+  file: File | null;
+  text: string;
+  tags: string[];
+  sourceUrl: string;
+};
+
 export function DocumentOrTableUploadOrEditModal({
   dataSourceView,
   contentNode,
@@ -47,16 +56,18 @@ export function DocumentOrTableUploadOrEditModal({
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [text, setText] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [sourceUrl, setSourceUrl] = useState("");
+  const [tableOrDoc, setTableOrDoc] = useState<TableOrDocument>({
+    name: "",
+    description: "",
+    file: null,
+    text: "",
+    tags: [],
+    sourceUrl: "",
+  });
 
-  const [hasChanged, setHasChanged] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
   const isTable = contentNode?.type === "database";
@@ -69,11 +80,9 @@ export function DocumentOrTableUploadOrEditModal({
   });
 
   useEffect(() => {
-    const isDocument = !isTable;
-
     if (initialId) {
-      if (isDocument) {
-        setName(initialId);
+      setIsLoading(true);
+      if (!isTable) {
         setUploading(true);
         fetch(
           `/api/w/${owner.sId}/data_sources/${
@@ -83,40 +92,38 @@ export function DocumentOrTableUploadOrEditModal({
           .then(async (res) => {
             if (res.ok) {
               const document = await res.json();
-              setText(document.document.text);
-              setTags(document.document.tags);
-              setSourceUrl(document.document.source_url);
+              setTableOrDoc((prev) => ({
+                ...prev,
+                name: initialId,
+                text: document.document.text,
+                tags: document.document.tags,
+                sourceUrl: document.document.source_url,
+              }));
             }
           })
           .catch((e) => console.error(e))
           .finally(() => setUploading(false));
       } else if (table) {
-        setName(table.name);
-        setDescription(table.description);
+        setTableOrDoc((prev) => ({
+          ...prev,
+          name: table.name,
+          description: table.description,
+        }));
       }
+      setIsLoading(false);
     } else {
-      setName("");
-      setText("");
-      setTags([]);
-      setSourceUrl("");
-      setDescription("");
+      setTableOrDoc({
+        name: "",
+        description: "",
+        file: null,
+        text: "",
+        tags: [],
+        sourceUrl: "",
+      });
     }
-
-    setHasChanged(false);
   }, [isTable, initialId, table, owner.sId, dataSourceView.dataSource.name]);
 
-  useEffect(() => {
-    const edited = isTable
-      ? !initialId ||
-        table?.name !== name ||
-        table?.description !== description ||
-        file !== null
-      : !initialId && !text;
-    setHasChanged(edited);
-  }, [isTable, initialId, name, description, file, text, contentNode, table]);
-
-  //TODO(GROUPS_UI) Get the total number of documents
-  const total = 0;
+  const total = 0; // TODO: Get the total number of documents
 
   if (
     !initialId &&
@@ -139,7 +146,9 @@ export function DocumentOrTableUploadOrEditModal({
       let endpoint, body;
 
       if (isTable) {
-        const fileContent = file ? await handleFileUploadToText(file) : null;
+        const fileContent = tableOrDoc.file
+          ? await handleFileUploadToText(tableOrDoc.file)
+          : null;
         if (fileContent && fileContent.isErr()) {
           return new Err(fileContent.error);
         }
@@ -154,8 +163,8 @@ export function DocumentOrTableUploadOrEditModal({
 
         endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`;
         body = JSON.stringify({
-          name,
-          description,
+          name: tableOrDoc.name,
+          description: tableOrDoc.description,
           csv: undefined,
           tableId: initialId,
           timestamp: null,
@@ -165,14 +174,14 @@ export function DocumentOrTableUploadOrEditModal({
           async: false,
         });
       } else {
-        endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(name)}`;
+        endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(tableOrDoc.name)}`;
         body = JSON.stringify({
           timestamp: null,
           parents: null,
-          section: { prefix: null, content: text, sections: [] },
+          section: { prefix: null, content: tableOrDoc.text, sections: [] },
           text: null,
-          source_url: sourceUrl || undefined,
-          tags: tags.filter(Boolean),
+          source_url: tableOrDoc.sourceUrl || undefined,
+          tags: tableOrDoc.tags.filter(Boolean),
           light_document_output: true,
           upsert_context: null,
           async: false,
@@ -192,7 +201,7 @@ export function DocumentOrTableUploadOrEditModal({
       sendNotification({
         type: "success",
         title: `${isTable ? "Table" : "Document"} successfully ${initialId ? "updated" : "added"}`,
-        description: `${isTable ? "Table" : "Document"} ${name} was successfully ${initialId ? "updated" : "added"}.`,
+        description: `${isTable ? "Table" : "Document"} ${tableOrDoc.name} was successfully ${initialId ? "updated" : "added"}.`,
       });
       onClose(true);
     } catch (error) {
@@ -225,14 +234,14 @@ export function DocumentOrTableUploadOrEditModal({
       }
 
       if (isTable) {
-        setFile(selectedFile);
+        setTableOrDoc((prev) => ({ ...prev, file: selectedFile }));
         setIsBigFile(selectedFile.size > 5_000_000);
       } else {
         const res = await handleFileUploadToText(selectedFile);
         if (res.isErr()) {
           return new Err(res.error);
         }
-        setText(res.value.content);
+        setTableOrDoc((prev) => ({ ...prev, text: res.value.content }));
       }
     } catch (error) {
       sendNotification({
@@ -245,11 +254,28 @@ export function DocumentOrTableUploadOrEditModal({
     }
   };
 
+  if (isLoading) {
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={() => onClose(false)}
+        hasChanged={true}
+        variant="side-md"
+        title={`Edit ${isTable ? "table" : "document"}`}
+        onSave={handleUpload}
+      >
+        <div className="flex justify-center py-4">
+          <Spinner variant="color" size="xs" />
+        </div>
+      </Modal>
+    );
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => onClose(false)}
-      hasChanged={hasChanged}
+      hasChanged={true}
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} ${isTable ? "table" : "document"}`}
       onSave={handleUpload}
@@ -264,10 +290,12 @@ export function DocumentOrTableUploadOrEditModal({
               placeholder={isTable ? "table_name" : "Document title"}
               name="name"
               disabled={!!initialId}
-              value={name}
-              onChange={setName}
+              value={tableOrDoc.name}
+              onChange={(value) =>
+                setTableOrDoc((prev) => ({ ...prev, name: value }))
+              }
               error={
-                isTable && (!name || !isSlugified(name))
+                isTable && (!tableOrDoc.name || !isSlugified(tableOrDoc.name))
                   ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
                   : null
               }
@@ -285,8 +313,13 @@ export function DocumentOrTableUploadOrEditModal({
                 name="table-description"
                 placeholder="This table contains..."
                 rows={10}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                value={tableOrDoc.description}
+                onChange={(e) =>
+                  setTableOrDoc((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 className={classNames(
                   "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
                   "border-structure-200 bg-structure-50",
@@ -303,8 +336,10 @@ export function DocumentOrTableUploadOrEditModal({
               <Input
                 placeholder="https://..."
                 name="sourceUrl"
-                value={sourceUrl}
-                onChange={setSourceUrl}
+                value={tableOrDoc.sourceUrl}
+                onChange={(value) =>
+                  setTableOrDoc((prev) => ({ ...prev, sourceUrl: value }))
+                }
               />
             </div>
           )}
@@ -324,7 +359,7 @@ export function DocumentOrTableUploadOrEditModal({
               action={{
                 label: uploading
                   ? "Uploading..."
-                  : file || table
+                  : tableOrDoc.file || table
                     ? "Replace file"
                     : "Upload file",
                 variant: "primary",
@@ -360,8 +395,10 @@ export function DocumentOrTableUploadOrEditModal({
                   "border-structure-200 bg-structure-50",
                   "focus:border-action-300 focus:ring-action-300"
                 )}
-                value={uploading ? "Uploading..." : text}
-                onChange={(e) => setText(e.target.value)}
+                value={uploading ? "Uploading..." : tableOrDoc.text}
+                onChange={(e) =>
+                  setTableOrDoc((prev) => ({ ...prev, text: e.target.value }))
+                }
               />
             )}
           </div>
@@ -387,10 +424,14 @@ export function DocumentOrTableUploadOrEditModal({
                       label: "Add tag",
                       variant: "tertiary",
                       icon: PlusIcon,
-                      onClick: () => setTags([...tags, ""]),
+                      onClick: () =>
+                        setTableOrDoc((prev) => ({
+                          ...prev,
+                          tags: [...prev.tags, ""],
+                        })),
                     }}
                   />
-                  {tags.map((tag, index) => (
+                  {tableOrDoc.tags.map((tag, index) => (
                     <div key={index} className="flex flex-grow flex-row">
                       <div className="flex flex-1 flex-row gap-8">
                         <div className="flex flex-1 flex-col">
@@ -399,10 +440,13 @@ export function DocumentOrTableUploadOrEditModal({
                             placeholder="Tag"
                             name="tag"
                             value={tag}
-                            onChange={(v) => {
-                              const newTags = [...tags];
-                              newTags[index] = v;
-                              setTags(newTags);
+                            onChange={(value) => {
+                              const newTags = [...tableOrDoc.tags];
+                              newTags[index] = value;
+                              setTableOrDoc((prev) => ({
+                                ...prev,
+                                tags: newTags,
+                              }));
                             }}
                           />
                         </div>
@@ -412,9 +456,12 @@ export function DocumentOrTableUploadOrEditModal({
                             icon={TrashIcon}
                             variant="secondaryWarning"
                             onClick={() => {
-                              const newTags = [...tags];
+                              const newTags = [...tableOrDoc.tags];
                               newTags.splice(index, 1);
-                              setTags(newTags);
+                              setTableOrDoc((prev) => ({
+                                ...prev,
+                                tags: newTags,
+                              }));
                             }}
                             labelVisible={false}
                           />

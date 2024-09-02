@@ -60,7 +60,7 @@ export const FoldersHeaderMenu = ({
             icon={DocumentTextIcon}
             onClick={() => {
               contentActionsRef.current?.callAction(
-                "DocumentUploadOrEditModal"
+                "DocumentOrTableUploadOrEditModal"
               );
             }}
             label="Create a document"

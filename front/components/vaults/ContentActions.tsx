@@ -9,13 +9,12 @@ import type { RefObject } from "react";
 import React, { useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
-import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
+import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
-import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 
 type ContentActionKey =
-  | "DocumentUploadOrEditModal"
+  | "DocumentOrTableUploadOrEditModal"
   | "MultipleDocumentsUpload"
   | "DocumentOrTableDeleteDialog"
   | "TableUploadOrEditModal";
@@ -61,10 +60,10 @@ export const ContentActions = React.forwardRef<
   // tables and documents which currently leads to 5xx.
   return (
     <>
-      <DocumentUploadOrEditModal
+      <DocumentOrTableUploadOrEditModal
         contentNode={currentAction.contentNode}
         dataSourceView={dataSourceView}
-        isOpen={currentAction.action === "DocumentUploadOrEditModal"}
+        isOpen={currentAction.action === "DocumentOrTableUploadOrEditModal"}
         onClose={onClose}
         owner={owner}
         plan={plan}
@@ -83,16 +82,6 @@ export const ContentActions = React.forwardRef<
           onClose={onClose}
           owner={owner}
           contentNode={currentAction.contentNode}
-        />
-      )}
-      {currentAction.contentNode?.type === "database" && (
-        <TableUploadOrEditModal
-          contentNode={currentAction.contentNode}
-          dataSourceView={dataSourceView}
-          isOpen={currentAction.action === "TableUploadOrEditModal"}
-          onClose={onClose}
-          owner={owner}
-          plan={plan}
         />
       )}
     </>
@@ -114,9 +103,7 @@ export const getMenuItems = (
         onClick: () => {
           contentActionsRef.current &&
             contentActionsRef.current?.callAction(
-              contentNode.type === "file"
-                ? ("DocumentUploadOrEditModal" as const)
-                : ("TableUploadOrEditModal" as const),
+              "DocumentOrTableUploadOrEditModal",
               contentNode
             );
         },
