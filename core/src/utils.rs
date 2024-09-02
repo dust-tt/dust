@@ -174,7 +174,6 @@ impl<B> MakeSpan<B> for CoreRequestMakeSpan {
             "core request",
             method = %request.method(),
             uri = %request.uri(),
-            request_span_id = new_id()[0..12].to_string(),
             dust_client_name = request.extensions()
             .get::<Extension<Arc<String>>>()
             .map(|ext| ext.as_ref().as_str())

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use anyhow::{anyhow, Result};
 use axum::{
     extract::{DefaultBodyLimit, Path, Query, State},
@@ -10,6 +12,9 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use datadog_tracing::axum::{OtelAxumLayer, OtelInResponseLayer};
+use std::time::Duration;
+use tower_http::timeout::TimeoutLayer;
 
 use dust::{
     api_keys::validate_api_key,
@@ -47,8 +52,6 @@ use tokio::{
 use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
 
 /// API State
 
@@ -63,6 +66,12 @@ struct APIState {
     qdrant_clients: QdrantClients,
 
     run_manager: Arc<Mutex<RunManager>>,
+}
+
+impl fmt::Debug for APIState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "APIState")
+    }
 }
 
 impl APIState {
@@ -1275,7 +1284,7 @@ async fn data_sources_retrieve(
 
 // Perform a search on a data source.
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, fmt::Debug)]
 struct DatasourceSearchPayload {
     query: Option<String>,
     top_k: usize,
@@ -1286,6 +1295,7 @@ struct DatasourceSearchPayload {
     target_document_tokens: Option<usize>,
 }
 
+#[tracing::instrument]
 async fn data_sources_search(
     Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
@@ -2745,15 +2755,7 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        let (_guard, tracer_shutdown) = datadog_tracing::init()?;
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
             Ok(db_uri) => {
@@ -2781,6 +2783,14 @@ fn main() {
 
         let router = Router::new()
         // Projects
+        .layer(OtelInResponseLayer)
+        //start OpenTelemetry trace on incoming request
+        .layer((
+            OtelAxumLayer::default(),
+            // Graceful shutdown will wait for outstanding requests to complete. Add a timeout so
+            // requests don't hang forever.
+            TimeoutLayer::new(Duration::from_secs(90)),
+        ))
         .route("/projects", post(projects_create))
         .route("/projects/:project_id", delete(projects_delete))
         .route("/projects/:project_id/clone", post(projects_clone))
@@ -2987,6 +2997,7 @@ fn main() {
 
         // sleep for 1 second to allow the logger to flush
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        tracer_shutdown.shutdown();
 
         Ok::<(), anyhow::Error>(())
     });
