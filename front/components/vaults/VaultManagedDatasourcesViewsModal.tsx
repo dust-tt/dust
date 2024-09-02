@@ -83,7 +83,7 @@ export default function VaultManagedDataSourcesViewsModal({
   }, [initialConfigurations, systemVaultDataSourceViews]);
 
   const setSelectionConfigurationsCallback = useCallback(
-    () => (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
+    (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
       setHasChanged(true);
       setSelectionConfigurations(func);
     },
