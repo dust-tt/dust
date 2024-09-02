@@ -1003,7 +1003,7 @@ function Capabilities({
 
       <Capability
         name="Data Visualization"
-        description="Assistant can generate charts and graphs"
+        description="Assistant can generate charts and graphs."
         enabled={builderState.visualizationEnabled}
         onEnable={() => {
           setEdited(true);
