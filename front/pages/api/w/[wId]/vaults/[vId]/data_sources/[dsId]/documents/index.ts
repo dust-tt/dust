@@ -23,9 +23,9 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostDocumentResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { name, vId } = req.query;
+  const { dsId, vId } = req.query;
 
-  if (typeof name !== "string" || typeof vId !== "string") {
+  if (typeof dsId !== "string" || typeof vId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -35,7 +35,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, name);
+  const dataSource = await DataSourceResource.fetchByName(auth, dsId);
 
   if (
     !dataSource ||

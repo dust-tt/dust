@@ -28,10 +28,10 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PatchDocumentResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { documentId, name, vId } = req.query;
+  const { documentId, dsId, vId } = req.query;
 
   if (
-    typeof name !== "string" ||
+    typeof dsId !== "string" ||
     typeof vId !== "string" ||
     typeof documentId !== "string"
   ) {
@@ -44,7 +44,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, name);
+  const dataSource = await DataSourceResource.fetchByName(auth, dsId);
 
   if (
     !dataSource ||
