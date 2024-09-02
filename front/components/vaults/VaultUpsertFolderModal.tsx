@@ -18,24 +18,28 @@ import { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
-export default function VaultCreateFolderModal({
+export default function VaultUpsertFolderModal({
   isOpen,
   setOpen,
   owner,
   vault,
   dataSources,
+  folder,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
+  folder: DataSourceType | null;
 }) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
-  const [name, setName] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null);
+  const [name, setName] = useState<string | null>(folder?.name ?? null);
+  const [description, setDescription] = useState<string | null>(
+    folder?.description ?? null
+  );
 
   const [errors, setErrors] = useState<{
     name: string | null;
@@ -45,30 +49,7 @@ export default function VaultCreateFolderModal({
     description: null,
   });
 
-  const onSave = async () => {
-    let nameError: string | null = null;
-    let descriptionError: string | null = null;
-
-    if (!name) {
-      nameError = "Name is required.";
-    } else if (isDataSourceNameValid(name).isErr()) {
-      nameError = "Name is invalid, must be multiple characters with no space.";
-    } else if (dataSources.find((ds) => ds.name === name)) {
-      nameError = "A data source with this name already exists.";
-    }
-
-    if (!description || description.trim() === "") {
-      descriptionError = "Description is required.";
-    }
-
-    if (nameError || descriptionError) {
-      setErrors({
-        name: nameError,
-        description: descriptionError,
-      });
-      return;
-    }
-
+  const postCreateFolder = async () => {
     const res = await fetch(
       `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
       {
@@ -95,15 +76,83 @@ export default function VaultCreateFolderModal({
         description: "Folder was successfully created.",
       });
     } else {
-      const err = (await res.json()) as { error: APIError };
+      const err: { error: APIError } = await res.json();
       sendNotification({
-        title: "Error Saving Folder",
         type: "error",
+        title: "Error creating Folder",
         description: `Error: ${err.error.message}`,
+      });
+    }
+  };
+
+  const patchUpdateFolder = async (folderId: string) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folderId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      setOpen(false);
+      sendNotification({
+        type: "success",
+        title: "Successfully updated folder",
+        description: "Folder was successfully updated.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error updating Folder",
+        description: `Error: ${err.error.message}`,
+      });
+    }
+  };
+
+  const onSave = async () => {
+    let nameError: string | null = null;
+    let descriptionError: string | null = null;
+
+    if (!name) {
+      nameError = "Name is required.";
+    } else if (isDataSourceNameValid(name).isErr()) {
+      nameError = "Name is invalid, must be multiple characters with no space.";
+    } else if (
+      (folder === null || folder.name !== name) &&
+      dataSources.find((ds) => ds.name === name)
+    ) {
+      nameError = "A data source with this name already exists.";
+    }
+
+    if (!description || description.trim() === "") {
+      descriptionError = "Description is required.";
+    }
+
+    if (nameError || descriptionError) {
+      setErrors({
+        name: nameError,
+        description: descriptionError,
       });
       return;
     }
+
+    if (folder === null) {
+      await postCreateFolder();
+    } else {
+      await patchUpdateFolder(folder.sId);
+    }
   };
+
+  const hasChanged =
+    folder === null
+      ? name !== null || description !== null
+      : description !== folder.description;
 
   return (
     <Modal
@@ -112,9 +161,9 @@ export default function VaultCreateFolderModal({
         setOpen(false);
       }}
       onSave={onSave}
-      hasChanged={name !== null || description !== null}
+      hasChanged={hasChanged}
       variant="side-sm"
-      title="Create a folder"
+      title={folder === null ? "Create Folder" : "Edit Folder"}
     >
       <Page variant="modal">
         <div className="w-full">
@@ -132,11 +181,14 @@ export default function VaultCreateFolderModal({
                   }
                 }}
                 error={errors.name}
+                disabled={folder !== null} // We cannot change the name of a datasource
                 showErrorLabel
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                <ExclamationCircleStrokeIcon /> Folder name must be unique and
-                not use spaces.
+                <ExclamationCircleStrokeIcon />{" "}
+                {folder === null
+                  ? "Folder name must be unique and not use spaces."
+                  : "Folder name change not allowed."}
               </p>
             </div>
 
