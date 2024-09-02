@@ -52,7 +52,12 @@ export function SlackIntegration({
 
       setNewSelection((prevSelection) => {
         if (!prevSelection) {
-          return [];
+          return [
+            {
+              slackChannelId: internalId,
+              slackChannelName: title,
+            },
+          ];
         }
 
         // Create a copy of the previous selection.
