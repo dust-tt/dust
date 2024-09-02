@@ -2,6 +2,7 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
   LightAgentConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
   Result,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -11,9 +12,9 @@ import {
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  removeNulls,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -239,9 +240,7 @@ export async function createOrUpgradeAgentConfiguration({
   agentConfigurationId,
 }: {
   auth: Authenticator;
-  assistant: t.TypeOf<
-    typeof PostOrPatchAgentConfigurationRequestBodySchema
-  >["assistant"];
+  assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
@@ -296,6 +295,7 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
+    dataSourceViewIds: getDsvIdsFromActions(actions),
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -444,4 +444,39 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   return new Ok(agentConfiguration);
+}
+
+function getDsvIdsFromActions(
+  actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
+): string[] {
+  const relevantActions = actions.filter(
+    (action) =>
+      action.type === "retrieval_configuration" ||
+      action.type === "process_configuration" ||
+      action.type === "tables_query_configuration"
+  );
+
+  return removeNulls(
+    relevantActions.flatMap((action) => {
+      if (action.type === "retrieval_configuration") {
+        return action.dataSources.map(
+          (dataSource) => dataSource.dataSourceViewId
+        );
+      } else if (action.type === "process_configuration") {
+        return action.dataSources.map(
+          (dataSource) => dataSource.dataSourceViewId
+        );
+      } else if (action.type === "tables_query_configuration") {
+        return action.tables.map((table) => {
+          if (!("dataSourceViewId" in table)) {
+            throw new Error(
+              "Unexpected: table without dataSourceViewId in tables_query_configuration"
+            );
+          }
+          return table.dataSourceViewId;
+        });
+      }
+      return [];
+    })
+  );
 }

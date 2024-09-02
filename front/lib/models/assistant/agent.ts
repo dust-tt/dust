@@ -55,6 +55,8 @@ export class AgentConfiguration extends Model<
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
+  declare groupIds: number[];
+
   declare author: NonAttribute<User>;
 }
 
@@ -130,6 +132,10 @@ AgentConfiguration.init(
     },
     pictureUrl: {
       type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
     },
   },
