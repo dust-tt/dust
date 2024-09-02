@@ -1,4 +1,5 @@
 import {
+  Button,
   ExclamationCircleStrokeIcon,
   Input,
   Modal,
@@ -15,6 +16,7 @@ import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
+import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
@@ -43,6 +45,8 @@ export default function VaultFolderModal({
   const [description, setDescription] = useState<string | null>(
     defaultDescription
   );
+
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
   const [errors, setErrors] = useState<{
     name: string | null;
@@ -152,6 +156,36 @@ export default function VaultFolderModal({
     }
   };
 
+  const onDeleteFolder = async () => {
+    if (folder === null) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folder.sId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    if (res.ok) {
+      onClose();
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder`
+      );
+      sendNotification({
+        type: "success",
+        title: "Successfully deleted folder",
+        description: "Folder was successfully deleted.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error deleting Folder",
+        description: `Error: ${err.error.message}`,
+      });
+    }
+  };
+
   const onClose = () => {
     setOpen(false);
     setName(defaultName);
@@ -215,6 +249,23 @@ export default function VaultFolderModal({
                 showErrorLabel
               />
             </div>
+
+            {folder !== null && (
+              <>
+                <Page.Separator />
+                <DeleteDataSourceDialog
+                  handleDelete={onDeleteFolder}
+                  isOpen={showDeleteConfirmDialog}
+                  setIsOpen={setShowDeleteConfirmDialog}
+                />
+                <Button
+                  size="sm"
+                  label="Delete Folder"
+                  variant="primaryWarning"
+                  onClick={() => setShowDeleteConfirmDialog(true)}
+                />
+              </>
+            )}
           </Page.Vertical>
         </div>
       </Page>

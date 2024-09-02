@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
 import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
-import VaultFolderModal from "@app/components/vaults/VaultUpsertFolderModal";
+import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
 
 export function EditVaultStaticDataSourcesViews({
   owner,
