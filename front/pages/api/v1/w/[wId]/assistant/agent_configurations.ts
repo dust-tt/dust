@@ -70,8 +70,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 401,
       api_error: {
-        type: "invalid_request_error",
-        message: "Not enough permissions.",
+        type: "workspace_not_found",
+        message: "Workspace not found",
       },
     });
   }

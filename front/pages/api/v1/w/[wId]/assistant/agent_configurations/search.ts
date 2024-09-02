@@ -83,19 +83,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 401,
       api_error: {
-        type: "invalid_request_error",
-        message: "Not enough permissions",
-      },
-    });
-  }
-
-  const owner = workspaceAuth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
         type: "workspace_not_found",
-        message: "The workspace was not found.",
+        message: "Workspace not found",
       },
     });
   }
