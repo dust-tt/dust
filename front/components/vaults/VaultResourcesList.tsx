@@ -62,7 +62,7 @@ const getTableColumns = ({
 }: {
   isManaged: boolean;
   isSystemVault: boolean;
-}): ColumnDef<RowData, any>[] => {
+}) => {
   const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",
     accessorKey: "label",
