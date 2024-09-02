@@ -1,13 +1,7 @@
-import {
-  CloudArrowLeftRightIcon,
-  FolderIcon,
-  GlobeAltIcon,
-  Tree,
-} from "@dust-tt/sparkle";
+import { FolderIcon, Tree } from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
@@ -17,154 +11,16 @@ import { useMemo } from "react";
 
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
-import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
-import {
-  getDisplayNameForDataSource,
-  isFolder,
-  isManaged,
-  isWebsite,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isFolder } from "@app/lib/data_sources";
 
-const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
-const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
-
-type DataSourceViewsSelectorProps = {
-  owner: WorkspaceType;
-  dataSourceViews: DataSourceViewType[];
-  selectionConfigurations: DataSourceViewSelectionConfigurations;
-  setSelectionConfigurations: Dispatch<
-    SetStateAction<DataSourceViewSelectionConfigurations>
-  >;
-};
-
-export function DataSourceViewsSelector({
-  owner,
-  dataSourceViews,
-  selectionConfigurations,
-  setSelectionConfigurations,
-}: DataSourceViewsSelectorProps) {
-  // Apply grouping if there are many data sources, and there are enough of each kind
-  // So we don't show a long list of data sources to the user
-
-  const applyGrouping =
-    dataSourceViews.length >= MIN_TOTAL_DATA_SOURCES_TO_GROUP;
-
-  const groupManaged =
-    applyGrouping &&
-    dataSourceViews.filter((dsv) => isManaged(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const groupFolders =
-    applyGrouping &&
-    dataSourceViews.filter((dsv) => isFolder(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const groupWebsites =
-    applyGrouping &&
-    dataSourceViews.filter((dsv) => isWebsite(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(dataSourceViews),
-    [dataSourceViews]
-  );
-
-  return (
-    <Tree isLoading={false}>
-      {groupManaged && (
-        <Tree.Item
-          key="connected"
-          label="Connected Data"
-          visual={CloudArrowLeftRightIcon}
-          type="node"
-        >
-          {orderDatasourceViews
-            .filter((dsv) => isManaged(dsv.dataSource))
-            .map((dataSourceView) => (
-              <DataSourceViewSelector
-                key={dataSourceView.sId}
-                owner={owner}
-                selectionConfiguration={
-                  selectionConfigurations[dataSourceView.sId] ??
-                  defaultSelectionConfiguration(dataSourceView)
-                }
-                setSelectionConfigurations={setSelectionConfigurations}
-              />
-            ))}
-        </Tree.Item>
-      )}
-
-      {orderDatasourceViews
-        .filter(
-          (dsv) =>
-            (!groupFolders && isFolder(dsv.dataSource)) ||
-            (!groupWebsites && isWebsite(dsv.dataSource)) ||
-            (!groupManaged && isManaged(dsv.dataSource))
-        )
-        .map((dataSourceView) => (
-          <DataSourceViewSelector
-            key={dataSourceView.sId}
-            owner={owner}
-            selectionConfiguration={
-              selectionConfigurations[dataSourceView.sId] ??
-              defaultSelectionConfiguration(dataSourceView)
-            }
-            setSelectionConfigurations={setSelectionConfigurations}
-          />
-        ))}
-
-      {groupFolders && (
-        <Tree.Item key="folders" label="Files" visual={FolderIcon} type="node">
-          {dataSourceViews
-            .filter((dsv) => isFolder(dsv.dataSource))
-            .map((dataSourceView) => (
-              <DataSourceViewSelector
-                key={dataSourceView.sId}
-                owner={owner}
-                selectionConfiguration={
-                  selectionConfigurations[dataSourceView.sId] ??
-                  defaultSelectionConfiguration(dataSourceView)
-                }
-                setSelectionConfigurations={setSelectionConfigurations}
-              />
-            ))}
-        </Tree.Item>
-      )}
-
-      {groupWebsites && (
-        <Tree.Item
-          key="websites"
-          label="Websites"
-          visual={GlobeAltIcon}
-          type="node"
-        >
-          {dataSourceViews
-            .filter((dsv) => isWebsite(dsv.dataSource))
-            .map((dataSourceView) => (
-              <DataSourceViewSelector
-                key={dataSourceView.sId}
-                owner={owner}
-                selectionConfiguration={
-                  selectionConfigurations[dataSourceView.sId] ??
-                  defaultSelectionConfiguration(dataSourceView)
-                }
-                setSelectionConfigurations={setSelectionConfigurations}
-              />
-            ))}
-        </Tree.Item>
-      )}
-    </Tree>
-  );
-}
-
-function DataSourceViewSelector({
+export function DataSourceViewSelector({
   owner,
   selectionConfiguration,
-  setSelectionConfigurations,
+  setSelectionConfigurations: setSelectedNodes,
 }: {
   owner: WorkspaceType;
   selectionConfiguration: DataSourceViewSelectionConfiguration;
@@ -210,26 +66,24 @@ function DataSourceViewSelector({
       setParentsById({});
 
       // Setting selectedResources
-      setSelectionConfigurations(
-        (prevState: DataSourceViewSelectionConfigurations) => {
-          if (!checked) {
-            // Nothing is selected at all, remove from the list
-            return _.omit(prevState, dataSourceView.sId);
-          }
-
-          const config =
-            prevState[dataSourceView.sId] ??
-            defaultSelectionConfiguration(dataSourceView);
-
-          config.isSelectAll = checked;
-          config.selectedResources = [];
-
-          // Return a new object to trigger a re-render
-          return { ...prevState, [dataSourceView.sId]: config };
+      setSelectedNodes((prevState: DataSourceViewSelectionConfigurations) => {
+        if (!checked) {
+          // Nothing is selected at all, remove from the list
+          return _.omit(prevState, dataSourceView.sId);
         }
-      );
+
+        const config =
+          prevState[dataSourceView.sId] ??
+          defaultSelectionConfiguration(dataSourceView);
+
+        config.isSelectAll = checked;
+        config.selectedResources = [];
+
+        // Return a new object to trigger a re-render
+        return { ...prevState, [dataSourceView.sId]: config };
+      });
     };
-  }, [dataSourceView, setParentsById, setSelectionConfigurations]);
+  }, [dataSourceView, setParentsById, setSelectedNodes]);
 
   return (
     <Tree.Item
@@ -261,7 +115,7 @@ function DataSourceViewSelector({
           });
 
           // Setting selectedResources
-          setSelectionConfigurations(
+          setSelectedNodes(
             (prevState: DataSourceViewSelectionConfigurations) => {
               const config =
                 prevState[dataSourceView.sId] ??

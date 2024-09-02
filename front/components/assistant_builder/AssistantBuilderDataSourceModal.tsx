@@ -3,12 +3,14 @@ import type {
   DataSourceViewSelectionConfigurations,
   WorkspaceType,
 } from "@dust-tt/types";
+import { defaultSelectionConfiguration } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useContext, useState } from "react";
+import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 
 export default function AssistantBuilderDataSourceModal({
   isOpen,
@@ -38,14 +40,6 @@ export default function AssistantBuilderDataSourceModal({
     validation: "primaryWarning",
   });
 
-  const setSelectionConfigurationsCallback = useCallback(
-    () => (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
-      setHasChanged(true);
-      setSelectionConfigurations(func);
-    },
-    [setSelectionConfigurations]
-  );
-
   return (
     <Modal
       isOpen={isOpen}
@@ -62,12 +56,24 @@ export default function AssistantBuilderDataSourceModal({
       title="Manage data sources selection"
     >
       <div className="w-full pt-12">
-        <DataSourceViewsSelector
-          owner={owner}
-          dataSourceViews={dataSourceViews}
-          selectionConfigurations={selectionConfigurations}
-          setSelectionConfigurations={setSelectionConfigurationsCallback}
-        />
+        {orderDatasourceViewByImportance(dataSourceViews).map(
+          (dataSourceView) => (
+            <DataSourceViewSelector
+              key={dataSourceView.sId}
+              owner={owner}
+              selectionConfiguration={
+                selectionConfigurations[dataSourceView.sId] ??
+                defaultSelectionConfiguration(dataSourceView)
+              }
+              setSelectionConfigurations={(
+                func: SetStateAction<DataSourceViewSelectionConfigurations>
+              ) => {
+                setHasChanged(true);
+                setSelectionConfigurations(func);
+              }}
+            />
+          )
+        )}
       </div>
     </Modal>
   );
