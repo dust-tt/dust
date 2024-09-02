@@ -8,19 +8,17 @@ import type {
 import type { RefObject } from "react";
 import React, { useImperativeHandle, useState } from "react";
 
-import { DocumentDeleteDialog } from "@app/components/data_source/DocumentDeleteDialog";
+import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
-import { TableDeleteDialog } from "@app/components/data_source/TableDeleteDialog";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 
 type ContentActionKey =
   | "DocumentUploadOrEditModal"
   | "MultipleDocumentsUpload"
-  | "DocumentDeleteDialog"
-  | "TableUploadOrEditModal"
-  | "TableDeleteDialog";
+  | "DocumentOrTableDeleteDialog"
+  | "TableUploadOrEditModal";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -59,7 +57,6 @@ export const ContentActions = React.forwardRef<
       onSave();
     }
   };
-
   // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
   // tables and documents which currently leads to 5xx.
   return (
@@ -80,12 +77,12 @@ export const ContentActions = React.forwardRef<
         plan={plan}
       />
       {currentAction.contentNode && (
-        <DocumentDeleteDialog
-          contentNode={currentAction.contentNode}
+        <DocumentOrTableDeleteDialog
           dataSourceView={dataSourceView}
-          isOpen={currentAction.action === "DocumentDeleteDialog"}
+          isOpen={currentAction.action === "DocumentOrTableDeleteDialog"}
           onClose={onClose}
           owner={owner}
+          contentNode={currentAction.contentNode}
         />
       )}
       {currentAction.contentNode?.type === "database" && (
@@ -96,15 +93,6 @@ export const ContentActions = React.forwardRef<
           onClose={onClose}
           owner={owner}
           plan={plan}
-        />
-      )}
-      {currentAction.contentNode && (
-        <TableDeleteDialog
-          contentNode={currentAction.contentNode}
-          dataSourceView={dataSourceView}
-          isOpen={currentAction.action === "TableDeleteDialog"}
-          onClose={onClose}
-          owner={owner}
         />
       )}
     </>
@@ -139,9 +127,7 @@ export const getMenuItems = (
         onClick: () => {
           contentActionsRef.current &&
             contentActionsRef.current?.callAction(
-              contentNode.type === "file"
-                ? ("DocumentDeleteDialog" as const)
-                : ("TableDeleteDialog" as const),
+              "DocumentOrTableDeleteDialog",
               contentNode
             );
         },
