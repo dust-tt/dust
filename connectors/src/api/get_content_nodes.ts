@@ -4,6 +4,7 @@ import type {
   Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -77,7 +78,20 @@ const _getContentNodes = async (
     });
   }
 
-  const contentNodes = contentNodesRes.value;
+  const unsortedContentNodes = contentNodesRes.value;
+
+  // sorting via grouping first to avoid n^2 complexity
+  const contentNodesMap = unsortedContentNodes.reduce(
+    (acc, node) => {
+      acc[node.internalId] = node;
+      return acc;
+    },
+    {} as Record<string, ContentNode>
+  );
+
+  const contentNodes = removeNulls(
+    internalIds.map((internalId) => contentNodesMap[internalId])
+  );
 
   if (includeParents) {
     const parentsRes = await augmentContentNodesWithParentIds(
