@@ -4,7 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
@@ -38,6 +38,14 @@ export default function AssistantBuilderDataSourceModal({
     validation: "primaryWarning",
   });
 
+  const setSelectionConfigurationsCallback = useCallback(
+    () => (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
+      setHasChanged(true);
+      setSelectionConfigurations(func);
+    },
+    [setSelectionConfigurations]
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -58,12 +66,7 @@ export default function AssistantBuilderDataSourceModal({
           owner={owner}
           dataSourceViews={dataSourceViews}
           selectionConfigurations={selectionConfigurations}
-          setSelectionConfigurations={(
-            func: SetStateAction<DataSourceViewSelectionConfigurations>
-          ) => {
-            setHasChanged(true);
-            setSelectionConfigurations(func);
-          }}
+          setSelectionConfigurations={setSelectionConfigurationsCallback}
         />
       </div>
     </Modal>

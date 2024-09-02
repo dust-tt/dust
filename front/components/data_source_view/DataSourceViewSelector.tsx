@@ -47,6 +47,9 @@ export function DataSourceViewsSelector({
   selectionConfigurations,
   setSelectionConfigurations,
 }: DataSourceViewsSelectorProps) {
+  // Apply grouping if there are many data sources, and there are enough of each kind
+  // So we don't show a long list of data sources to the user
+
   const applyGrouping =
     dataSourceViews.length >= MIN_TOTAL_DATA_SOURCES_TO_GROUP;
 
@@ -65,6 +68,11 @@ export function DataSourceViewsSelector({
     dataSourceViews.filter((dsv) => isWebsite(dsv.dataSource)).length >=
       MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
 
+  const orderDatasourceViews = useMemo(
+    () => orderDatasourceViewByImportance(dataSourceViews),
+    [dataSourceViews]
+  );
+
   return (
     <Tree isLoading={false}>
       {groupManaged && (
@@ -74,7 +82,7 @@ export function DataSourceViewsSelector({
           visual={CloudArrowLeftRightIcon}
           type="node"
         >
-          {orderDatasourceViewByImportance(dataSourceViews)
+          {orderDatasourceViews
             .filter((dsv) => isManaged(dsv.dataSource))
             .map((dataSourceView) => (
               <DataSourceViewSelector
@@ -90,24 +98,24 @@ export function DataSourceViewsSelector({
         </Tree.Item>
       )}
 
-      {orderDatasourceViewByImportance(
-        dataSourceViews.filter(
+      {orderDatasourceViews
+        .filter(
           (dsv) =>
             (!groupFolders && isFolder(dsv.dataSource)) ||
             (!groupWebsites && isWebsite(dsv.dataSource)) ||
             (!groupManaged && isManaged(dsv.dataSource))
         )
-      ).map((dataSourceView) => (
-        <DataSourceViewSelector
-          key={dataSourceView.sId}
-          owner={owner}
-          selectionConfiguration={
-            selectionConfigurations[dataSourceView.sId] ??
-            defaultSelectionConfiguration(dataSourceView)
-          }
-          setSelectionConfigurations={setSelectionConfigurations}
-        />
-      ))}
+        .map((dataSourceView) => (
+          <DataSourceViewSelector
+            key={dataSourceView.sId}
+            owner={owner}
+            selectionConfiguration={
+              selectionConfigurations[dataSourceView.sId] ??
+              defaultSelectionConfiguration(dataSourceView)
+            }
+            setSelectionConfigurations={setSelectionConfigurations}
+          />
+        ))}
 
       {groupFolders && (
         <Tree.Item key="folders" label="Files" visual={FolderIcon} type="node">

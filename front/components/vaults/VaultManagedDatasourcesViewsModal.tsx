@@ -6,7 +6,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr";
@@ -82,6 +82,14 @@ export default function VaultManagedDataSourcesViewsModal({
     }
   }, [initialConfigurations, systemVaultDataSourceViews]);
 
+  const setSelectionConfigurationsCallback = useCallback(
+    () => (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
+      setHasChanged(true);
+      setSelectionConfigurations(func);
+    },
+    [setSelectionConfigurations]
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -102,12 +110,7 @@ export default function VaultManagedDataSourcesViewsModal({
             dataSourceViews={systemVaultDataSourceViews}
             owner={owner}
             selectionConfigurations={selectionConfigurations}
-            setSelectionConfigurations={(
-              func: SetStateAction<DataSourceViewSelectionConfigurations>
-            ) => {
-              setHasChanged(true);
-              setSelectionConfigurations(func);
-            }}
+            setSelectionConfigurations={setSelectionConfigurationsCallback}
           />
         </div>
       </div>
