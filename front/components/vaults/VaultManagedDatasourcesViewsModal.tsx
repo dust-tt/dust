@@ -1,14 +1,15 @@
-import { Modal } from "@dust-tt/sparkle";
+import { Modal, Tree } from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { defaultSelectionConfiguration } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr";
 
 export default function VaultManagedDataSourcesViewsModal({
@@ -82,14 +83,6 @@ export default function VaultManagedDataSourcesViewsModal({
     }
   }, [initialConfigurations, systemVaultDataSourceViews]);
 
-  const setSelectionConfigurationsCallback = useCallback(
-    () => (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
-      setHasChanged(true);
-      setSelectionConfigurations(func);
-    },
-    [setSelectionConfigurations]
-  );
-
   return (
     <Modal
       isOpen={isOpen}
@@ -106,12 +99,26 @@ export default function VaultManagedDataSourcesViewsModal({
     >
       <div className="w-full pt-12">
         <div className="overflow-x-auto">
-          <DataSourceViewsSelector
-            dataSourceViews={systemVaultDataSourceViews}
-            owner={owner}
-            selectionConfigurations={selectionConfigurations}
-            setSelectionConfigurations={setSelectionConfigurationsCallback}
-          />
+          <Tree isLoading={false}>
+            {systemVaultDataSourceViews.map((dataSourceView) => {
+              return (
+                <DataSourceViewSelector
+                  key={dataSourceView.sId}
+                  owner={owner}
+                  selectionConfiguration={
+                    selectionConfigurations[dataSourceView.sId] ??
+                    defaultSelectionConfiguration(dataSourceView)
+                  }
+                  setSelectionConfigurations={(
+                    func: SetStateAction<DataSourceViewSelectionConfigurations>
+                  ) => {
+                    setHasChanged(true);
+                    setSelectionConfigurations(func);
+                  }}
+                />
+              );
+            })}
+          </Tree>
         </div>
       </div>
     </Modal>
