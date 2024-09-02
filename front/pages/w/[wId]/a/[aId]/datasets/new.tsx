@@ -17,17 +17,18 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-
-const { GA_TRACKING_ID = "" } = process.env;
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
   datasets: DatasetType[];
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -48,6 +49,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const datasets = await getDatasets(auth, app);
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
 
   return {
     props: {
@@ -55,7 +57,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       app,
       datasets,
-      gaTrackingId: GA_TRACKING_ID,
+      dustAppsListUrl,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -65,6 +68,7 @@ export default function NewDatasetView({
   subscription,
   app,
   datasets,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -136,7 +140,7 @@ export default function NewDatasetView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

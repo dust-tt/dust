@@ -57,7 +57,7 @@ export default function DatasetPicker({
             >
               {isDatasetsLoading ? "Loading..." : "Create dataset"}
             </Link>
-          ) : readOnly ? null : (
+          ) : (
             <Menu.Button
               className={classNames(
                 "inline-flex items-center rounded-md px-3 py-1 text-sm font-normal",
@@ -65,6 +65,7 @@ export default function DatasetPicker({
                 readOnly ? "border-white text-gray-300" : "text-gray-700",
                 "focus:outline-none focus:ring-0"
               )}
+              disabled={readOnly}
             >
               {dataset ? (
                 <>
@@ -72,7 +73,9 @@ export default function DatasetPicker({
                     {dataset}
                   </div>
                   &nbsp;
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                  {readOnly ? null : (
+                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                  )}
                 </>
               ) : (
                 "Select dataset"

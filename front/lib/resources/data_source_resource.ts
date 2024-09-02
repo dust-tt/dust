@@ -13,14 +13,15 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 export type FetchDataSourceOptions = {
@@ -38,7 +39,7 @@ export interface DataSourceResource
 export class DataSourceResource extends ResourceWithVault<DataSource> {
   static model: ModelStatic<DataSource> = DataSource;
 
-  readonly editedByUser: Attributes<User> | undefined;
+  readonly editedByUser?: Attributes<User>;
 
   constructor(
     model: ModelStatic<DataSource>,
@@ -90,6 +91,17 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return result;
   }
 
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    // Preparing the introduction of datasource sIds - fetchById for now points to fetchByName
+    const dataSource = await this.fetchByName(auth, id, options);
+
+    return dataSource ?? null;
+  }
+
   static async fetchByName(
     auth: Authenticator,
     name: string,
@@ -105,8 +117,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return dataSource ?? null;
   }
 
-  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    options?: FetchDataSourceOptions
+  ) {
     return this.baseFetchWithAuthorization(auth, {
+      ...this.getOptions(options),
       where: {
         id: ids,
       },
@@ -146,6 +163,18 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     });
   }
 
+  static async listByVault(auth: Authenticator, vault: VaultResource) {
+    return this.listByVaults(auth, [vault]);
+  }
+
+  static async listByVaults(auth: Authenticator, vaults: VaultResource[]) {
+    return this.baseFetchWithAuthorization(auth, {
+      where: {
+        vaultId: vaults.map((v) => v.id),
+      },
+    });
+  }
+
   // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
     const [dataSource] = await this.baseFetchWithAuthorization(auth, {
@@ -166,9 +195,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       transaction,
     });
 
-    if (this.isManaged()) {
-      await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
-    }
+    await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
 
     try {
       await this.model.destroy({
@@ -200,6 +227,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return [affectedCount];
   }
 
+  async setEditedBy(auth: Authenticator) {
+    await this.update({
+      editedByUserId: auth.getNonNullableUser().id,
+      editedAt: new Date(),
+    });
+  }
+
   private makeEditedBy(
     editedByUser: Attributes<User> | undefined,
     editedAt: Date | undefined
@@ -219,12 +253,8 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     };
   }
 
-  isManaged(): boolean {
-    return (
-      this.name.startsWith("managed-") &&
-      this.connectorProvider !== null &&
-      this.connectorProvider !== "webcrawler"
-    );
+  getUsagesByAgents(auth: Authenticator) {
+    return getDataSourceUsage({ auth, dataSource: this.toJSON() });
   }
 
   // Serialization.
@@ -232,6 +262,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   toJSON(): DataSourceType {
     return {
       id: this.id,
+      sId: this.name, // TODO(thomas 20240812) Migrate to a real sId
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,

@@ -2,12 +2,12 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
-  DataSourceType,
+  DataSourceViewKind,
   DataSourceViewType,
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -15,9 +15,11 @@ import type {
   Transaction,
 } from "sequelize";
 
+import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import { getDataSourceCategory } from "@app/lib/api/vaults";
 import type { Authenticator } from "@app/lib/auth";
+import { User } from "@app/lib/models/user";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { ResourceFindOptions } from "@app/lib/resources/resource_with_vault";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -26,7 +28,14 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
+
+export type FetchDataSourceViewOptions = {
+  includeEditedBy?: boolean;
+  limit?: number;
+  order?: [string, "ASC" | "DESC"][];
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
@@ -36,70 +45,111 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
   private ds?: DataSourceResource;
+  readonly editedByUser?: Attributes<User>;
 
   constructor(
     model: ModelStatic<DataSourceViewModel>,
     blob: Attributes<DataSourceViewModel>,
-    vault: VaultResource
+    vault: VaultResource,
+    { editedByUser }: { editedByUser?: Attributes<User> } = {}
   ) {
     super(DataSourceViewModel, blob, vault);
+
+    this.editedByUser = editedByUser;
   }
 
   // Creation.
 
   private static async makeNew(
     blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
-    vault: VaultResource
+    vault: VaultResource,
+    dataSource: DataSourceResource
   ) {
     const key = await DataSourceViewResource.model.create({
       ...blob,
       vaultId: vault.id,
     });
-
-    return new this(DataSourceViewResource.model, key.get(), vault);
+    const dsv = new this(DataSourceViewResource.model, key.get(), vault);
+    dsv.ds = dataSource;
+    return dsv;
   }
 
   static async createViewInVaultFromDataSource(
+    auth: Authenticator,
     vault: VaultResource,
-    dataSource: DataSourceType,
-    parentsIn: string[]
+    dataSource: DataSourceResource,
+    parentsIn: string[] | null
   ) {
-    return this.makeNew(
+    const dataSourceView = await this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn,
         workspaceId: vault.workspaceId,
+        kind: "custom",
       },
-      vault
+      vault,
+      dataSource
     );
+
+    await dataSourceView.setEditedBy(auth);
+
+    return dataSourceView;
   }
 
-  // For now, we create a default view for all data sources in the global vault.
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
     vault: VaultResource,
-    dataSource: DataSourceResource
+    dataSource: DataSourceResource,
+    kind: DataSourceViewKind = "default"
   ) {
     return this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
         workspaceId: vault.workspaceId,
+        kind,
       },
-      vault
+      vault,
+      dataSource
     );
   }
 
   // Fetching.
 
+  private static getOptions(
+    options?: FetchDataSourceViewOptions
+  ): ResourceFindOptions<DataSourceViewModel> {
+    const result: ResourceFindOptions<DataSourceViewModel> = {};
+
+    if (options?.includeEditedBy) {
+      result.includes = [
+        {
+          model: User,
+          as: "editedByUser",
+        },
+      ];
+    }
+
+    if (options?.limit) {
+      result.limit = options.limit;
+    }
+
+    if (options?.order) {
+      result.order = options.order;
+    }
+
+    return result;
+  }
+
   private static async baseFetch(
     auth: Authenticator,
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     options?: ResourceFindOptions<DataSourceViewModel>
   ) {
-    const dataSourceViews = await this.baseFetchWithAuthorization(
-      auth,
-      options
-    );
+    const dataSourceViews = await this.baseFetchWithAuthorization(auth, {
+      ...this.getOptions(fetchDataSourceViewOptions),
+      ...options,
+    });
 
     const dataSourceIds = removeNulls(
       dataSourceViews.map((ds) => ds.dataSourceId)
@@ -107,7 +157,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
     const dataSources = await DataSourceResource.fetchByModelIds(
       auth,
-      dataSourceIds
+      dataSourceIds,
+      {
+        includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
+      }
     );
 
     for (const dsv of dataSourceViews) {
@@ -117,16 +170,47 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return dataSourceViews;
   }
 
-  static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetch(auth);
+  static async listByWorkspace(
+    auth: Authenticator,
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+  ) {
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      fetchDataSourceViewOptions
+    );
+
+    return dataSourceViews.filter(
+      (dsv) => auth.isAdmin() || auth.hasPermission([dsv.vault.acl()], "read")
+    );
+  }
+
+  static async listByVault(
+    auth: Authenticator,
+    vault: VaultResource,
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+  ) {
+    return this.listByVaults(auth, [vault], fetchDataSourceViewOptions);
+  }
+
+  static async listByVaults(
+    auth: Authenticator,
+    vaults: VaultResource[],
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+  ) {
+    return this.baseFetch(auth, fetchDataSourceViewOptions, {
+      where: {
+        vaultId: vaults.map((v) => v.id),
+      },
+    });
   }
 
   static async listForDataSourcesInVault(
     auth: Authenticator,
     dataSources: DataSourceResource[],
-    vault: VaultResource
+    vault: VaultResource,
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
   ) {
-    return this.baseFetch(auth, {
+    return this.baseFetch(auth, fetchDataSourceViewOptions, {
       where: {
         dataSourceId: dataSources.map((ds) => ds.id),
         vaultId: vault.id,
@@ -134,27 +218,83 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
-  static async fetchById(auth: Authenticator, id: string) {
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    fetchDataSourceViewOptions?: Omit<
+      FetchDataSourceViewOptions,
+      "limit" | "order"
+    >
+  ) {
     const fileModelId = getResourceIdFromSId(id);
     if (!fileModelId) {
       return null;
     }
 
-    const [dataSource] = await this.baseFetch(auth, {
-      where: {
-        id: fileModelId,
-      },
-    });
+    const [dataSource] = await this.baseFetch(
+      auth,
+      fetchDataSourceViewOptions,
+      {
+        where: {
+          id: fileModelId,
+        },
+      }
+    );
 
     return dataSource ?? null;
   }
 
-  // Peer fetching.
+  // Updating.
 
-  async fetchDataSource(
-    auth: Authenticator
-  ): Promise<DataSourceResource | null> {
-    return DataSourceResource.fetchByModelIdWithAuth(auth, this.dataSourceId);
+  private async update(
+    auth: Authenticator,
+    blob: Partial<Attributes<DataSourceViewModel>>
+  ): Promise<[affectedCount: number]> {
+    const [affectedCount, affectedRows] = await this.model.update(blob, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
+      returning: true,
+    });
+    // Update the current instance with the new values to avoid stale data
+    Object.assign(this, affectedRows[0].get());
+    return [affectedCount];
+  }
+
+  async setEditedBy(auth: Authenticator) {
+    await this.update(auth, {
+      editedByUserId: auth.getNonNullableUser().id,
+      editedAt: new Date(),
+    });
+  }
+
+  private makeEditedBy(
+    editedByUser: Attributes<User> | undefined,
+    editedAt: Date | undefined
+  ) {
+    if (!editedByUser || !editedAt) {
+      return undefined;
+    }
+
+    return {
+      editedByUser: {
+        editedAt: editedAt.getTime(),
+        fullName: formatUserFullName(editedByUser),
+        imageUrl: editedByUser.imageUrl,
+        email: editedByUser.email,
+        userId: editedByUser.sId,
+      },
+    };
+  }
+
+  async updateParents(
+    auth: Authenticator,
+    parentsIn: string[] | null
+  ): Promise<Result<undefined, Error>> {
+    await this.update(auth, { parentsIn });
+
+    return new Ok(undefined);
   }
 
   // Deletion.
@@ -206,8 +346,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // Getters.
 
-  get dataSource(): DataSourceResource | undefined {
-    return this.ds;
+  get dataSource(): DataSourceResource {
+    return this.ds as DataSourceResource;
+  }
+
+  isDefault(): boolean {
+    return this.kind === "default";
   }
 
   // sId logic.
@@ -236,14 +380,42 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return isResourceSId("data_source_view", sId);
   }
 
+  getUsagesByAgents = async (auth: Authenticator) => {
+    return getDataSourceViewUsage({ auth, dataSourceView: this.toJSON() });
+  };
+
+  // Permissions.
+
+  canRead(auth: Authenticator) {
+    return auth.isAdmin() || auth.canRead([this.vault.acl()]);
+  }
+
   // Serialization.
 
   toJSON(): DataSourceViewType {
     return {
+      category: getDataSourceCategory(this.dataSource),
       createdAt: this.createdAt.getTime(),
+      dataSource: this.dataSource.toJSON(),
+      id: this.id,
+      kind: this.kind,
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
+      usage: 0,
+      vaultId: this.vault.sId,
+      ...this.makeEditedBy(this.editedByUser, this.editedAt),
+    };
+  }
+
+  toViewFilter() {
+    return {
+      parents: {
+        in: this.parentsIn,
+        not: null,
+      },
+      tags: null,
+      timestamp: null,
     };
   }
 }

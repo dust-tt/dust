@@ -112,11 +112,11 @@ export async function cancelWorkflow(workflowId: string) {
   return false;
 }
 
-export async function terminateWorkflow(workflowId: string) {
+export async function terminateWorkflow(workflowId: string, reason?: string) {
   const client = await getTemporalClient();
   try {
     const workflowHandle = client.workflow.getHandle(workflowId);
-    await workflowHandle.terminate();
+    await workflowHandle.terminate(reason);
     return true;
   } catch (e) {
     if (!(e instanceof WorkflowNotFoundError)) {

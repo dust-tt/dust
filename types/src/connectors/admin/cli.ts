@@ -7,6 +7,7 @@ export const ConnectorsCommandSchema = t.type({
   command: t.union([
     t.literal("stop"),
     t.literal("delete"),
+    t.literal("pause"),
     t.literal("resume"),
     t.literal("full-resync"),
     t.literal("set-error"),
@@ -144,13 +145,15 @@ export type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
 export const IntercomCommandSchema = t.type({
   majorCommand: t.literal("intercom"),
   command: t.union([
+    t.literal("force-resync-articles"),
     t.literal("check-conversation"),
     t.literal("fetch-conversation"),
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
   ]),
   args: t.type({
-    connectorId: t.number,
+    force: t.union([t.literal("true"), t.undefined]),
+    connectorId: t.union([t.number, t.undefined]),
     conversationId: t.union([t.number, t.undefined]),
     day: t.union([t.string, t.undefined]),
   }),
@@ -196,6 +199,12 @@ export const IntercomCheckMissingConversationsResponseSchema = t.type({
 });
 export type IntercomCheckMissingConversationsResponseType = t.TypeOf<
   typeof IntercomCheckMissingConversationsResponseSchema
+>;
+export const IntercomForceResyncArticlesResponseSchema = t.type({
+  affectedCount: t.number,
+});
+export type IntercomForceResyncArticlesResponseType = t.TypeOf<
+  typeof IntercomForceResyncArticlesResponseSchema
 >;
 /**
  * </ Intercom>
@@ -350,6 +359,7 @@ export const AdminResponseSchema = t.union([
   NotionUpsertResponseSchema,
   TemporalCheckQueueResponseSchema,
   TemporalUnprocessedWorkflowsResponseSchema,
+  IntercomForceResyncArticlesResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;

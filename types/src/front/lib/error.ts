@@ -15,6 +15,7 @@ export type APIErrorType =
   | "user_not_found"
   | "data_source_error"
   | "data_source_not_found"
+  | "data_source_view_not_found"
   | "data_source_auth_error"
   | "data_source_quota_error"
   | "data_source_document_not_found"
@@ -85,7 +86,12 @@ export type APIErrorType =
   | "file_too_large"
   | "file_type_not_supported"
   // Runs:
-  | "run_not_found";
+  | "run_not_found"
+  // Vaults:
+  | "vault_already_exists"
+  | "vault_not_found"
+  // Groups:
+  | "group_not_found";
 
 export type APIError = {
   type: APIErrorType;

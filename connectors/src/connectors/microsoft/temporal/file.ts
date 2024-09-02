@@ -155,6 +155,16 @@ export async function syncOneFile({
 
   let result: Result<CoreAPIDataSourceDocumentSection | null, Error>;
 
+  const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
+    internalId: documentId,
+    connectorId,
+    lastSeenTs: new Date(),
+    nodeType: "file",
+    name: file.name ?? "",
+    parentInternalId,
+    mimeType: file.file.mimeType ?? "",
+  };
+
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
     const data = Buffer.from(downloadRes.data);
 
@@ -177,6 +187,21 @@ export async function syncOneFile({
       connectorId,
       parents,
     });
+
+    if (result.isErr()) {
+      if (fileResource) {
+        await fileResource.delete();
+      }
+      return false;
+    }
+
+    if (fileResource) {
+      await fileResource.update(resourceBlob);
+    } else {
+      await MicrosoftNodeResource.makeNew(resourceBlob);
+    }
+
+    return true;
   } else if (
     mimeType ===
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -188,125 +213,133 @@ export async function syncOneFile({
       localLogger,
       startSyncTs,
     });
-  } else if (mimeType === "text/plain") {
-    result = handleTextFile(downloadRes.data, maxDocumentLen);
-  } else {
-    const data = Buffer.from(downloadRes.data);
-    result = await handleTextExtraction(data, localLogger, mimeType);
-  }
 
-  const updatedAt = file.lastModifiedDateTime
-    ? new Date(file.lastModifiedDateTime)
-    : undefined;
-
-  const createdAt = file.createdDateTime
-    ? new Date(file.createdDateTime)
-    : undefined;
-
-  const tags = [`title:${file.name}`];
-
-  if (file.lastModifiedDateTime) {
-    tags.push(`updatedAt:${file.lastModifiedDateTime}`);
-  }
-
-  if (file.createdDateTime) {
-    tags.push(`createdAt:${file.createdDateTime}`);
-  }
-
-  if (file.lastModifiedBy?.user?.displayName) {
-    tags.push(`lastEditor:${file.lastModifiedBy.user.displayName}`);
-  }
-
-  tags.push(`mimeType:${file.file.mimeType}`);
-
-  if (result.isErr()) {
-    if (fileResource) {
-      await fileResource.delete();
-    }
-    return false;
-  }
-
-  const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
-    internalId: documentId,
-    connectorId,
-    lastSeenTs: new Date(),
-    nodeType: "file",
-    name: file.name ?? "",
-    parentInternalId,
-    mimeType: file.file.mimeType ?? "",
-  };
-
-  const documentSection = result.value;
-  if (documentSection) {
-    // In case of table, result is ok and result.value is null, no document to upsert
-    const documentLength = sectionLength(documentSection);
-    const isInSizeRange = documentLength > 0 && documentLength < maxDocumentLen;
-
-    if (isInSizeRange) {
-      localLogger.info({ documentSection }, "Document section");
-      const content = await renderDocumentTitleAndContent({
-        dataSourceConfig,
-        title: file.name ?? null,
-        updatedAt,
-        createdAt,
-        lastEditor: file.lastModifiedBy?.user
-          ? file.lastModifiedBy.user.displayName ?? undefined
-          : undefined,
-        content: documentSection,
-      });
-
-      const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
-
-      const parents = [
-        documentId,
-        ...(await getParents({
-          connectorId,
-          internalId: parentInternalId,
-          startSyncTs,
-        })),
-      ];
-      parents.reverse();
-
-      await upsertToDatasource({
-        dataSourceConfig,
-        documentId,
-        documentContent: content,
-        documentUrl: file.webUrl ?? undefined,
-        timestampMs: upsertTimestampMs,
-        tags,
-        parents: parents,
-        upsertContext: {
-          sync_type: isBatchSync ? "batch" : "incremental",
-        },
-        async: true,
-      });
-
-      resourceBlob.lastUpsertedTs = upsertTimestampMs
-        ? new Date(upsertTimestampMs)
-        : null;
-    } else {
-      localLogger.info(
-        {
-          documentLen: documentLength,
-        },
-        `Document is empty or too big to be upserted. Skipping.`
-      );
+    if (result.isErr()) {
       if (fileResource) {
         await fileResource.delete();
       }
       return false;
     }
-  }
 
-  if (fileResource) {
-    await fileResource.update(resourceBlob);
+    // No insertion of fileResource here, as it is handled in handleSpreadSheet
+    // For a spreadsheet with multiple tables, the spreadsheet needs to be
+    // inserted before the tables so it cannot happen at the end as for other
+    // files
+
+    return true;
   } else {
-    await MicrosoftNodeResource.makeNew(resourceBlob);
-  }
+    if (mimeType === "text/plain") {
+      result = handleTextFile(downloadRes.data, maxDocumentLen);
+    } else {
+      const data = Buffer.from(downloadRes.data);
+      result = await handleTextExtraction(data, localLogger, mimeType);
+    }
 
-  return true;
+    const updatedAt = file.lastModifiedDateTime
+      ? new Date(file.lastModifiedDateTime)
+      : undefined;
+
+    const createdAt = file.createdDateTime
+      ? new Date(file.createdDateTime)
+      : undefined;
+
+    const tags = [`title:${file.name}`];
+
+    if (file.lastModifiedDateTime) {
+      tags.push(`updatedAt:${file.lastModifiedDateTime}`);
+    }
+
+    if (file.createdDateTime) {
+      tags.push(`createdAt:${file.createdDateTime}`);
+    }
+
+    if (file.lastModifiedBy?.user?.displayName) {
+      tags.push(`lastEditor:${file.lastModifiedBy.user.displayName}`);
+    }
+
+    tags.push(`mimeType:${file.file.mimeType}`);
+
+    if (result.isErr()) {
+      if (fileResource) {
+        await fileResource.delete();
+      }
+      return false;
+    }
+
+    const documentSection = result.value;
+    if (documentSection) {
+      const documentLength = sectionLength(documentSection);
+      const isInSizeRange =
+        documentLength > 0 && documentLength < maxDocumentLen;
+
+      if (isInSizeRange) {
+        localLogger.info({ documentSection }, "Document section");
+        const content = await renderDocumentTitleAndContent({
+          dataSourceConfig,
+          title: file.name ?? null,
+          updatedAt,
+          createdAt,
+          lastEditor: file.lastModifiedBy?.user
+            ? file.lastModifiedBy.user.displayName ?? undefined
+            : undefined,
+          content: documentSection,
+        });
+
+        const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;
+
+        const parents = [
+          documentId,
+          ...(await getParents({
+            connectorId,
+            internalId: parentInternalId,
+            startSyncTs,
+          })),
+        ];
+
+        await upsertToDatasource({
+          dataSourceConfig,
+          documentId,
+          documentContent: content,
+          documentUrl: file.webUrl ?? undefined,
+          timestampMs: upsertTimestampMs,
+          tags,
+          parents,
+          upsertContext: {
+            sync_type: isBatchSync ? "batch" : "incremental",
+          },
+          async: true,
+        });
+
+        resourceBlob.lastUpsertedTs = upsertTimestampMs
+          ? new Date(upsertTimestampMs)
+          : null;
+      } else {
+        localLogger.info(
+          {
+            documentLen: documentLength,
+          },
+          `Document is empty or too big to be upserted. Skipping.`
+        );
+        if (fileResource) {
+          await fileResource.delete();
+        }
+        return false;
+      }
+    }
+
+    if (fileResource) {
+      await fileResource.update(resourceBlob);
+    } else {
+      await MicrosoftNodeResource.makeNew(resourceBlob);
+    }
+
+    return true;
+  }
 }
 
+/**
+ * Startsyncts is used to cache the parent ids for a given sync
+ */
 export async function getParents({
   connectorId,
   internalId,

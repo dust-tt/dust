@@ -36,6 +36,6 @@
             "command": "npm start",
             "cwd": "${workspaceFolder}/connectors",
             "envFile": "${workspaceFolder}/front/.env.local",
-          },          
+          }
     ]
 }

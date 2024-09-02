@@ -38,6 +38,7 @@ import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getApps } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -47,8 +48,6 @@ import {
 } from "@app/lib/providers";
 import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -75,7 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       groups,
       subscription,
       apps,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -267,7 +266,7 @@ export function APIKeys({
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  const globalGroup = groups.find((group) => group.type === "global");
+  const globalGroup = groups.find((group) => group.kind === "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKeyGroup] = useState(globalGroup);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
@@ -538,7 +537,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       <>
         <Page.SectionHeader
           title="Model Providers"
-          description="Model providers available to your apps. These providers are not required to run our assistant apps, only your own custom large language model apps."
+          description="Model providers available to your Dust apps."
         />
         <ul role="list" className="pt-4">
           {filteredProviders.map((provider) => (
@@ -617,7 +616,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
 
         <Page.SectionHeader
           title="Service Providers"
-          description="Service providers enable your apps to query external data or write to&nbsp;external&nbsp;services."
+          description="Service providers enable your Dust Apps to query external data or write to&nbsp;external&nbsp;services."
         />
 
         <ul role="list" className="pt-4">

@@ -1,6 +1,6 @@
 import type {
   AgentModelConfigurationType,
-  DataSourceType,
+  ConnectorProvider,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
@@ -45,8 +45,8 @@ export enum GLOBAL_AGENTS_SID {
   NOTION = "notion",
   GITHUB = "github",
   INTERCOM = "intercom",
-  GPT4 = "gpt-4",
   GPT35_TURBO = "gpt-3.5-turbo",
+  GPT4 = "gpt-4",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
@@ -63,7 +63,6 @@ export enum GLOBAL_AGENTS_SID {
 
 export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
-    case GLOBAL_AGENTS_SID.GPT35_TURBO:
     case GLOBAL_AGENTS_SID.GPT4:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
@@ -91,7 +90,6 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.INTERCOM,
-  GLOBAL_AGENTS_SID.GPT35_TURBO,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
@@ -152,40 +150,85 @@ export function compareAgentsForSort(
   return 0; // Default: keep the original order
 }
 
+function getConnectorOrder() {
+  return Object.keys(CONNECTOR_CONFIGURATIONS)
+    .filter(
+      (key) =>
+        CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
+          .connectorProvider !==
+        CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider
+    )
+    .map(
+      (key) =>
+        CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
+          .connectorProvider
+    );
+}
+
+type ComparableByProvider = { connectorProvider: ConnectorProvider | null };
+function compareByImportance(
+  a: ComparableByProvider,
+  b: ComparableByProvider
+): number {
+  const aConnector = a.connectorProvider;
+  const bConnector = b.connectorProvider;
+
+  const order = getConnectorOrder();
+
+  // Handle null cases.
+  if (aConnector === null) {
+    return bConnector === null ? 0 : 1;
+  }
+  if (bConnector === null) {
+    return -1;
+  }
+
+  // Handle webcrawler cases.
+  if (aConnector === "webcrawler") {
+    return 1;
+  }
+  if (bConnector === "webcrawler") {
+    return -1;
+  }
+
+  // Get indices in sorted connectors.
+  const indexA = order.indexOf(aConnector);
+  const indexB = order.indexOf(bConnector);
+
+  // If both are not found, they are considered equal.
+  if (indexA === -1 && indexB === -1) {
+    return 0;
+  }
+
+  // Compare indices, treating not found as less important.
+  return (
+    (indexA === -1 ? order.length : indexA) -
+    (indexB === -1 ? order.length : indexB)
+  );
+}
+
 // Order in the following format : connectorProvider > empty > webcrawler
-export function orderDatasourceByImportance(dataSources: DataSourceType[]) {
-  return dataSources.sort((a, b) => {
-    const aConnector = a.connectorProvider;
-    const bConnector = b.connectorProvider;
+export function orderDatasourceByImportance<Type extends ComparableByProvider>(
+  dataSources: Type[]
+) {
+  return dataSources.sort(compareByImportance);
+}
 
-    const order = Object.keys(CONNECTOR_CONFIGURATIONS)
-      .filter(
-        (key) =>
-          CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
-            .connectorProvider !==
-          CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider
-      )
-      .map(
-        (key) =>
-          CONNECTOR_CONFIGURATIONS[key as keyof typeof CONNECTOR_CONFIGURATIONS]
-            .connectorProvider
-      );
+export function orderDatasourceViewByImportance<
+  Type extends { dataSource: ComparableByProvider },
+>(dataSourceViews: Type[]) {
+  return dataSourceViews.sort((a, b) => {
+    return compareByImportance(a.dataSource, b.dataSource);
+  });
+}
 
-    if (aConnector === CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider) {
-      return 1;
-    }
-
-    if (bConnector === CONNECTOR_CONFIGURATIONS.webcrawler.connectorProvider) {
-      return -1;
-    }
-
-    const indexA = aConnector ? order.indexOf(aConnector) : order.length;
-    const indexB = bConnector ? order.indexOf(bConnector) : order.length;
-
-    if (indexA === -1 && indexB === -1) {
-      return 0;
-    }
-
-    return indexA - indexB;
+export function orderDatasourceViewSelectionConfigurationByImportance<
+  Type extends { dataSourceView: { dataSource: ComparableByProvider } },
+>(dataSourceViews: Type[]) {
+  return dataSourceViews.sort((a, b) => {
+    return compareByImportance(
+      a.dataSourceView.dataSource,
+      b.dataSourceView.dataSource
+    );
   });
 }

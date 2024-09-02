@@ -29,6 +29,7 @@ export default function Database({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -43,6 +44,7 @@ export default function Database({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -59,6 +61,7 @@ export default function Database({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       canUseCache={false}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

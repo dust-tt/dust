@@ -1,12 +1,12 @@
-import type { DustRegistryActionName } from "@dust-tt/types";
 import type { DustAppConfigType, DustAppType } from "@dust-tt/types";
-import { DustProdActionRegistry } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import type { DustRegistryActionName } from "@app/lib/registry";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 
@@ -86,13 +86,14 @@ export async function runActionStreamed(
   const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    prodCredentials,
+    { ...prodCredentials, groupIds: requestedGroupIds },
     logger
   );
 
-  const res = await api.runAppStreamed(auth.user(), action.app, config, inputs);
+  const res = await api.runAppStreamed(action.app, config, inputs);
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);
@@ -198,13 +199,14 @@ export async function runAction(
   const now = new Date();
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const requestedGroupIds = auth.groups().map((g) => g.sId);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    prodCredentials,
+    { ...prodCredentials, groupIds: requestedGroupIds },
     logger
   );
 
-  const res = await api.runApp(auth.user(), action.app, config, inputs);
+  const res = await api.runApp(action.app, config, inputs);
   if (res.isErr()) {
     logActionError(loggerArgs, tags, "run_error", { error: res.error });
     return new Err(res.error);

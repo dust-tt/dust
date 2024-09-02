@@ -17,7 +17,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isBuilder()) {
-    apiError(req, res, {
+    return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -25,20 +25,18 @@ async function handler(
           "Only users that are `builders` for the current workspace can manage secrets.",
       },
     });
-    return;
   }
 
   const secret = await getDustAppSecret(auth, <string>req.query.name);
 
   if (secret == null) {
-    apiError(req, res, {
+    return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "dust_app_secret_not_found",
         message: "Workspace not found.",
       },
     });
-    return;
   }
 
   switch (req.method) {
@@ -55,7 +53,6 @@ async function handler(
           message: "The method passed is not supported, POST is expected.",
         },
       });
-      return;
   }
 }
 

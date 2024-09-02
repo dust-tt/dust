@@ -1,0 +1,163 @@
+name: Deploy And test Front Qa
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy_front_qa
+  cancel-in-progress: false
+
+env:
+  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    # We skip running the build and deploy if the PR contains a migration represented by the 'migration-ack' label.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'migration-ack') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: "Authenticate with Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+
+      - name: Setup kubectl
+        run: |
+          gcloud container clusters get-credentials dust-kube --region us-central1
+
+      - name: Build the image on Cloud Build
+        run: |
+          chmod +x ./k8s/cloud-build.sh
+          ./k8s/cloud-build.sh front ./front/Dockerfile ./
+
+      - name: Deploy the image on Kubernetes
+        run: |
+          chmod +x ./k8s/deploy-image.sh
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-qa-deployment
+
+      - name: Wait for rollout to complete
+        run: kubectl rollout status deployment/front-qa-deployment --timeout=10m
+
+  run-playwright-tests:
+    needs: build-and-deploy
+
+    runs-on: ubuntu-latest
+
+    # We skip running the build and deploy if the PR contains a migration represented by the 'migration-ack' label.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'migration-ack') }}
+
+    steps:
+      - name: Run Playwright Tests
+        id: trigger-tests
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST "https://webhook.ranger.net/api/v1/tests/run" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.RANGER_API_TOKEN }}" \
+          -d '{
+            "targetUrl": "https://front-qa.dust.tt/",
+            "ghOwner": "'$REPO_OWNER'",
+            "ghRepo": "'$REPO_NAME'",
+            "ghCommitSha": "${{ github.sha }}"
+          }')
+          echo "$response"
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          if [ "$http_code" != "202" ]; then
+            error=$(echo "$body" | jq -r '.error // "Unknown error"')
+            echo "Error: $error"
+            exit 1
+          fi
+          check_id=$(echo "$body" | jq -r '.data.checkId')
+          echo "Check ID: $check_id"
+          echo "CHECK_ID=$check_id" >> $GITHUB_ENV
+
+      - name: Wait for Playwright Tests To Complete
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          end_time=$((SECONDS + 2700))  # 45 minutes = 2700 seconds
+          while [ $SECONDS -lt $end_time ]; do
+            response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                        "https://api.github.com/repos/${{ github.repository }}/check-runs/${CHECK_ID}")
+            status=$(echo "$response" | jq -r .status)
+
+            if [ "$status" = "completed" ]; then
+              conclusion=$(echo "$response" | jq -r .conclusion)
+              echo "Playwright tests completed with conclusion: $conclusion"
+
+              output=$(echo "$response" | jq -r .output)
+              title=$(echo "$output" | jq -r .title)
+              summary=$(echo "$output" | jq -r .summary)
+
+              echo "Title: $title"
+              echo "Summary: $summary"
+
+              if [ "$conclusion" != "success" ]; then
+                exit 1
+              fi
+
+              exit 0
+            fi
+
+            echo "Tests still running. Waiting 30 seconds before next check..."
+            sleep 30
+          done
+
+          echo "Timeout: Playwright tests did not complete within 45 minutes"
+          exit 1
+
+      - name: Post Failure Message to Slack
+        id: slack-notification
+        if: failure()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: ${{ env.CHECK_ID }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "⚠️ Playwright tests failed! Commit: ${{ github.sha }} | PR merged by @${{ github.event.pull_request.user.login }} into main. Title: ${{ github.event.pull_request.title }} | Check ID: ${{ env.CHECK_ID }}",
+                    "emoji": true
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Report"
+                    },
+                    "url": "$PLAYWRIGHT_REPORT_URL"
+                  }
+                }
+              ]
+            }
+        env:
+          PLAYWRIGHT_REPORT_URL: ${{ secrets.PLAYWRIGHT_REPORT_BASE_URL }}/${{ env.CHECK_ID }}/playwright-report/index.html
+          SLACK_WEBHOOK_URL: ${{ secrets.PLAYWRIGHT_TESTS_SLACK_WEBHOOK_URL }}

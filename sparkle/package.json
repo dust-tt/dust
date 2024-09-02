@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.203",
+  "version": "0.2.217",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",

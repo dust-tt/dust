@@ -1,5 +1,5 @@
 import { Hoverable } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
@@ -24,7 +24,6 @@ export function ActionTablesQuery({
   actionConfiguration,
   updateAction,
   setEdited,
-  dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderTablesQueryConfiguration | null;
@@ -34,7 +33,6 @@ export function ActionTablesQuery({
     ) => AssistantBuilderTablesQueryConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
 }) {
   const [showTableModal, setShowTableModal] = useState(false);
 
@@ -48,14 +46,16 @@ export function ActionTablesQuery({
         isOpen={showTableModal}
         setOpen={(isOpen) => setShowTableModal(isOpen)}
         owner={owner}
-        dataSources={dataSources}
-        onSave={(tables, dataSource) => {
+        onSave={(tables, dataSourceView) => {
           setEdited(true);
           updateAction((previousAction) => {
             const newTables = { ...previousAction };
-            if (dataSource.connectorId) {
+            if (dataSourceView.dataSource.connectorId) {
               Object.keys(newTables)
-                .filter((k) => newTables[k].dataSourceId === dataSource.name)
+                .filter(
+                  (k) =>
+                    newTables[k].dataSourceId === dataSourceView.dataSource.name
+                )
                 .forEach((k) => delete newTables[k]);
             }
             for (const t of tables) {
@@ -96,7 +96,6 @@ export function ActionTablesQuery({
             return newTables;
           });
         }}
-        canSelectTable={dataSources.length !== 0}
       />
     </>
   );

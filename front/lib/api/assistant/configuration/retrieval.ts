@@ -125,32 +125,15 @@ export async function fetchAgentRetrievalActionConfigurations({
 function getDataSource(
   dataSourceConfig: AgentDataSourceConfiguration
 ): DataSourceConfiguration {
-  const { dataSourceView, dataSource } = dataSourceConfig;
-
-  if (dataSourceView) {
-    return {
-      dataSourceViewId: DataSourceViewResource.modelIdToSId({
-        id: dataSourceView.id,
-        workspaceId: dataSourceView.workspaceId,
-      }),
-      dataSourceId: dataSourceView.dataSourceForView.name,
-      workspaceId: dataSourceView.workspace.sId,
-      filter: {
-        parents:
-          dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn
-            ? {
-                in: dataSourceConfig.parentsIn,
-                not: dataSourceConfig.parentsNotIn,
-              }
-            : null,
-      },
-    };
-  }
+  const { dataSourceView } = dataSourceConfig;
 
   return {
-    dataSourceId: dataSource.name,
-    dataSourceViewId: null,
-    workspaceId: dataSource.workspace.sId,
+    dataSourceViewId: DataSourceViewResource.modelIdToSId({
+      id: dataSourceView.id,
+      workspaceId: dataSourceView.workspaceId,
+    }),
+    dataSourceId: dataSourceView.dataSourceForView.name,
+    workspaceId: dataSourceView.workspace.sId,
     filter: {
       parents:
         dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn

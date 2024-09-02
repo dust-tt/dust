@@ -26,6 +26,7 @@ import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
+import config from "@app/lib/api/config";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -38,8 +39,6 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -86,7 +85,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       trialDaysRemaining,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       user,
       workspaceSeats,
       perSeatPricing,

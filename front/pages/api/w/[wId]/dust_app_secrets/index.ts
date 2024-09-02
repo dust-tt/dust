@@ -29,19 +29,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const user = auth.user();
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace or user is missing.",
-      },
-    });
-  }
-
   if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
@@ -51,6 +38,9 @@ async function handler(
       },
     });
   }
+
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
 
   const remaining = await rateLimiter({
     key: `workspace:${owner.id}:dust_app_secrets`,

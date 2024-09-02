@@ -24,28 +24,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<FileUploadRequestResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.user();
-  if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_user_not_found",
-        message: "Could not find the user of the current session.",
-      },
-    });
-  }
-
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users of the current workspace can update chat sessions.",
-      },
-    });
-  }
-
+  const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
 
   switch (req.method) {

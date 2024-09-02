@@ -120,10 +120,6 @@ export class AgentMessageContentParser {
 
       if (currentClassification === "chain_of_thought") {
         this.chainOfThought += text;
-      } else if (currentClassification === "visualization") {
-        let lastViz = this.visualizations.pop() ?? "";
-        lastViz += text;
-        this.visualizations.push(lastViz);
       } else if (currentClassification === "tokens") {
         this.content += text;
       } else {
@@ -179,9 +175,6 @@ export class AgentMessageContentParser {
             classification: "chain_of_thought",
           };
           this.chainOfThought += separator;
-        } else if (delimiterSpec.classification === "visualization") {
-          // Closing a viz section: we push an empty viz in the array to separate individual viz blocks.
-          this.visualizations.push("");
         } else if (delimiterSpec.classification === "tokens") {
           // Nothing specific to do
         } else {
@@ -283,23 +276,6 @@ export function getDelimitersConfiguration({
         delimiters: [],
         incompleteDelimiterPatterns: [],
       };
-
-  if (agentConfiguration.visualizationEnabled) {
-    delimitersConfig.delimiters.push({
-      openingPattern: "<visualization>",
-      closingPattern: "</visualization>",
-      classification: "visualization",
-      swallow: false,
-    });
-    const incompleteXmlTagRegex = /<\/?[a-zA-Z_]*$/;
-    if (
-      !delimitersConfig.incompleteDelimiterPatterns.some(
-        (r) => r.source === incompleteXmlTagRegex.source
-      )
-    ) {
-      delimitersConfig.incompleteDelimiterPatterns.push(incompleteXmlTagRegex);
-    }
-  }
 
   return delimitersConfig;
 }

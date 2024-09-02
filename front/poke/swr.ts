@@ -1,10 +1,11 @@
-import type { ConversationType } from "@dust-tt/types";
+import type { ConversationType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
 import { fetcher } from "@app/lib/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
+import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[name]/documents";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 
 export function usePokeAssistantTemplates() {
@@ -69,5 +70,28 @@ export function useConversation({
     isConversationLoading: !error && !data,
     isConversationError: error,
     mutateConversation: mutate,
+  };
+}
+
+export function useDocuments(
+  owner: LightWorkspaceType,
+  dataSource: { name: string },
+  limit: number,
+  offset: number
+) {
+  const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
+  const { data, error, mutate } = useSWR(
+    `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(
+      dataSource.name
+    )}/documents?limit=${limit}&offset=${offset}`,
+    documentsFetcher
+  );
+
+  return {
+    documents: useMemo(() => (data ? data.documents : []), [data]),
+    total: data ? data.total : 0,
+    isDocumentsLoading: !error && !data,
+    isDocumentsError: error,
+    mutateDocuments: mutate,
   };
 }

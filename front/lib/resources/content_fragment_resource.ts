@@ -221,8 +221,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 }
 
 // TODO(2024-03-22 pr): Move as method of message resource after migration of
-// message to resource pattern at which time the method should only apply to
-// messages that are content fragments with type file_attachment
+// message to resource pattern
 export function fileAttachmentLocation({
   workspaceId,
   conversationId,

@@ -17,18 +17,19 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-
-const { GA_TRACKING_ID = "" } = process.env;
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  readOnly: boolean;
+  isBuilder: boolean;
   app: AppType;
   run: RunType;
   spec: SpecificationType;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -40,7 +41,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const readOnly = !auth.isBuilder();
+  const isBuilder = auth.isBuilder();
 
   const app = await getApp(auth, context.params?.aId as string);
   if (!app) {
@@ -57,15 +58,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
   const { run, spec } = r;
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
       subscription,
-      readOnly,
+      isBuilder,
       app,
       spec,
       run,
-      gaTrackingId: GA_TRACKING_ID,
+      dustAppsListUrl,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -73,10 +77,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function AppRun({
   owner,
   subscription,
-  readOnly,
+  isBuilder,
   app,
   spec,
   run,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [savedRunId, setSavedRunId] = useState<string | null | undefined>(
@@ -86,7 +91,7 @@ export default function AppRun({
   const confirm = useContext(ConfirmContext);
 
   const restore = async () => {
-    if (readOnly) {
+    if (!isBuilder) {
       return;
     }
 
@@ -151,7 +156,7 @@ export default function AppRun({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }
@@ -222,6 +227,7 @@ export default function AppRun({
             owner={owner}
             app={app}
             readOnly={true}
+            showOutputs={isBuilder}
             spec={spec}
             run={run}
             runRequested={false}

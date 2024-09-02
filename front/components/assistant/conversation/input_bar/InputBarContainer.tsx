@@ -11,6 +11,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { supportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
@@ -26,16 +27,6 @@ import { classNames } from "@app/lib/utils";
 export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
-
-const supportedFileExtensions = [
-  ".txt",
-  ".csv",
-  ".md",
-  ".pdf",
-  ".jpg",
-  ".jpeg",
-  ".png",
-];
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -153,7 +144,7 @@ const InputBarContainer = ({
                 variant={"tertiary"}
                 icon={AttachmentIcon}
                 size="sm"
-                tooltip="Add a document to the conversation (only .txt, .pdf, .md, .csv)."
+                tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
                 tooltipPosition="above"
                 className="flex"
                 onClick={() => {

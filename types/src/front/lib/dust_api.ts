@@ -20,7 +20,6 @@ import { WhitelistableFeature } from "../../shared/feature_flags";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 import { ContentFragmentType } from "../content_fragment";
-import { UserType } from "../user";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -137,9 +136,12 @@ export type DustAppRunFunctionCallArgumentsTokensEvent = {
 export type DustAPICredentials = {
   apiKey: string;
   workspaceId: string;
+  // Dust system API keys can request to be authenticated as a list of specific group IDs.
+  // This is for internal use only.
+  groupIds?: string[];
 };
 
-export const DustUserIdHeader = "x-dust-user-id";
+export const DustGroupIdsHeader = "X-Dust-Group-Ids";
 
 type PublicPostContentFragmentRequestBody = t.TypeOf<
   typeof PublicPostContentFragmentRequestBodySchema
@@ -360,7 +362,6 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runApp(
-    user: UserType | null,
     app: DustAppType,
     config: DustAppConfigType,
     inputs: unknown[],
@@ -379,8 +380,8 @@ export class DustAPI {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
-    if (user) {
-      headers[DustUserIdHeader] = user.sId;
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
 
     const res = await this._fetchWithError(url, {
@@ -412,7 +413,6 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runAppStreamed(
-    user: UserType | null,
     app: DustAppType,
     config: DustAppConfigType,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -432,8 +432,8 @@ export class DustAPI {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
-    if (user) {
-      headers[DustUserIdHeader] = user.sId;
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
 
     const res = await this._fetchWithError(url, {
@@ -559,6 +559,9 @@ export class DustAPI {
     if (userEmailHeader) {
       headers["x-api-user-email"] = userEmailHeader;
     }
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
 
     const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
@@ -594,6 +597,9 @@ export class DustAPI {
 
     if (userEmailHeader) {
       headers["x-api-user-email"] = userEmailHeader;
+    }
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
 
     const res = await this._fetchWithError(

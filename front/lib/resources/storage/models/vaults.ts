@@ -4,12 +4,13 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import type { GroupModel } from "@app/lib/resources/storage/models/groups";
 
 export class VaultModel extends Model<
   InferAttributes<VaultModel>,
@@ -22,8 +23,8 @@ export class VaultModel extends Model<
   declare name: string;
   declare kind: VaultKind;
 
-  declare groupId: ForeignKey<GroupModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare groups: NonAttribute<GroupModel[]>;
 }
 VaultModel.init(
   {
@@ -54,7 +55,10 @@ VaultModel.init(
   {
     modelName: "vaults",
     sequelize: frontSequelize,
-    indexes: [{ unique: false, fields: ["workspaceId", "kind"] }],
+    indexes: [
+      { unique: true, fields: ["workspaceId", "name"] },
+      { unique: false, fields: ["workspaceId", "kind"] },
+    ],
   }
 );
 
@@ -63,10 +67,6 @@ Workspace.hasMany(VaultModel, {
   onDelete: "RESTRICT",
 });
 VaultModel.belongsTo(Workspace, {
-  foreignKey: { allowNull: false },
-  onDelete: "RESTRICT",
-});
-VaultModel.belongsTo(GroupModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });

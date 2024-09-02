@@ -53,7 +53,7 @@ export type MessageWithRankType = WithRank<MessageType>;
  * User messages
  */
 
-export type UserMessageOrigin = "slack" | "web" | "api";
+export type UserMessageOrigin = "slack" | "web" | "api" | "gsheet";
 
 export type UserMessageContext = {
   username: string;
@@ -121,7 +121,6 @@ export type AgentMessageType = {
   actions: AgentActionType[];
   content: string | null;
   chainOfThought: string | null;
-  visualizations: string[];
   rawContents: Array<{
     step: number;
     content: string;

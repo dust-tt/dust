@@ -41,6 +41,7 @@ import {
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
+import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -468,31 +469,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Could not find connector with id ${this.connectorId}`)
-      );
-    }
-
-    const parents: string[] = [];
-    let currentInternalId = internalId;
-
-    while (currentInternalId) {
-      parents.push(currentInternalId);
-
-      const node = await MicrosoftNodeResource.fetchByInternalId(
-        this.connectorId,
-        currentInternalId
-      );
-
-      if (!node || !node.parentInternalId) {
-        break;
-      }
-      currentInternalId = node.parentInternalId;
-    }
-    // Reverse the array to have the root as the first element
-    parents.reverse();
+    const parents = await getParents({
+      connectorId: this.connectorId,
+      internalId,
+      // base memoization, caches the parents for 30mn
+      startSyncTs: 0,
+    });
     return new Ok(parents);
   }
 

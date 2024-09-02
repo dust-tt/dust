@@ -17,15 +17,16 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-
-const { GA_TRACKING_ID = "" } = process.env;
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   app: AppType;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -53,12 +54,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
       subscription,
       app,
-      gaTrackingId: GA_TRACKING_ID,
+      dustAppsListUrl,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -67,6 +71,7 @@ export default function SettingsView({
   owner,
   subscription,
   app,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -112,7 +117,7 @@ export default function SettingsView({
         method: "DELETE",
       });
       if (res.ok) {
-        await router.push(`/w/${owner.sId}/a`);
+        await router.push(dustAppsListUrl);
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
@@ -169,7 +174,7 @@ export default function SettingsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }
@@ -275,8 +280,8 @@ export default function SettingsView({
                           >
                             Public
                             <p className="mt-0 text-sm font-normal text-gray-500">
-                              Anyone on the Internet can see the app. Only you
-                              can edit.
+                              Anyone on the Internet with the link can see the
+                              app. Only builders of your workspace can edit.
                             </p>
                           </label>
                         </div>
@@ -302,34 +307,8 @@ export default function SettingsView({
                           >
                             Private
                             <p className="mt-0 text-sm font-normal text-gray-500">
-                              Only you can see and edit the app.
-                            </p>
-                          </label>
-                        </div>
-                        <div className="flex items-center">
-                          <input
-                            id="appVisibilityUnlisted"
-                            name="visibility"
-                            type="radio"
-                            value="unlisted"
-                            className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                            checked={appVisibility == "unlisted"}
-                            onChange={(e) => {
-                              if (e.target.value != appVisibility) {
-                                setAppVisibility(
-                                  e.target.value as AppVisibility
-                                );
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor="app-visibility-unlisted"
-                            className="ml-3 block text-sm font-medium text-gray-700"
-                          >
-                            Unlisted
-                            <p className="mt-0 text-sm font-normal text-gray-500">
-                              Anyone with the link can see the app. Only you can
-                              edit.
+                              Only builders of your workspace can see and edit
+                              the app.
                             </p>
                           </label>
                         </div>

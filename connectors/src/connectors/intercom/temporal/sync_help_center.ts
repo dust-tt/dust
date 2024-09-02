@@ -284,6 +284,7 @@ export async function upsertArticle({
       },
       "[Intercom] Article has no parent. Skipping sync"
     );
+    return;
   }
 
   if (articleOnDb) {
@@ -367,16 +368,14 @@ export async function upsertArticle({
       updatedAt: updatedAtDate,
     });
 
-    // Parents in the Core datasource should map the internal ids that we use in the permission modal
-    // Parents of an article are all the collections above it and the help center + the article itself
-    const parentsInternalsIds = article.parent_ids.map((id) =>
-      getHelpCenterCollectionInternalId(connectorId, id.toString())
-    );
-    parentsInternalsIds.push(
-      getHelpCenterInternalId(connectorId, helpCenterId)
-    );
     const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
-    parentsInternalsIds.push(documentId);
+
+    const parents = await getParentIdsForArticle({
+      documentId,
+      connectorId,
+      parentCollectionId,
+      helpCenterId,
+    });
 
     await upsertToDatasource({
       dataSourceConfig,
@@ -389,7 +388,7 @@ export async function upsertArticle({
         `createdAt:${createdAtDate.getTime()}`,
         `updatedAt:${updatedAtDate.getTime()}`,
       ],
-      parents: parentsInternalsIds,
+      parents,
       loggerArgs: {
         ...loggerArgs,
         articleId: article.id,
@@ -408,4 +407,53 @@ export async function upsertArticle({
       "[Intercom] Article has no content. Skipping sync."
     );
   }
+}
+
+// Parents in the Core datasource should map the internal ids that we use in the permission modal
+// Order is important: We want the id of the article, then all parents collection in order, then the help center
+async function getParentIdsForArticle({
+  documentId,
+  connectorId,
+  parentCollectionId,
+  helpCenterId,
+}: {
+  documentId: string;
+  connectorId: number;
+  parentCollectionId: string;
+  helpCenterId: string;
+}) {
+  // Initialize the internal IDs array with the article ID.
+  const parentIds = [documentId];
+
+  // Add the parent collection ID.
+  parentIds.push(
+    getHelpCenterCollectionInternalId(connectorId, parentCollectionId)
+  );
+
+  // Fetch and add any grandparent collection IDs.
+  let currentParentId = parentCollectionId;
+
+  // There's max 2-levels on Intercom.
+  for (let i = 0; i < 2; i++) {
+    const currentParent = await IntercomCollection.findOne({
+      where: {
+        connectorId,
+        collectionId: currentParentId,
+      },
+    });
+
+    if (currentParent && currentParent.parentId) {
+      currentParentId = currentParent.parentId;
+      parentIds.push(
+        getHelpCenterCollectionInternalId(connectorId, currentParentId)
+      );
+    } else {
+      break;
+    }
+  }
+
+  // Add the help center internal ID.
+  parentIds.push(getHelpCenterInternalId(connectorId, helpCenterId));
+
+  return parentIds;
 }

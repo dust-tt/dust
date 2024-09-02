@@ -67,6 +67,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/apache-tika-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/front-qa-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-worker-specific-configmap.yaml"
@@ -95,6 +96,7 @@ echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/managed-certs/front-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/front-edge-managed-cert.yaml"
+kubectl apply -f "$(dirname "$0")/managed-certs/front-qa-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/connectors-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/metabase-managed-cert.yaml"
 kubectl apply -f "$(dirname "$0")/managed-certs/viz-managed-cert.yaml"
@@ -114,6 +116,7 @@ apply_deployment apache-tika-deployment
 apply_deployment front-deployment
 apply_deployment front-worker-deployment
 apply_deployment front-edge-deployment
+apply_deployment front-qa-deployment
 apply_deployment connectors-deployment
 apply_deployment connectors-worker-deployment
 apply_deployment connectors-worker-notion-deployment
@@ -141,6 +144,7 @@ echo "-----------------------------------"
 kubectl apply -f "$(dirname "$0")/services/apache-tika-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/front-edge-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/front-qa-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-worker-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"

@@ -55,15 +55,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only the workspace users can see Assistants.",
-          },
-        });
-      }
       // extract the view from the query parameters
       const queryValidation = GetAgentConfigurationsQuerySchema.decode({
         ...req.query,
@@ -154,16 +145,6 @@ async function handler(
         agentConfigurations,
       });
     case "POST":
-      if (!auth.isUser()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only users of the workspace can create assistants.",
-          },
-        });
-      }
-
       const bodyValidation =
         PostOrPatchAgentConfigurationRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {

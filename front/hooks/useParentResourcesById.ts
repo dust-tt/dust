@@ -1,8 +1,4 @@
-import type {
-  ContentNode,
-  DataSourceType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
@@ -10,11 +6,11 @@ import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/d
 export function useParentResourcesById({
   owner,
   dataSource,
-  selectedResources,
+  internalIds,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType | null;
-  selectedResources: ContentNode[];
+  internalIds: string[];
 }) {
   const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
     {}
@@ -27,7 +23,7 @@ export function useParentResourcesById({
     try {
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource?.name || ""
+          dataSource?.name ?? ""
         )}/managed/parents`,
         {
           method: "POST",
@@ -35,9 +31,7 @@ export function useParentResourcesById({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            internalIds: selectedResources.map((resource) => {
-              return resource.internalId;
-            }),
+            internalIds,
           }),
         }
       );
@@ -60,10 +54,10 @@ export function useParentResourcesById({
     } finally {
       setParentsAreLoading(false);
     }
-  }, [owner, dataSource?.name, selectedResources]);
+  }, [owner, dataSource?.name, internalIds]);
 
   const hasParentsById = Object.keys(parentsById || {}).length > 0;
-  const hasSelectedResources = selectedResources.length > 0;
+  const hasSelectedResources = internalIds.length > 0;
 
   useEffect(() => {
     if (parentsAreLoading || parentsAreError) {

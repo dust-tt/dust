@@ -1,5 +1,7 @@
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
+import { ConnectorType } from "./lib/connectors_api";
+import { ManageDataSourcesLimitsType } from "./plan";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -12,11 +14,36 @@ export const CONNECTOR_PROVIDERS = [
   "webcrawler",
 ] as const;
 
-export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
+export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
+  ConnectorProvider,
+  string
+> = {
+  confluence: `You cannot select another Confluence Domain.\nPlease contact us at support@dust.tt if you initially selected the wrong Domain.`,
+  slack: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
+  notion:
+    "You cannot select another Notion Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
+  github:
+    "You cannot create a new Github app installation.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the Github app.",
+  google_drive:
+    "You cannot select another Google Drive Domain.\nPlease contact us at support@dust.tt if you initially selected a wrong shared Drive.",
+  intercom:
+    "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
+  microsoft: `Microsoft / mismatch error.`,
+  webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
+};
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
 
 export type LabsConnectorProvider = "google_drive" | "gong";
+
+export const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = [
+  "slack",
+  "github",
+];
+
+export function isWebhookBasedProvider(provider: ConnectorProvider): boolean {
+  return WEBHOOK_BASED_CONNECTORS.includes(provider);
+}
 
 export function isConnectorProvider(val: string): val is ConnectorProvider {
   return (CONNECTOR_PROVIDERS as unknown as string[]).includes(val);
@@ -34,6 +61,7 @@ export type EditedByUser = {
 
 export type DataSourceType = {
   id: ModelId;
+  sId: string;
   createdAt: number;
   name: string;
   description: string | null;
@@ -43,6 +71,18 @@ export type DataSourceType = {
   connectorProvider: ConnectorProvider | null;
   editedByUser?: EditedByUser | null;
 };
+
+export type WithConnector = {
+  connectorProvider: ConnectorProvider;
+  connectorId: string;
+};
+
+export type DataSourceWithConnectorDetailsType = DataSourceType &
+  WithConnector & {
+    connector: ConnectorType | null;
+    fetchConnectorError: boolean;
+    fetchConnectorErrorMessage: string | null;
+  };
 
 export function isDataSourceNameValid(name: string): Result<void, string> {
   const trimmed = name.trim();
@@ -60,4 +100,38 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
   }
 
   return new Ok(undefined);
+}
+
+export function isConnectorProviderAllowed(
+  provider: ConnectorProvider,
+  limits: ManageDataSourcesLimitsType
+): boolean {
+  switch (provider) {
+    case "confluence": {
+      return limits.isConfluenceAllowed;
+    }
+    case "slack": {
+      return limits.isSlackAllowed;
+    }
+    case "notion": {
+      return limits.isNotionAllowed;
+    }
+    case "github": {
+      return limits.isGithubAllowed;
+    }
+    case "google_drive": {
+      return limits.isGoogleDriveAllowed;
+    }
+    case "intercom": {
+      return limits.isIntercomAllowed;
+    }
+    case "microsoft": {
+      return true;
+    }
+    case "webcrawler": {
+      return false;
+    }
+    default:
+      throw new Error(`Unknown connector provider ${provider}`);
+  }
 }

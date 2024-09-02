@@ -9,12 +9,11 @@ import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser, useWorkspaceSubscriptions } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
@@ -32,7 +31,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     props: {
       owner,
       isAdmin: auth.isAdmin(),
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });

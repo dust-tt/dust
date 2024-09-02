@@ -23,6 +23,7 @@ export default function DatabaseSchema({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -37,6 +38,7 @@ export default function DatabaseSchema({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -53,6 +55,7 @@ export default function DatabaseSchema({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       canUseCache={false}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}

@@ -29,14 +29,27 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.user();
-
-  if (!auth.isBuilder()) {
-    res.status(403).end();
-    return;
-  }
-
+  const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
+
+  // With Vaults we're moving API keys management to the Admin role.
+  const isVaultsFeatureEnabled = owner.flags.includes("data_vaults_feature");
+  const hasValidRole = isVaultsFeatureEnabled
+    ? auth.isAdmin()
+    : auth.isBuilder();
+
+  if (!hasValidRole) {
+    const errorMessage = isVaultsFeatureEnabled
+      ? "Only the users that are `admins` for the current workspace can interact with keys"
+      : "Only the users that are `builders` for the current workspace can interact with keys.";
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: errorMessage,
+      },
+    });
+  }
 
   switch (req.method) {
     case "GET":
@@ -65,11 +78,21 @@ async function handler(
         ? await GroupResource.fetchById(auth, group_id)
         : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
+      if (group.isErr()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "group_not_found",
+            message: "Invalid group",
+          },
+        });
+      }
+
       const key = await KeyResource.makeNew({
         name: name,
         status: "active",
-        userId: user?.id,
-        groupId: group?.id,
+        userId: user.id,
+        groupId: group.value.id,
         workspaceId: owner.id,
         isSystem: false,
       });

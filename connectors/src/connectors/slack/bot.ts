@@ -81,6 +81,7 @@ export async function botAnswerMessageWithErrorHandling(
       connector,
       slackConfig
     );
+
     if (res.isErr()) {
       logger.error(
         {
@@ -245,11 +246,18 @@ async function botAnswerMessage(
     throw new Error("DUST_FRONT_API environment variable is not defined");
   }
 
+  let requestedGroups: string[] | undefined = undefined;
+
+  if (slackUserInfo.is_bot) {
+    const botName = slackUserInfo.real_name;
+    requestedGroups = await slackConfig.getBotGroupIds(botName);
+  }
   const dustAPI = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
+      groupIds: requestedGroups,
     },
     logger,
     {
@@ -390,9 +398,14 @@ async function botAnswerMessage(
     }
   }
 
-  if (message.trim() === "") {
-    message = "?";
+  const mention = mentions[0];
+  if (mention) {
+    if (!message.includes(":mention")) {
+      // if the message does not contain the mention, we add it as a prefix.
+      message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
+    }
   }
+
   const messageReqBody = {
     content: message,
     mentions: mentions.map((m) => {

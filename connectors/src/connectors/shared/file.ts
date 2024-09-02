@@ -7,6 +7,7 @@ import {
   Err,
   isTextExtractionSupportedContentType,
   Ok,
+  pagePrefixesPerMimeType,
   TextExtraction,
 } from "@dust-tt/types";
 import { parseAndStringifyCsv, slugify } from "@dust-tt/types";
@@ -15,12 +16,6 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const pagePrefixesPerMimeType: Record<string, string> = {
-  "application/pdf": "$pdfPage",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    "$slideNumber",
-};
 
 const dataSourceNameToConnectorName: { [key: string]: string } = {
   "managed-microsoft": "Microsoft",

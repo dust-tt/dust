@@ -30,6 +30,7 @@ export default function Block({
   status,
   running,
   readOnly,
+  showOutputs,
   children,
   canUseCache,
   onBlockUpdate,
@@ -46,6 +47,7 @@ export default function Block({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   canUseCache: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
@@ -216,7 +218,7 @@ export default function Block({
             {` 0 successes 0 errors`}
           </div>
         ) : null}
-        {status && status.status != "running" && run ? (
+        {status && status.status != "running" && run && showOutputs ? (
           <Output owner={owner} runId={run.run_id} block={block} app={app} />
         ) : null}
       </div>

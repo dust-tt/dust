@@ -1,12 +1,9 @@
 import type { WorkspaceType } from "@dust-tt/types";
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  getLargeWhitelistedModel,
-} from "@dust-tt/types";
+import { getLargeWhitelistedModel } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 
 // Part of the new doc tracker pipeline, suggest changes  based on a "source_document" (new incoming doc)
 // and a "target_document" (the tracked doc)
@@ -34,7 +31,6 @@ export async function callDocTrackerSuggestChangesAction(
     input: { source_document: sourceDocument, target_document: targetDocument },
     owner,
     responseValueSchema: DocTrackerSuggestChangesActionValueSchema,
-    user: null,
   });
 
   if (res.isErr()) {

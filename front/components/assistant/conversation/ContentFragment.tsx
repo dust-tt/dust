@@ -15,10 +15,9 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
     );
   }
 
-  const citationType: CitationType = [
-    "slack_thread_content",
-    "dust-application/slack",
-  ].includes(message.contentType)
+  const citationType: CitationType = ["dust-application/slack"].includes(
+    message.contentType
+  )
     ? "slack"
     : "document";
 

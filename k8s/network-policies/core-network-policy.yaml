@@ -21,6 +21,9 @@ spec:
               app: front-edge
         - podSelector:
             matchLabels:
+              app: front-qa
+        - podSelector:
+            matchLabels:
               app: core-sqlite-worker
         - podSelector:
             matchLabels:

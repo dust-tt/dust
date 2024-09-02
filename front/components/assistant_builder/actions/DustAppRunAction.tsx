@@ -1,8 +1,9 @@
 import { ContentMessage } from "@dust-tt/sparkle";
-import type { AppType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import type {
@@ -27,7 +28,6 @@ export function ActionDustAppRun({
   action,
   updateAction,
   setEdited,
-  dustApps,
 }: {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfiguration;
@@ -39,8 +39,8 @@ export function ActionDustAppRun({
     ) => AssistantBuilderActionConfiguration["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
-  dustApps: AppType[];
 }) {
+  const { dustApps } = useContext(AssistantBuilderContext);
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
 
   const deleteDustApp = () => {

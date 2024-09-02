@@ -59,7 +59,7 @@ export async function batchRenderUserMessages(
       if (userIds.length === 0) {
         return [];
       }
-      return UserResource.listByModelIds(userIds);
+      return UserResource.fetchByModelIds(userIds);
     })(),
   ]);
 
@@ -223,7 +223,6 @@ export async function batchRenderAgentMessages(
         actions: actions,
         content: parsedContent.content,
         chainOfThought: parsedContent.chainOfThought,
-        visualizations: parsedContent.visualizations,
         rawContents:
           agentMessage.agentMessageContents?.map((rc) => ({
             step: rc.step,

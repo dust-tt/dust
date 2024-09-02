@@ -47,6 +47,10 @@ const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 2;
+// Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
+// messages). Some channels have integrations that post a lot of messages. Beyond this number (more
+// that 500 messages per week), the information is very likely useless.
+const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
 
 /**
  * Slack API rate limit TLDR:
@@ -183,7 +187,7 @@ export async function syncChannel(
   const messages = await getMessagesForChannel(
     connectorId,
     channelId,
-    100,
+    50,
     messagesCursor
   );
   if (!messages.messages) {
@@ -194,6 +198,7 @@ export async function syncChannel(
       weeksSynced: weeksSynced,
     };
   }
+
   // `allSkip` and `skip` logic assumes that the messages are returned in recency order (newest
   // first).
   let allSkip = true;
@@ -251,16 +256,26 @@ export async function syncChannel(
     }
   }
 
+  unthreadedTimeframesToSync = unthreadedTimeframesToSync.filter(
+    (t) => !(t in weeksSynced)
+  );
+
+  logger.info(
+    {
+      connectorId,
+      channelId,
+      threadsToSyncCount: threadsToSync.length,
+      unthreadedTimeframesToSyncCount: unthreadedTimeframesToSync.length,
+    },
+    "syncChannel.splitMessages"
+  );
+
   await syncThreads(
     dataSourceConfig,
     channelId,
     remoteChannel.name,
     threadsToSync,
     connectorId
-  );
-
-  unthreadedTimeframesToSync = unthreadedTimeframesToSync.filter(
-    (t) => !(t in weeksSynced)
   );
 
   await syncMultipleNoNThreaded(
@@ -309,8 +324,9 @@ export async function getMessagesForChannel(
     {
       messagesCount: c.messages?.length,
       channelId,
+      connectorId,
     },
-    "Got messages from channel."
+    "getMessagesForChannel"
   );
   return c;
 }
@@ -353,6 +369,7 @@ export async function syncNonThreaded(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const client = await getSlackClient(connectorId);
   const nextCursor: string | undefined = undefined;
@@ -409,6 +426,23 @@ export async function syncNonThreaded(
       }
     }
     hasMore = c.has_more;
+
+    if (messages.length > MAX_SYNC_NON_THREAD_MESSAGES) {
+      logger.warn(
+        {
+          messagesCount: messages.length,
+          connectorId,
+          channelName,
+          channelId,
+          startTsMs,
+          endTsMs,
+          latestTsSec,
+          nextCursor,
+        },
+        "Giving up on syncNonThreaded: too many messages"
+      );
+      break;
+    }
   } while (hasMore);
 
   if (messages.length === 0) {
@@ -552,6 +586,18 @@ export async function syncThread(
 
   let allMessages: MessageElement[] = [];
 
+  logger.info(
+    {
+      messagesCount: allMessages.length,
+      channelName,
+      channelId,
+      threadTs,
+    },
+    "syncThread.getRepliesFromThread.send"
+  );
+
+  const now = new Date();
+
   try {
     allMessages = await getRepliesFromThread({
       slackClient,
@@ -570,6 +616,17 @@ export async function syncThread(
     }
     throw e;
   }
+
+  logger.info(
+    {
+      messagesCount: allMessages.length,
+      channelName,
+      channelId,
+      threadTs,
+      delayMs: new Date().getTime() - now.getTime(),
+    },
+    "syncThread.getRepliesFromThread.done"
+  );
 
   const documentId = `slack-${channelId}-thread-${threadTs}`;
 

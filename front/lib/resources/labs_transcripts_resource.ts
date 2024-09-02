@@ -10,6 +10,7 @@ import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -140,6 +141,20 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
+  async setDataSourceId(auth: Authenticator, dataSourceId: string | null) {
+    if (!dataSourceId) {
+      return;
+    }
+
+    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+
+    if (!dataSource || this.dataSourceId === dataSource.id) {
+      return;
+    }
+
+    return this.update({ dataSourceId: dataSource.id });
+  }
+
   async delete(
     auth: Authenticator,
     transaction?: Transaction
@@ -166,6 +181,25 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
     const history = await LabsTranscriptsHistoryModel.create(blob);
+
+    return history.get();
+  }
+
+  async setConversationHistory(
+    fileId: string,
+    conversationId: string
+  ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
+    const history = await LabsTranscriptsHistoryModel.findOne({
+      where: {
+        fileId,
+      },
+    });
+
+    if (!history) {
+      return null;
+    }
+
+    await history?.update({ conversationId });
 
     return history.get();
   }

@@ -30,7 +30,10 @@ import {
   updateDocumentParentsField,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { isNotFoundError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  isNotFoundError,
+} from "@connectors/lib/error";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -253,7 +256,15 @@ export async function confluenceCheckAndUpsertPageActivity({
 
   localLogger.info("Upserting Confluence page.");
 
+  // There is a small delta between the page being listed and the page being imported.
+  // If the page has been deleted in the meantime, we should ignore it.
   const page = await client.getPageById(pageId);
+  if (!page) {
+    localLogger.info("Confluence page not found.");
+    // Return false to skip the child pages.
+    return false;
+  }
+
   const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
   if (hasReadRestrictions) {
     localLogger.info("Skipping restricted Confluence page.");
@@ -642,7 +653,10 @@ export async function confluenceGetReportPersonalActionActivity(
 ) {
   const { connectorId, userAccountId } = params;
 
-  const connector = await fetchConfluenceConnector(connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return false;
+  }
   if (connector.isAuthTokenRevoked) {
     return false;
   }
@@ -679,6 +693,12 @@ export async function confluenceGetReportPersonalActionActivity(
         { connectorId, userAccountId, err },
         "Error while reporting Confluence account."
       );
+
+      // If token has been revoked, return false.
+      if (err instanceof ExternalOAuthTokenError) {
+        return false;
+      }
+
       throw err;
     }
   }

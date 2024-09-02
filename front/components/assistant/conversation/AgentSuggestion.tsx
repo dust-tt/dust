@@ -6,12 +6,13 @@ import type {
 } from "@dust-tt/types";
 import { useContext, useMemo, useState } from "react";
 
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr";
 
-interface AgentSuggestion {
+interface AgentSuggestionProps {
   conversationId: string;
   owner: WorkspaceType;
   userMessage: UserMessageType;
@@ -21,7 +22,7 @@ export function AgentSuggestion({
   conversationId,
   owner,
   userMessage,
-}: AgentSuggestion) {
+}: AgentSuggestionProps) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: { conversationId: conversationId },
@@ -71,54 +72,65 @@ export function AgentSuggestion({
     return [agents.slice(0, 3), agents.slice(3)];
   }, [agentConfigurations]);
 
-  return (
-    <div className="pt-4">
-      <div className="flex items-center gap-2">
-        <span className="grow text-sm text-element-800">
-          Which Assistant would you like to chat with?
-        </span>
-        <AssistantPicker
-          owner={owner}
-          assistants={otherAgents}
-          onItemClick={async (agent) => {
-            if (!isLoading) {
-              setIsLoading(true);
-              await handleSelectSuggestion(agent);
-              setIsLoading(false);
-            }
-          }}
-          pickerButton={
-            <Button
-              variant="tertiary"
-              size="xs"
-              icon={RobotIcon}
-              label="Select another"
-              type="menu"
-            />
-          }
-        />
-      </div>
+  const [showAssistantDetail, setShowAssistantDetail] =
+    useState<LightAgentConfigurationType | null>(null);
 
-      {agentConfigurations.length === 0 ? (
-        <div className="flex h-full min-h-28 w-full items-center justify-center">
-          <Spinner />
+  return (
+    <>
+      <AssistantDetails
+        assistantId={showAssistantDetail?.sId || null}
+        owner={owner}
+        onClose={() => setShowAssistantDetail(null)}
+      />
+      <div className="pt-4">
+        <div className="flex items-center gap-2">
+          <span className="grow text-sm text-element-800">
+            Which Assistant would you like to chat with?
+          </span>
+          <AssistantPicker
+            owner={owner}
+            assistants={otherAgents}
+            onItemClick={async (agent) => {
+              if (!isLoading) {
+                setIsLoading(true);
+                await handleSelectSuggestion(agent);
+                setIsLoading(false);
+              }
+            }}
+            pickerButton={
+              <Button
+                variant="tertiary"
+                size="xs"
+                icon={RobotIcon}
+                label="Select another"
+                type="menu"
+              />
+            }
+          />
         </div>
-      ) : (
-        <div className="mt-3 grid gap-2 md:grid-cols-3">
-          {topAgents.map((agent, id) => (
-            <AssistantPreview
-              key={`${agent.sId}-${id}`}
-              variant="minimal"
-              description={agent.description}
-              subtitle={agent.lastAuthors?.join(", ") ?? ""}
-              title={agent.name}
-              pictureUrl={agent.pictureUrl}
-              onClick={() => handleSelectSuggestion(agent)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+
+        {agentConfigurations.length === 0 ? (
+          <div className="flex h-full min-h-28 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ) : (
+          <div className="mt-3 grid gap-2 md:grid-cols-3">
+            {topAgents.map((agent, id) => (
+              <AssistantPreview
+                key={`${agent.sId}-${id}`}
+                variant="minimal"
+                description={agent.description}
+                subtitle={agent.lastAuthors?.join(", ") ?? ""}
+                title={agent.name}
+                pictureUrl={agent.pictureUrl}
+                onClick={() => handleSelectSuggestion(agent)}
+                onActionClick={() => setShowAssistantDetail(agent)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

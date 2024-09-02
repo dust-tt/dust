@@ -42,9 +42,7 @@
     "hot-shots": "^10.0.0",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
-    "lodash.get": "^4.4.2",
-    "lodash.last": "^3.0.0",
-    "lodash.repeat": "^4.1.0",
+    "lodash": "^4.17.21",
     "mdast-util-gfm": "^3.0.0",
     "micromark-extension-gfm": "^3.0.0",
     "minimist": "^1.2.8",
@@ -69,6 +67,7 @@
   "devDependencies": {
     "@types/eslint": "^8.56.10",
     "@types/fast-levenshtein": "^0.0.2",
+    "@types/lodash": "^4.17.7",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.12",
     "@types/tar": "^6.1.10",
