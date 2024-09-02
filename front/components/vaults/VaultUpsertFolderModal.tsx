@@ -36,9 +36,12 @@ export default function VaultUpsertFolderModal({
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
-  const [name, setName] = useState<string | null>(folder?.name ?? null);
+  const defaultName = folder?.name ?? null;
+  const defaultDescription = folder?.description ?? null;
+
+  const [name, setName] = useState<string | null>(defaultName);
   const [description, setDescription] = useState<string | null>(
-    folder?.description ?? null
+    defaultDescription
   );
 
   const [errors, setErrors] = useState<{
@@ -64,7 +67,7 @@ export default function VaultUpsertFolderModal({
       }
     );
     if (res.ok) {
-      setOpen(false);
+      onClose();
       const response: PostVaultDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
       await router.push(
@@ -99,7 +102,7 @@ export default function VaultUpsertFolderModal({
       }
     );
     if (res.ok) {
-      setOpen(false);
+      onClose();
       sendNotification({
         type: "success",
         title: "Successfully updated folder",
@@ -149,6 +152,12 @@ export default function VaultUpsertFolderModal({
     }
   };
 
+  const onClose = () => {
+    setOpen(false);
+    setName(defaultName);
+    setDescription(defaultDescription);
+  };
+
   const hasChanged =
     folder === null
       ? name !== null || description !== null
@@ -157,9 +166,7 @@ export default function VaultUpsertFolderModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => {
-        setOpen(false);
-      }}
+      onClose={onClose}
       onSave={onSave}
       hasChanged={hasChanged}
       variant="side-sm"
@@ -188,7 +195,7 @@ export default function VaultUpsertFolderModal({
                 <ExclamationCircleStrokeIcon />{" "}
                 {folder === null
                   ? "Folder name must be unique and not use spaces."
-                  : "Folder name change not allowed."}
+                  : "Folder name cannot be changed."}
               </p>
             </div>
 
