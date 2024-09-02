@@ -85,6 +85,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 export default function Vault({
+  vault,
   category,
   dataSourceView,
   isAdmin,
@@ -97,6 +98,7 @@ export default function Vault({
     <Page.Vertical gap="xl" align="stretch">
       <VaultDataSourceViewContentList
         owner={owner}
+        vault={vault}
         plan={plan}
         isAdmin={isAdmin}
         parentId={parentId}

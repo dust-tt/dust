@@ -123,6 +123,29 @@ export async function getAgentConfiguration(
   return res[0] || null;
 }
 
+/**
+ * Search agent configurations by name
+ *
+ */
+export async function searchAgentConfigurationsByName(
+  auth: Authenticator,
+  name: string
+): Promise<AgentConfiguration[] | []> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const agentConfigurations = await AgentConfiguration.findAll({
+    where: {
+      workspaceId: owner.id,
+      status: "active",
+      scope: { [Op.in]: ["workspace", "published"] },
+      name: {
+        [Op.iLike]: `%${name}%`,
+      },
+    },
+  });
+  return agentConfigurations || [];
+}
+
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
   return (results: AgentConfigurationType[]) => {
     const sortStrategy = sort && sortStrategies[sort];

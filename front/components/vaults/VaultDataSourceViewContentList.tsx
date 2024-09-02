@@ -2,6 +2,7 @@ import { DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   PlanType,
+  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -28,6 +29,7 @@ type RowData = {
 };
 
 type VaultDataSourceViewContentListProps = {
+  vault: VaultType;
   dataSourceView: DataSourceViewType;
   plan: PlanType;
   isAdmin: boolean;
@@ -52,11 +54,12 @@ const getTableColumns = () => {
 };
 
 export const VaultDataSourceViewContentList = ({
+  owner,
+  vault,
   dataSourceView,
   plan,
   isAdmin,
   onSelect,
-  owner,
   parentId,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
@@ -118,7 +121,12 @@ export const VaultDataSourceViewContentList = ({
           </>
         )}
         {isFolder(dataSourceView.dataSource) && (
-          <FoldersHeaderMenu contentActionsRef={contentActionsRef} />
+          <FoldersHeaderMenu
+            owner={owner}
+            vault={vault}
+            folder={dataSourceView.dataSource}
+            contentActionsRef={contentActionsRef}
+          />
         )}
       </div>
       {rows.length > 0 && (
