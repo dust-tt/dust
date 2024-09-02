@@ -1,17 +1,17 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 /**
  * @swagger
- * /api/v1/w/{wId}/assistant/agent_configurations:
+ * /api/v1/w/{wId}/assistant/agent_configurations/search:
  *   get:
- *     summary: List assistants
- *     description: Get the agent configurations for the workspace identified by {wId}.
+ *     summary: Search assistants by name
+ *     description: Search for agent configurations by name in the workspace identified by {wId}.
  *     tags:
  *       - Assistants
  *     parameters:
@@ -21,28 +21,41 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *         description: ID of the workspace
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         description: Search query for agent configuration names
+ *         schema:
+ *           type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Agent configurations for the workspace
+ *         description: Successfully retrieved agent configurations
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/AgentConfiguration'
+ *               type: object
+ *               properties:
+ *                 agentConfigurations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AgentConfiguration'
  *       400:
- *         description: Bad Request. Missing or invalid parameters.
+ *         description: Bad Request. Invalid or missing parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
- *       500:
- *         description: Internal Server Error.
  *       404:
  *         description: Workspace not found.
  *       405:
  *         description: Method not supported. Only GET is expected.
+ *       500:
+ *         description: Internal Server Error.
  */
+
+type GetAgentConfigurationsResponseBody = {
+  agentConfigurations: AgentConfiguration[];
+};
 
 async function handler(
   req: NextApiRequest,
@@ -53,7 +66,7 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { wId } = req.query;
+  const { wId, q } = req.query;
   if (typeof wId !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -78,11 +91,20 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const agentConfigurations = await getAgentConfigurations({
-        auth: workspaceAuth,
-        agentsGetView: "all",
-        variant: "light",
-      });
+      if (typeof q !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Search query parameter q is missing",
+          },
+        });
+      }
+
+      const agentConfigurations = await searchAgentConfigurationsByName(
+        workspaceAuth,
+        q
+      );
       return res.status(200).json({
         agentConfigurations,
       });

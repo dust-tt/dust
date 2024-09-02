@@ -41,8 +41,9 @@ export default function VaultManagedDataSourcesViewsModal({
   );
 
   const initialConfigurations = useMultipleDataSourceViewsContentNodes({
-    owner,
     dataSourceViewsAndInternalIds,
+    owner,
+    viewType: "documents",
   });
 
   const [selectionConfigurations, setSelectionConfigurations] =

@@ -28,6 +28,9 @@ spec:
         - podSelector:
             matchLabels:
               app: front-worker
+        - podSelector:
+            matchLabels:
+              app: prodbox
       ports:
         - protocol: TCP
           port: 3006

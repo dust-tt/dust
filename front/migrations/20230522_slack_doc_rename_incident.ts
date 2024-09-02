@@ -80,6 +80,8 @@ async function main() {
           name: dataSourceName,
           description: dataSourceDescription,
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          dustAPIDataSourceId:
+            dustDataSource.value.data_source.data_source_id.toString(),
           workspaceId: workspaceId,
         });
 

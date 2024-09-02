@@ -302,6 +302,7 @@ async function handler(
           connectorProvider: provider,
           description: dataSourceDescription,
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
           editedByUserId: user.id,
           name: dataSourceName,
           workspaceId: owner.id,

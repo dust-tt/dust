@@ -1,4 +1,4 @@
-import type { DustAPIResponse, WorkspaceType } from "@dust-tt/types";
+import type { DustAPIResponse } from "@dust-tt/types";
 import type { DustAppConfigType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -11,13 +11,13 @@ import {
   isActionResponseBase,
 } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import type { Action } from "@app/lib/registry";
 import { cloneBaseConfig } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 interface CallActionParams<V extends t.Mixed> {
-  owner: WorkspaceType;
   input: { [key: string]: unknown };
   action: Action;
   config: DustAppConfigType;
@@ -35,31 +35,27 @@ interface CallActionParams<V extends t.Mixed> {
  * note: this assumes a single input
  * note: this assumes the output is in `results`, i.e the output of the last block
  *
- * @param owner WorksapceType the workspace
  * @param input { [key: string]: unknown } the action input (a single input)
  * @param config DustAppConfigType the action config
  * @param responseValueSchema V extends t.Mixed the io-ts schema of the action response value
  */
-export async function callAction<V extends t.Mixed>({
-  owner,
-  input,
-  action,
-  config,
-  responseValueSchema,
-}: CallActionParams<V>): Promise<
-  DustAPIResponse<t.TypeOf<typeof responseValueSchema>>
-> {
+export async function callAction<V extends t.Mixed>(
+  auth: Authenticator,
+  { input, action, config, responseValueSchema }: CallActionParams<V>
+): Promise<DustAPIResponse<t.TypeOf<typeof responseValueSchema>>> {
   const app = cloneBaseConfig(action.app);
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
+  const prodCredentials = await prodAPICredentialsForOwner(
+    auth.getNonNullableWorkspace()
+  );
+  const requestedGroupIds = auth.groups().map((g) => g.sId);
 
   const prodAPI = new DustAPI(
     apiConfig.getDustAPIConfig(),
-    prodCredentials,
+    { ...prodCredentials, groupIds: requestedGroupIds },
     logger
   );
 
-  // @TODO(GROUPS_INFRA) The doc tracker apps are running without any group privileges for now.
   const r = await prodAPI.runApp(app, config, [input]);
 
   if (r.isErr()) {
