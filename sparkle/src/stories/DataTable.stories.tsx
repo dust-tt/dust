@@ -55,6 +55,20 @@ export const DataTableExample = () => {
       ],
     },
     {
+      name: "design",
+      usedBy: 3,
+      addedBy: "User21",
+      lastUpdated: "2023-07-09",
+      size: "64kb",
+      icon: FolderIcon,
+      moreMenuItems: [
+        {
+          label: "Edit",
+          onClick: () => console.log("Edit"),
+        },
+      ],
+    },
+    {
       name: "Development",
       usedBy: 5,
       addedBy: "User3",
@@ -81,6 +95,7 @@ export const DataTableExample = () => {
     {
       accessorKey: "name",
       header: "Name",
+      sortingFn: "text",
       cell: (info) => (
         <DataTable.CellContent
           avatarUrl={info.row.original.avatarUrl}

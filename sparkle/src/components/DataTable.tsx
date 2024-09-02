@@ -4,7 +4,7 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getSortedRowModel,
+  getSortedRowModel, SortingFn,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -35,6 +35,7 @@ interface DataTableProps<TData extends TBaseData> {
   filterColumn?: string;
   initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
+  sortingFn?: SortingFn<TData>
 }
 
 function shouldRenderColumn(
