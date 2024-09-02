@@ -978,8 +978,8 @@ function Capabilities({
   return (
     <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
       <Capability
-        name="Web Navigation"
-        description="can search and browse the web"
+        name="Web Search & Browse"
+        description="Assistant can search (Google)) and retrieve information from specific websites."
         enabled={
           !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
         }
@@ -1003,7 +1003,7 @@ function Capabilities({
 
       <Capability
         name="Data Visualization"
-        description="can generate chats and graphs"
+        description="Assistant can generate charts and graphs."
         enabled={builderState.visualizationEnabled}
         onEnable={() => {
           setEdited(true);
