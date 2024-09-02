@@ -2,6 +2,7 @@ import {
   Button,
   ContentMessage,
   DropdownMenu,
+  ExclamationCircleStrokeIcon,
   Input,
   Modal,
   Page,
@@ -11,6 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   APIError,
+  ConnectorConfiguration,
   CrawlingFrequency,
   DataSourceType,
   DataSourceViewCategory,
@@ -47,14 +49,14 @@ const WEBSITE_CAT: DataSourceViewCategory = "website";
 
 // todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
 // this should be refactored to use the new design.
-export default function VaultCreateWebsiteModal({
+export default function VaultWebsiteModal({
   isOpen,
   setOpen,
   owner,
   dataSources,
   vault,
   dataSourceView,
-  webCrawlerConfiguration,
+  connectorConfiguration,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
@@ -62,8 +64,11 @@ export default function VaultCreateWebsiteModal({
   vault: VaultType;
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
-  webCrawlerConfiguration: WebCrawlerConfigurationType | null;
+  connectorConfiguration: ConnectorConfiguration | null;
 }) {
+  const webCrawlerConfiguration =
+    connectorConfiguration as WebCrawlerConfigurationType | null;
+
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
 
@@ -78,7 +83,7 @@ export default function VaultCreateWebsiteModal({
     null
   );
 
-  const dataSourceId = dataSourceView ? dataSourceView.dataSource.id : null;
+  const dataSourceId = dataSourceView ? dataSourceView.dataSource.sId : null;
   const defaultDataSourceName = dataSourceView
     ? dataSourceView.dataSource.name
     : "";
@@ -150,7 +155,7 @@ export default function VaultCreateWebsiteModal({
 
     // Validate Name
     const nameExists = dataSources.some(
-      (d) => d.name === dataSourceName && d.id !== dataSourceId
+      (d) => d.name === dataSourceName && d.sId !== dataSourceId
     );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
     if (nameExists) {
@@ -236,7 +241,6 @@ export default function VaultCreateWebsiteModal({
         });
       }
     } else if (dataSourceView) {
-      // TODO(GROUPS_INFRA): this should be refactored to use a patch route under /vaults
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
           defaultDataSourceName
@@ -274,9 +278,6 @@ export default function VaultCreateWebsiteModal({
           description: "The website has been successfully updated.",
         });
         await mutateVaultDataSourceViews();
-        await router.push(
-          `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_sources/${dataSourceName}`
-        );
       } else {
         const err = (await res.json()) as { error: APIError };
         setIsSaving(false);
@@ -295,7 +296,7 @@ export default function VaultCreateWebsiteModal({
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceId}}`,
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceId}`,
       {
         method: "DELETE",
       }
@@ -303,6 +304,9 @@ export default function VaultCreateWebsiteModal({
     setIsSaving(false);
     if (res.ok) {
       await mutateVaultDataSourceViews();
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}`
+      );
     } else {
       const err = (await res.json()) as { error: APIError };
       sendNotification({
@@ -330,7 +334,7 @@ export default function VaultCreateWebsiteModal({
       variant="side-md"
       title="Create a website"
     >
-      <div className="w-full pt-12">
+      <div className="w-full pt-6">
         <div className="overflow-x-auto">
           <Modal
             isOpen={advancedSettingsOpened}
@@ -553,10 +557,17 @@ export default function VaultCreateWebsiteModal({
               </div>
               <Page.Layout direction="vertical" gap="md">
                 <Page.H variant="h3">Name</Page.H>
-                <Page.P>Give a name to this Data Source.</Page.P>
+                {webCrawlerConfiguration === null ? (
+                  <Page.P>Give a name to this Data Source.</Page.P>
+                ) : (
+                  <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                    <ExclamationCircleStrokeIcon />
+                    Website name cannot be changed.
+                  </p>
+                )}
                 <Input
                   placeholder=""
-                  value={dataSourceName}
+                  value={defaultDataSourceName}
                   onChange={(value) => setDataSourceName(value)}
                   error={dataSourceNameError}
                   name="dataSourceName"
@@ -566,7 +577,7 @@ export default function VaultCreateWebsiteModal({
                 />
               </Page.Layout>
 
-              <div className="flex">
+              <div className="flex gap-6">
                 <Button
                   label="Advanced settings"
                   variant="secondary"
@@ -574,25 +585,24 @@ export default function VaultCreateWebsiteModal({
                     setAdvancedSettingsOpened(true);
                   }}
                 ></Button>
+                {webCrawlerConfiguration && dataSourceId && (
+                  <>
+                    <Button
+                      variant="secondaryWarning"
+                      icon={TrashIcon}
+                      label={"Delete this website"}
+                      onClick={() => {
+                        setIsDeleteModalOpen(true);
+                      }}
+                    />
+                    <DeleteDataSourceDialog
+                      handleDelete={handleDelete}
+                      isOpen={isDeleteModalOpen}
+                      setIsOpen={setIsDeleteModalOpen}
+                    />
+                  </>
+                )}
               </div>
-              {webCrawlerConfiguration && dataSourceId && (
-                <div className="flex py-16">
-                  <Button
-                    variant="secondaryWarning"
-                    icon={TrashIcon}
-                    label={"Delete this website"}
-                    onClick={() => {
-                      setIsDeleteModalOpen(true);
-                    }}
-                  />
-                  <DeleteDataSourceDialog
-                    handleDelete={handleDelete}
-                    isOpen={isDeleteModalOpen}
-                    setIsOpen={setIsDeleteModalOpen}
-                    dataSourceUsage={0} // TODO: get usage
-                  />
-                </div>
-              )}
             </Page.Layout>
           </div>
         </div>

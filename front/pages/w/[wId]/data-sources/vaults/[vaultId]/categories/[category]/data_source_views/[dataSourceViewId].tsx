@@ -1,5 +1,6 @@
 import { Page } from "@dust-tt/sparkle";
 import type {
+  ConnectorConfiguration,
   DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
@@ -14,6 +15,8 @@ import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultData
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import config from "@app/lib/api/config";
+import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
+import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
@@ -22,6 +25,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     category: DataSourceViewCategory;
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
+    connectorConfiguration: ConnectorConfiguration | null;
     isAdmin: boolean;
     parentId?: string;
     plan: PlanType;
@@ -67,11 +71,22 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
+  const dataSource = dataSourceView.dataSource.toJSON();
+  let connectorConfiguration: ConnectorConfiguration | null = null;
+  if (isManaged(dataSource) || isWebsite(dataSource)) {
+    const augmentedDataSource =
+      await augmentDataSourceWithConnectorDetails(dataSource);
+    if (augmentedDataSource && augmentedDataSource.connector?.configuration) {
+      connectorConfiguration = augmentedDataSource.connector.configuration;
+    }
+  }
+
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
       dataSource: dataSourceView.dataSource.toJSON(),
       dataSourceView: dataSourceView.toJSON(),
+      connectorConfiguration,
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
@@ -88,6 +103,7 @@ export default function Vault({
   vault,
   category,
   dataSourceView,
+  connectorConfiguration,
   isAdmin,
   owner,
   parentId,
@@ -103,6 +119,7 @@ export default function Vault({
         isAdmin={isAdmin}
         parentId={parentId}
         dataSourceView={dataSourceView}
+        connectorConfiguration={connectorConfiguration}
         onSelect={(parentId) => {
           void router.push(
             `/w/${owner.sId}/data-sources/vaults/${dataSourceView.vaultId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
