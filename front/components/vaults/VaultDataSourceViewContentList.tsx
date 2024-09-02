@@ -4,7 +4,7 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRef, useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
@@ -36,7 +36,7 @@ type VaultDataSourceViewContentListProps = {
   parentId?: string;
 };
 
-const getTableColumns = () => {
+const getTableColumns = (): ColumnDef<RowData>[] => {
   return [
     {
       header: "Name",

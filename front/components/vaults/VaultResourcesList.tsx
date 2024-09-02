@@ -16,7 +16,7 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useRef } from "react";
@@ -62,8 +62,8 @@ const getTableColumns = ({
 }: {
   isManaged: boolean;
   isSystemVault: boolean;
-}) => {
-  const nameColumn = {
+}): ColumnDef<RowData, any>[] => {
+  const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",
     accessorKey: "label",
     id: "name",
