@@ -131,11 +131,10 @@ export async function createTableDataSourceConfiguration(
   return Promise.all(
     tableConfigurations.map(async (tc) => {
       const dataSource = dataSources.find((ds) => ds.name === tc.dataSourceId);
-      if (!dataSource) {
-        throw new Error(
-          "Can't create TableDataSourceConfiguration for query tables: DataSource not found."
-        );
-      }
+      assert(
+        dataSource,
+        "Can't create TableDataSourceConfiguration for query tables: DataSource not found."
+      );
 
       let dataSourceView;
 
@@ -152,16 +151,14 @@ export async function createTableDataSourceConfiguration(
         );
       }
 
-      if (!dataSourceView) {
-        throw new Error(
-          "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
-        );
-      }
-      if (dataSourceView.dataSource.sId !== tc.dataSourceId) {
-        throw new Error(
-          "Can't create TableDataSourceConfiguration for query tables: data source view does not belong to the data source."
-        );
-      }
+      assert(
+        dataSourceView,
+        "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
+      );
+      assert(
+        dataSourceView.dataSource.sId === tc.dataSourceId,
+        "Can't create TableDataSourceConfiguration for query tables: data source view does not belong to the data source."
+      );
 
       await AgentTablesQueryConfigurationTable.create(
         {
