@@ -1,12 +1,22 @@
-import type { ModelId, TablesQueryConfigurationType } from "@dust-tt/types";
+import type {
+  ModelId,
+  TableDataSourceConfiguration,
+  TablesQueryConfigurationType,
+} from "@dust-tt/types";
+import assert from "assert";
 import _ from "lodash";
+import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
@@ -76,4 +86,91 @@ export async function fetchTableQueryActionConfigurations({
   }
 
   return actionsByConfigurationId;
+}
+
+export async function createTableDataSourceConfiguration(
+  auth: Authenticator,
+  tableConfigurations: TableDataSourceConfiguration[],
+  tablesQueryConfig: AgentTablesQueryConfiguration,
+  t: Transaction
+) {
+  // Although we have the capability to support multiple workspaces,
+  // currently, we only support one workspace, which is the one the user is in.
+  // This allows us to use the current authenticator to fetch resources.
+  const allWorkspaceIds = [
+    ...new Set(tableConfigurations.map((tc) => tc.workspaceId)),
+  ];
+  const hasUniqueAccessibleWorkspace =
+    allWorkspaceIds.length === 1 &&
+    auth.getNonNullableWorkspace().sId === allWorkspaceIds[0];
+
+  assert(
+    hasUniqueAccessibleWorkspace,
+    "Can't create TableDataSourceConfiguration for query tables: Multiple workspaces."
+  );
+
+  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+  const dataSourceIds = tableConfigurations.map((tc) => tc.dataSourceId);
+  const dataSources = await DataSourceResource.fetchByNames(
+    // We can use `auth` because we limit to one workspace.
+    auth,
+    dataSourceIds
+  );
+
+  const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
+
+  // Since the UI does not currently provide the data source view,
+  // we try to retrieve the view associated with the data from the global vault
+  // and assign it to the table data source configuration.
+  const dataSourceViews =
+    await DataSourceViewResource.listForDataSourcesInVault(
+      // We can use `auth` because we limit to one workspace.
+      auth,
+      uniqueDataSources,
+      globalVault
+    );
+
+  return Promise.all(
+    tableConfigurations.map(async (tc) => {
+      const dataSource = dataSources.find((ds) => ds.name === tc.dataSourceId);
+      if (!dataSource) {
+        throw new Error(
+          "Can't create TableDataSourceConfiguration for query tables: DataSource not found."
+        );
+      }
+
+      let dataSourceView;
+      if (!tc.dataSourceViewId) {
+        dataSourceView = dataSourceViews.find(
+          (dsv) => dsv.dataSourceId === dataSource.id
+        );
+      } else {
+        dataSourceView = dataSourceViews.find(
+          (dsv) => dsv.sId === tc.dataSourceViewId
+        );
+      }
+
+      if (!dataSourceView) {
+        throw new Error(
+          "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
+        );
+      }
+      if (dataSourceView.dataSource.name === tc.dataSourceId) {
+        throw new Error("Data source view does not belong to the data source.");
+      }
+
+      await AgentTablesQueryConfigurationTable.create(
+        {
+          // TODO(GROUPS_INFRA) Use ModelId for dataSourceId.
+          dataSourceId: dataSource.sId,
+          dataSourceViewId: dataSourceView.id,
+          dataSourceWorkspaceId: tc.workspaceId,
+          tableId: tc.tableId,
+          tablesQueryConfigurationId: tablesQueryConfig.id,
+        },
+        { transaction: t }
+      );
+    })
+  );
 }

@@ -107,14 +107,29 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     name: string,
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
-    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
+    const dataSources = await this.fetchByNames(auth, [name], options);
+    if (dataSources.length === 0) {
+      return null;
+    }
+
+    return dataSources[0];
+  }
+
+  static async fetchByNames(
+    auth: Authenticator,
+    names: string[],
+    options?: Omit<FetchDataSourceOptions, "limit" | "order">
+  ): Promise<DataSourceResource[]> {
+    const dataSources = await this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(options),
       where: {
-        name,
+        name: {
+          [Op.in]: names,
+        },
       },
     });
 
-    return dataSource ?? null;
+    return dataSources;
   }
 
   static async fetchByModelIds(
@@ -255,6 +270,12 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
   getUsagesByAgents(auth: Authenticator) {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
+  }
+
+  // sId logic.
+
+  get sId(): string {
+    return this.name;
   }
 
   // Serialization.

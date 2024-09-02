@@ -16,6 +16,14 @@ export type TablesQueryConfigurationType = {
   description: string | null;
 };
 
+export type TableDataSourceConfiguration = {
+  dataSourceId: string;
+  // TODO(GROUSP_INFRA) Make `dataSourceViewId` required.
+  dataSourceViewId?: string;
+  tableId: string;
+  workspaceId: string;
+};
+
 export interface TablesQueryActionType extends BaseAction {
   id: ModelId;
   params: DustAppParameters;

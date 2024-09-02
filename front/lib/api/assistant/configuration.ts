@@ -17,6 +17,7 @@ import type {
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
+  TableDataSourceConfiguration,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -41,7 +42,10 @@ import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configur
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
-import { fetchTableQueryActionConfigurations } from "@app/lib/api/assistant/configuration/table_query";
+import {
+  createTableDataSourceConfiguration,
+  fetchTableQueryActionConfigurations,
+} from "@app/lib/api/assistant/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
 import {
   getGlobalAgents,
@@ -933,11 +937,7 @@ export async function createAgentActionConfiguration(
       }
     | {
         type: "tables_query_configuration";
-        tables: Array<{
-          workspaceId: string;
-          dataSourceId: string;
-          tableId: string;
-        }>;
+        tables: TableDataSourceConfiguration[];
       }
     | {
         type: "process_configuration";
@@ -1035,18 +1035,12 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await Promise.all(
-          action.tables.map((table) =>
-            AgentTablesQueryConfigurationTable.create(
-              {
-                tablesQueryConfigurationId: tablesQueryConfig.id,
-                dataSourceId: table.dataSourceId,
-                dataSourceWorkspaceId: table.workspaceId,
-                tableId: table.tableId,
-              },
-              { transaction: t }
-            )
-          )
+
+        await createTableDataSourceConfiguration(
+          auth,
+          action.tables,
+          tablesQueryConfig,
+          t
         );
 
         return new Ok({
