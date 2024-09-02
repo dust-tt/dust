@@ -350,6 +350,73 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/agent_configurations/search": {
+      "get": {
+        "summary": "Search agent configurations by name",
+        "description": "Search for agent configurations by name in the workspace identified by {wId}.",
+        "tags": ["Assistant"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "description": "Search query for agent configuration names",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved agent configurations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agentConfigurations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AgentConfiguration"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Invalid or missing parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/content_fragments": {
       "post": {
         "summary": "Create a content fragment",
