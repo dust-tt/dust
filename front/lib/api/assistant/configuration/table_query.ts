@@ -109,14 +109,15 @@ export async function createTableDataSourceConfiguration(
     "Can't create TableDataSourceConfiguration for query tables: Multiple workspaces."
   );
 
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-
   const dataSourceIds = tableConfigurations.map((tc) => tc.dataSourceId);
-  const dataSources = await DataSourceResource.fetchByNames(
-    // We can use `auth` because we limit to one workspace.
-    auth,
-    dataSourceIds
-  );
+  const [globalVault, dataSources] = await Promise.all([
+    VaultResource.fetchWorkspaceGlobalVault(auth),
+    DataSourceResource.fetchByNames(
+      // We can use `auth` because we limit to one workspace.
+      auth,
+      dataSourceIds
+    ),
+  ]);
 
   const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
 
