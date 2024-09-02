@@ -135,6 +135,8 @@ export async function searchAgentConfigurationsByName(
   const agentConfigurations = await AgentConfiguration.findAll({
     where: {
       workspaceId: owner.id,
+      status: "active",
+      scope: { [Op.in]: ["workspace", "published"] },
       name: {
         [Op.iLike]: `%${name}%`,
       },
