@@ -16,7 +16,7 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useRef } from "react";
@@ -63,10 +63,11 @@ const getTableColumns = ({
   isManaged: boolean;
   isSystemVault: boolean;
 }) => {
-  const nameColumn = {
+  const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",
     accessorKey: "label",
     id: "name",
+    sortingFn: "text", // built-in sorting function case-insensitive
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent icon={info.row.original.icon}>
         <span className="font-bold"> {info.getValue()}</span>
@@ -289,6 +290,7 @@ export const VaultResourcesList = ({
           columns={getTableColumns({ isManaged, isSystemVault })}
           filter={dataSourceSearch}
           filterColumn="name"
+          initialColumnOrder={[{ desc: false, id: "name" }]}
         />
       ) : !isAdmin ? (
         <div className="flex items-center justify-center text-sm font-normal text-element-700">
