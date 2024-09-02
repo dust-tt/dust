@@ -120,9 +120,6 @@ export async function createTableDataSourceConfiguration(
 
   const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
 
-  // Since the UI does not currently provide the data source view,
-  // we try to retrieve the view associated with the data from the global vault
-  // and assign it to the table data source configuration.
   const dataSourceViews =
     await DataSourceViewResource.listForDataSourcesInVault(
       // We can use `auth` because we limit to one workspace.
@@ -141,6 +138,10 @@ export async function createTableDataSourceConfiguration(
       }
 
       let dataSourceView;
+
+      // Since the UI does not currently provide the data source view,
+      // we try to retrieve the view associated with the data from the global vault
+      // and assign it to the table data source configuration.
       if (!tc.dataSourceViewId) {
         dataSourceView = dataSourceViews.find(
           (dsv) => dsv.dataSourceId === dataSource.id
