@@ -124,6 +124,7 @@ DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { allowNull: true },
   onDelete: "CASCADE",
 });
+// TODO(GROUPS_INFRA): This should be a required relationship.
 AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
   foreignKey: { allowNull: true },
