@@ -64,6 +64,7 @@ import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/works
 
 export const SWR_KEYS = {
   vaults: (workspaceId: string) => `/api/w/${workspaceId}/vaults`,
+  conversations: (workspaceId: string) => `/api/w/${workspaceId}/conversations`,
 };
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
@@ -469,11 +470,13 @@ type DataSourceViewsAndNodes = {
 };
 
 export function useMultipleDataSourceViewsContentNodes({
-  owner,
   dataSourceViewsAndInternalIds,
+  owner,
+  viewType,
 }: {
-  owner: LightWorkspaceType;
   dataSourceViewsAndInternalIds: DataSourceViewsAndInternalIds[];
+  owner: LightWorkspaceType;
+  viewType: ContentNodesViewType;
 }): {
   dataSourceViewsAndNodes: DataSourceViewsAndNodes[];
   isNodesLoading: boolean;
@@ -482,7 +485,7 @@ export function useMultipleDataSourceViewsContentNodes({
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
       const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
-      const body = JSON.stringify({ internalIds });
+      const body = JSON.stringify({ internalIds, viewType });
       const options = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
