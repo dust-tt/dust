@@ -713,13 +713,13 @@ export class CoreAPI {
   }
 
   async getDataSourceDocument({
-    dataSourceName,
+    dataSourceId,
     documentId,
     projectId,
     versionHash,
     viewFilter,
   }: {
-    dataSourceName: string;
+    dataSourceId: string;
     documentId: string;
     projectId: string;
     versionHash?: string | null;
@@ -746,7 +746,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents/${encodeURIComponent(documentId)}${qs ? `?${qs}` : ""}`,
       {
         method: "GET",

@@ -413,7 +413,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const getRes = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: args.documentId,
       });
       if (getRes.isErr()) {
