@@ -372,7 +372,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   const incomingDocument = await coreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     documentId,
   });
   if (incomingDocument.isErr()) {

@@ -316,10 +316,9 @@ export class Authenticator {
     }
 
     let role = "none" as RoleType;
-    if (workspace) {
-      if (keyWorkspace.id === workspace.id) {
-        role = "builder";
-      }
+    const isKeyWorkspace = keyWorkspace.id === workspace?.id;
+    if (isKeyWorkspace) {
+      role = "builder";
     }
 
     const getSubscriptionForWorkspace = (workspace: Workspace) =>
@@ -373,7 +372,8 @@ export class Authenticator {
     return {
       workspaceAuth: new Authenticator({
         flags: workspaceFlags,
-        groups: [],
+        // If the key is associated with the workspace, we associate the groups.
+        groups: isKeyWorkspace ? allGroups : [],
         key: key.toAuthJSON(),
         role,
         subscription: workspaceSubscription,

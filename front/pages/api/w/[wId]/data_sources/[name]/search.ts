@@ -119,7 +119,7 @@ export async function handleSearchDataSource({
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const data = await coreAPI.searchDataSource(
     dataSource.dustAPIProjectId,
-    dataSource.name,
+    dataSource.dustAPIDataSourceId,
     {
       query: searchQuery.query,
       topK: searchQuery.top_k,

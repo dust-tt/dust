@@ -440,7 +440,7 @@ const handleDataSourceWithProvider = async ({
     await dataSource.delete(auth);
     const deleteRes = await coreAPI.deleteDataSource({
       projectId: dustProject.value.project.project_id.toString(),
-      dataSourceName: dustDataSource.value.data_source.data_source_id,
+      dataSourceId: dustDataSource.value.data_source.data_source_id,
     });
     if (deleteRes.isErr()) {
       logger.error(

@@ -39,7 +39,7 @@ export default function AssistantBuilderDataSourceModal({
   });
 
   const setSelectionConfigurationsCallback = useCallback(
-    () => (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
+    (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
       setHasChanged(true);
       setSelectionConfigurations(func);
     },

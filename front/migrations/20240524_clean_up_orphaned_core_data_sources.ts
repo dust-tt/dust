@@ -15,7 +15,7 @@ makeScript({}, async ({ execute }) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const coreDeleteRes = await coreAPI.deleteDataSource({
         projectId: project,
-        dataSourceName: data_source_id,
+        dataSourceId: data_source_id,
       });
       if (coreDeleteRes.isErr()) {
         console.log("ERROR:" + coreDeleteRes.error);

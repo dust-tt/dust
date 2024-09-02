@@ -62,7 +62,7 @@ export async function getDiffBetweenDocumentVersions({
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const res = await coreAPI.getDataSourceDocument({
       projectId: dataSource.dustAPIProjectId,
-      dataSourceName: dataSource.name,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       documentId: documentId,
       versionHash: hash,
     });
