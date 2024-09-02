@@ -301,7 +301,7 @@
       "get": {
         "summary": "List assistants",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
-        "tags": ["Workspace"],
+        "tags": ["Assistants"],
         "parameters": [
           {
             "in": "path",
@@ -352,9 +352,9 @@
     },
     "/api/v1/w/{wId}/assistant/agent_configurations/search": {
       "get": {
-        "summary": "Search agent configurations by name",
+        "summary": "Search assistants by name",
         "description": "Search for agent configurations by name in the workspace identified by {wId}.",
-        "tags": ["Assistant"],
+        "tags": ["Assistants"],
         "parameters": [
           {
             "in": "path",

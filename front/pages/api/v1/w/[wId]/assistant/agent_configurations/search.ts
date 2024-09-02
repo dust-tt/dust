@@ -10,10 +10,10 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations/search:
  *   get:
- *     summary: Search agent configurations by name
+ *     summary: Search assistants by name
  *     description: Search for agent configurations by name in the workspace identified by {wId}.
  *     tags:
- *       - Assistant
+ *       - Assistants
  *     parameters:
  *       - in: path
  *         name: wId
@@ -96,7 +96,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Search query not found",
+            message: "Search query parameter q is missing",
           },
         });
       }
