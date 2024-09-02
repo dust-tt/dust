@@ -104,11 +104,12 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok({
       name,
       description:
-        description || "Perform a web search and return the top results.",
+        description || "Perform a google search and return the top results.",
       inputs: [
         {
           name: "query",
-          description: "The query used to perform the web search.",
+          description:
+            "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain.",
           type: "string",
         },
       ],
