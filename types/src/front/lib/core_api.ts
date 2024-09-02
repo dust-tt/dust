@@ -618,15 +618,15 @@ export class CoreAPI {
 
   async deleteDataSource({
     projectId,
-    dataSourceName,
+    dataSourceId,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}`,
+      )}/data_sources/${encodeURIComponent(dataSourceId)}`,
       {
         method: "DELETE",
       }

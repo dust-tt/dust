@@ -320,7 +320,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const coreDeleteRes = await coreAPI.deleteDataSource({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.name,
       });
       if (coreDeleteRes.isErr()) {
         throw new Error(coreDeleteRes.error.message);
