@@ -9,7 +9,7 @@ import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
 import type { Logger } from "pino";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 import {
   getNotionDatabaseFromConnectorsDb,
@@ -69,6 +69,7 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
@@ -816,7 +817,8 @@ export async function garbageCollect({
   do {
     // Find the resources not seen in the GC run (using runTimestamp).
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
-      connector.id
+      connector.id,
+      loopIteration
     );
 
     const NOTION_UNHEALTHY_ERROR_CODES = [
@@ -1064,8 +1066,46 @@ export async function deletePageOrDatabaseIfArchived({
   }
 }
 
-async function findResourcesNotSeenInGarbageCollectionRun(
+async function findDuplicates(
   connectorId: ModelId
+): ReturnType<typeof findResourcesNotSeenInGarbageCollectionRun> {
+  // Sometimes, a page is turned into a database, or vice versa. In this case, we might have duplicate entries.
+  // Unfortunately there "lastEditedTs" is not altered, nor is it "archived" in Notion, so it will be ignored by
+  // getPagesAndDatabasesToSync and not garbage collected either (as it is marked as seen).
+
+  // Find all pages where their notionPageId matches a notionDatabaseId in the databases table using a join.
+  // Using raw SQL because Sequelize does not support joins between arbitrary tables.
+
+  type NotionPageWithLastSeenTs = {
+    notionPageId: string;
+    lastSeenTs: number;
+  };
+  const q = `SELECT "notionPageId", notion_pages."lastSeenTs" FROM notion_pages JOIN notion_databases ON (notion_pages."notionPageId" = notion_databases."notionDatabaseId") WHERE notion_pages."connectorId" = '${connectorId}'`;
+  const notionPages = await sequelizeConnection.query<NotionPageWithLastSeenTs>(
+    q,
+    { type: QueryTypes.SELECT }
+  );
+
+  const pages = notionPages.map((p) => ({
+    lastSeenTs: new Date(p.lastSeenTs),
+    resourceType: "page" as const,
+    resourceId: p.notionPageId,
+    skipReason: null,
+  }));
+
+  const databases = notionPages.map((p) => ({
+    lastSeenTs: new Date(p.lastSeenTs),
+    resourceType: "database" as const,
+    resourceId: p.notionPageId,
+    skipReason: null,
+  }));
+
+  return [...pages, ...databases];
+}
+
+async function findResourcesNotSeenInGarbageCollectionRun(
+  connectorId: ModelId,
+  loopIteration: number
 ): Promise<
   Array<{
     lastSeenTs: Date;
@@ -1145,6 +1185,8 @@ async function findResourcesNotSeenInGarbageCollectionRun(
   const allResourcesNotSeenInGarbageCollectionRun = [
     ...pagesNotSeenInGarbageCollectionRun,
     ...databasesNotSeenInGarbageCollectionRun,
+    // Append duplicates here to keep the rest of the code flow the same. But we do it only in the first iteration to avoid requesting the db multiple times.
+    ...(loopIteration === 0 ? await findDuplicates(connectorId) : []),
   ];
 
   allResourcesNotSeenInGarbageCollectionRun.sort(
