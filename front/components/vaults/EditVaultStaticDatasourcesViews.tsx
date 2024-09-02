@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
 import VaultCreateWebsiteModal from "@app/components/vaults/VaultCreateWebsiteModal";
-import VaultUpsertFolderModal from "@app/components/vaults/VaultUpsertFolderModal";
+import VaultFolderModal from "@app/components/vaults/VaultUpsertFolderModal";
 
 export function EditVaultStaticDataSourcesViews({
   owner,
@@ -59,7 +59,7 @@ export function EditVaultStaticDataSourcesViews({
         }}
         className="absolute bottom-8 right-0"
       />
-      <VaultUpsertFolderModal
+      <VaultFolderModal
         isOpen={showAddFolderModal}
         setOpen={(isOpen) => {
           setShowAddFolderModal(isOpen);

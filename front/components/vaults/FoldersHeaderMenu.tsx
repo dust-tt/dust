@@ -12,7 +12,7 @@ import type { RefObject } from "react";
 import { useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
-import VaultUpsertFolderModal from "@app/components/vaults/VaultUpsertFolderModal";
+import VaultFolderModal from "@app/components/vaults/VaultUpsertFolderModal";
 import { useDataSources } from "@app/lib/swr";
 
 type FoldersHeaderMenuProps = {
@@ -34,7 +34,7 @@ export const FoldersHeaderMenu = ({
 
   return (
     <>
-      <VaultUpsertFolderModal
+      <VaultFolderModal
         isOpen={showEditFolderModal}
         setOpen={(isOpen) => {
           setShowEditFolderModal(isOpen);

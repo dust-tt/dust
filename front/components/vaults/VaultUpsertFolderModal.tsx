@@ -18,7 +18,7 @@ import { useContext, useState } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
-export default function VaultUpsertFolderModal({
+export default function VaultFolderModal({
   isOpen,
   setOpen,
   owner,
