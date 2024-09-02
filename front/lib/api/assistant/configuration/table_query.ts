@@ -156,7 +156,7 @@ export async function createTableDataSourceConfiguration(
           "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
         );
       }
-      if (dataSourceView.dataSource.name === tc.dataSourceId) {
+      if (dataSourceView.dataSource.sId !== tc.dataSourceId) {
         throw new Error("Data source view does not belong to the data source.");
       }
 
