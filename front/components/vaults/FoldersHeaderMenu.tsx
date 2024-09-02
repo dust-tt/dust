@@ -12,7 +12,7 @@ import type { RefObject } from "react";
 import { useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
-import VaultFolderModal from "@app/components/vaults/VaultUpsertFolderModal";
+import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
 import { useDataSources } from "@app/lib/swr";
 
 type FoldersHeaderMenuProps = {
