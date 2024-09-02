@@ -12,8 +12,7 @@ import type {
   PlanType,
   Result,
 } from "@dust-tt/types";
-import { parseAndStringifyCsv } from "@dust-tt/types";
-import { Err, isSlugified, Ok } from "@dust-tt/types";
+import { Err, isSlugified, Ok, parseAndStringifyCsv } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
@@ -21,7 +20,6 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useTable } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
 
 interface TableUploadOrEditModalProps {
   dataSourceView: DataSourceViewType;
@@ -165,40 +163,22 @@ export function TableUploadOrEditModal({
         setIsBigFile(false);
       }
 
-      let body: UpsertTableFromCsvRequestBody;
-      if (fileContent) {
-        body = {
-          name: tableName,
-          description: tableDescription,
-          csv: fileContent,
-          tableId: initialTableId ?? undefined,
-          timestamp: null,
-          tags: [],
-          parents: [],
-          truncate: true,
-          async: false,
-        };
-      } else if (initialTableId) {
-        body = {
-          name: tableName,
-          description: tableDescription,
-          tableId: initialTableId,
-          timestamp: null,
-          tags: [],
-          parents: [],
-          csv: undefined,
-          truncate: false,
-          async: false,
-        };
-      } else {
-        throw new Error("Unreachable: fileContent is null");
-      }
+      const body = {
+        name: tableName,
+        csv: fileContent || undefined,
+        description: tableDescription,
+        timestamp: null,
+        tags: [],
+        parents: [],
+        truncate: !!fileContent,
+        async: false,
+      };
 
-      //TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/tables`;
       const uploadRes = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`,
+        initialTableId ? `${base}/${initialTableId}` : base,
         {
-          method: "POST",
+          method: initialTableId ? "PATCH" : "POST",
           body: JSON.stringify(body),
           headers: {
             "Content-Type": "application/json",
@@ -215,11 +195,20 @@ export function TableUploadOrEditModal({
         return;
       }
 
-      sendNotification({
-        type: "success",
-        title: "Table successfully added",
-        description: `Table ${tableName} was successfully added.`,
-      });
+      if (initialTableId) {
+        sendNotification({
+          type: "success",
+          title: "Table successfully updated",
+          description: `Your table ${tableName} was successfully updated`,
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Table successfully added",
+          description: `Your table ${tableName} was successfully added`,
+        });
+      }
+
       onClose(true);
     } finally {
       setUploading(false);

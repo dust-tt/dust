@@ -16,6 +16,7 @@ import type {
   PlanType,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
+import { init } from "dd-trace";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
@@ -54,20 +55,20 @@ export function DocumentUploadOrEditModal({
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
   const sendNotification = useContext(SendNotificationsContext);
-  const documentIdToLoad = contentNode?.internalId;
+  const initialDocumentId = contentNode?.internalId;
 
   useEffect(() => {
     setDisabled(!documentId || !text);
   }, [documentId, text]);
 
   useEffect(() => {
-    if (documentIdToLoad) {
-      setDocumentId(documentIdToLoad);
+    if (initialDocumentId) {
+      setDocumentId(initialDocumentId);
       setDisabled(true);
       fetch(
-        `/api/w/${owner.sId}/data_sources/${
-          dataSourceView.dataSource.name
-        }/documents/${encodeURIComponent(documentIdToLoad)}`
+        `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${
+          dataSourceView.sId
+        }/documents/${encodeURIComponent(initialDocumentId)}`
       )
         .then(async (res) => {
           if (res.ok) {
@@ -85,13 +86,13 @@ export function DocumentUploadOrEditModal({
       setTags([]);
       setSourceUrl("");
     }
-  }, [dataSourceView.dataSource.name, documentIdToLoad, owner.sId]);
+  }, [dataSourceView.dataSource.name, initialDocumentId, owner.sId]);
 
   //TODO(GROUPS_UI) Get the total number of documents
   const total = 0;
 
   if (
-    !documentIdToLoad && // If there is no document ID, it means we are creating a new document
+    !initialDocumentId && // If there is no document ID, it means we are creating a new document
     plan.limits.dataSources.documents.count != -1 &&
     total >= plan.limits.dataSources.documents.count
   ) {
@@ -108,7 +109,8 @@ export function DocumentUploadOrEditModal({
   const handleUpsert = async () => {
     setLoading(true);
 
-    const body: PostDataSourceDocumentRequestBody = {
+    const body = {
+      name: documentId,
       timestamp: null,
       parents: null,
       section: {
@@ -125,13 +127,13 @@ export function DocumentUploadOrEditModal({
     };
 
     try {
-      // TODO replace endpoint https://github.com/dust-tt/dust/issues/6921
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${
+        dataSourceView.dataSource.name
+      }/documents`;
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${
-          dataSourceView.dataSource.name
-        }/documents/${encodeURIComponent(documentId)}`,
+        initialDocumentId ? `${base}/${encodeURIComponent(documentId)}` : base,
         {
-          method: "POST",
+          method: initialDocumentId ? "PATCH" : "POST",
           headers: {
             "Content-Type": "application/json",
           },
@@ -142,11 +144,19 @@ export function DocumentUploadOrEditModal({
       if (!res.ok) {
         throw new Error("Failed to upsert document");
       }
-      sendNotification({
-        type: "success",
-        title: "Document successfully added",
-        description: `Your document ${documentId} was successfully added`,
-      });
+      if (initialDocumentId) {
+        sendNotification({
+          type: "success",
+          title: "Document successfully updated",
+          description: `Your document ${documentId} was successfully updated`,
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Document successfully added",
+          description: `Your document ${documentId} was successfully added`,
+        });
+      }
       onClose(true);
     } catch (error) {
       sendNotification({
@@ -203,7 +213,7 @@ export function DocumentUploadOrEditModal({
               <Input
                 placeholder="Document title"
                 name="document"
-                disabled={readOnly}
+                disabled={readOnly || !!initialDocumentId}
                 value={documentId}
                 onChange={(v) => setDocumentId(v)}
               />

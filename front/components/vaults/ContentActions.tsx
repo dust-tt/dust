@@ -64,14 +64,17 @@ export const ContentActions = React.forwardRef<
   // tables and documents which currently leads to 5xx.
   return (
     <>
-      <DocumentUploadOrEditModal
-        contentNode={currentAction.contentNode}
-        dataSourceView={dataSourceView}
-        isOpen={currentAction.action === "DocumentUploadOrEditModal"}
-        onClose={onClose}
-        owner={owner}
-        plan={plan}
-      />
+      {(!currentAction.contentNode ||
+        currentAction.contentNode?.type === "file") && (
+        <DocumentUploadOrEditModal
+          contentNode={currentAction.contentNode}
+          dataSourceView={dataSourceView}
+          isOpen={currentAction.action === "DocumentUploadOrEditModal"}
+          onClose={onClose}
+          owner={owner}
+          plan={plan}
+        />
+      )}
       <MultipleDocumentsUpload
         dataSourceView={dataSourceView}
         isOpen={currentAction.action === "MultipleDocumentsUpload"}
@@ -88,7 +91,8 @@ export const ContentActions = React.forwardRef<
           owner={owner}
         />
       )}
-      {currentAction.contentNode?.type === "database" && (
+      {(!currentAction.contentNode ||
+        currentAction.contentNode?.type === "database") && (
         <TableUploadOrEditModal
           contentNode={currentAction.contentNode}
           dataSourceView={dataSourceView}
