@@ -36,14 +36,14 @@ interface DocumentOrTableUploadOrEditModalProps {
   plan: PlanType;
 }
 
-type TableOrDocument = {
+interface TableOrDocument {
   name: string;
   description: string;
   file: File | null;
   text: string;
   tags: string[];
   sourceUrl: string;
-};
+}
 
 export function DocumentOrTableUploadOrEditModal({
   dataSourceView,
@@ -79,7 +79,7 @@ export function DocumentOrTableUploadOrEditModal({
     tableId: isTable ? initialId ?? null : null,
   });
 
-  function resetTableOrDoc() {
+  const resetTableOrDoc = () => {
     setTableOrDoc({
       name: "",
       description: "",
@@ -88,19 +88,26 @@ export function DocumentOrTableUploadOrEditModal({
       tags: [],
       sourceUrl: "",
     });
-  }
-
+  };
+  // TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
   useEffect(() => {
     if (initialId) {
       setIsLoading(true);
-      if (!isTable) {
+      if (table) {
+        setTableOrDoc((prev) => ({
+          ...prev,
+          name: table.name,
+          description: table.description,
+        }));
+      } else {
         setUploading(true);
-        fetch(
-          `/api/w/${owner.sId}/data_sources/${
-            dataSourceView.dataSource.name
-          }/documents/${encodeURIComponent(initialId)}`
-        )
-          .then(async (res) => {
+        void (async () => {
+          try {
+            const res = await fetch(
+              `/api/w/${owner.sId}/data_sources/${
+                dataSourceView.dataSource.name
+              }/documents/${encodeURIComponent(initialId)}`
+            );
             if (res.ok) {
               const document = await res.json();
               setTableOrDoc((prev) => ({
@@ -111,15 +118,12 @@ export function DocumentOrTableUploadOrEditModal({
                 sourceUrl: document.document.source_url,
               }));
             }
-          })
-          .catch((e) => console.error(e))
-          .finally(() => setUploading(false));
-      } else if (table) {
-        setTableOrDoc((prev) => ({
-          ...prev,
-          name: table.name,
-          description: table.description,
-        }));
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setUploading(false);
+          }
+        })();
       }
       setIsLoading(false);
     } else {
@@ -144,53 +148,36 @@ export function DocumentOrTableUploadOrEditModal({
     );
   }
 
-  const handleUpload = async () => {
+  const handleTableUpload = async () => {
     setUploading(true);
     try {
-      let endpoint, body;
-
-      if (isTable) {
-        const fileContent = tableOrDoc.file
-          ? await handleFileUploadToText(tableOrDoc.file)
-          : null;
-        if (fileContent && fileContent.isErr()) {
-          return new Err(fileContent.error);
-        }
-
-        const csvContent = fileContent?.value
-          ? await parseAndStringifyCsv(fileContent.value.content)
-          : null;
-
-        if (csvContent && csvContent.length > 50_000_000) {
-          throw new Error("File too large");
-        }
-
-        endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`;
-        body = JSON.stringify({
-          name: tableOrDoc.name,
-          description: tableOrDoc.description,
-          csv: undefined,
-          tableId: initialId,
-          timestamp: null,
-          tags: [],
-          parents: [],
-          truncate: false,
-          async: false,
-        });
-      } else {
-        endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(tableOrDoc.name)}`;
-        body = JSON.stringify({
-          timestamp: null,
-          parents: null,
-          section: { prefix: null, content: tableOrDoc.text, sections: [] },
-          text: null,
-          source_url: tableOrDoc.sourceUrl || undefined,
-          tags: tableOrDoc.tags.filter(Boolean),
-          light_document_output: true,
-          upsert_context: null,
-          async: false,
-        } as PostDataSourceDocumentRequestBody);
+      const fileContent = tableOrDoc.file
+        ? await handleFileUploadToText(tableOrDoc.file)
+        : null;
+      if (fileContent && fileContent.isErr()) {
+        return new Err(fileContent.error);
       }
+
+      const csvContent = fileContent?.value
+        ? await parseAndStringifyCsv(fileContent.value.content)
+        : null;
+
+      if (csvContent && csvContent.length > 50_000_000) {
+        throw new Error("File too large");
+      }
+
+      const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`;
+      const body = JSON.stringify({
+        name: tableOrDoc.name,
+        description: tableOrDoc.description,
+        csv: undefined,
+        tableId: initialId,
+        timestamp: null,
+        tags: [],
+        parents: [],
+        truncate: false,
+        async: false,
+      });
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -199,24 +186,79 @@ export function DocumentOrTableUploadOrEditModal({
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to upsert ${isTable ? "table" : "document"}`);
+        throw new Error("Failed to upsert table");
       }
 
       sendNotification({
         type: "success",
-        title: `${isTable ? "Table" : "Document"} successfully ${initialId ? "updated" : "added"}`,
-        description: `${isTable ? "Table" : "Document"} ${tableOrDoc.name} was successfully ${initialId ? "updated" : "added"}.`,
+        title: `Table successfully ${initialId ? "updated" : "added"}`,
+        description: `Table ${tableOrDoc.name} was successfully ${initialId ? "updated" : "added"}.`,
       });
-      resetTableOrDoc();
-      onClose(true);
     } catch (error) {
       sendNotification({
         type: "error",
-        title: `Error upserting ${isTable ? "table" : "document"}`,
+        title: "Error upserting table",
         description: `An error occurred: ${error instanceof Error ? error.message : String(error)}.`,
       });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDocumentUpload = async () => {
+    setUploading(true);
+    try {
+      const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(tableOrDoc.name)}`;
+      const body = JSON.stringify({
+        timestamp: null,
+        parents: null,
+        section: { prefix: null, content: tableOrDoc.text, sections: [] },
+        text: null,
+        source_url: tableOrDoc.sourceUrl || undefined,
+        tags: tableOrDoc.tags.filter(Boolean),
+        light_document_output: true,
+        upsert_context: null,
+        async: false,
+      } as PostDataSourceDocumentRequestBody);
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upsert document");
+      }
+
+      sendNotification({
+        type: "success",
+        title: `Document successfully ${initialId ? "updated" : "added"}`,
+        description: `Document ${tableOrDoc.name} was successfully ${initialId ? "updated" : "added"}.`,
+      });
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Error upserting document",
+        description: `An error occurred: ${error instanceof Error ? error.message : String(error)}.`,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    try {
+      if (isTable) {
+        await handleTableUpload();
+      } else {
+        await handleDocumentUpload();
+      }
+      resetTableOrDoc();
+      onClose(true);
+    } catch (error) {
+      // Error notifications are already handled in the individual functions
+      console.error(error);
     }
   };
 

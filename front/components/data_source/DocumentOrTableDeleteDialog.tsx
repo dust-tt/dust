@@ -4,6 +4,7 @@ import type {
   LightContentNode,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import * as _ from "lodash";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -31,6 +32,7 @@ export const DocumentOrTableDeleteDialog = ({
 
   const handleDelete = async () => {
     try {
+      //TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
       setIsLoading(true);
       const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
 
@@ -41,7 +43,7 @@ export const DocumentOrTableDeleteDialog = ({
 
       sendNotification({
         type: "success",
-        title: `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} successfully deleted`,
+        title: `${_.capitalize(itemType)} successfully deleted`,
         description: `The ${itemType} ${contentNode.title} was deleted`,
       });
       onClose(true);
