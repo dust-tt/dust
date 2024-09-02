@@ -29,7 +29,7 @@ async function main() {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const dds = await coreAPI.deleteDataSource({
           projectId: ds.dustAPIProjectId,
-          dataSourceId: ds.name,
+          dataSourceId: ds.dustAPIDataSourceId,
         });
 
         if (dds.isErr()) {
