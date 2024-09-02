@@ -13,7 +13,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
  *     summary: List assistants
  *     description: Get the agent configurations for the workspace identified by {wId}.
  *     tags:
- *       - Workspace
+ *       - Assistants
  *     parameters:
  *       - in: path
  *         name: wId
