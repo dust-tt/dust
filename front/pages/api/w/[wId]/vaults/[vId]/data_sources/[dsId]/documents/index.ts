@@ -141,8 +141,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET, POST or DELETE is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
   }

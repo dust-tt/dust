@@ -196,7 +196,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET, POST or DELETE is expected.",
+            "The method passed is not supported, PATCH or DELETE is expected.",
         },
       });
   }
