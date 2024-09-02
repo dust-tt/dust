@@ -13,7 +13,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
  *     summary: Search agent configurations by name
  *     description: Search for agent configurations by name in the workspace identified by {wId}.
  *     tags:
- *       - Assistant
+ *       - Workspace
  *     parameters:
  *       - in: path
  *         name: wId
