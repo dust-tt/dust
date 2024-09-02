@@ -19,13 +19,13 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-export type PostDocumentResponseBody = {
+export type PatchDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostDocumentResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PatchDocumentResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { documentId, name, vId } = req.query;

@@ -1,3 +1,4 @@
+import type { CoreAPITable, WithAPIErrorResponse } from "@dust-tt/types";
 import { PostDataSourceTableRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -9,9 +10,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
+export type PostTableResponseBody = {
+  table?: CoreAPITable;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<WithAPIErrorResponse<PostTableResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { name, vId } = req.query;
@@ -97,7 +102,7 @@ async function handler(
       }
 
       res.status(201).json({
-        document: upsertRes.value?.table,
+        table: upsertRes.value?.table,
       });
       return;
     default:

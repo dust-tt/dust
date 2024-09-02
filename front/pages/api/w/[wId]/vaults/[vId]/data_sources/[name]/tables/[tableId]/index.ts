@@ -1,3 +1,4 @@
+import type { CoreAPITable, WithAPIErrorResponse } from "@dust-tt/types";
 import {
   assertNever,
   PatchDataSourceTableRequestBodySchema,
@@ -13,9 +14,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
+export type PatchTableResponseBody = {
+  table?: CoreAPITable;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<WithAPIErrorResponse<PatchTableResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { tableId, name, vId } = req.query;
@@ -106,7 +111,7 @@ async function handler(
       }
 
       res.status(200).json({
-        document: upsertRes.value?.table,
+        table: upsertRes.value?.table,
       });
       return;
 
