@@ -637,7 +637,7 @@ export class CoreAPI {
 
   async searchDataSource(
     projectId: string,
-    dataSourceName: string,
+    dataSourceId: string,
     payload: {
       query: string;
       topK: number;
@@ -650,7 +650,7 @@ export class CoreAPI {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}/search`,
+      )}/data_sources/${encodeURIComponent(dataSourceId)}/search`,
       {
         method: "POST",
         headers: {
