@@ -104,13 +104,12 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok({
       name,
       description:
-        description ||
-        "Perform a google search and return the top results. Optionally, can restrict the search a specific site.",
+        description || "Perform a google search and return the top results.",
       inputs: [
         {
           name: "query",
           description:
-            "The query used to perform the google search. If it is needed to restrict the search to a specific site, the query should end with `site:SITE_NAME`.",
+            "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain.",
           type: "string",
         },
       ],
