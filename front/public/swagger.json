@@ -354,7 +354,7 @@
       "get": {
         "summary": "Search agent configurations by name",
         "description": "Search for agent configurations by name in the workspace identified by {wId}.",
-        "tags": ["Assistant"],
+        "tags": ["Workspace"],
         "parameters": [
           {
             "in": "path",

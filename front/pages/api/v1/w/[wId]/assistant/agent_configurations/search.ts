@@ -96,7 +96,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Search query not found",
+            message: "Search query parameter q is missing",
           },
         });
       }
