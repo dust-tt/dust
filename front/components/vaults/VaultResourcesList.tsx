@@ -67,6 +67,7 @@ const getTableColumns = ({
     header: "Name",
     accessorKey: "label",
     id: "name",
+    sortingFn: "text", // built-in sorting function case-insensitive
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent icon={info.row.original.icon}>
         <span className="font-bold"> {info.getValue()}</span>
@@ -289,6 +290,7 @@ export const VaultResourcesList = ({
           columns={getTableColumns({ isManaged, isSystemVault })}
           filter={dataSourceSearch}
           filterColumn="name"
+          initialColumnOrder={[{ desc: false, id: "name" }]}
         />
       ) : !isAdmin ? (
         <div className="flex items-center justify-center text-sm font-normal text-element-700">

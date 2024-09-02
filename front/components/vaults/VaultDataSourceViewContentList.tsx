@@ -42,6 +42,7 @@ const getTableColumns = () => {
       header: "Name",
       accessorKey: "title",
       id: "title",
+      sortingFn: "text", // built-in sorting function case-insensitive
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.title}</span>
@@ -127,6 +128,7 @@ export const VaultDataSourceViewContentList = ({
           columns={getTableColumns()}
           filter={dataSourceSearch}
           filterColumn="title"
+          initialColumnOrder={[{ desc: false, id: "title" }]}
         />
       )}
       <ContentActions
