@@ -19,6 +19,14 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "8mb",
+    },
+  },
+};
+
 export type PatchDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;
 };
