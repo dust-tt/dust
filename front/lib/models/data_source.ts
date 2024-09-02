@@ -29,7 +29,7 @@ export class DataSource extends Model<
   declare description: string | null;
   declare assistantDefaultSelected: boolean;
   declare dustAPIProjectId: string;
-  declare dustAPIDataSourceId: string | null;
+  declare dustAPIDataSourceId: string;
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -81,7 +81,7 @@ DataSource.init(
     },
     dustAPIDataSourceId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     connectorId: {
       type: DataTypes.STRING,
