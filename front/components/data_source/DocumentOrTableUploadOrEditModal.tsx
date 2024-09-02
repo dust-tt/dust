@@ -79,6 +79,17 @@ export function DocumentOrTableUploadOrEditModal({
     tableId: isTable ? initialId ?? null : null,
   });
 
+  function resetTableOrDoc() {
+    setTableOrDoc({
+      name: "",
+      description: "",
+      file: null,
+      text: "",
+      tags: [],
+      sourceUrl: "",
+    });
+  }
+
   useEffect(() => {
     if (initialId) {
       setIsLoading(true);
@@ -112,14 +123,7 @@ export function DocumentOrTableUploadOrEditModal({
       }
       setIsLoading(false);
     } else {
-      setTableOrDoc({
-        name: "",
-        description: "",
-        file: null,
-        text: "",
-        tags: [],
-        sourceUrl: "",
-      });
+      resetTableOrDoc();
     }
   }, [isTable, initialId, table, owner.sId, dataSourceView.dataSource.name]);
 
@@ -203,6 +207,7 @@ export function DocumentOrTableUploadOrEditModal({
         title: `${isTable ? "Table" : "Document"} successfully ${initialId ? "updated" : "added"}`,
         description: `${isTable ? "Table" : "Document"} ${tableOrDoc.name} was successfully ${initialId ? "updated" : "added"}.`,
       });
+      resetTableOrDoc();
       onClose(true);
     } catch (error) {
       sendNotification({
@@ -279,6 +284,7 @@ export function DocumentOrTableUploadOrEditModal({
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} ${isTable ? "table" : "document"}`}
       onSave={handleUpload}
+      isSaving={uploading}
     >
       <Page.Vertical align="stretch">
         <div className="space-y-4 p-4">
@@ -395,7 +401,7 @@ export function DocumentOrTableUploadOrEditModal({
                   "border-structure-200 bg-structure-50",
                   "focus:border-action-300 focus:ring-action-300"
                 )}
-                value={uploading ? "Uploading..." : tableOrDoc.text}
+                value={tableOrDoc.text}
                 onChange={(e) =>
                   setTableOrDoc((prev) => ({ ...prev, text: e.target.value }))
                 }
