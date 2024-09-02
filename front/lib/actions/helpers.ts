@@ -1,11 +1,5 @@
-import type {
-  Action,
-  DustAPIResponse,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { DustAPIResponse, WorkspaceType } from "@dust-tt/types";
 import type { DustAppConfigType } from "@dust-tt/types";
-import { cloneBaseConfig } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { isLeft, isRight } from "fp-ts/lib/Either";
@@ -18,11 +12,12 @@ import {
 } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import type { Action } from "@app/lib/registry";
+import { cloneBaseConfig } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 interface CallActionParams<V extends t.Mixed> {
   owner: WorkspaceType;
-  user: UserType | null;
   input: { [key: string]: unknown };
   action: Action;
   config: DustAppConfigType;
@@ -47,7 +42,6 @@ interface CallActionParams<V extends t.Mixed> {
  */
 export async function callAction<V extends t.Mixed>({
   owner,
-  user,
   input,
   action,
   config,
@@ -65,7 +59,8 @@ export async function callAction<V extends t.Mixed>({
     logger
   );
 
-  const r = await prodAPI.runApp(user, app, config, [input]);
+  // @TODO(GROUPS_INFRA) The doc tracker apps are running without any group privileges for now.
+  const r = await prodAPI.runApp(app, config, [input]);
 
   if (r.isErr()) {
     return r;

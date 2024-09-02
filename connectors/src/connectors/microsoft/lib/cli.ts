@@ -3,7 +3,7 @@ import type {
   CheckFileGenericResponseType,
   MicrosoftCommandType,
 } from "@dust-tt/types";
-import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
+import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
 
 import { getConnectorManager } from "@connectors/connectors";
@@ -118,7 +118,7 @@ export const microsoft = async ({
         },
       });
       for (const connector of connectors) {
-        const workflowId = googleDriveIncrementalSyncWorkflowId(connector.id);
+        const workflowId = microsoftIncrementalSyncWorkflowId(connector.id);
         await terminateWorkflow(workflowId);
         await throwOnError(
           launchMicrosoftIncrementalSyncWorkflow(connector.id)
@@ -183,6 +183,6 @@ export const microsoft = async ({
     }
 
     default:
-      throw new Error("Unknown google command: " + command);
+      throw new Error("Unknown microsoft command: " + command);
   }
 };

@@ -39,11 +39,10 @@ const { syncFiles } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
 
-const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
-  typeof sync_status
->({
-  startToCloseTimeout: "10 minutes",
-});
+const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
+  proxyActivities<typeof sync_status>({
+    startToCloseTimeout: "10 minutes",
+  });
 
 export async function googleDriveFullSync({
   connectorId,
@@ -60,6 +59,8 @@ export async function googleDriveFullSync({
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
 }) {
+  await syncStarted(connectorId);
+
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
@@ -137,7 +138,6 @@ export async function googleDriveFullSync({
       memo: workflowInfo().memo,
     });
   }
-  console.log("googleDriveFullSync done for connectorId", connectorId);
 }
 
 export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
@@ -148,6 +148,8 @@ export async function googleDriveIncrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig
 ) {
+  await syncStarted(connectorId);
+
   const drives = await getDrivesToSync(connectorId);
   const startSyncTs = new Date().getTime();
   for (const googleDrive of drives) {
@@ -186,8 +188,8 @@ export async function googleDriveIncrementalSync(
       memo: workflowInfo().memo,
     });
   }
+
   await syncSucceeded(connectorId);
-  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
 export async function googleDriveGarbageCollectorWorkflow(

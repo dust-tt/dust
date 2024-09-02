@@ -3,6 +3,7 @@ import { Err, groupHasPermission, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator } from "@app/lib/auth";
+import { isManaged } from "@app/lib/data_sources";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -104,11 +105,12 @@ async function handler(
             return;
           }
 
+          // Use admin auth to fetch the groups.
           const auth =
-            await Authenticator.internalBuilderForWorkspace(workspaceId);
+            await Authenticator.internalAdminForWorkspace(workspaceId);
 
           const groups = await GroupResource.fetchByIds(auth, dustGroupIds);
-          if (groups.length === 0) {
+          if (groups.isErr()) {
             res.status(404).end();
             return;
           }
@@ -120,7 +122,7 @@ async function handler(
           ) {
             const dataSourceViewRes = await handleDataSourceView(
               auth,
-              groups,
+              groups.value,
               dataSourceOrDataSourceViewId,
               dustOrigin
             );
@@ -143,7 +145,7 @@ async function handler(
           } else {
             const dataSourceRes = await handleDataSource(
               auth,
-              groups,
+              groups.value,
               dataSourceOrDataSourceViewId,
               dustOrigin
             );
@@ -211,11 +213,7 @@ async function handleDataSourceView(
 
   // TODO(2024-08-02 flav) Uncomment.
   // if (hasAccessToDataSourceView) {
-  const dataSource = await dataSourceView.fetchDataSource(auth);
-  if (!dataSource) {
-    return new Err(new Error("Data source not found for view."));
-  }
-
+  const dataSource = dataSourceView.dataSource;
   return new Ok({
     project_id: parseInt(dataSource.dustAPIProjectId),
     data_source_id: dataSource.name,
@@ -246,7 +244,7 @@ async function handleDataSource(
 
   // Until we pass the data source view id for managed data sources, we need to fetch it here.
   // TODO(2024-08-02 flav) Remove once dust apps rely on the data source view id for managed data sources.
-  if (dataSource.isManaged()) {
+  if (isManaged(dataSource)) {
     const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
     const dataSourceView =
       await DataSourceViewResource.listForDataSourcesInVault(

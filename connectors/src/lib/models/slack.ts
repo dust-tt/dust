@@ -309,6 +309,7 @@ export class SlackBotWhitelistModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
+  declare groupIds: string[];
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare slackConfigurationId: ForeignKey<SlackConfigurationModel["id"]>;
 }
@@ -333,6 +334,10 @@ SlackBotWhitelistModel.init(
     botName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
     },
   },
   {

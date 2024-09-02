@@ -8,9 +8,8 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
+import config from "@app/lib/api/config";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
@@ -22,7 +21,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       domain: (context.query.domain as string) ?? null,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       reason: (context.query.reason as string) ?? null,
     },
   };

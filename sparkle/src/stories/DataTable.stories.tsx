@@ -2,6 +2,8 @@ import type { Meta } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
 import React from "react";
 
+import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
+
 import { DataTable, FolderIcon } from "../index_with_tw_base";
 
 const meta = {
@@ -21,7 +23,8 @@ type Data = {
   avatarUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  onMoreClick?: () => void;
+  moreMenuItems?: DropdownItemProps[];
+  roundedAvatar?: boolean;
 };
 
 export const DataTableExample = () => {
@@ -34,8 +37,8 @@ export const DataTableExample = () => {
       lastUpdated: "July 8, 2023",
       size: "32kb",
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+      roundedAvatar: true,
       onClick: () => console.log("hehe"),
-      onMoreClick: () => console.log("show more"),
     },
     {
       name: "Design",
@@ -44,6 +47,12 @@ export const DataTableExample = () => {
       lastUpdated: "2023-07-09",
       size: "64kb",
       icon: FolderIcon,
+      moreMenuItems: [
+        {
+          label: "Edit",
+          onClick: () => console.log("Edit"),
+        },
+      ],
     },
     {
       name: "Development",
@@ -73,41 +82,50 @@ export const DataTableExample = () => {
       accessorKey: "name",
       header: "Name",
       cell: (info) => (
-        <DataTable.Cell
+        <DataTable.CellContent
           avatarUrl={info.row.original.avatarUrl}
           icon={info.row.original.icon}
           description={info.row.original.description}
+          roundedAvatar={info.row.original.roundedAvatar}
         >
           {info.row.original.name}
-        </DataTable.Cell>
+        </DataTable.CellContent>
       ),
     },
     {
       accessorKey: "usedBy",
       header: "Used by",
       cell: (info) => (
-        <DataTable.Cell>{info.row.original.usedBy}</DataTable.Cell>
+        <DataTable.CellContent>
+          {info.row.original.usedBy}
+        </DataTable.CellContent>
       ),
     },
     {
       accessorKey: "addedBy",
       header: "Added by",
       cell: (info) => (
-        <DataTable.Cell>{info.row.original.addedBy}</DataTable.Cell>
+        <DataTable.CellContent>
+          {info.row.original.addedBy}
+        </DataTable.CellContent>
       ),
     },
     {
       accessorKey: "lastUpdated",
       header: "Last updated",
       cell: (info) => (
-        <DataTable.Cell>{info.row.original.lastUpdated}</DataTable.Cell>
+        <DataTable.CellContent>
+          {info.row.original.lastUpdated}
+        </DataTable.CellContent>
       ),
       enableSorting: false,
     },
     {
       accessorKey: "size",
       header: "Size",
-      cell: (info) => <DataTable.Cell>{info.row.original.size}</DataTable.Cell>,
+      cell: (info) => (
+        <DataTable.CellContent>{info.row.original.size}</DataTable.CellContent>
+      ),
     },
   ];
 

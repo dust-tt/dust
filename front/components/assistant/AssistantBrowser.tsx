@@ -26,6 +26,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 
 interface AssistantListProps {
   owner: WorkspaceType;
+  isBuilder: boolean;
   agents: LightAgentConfigurationType[];
   loadingStatus: "loading" | "finished";
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
@@ -46,6 +47,7 @@ type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
 export function AssistantBrowser({
   owner,
+  isBuilder,
   agents,
   loadingStatus,
   handleAssistantClick,
@@ -133,7 +135,7 @@ export function AssistantBrowser({
                 <Button
                   variant="primary"
                   icon={PlusIcon}
-                  label="Create an Assistant"
+                  label="Create"
                   size="sm"
                 />
               </div>
@@ -141,7 +143,7 @@ export function AssistantBrowser({
                 <Button
                   variant="primary"
                   icon={PlusIcon}
-                  label="Create an Assistant"
+                  label="Create"
                   labelVisible={false}
                   size="sm"
                   className="sm:hidden"
@@ -149,6 +151,18 @@ export function AssistantBrowser({
               </div>
             </Link>
           </Tooltip>
+          {isBuilder && (
+            <Tooltip label="Manage assistants">
+              <Link href={`/w/${owner.sId}/builder/assistants/`}>
+                <Button
+                  variant="primary"
+                  icon={RobotIcon}
+                  label="Manage"
+                  size="sm"
+                />
+              </Link>
+            </Tooltip>
+          )}
         </Button.List>
       </div>
 

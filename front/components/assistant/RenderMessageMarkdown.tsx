@@ -4,7 +4,7 @@ import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import React, { useEffect, useMemo } from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
@@ -38,6 +38,8 @@ const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
 );
+
+const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
 function mentionDirective() {
   return (tree: any) => {
@@ -92,7 +94,24 @@ function citeDirective() {
   };
 }
 
-function addClosingBackticks(str: string): string {
+function visualizationDirective() {
+  return (tree: any) => {
+    visit(tree, ["containerDirective"], (node) => {
+      if (node.name === "visualization") {
+        const data = node.data || (node.data = {});
+        data.hName = "visualization";
+        data.hProperties = {
+          position: node.position,
+        };
+      }
+    });
+  };
+}
+
+function sanitizeContent(str: string): string {
+  // (1) Add closing backticks if they are missing such that we render a code block or inline
+  // element during streaming.
+
   // Regular expression to find either a single backtick or triple backticks
   const regex = /(`{1,3})/g;
   let singleBackticks = 0;
@@ -119,7 +138,32 @@ function addClosingBackticks(str: string): string {
   } else if (singleBackticks % 2 !== 0) {
     str += "`";
   }
-  return str;
+
+  const lines = str.split("\n");
+
+  let openVisualization = false;
+  for (let i = 0; i < lines.length; i++) {
+    // (2) Replace legacy <visualization> XML tags by the markdown directive syntax for backward
+    // compatibility with older <visualization> tags.
+    if (lines[i].trim() === "<visualization>") {
+      lines[i] = ":::visualization";
+    }
+    if (lines[i].trim() === "</visualization>") {
+      lines[i] = ":::";
+    }
+
+    // (3) Prepend closing visualization markdow directive with a magic word to detect that the
+    // visualization is complete solely based on its content during token streaming.
+    if (lines[i].trim().startsWith(":::visualization")) {
+      openVisualization = true;
+    }
+    if (openVisualization && lines[i].trim() === ":::") {
+      lines.splice(i, 0, VISUALIZATION_MAGIC_LINE);
+      openVisualization = false;
+    }
+  }
+
+  return lines.join("\n");
 }
 
 type CitationsContextType = {
@@ -139,27 +183,71 @@ export const CitationsContext = React.createContext<CitationsContextType>({
   setHoveredReference: () => null,
 });
 
+export const MarkDownContentContext = React.createContext<{
+  content: string;
+  isStreaming: boolean;
+}>({
+  content: "",
+  isStreaming: false,
+});
+
+export type CustomRenderers = {
+  visualization: (
+    code: string,
+    complete: boolean,
+    lineStart: number
+  ) => React.JSX.Element;
+};
+
 export function RenderMessageMarkdown({
   content,
   isStreaming,
   citationsContext,
+  textSize,
+  textColor,
+  customRenderer,
 }: {
   content: string;
   isStreaming: boolean;
   citationsContext?: CitationsContextType;
+  textSize?: "sm" | "base";
+  textColor?: string;
+  customRenderer?: CustomRenderers;
 }) {
+  const processedContent = useMemo(() => sanitizeContent(content), [content]);
+
+  // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
+  // AST parsing rounds (happening at each token being streamed).
+  //
+  // When adding a new directive and associated component that depends on external data (eg
+  // workspace or message), you can use the customRenderer.visualization pattern. It is essential
+  // for the customRenderer argument to be memoized to avoid re-renderings through the
+  // markdownComponents memoization dependency on `customRenderer`.
+  //
+  // Make sure to spend some time understanding the re-rendering or lack thereof through the parser
+  // rounds.
+  //
+  // Minimal test whenever editing this code: ensure that code block content of a streaming message
+  // can be selected without blinking.
+
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(
     () => ({
-      pre: ({ children }) => (
-        <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
-      ),
+      pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       code: CodeBlockWithExtendedSupport,
       a: LinkBlock,
       ul: UlBlock,
       ol: OlBlock,
-      li: LiBlock,
-      p: ParagraphBlock,
+      li: ({ children }) => (
+        <LiBlock textSize={textSize} textColor={textColor}>
+          {children}
+        </LiBlock>
+      ),
+      p: ({ children }) => (
+        <ParagraphBlock textSize={textSize} textColor={textColor}>
+          {children}
+        </ParagraphBlock>
+      ),
       sup: CiteBlock,
       table: TableBlock,
       thead: TableHeadBlock,
@@ -204,14 +292,25 @@ export function RenderMessageMarkdown({
       mention: ({ agentName }) => {
         return <MentionBlock agentName={agentName} />;
       },
+      // @ts-expect-error - `visualization` is a custom tag, currently refused by
+      // react-markdown types although the functionality is supported
+      visualization: ({ position }) => {
+        return (
+          <VisualizationBlock
+            position={position}
+            customRenderer={customRenderer}
+          />
+        );
+      },
     }),
-    [isStreaming]
+    [textSize, textColor, customRenderer]
   );
 
   const markdownPlugins = useMemo(
     () => [
       remarkDirective,
       mentionDirective,
+      visualizationDirective,
       citeDirective(),
       remarkGfm,
       remarkMath,
@@ -230,19 +329,55 @@ export function RenderMessageMarkdown({
           }
         }
       >
-        <MermaidDisplayProvider>
-          <ReactMarkdown
-            linkTarget="_blank"
-            components={markdownComponents}
-            remarkPlugins={markdownPlugins}
-            rehypePlugins={[rehypeKatex] as PluggableList}
-          >
-            {addClosingBackticks(content)}
-          </ReactMarkdown>
-        </MermaidDisplayProvider>
+        <MarkDownContentContext.Provider
+          value={{ content: processedContent, isStreaming }}
+        >
+          <MermaidDisplayProvider>
+            <ReactMarkdown
+              linkTarget="_blank"
+              components={markdownComponents}
+              remarkPlugins={markdownPlugins}
+              rehypePlugins={[rehypeKatex] as PluggableList}
+            >
+              {processedContent}
+            </ReactMarkdown>
+          </MermaidDisplayProvider>
+        </MarkDownContentContext.Provider>
       </CitationsContext.Provider>
     </div>
   );
+}
+
+function VisualizationBlock({
+  position,
+  customRenderer,
+}: {
+  position: { start: { line: number }; end: { line: number } };
+  customRenderer?: CustomRenderers;
+}) {
+  const { content } = useContext(MarkDownContentContext);
+
+  const visualizationRenderer = useMemo(() => {
+    return (
+      customRenderer?.visualization ||
+      (() => (
+        <div className="pb-2 pt-4 font-medium text-red-600">
+          Visualization not available
+        </div>
+      ))
+    );
+  }, [customRenderer]);
+
+  let code = content
+    .split("\n")
+    .slice(position.start.line, position.end.line - 1)
+    .join("\n");
+  let complete = false;
+  if (code.includes(VISUALIZATION_MAGIC_LINE)) {
+    code = code.replace(VISUALIZATION_MAGIC_LINE, "");
+    complete = true;
+  }
+  return visualizationRenderer(code, complete, position.start.line);
 }
 
 function MentionBlock({ agentName }: { agentName: string }) {
@@ -441,13 +576,7 @@ const detectLanguage = (children: React.ReactNode) => {
   return "text";
 };
 
-function PreBlock({
-  children,
-  isStreaming,
-}: {
-  children: React.ReactNode;
-  isStreaming: boolean;
-}) {
+function PreBlock({ children }: { children: React.ReactNode }) {
   const validChildrenContent =
     Array.isArray(children) && children[0]
       ? children[0].props.children[0]
@@ -479,6 +608,8 @@ function PreBlock({
 
   const { isValidMermaid, showMermaid, setIsValidMermaid, setShowMermaid } =
     useMermaidDisplay();
+
+  const { isStreaming } = useContext(MarkDownContentContext);
 
   useEffect(() => {
     if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
@@ -558,28 +689,52 @@ function PreBlock({
 
 function UlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="list-disc py-2 pl-8 text-element-800 first:pt-0 last:pb-0">
-      {children}
-    </ul>
+    <ul className="list-disc py-2 pl-8 first:pt-0 last:pb-0">{children}</ul>
   );
 }
 function OlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ol className="list-decimal py-3 pl-8 text-element-800 first:pt-0 last:pb-0">
-      {children}
-    </ol>
+    <ol className="list-decimal py-3 pl-8 first:pt-0 last:pb-0">{children}</ol>
   );
 }
-function LiBlock({ children }: { children: React.ReactNode }) {
+function LiBlock({
+  textSize,
+  textColor,
+  children,
+}: {
+  textSize?: string;
+  textColor?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <li className="break-words py-2 text-element-800 first:pt-0 last:pb-0">
+    <li
+      className={classNames(
+        "break-words first:pt-0 last:pb-0",
+        textSize === "sm" ? "py-1" : "py-2",
+        textColor ? textColor : "text-element-800"
+      )}
+    >
       {children}
     </li>
   );
 }
-function ParagraphBlock({ children }: { children: React.ReactNode }) {
+function ParagraphBlock({
+  textSize,
+  textColor,
+  children,
+}: {
+  textSize?: string;
+  textColor?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="whitespace-pre-wrap break-words py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+    <div
+      className={classNames(
+        "whitespace-pre-wrap break-words font-normal first:pt-0 last:pb-0",
+        textSize === "sm" ? "py-1 text-sm" : "py-2 text-base leading-7",
+        textColor ? textColor : "text-element-800"
+      )}
+    >
       {children}
     </div>
   );

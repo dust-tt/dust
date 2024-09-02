@@ -18,13 +18,13 @@ export async function getApp(
       ? {
           workspaceId: owner.id,
           visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
+            [Op.or]: ["public", "private"],
           },
           sId: aId,
         }
       : {
           workspaceId: owner.id,
-          visibility: ["public", "unlisted"],
+          visibility: ["public"],
           sId: aId,
         },
   });
@@ -57,12 +57,11 @@ export async function getApps(auth: Authenticator): Promise<AppType[]> {
       ? {
           workspaceId: owner.id,
           visibility: {
-            [Op.or]: ["public", "private", "unlisted"],
+            [Op.or]: ["public", "private"],
           },
         }
       : {
           workspaceId: owner.id,
-          // Do not include 'unlisted' here.
           visibility: "public",
         },
     order: [["updatedAt", "DESC"]],

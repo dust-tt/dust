@@ -30,18 +30,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const userId = auth.user()?.id;
-
-  if (!userId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace or user was not found.",
-      },
-    });
-  }
-
+  const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
 
   if (!owner.flags.includes("labs_transcripts")) {
@@ -59,7 +48,7 @@ async function handler(
       const transcriptsConfiguration =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
           auth,
-          userId,
+          userId: user.id,
         });
 
       if (!transcriptsConfiguration) {
@@ -94,7 +83,7 @@ async function handler(
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
           auth,
-          userId,
+          userId: user.id,
         });
 
       if (transcriptsConfigurationAlreadyExists) {
@@ -109,7 +98,7 @@ async function handler(
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
-          userId,
+          userId: user.id,
           workspaceId: owner.id,
           provider,
           connectionId,

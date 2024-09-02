@@ -2,6 +2,8 @@ import type { ContentNodeType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import dns from "dns";
 
+import type { WebCrawlerPage } from "@connectors/lib/models/webcrawler";
+
 // Generate a stable id for a given url and ressource type
 // That way we don't have to send URL as documentId to the front API.
 export function stableIdForUrl({
@@ -84,8 +86,8 @@ export function normalizeFolderUrl(url: string) {
   return result;
 }
 
-export function getDisplayNameForPage(url: string): string {
-  const parsed = new URL(url);
+export function getDisplayNameForPage(page: WebCrawlerPage): string {
+  const parsed = new URL(page.url);
   let result = "";
   const fragments = parsed.pathname.split("/").filter((x) => x);
   const lastFragment = fragments.pop();

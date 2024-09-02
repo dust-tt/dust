@@ -8,7 +8,7 @@ import type {
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
+import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -38,6 +38,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
+import { DustProdActionRegistry } from "@app/lib/registry";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;

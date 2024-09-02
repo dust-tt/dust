@@ -3,6 +3,7 @@ import { assertNever, isEmptyString, minTranscriptsSize } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
+import { UniqueConstraintError } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
@@ -17,6 +18,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 import {
   retrieveGongTranscriptContent,
   retrieveGongTranscripts,
@@ -53,6 +55,7 @@ export async function retrieveNewTranscriptsActivity(
   });
 
   if (!workspace) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
@@ -61,6 +64,7 @@ export async function retrieveNewTranscriptsActivity(
   const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
 
   if (!auth.workspace()) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     localLogger.error(
       {},
       "[retrieveNewTranscripts] Workspace not found. Stopping."
@@ -118,6 +122,7 @@ export async function processTranscriptActivity(
   });
 
   if (!workspace) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
@@ -128,6 +133,7 @@ export async function processTranscriptActivity(
   );
 
   if (!user) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
@@ -139,12 +145,14 @@ export async function processTranscriptActivity(
   );
 
   if (!auth.workspace()) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
       `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
 
   if (!auth.user() || !auth.isUser()) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     throw new Error(
       `Could not find user for id ${transcriptsConfiguration.userId}.`
     );
@@ -203,6 +211,23 @@ export async function processTranscriptActivity(
       assertNever(transcriptsConfiguration.provider);
   }
 
+  try {
+    await transcriptsConfiguration.recordHistory({
+      configurationId: transcriptsConfiguration.id,
+      fileId,
+      fileName: transcriptTitle,
+    });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      localLogger.info(
+        {},
+        "[processTranscriptActivity] History record already exists. Stopping."
+      );
+      return;
+    }
+    throw error;
+  }
+
   // Short transcripts are likely not useful to process.
   if (transcriptContent.length < minTranscriptsSize) {
     localLogger.info(
@@ -244,12 +269,14 @@ export async function processTranscriptActivity(
       {},
       "[processTranscriptActivity] No owner found. Stopping."
     );
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     return;
   }
 
   const { agentConfigurationId } = transcriptsConfiguration;
 
   if (!agentConfigurationId) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     localLogger.error(
       {},
       "[processTranscriptActivity] No agent configuration id found. Stopping."
@@ -260,6 +287,7 @@ export async function processTranscriptActivity(
   const agent = await getAgentConfiguration(auth, agentConfigurationId);
 
   if (!agent) {
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
     localLogger.error(
       {},
       "[processTranscriptActivity] Agent configuration not found. Stopping."
@@ -271,7 +299,7 @@ export async function processTranscriptActivity(
     return new Err(new Error("username must be a non-empty string"));
   }
 
-  let conversation = await createConversation(auth, {
+  const initialConversation = await createConversation(auth, {
     title: transcriptTitle,
     visibility: "workspace",
   });
@@ -295,7 +323,7 @@ export async function processTranscriptActivity(
 
   const contentFragmentRes = await postNewContentFragment(
     auth,
-    conversation,
+    initialConversation,
     contentFragmentData,
     baseContext
   );
@@ -304,10 +332,25 @@ export async function processTranscriptActivity(
     localLogger.error(
       {
         agentConfigurationId,
-        conversationSid: conversation.sId,
+        conversationSid: initialConversation.sId,
         error: contentFragmentRes.error,
       },
       "[processTranscriptActivity] Error creating content fragment. Stopping."
+    );
+    return;
+  }
+
+  // Initial conversation is stale, so we need to reload it.
+  let conversation = await getConversation(auth, initialConversation.sId);
+
+  if (!conversation) {
+    localLogger.error(
+      {
+        agentConfigurationId,
+        conversationSid: initialConversation.sId,
+        panic: true,
+      },
+      "[processTranscriptActivity] Unreachable: Error getting conversation after creation."
     );
     return;
   }
@@ -370,12 +413,10 @@ export async function processTranscriptActivity(
     allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
   });
 
-  await transcriptsConfiguration.recordHistory({
-    configurationId: transcriptsConfiguration.id,
+  await transcriptsConfiguration.setConversationHistory(
     fileId,
-    fileName: transcriptTitle,
-    conversationId: conversation.sId,
-  });
+    conversation.sId
+  );
 
   const msg = {
     from: {

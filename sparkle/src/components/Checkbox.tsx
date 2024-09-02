@@ -5,25 +5,46 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
+export type CheckBoxCheckedStatus = "checked" | "unchecked" | "partial";
+
 export interface CheckboxProps {
   variant?: "selectable" | "checkable";
-  checked: boolean;
+  size?: "xs" | "sm";
+  checked?: CheckBoxCheckedStatus;
   disabled?: boolean;
-  partialChecked?: boolean;
   onChange: (checked: boolean) => void;
   className?: string;
 }
 
 export function Checkbox({
   variant = "selectable",
-  checked,
+  checked = "unchecked",
+  size = "sm",
   onChange,
   className = "",
   disabled,
-  partialChecked,
 }: CheckboxProps) {
+  let isChecked: boolean;
+  let isPartialChecked: boolean;
+  switch (checked) {
+    case "checked":
+      isChecked = true;
+      isPartialChecked = false;
+      break;
+    case "unchecked":
+      isChecked = false;
+      isPartialChecked = false;
+      break;
+    case "partial":
+      isChecked = true;
+      isPartialChecked = true;
+      break;
+    default:
+      throw new Error("Invalid checked prop");
+  }
+
   const baseStyleClasses = {
-    base: "s-border s-justify-center s-w-5 s-h-5 s-rounded-md s-flex s-items-center s-transition-colors s-duration-300 s-ease-out",
+    base: "s-border s-justify-center s-flex s-items-center s-transition-colors s-duration-300 s-ease-out",
     idle: "s-bg-structure-50 s-border-element-600 s-cursor-pointer",
     hover:
       "hover:s-border-action-500 hover:s-bg-action-200 hover:s-text-white/100",
@@ -37,6 +58,11 @@ export function Checkbox({
     },
   };
 
+  const baseSizeClasses = {
+    xs: "s-w-4 s-h-4 s-rounded",
+    sm: "s-w-5 s-h-5 s-rounded-md",
+  };
+
   const checkedIndicatorClasses = {
     base: "s-transition s-duration-300 s-ease-in-out",
     selected: "s-opacity-100 s-bg-action-500 dark:s-bg-action-500-dark",
@@ -45,9 +71,15 @@ export function Checkbox({
     disabled: "s-opacity-100 s-bg-element-500 dark:s-bg-element-500-dark",
   };
 
+  const sizeStyles = {
+    xs: { width: "12px", height: "12px", borderRadius: "2px" },
+    sm: { width: "14px", height: "14px", borderRadius: "3px" },
+  };
+
   const combinedBaseClasses = classNames(
     baseStyleClasses.base,
-    checked || partialChecked ? "s-text-white" : "s-text-white/0",
+    baseSizeClasses[size],
+    isChecked || isPartialChecked ? "s-text-white" : "s-text-white/0",
     disabled ? baseStyleClasses.disabled : baseStyleClasses.idle,
     !disabled ? baseStyleClasses.hover : "",
     disabled ? baseStyleClasses.dark.disabled : baseStyleClasses.dark.base,
@@ -58,18 +90,18 @@ export function Checkbox({
   const combinedCheckedIndicatorClasses = classNames(
     checkedIndicatorClasses.base,
     disabled ? checkedIndicatorClasses.disabled : "",
-    checked && !partialChecked && !disabled
+    isChecked && !isPartialChecked && !disabled
       ? checkedIndicatorClasses.selected
       : "",
-    partialChecked && !disabled ? checkedIndicatorClasses.partialChecked : "",
-    !checked && !disabled ? checkedIndicatorClasses.unselected : ""
+    isPartialChecked && !disabled ? checkedIndicatorClasses.partialChecked : "",
+    !isChecked && !disabled ? checkedIndicatorClasses.unselected : ""
   );
 
   return (
     <label>
       <input
         type="checkbox"
-        checked={checked}
+        checked={isChecked}
         onChange={(e) => onChange && onChange(e.target.checked)}
         className="s-hidden"
         disabled={disabled}
@@ -77,11 +109,11 @@ export function Checkbox({
       <div className={classNames(combinedBaseClasses, "s-relative")}>
         <div
           className={combinedCheckedIndicatorClasses}
-          style={{ width: "14px", height: "14px", borderRadius: "3px" }}
+          style={sizeStyles[size]}
         />
         {variant === "checkable" && (
           <div className="s-absolute">
-            <Icon visual={partialChecked ? DashIcon : CheckIcon} size="xs" />
+            <Icon visual={isPartialChecked ? DashIcon : CheckIcon} size="xs" />
           </div>
         )}
       </div>

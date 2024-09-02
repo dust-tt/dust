@@ -1253,7 +1253,7 @@ async function _createAgentDataSourcesConfigData(
         await DataSourceViewResource.listForDataSourcesInVault(
           // We can use `auth` because we limit to one workspace.
           auth,
-          uniqueDataSources.filter((ds) => ds.isManaged()),
+          uniqueDataSources,
           globalVault
         );
 

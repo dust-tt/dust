@@ -115,14 +115,31 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     }));
   }
 
-  async whitelistBot(botName: string): Promise<Result<undefined, Error>> {
+  async whitelistBot(
+    botName: string,
+    groupIds: string[]
+  ): Promise<Result<undefined, Error>> {
     await SlackBotWhitelistModel.create({
       connectorId: this.connectorId,
       slackConfigurationId: this.id,
       botName,
+      groupIds,
     });
 
     return new Ok(undefined);
+  }
+
+  // Get the Dust group IDs that the bot is whitelisted for.
+  async getBotGroupIds(botName: string): Promise<string[]> {
+    const bot = await SlackBotWhitelistModel.findOne({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+      },
+    });
+
+    return bot ? bot.groupIds : [];
   }
 
   static async listAll() {

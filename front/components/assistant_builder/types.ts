@@ -2,8 +2,7 @@ import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AppType,
-  ContentNode,
-  DataSourceType,
+  DataSourceViewSelectionConfigurations,
   PlanType,
   ProcessSchemaPropertyType,
   SubscriptionType,
@@ -36,19 +35,6 @@ export const ACTION_MODES = [
 
 // Retrieval configuration
 
-export type AssistantBuilderDataSourceConfiguration = {
-  dataSource: DataSourceType;
-  // TODO(GROUPS_INFRA) Replace with DataSourceViewType once the UI has it.
-  dataSourceViewId: null;
-  selectedResources: ContentNode[];
-  isSelectAll: boolean;
-};
-
-export type AssistantBuilderDataSourceConfigurations = Record<
-  string,
-  AssistantBuilderDataSourceConfiguration
->;
-
 export type AssistantBuilderTimeFrame = {
   value: number;
   unit: TimeframeUnit;
@@ -59,7 +45,7 @@ export type AssistantBuilderTagsFilter = {
 };
 
 export type AssistantBuilderRetrievalConfiguration = {
-  dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   timeFrame: AssistantBuilderTimeFrame;
 };
 
@@ -87,7 +73,7 @@ export type AssistantBuilderTablesQueryConfiguration = Record<
 // Process configuration
 
 export type AssistantBuilderProcessConfiguration = {
-  dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   timeFrame: AssistantBuilderTimeFrame;
   tagsFilter: AssistantBuilderTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
@@ -326,18 +312,17 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export type AssistantBuilderProps = {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  plan: PlanType;
-  gaTrackingId: string;
-  dataSources: DataSourceType[];
-  dustApps: AppType[];
-  initialBuilderState: AssistantBuilderInitialState | null;
   agentConfigurationId: string | null;
-  flow: BuilderFlow;
-  defaultIsEdited?: boolean;
   baseUrl: string;
+  defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
+  flow: BuilderFlow;
+  gaTrackingId: string;
+  initialBuilderState: AssistantBuilderInitialState | null;
+  isAdmin: boolean;
+  owner: WorkspaceType;
+  plan: PlanType;
+  subscription: SubscriptionType;
 };
 
 export const BUILDER_SCREENS = {

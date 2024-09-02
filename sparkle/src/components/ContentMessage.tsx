@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ComponentType } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
@@ -19,6 +19,7 @@ export interface ContentMessageProps {
     | "pink"
     | "action"
     | "red";
+  icon?: ComponentType;
 }
 
 export function ContentMessage({
@@ -27,6 +28,7 @@ export function ContentMessage({
   children,
   size = "md",
   className = "",
+  icon,
 }: ContentMessageProps) {
   const variantClasses = {
     border: `s-border-${variant}-200`,
@@ -52,7 +54,7 @@ export function ContentMessage({
         <>
           <Icon
             size="md"
-            visual={InformationCircleIcon}
+            visual={icon ?? InformationCircleIcon}
             className={classNames("s-shrink-0", variantClasses.iconColor)}
           />
           <div className="s-flex s-flex-col s-gap-2">

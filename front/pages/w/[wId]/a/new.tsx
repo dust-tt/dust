@@ -10,14 +10,15 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-
-const { GA_TRACKING_ID = "" } = process.env;
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -29,11 +30,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
   return {
     props: {
       owner,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      dustAppsListUrl,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -41,6 +45,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function NewApp({
   owner,
   subscription,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -200,8 +205,8 @@ export default function NewApp({
                   >
                     Public
                     <p className="mt-0 text-sm font-normal text-gray-500">
-                      Anyone on the Internet can see the app. Only builders of
-                      your workspace can edit.
+                      Anyone on the Internet with the link can see the app. Only
+                      builders of your workspace can edit.
                     </p>
                   </label>
                 </div>
@@ -242,7 +247,7 @@ export default function NewApp({
                 variant="tertiary"
                 disabled={creating}
                 onClick={async () => {
-                  void router.push(`/w/${owner.sId}/a`);
+                  void router.push(dustAppsListUrl);
                 }}
                 label="Cancel"
               />

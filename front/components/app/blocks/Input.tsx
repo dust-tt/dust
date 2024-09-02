@@ -26,6 +26,7 @@ export default function Input({
   status,
   running,
   readOnly,
+  showOutputs,
   onBlockUpdate,
   onBlockDelete,
   onBlockUp,
@@ -40,6 +41,7 @@ export default function Input({
   status: any;
   running: boolean;
   readOnly: boolean;
+  showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
   onBlockUp: () => void;
@@ -102,6 +104,7 @@ export default function Input({
       status={status}
       running={running}
       readOnly={readOnly}
+      showOutputs={showOutputs}
       onBlockUpdate={onBlockUpdate}
       onBlockDelete={onBlockDelete}
       onBlockUp={onBlockUp}
@@ -128,7 +131,7 @@ export default function Input({
                       variant="secondary"
                       onClick={() => setIsDatasetModalOpen(true)}
                       icon={PencilSquareIcon}
-                      label="Edit"
+                      label={readOnly ? "View" : "Edit"}
                       size="xs"
                     />
                   </>
@@ -146,15 +149,17 @@ export default function Input({
               variant="side-md"
               title={block.config.dataset}
             >
-              <Button
-                className="ml-auto mt-2"
-                variant="secondary"
-                onClick={() => {
-                  window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
-                }}
-                icon={PencilSquareIcon}
-                label="Edit schema"
-              />
+              {readOnly ? null : (
+                <Button
+                  className="ml-1 mt-2"
+                  variant="secondary"
+                  onClick={() => {
+                    window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                  }}
+                  icon={PencilSquareIcon}
+                  label={"Edit schema"}
+                />
+              )}
               <DatasetView
                 readOnly={false}
                 datasets={[dataset]}

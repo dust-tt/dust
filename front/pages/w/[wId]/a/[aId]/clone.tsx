@@ -21,11 +21,11 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
-
-const { GA_TRACKING_ID = "" } = process.env;
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps =
   withDefaultUserAuthRequirementsNoWorkspaceCheck<{
@@ -33,6 +33,7 @@ export const getServerSideProps =
     owner: WorkspaceType;
     subscription: SubscriptionType;
     app: AppType;
+    dustAppsListUrl: string;
     gaTrackingId: string;
   }>(async (context, auth, session) => {
     // This is a rare case where we need the full user object as we need to know the user available
@@ -61,13 +62,16 @@ export const getServerSideProps =
       };
     }
 
+    const dustAppsListUrl = await getDustAppsListUrl(auth);
+
     return {
       props: {
         user,
         owner,
         subscription,
         app,
-        gaTrackingId: GA_TRACKING_ID,
+        dustAppsListUrl,
+        gaTrackingId: config.getGaTrackingId(),
       },
     };
   });
@@ -77,6 +81,7 @@ export default function CloneView({
   owner,
   subscription,
   app,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -150,7 +155,7 @@ export default function CloneView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }
@@ -299,8 +304,8 @@ export default function CloneView({
                           >
                             Public
                             <p className="mt-0 text-sm font-normal text-gray-500">
-                              Anyone on the Internet can see the app. Only
-                              builders of your workspace can edit.
+                              Anyone on the Internet with the link can see the
+                              app. Only builders of your workspace can edit.
                             </p>
                           </label>
                         </div>

@@ -2,11 +2,13 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import type { Drive, DriveItem } from "@microsoft/microsoft-graph-types";
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
+import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  extractPath,
   getAllPaginatedEntities,
   getDeltaResults,
   getDriveInternalIdFromItem,
@@ -72,15 +74,21 @@ export async function getRootNodesToSync(
         (resource) =>
           resource.nodeType === "folder" || resource.nodeType === "drive"
       )
-      .map(async (resource) =>
-        itemToMicrosoftNode(
+      .map(async (resource) => {
+        const item = await getItem(
+          client,
+          typeAndPathFromInternalId(resource.internalId).itemAPIPath
+        );
+
+        const node = itemToMicrosoftNode(
           resource.nodeType as "folder" | "drive",
-          await getItem(
-            client,
-            typeAndPathFromInternalId(resource.internalId).itemAPIPath
-          )
-        )
-      )
+          item
+        );
+        return {
+          ...node,
+          name: `${node.name} (${extractPath(item)})`,
+        };
+      })
   );
 
   const rootSitePaths: string[] = rootResources
@@ -110,7 +118,13 @@ export async function getRootNodesToSync(
             nextLink
           )
         );
-        return msDrives.map((drive) => itemToMicrosoftNode("drive", drive));
+        return msDrives.map((driveItem) => {
+          const driveNode = itemToMicrosoftNode("drive", driveItem);
+          return {
+            ...driveNode,
+            name: `${driveNode.name} + " (${extractPath(driveItem)})`,
+          };
+        });
       },
       { concurrency: 5 }
     )
@@ -199,10 +213,10 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       );
 
       if (!node) {
-        throw new Error(`Node ${nodeId} not found`);
+        logger.warn({ nodeId }, `Node not found while saving delta, skipping`);
+      } else {
+        await node.update({ deltaLink });
       }
-
-      await node.update({ deltaLink });
     }
   }
 }
@@ -501,21 +515,20 @@ export async function syncDeltaForRootNodesInDrive({
         getItem(client, typeAndPathFromInternalId(rootNodeId).itemAPIPath),
       { concurrency: 5 }
     );
-
     microsoftNodes.forEach((rootNode) => {
       sortedChangedItems.push(
         ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
       );
     });
-  }
 
-  // Finally add all removed items, which may not have been included even if they are in the selected roots
-  sortedChangedItems.push(
-    ...uniqueChangedItems.filter(
-      (item) =>
-        !sortedChangedItems.includes(item) && item.deleted?.state === "deleted"
-    )
-  );
+    // if only parts of the drive are selected, look for folders that may
+    // have been removed from selection and scrub them
+    await scrubRemovedFolders({
+      connector,
+      uniqueChangedItems,
+      sortedChangedItems,
+    });
+  }
 
   for (const driveItem of sortedChangedItems) {
     heartbeat();
@@ -552,15 +565,21 @@ export async function syncDeltaForRootNodesInDrive({
           internalId,
         });
 
-        const blob = driveItem.root
-          ? itemToMicrosoftNode(
-              "drive",
-              await getItem(
+        const { item, type } = driveItem.root
+          ? {
+              item: await getItem(
                 client,
                 `/drives/${driveItem.parentReference.driveId}`
-              )
-            )
-          : itemToMicrosoftNode("folder", driveItem);
+              ),
+              type: "drive" as const,
+            }
+          : { item: driveItem, type: "folder" as const };
+
+        const blob = itemToMicrosoftNode(type, item);
+
+        if (rootNodeIds.includes(blob.internalId)) {
+          blob.name = blob.name + ` (${extractPath(item)})`;
+        }
 
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
@@ -627,7 +646,7 @@ function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
 
 /**
  * Order items as follows:
- * - first those whose parentInternalId is not in the changedList, or the root drive
+ * - first the node in the changedList matching rootid, or the drive root folder if no rootId is specified
  * - then those whose parentInternalId is in in the list above;
  * - then those whose parentInternalId is in the updated list above, and so on
  *
@@ -643,8 +662,7 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     return [];
   }
 
-  const internalIds = changedList.map((item) => getDriveItemInternalId(item));
-
+  // Initial list - either the root folder of the drive if no rootId, of the item identified by rootId
   const sortedItemList = changedList.filter((item) => {
     if (rootId && item.id === rootId) {
       // Found selected root
@@ -656,16 +674,12 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
       return true;
     }
 
-    if (!item.parentReference) {
-      return false;
-    }
-
-    const parentInternalId = getParentReferenceInternalId(item.parentReference);
-    return !internalIds.includes(parentInternalId);
+    return false;
   });
 
   for (;;) {
     const nextLevel = changedList.filter((item) => {
+      // Already in the list - skip
       if (sortedItemList.includes(item)) {
         return false;
       }
@@ -675,9 +689,20 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
         return true;
       }
 
+      // get the parentInternalId of the item
+      // warning : if node is in the root folder of a drive, we'll get the drive id instead of root folder id
       const parentInternalId = getParentReferenceInternalId(
         item.parentReference
       );
+
+      // hack here as parentInternalId is the drive and no rootId specified,
+      // but we only have the drive root folder in the list
+      if (
+        typeAndPathFromInternalId(parentInternalId).nodeType === "drive" &&
+        !rootId
+      ) {
+        return true;
+      }
 
       return sortedItemList.some(
         (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
@@ -859,7 +884,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 100,
+    pageSize: 300,
     idCursor,
   });
 
@@ -884,69 +909,70 @@ export async function microsoftGarbageCollectionActivity({
         n.nodeType === "file"
     );
 
-  // Explicitly not using concurrency here to avoid too many calls to the api
-  // This is a long running workflow that does not require high throughput
-  for (const node of nodesToCheck) {
-    const { itemAPIPath } = typeAndPathFromInternalId(node.internalId);
+  const requests = nodesToCheck.map((n, i) => ({
+    id: `${i}`,
+    url: typeAndPathFromInternalId(n.internalId).itemAPIPath,
+    method: "GET",
+  }));
 
-    let driveOrItem: DriveItem | undefined | Drive = undefined;
-    try {
-      driveOrItem = await getItem(client, itemAPIPath);
-    } catch (e) {
-      // if the entity is not found, we can go on and delete
-      if (!(e instanceof GraphError && e.statusCode === 404)) {
-        throw e;
-      }
-    }
+  const chunkedRequests = _.chunk(requests, 20);
 
-    switch (node.nodeType) {
-      case "drive":
-        if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
-          await deleteFolder({ connectorId, internalId: node.internalId });
+  for (const chunk of chunkedRequests) {
+    const batchRes = await client.api("/$batch").post({ requests: chunk });
+    for (const res of batchRes.responses) {
+      const node = nodesToCheck[Number(res.id)];
+      if (node && (res.status === 200 || res.status === 404)) {
+        const driveOrItem = res.status === 200 ? res.body : null;
+        switch (node.nodeType) {
+          case "drive":
+            if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
+              await deleteFolder({ connectorId, internalId: node.internalId });
+            }
+            break;
+          case "folder": {
+            const folder = driveOrItem as DriveItem;
+            if (
+              !folder ||
+              folder.deleted ||
+              // isOutsideRootNodes
+              (await isOutsideRootNodes({
+                client,
+                driveItem: folder,
+                rootNodeIds,
+                startGarbageCollectionTs,
+              }))
+            ) {
+              await deleteFolder({ connectorId, internalId: node.internalId });
+            }
+            break;
+          }
+          case "file": {
+            const file = driveOrItem as DriveItem;
+            if (
+              !file ||
+              file.deleted ||
+              // isOutsideRootNodes
+              (await isOutsideRootNodes({
+                client,
+                driveItem: file,
+                rootNodeIds,
+                startGarbageCollectionTs,
+              }))
+            ) {
+              await deleteFile({
+                connectorId,
+                internalId: node.internalId,
+                dataSourceConfig,
+              });
+            }
+            break;
+          }
+          default:
+            throw new Error(
+              `Unreachable: Deletion not implemented for node type: ${node.nodeType}`
+            );
         }
-        break;
-      case "folder": {
-        const folder = driveOrItem as DriveItem;
-        if (
-          !folder ||
-          folder.deleted ||
-          // isOutsideRootNodes
-          (await isOutsideRootNodes({
-            client,
-            driveItem: folder,
-            rootNodeIds,
-            startGarbageCollectionTs,
-          }))
-        ) {
-          await deleteFolder({ connectorId, internalId: node.internalId });
-        }
-        break;
       }
-      case "file": {
-        const file = driveOrItem as DriveItem;
-        if (
-          !file ||
-          file.deleted ||
-          // isOutsideRootNodes
-          (await isOutsideRootNodes({
-            client,
-            driveItem: file,
-            rootNodeIds,
-            startGarbageCollectionTs,
-          }))
-        ) {
-          await deleteFile({
-            connectorId,
-            internalId: node.internalId,
-            dataSourceConfig,
-          });
-        }
-        break;
-      }
-      default:
-        throw new Error(
-          `Unreachable: Deletion not implemented for node type: ${node.nodeType}`
-        );
     }
   }
 
@@ -1027,4 +1053,60 @@ async function isOutsideRootNodes({
   } while (parentInternalId !== null);
 
   return true;
+}
+
+/**
+ * Detect files & folders moved out of toplevel folders and delete them
+ * Such a case is e.g.:
+ * - only folder A is selected for sync, not the whole drive
+ * - folder B is not selected for sync
+ * - folder C was a subfolder of A and is moved out of A into B
+ * In that case, C should be deleted from the sync
+ */
+async function scrubRemovedFolders({
+  connector,
+  uniqueChangedItems,
+  sortedChangedItems,
+}: {
+  connector: ConnectorResource;
+  uniqueChangedItems: DriveItem[];
+  sortedChangedItems: DriveItem[];
+}) {
+  // all elements from the changelist that are in uniqueChangedItems but not in
+  // sortedChangedItems are out of the selected roots
+  // we use a set to avoid O(n^2) complexity
+  const sortedChangedItemsSet = new Set(
+    sortedChangedItems.map((item) => item.id)
+  );
+  const outOfRoots = uniqueChangedItems.filter(
+    // the drive root folder is always in the list but we never need to delete it
+    (item) => !sortedChangedItemsSet.has(item.id) && !item.root
+  );
+
+  const outOfRootsInternalIds = outOfRoots.map((item) =>
+    getDriveItemInternalId(item)
+  );
+
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connector.id,
+    outOfRootsInternalIds
+  );
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  for (const node of nodes) {
+    if (node.nodeType === "file") {
+      await deleteFile({
+        connectorId: connector.id,
+        internalId: node.internalId,
+        dataSourceConfig,
+      });
+    } else if (node.nodeType === "folder") {
+      await recursiveNodeDeletion(
+        node.internalId,
+        connector.id,
+        dataSourceConfig
+      );
+    }
+  }
 }

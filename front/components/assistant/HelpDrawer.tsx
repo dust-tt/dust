@@ -7,7 +7,7 @@ import {
   LightbulbIcon,
   Modal,
   Page,
-  QuestionMarkCircleIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -201,20 +201,21 @@ export function HelpDrawer({
           linksList={[
             {
               title: "Quickstart Guide",
+              description: "Learn the basics of Dust in 3 minutes",
               onClick: () => setShowQuickGuide(true),
               icon: LightbulbIcon,
             },
             {
-              title: "All help content",
+              title: "Guides & Documentation",
               href: "https://docs.dust.tt",
-              description: "Guides, best practices, and more",
+              description: "Explore the full documentation",
               icon: FolderIcon,
             },
             {
               title: "Community Support",
-              href: "https://docs.dust.tt/discuss",
+              href: "https://community.dust.tt",
               description: "Stuck? Ask your questions to the community",
-              icon: QuestionMarkCircleIcon,
+              icon: UserGroupIcon,
             },
           ]}
         />

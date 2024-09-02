@@ -12,12 +12,14 @@ import { classNames } from "@app/lib/utils";
 interface AssistantBrowserContainerProps {
   onAgentConfigurationClick: (agentId: string) => void;
   owner: WorkspaceType;
+  isBuilder: boolean;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }
 
 export function AssistantBrowserContainer({
   onAgentConfigurationClick,
   owner,
+  isBuilder,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
   const { agentConfigurations, isLoading, mutateAgentConfigurations } =
@@ -68,6 +70,7 @@ export function AssistantBrowserContainer({
       </div>
       <AssistantBrowser
         owner={owner}
+        isBuilder={isBuilder}
         agents={agentConfigurations}
         loadingStatus={isLoading ? "loading" : "finished"}
         handleAssistantClick={handleAssistantClick}

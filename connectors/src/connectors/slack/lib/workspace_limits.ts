@@ -206,10 +206,7 @@ export async function isBotAllowed(
   connector: ConnectorResource,
   slackUserInfo: SlackUserInfo
 ): Promise<Result<undefined, Error>> {
-  const displayName = slackUserInfo.display_name ?? "";
-  const realName = slackUserInfo.real_name ?? "";
-
-  const names = [displayName, realName].filter((name) => name.length > 0);
+  const realName = slackUserInfo.real_name;
 
   // Whitelisting a bot will accept any message from this bot.
   // This means that even a non verified user of a given Slack workspace who can trigger a bot
@@ -219,7 +216,7 @@ export async function isBotAllowed(
   const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
     connector.id
   );
-  const whitelist = await slackConfig?.isBotWhitelisted(names);
+  const whitelist = await slackConfig?.isBotWhitelisted(realName);
 
   if (!whitelist) {
     logger.info(

@@ -38,17 +38,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const plan = auth.plan();
-
-  if (!plan || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
+  const plan = auth.getNonNullablePlan();
 
   const dataSource = await getDataSource(auth, req.query.name as string);
 

@@ -5,6 +5,7 @@ import type {
   WebAPIPlatformError,
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
+import { Context } from "@temporalio/activity";
 
 import {
   ExternalOAuthTokenError,
@@ -54,49 +55,61 @@ export async function getSlackClient(
       return Reflect.get(target, prop, receiver);
     },
     apply: async function (target, thisArg, argumentsList) {
-      try {
-        // @ts-expect-error can't get typescript to be happy with this, but it works.
-        // eslint-disable-next-line @typescript-eslint/return-await
-        return await Reflect.apply(target, thisArg, argumentsList);
-      } catch (e) {
-        // If we get rate limited, we throw a known error.
-        // Note: a previous version using slackError.code === ErrorCode.RateLimitedError failed
-        // see PR #2689 for details
-        if (
-          e instanceof Error &&
-          e.message.startsWith("A rate limit was exceeded")
-        ) {
-          throw new ProviderWorkflowError(
-            "slack",
-            `Rate limited: ${e.message}`,
-            "rate_limit_error",
-            e
-          );
-        }
+      let remainingTries = 3;
+      while (remainingTries > 0) {
+        try {
+          // @ts-expect-error can't get typescript to be happy with this, but it works.
+          // eslint-disable-next-line @typescript-eslint/return-await
+          return await Reflect.apply(target, thisArg, argumentsList);
+        } catch (e) {
+          // If we get rate limited, we throw a known error.
+          // Note: a previous version using slackError.code === ErrorCode.RateLimitedError failed
+          // see PR #2689 for details
+          if (
+            e instanceof Error &&
+            e.message.startsWith("A rate limit was exceeded")
+          ) {
+            try {
+              Context.current().heartbeat();
+              await Context.current().sleep("1 minute");
+              remainingTries--;
+              continue;
+            } catch (temporalError) {
+              // Not in an activity, ignore
+            }
 
-        const slackError = e as CodedError;
-        if (slackError.code === ErrorCode.HTTPError) {
-          const httpError = slackError as WebAPIHTTPError;
-          if (httpError.statusCode === 503) {
             throw new ProviderWorkflowError(
               "slack",
-              `Slack is down: ${httpError.message}`,
-              "transient_upstream_activity_error",
-              httpError
+              `Rate limited: ${e.message}`,
+              "rate_limit_error",
+              e
             );
           }
-        }
-        if (slackError.code === ErrorCode.PlatformError) {
-          const platformError = e as WebAPIPlatformError;
-          if (
-            ["account_inactive", "invalid_auth"].includes(
-              platformError.data.error
-            )
-          ) {
-            throw new ExternalOAuthTokenError();
+
+          const slackError = e as CodedError;
+          if (slackError.code === ErrorCode.HTTPError) {
+            const httpError = slackError as WebAPIHTTPError;
+            if (httpError.statusCode === 503) {
+              throw new ProviderWorkflowError(
+                "slack",
+                `Slack is down: ${httpError.message}`,
+                "transient_upstream_activity_error",
+                httpError
+              );
+            }
           }
+          if (slackError.code === ErrorCode.PlatformError) {
+            const platformError = e as WebAPIPlatformError;
+            if (
+              ["account_inactive", "invalid_auth"].includes(
+                platformError.data.error
+              )
+            ) {
+              throw new ExternalOAuthTokenError();
+            }
+          }
+          throw e;
         }
-        throw e;
       }
     },
   };
@@ -110,7 +123,7 @@ export type SlackUserInfo = {
   email: string | null;
   is_bot: boolean;
   display_name?: string;
-  real_name?: string;
+  real_name: string;
   is_restricted: boolean;
   is_stranger: boolean;
   is_ultra_restricted: boolean;
@@ -129,6 +142,10 @@ export async function getSlackUserInfo(
     throw res.error;
   }
 
+  if (!res.user?.profile?.real_name) {
+    throw new Error(`Slack user with id ${userId} has no real name`);
+  }
+
   return {
     // Slack has two concepts for bots:
     // - Bots, that you can get through slackClient.bots.info() and
@@ -139,7 +156,7 @@ export async function getSlackUserInfo(
     is_bot: res.user?.is_bot || false,
     email: res.user?.profile?.email || null,
     display_name: res.user?.profile?.display_name,
-    real_name: res.user?.profile?.real_name,
+    real_name: res.user.profile.real_name,
     is_restricted: res.user?.is_restricted || false,
     is_stranger: res.user?.is_stranger || false,
     is_ultra_restricted: res.user?.is_ultra_restricted || false,
@@ -157,10 +174,13 @@ export async function getSlackBotInfo(
   if (slackBot.error) {
     throw slackBot.error;
   }
+  if (!slackBot.bot?.name) {
+    throw new Error(`Slack bot with id ${botId} has no name`);
+  }
 
   return {
     display_name: slackBot.bot?.name,
-    real_name: slackBot.bot?.name,
+    real_name: slackBot.bot.name,
     email: null,
     image_512: slackBot.bot?.icons?.image_72 || null,
     tz: null,

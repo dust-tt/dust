@@ -1,6 +1,6 @@
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -12,7 +12,7 @@ import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useConversation } from "@app/lib/swr";
+import { useConversation, useConversations } from "@app/lib/swr";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -91,10 +91,38 @@ export default function ConversationLayout({
     activeConversationId,
   ]);
 
+  const { conversations, isConversationsError, mutateConversations } =
+    useConversations({
+      workspaceId: owner.sId,
+    });
+
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
+
+  const onDeleteConversation = useCallback(
+    async (conversationId: string) => {
+      await deleteConversation({
+        workspaceId: owner.sId,
+        conversationId: conversationId,
+        sendNotification,
+      });
+
+      await mutateConversations((prevState) => {
+        return {
+          ...prevState,
+          conversations:
+            prevState?.conversations.filter(
+              (conversation) => conversation.sId !== conversationId
+            ) ?? [],
+        };
+      });
+
+      void router.push(`/w/${owner.sId}/assistant/new`);
+    },
+    [mutateConversations, owner.sId, router, sendNotification]
+  );
 
   return (
     <RootLayout>
@@ -116,19 +144,17 @@ export default function ConversationLayout({
                 owner={owner}
                 conversation={conversation}
                 shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
-                onDelete={async () => {
-                  await deleteConversation({
-                    workspaceId: owner.sId,
-                    conversationId: conversation.sId,
-                    sendNotification,
-                  });
-
-                  void router.push(`/w/${owner.sId}/assistant/new`);
-                }}
+                onDelete={onDeleteConversation}
               />
             )
           }
-          navChildren={<AssistantSidebarMenu owner={owner} />}
+          navChildren={
+            <AssistantSidebarMenu
+              owner={owner}
+              conversations={conversations}
+              isConversationsError={isConversationsError}
+            />
+          }
         >
           <AssistantDetails
             owner={owner}

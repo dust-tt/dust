@@ -40,14 +40,16 @@ interface Facet {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  defaultFilterColumn?: string;
   isLoading?: boolean;
   facets?: Facet[];
   pageSize?: number;
 }
 
 export function PokeDataTable<TData, TValue>({
-  columns,
   data,
+  columns,
+  defaultFilterColumn = "name",
   facets,
   isLoading,
   pageSize = 10,
@@ -87,9 +89,13 @@ export function PokeDataTable<TData, TValue>({
         <PokeInput
           name="filter"
           placeholder="Filter ..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+          value={
+            (table
+              .getColumn(defaultFilterColumn)
+              ?.getFilterValue() as string) ?? ""
+          }
           onChange={(e) =>
-            table.getColumn("name")?.setFilterValue(e.target.value)
+            table.getColumn(defaultFilterColumn)?.setFilterValue(e.target.value)
           }
           className="max-w-sm"
         />

@@ -621,7 +621,7 @@
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages": {
       "post": {
         "summary": "Create a message",
-        "description": "Create a message in the workspace identified by {wId}.",
+        "description": "Create a message in the workspace identified by {wId} in the conversation identified by {cId}.",
         "tags": ["Conversations"],
         "parameters": [
           {
@@ -1930,7 +1930,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/usage": {
+    "/api/v1/w/{wId}/workspace-usage": {
       "get": {
         "summary": "Get workspace usage data",
         "description": "Get usage data for the workspace identified by {wId} in CSV format.",
@@ -1952,36 +1952,71 @@
           },
           {
             "in": "query",
-            "name": "start_date",
+            "name": "start",
             "required": true,
-            "description": "The start date in YYYY-MM-DD format",
+            "description": "The start date in YYYY-MM format",
             "schema": {
-              "type": "string",
-              "format": "date"
+              "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "end_date",
+            "name": "end",
             "required": false,
-            "description": "The end date in YYYY-MM-DD format",
+            "description": "The end date in YYYY-MM format (required when mode is 'range')",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": true,
+            "description": "The mode of date range selection ('month' or 'range')",
             "schema": {
               "type": "string",
-              "format": "date"
+              "enum": ["month", "range"]
+            }
+          },
+          {
+            "in": "query",
+            "name": "table",
+            "required": true,
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned assistants.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace assistants and their corresponding usage.\n- \"all\": A concatenation of all the above tables.\n",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "users",
+                "assistant_messages",
+                "builders",
+                "assistants",
+                "all"
+              ]
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "The usage data in CSV format",
+            "description": "The usage data in CSV format or a ZIP of multiple CSVs if table is equal to \"all\"",
             "content": {
               "text/csv": {
                 "schema": {
                   "type": "string"
-                },
-                "example": "createdAt,conversationInternalId,messageId,parentMessageId,messageType,userFullName,userEmail,assistantId,assistantName,actionType,source\nYYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>\nYYYY-MM-DD HH:MM:SS,<conversation_id>,<message_id>,<parent_message_id>,<message_type>,<user_full_name>,<user_email>,<assistant_id>,<assistant_name>,<action_type>,<source>\n"
+                }
+              },
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
+          },
+          "400": {
+            "description": "Invalid request query"
+          },
+          "403": {
+            "description": "The workspace does not have access to the usage data API"
           },
           "404": {
             "description": "The workspace was not found"
@@ -2117,7 +2152,8 @@
           },
           "origin": {
             "type": "string",
-            "description": "Origin of the context (e.g., 'slack', 'web')"
+            "description": "Origin of the context",
+            "default": "api"
           }
         }
       },

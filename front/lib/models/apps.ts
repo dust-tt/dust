@@ -21,7 +21,7 @@ export class App extends Model<
   declare sId: string;
   declare name: string;
   declare description: string | null;
-  declare visibility: "public" | "private" | "unlisted" | "deleted";
+  declare visibility: "public" | "private" | "deleted";
   declare savedSpecification: string | null;
   declare savedConfig: string | null;
   declare savedRun: string | null;

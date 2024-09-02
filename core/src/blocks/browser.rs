@@ -112,6 +112,7 @@ impl Block for Browser {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
+        _project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 

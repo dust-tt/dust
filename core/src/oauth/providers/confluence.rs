@@ -13,6 +13,9 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
+use tracing::info;
+
+use super::utils::ProviderHttpRequestError;
 
 lazy_static! {
     static ref OAUTH_CONFLUENCE_CLIENT_ID: String = env::var("OAUTH_CONFLUENCE_CLIENT_ID").unwrap();
@@ -160,5 +163,26 @@ impl Provider for ConfluenceConnectionProvider {
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,
         };
         Ok(raw_json)
+    }
+
+    fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        match &error {
+            ProviderHttpRequestError::RequestFailed {
+                status, message, ..
+            } if *status == 403 => {
+                let is_revoked = message.contains("refresh_token is invalid");
+                info!(message, is_revoked, "Confluence 403 error");
+                if is_revoked {
+                    ProviderError::TokenRevokedError
+                } else {
+                    // Call the default implementation for other 403 errors.
+                    self.default_handle_provider_request_error(error)
+                }
+            }
+            _ => {
+                // Call the default implementation for other cases.
+                self.default_handle_provider_request_error(error)
+            }
+        }
     }
 }

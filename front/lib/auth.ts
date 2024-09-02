@@ -136,7 +136,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
-        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+        GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
@@ -255,7 +255,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
-        GroupResource.fetchActiveGroupsOfUserInWorkspace({
+        GroupResource.listUserGroupsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
@@ -288,7 +288,8 @@ export class Authenticator {
    */
   static async fromKey(
     key: KeyResource,
-    wId: string
+    wId: string,
+    requestedGroupIds?: string[]
   ): Promise<{
     workspaceAuth: Authenticator;
     keyAuth: Authenticator;
@@ -330,6 +331,7 @@ export class Authenticator {
       );
 
     let keyGroups: GroupResource[] = [];
+    let requestedGroups: GroupResource[] = [];
     let keyFlags: WhitelistableFeature[] = [];
     let workspaceFlags: WhitelistableFeature[] = [];
 
@@ -339,6 +341,7 @@ export class Authenticator {
     if (workspace) {
       [
         keyGroups,
+        requestedGroups,
         keySubscription,
         keyFlags,
         workspaceSubscription,
@@ -346,6 +349,9 @@ export class Authenticator {
       ] = await Promise.all([
         // Key related attributes.
         GroupResource.listWorkspaceGroupsFromKey(key),
+        requestedGroupIds
+          ? GroupResource.listGroupsWithSystemKey(key, requestedGroupIds)
+          : [],
         getSubscriptionForWorkspace(keyWorkspace),
         getFeatureFlags(keyWorkspace),
         // Workspace related attributes.
@@ -353,6 +359,16 @@ export class Authenticator {
         getFeatureFlags(workspace),
       ]);
     }
+
+    const allGroups = Object.entries(
+      keyGroups.concat(requestedGroups).reduce(
+        (acc, group) => {
+          acc[group.id] = group;
+          return acc;
+        },
+        {} as Record<string, GroupResource>
+      )
+    ).map(([, group]) => group);
 
     return {
       workspaceAuth: new Authenticator({
@@ -365,7 +381,7 @@ export class Authenticator {
       }),
       keyAuth: new Authenticator({
         flags: keyFlags,
-        groups: keyGroups,
+        groups: allGroups,
         key: key.toAuthJSON(),
         role: "builder",
         subscription: keySubscription,
@@ -513,7 +529,7 @@ export class Authenticator {
       return null;
     }
 
-    const groups = await GroupResource.fetchActiveGroupsOfUserInWorkspace({
+    const groups = await GroupResource.listUserGroupsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
     });
@@ -585,8 +601,32 @@ export class Authenticator {
     return this._subscription;
   }
 
+  getNonNullableSubscription(): SubscriptionType {
+    const subscription = this.subscription();
+
+    if (!subscription) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullableSubscription`."
+      );
+    }
+
+    return subscription;
+  }
+
   plan(): PlanType | null {
     return this._subscription ? this._subscription.plan : null;
+  }
+
+  getNonNullablePlan(): PlanType {
+    const plan = this.plan();
+
+    if (!plan) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullablePlan`."
+      );
+    }
+
+    return plan;
   }
 
   isUpgraded(): boolean {

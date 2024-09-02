@@ -1,5 +1,8 @@
 import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
-import type { ConversationWithoutContentType } from "@dust-tt/types";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+} from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
@@ -9,16 +12,21 @@ import React, { useContext } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/AppLayout";
-import { useConversations } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
-export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
+type AssistantSidebarMenuProps = {
+  owner: WorkspaceType;
+  conversations: ConversationType[];
+  isConversationsError: boolean;
+};
+
+export function AssistantSidebarMenu({
+  owner,
+  conversations,
+  isConversationsError,
+}: AssistantSidebarMenuProps) {
   const router = useRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
-  const { conversations, isConversationsLoading, isConversationsError } =
-    useConversations({
-      workspaceId: owner.sId,
-    });
 
   const groupConversationsByDate = (
     conversations: ConversationWithoutContentType[]
@@ -58,10 +66,9 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
     return groups;
   };
 
-  const conversationsByDate =
-    !isConversationsLoading && conversations.length
-      ? groupConversationsByDate(conversations)
-      : {};
+  const conversationsByDate = conversations.length
+    ? groupConversationsByDate(conversations)
+    : {};
 
   const { setAnimate } = useContext(InputBarContext);
 

@@ -21,16 +21,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
   if (!req.query.name || typeof req.query.name !== "string") {
     return apiError(req, res, {
       status_code: 404,
@@ -157,7 +147,10 @@ async function handler(
       if (dRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
-          api_error: dRes.error,
+          api_error: {
+            type: "internal_server_error",
+            message: dRes.error.message,
+          },
         });
       }
 

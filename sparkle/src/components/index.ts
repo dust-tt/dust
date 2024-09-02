@@ -3,6 +3,7 @@ export { Avatar } from "./Avatar";
 export { Banner } from "./Banner";
 export { BarHeader } from "./BarHeader";
 export { Button } from "./Button";
+export { Breadcrumbs } from "./Breadcrumbs";
 export { CardButton } from "./CardButton";
 export { Checkbox } from "./Checkbox";
 export { Chip } from "./Chip";

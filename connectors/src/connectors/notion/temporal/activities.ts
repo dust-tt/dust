@@ -653,16 +653,12 @@ export async function garbageCollectorMarkAsSeen({
   });
 
   const redisCli = await redisClient();
-  try {
-    const redisKey = redisGarbageCollectorKey(connector.id);
-    if (pageIds.length > 0) {
-      await redisCli.sAdd(`${redisKey}-pages`, pageIds);
-    }
-    if (databaseIds.length > 0) {
-      await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
-    }
-  } finally {
-    await redisCli.quit();
+  const redisKey = redisGarbageCollectorKey(connector.id);
+  if (pageIds.length > 0) {
+    await redisCli.sAdd(`${redisKey}-pages`, pageIds);
+  }
+  if (databaseIds.length > 0) {
+    await redisCli.sAdd(`${redisKey}-databases`, databaseIds);
   }
 
   const existingPageIds = new Set(
@@ -982,12 +978,8 @@ export async function garbageCollect({
 
   const redisKey = redisGarbageCollectorKey(connector.id);
   const redisCli = await redisClient();
-  try {
-    await redisCli.del(`${redisKey}-pages`);
-    await redisCli.del(`${redisKey}-databases`);
-  } finally {
-    await redisCli.quit();
-  }
+  await redisCli.del(`${redisKey}-pages`);
+  await redisCli.del(`${redisKey}-databases`);
 
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
@@ -1086,18 +1078,14 @@ async function findResourcesNotSeenInGarbageCollectionRun(
 
   const { pageIdsSeenInRun, databaseIdsSeenInRun } = await (async () => {
     const redisCli = await redisClient();
-    try {
-      const pageIdsSeenInRun = new Set(
-        await redisCli.sMembers(`${redisKey}-pages`)
-      );
-      const databaseIdsSeenInRun = new Set(
-        await redisCli.sMembers(`${redisKey}-databases`)
-      );
+    const pageIdsSeenInRun = new Set(
+      await redisCli.sMembers(`${redisKey}-pages`)
+    );
+    const databaseIdsSeenInRun = new Set(
+      await redisCli.sMembers(`${redisKey}-databases`)
+    );
 
-      return { pageIdsSeenInRun, databaseIdsSeenInRun };
-    } finally {
-      await redisCli.quit();
-    }
+    return { pageIdsSeenInRun, databaseIdsSeenInRun };
   })();
 
   const pageSize = 500;

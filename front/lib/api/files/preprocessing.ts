@@ -5,7 +5,13 @@ import type {
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
-import { Err, Ok, TextExtraction } from "@dust-tt/types";
+import {
+  Err,
+  isTextExtractionSupportedContentType,
+  Ok,
+  pagePrefixesPerMimeType,
+  TextExtraction,
+} from "@dust-tt/types";
 import { parse } from "csv-parse";
 import sharp from "sharp";
 import type { TransformCallback } from "stream";
@@ -112,12 +118,14 @@ const resizeAndUploadToFileStorage: PreprocessingFunction = async (
   }
 };
 
-// PDF preprocessing.
+async function createFileTextStream(buffer: Buffer, contentType: string) {
+  if (!isTextExtractionSupportedContentType(contentType)) {
+    throw new Error("unsupported_content_type");
+  }
 
-async function createPdfTextStream(buffer: Buffer) {
   const extractionRes = await new TextExtraction(
     config.getTextExtractionUrl()
-  ).fromBuffer(buffer, "application/pdf");
+  ).fromBuffer(buffer, contentType);
 
   if (extractionRes.isErr()) {
     // We must throw here, stream does not support Result type.
@@ -126,10 +134,14 @@ async function createPdfTextStream(buffer: Buffer) {
 
   const pages = extractionRes.value;
 
+  const prefix = pagePrefixesPerMimeType[contentType];
+
   return new Readable({
     async read() {
       for (const page of pages) {
-        const pageText = `$pdfPage: ${page.pageNumber}/${pages.length}\n${page.content}\n\n`;
+        const pageText = prefix
+          ? `${prefix}: ${page.pageNumber}/${pages.length}\n${page.content}\n\n`
+          : page.content;
         this.push(pageText);
       }
       this.push(null);
@@ -137,7 +149,7 @@ async function createPdfTextStream(buffer: Buffer) {
   });
 }
 
-const extractTextFromPDF: PreprocessingFunction = async (
+const extractTextFromFile: PreprocessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
@@ -153,10 +165,13 @@ const extractTextFromPDF: PreprocessingFunction = async (
       auth,
       version: "processed",
     });
-    const pdfTextStream = await createPdfTextStream(arrayBuffer);
+    const textStream = await createFileTextStream(
+      arrayBuffer,
+      file.contentType
+    );
 
     await pipeline(
-      pdfTextStream,
+      textStream,
       async function* (source) {
         for await (const chunk of source) {
           yield chunk;
@@ -173,14 +188,14 @@ const extractTextFromPDF: PreprocessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to extract text from PDF."
+      "Failed to extract text from File."
     );
 
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
 
     return new Err(
-      new Error(`Failed extracting text from PDF. ${errorMessage}`)
+      new Error(`Failed extracting text from File. ${errorMessage}`)
     );
   }
 };
@@ -311,8 +326,16 @@ type PreprocessingPerContentType = {
 };
 
 const processingPerContentType: PreprocessingPerContentType = {
+  "application/msword": {
+    conversation: extractTextFromFile,
+    avatar: notSupportedError,
+  },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    conversation: extractTextFromFile,
+    avatar: notSupportedError,
+  },
   "application/pdf": {
-    conversation: extractTextFromPDF,
+    conversation: extractTextFromFile,
     avatar: notSupportedError,
   },
   "image/jpeg": {

@@ -35,8 +35,6 @@ import {
   md5,
 } from "@dust-tt/types";
 import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
   Err,
   getTimeframeSecondsFromLiteral,
   isAgentMention,
@@ -71,6 +69,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -816,7 +815,6 @@ export async function* postUserMessage(
                   actions: [],
                   content: null,
                   chainOfThought: null,
-                  visualizations: [],
                   rawContents: [],
                   error: null,
                   configuration,
@@ -864,6 +862,26 @@ export async function* postUserMessage(
     messageId: userMessage.sId,
     message: userMessage,
   };
+
+  // TODO(2024-08-30 flav) Remove once debugging is done.
+  const groups = auth.groups();
+  if (
+    groups.length === 0 ||
+    (groups.length === 1 && groups[0].kind === "system")
+  ) {
+    logger.info(
+      {
+        agentMessages: {
+          sIds: agentMessages.map((m) => m.sId),
+        },
+        err: new Error("Authenticating as system group only."),
+        userMessage: {
+          sId: userMessage.sId,
+        },
+      },
+      "Authenticating as system group only."
+    );
+  }
 
   for (let i = 0; i < agentMessages.length; i++) {
     const agentMessage = agentMessages[i];
@@ -1288,7 +1306,6 @@ export async function* editUserMessage(
                 actions: [],
                 content: null,
                 chainOfThought: null,
-                visualizations: [],
                 rawContents: [],
                 error: null,
                 configuration,
@@ -1504,7 +1521,6 @@ export async function* retryAgentMessage(
         actions: [],
         content: null,
         chainOfThought: null,
-        visualizations: [],
         rawContents: [],
         error: null,
         configuration: message.configuration,

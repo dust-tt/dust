@@ -15,11 +15,11 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useRuns } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-
-const { GA_TRACKING_ID = "" } = process.env;
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -27,6 +27,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   app: AppType;
   wIdTarget: string | null;
+  dustAppsListUrl: string;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -51,6 +52,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   // `wIdTarget` is used to change the workspace owning the runs of the apps we're looking at.
   // Mostly useful for debugging as an example our use of `dust-apps` as `dust`.
   const wIdTarget = (context.query?.wIdTarget as string) || null;
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
 
   return {
     props: {
@@ -59,7 +61,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app,
       wIdTarget,
-      gaTrackingId: GA_TRACKING_ID,
+      dustAppsListUrl,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -86,6 +89,7 @@ export default function RunsView({
   readOnly,
   app,
   wIdTarget,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [runType, setRunType] = useState(
@@ -134,7 +138,7 @@ export default function RunsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

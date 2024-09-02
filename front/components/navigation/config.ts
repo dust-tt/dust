@@ -1,15 +1,18 @@
 import {
+  BookOpenIcon,
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  LockIcon,
   PlanetIcon,
   PuzzleIcon,
   QuestionMarkCircleIcon,
   RobotIcon,
   ShapesIcon,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
@@ -22,7 +25,11 @@ import { UsersIcon } from "@heroicons/react/20/solid";
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
  */
-export type TopNavigationId = "conversations" | "assistants" | "admin";
+export type TopNavigationId =
+  | "conversations"
+  | "assistants"
+  | "admin"
+  | "data_sources";
 
 export type SubNavigationConversationsId =
   | "conversation"
@@ -35,9 +42,16 @@ export type SubNavigationAssistantsId =
   | "personal_assistants"
   | "data_sources_url"
   | "developers"
-  | "documentation";
+  | "documentation"
+  | "community"
+  | "vaults";
 
-export type SubNavigationAdminId = "subscription" | "workspace" | "members";
+export type SubNavigationAdminId =
+  | "subscription"
+  | "workspace"
+  | "members"
+  | "providers"
+  | "api_keys";
 
 export type SubNavigationAppId =
   | "specification"
@@ -106,7 +120,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       ),
   });
 
-  if (isBuilder(owner)) {
+  if (isBuilder(owner) && !owner.flags.includes("data_vaults_feature")) {
     nav.push({
       id: "assistants",
       label: "Build",
@@ -118,6 +132,19 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       sizing: "expand",
     });
   }
+
+  if (owner.flags.includes("data_vaults_feature")) {
+    nav.push({
+      id: "data_sources",
+      label: "Data sources",
+      icon: BookOpenIcon,
+      href: `/w/${owner.sId}/data-sources/vaults`,
+      isCurrent: (currentRoute: string) =>
+        currentRoute.startsWith("/w/[wId]/data-sources/vaults/"),
+      sizing: "expand",
+    });
+  }
+
   if (isAdmin(owner)) {
     nav.push({
       id: "settings",
@@ -239,6 +266,14 @@ export const subNavigationBuild = ({
         current: current === "documentation",
         target: "_blank",
       },
+      {
+        id: "community",
+        label: "Community Support",
+        icon: UserGroupIcon,
+        href: `https://community.dust.tt`,
+        current: current === "community",
+        target: "_blank",
+      },
     ],
   });
 
@@ -297,6 +332,34 @@ export const subNavigationAdmin = ({
         },
       ],
     });
+
+    if (owner.flags.includes("data_vaults_feature")) {
+      nav.push({
+        id: "developers",
+        label: "Developers",
+        variant: "secondary",
+        menus: [
+          {
+            id: "providers",
+            label: "Providers",
+            icon: ShapesIcon,
+            href: `/w/${owner.sId}/developers/providers`,
+            current: current === "providers",
+            subMenuLabel: current === "providers" ? subMenuLabel : undefined,
+            subMenu: current === "providers" ? subMenu : undefined,
+          },
+          {
+            id: "api_keys",
+            label: "API Keys",
+            icon: LockIcon,
+            href: `/w/${owner.sId}/developers/api-keys`,
+            current: current === "api_keys",
+            subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+            subMenu: current === "api_keys" ? subMenu : undefined,
+          },
+        ],
+      });
+    }
   }
 
   return nav;

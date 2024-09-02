@@ -21,18 +21,18 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "intercom",
 ]);
 
-export default function ConnectorPermissionsModal({
+export function ConnectorPermissionsModal({
   owner,
   connector,
   dataSource,
   isOpen,
-  setOpen,
+  onClose,
 }: {
   owner: WorkspaceType;
   connector: ConnectorType;
   dataSource: DataSourceType;
   isOpen: boolean;
-  setOpen: (open: boolean) => void;
+  onClose: () => void;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -43,7 +43,7 @@ export default function ConnectorPermissionsModal({
   const sendNotification = useContext(SendNotificationsContext);
 
   function closeModal() {
-    setOpen(false);
+    onClose();
     setTimeout(() => {
       setUpdatedPermissionByInternalId({});
     }, 300);
@@ -128,10 +128,12 @@ export default function ConnectorPermissionsModal({
                 owner={owner}
                 dataSource={dataSource}
                 canUpdatePermissions={canUpdatePermissions}
-                onPermissionUpdate={({ internalId, permission }) => {
+                onPermissionUpdate={(node, { newPermission }) => {
+                  const { internalId } = node;
+
                   setUpdatedPermissionByInternalId((prev) => ({
                     ...prev,
-                    [internalId]: permission,
+                    [internalId]: newPermission,
                   }));
                 }}
                 showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}

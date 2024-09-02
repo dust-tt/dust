@@ -22,12 +22,11 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import config from "@app/lib/api/config";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -47,7 +46,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -220,12 +219,10 @@ export default function EditDustAssistant({
                         title={getDisplayNameForDataSource(ds)}
                         visual={
                           <ContextItem.Visual
-                            visual={
-                              ds.connectorProvider
-                                ? CONNECTOR_CONFIGURATIONS[ds.connectorProvider]
-                                    .logoComponent
-                                : CloudArrowDownIcon
-                            }
+                            visual={getConnectorProviderLogoWithFallback(
+                              ds.connectorProvider,
+                              CloudArrowDownIcon
+                            )}
                           />
                         }
                         action={

@@ -25,7 +25,7 @@ import { AssistantInputBar } from "@app/components/assistant/conversation/input_
 import {
   usePreviewAssistant,
   useTryAssistantCore,
-} from "@app/components/assistant/TryAssistant";
+} from "@app/components/assistant_builder/TryAssistant";
 import type {
   AssistantBuilderSetActionType,
   AssistantBuilderState,

@@ -1,14 +1,16 @@
 import {
   BookOpenIcon,
   Button,
+  ChevronDownIcon,
   CloudArrowLeftRightIcon,
   Dialog,
+  DropdownMenu,
   Page,
   SliderToggle,
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType } from "@dust-tt/types";
+import type { DataSourceViewType, SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   LabsTranscriptsProviderType,
@@ -24,9 +26,12 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import {
   useAgentConfigurations,
+  useConversations,
   useLabsTranscriptsConfiguration,
 } from "@app/lib/swr";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
@@ -37,6 +42,7 @@ const defaultTranscriptConfigurationState = {
   isGongConnected: false,
   assistantSelected: null,
   isActive: false,
+  dataSource: null,
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -44,10 +50,22 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
+  dataSourcesViews: DataSourceViewType[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();
+
+  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const globalDataSourceViews = await DataSourceViewResource.listByVault(
+    auth,
+    globalVault
+  );
+
+  const dataSourcesViews = globalDataSourceViews
+    .map((dsv) => dsv.toJSON())
+    .filter((dsv) => !dsv.dataSource.connectorId)
+    .sort((a, b) => a.dataSource.name.localeCompare(b.dataSource.name));
 
   if (
     !owner ||
@@ -66,6 +84,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
       dustClientFacingUrl: apiConfig.getClientFacingUrl(),
+      dataSourcesViews,
     },
   };
 });
@@ -75,6 +94,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   gaTrackingId,
   dustClientFacingUrl,
+  dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
@@ -92,6 +112,10 @@ export default function LabsTranscriptsIndex({
     mutateTranscriptsConfiguration,
   } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
 
+  const { conversations, isConversationsError } = useConversations({
+    workspaceId: owner.sId,
+  });
+
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
       provider: string;
@@ -99,6 +123,7 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
+      dataSource: DataSourceViewType | null;
     }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
@@ -115,6 +140,10 @@ export default function LabsTranscriptsIndex({
               (a) => a.sId === transcriptsConfiguration.agentConfigurationId
             ) || null,
           isActive: transcriptsConfiguration.isActive || false,
+          dataSource:
+            dataSourcesViews.find(
+              (ds) => ds.id === transcriptsConfiguration.dataSourceId
+            ) || null,
         };
       });
     } else {
@@ -122,7 +151,7 @@ export default function LabsTranscriptsIndex({
         return defaultTranscriptConfigurationState;
       });
     }
-  }, [transcriptsConfiguration, agentConfigurations]);
+  }, [transcriptsConfiguration, agentConfigurations, dataSourcesViews]);
 
   if (isTranscriptsConfigurationLoading) {
     return <Spinner />;
@@ -227,6 +256,33 @@ export default function LabsTranscriptsIndex({
     assistant: LightAgentConfigurationType
   ) => {
     return updateAssistant(transcriptConfigurationId, assistant);
+  };
+
+  const handleSetDataSource = async (
+    transcriptConfigurationId: number,
+    dataSource: DataSourceViewType | null
+  ) => {
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        dataSource,
+      };
+    });
+
+    let successMessage = "The transcripts will not be stored.";
+
+    if (dataSource) {
+      successMessage =
+        "The transcripts will be stored in the folder " +
+        dataSource.dataSource.name;
+    }
+    await makePatchRequest(
+      transcriptConfigurationId,
+      {
+        dataSourceId: dataSource ? dataSource.dataSource.name : null,
+      },
+      successMessage
+    );
   };
 
   const handleSetIsActive = async (
@@ -403,7 +459,13 @@ export default function LabsTranscriptsIndex({
       owner={owner}
       gaTrackingId={gaTrackingId}
       pageTitle="Dust - Transcripts processing"
-      navChildren={<AssistantSidebarMenu owner={owner} />}
+      navChildren={
+        <AssistantSidebarMenu
+          owner={owner}
+          conversations={conversations}
+          isConversationsError={isConversationsError}
+        />
+      }
     >
       <Dialog
         isOpen={isDeleteProviderDialogOpened}
@@ -542,8 +604,8 @@ export default function LabsTranscriptsIndex({
                 <Page.SectionHeader title="2. Choose an assistant" />
                 <Page.Layout direction="vertical">
                   <Page.P>
-                    Choose the assistant that will summarize the transcripts in
-                    the way you want.
+                    Choose the assistant that will process the transcripts the
+                    way you want.
                   </Page.P>
                   <Page.Layout direction="horizontal">
                     <AssistantPicker
@@ -569,6 +631,62 @@ export default function LabsTranscriptsIndex({
                   </Page.Layout>
                 </Page.Layout>
               </Page.Layout>
+
+              {owner.flags.includes("labs_transcripts_datasource") && (
+                <Page.Layout direction="vertical">
+                  <Page.SectionHeader title="3. Store transcripts in Folder" />
+                  <Page.Layout direction="horizontal" gap="xl">
+                    <Page.P>
+                      Store transcripts in a Folder to keep using them in your
+                      assistants?
+                      <br />
+                      <small>
+                        Warning: this can make your transcripts public within
+                        your workspace.
+                      </small>
+                    </Page.P>
+                    {dataSourcesViews.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenu.Button
+                          className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                          disabled={!transcriptsConfigurationState.isActive}
+                        >
+                          {transcriptsConfigurationState?.dataSource?.dataSource
+                            .name || "Do not store transcripts"}
+                          <ChevronDownIcon
+                            className="-mr-1 ml-2 h-5 w-5"
+                            aria-hidden="true"
+                          />
+                        </DropdownMenu.Button>
+                        <DropdownMenu.Items origin="topLeft" width={220}>
+                          <DropdownMenu.Item
+                            label="Do not store transcripts"
+                            onClick={() =>
+                              handleSetDataSource(
+                                transcriptsConfiguration.id,
+                                null
+                              )
+                            }
+                          />
+                          {dataSourcesViews.map((dsv) => (
+                            <DropdownMenu.Item
+                              key={dsv.id}
+                              label={dsv.dataSource.name}
+                              onClick={() =>
+                                handleSetDataSource(
+                                  transcriptsConfiguration.id,
+                                  dsv
+                                )
+                              }
+                            />
+                          ))}
+                        </DropdownMenu.Items>
+                      </DropdownMenu>
+                    )}
+                  </Page.Layout>
+                </Page.Layout>
+              )}
+
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="3. Enable transcripts processing" />
                 <Page.Layout direction="horizontal" gap="xl">

@@ -335,18 +335,30 @@ export class ConfluenceClient {
       params.append("cursor", pageCursor);
     }
 
-    const pages = await this.request(
-      `${
-        this.restApiBaseUrl
-      }/pages/${parentPageId}/children?${params.toString()}`,
-      ConfluencePaginatedResults(ConfluenceChildPagesCodec)
-    );
-    const nextPageCursor = extractCursorFromLinks(pages._links);
+    try {
+      const pages = await this.request(
+        `${
+          this.restApiBaseUrl
+        }/pages/${parentPageId}/children?${params.toString()}`,
+        ConfluencePaginatedResults(ConfluenceChildPagesCodec)
+      );
+      const nextPageCursor = extractCursorFromLinks(pages._links);
 
-    return {
-      pages: pages.results,
-      nextPageCursor,
-    };
+      return {
+        pages: pages.results,
+        nextPageCursor,
+      };
+    } catch (err) {
+      if (err instanceof ConfluenceClientError && err.status === 404) {
+        // If the child page is not found, return empty array.
+        return {
+          pages: [],
+          nextPageCursor: null,
+        };
+      }
+
+      throw err;
+    }
   }
 
   async getGlobalSpaces(pageCursor: string | null) {
@@ -415,10 +427,19 @@ export class ConfluenceClient {
       "include-labels": "true", // Include labels.
     });
 
-    return this.request(
-      `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
-      ConfluencePageWithBodyCodec
-    );
+    try {
+      return await this.request(
+        `${this.restApiBaseUrl}/pages/${pageId}?${params.toString()}`,
+        ConfluencePageWithBodyCodec
+      );
+    } catch (err) {
+      if (err instanceof ConfluenceClientError && err.status === 404) {
+        // If the page is not found, return null.
+        return null;
+      }
+
+      throw err;
+    }
   }
 
   async getPageReadRestrictions(pageId: string) {

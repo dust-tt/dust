@@ -32,19 +32,24 @@ async function handler(
   auth: Authenticator,
   session: SessionWithUser
 ) {
-  let owner = auth.workspace();
-  if (!owner) {
+  // Only the users that are `builders` for the current workspace can create runs or retrieve
+  // runs. Note that we have a special wIdTarget flow to let dust super users retrieve runs from
+  // other workspaces on apps that they have access to (used for dust-apps).
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can create runs.",
       },
     });
   }
 
-  const app = await getApp(auth, req.query.aId as string);
+  let owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
 
+  const app = await getApp(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -59,18 +64,6 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      // Only the users that are `builders` for the current workspace can create runs.
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can create runs.",
-          },
-        });
-      }
-
       const [providers, secrets] = await Promise.all([
         Provider.findAll({
           where: {
@@ -171,20 +164,22 @@ async function handler(
     case "GET":
       if (req.query.wIdTarget) {
         // If we have a `wIdTarget` query parameter, we are fetching runs that were created with an
-        // API key coming from another workspace. So we override the `owner` variable and check that
-        // the user is a user of that workspace.
+        // API key coming from another workspace. So we override the `owner` variable. This is only
+        // available to dust super users.
 
         // Dust super users can view runs of any workspace.
-        let target = await Authenticator.fromSuperUserSession(
+        const target = await Authenticator.fromSuperUserSession(
           session,
           req.query.wIdTarget as string
         );
-        if (!target.isAdmin()) {
-          // If the user is not a super user, we check that the user is a user of the target
-          target = await Authenticator.fromSession(
-            session,
-            req.query.wIdTarget as string
-          );
+        if (!target.isAdmin() || !auth.isDustSuperUser()) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "wIdTarget is only available to Dust super users.",
+            },
+          });
         }
 
         const targetOwner = target.workspace();
@@ -198,29 +193,17 @@ async function handler(
           });
         }
 
-        owner = targetOwner;
+        logger.info(
+          {
+            owner: owner.sId,
+            targetOwner: targetOwner.sId,
+            user: user.sId,
+            app: app.sId,
+          },
+          "wIdTarget access"
+        );
 
-        if (!target.isUser()) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "app_not_found",
-              message: "The app was not found.",
-            },
-          });
-        }
-      } else {
-        // Otherwise we are retrieving the runs for the app's own workspace let's just check that we
-        // are user of that workspace.
-        if (!auth.isUser()) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "app_not_found",
-              message: "The app was not found.",
-            },
-          });
-        }
+        owner = targetOwner;
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;

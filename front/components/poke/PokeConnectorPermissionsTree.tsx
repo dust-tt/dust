@@ -4,7 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import { usePokeConnectorPermissions } from "@app/lib/swr";
 
 export function PokePermissionTree({
@@ -12,7 +12,6 @@ export function PokePermissionTree({
   dataSource,
   permissionFilter,
   canUpdatePermissions,
-  onPermissionUpdate,
   showExpand,
   displayDocumentSource,
 }: {
@@ -20,33 +19,23 @@ export function PokePermissionTree({
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
   canUpdatePermissions?: boolean;
-  onPermissionUpdate?: ({
-    internalId,
-    permission,
-  }: {
-    internalId: string;
-    permission: ConnectorPermission;
-  }) => void;
   showExpand?: boolean;
   displayDocumentSource: (documentId: string) => void;
 }) {
   return (
-    <>
-      <div className="overflow-x-auto">
-        <PermissionTreeChildren
-          owner={owner}
-          dataSource={dataSource}
-          parentId={null}
-          permissionFilter={permissionFilter}
-          canUpdatePermissions={canUpdatePermissions}
-          onPermissionUpdate={onPermissionUpdate}
-          showExpand={showExpand}
-          parentIsSelected={false}
-          displayDocumentSource={displayDocumentSource}
-          useConnectorPermissionsHook={usePokeConnectorPermissions}
-          isSearchEnabled={false}
-        />
-      </div>
-    </>
+    <div className="overflow-x-auto">
+      <DataSourcePermissionTreeChildren
+        owner={owner}
+        dataSource={dataSource}
+        parentId={null}
+        permissionFilter={permissionFilter}
+        canUpdatePermissions={canUpdatePermissions}
+        showExpand={showExpand}
+        parentIsSelected={false}
+        displayDocumentSource={displayDocumentSource}
+        useConnectorPermissionsHook={usePokeConnectorPermissions}
+        isSearchEnabled={false}
+      />
+    </div>
   );
 }

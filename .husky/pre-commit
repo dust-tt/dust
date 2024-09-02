@@ -12,6 +12,7 @@ fi
 
 # If env var DUST_LINT_ON_COMMIT = 1, run the linter
 if [ -z "$DUST_LINT_ON_COMMIT" ]; then
+    echo "Please set DUST_LINT_ON_COMMIT if you want to locally run the lint, type check etc.. before committing."
     exit 0
 fi
 
@@ -26,8 +27,20 @@ directories=("front" "connectors")
 for directory in "${directories[@]}"; do
     if git diff --cached --name-only | grep -qE "^$directory/"; then
         # Run the linter on root_path concatenated with the directory
-        if ! npm run lint --prefix $root_path/$directory; then
+        if ! npm run lint --if-present --prefix $root_path/$directory; then
             echo "Linting failed. Please fix the issues before committing."
+            exit 1
+        fi
+        if ! npm run tsc --if-present --prefix $root_path/$directory; then
+            echo "Type checking failed. Please fix the issues before committing."
+            exit 1
+        fi
+        if ! npm run format:check --if-present --prefix $root_path/$directory; then
+            echo "Formatting check failed. Please fix the issues before committing."
+            exit 1
+        fi
+        if ! npm run docs:check --if-present --prefix $root_path/$directory; then
+            echo "Documentation check failed. Please fix the issues before committing."
             exit 1
         fi
         break

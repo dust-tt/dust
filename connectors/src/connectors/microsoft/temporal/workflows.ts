@@ -29,11 +29,10 @@ const { syncDeltaForRootNodesInDrive } = proxyActivities<typeof activities>({
   heartbeatTimeout: "5 minutes",
 });
 
-const { reportInitialSyncProgress, syncSucceeded } = proxyActivities<
-  typeof sync_status
->({
-  startToCloseTimeout: "10 minutes",
-});
+const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
+  proxyActivities<typeof sync_status>({
+    startToCloseTimeout: "10 minutes",
+  });
 
 export async function fullSyncWorkflow({
   connectorId,
@@ -46,6 +45,8 @@ export async function fullSyncWorkflow({
   nodeIdsToSync?: string[];
   totalCount?: number;
 }) {
+  await syncStarted(connectorId);
+
   if (nodeIdsToSync === undefined) {
     nodeIdsToSync = await getRootNodesToSync(connectorId);
   }
@@ -102,6 +103,8 @@ export async function incrementalSyncWorkflow({
 }: {
   connectorId: ModelId;
 }) {
+  await syncStarted(connectorId);
+
   const nodeIdsToSync = await getRootNodesToSync(connectorId);
 
   const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
@@ -115,6 +118,8 @@ export async function incrementalSyncWorkflow({
       startSyncTs,
     });
   }
+
+  await syncSucceeded(connectorId);
 
   await sleep("5 minutes");
   await continueAsNew<typeof incrementalSyncWorkflow>({

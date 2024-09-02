@@ -3,26 +3,30 @@ import type {
   AgentsGetViewType,
   AppType,
   ConnectorPermission,
-  ContentNode,
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
   DataSourceType,
+  DataSourceViewCategory,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
   RunRunType,
   WorkspaceEnterpriseConnection,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher, Key, SWRConfiguration } from "swr";
+import type { Fetcher, Key, KeyedMutator, SWRConfiguration } from "swr";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
+import type { GetAppStatusResponseBody } from "@app/pages/api/app-status";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { GetAppsResponseBody } from "@app/pages/api/v1/w/[wId]/apps";
 import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets/[name]";
@@ -34,11 +38,11 @@ import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
+import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
-import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content_nodes";
 import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
@@ -51,20 +55,29 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type { GetVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
+import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
+import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
+import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
+
+export const SWR_KEYS = {
+  vaults: (workspaceId: string) => `/api/w/${workspaceId}/vaults`,
+};
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
 };
 
-function useSWRWithDefaults<T>(
-  key: Key,
-  fetcher: Fetcher<T>,
+function useSWRWithDefaults<TKey extends Key, TData>(
+  key: TKey,
+  fetcher: Fetcher<TData, TKey>,
   config?: SWRConfiguration
 ) {
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
 
-  return useSWR<T>(key, fetcher, mergedConfig);
+  return useSWR(key, fetcher, mergedConfig);
 }
 
 const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
@@ -107,12 +120,53 @@ export const postFetcher = async ([url, body]: [string, object]) => {
   return resHandler(res);
 };
 
+type UrlsAndOptions = { url: string; options: RequestInit };
+
+const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
+  const f = async (url: string, options: RequestInit) => fetcher(url, options);
+
+  return Promise.all<T>(
+    urlsAndOptions.map(({ url, options }) => f(url, options))
+  );
+};
+
+export function useAppStatus() {
+  const appStatusFetcher: Fetcher<GetAppStatusResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    "/api/app-status",
+    appStatusFetcher
+  );
+
+  return {
+    appStatus: useMemo(() => (data ? data : null), [data]),
+    isAppStatusLoading: !error && !data,
+    isAppStatusError: !!error,
+  };
+}
+
+export function useApps(owner: LightWorkspaceType) {
+  const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/apps`,
+    appsFetcher
+  );
+
+  return {
+    apps: useMemo(() => (data ? data.apps : []), [data]),
+    isAppsLoading: !error && !data,
+    isAppsError: !!error,
+    mutateApps: mutate,
+  };
+}
+
 export function useDatasets({
   owner,
   app,
   disabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   app: AppType;
   disabled: boolean;
 }) {
@@ -131,7 +185,7 @@ export function useDatasets({
 }
 
 export function useDataset(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   dataset: string,
   showData = false
@@ -157,7 +211,7 @@ export function useProviders({
   owner,
   disabled = false,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const providersFetcher: Fetcher<GetProvidersResponseBody> = fetcher;
@@ -175,7 +229,7 @@ export function useProviders({
 }
 
 export function useSavedRunStatus(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   refresh: (data: GetRunStatusResponseBody | undefined) => number
 ) {
@@ -196,7 +250,7 @@ export function useSavedRunStatus(
 }
 
 export function useRunBlock(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   runId: string,
   type: string,
@@ -219,7 +273,7 @@ export function useRunBlock(
   };
 }
 
-export function useDustAppSecrets(owner: WorkspaceType) {
+export function useDustAppSecrets(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetDustAppSecretsResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/dust_app_secrets`,
@@ -233,7 +287,7 @@ export function useDustAppSecrets(owner: WorkspaceType) {
   };
 }
 
-export function useKeys(owner: WorkspaceType) {
+export function useKeys(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/keys`,
@@ -248,7 +302,7 @@ export function useKeys(owner: WorkspaceType) {
 }
 
 export function useRuns(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   app: AppType,
   limit: number,
   offset: number,
@@ -271,19 +325,16 @@ export function useRuns(
 }
 
 export function useDocuments(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   dataSource: { name: string },
   limit: number,
-  offset: number,
-  asDustSuperUser?: boolean
+  offset: number
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/data_sources/${
       dataSource.name
-    }/documents?limit=${limit}&offset=${offset}${
-      asDustSuperUser ? "&asDustSuperUser=true" : ""
-    }`,
+    }/documents?limit=${limit}&offset=${offset}`,
     documentsFetcher
   );
 
@@ -297,7 +348,7 @@ export function useDocuments(
 }
 
 export function useDataSources(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   options = { disabled: false }
 ) {
   const { disabled } = options;
@@ -315,7 +366,27 @@ export function useDataSources(
   };
 }
 
-export function useMembers(owner: WorkspaceType) {
+export function useDataSourceViews(
+  owner: LightWorkspaceType,
+  options = { disabled: false }
+) {
+  const { disabled } = options;
+  const dataSourceViewsFetcher: Fetcher<GetDataSourceViewsResponseBody> =
+    fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled ? null : `/api/w/${owner.sId}/data_source_views`,
+    dataSourceViewsFetcher
+  );
+
+  return {
+    dataSourceViews: useMemo(() => (data ? data.dataSourceViews : []), [data]),
+    isDataSourceViewsLoading: disabled ? false : !error && !data,
+    isDataSourceViewsError: disabled ? false : error,
+    mutateDataSourceViews: mutate,
+  };
+}
+
+export function useMembers(owner: LightWorkspaceType) {
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/members`,
@@ -330,7 +401,7 @@ export function useMembers(owner: WorkspaceType) {
   };
 }
 
-export function useAdmins(owner: WorkspaceType) {
+export function useAdmins(owner: LightWorkspaceType) {
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/members?role=admin`,
@@ -345,7 +416,7 @@ export function useAdmins(owner: WorkspaceType) {
   };
 }
 
-export function useWorkspaceInvitations(owner: WorkspaceType) {
+export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
@@ -388,44 +459,114 @@ export function useUserMetadata(key: string) {
   };
 }
 
-export function useDataSourceContentNodes({
-  owner,
-  dataSource,
-  internalIds,
-}: {
-  owner: WorkspaceType;
-  dataSource: DataSourceType;
+type DataSourceViewsAndInternalIds = {
+  dataSourceView: DataSourceViewType;
   internalIds: string[];
+};
+type DataSourceViewsAndNodes = {
+  dataSourceView: DataSourceViewType;
+  nodes: GetDataSourceViewContentNodes["nodes"];
+};
+
+export function useMultipleDataSourceViewsContentNodes({
+  owner,
+  dataSourceViewsAndInternalIds,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceViewsAndInternalIds: DataSourceViewsAndInternalIds[];
 }): {
-  nodes: GetContentNodeResponseBody["nodes"];
+  dataSourceViewsAndNodes: DataSourceViewsAndNodes[];
   isNodesLoading: boolean;
   isNodesError: boolean;
 } {
-  const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-    dataSource.name
-  )}/managed/content_nodes`;
-  const body = JSON.stringify({ internalIds });
+  const urlsAndOptions = dataSourceViewsAndInternalIds.map(
+    ({ dataSourceView, internalIds }) => {
+      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
+      const body = JSON.stringify({ internalIds });
+      const options = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      };
+      return { url, options };
+    }
+  );
+
+  const { data: results, error } = useSWRWithDefaults(
+    urlsAndOptions,
+    fetcherMultiple<GetDataSourceViewContentNodes>
+  );
+  const isNodesError = !!error;
+  const isNodesLoading = !results?.every((r) => r.nodes);
+
+  return useMemo(
+    () => ({
+      dataSourceViewsAndNodes: dataSourceViewsAndInternalIds.map(
+        ({ dataSourceView }, i) => ({
+          dataSourceView,
+          nodes: results ? results[i].nodes : [],
+        })
+      ),
+      isNodesError,
+      isNodesLoading,
+    }),
+    [dataSourceViewsAndInternalIds, isNodesError, isNodesLoading, results]
+  );
+}
+
+// TODO(GROUPS_INFRA) Implement pagination.
+export function useDataSourceViewContentNodes({
+  owner,
+  dataSourceView,
+  internalIds,
+  includeChildren,
+  viewType = "documents",
+}: {
+  owner: LightWorkspaceType;
+  dataSourceView?: DataSourceViewType;
+  internalIds: string[];
+  includeChildren?: boolean;
+  viewType?: ContentNodesViewType;
+}): {
+  isNodesError: boolean;
+  isNodesLoading: boolean;
+  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
+  nodes: GetDataSourceViewContentNodes["nodes"];
+} {
+  const url = dataSourceView
+    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+    : null;
+
+  const body = JSON.stringify({
+    internalIds,
+    includeChildren,
+    viewType,
+  });
 
   const fetchKey = useMemo(() => {
-    return JSON.stringify({ url, body }); // Serialize with body to ensure uniqueness
+    return JSON.stringify({
+      url,
+      body,
+    }); // Serialize with body to ensure uniqueness.
   }, [url, body]);
 
-  const { data, error } = useSWRWithDefaults(fetchKey, async () => {
-    const options = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    };
-    return fetcher(url, options);
+  const { data, error, mutate } = useSWRWithDefaults(fetchKey, async () => {
+    if (!url) {
+      return null;
+    }
+
+    return postFetcher([url, { internalIds, includeChildren, viewType }]);
   });
 
   return {
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
-    isNodesLoading: !error && !data,
     isNodesError: !!error,
+    isNodesLoading: !error && !data,
+    mutateDataSourceViewContentNodes: mutate,
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
   };
 }
 
+// TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
 export function useConnectorPermissions({
   owner,
   dataSource,
@@ -434,7 +575,7 @@ export function useConnectorPermissions({
   disabled,
   viewType = "documents",
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
@@ -466,6 +607,7 @@ export function useConnectorPermissions({
   };
 }
 
+// TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
 export function usePokeConnectorPermissions({
   owner,
   dataSource,
@@ -473,7 +615,7 @@ export function usePokeConnectorPermissions({
   filterPermission,
   disabled,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
@@ -482,7 +624,7 @@ export function usePokeConnectorPermissions({
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/managed/permissions?viewType=documents`;
+  let url = `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(dataSource.name)}/managed/permissions?viewType=documents`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }
@@ -496,7 +638,7 @@ export function usePokeConnectorPermissions({
   );
 
   return {
-    resources: data ? data.resources : [],
+    resources: useMemo(() => (data ? data.resources : []), [data]),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -507,7 +649,7 @@ export function useConnectorConfig({
   dataSource,
   configKey,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   configKey: string;
 }) {
@@ -1158,7 +1300,6 @@ export function useWorkspaceEnterpriseConnection({
     mutateEnterpriseConnection: mutate,
   };
 }
-
 interface UseDataSourceKey {
   workspaceId: string;
   dataSourceName: string;
@@ -1166,14 +1307,14 @@ interface UseDataSourceKey {
 }
 
 interface UseDataSourceResult {
-  contentNodes: ContentNode[];
+  contentNodes: LightContentNode[];
   parentsById: Record<string, Set<string>>;
 }
 
 export function useDataSourceNodes(
   key: UseDataSourceKey,
   options?: SWRConfiguration<{
-    contentNodes: ContentNode[];
+    contentNodes: LightContentNode[];
     parentsById: Record<string, Set<string>>;
   }>
 ) {
@@ -1259,5 +1400,123 @@ export function useLabsTranscriptsConfiguration({
     isTranscriptsConfigurationLoading: !error && !data,
     isTranscriptsConfigurationError: error,
     mutateTranscriptsConfiguration: mutate,
+  };
+}
+
+export function useVaults({ workspaceId }: { workspaceId: string }) {
+  const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    SWR_KEYS.vaults(workspaceId),
+    vaultsFetcher
+  );
+
+  return {
+    vaults: data ? data.vaults : null,
+    isVaultsLoading: !error && !data,
+    isVaultsError: error,
+  };
+}
+
+export function useVaultInfo({
+  workspaceId,
+  vaultId,
+  disabled,
+}: {
+  workspaceId: string;
+  vaultId: string;
+  disabled?: boolean;
+}) {
+  const vaultsCategoriesFetcher: Fetcher<GetVaultResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled ? null : `/api/w/${workspaceId}/vaults/${vaultId}`,
+    vaultsCategoriesFetcher
+  );
+
+  return {
+    vaultInfo: data ? data.vault : null,
+    mutateVaultInfo: mutate,
+    isVaultInfoLoading: !error && !data,
+    isVaultInfoError: error,
+  };
+}
+
+export function useVaultDataSourceViews<
+  IncludeConnectorDetails extends boolean,
+>({
+  category,
+  disabled,
+  includeConnectorDetails,
+  includeEditedBy,
+  vaultId,
+  workspaceId,
+}: {
+  category: DataSourceViewCategory;
+  disabled?: boolean;
+  includeConnectorDetails?: IncludeConnectorDetails;
+  includeEditedBy?: boolean;
+  vaultId: string;
+  workspaceId: string;
+}) {
+  const vaultsDataSourceViewsFetcher: Fetcher<
+    GetVaultDataSourceViewsResponseBody<IncludeConnectorDetails>
+  > = fetcher;
+
+  const queryParams = new URLSearchParams({
+    category,
+  });
+
+  if (includeConnectorDetails) {
+    queryParams.set("includeConnectorDetails", "true");
+  }
+  if (includeEditedBy) {
+    queryParams.set("includeEditedBy", "true");
+  }
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
+    vaultsDataSourceViewsFetcher
+  );
+
+  const vaultDataSourceViews = useMemo(() => {
+    return (data?.dataSourceViews ??
+      []) as GetVaultDataSourceViewsResponseBody<IncludeConnectorDetails>["dataSourceViews"];
+  }, [data]);
+
+  return {
+    vaultDataSourceViews,
+    mutateVaultDataSourceViews: mutate,
+    isVaultDataSourceViewsLoading: !error && !data,
+    isVaultDataSourceViewsError: error,
+  };
+}
+
+export function useDataSourceViewDocument({
+  dataSourceView,
+  documentId,
+  owner,
+}: {
+  dataSourceView: DataSourceViewType | null;
+  documentId: string | null;
+  owner: LightWorkspaceType;
+}) {
+  const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceViewDocumentResponseBody> =
+    fetcher;
+  const disabled = !dataSourceView || !documentId;
+
+  const { data, error } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${documentId}`,
+    dataSourceViewDocumentFetcher
+  );
+
+  return {
+    document: data?.document,
+    isDocumentLoading: !error && !data,
+    isDocumentError: error,
   };
 }

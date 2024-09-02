@@ -9,6 +9,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -21,12 +22,14 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare userId: ForeignKey<User["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare connectionId: string;
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
+
+  declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare dataSourceId: ForeignKey<DataSource["id"]> | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -45,12 +48,6 @@ LabsTranscriptsConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    userId: {
-      type: DataTypes.INTEGER,
-    },
-    workspaceId: {
-      type: DataTypes.INTEGER,
     },
     connectionId: {
       type: DataTypes.STRING,
@@ -81,23 +78,26 @@ LabsTranscriptsConfigurationModel.init(
 );
 
 User.hasMany(LabsTranscriptsConfigurationModel, {
-  foreignKey: { allowNull: false },
-});
-Workspace.hasMany(LabsTranscriptsConfigurationModel, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
+  foreignKey: { name: "userId", allowNull: false },
 });
 LabsTranscriptsConfigurationModel.belongsTo(User, {
-  foreignKey: {
-    name: "userId",
-    allowNull: false,
-  },
+  foreignKey: { name: "userId", allowNull: false },
+});
+
+Workspace.hasMany(LabsTranscriptsConfigurationModel, {
+  foreignKey: { name: "workspaceId", allowNull: false },
+  onDelete: "CASCADE",
 });
 LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
-  foreignKey: {
-    name: "workspaceId",
-    allowNull: false,
-  },
+  foreignKey: { name: "workspaceId", allowNull: false },
+});
+
+DataSource.hasMany(LabsTranscriptsConfigurationModel, {
+  foreignKey: { name: "dataSourceId", allowNull: true },
+});
+LabsTranscriptsConfigurationModel.belongsTo(DataSource, {
+  as: "dataSource",
+  foreignKey: { name: "dataSourceId", allowNull: true },
 });
 
 export class LabsTranscriptsHistoryModel extends Model<
@@ -157,12 +157,8 @@ LabsTranscriptsHistoryModel.init(
 
 LabsTranscriptsHistoryModel.belongsTo(LabsTranscriptsConfigurationModel, {
   as: "configuration",
-  foreignKey: {
-    name: "configurationId",
-    allowNull: false,
-  },
+  foreignKey: { name: "configurationId", allowNull: false },
 });
-
 LabsTranscriptsConfigurationModel.hasMany(LabsTranscriptsHistoryModel, {
   as: "configuration",
   foreignKey: { name: "configurationId", allowNull: false },

@@ -5,6 +5,7 @@ import { HelpDrawer } from "@app/components/assistant/HelpDrawer";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useUserMetadata } from "@app/lib/swr";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
 
@@ -43,6 +44,15 @@ export function HelpAndQuickGuideWrapper({
     }
   }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
 
+  useEffect(() => {
+    if (isHelpDrawerOpen) {
+      void ClientSideTracking.trackHelpDrawerOpened({
+        email: user.email,
+        workspaceId: owner.sId,
+      });
+    }
+  }, [isHelpDrawerOpen, user.email, owner.sId]);
+
   return (
     <>
       <HelpDrawer
@@ -78,7 +88,7 @@ export function HelpAndQuickGuideWrapper({
           onClick={() => setIsHelpDrawerOpen(true)}
         >
           <span
-            style={{ fontSize: "32px", color: "white", fontWeight: "bold" }}
+            style={{ fontSize: "28px", color: "white", fontWeight: "bold" }}
           >
             ?
           </span>

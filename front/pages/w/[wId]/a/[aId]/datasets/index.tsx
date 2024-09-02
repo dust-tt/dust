@@ -16,52 +16,56 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
+import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
+import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
-const { GA_TRACKING_ID = "" } = process.env;
+export const getServerSideProps =
+  withDefaultUserAuthRequirementsNoWorkspaceCheck<{
+    owner: WorkspaceType;
+    subscription: SubscriptionType;
+    readOnly: boolean;
+    app: AppType;
+    datasets: DatasetType[];
+    dustAppsListUrl: string;
+    gaTrackingId: string;
+  }>(async (context, auth) => {
+    const owner = auth.workspace();
+    const subscription = auth.subscription();
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  app: AppType;
-  datasets: DatasetType[];
-  gaTrackingId: string;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+    if (!owner || !subscription) {
+      return {
+        notFound: true,
+      };
+    }
 
-  if (!owner || !subscription) {
+    const readOnly = !auth.isBuilder();
+
+    const app = await getApp(auth, context.params?.aId as string);
+
+    if (!app) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const datasets = await getDatasets(auth, app);
+    const dustAppsListUrl = await getDustAppsListUrl(auth);
+
     return {
-      notFound: true,
+      props: {
+        owner,
+        subscription,
+        readOnly,
+        app,
+        datasets,
+        dustAppsListUrl,
+        gaTrackingId: config.getGaTrackingId(),
+      },
     };
-  }
-
-  const readOnly = !auth.isBuilder();
-
-  const app = await getApp(auth, context.params?.aId as string);
-
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const datasets = await getDatasets(auth, app);
-
-  return {
-    props: {
-      owner,
-      subscription,
-      readOnly,
-      app,
-      datasets,
-      gaTrackingId: GA_TRACKING_ID,
-    },
-  };
-});
+  });
 
 export default function DatasetsView({
   owner,
@@ -69,6 +73,7 @@ export default function DatasetsView({
   readOnly,
   app,
   datasets,
+  dustAppsListUrl,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -108,7 +113,7 @@ export default function DatasetsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(`/w/${owner.sId}/a`);
+            void router.push(dustAppsListUrl);
           }}
         />
       }

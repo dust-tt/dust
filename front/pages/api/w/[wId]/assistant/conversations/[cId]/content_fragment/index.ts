@@ -24,16 +24,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const user = auth.user();
-  if (!user || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_user_not_found",
-        message: "Could not find the user of the current session.",
-      },
-    });
-  }
+  const user = auth.getNonNullableUser();
 
   if (!(typeof req.query.cId === "string")) {
     return apiError(req, res, {

@@ -1,14 +1,14 @@
 import {
   ArrowPathIcon,
   Button,
+  ChatBubbleThoughtIcon,
   Chip,
   Citation,
   ClipboardIcon,
+  ContentMessage,
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
-  Icon,
-  PuzzleIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
@@ -38,7 +38,14 @@ import {
 } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
@@ -86,10 +93,6 @@ export function AgentMessage({
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
-  const [visualizations, setVisualizations] = useState<
-    { code: string; complete: boolean }[]
-  >([]);
-
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
 
@@ -100,17 +103,6 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
   >([]);
-
-  useEffect(() => {
-    if (message.status === "succeeded") {
-      setVisualizations(
-        message.visualizations.map((v) => ({
-          code: v,
-          complete: true,
-        }))
-      );
-    }
-  }, [message.status, message.visualizations]);
 
   const shouldStream = (() => {
     if (message.status !== "created") {
@@ -211,27 +203,12 @@ export function AgentMessage({
             ...event.message,
           };
         });
-        // Mark the last viz as complete if it is not already.
-        setVisualizations((v) =>
-          v.map((item, index) =>
-            index === v.length - 1 ? { ...item, complete: true } : item
-          )
-        );
         break;
       }
 
       case "generation_tokens": {
         switch (event.classification) {
           case "closing_delimiter":
-            if (event.delimiterClassification === "visualization") {
-              // If we receive a closing delimiter for a visualization, we can
-              // consider the last viz to be complete.
-              setVisualizations((v) =>
-                v.map((item, index) =>
-                  index === v.length - 1 ? { ...item, complete: true } : item
-                )
-              );
-            }
             break;
           case "opening_delimiter":
             break;
@@ -250,23 +227,6 @@ export function AgentMessage({
                 ...m,
                 chainOfThought: currentChainOfThought + event.text,
               };
-            });
-            break;
-          case "visualization":
-            // Append new content to the last viz, or create a new one if there
-            // is none or the last one is complete.
-            setVisualizations((v) => {
-              const lastViz = v[v.length - 1];
-              if (lastViz && !lastViz.complete) {
-                return [
-                  ...v.slice(0, v.length - 1),
-                  {
-                    code: lastViz.code + event.text,
-                    complete: false,
-                  },
-                ];
-              }
-              return [...v, { code: event.text, complete: false }];
             });
             break;
           default:
@@ -454,6 +414,24 @@ export function AgentMessage({
 
   const { configuration: agentConfiguration } = agentMessageToRender;
 
+  const customRenderer = useMemo(() => {
+    return {
+      visualization: (code: string, complete: boolean, lineStart: number) => {
+        return (
+          <VisualizationActionIframe
+            owner={owner}
+            visualization={{
+              code,
+              complete,
+              identifier: `viz-${message.sId}-${lineStart}`,
+            }}
+            key={`viz-${message.sId}-${lineStart}`}
+          />
+        );
+      },
+    };
+  }, [message.sId, owner]);
+
   return (
     <ConversationMessage
       owner={owner}
@@ -491,7 +469,6 @@ export function AgentMessage({
           references: references,
           streaming: shouldStream,
           lastTokenClassification: lastTokenClassification,
-          visualizations,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -504,13 +481,11 @@ export function AgentMessage({
     references,
     streaming,
     lastTokenClassification,
-    visualizations,
   }: {
     agentMessage: AgentMessageType;
     references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
-    visualizations: { code: string; complete: boolean }[];
   }) {
     if (agentMessage.status === "failed") {
       return (
@@ -531,33 +506,20 @@ export function AgentMessage({
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions agentMessage={agentMessage} size={size} />
-        <>
-          {visualizations.map((v, i) => {
-            return (
-              <VisualizationActionIframe
-                visualization={{ ...v, identifier: `${agentMessage.sId}_${i}` }}
-                key={i}
-                onRetry={() => retryHandler(agentMessage)}
-                owner={owner}
-              />
-            );
-          })}
-        </>
 
         {agentMessage.chainOfThought?.length ? (
-          <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">
-            <div className="flex flex-row gap-2">
-              <Icon size="sm" visual={PuzzleIcon} />
-              <div className="font-semibold">Assistant thoughts</div>
-            </div>
-
-            <div className="italic">
-              <RenderMessageMarkdown
-                content={agentMessage.chainOfThought}
-                isStreaming={false}
-              />
-            </div>
-          </div>
+          <ContentMessage
+            title="Assistant thoughts"
+            variant="purple"
+            icon={ChatBubbleThoughtIcon}
+          >
+            <RenderMessageMarkdown
+              content={agentMessage.chainOfThought}
+              isStreaming={false}
+              textSize="sm"
+              textColor="purple-800"
+            />
+          </ContentMessage>
         ) : null}
 
         {agentMessage.content !== null && (
@@ -579,6 +541,7 @@ export function AgentMessage({
                     updateActiveReferences,
                     setHoveredReference: setLastHoveredReference,
                   }}
+                  customRenderer={customRenderer}
                 />
                 {activeReferences.length > 0 && (
                   <Citations

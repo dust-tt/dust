@@ -4,6 +4,7 @@ import type {
   CoreAPIDataSource,
   DataSourceType,
 } from "@dust-tt/types";
+import { isWebhookBasedProvider } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
@@ -30,7 +31,7 @@ export function ViewDataSourceTable({
 }) {
   const [showRawObjectsModal, setShowRawObjectsModal] = useState(false);
 
-  const isPaused = connector && connector.pausedAt !== null;
+  const isPaused = connector && !!connector.pausedAt;
 
   return (
     <>
@@ -101,56 +102,96 @@ export function ViewDataSourceTable({
                     </Link>
                   </PokeTableCell>
                 </PokeTableRow>
-                <PokeTableRow>
-                  <PokeTableCell>Is Running?</PokeTableCell>
-                  <PokeTableCell>{isPaused ? "❌" : "✅"}</PokeTableCell>
-                </PokeTableRow>
-                <PokeTableRow>
-                  <PokeTableCell>Last sync start</PokeTableCell>
-                  <PokeTableCell>
-                    {connector?.lastSyncStartTime ? (
-                      timeAgoFrom(connector?.lastSyncStartTime)
-                    ) : (
-                      <span className="font-bold text-warning-500">never</span>
-                    )}
-                  </PokeTableCell>
-                </PokeTableRow>
-                <PokeTableRow>
-                  <PokeTableCell>Last sync finish</PokeTableCell>
-                  <PokeTableCell>
-                    {connector?.lastSyncFinishTime ? (
-                      timeAgoFrom(connector?.lastSyncFinishTime)
-                    ) : (
-                      <span className="font-bold text-warning-500">never</span>
-                    )}
-                  </PokeTableCell>
-                </PokeTableRow>
-                <PokeTableRow>
-                  <PokeTableCell>Last sync status</PokeTableCell>
-                  <PokeTableCell>
-                    {connector?.lastSyncStatus ? (
-                      <span className="font-bold">
-                        {connector?.lastSyncStatus}
-                      </span>
-                    ) : (
-                      <span className="font-bold text-warning-500">N/A</span>
-                    )}
-                  </PokeTableCell>
-                </PokeTableRow>
-                <PokeTableRow>
-                  <PokeTableCell>Last sync success</PokeTableCell>
-                  <PokeTableCell>
-                    {connector?.lastSyncSuccessfulTime ? (
-                      <span className="font-bold text-green-600">
-                        {timeAgoFrom(connector?.lastSyncSuccessfulTime)}
-                      </span>
-                    ) : (
-                      <span className="font-bold text-warning-600">
-                        "Never"
-                      </span>
-                    )}
-                  </PokeTableCell>
-                </PokeTableRow>
+                {connector && (
+                  <>
+                    <PokeTableRow>
+                      <PokeTableCell>Is Running?</PokeTableCell>
+                      <PokeTableCell>{isPaused ? "❌" : "✅"}</PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
+                      <PokeTableCell>Paused at</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.pausedAt ? (
+                          <span className="font-bold text-green-600">
+                            {timeAgoFrom(connector?.pausedAt, {
+                              useLongFormat: true,
+                            })}
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
+                      <PokeTableCell>Last sync start</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.lastSyncStartTime ? (
+                          timeAgoFrom(connector?.lastSyncStartTime, {
+                            useLongFormat: true,
+                          })
+                        ) : (
+                          <span className="font-bold text-warning-500">
+                            never
+                          </span>
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
+                      <PokeTableCell>Last sync finish</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.lastSyncFinishTime ? (
+                          timeAgoFrom(connector?.lastSyncFinishTime, {
+                            useLongFormat: true,
+                          })
+                        ) : (
+                          <span className="font-bold text-warning-500">
+                            never
+                          </span>
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
+                      <PokeTableCell>Last sync status</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.lastSyncStatus ? (
+                          <span className="font-bold">
+                            {connector?.lastSyncStatus}
+                            {connector.lastSyncStatus === "failed" && (
+                              <span className="text-warning-500">
+                                &nbsp;{connector.errorType}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="font-bold text-warning-500">
+                            N/A
+                          </span>
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
+                      <PokeTableCell>Last sync success</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.lastSyncSuccessfulTime ? (
+                          <span className="font-bold text-green-600">
+                            {timeAgoFrom(connector?.lastSyncSuccessfulTime, {
+                              useLongFormat: true,
+                            })}
+                          </span>
+                        ) : (
+                          <span className="font-bold text-warning-600">
+                            "Never"
+                          </span>
+                        )}
+                        {isWebhookBasedProvider(connector.type) && (
+                          <span className="pl-2 italic text-gray-500">
+                            (webhook-based)
+                          </span>
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                  </>
+                )}
               </PokeTableBody>
             </PokeTable>
           </div>
@@ -181,17 +222,20 @@ function RawObjectsModal({
       title="Data source raw objects"
       variant="dialogue"
     >
-      <div className="mx-2 my-4 max-h-96 overflow-y-auto">
+      <div className="mx-2 my-4 overflow-y-auto">
+        <span className="text-sm font-bold">dataSource</span>
         <JsonViewer
           value={dataSource}
           rootName={false}
           defaultInspectDepth={1}
         />
+        <span className="text-sm font-bold">coreDataSource</span>
         <JsonViewer
           value={coreDataSource}
           rootName={false}
           defaultInspectDepth={1}
         />
+        <span className="text-sm font-bold">connector</span>
         <JsonViewer
           value={connector}
           rootName={false}

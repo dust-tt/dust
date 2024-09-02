@@ -2,6 +2,10 @@ import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import type { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 
+import mainLogger from "@connectors/logger/logger";
+
+const logger = mainLogger.child({ provider: "slack" });
+
 // The pagination logic for getting all the messages of a Slack thread
 // is a bit complicated, so we put it in a separate function.
 export async function getRepliesFromThread({
@@ -15,8 +19,11 @@ export async function getRepliesFromThread({
 }) {
   let allMessages: MessageElement[] = [];
 
+  let iteration = 0;
   let next_cursor: string | undefined = undefined;
   do {
+    const now = new Date();
+
     const replies: ConversationsRepliesResponse =
       await slackClient.conversations.replies({
         channel: channelId,
@@ -44,6 +51,19 @@ export async function getRepliesFromThread({
       // Not the last page, we remove the first message, which is always the thread main message.
       allMessages = replies.messages.slice(1).concat(allMessages);
     }
+
+    logger.info(
+      {
+        messagesCount: allMessages.length,
+        channelId,
+        threadTs,
+        next_cursor,
+        duration: new Date().getTime() - now.getTime(),
+        iteration,
+      },
+      "Fetched replies from channel thread."
+    );
+    iteration += 1;
   } while (next_cursor);
 
   return allMessages;

@@ -21,6 +21,7 @@ import {
   internalSubscribeWorkspaceToFreeNoPlan,
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
+import { DustProdActionRegistry } from "@app/lib/registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -69,7 +70,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const w = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!w) {
@@ -91,7 +92,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const w = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!w) {
@@ -118,7 +119,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         console.log(`Pausing connectors for workspace: wId=${wId}`);
         const w = await Workspace.findOne({
           where: {
-            sId: wId,
+            sId: `${wId}`,
           },
         });
         if (!w) {
@@ -157,7 +158,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       for (const wId of wIds) {
         const w = await Workspace.findOne({
           where: {
-            sId: wId,
+            sId: `${wId}`,
           },
         });
         if (!w) {
@@ -267,7 +268,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const workspace = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!workspace) {
@@ -387,9 +388,10 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.documentId) {
         throw new Error("Missing --documentId argument");
       }
+
       const workspace = await Workspace.findOne({
         where: {
-          sId: args.wId,
+          sId: `${args.wId}`,
         },
       });
       if (!workspace) {
@@ -523,7 +525,6 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
 
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-      await transcriptsConfiguration.setIsActive(false);
 
       logger.info(
         {
@@ -560,6 +561,19 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const registry = async (command: string) => {
+  switch (command) {
+    case "dump": {
+      console.log(JSON.stringify(DustProdActionRegistry));
+      return;
+    }
+
+    default:
+      console.log(`Unknown registry command: ${command}`);
+      console.log("Possible values: `dump`");
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -589,6 +603,8 @@ const main = async () => {
       return conversation(command, argv);
     case "transcripts":
       return transcripts(command, argv);
+    case "registry":
+      return registry(command);
     default:
       console.log(
         "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`, `transcripts`"

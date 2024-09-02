@@ -26,16 +26,15 @@ import * as React from "react";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
 import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
-import { SCOPE_INFO } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { classNames, subFilter } from "@app/lib/utils";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -61,7 +60,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       tabScope,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });

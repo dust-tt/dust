@@ -16,6 +16,10 @@ import {
 } from "../../../front/assistant/actions/tables_query";
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
+import {
+  AgentConfigurationType,
+  TemplateAgentConfigurationType,
+} from "../agent";
 import { BrowseActionType, BrowseConfigurationType } from "./browse";
 import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
 
@@ -125,4 +129,55 @@ export function isBrowseActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "browse_action";
+}
+
+export function throwIfInvalidAgentConfiguration(
+  configation: AgentConfigurationType | TemplateAgentConfigurationType
+) {
+  configation.actions.forEach((action) => {
+    if (isRetrievalConfiguration(action)) {
+      if (action.query === "none") {
+        if (
+          action.relativeTimeFrame === "auto" ||
+          action.relativeTimeFrame === "none"
+        ) {
+          /** Should never happen. Throw loudly if it does */
+          throw new Error(
+            "Invalid configuration: exhaustive retrieval must have a definite time frame"
+          );
+        }
+      }
+    }
+
+    if (isProcessConfiguration(action)) {
+      if (
+        action.relativeTimeFrame === "auto" ||
+        action.relativeTimeFrame === "none"
+      ) {
+        /** Should never happen as not permitted for now. */
+        throw new Error(
+          "Invalid configuration: process must have a definite time frame"
+        );
+      }
+    }
+  });
+
+  const templateConfiguration = configation as TemplateAgentConfigurationType; // Creation
+  const agentConfiguration = configation as AgentConfigurationType; // Edition
+
+  if (templateConfiguration) {
+    if (templateConfiguration.scope === "global") {
+      throw new Error("Cannot create global assistant");
+    }
+  }
+
+  if (agentConfiguration) {
+    if (agentConfiguration.scope === "global") {
+      throw new Error("Cannot edit global assistant");
+    }
+
+    if (agentConfiguration.status === "archived") {
+      throw new Error("Cannot edit archived assistant");
+    }
+  }
 }

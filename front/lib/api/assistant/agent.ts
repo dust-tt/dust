@@ -20,8 +20,6 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  cloneBaseConfig,
-  DustProdActionRegistry,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
@@ -46,6 +44,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -96,7 +95,7 @@ export async function* runAgent(
   }
 }
 
-export async function* runMultiActionsAgentLoop(
+async function* runMultiActionsAgentLoop(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   conversation: ConversationType,

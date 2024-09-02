@@ -1,6 +1,7 @@
 import {
   ConfluenceLogo,
   DriveLogo,
+  FolderIcon,
   GithubLogo,
   GlobeAltIcon,
   IntercomLogo,
@@ -8,23 +9,35 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider, WhitelistableFeature } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  DataSourceType,
+  DataSourceViewType,
+  PlanType,
+  WhitelistableFeature,
+} from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
+import type { ComponentType } from "react";
+
+import { isManaged } from "@app/lib/data_sources";
+
+export type ConnectorProviderConfiguration = {
+  name: string;
+  connectorProvider: ConnectorProvider;
+  status: "preview" | "built" | "rolling_out";
+  rollingOutFlag?: WhitelistableFeature;
+  hide: boolean;
+  logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  description: string;
+  limitations: string | null;
+  guideLink: string | null;
+  isNested: boolean;
+  isSearchEnabled: boolean;
+};
 
 export const CONNECTOR_CONFIGURATIONS: Record<
   ConnectorProvider,
-  {
-    name: string;
-    connectorProvider: ConnectorProvider;
-    status: "preview" | "built" | "rolling_out";
-    rollingOutFlag?: WhitelistableFeature;
-    hide: boolean;
-    logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
-    description: string;
-    limitations: string | null;
-    guideLink: string | null;
-    isNested: boolean;
-    isSearchEnabled: boolean;
-  }
+  ConnectorProviderConfiguration
 > = {
   confluence: {
     name: "Confluence",
@@ -111,13 +124,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   microsoft: {
     name: "Microsoft",
     connectorProvider: "microsoft",
-    status: "rolling_out",
-    rollingOutFlag: "microsoft_connector",
+    status: "built",
     hide: false,
     description:
-      "Authorize access to Microsoft for indexing shared documents stored in SharePoint, OneDrive, and Office365, and Teams discussions.",
+      "Authorize Dust to access a Microsoft account and index shared documents stored in SharePoint, OneDrive, and Office365.",
     limitations:
-      "Dust will index the documents shared with the authorized account only. Only Teams publi cchannels will be indexed.",
+      "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported. At the time, personal OneDrives cannot be synced.",
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     logoComponent: MicrosoftLogo,
     isNested: true,
@@ -136,3 +148,109 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isSearchEnabled: false,
   },
 };
+
+export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
+  return getDataSourceName(dsv.dataSource);
+}
+
+export function getDataSourceName(ds: DataSourceType): string {
+  if (isManaged(ds)) {
+    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
+  }
+
+  return ds.name;
+}
+
+export function getConnectorProviderLogoWithFallback(
+  provider: ConnectorProvider | null,
+  fallback: ComponentType = FolderIcon
+): ComponentType {
+  if (!provider) {
+    return fallback;
+  }
+  return CONNECTOR_CONFIGURATIONS[provider].logoComponent;
+}
+
+export const isValidConnectorSuffix = (suffix: string): boolean => {
+  return /^[a-z0-9\-_]{1,16}$/.test(suffix);
+};
+
+export const isConnectorProviderAllowedForPlan = (
+  plan: PlanType,
+  provider: ConnectorProvider
+): boolean => {
+  switch (provider) {
+    case "confluence":
+      return plan.limits.connections.isConfluenceAllowed;
+    case "slack":
+      return plan.limits.connections.isSlackAllowed;
+    case "notion":
+      return plan.limits.connections.isNotionAllowed;
+    case "github":
+      return plan.limits.connections.isGithubAllowed;
+    case "google_drive":
+      return plan.limits.connections.isGoogleDriveAllowed;
+    case "intercom":
+      return plan.limits.connections.isIntercomAllowed;
+    case "microsoft":
+      return true;
+    case "webcrawler":
+      return plan.limits.connections.isWebCrawlerAllowed;
+    default:
+      assertNever(provider);
+  }
+};
+
+export const isConnectorProviderAssistantDefaultSelected = (
+  provider: ConnectorProvider
+): boolean => {
+  switch (provider) {
+    case "confluence":
+    case "slack":
+    case "notion":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "microsoft":
+      return true;
+    case "webcrawler":
+      return false;
+    default:
+      assertNever(provider);
+  }
+};
+
+export const isConnectionIdRequiredForProvider = (
+  provider: ConnectorProvider
+): boolean => {
+  switch (provider) {
+    case "confluence":
+    case "slack":
+    case "notion":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "microsoft":
+      return true;
+    case "webcrawler":
+      return false;
+    default:
+      assertNever(provider);
+  }
+};
+
+export function getDefaultDataSourceName(
+  provider: ConnectorProvider,
+  suffix: string | null
+): string {
+  return suffix ? `managed-${provider}-${suffix}` : `managed-${provider}`;
+}
+
+export function getDefaultDataSourceDescription(
+  provider: ConnectorProvider,
+  suffix: string | null
+): string {
+  return suffix
+    ? `Managed Data Source for ${provider} (${suffix})`
+    : `Managed Data Source for ${provider}`;
+}
