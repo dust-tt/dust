@@ -2,9 +2,9 @@ import React from "react";
 
 import { Div3D, Hover3D, LogoSquareColorLayer2Logo } from "..";
 import {
+  LogoHorizontalColorLayer1Logo,
+  LogoHorizontalColorLayer2Logo,
   LogoHorizontalColorLogo,
-  LogoHorizontalColorLogoLayer1,
-  LogoHorizontalColorLogoLayer2,
   LogoHorizontalDarkLogo,
   LogoHorizontalWhiteLogo,
   LogoSquareColorLayer1Logo,
@@ -85,10 +85,10 @@ export const DustLogo = () => (
       <div className="s-p-6">
         <Hover3D className="s-relative s-h-8 s-w-32">
           <Div3D depth={0} className="s-h-8 s-w-32">
-            <LogoHorizontalColorLogoLayer1 className="s-h-8 s-w-32" />
+            <LogoHorizontalColorLayer1Logo className="s-h-8 s-w-32" />
           </Div3D>
           <Div3D depth={25} className="s-absolute s-top-0">
-            <LogoHorizontalColorLogoLayer2 className="s-h-8 s-w-32" />
+            <LogoHorizontalColorLayer2Logo className="s-h-8 s-w-32" />
           </Div3D>
         </Hover3D>
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
