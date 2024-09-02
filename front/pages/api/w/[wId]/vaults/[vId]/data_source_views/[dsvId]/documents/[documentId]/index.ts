@@ -61,7 +61,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const document = await coreAPI.getDataSourceDocument({
-        dataSourceName: dataSourceView.dataSource.name,
+        dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
         documentId,
         projectId: dataSourceView.dataSource.dustAPIProjectId,
         viewFilter: dataSourceView.toViewFilter(),

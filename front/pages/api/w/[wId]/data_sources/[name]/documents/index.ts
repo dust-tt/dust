@@ -41,7 +41,7 @@ async function handler(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const documents = await coreAPI.getDataSourceDocuments({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         limit,
         offset,
       });
