@@ -23,10 +23,10 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PatchTableResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { tableId, name, vId } = req.query;
+  const { tableId, dsId, vId } = req.query;
 
   if (
-    typeof name !== "string" ||
+    typeof dsId !== "string" ||
     typeof vId !== "string" ||
     typeof tableId !== "string"
   ) {
@@ -39,7 +39,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, name);
+  const dataSource = await DataSourceResource.fetchByName(auth, dsId);
 
   if (
     !dataSource ||

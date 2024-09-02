@@ -27,9 +27,8 @@ export const DocumentDeleteDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const handleDeleteDocument = async () => {
     try {
-      //TODO(GROUPS_UI)replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${
+        `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${
           dataSourceView.dataSource.name
         }/documents/${encodeURIComponent(contentNode.internalId)}`,
         {

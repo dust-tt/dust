@@ -84,7 +84,7 @@ export function DocumentUploadOrEditModal({
       setTags([]);
       setSourceUrl("");
     }
-  }, [dataSourceView.dataSource.name, initialDocumentId, owner.sId]);
+  }, [dataSourceView, initialDocumentId, owner.sId]);
 
   //TODO(GROUPS_UI) Get the total number of documents
   const total = 0;

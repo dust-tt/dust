@@ -265,6 +265,7 @@ function DatasourceDocumentsTabView({
 
   const handleUpsert = async (text: string, documentId: string) => {
     const body: PostDataSourceDocumentRequestBody = {
+      name: documentId,
       timestamp: null,
       parents: null,
       section: {

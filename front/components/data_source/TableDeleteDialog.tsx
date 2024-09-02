@@ -30,9 +30,8 @@ export const TableDeleteDialog = ({
     try {
       setIsLoading(true);
 
-      //TODO(GROUPS_UI)replace endpoint https://github.com/dust-tt/dust/issues/6921
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/${contentNode.internalId}`,
+        `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/tables/${contentNode.internalId}`,
         {
           method: "DELETE",
         }
