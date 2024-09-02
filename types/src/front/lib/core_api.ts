@@ -671,13 +671,13 @@ export class CoreAPI {
   }
 
   async getDataSourceDocuments({
-    dataSourceName,
+    dataSourceId,
     limit,
     offset,
     projectId,
     viewFilter,
   }: {
-    dataSourceName: string;
+    dataSourceId: string;
     limit: number;
     offset: number;
     projectId: string;
@@ -703,7 +703,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents?${queryParams.toString()}`,
       {
         method: "GET",

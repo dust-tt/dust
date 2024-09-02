@@ -131,7 +131,7 @@ export async function getContentNodesForStaticDataSourceView(
 
   if (viewType === "documents") {
     const documentsRes = await coreAPI.getDataSourceDocuments({
-      dataSourceName: dataSource.name,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       limit,
       offset,
       projectId: dataSource.dustAPIProjectId,
