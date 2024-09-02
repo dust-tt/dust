@@ -156,12 +156,12 @@ export function DocumentOrTableUploadOrEditModal({
         body = JSON.stringify({
           name,
           description,
-          csv: csvContent,
+          csv: undefined,
           tableId: initialId,
           timestamp: null,
           tags: [],
           parents: [],
-          truncate: true,
+          truncate: false,
           async: false,
         });
       } else {
@@ -244,7 +244,7 @@ export function DocumentOrTableUploadOrEditModal({
       setUploading(false);
     }
   };
-  console.log(file)
+
   return (
     <Modal
       isOpen={isOpen}
