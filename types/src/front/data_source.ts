@@ -67,7 +67,7 @@ export type DataSourceType = {
   description: string | null;
   assistantDefaultSelected: boolean;
   dustAPIProjectId: string;
-  dustAPIDataSourceId: string | null;
+  dustAPIDataSourceId: string;
   connectorId: string | null;
   connectorProvider: ConnectorProvider | null;
   editedByUser?: EditedByUser | null;
