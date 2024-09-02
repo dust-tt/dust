@@ -13,6 +13,7 @@
     "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
+    "importHelpers": true,
     "isolatedModules": true,
     "jsx": "react",
     "downlevelIteration": true,
