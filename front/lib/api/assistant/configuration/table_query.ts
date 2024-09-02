@@ -158,7 +158,9 @@ export async function createTableDataSourceConfiguration(
         );
       }
       if (dataSourceView.dataSource.sId !== tc.dataSourceId) {
-        throw new Error("Data source view does not belong to the data source.");
+        throw new Error(
+          "Can't create TableDataSourceConfiguration for query tables: data source view does not belong to the data source."
+        );
       }
 
       await AgentTablesQueryConfigurationTable.create(
