@@ -248,28 +248,31 @@ async function isExternalUserAllowed(
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos,
+  // Whitelisted domains are in the format "domain:group_id".
   whitelistedDomains?: readonly string[]
 ): Promise<{ authorized: boolean; groupIds: string[] }> {
   const { slackChannelId } = slackInfos;
 
   const userDomain = getSlackUserEmailDomainFromProfile(slackUserInfo);
-  // Ensure the domain matches exactly.
 
   if (!userDomain || !whitelistedDomains) {
     return { authorized: false, groupIds: [] };
   }
-  const whitelistedIndex = whitelistedDomains
-    .map((domain) => domain.split(":")[0])
-    .indexOf(userDomain);
-  if (whitelistedIndex === -1) {
-    return { authorized: false, groupIds: [] };
-  }
-  const whitelistedDomain = whitelistedDomains[whitelistedIndex]?.split(":")[0];
-  const whitelistedGroup = whitelistedDomains[whitelistedIndex]?.split(":")[1];
 
-  if (!whitelistedDomain || !whitelistedGroup) {
-    return { authorized: false, groupIds: [] };
-  }
+  const authorization = whitelistedDomains.reduce(
+    (acc, domain) => {
+      const [whitelistedDomain, whitelistedGroup] = domain.split(":");
+      if (userDomain === whitelistedDomain && whitelistedGroup) {
+        acc.authorized = true;
+        acc.groupIds.push(whitelistedGroup);
+      }
+      return acc;
+    },
+    {
+      authorized: false,
+      groupIds: [],
+    } as { authorized: boolean; groupIds: string[] }
+  );
 
   const slackConversationInfo = await getSlackConversationInfo(
     slackClient,
@@ -280,7 +283,7 @@ async function isExternalUserAllowed(
   if (!isChannelPublic) {
     return { authorized: false, groupIds: [] };
   }
-  return { authorized: true, groupIds: [whitelistedGroup] };
+  return authorization;
 }
 
 async function isUserAllowed(
