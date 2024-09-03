@@ -18,7 +18,13 @@ import type {
   PlanType,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import { Err, isSlugified, parseAndStringifyCsv } from "@dust-tt/types";
+import {
+  BIG_FILE_SIZE,
+  Err,
+  isSlugified,
+  MAX_FILE_SIZE,
+  parseAndStringifyCsv,
+} from "@dust-tt/types";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
@@ -163,7 +169,7 @@ export function DocumentOrTableUploadOrEditModal({
         ? await parseAndStringifyCsv(fileContent.value.content)
         : null;
 
-      if (csvContent && csvContent.length > 50_000_000) {
+      if (csvContent && csvContent.length > MAX_FILE_SIZE) {
         throw new Error("File too large");
       }
 
@@ -271,7 +277,7 @@ export function DocumentOrTableUploadOrEditModal({
 
     setUploading(true);
     try {
-      if (selectedFile.size > 50_000_000) {
+      if (selectedFile.size > MAX_FILE_SIZE) {
         sendNotification({
           type: "error",
           title: "File too large",
@@ -283,7 +289,7 @@ export function DocumentOrTableUploadOrEditModal({
 
       if (isTable) {
         setTableOrDoc((prev) => ({ ...prev, file: selectedFile }));
-        setIsBigFile(selectedFile.size > 5_000_000);
+        setIsBigFile(selectedFile.size > BIG_FILE_SIZE);
       } else {
         const res = await handleFileUploadToText(selectedFile);
         if (res.isErr()) {
