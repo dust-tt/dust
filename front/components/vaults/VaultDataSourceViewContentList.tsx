@@ -14,8 +14,9 @@ import {
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
+import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { isFolder } from "@app/lib/data_sources";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
@@ -127,6 +128,13 @@ export const VaultDataSourceViewContentList = ({
             vault={vault}
             folder={dataSourceView.dataSource}
             contentActionsRef={contentActionsRef}
+          />
+        )}
+        {isWebsite(dataSourceView.dataSource) && (
+          <WebsitesHeaderMenu
+            owner={owner}
+            vault={vault}
+            dataSourceView={dataSourceView}
           />
         )}
       </div>

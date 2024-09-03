@@ -27,6 +27,9 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
   image: 5 * 1024 * 1024, // 5 MB
 };
 
+export const MAX_FILE_LENGTH = 50_000_000;
+export const BIG_FILE_SIZE = 5_000_000;
+
 // Function to ensure file size is within max limit for given content type.
 export function ensureFileSize(
   contentType: SupportedFileContentType,

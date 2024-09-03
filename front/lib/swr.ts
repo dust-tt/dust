@@ -42,6 +42,7 @@ import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import type { GetDocumentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents/[documentId]";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
 import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
@@ -60,6 +61,7 @@ import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
+import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/[dsId]/configuration";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
 export const SWR_KEYS = {
@@ -348,6 +350,31 @@ export function useDocuments(
   };
 }
 
+export function useDocument({
+  workspaceId,
+  dataSourceView,
+  documentId,
+}: {
+  workspaceId: string;
+  dataSourceView: DataSourceViewType;
+  documentId: string | null;
+}) {
+  const documentFetcher: Fetcher<GetDocumentResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    documentId
+      ? `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${documentId}`
+      : null,
+    documentFetcher
+  );
+
+  return {
+    document: useMemo(() => (data ? data.document : null), [data]),
+    isDocumentLoading: !error && !data,
+    isDocumentError: error,
+    mutateDocument: mutate,
+  };
+}
 export function useDataSources(
   owner: LightWorkspaceType,
   options = { disabled: false }
@@ -1215,19 +1242,29 @@ export function useTables({
 
 export function useTable({
   workspaceId,
+  dataSourceView,
   dataSourceName,
   tableId,
-}: {
-  workspaceId: string;
-  dataSourceName: string;
-  tableId: string | null;
-}) {
+}:
+  | {
+      workspaceId: string;
+      dataSourceView: DataSourceViewType;
+      dataSourceName?: undefined;
+      tableId: string | null;
+    }
+  | {
+      workspaceId: string;
+      dataSourceView?: undefined;
+      dataSourceName: string;
+      tableId: string | null;
+    }) {
   const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
 
+  const endpoint = dataSourceView
+    ? `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView}/tables/${tableId}`
+    : `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`;
   const { data, error, mutate } = useSWRWithDefaults(
-    tableId
-      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`
-      : null,
+    tableId ? endpoint : null,
     tableFetcher
   );
 
@@ -1494,6 +1531,31 @@ export function useVaultDataSourceViews<
     mutateVaultDataSourceViews: mutate,
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
+  };
+}
+
+export function useDataSourceViewConnectorConfiguration({
+  dataSourceView,
+  owner,
+}: {
+  dataSourceView: DataSourceViewType | null;
+  owner: LightWorkspaceType;
+}) {
+  const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceConfigurationResponseBody> =
+    fetcher;
+  const disabled = !dataSourceView;
+
+  const { data, error } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+    dataSourceViewDocumentFetcher
+  );
+
+  return {
+    configuration: data ? data.configuration : null,
+    isDocumentLoading: !error && !data,
+    isDocumentError: error,
   };
 }
 
