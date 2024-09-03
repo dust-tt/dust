@@ -9,10 +9,10 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 
 export class LabsTranscriptsConfigurationModel extends Model<
   InferAttributes<LabsTranscriptsConfigurationModel>,

@@ -49,7 +49,6 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
-import { DataSource } from "@app/lib/models/data_source";
 import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
@@ -64,6 +63,7 @@ import {
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";

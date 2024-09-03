@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import { Sequelize } from "sequelize";
 
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 const { CORE_DATABASE_URI } = process.env;
 

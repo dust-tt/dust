@@ -1,4 +1,4 @@
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 
 async function main() {
   const dataSources = await DataSource.findAll();
