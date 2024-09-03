@@ -42,6 +42,7 @@ import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/connector";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import type { GetDocumentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents/[documentId]";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
 import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
@@ -348,6 +349,31 @@ export function useDocuments(
   };
 }
 
+export function useDocument({
+  workspaceId,
+  dataSourceName,
+  documentId,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  documentId: string | null;
+}) {
+  const documentFetcher: Fetcher<GetDocumentResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    documentId
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/documents/${documentId}`
+      : null,
+    documentFetcher
+  );
+
+  return {
+    document: useMemo(() => (data ? data.document : null), [data]),
+    isDocumentLoading: !error && !data,
+    isDocumentError: error,
+    mutateDocument: mutate,
+  };
+}
 export function useDataSources(
   owner: LightWorkspaceType,
   options = { disabled: false }

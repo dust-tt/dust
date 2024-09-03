@@ -12,6 +12,8 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  CoreAPIDocument,
+  CoreAPILightDocument,
   DataSourceViewType,
   LightContentNode,
   LightWorkspaceType,
@@ -30,7 +32,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { useTable } from "@app/lib/swr";
+import { useDocument, useTable } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 
 interface DocumentOrTableUploadOrEditModalProps {
@@ -54,6 +56,18 @@ interface TableOrDocument {
 const supportedTableFormats = [".csv", ".tsv"].join(", ");
 
 const supportedDocumentFormats = [".txt", ".pdf", ".md", ".csv"].join(", ");
+
+function isCoreAPIDocumentType(
+  doc: CoreAPIDocument | CoreAPILightDocument
+): doc is CoreAPIDocument {
+  return (
+    "data_source_id" in doc &&
+    "document_id" in doc &&
+    "timestamp" in doc &&
+    "tags" in doc &&
+    "chunks" in doc
+  );
+}
 
 export function DocumentOrTableUploadOrEditModal({
   dataSourceView,
@@ -83,11 +97,21 @@ export function DocumentOrTableUploadOrEditModal({
   const isTable = contentNode?.type === "database";
   const initialId = contentNode?.internalId;
 
-  const { table } = useTable({
+  const { table, isTableLoading } = useTable({
     workspaceId: owner.sId,
     dataSourceName: dataSourceView.dataSource.name,
     tableId: isTable ? initialId ?? null : null,
   });
+
+  const { document, isDocumentLoading } = useDocument({
+    workspaceId: owner.sId,
+    dataSourceName: dataSourceView.dataSource.name,
+    documentId: !isTable ? initialId ?? null : null,
+  });
+
+  useEffect(() => {
+    setIsLoading(isTableLoading || isDocumentLoading);
+  }, [isDocumentLoading, isTableLoading]);
 
   const resetTableOrDoc = () => {
     setTableOrDoc({
@@ -114,33 +138,26 @@ export function DocumentOrTableUploadOrEditModal({
           name: table.name,
           description: table.description,
         }));
-      } else {
-        try {
-          const res = await fetch(
-            `/api/w/${owner.sId}/data_sources/${
-              dataSourceView.dataSource.name
-            }/documents/${encodeURIComponent(initialId)}`
-          );
-          if (res.ok) {
-            const document = await res.json();
-            setTableOrDoc((prev) => ({
-              ...prev,
-              name: initialId,
-              text: document.document.text,
-              tags: document.document.tags,
-              sourceUrl: document.document.source_url,
-            }));
-          }
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setUploading(false);
-        }
+      } else if (!isTable && document && isCoreAPIDocumentType(document)) {
+        setTableOrDoc((prev) => ({
+          ...prev,
+          name: initialId,
+          text: document.text ?? "",
+          tags: document.tags,
+          sourceUrl: document.source_url ?? "",
+        }));
       }
       setIsLoading(false);
     };
     void fetchData();
-  }, [isTable, initialId, table, owner.sId, dataSourceView.dataSource.name]);
+  }, [
+    isTable,
+    initialId,
+    table,
+    owner.sId,
+    dataSourceView.dataSource.name,
+    document,
+  ]);
 
   const total = 0; // TODO: Get the total number of documents
 
