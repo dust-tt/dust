@@ -6,9 +6,9 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 
 export class TrackedDocument extends Model<
   InferAttributes<TrackedDocument>,

@@ -66,7 +66,8 @@ export default function VaultManagedDataSourcesViewsModal({
           const systemDataSourceView =
             systemVaultDataSourceViews.find(
               (dsv) =>
-                dsv.dataSource.sId === config.dataSourceView.dataSource.sId
+                // TODO(DATASOURCE_SID): move to sId
+                dsv.dataSource.name === config.dataSourceView.dataSource.name
             ) ?? config.dataSourceView; // Fallback to make sure we are never undefined
 
           acc[systemDataSourceView.sId] = {

@@ -14,7 +14,6 @@ import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/g
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
@@ -22,6 +21,7 @@ import {
   internalSubscribeWorkspaceToFreePlan,
 } from "@app/lib/plans/subscription";
 import { DustProdActionRegistry } from "@app/lib/registry";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -266,21 +266,10 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.name) {
         throw new Error("Missing --name argument");
       }
-      const workspace = await Workspace.findOne({
-        where: {
-          sId: `${args.wId}`,
-        },
-      });
-      if (!workspace) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
 
-      const dataSource = await DataSource.findOne({
-        where: {
-          workspaceId: workspace.id,
-          name: args.name,
-        },
-      });
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+
+      const dataSource = await DataSourceResource.fetchByName(auth, args.name);
       if (!dataSource) {
         throw new Error(
           `DataSource not found: wId='${args.wId}' name='${args.name}'`
@@ -326,7 +315,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error(coreDeleteRes.error.message);
       }
 
-      await dataSource.destroy();
+      await dataSource.delete(auth);
 
       console.log("Data source deleted. Make sure to run: \n\n");
       console.log(
@@ -389,21 +378,9 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         throw new Error("Missing --documentId argument");
       }
 
-      const workspace = await Workspace.findOne({
-        where: {
-          sId: `${args.wId}`,
-        },
-      });
-      if (!workspace) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
-      }
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
-      const dataSource = await DataSource.findOne({
-        where: {
-          workspaceId: workspace.id,
-          name: args.name,
-        },
-      });
+      const dataSource = await DataSourceResource.fetchByName(auth, args.name);
       if (!dataSource) {
         throw new Error(
           `DataSource not found: wId='${args.wId}' name='${args.name}'`
