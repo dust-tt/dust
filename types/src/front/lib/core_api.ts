@@ -805,7 +805,7 @@ export class CoreAPI {
 
   async upsertDataSourceDocument({
     projectId,
-    dataSourceName,
+    dataSourceId,
     documentId,
     timestamp,
     tags,
@@ -816,7 +816,7 @@ export class CoreAPI {
     lightDocumentOutput = false,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     documentId: string;
     timestamp?: number | null;
     tags: string[];
@@ -837,7 +837,7 @@ export class CoreAPI {
   > {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents`,
       {
         method: "POST",
@@ -862,13 +862,13 @@ export class CoreAPI {
 
   async updateDataSourceDocumentTags({
     projectId,
-    dataSourceName,
+    dataSourceId,
     documentId,
     addTags,
     removeTags,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     documentId: string;
     addTags?: string[];
     removeTags?: string[];
@@ -881,7 +881,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents/${encodeURIComponent(documentId)}/tags`,
       {
         method: "PATCH",
@@ -900,12 +900,12 @@ export class CoreAPI {
 
   async updateDataSourceDocumentParents({
     projectId,
-    dataSourceName,
+    dataSourceId,
     documentId,
     parents,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     documentId: string;
     parents: string[];
   }): Promise<
@@ -917,7 +917,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents/${encodeURIComponent(documentId)}/parents`,
       {
         method: "PATCH",
@@ -935,18 +935,18 @@ export class CoreAPI {
 
   async deleteDataSourceDocument({
     projectId,
-    dataSourceName,
+    dataSourceId,
     documentId,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     documentId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents/${encodeURIComponent(documentId)}`,
       {
         method: "DELETE",

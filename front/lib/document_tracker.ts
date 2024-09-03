@@ -176,14 +176,14 @@ export async function updateTrackedDocuments(
   if (hasExistingTrackedDocs && !hasRemainingTrackedDocs) {
     await coreAPI.updateDataSourceDocumentTags({
       projectId: dataSource.dustAPIProjectId,
-      dataSourceName: dataSource.name,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       removeTags: ["__DUST_TRACKED"],
       documentId,
     });
   } else if (!hasExistingTrackedDocs && hasRemainingTrackedDocs) {
     await coreAPI.updateDataSourceDocumentTags({
       projectId: dataSource.dustAPIProjectId,
-      dataSourceName: dataSource.name,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       addTags: ["__DUST_TRACKED"],
       documentId,
     });

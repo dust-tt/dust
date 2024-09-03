@@ -125,7 +125,7 @@ async function handler(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const updateRes = await coreAPI.updateDataSourceDocumentParents({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
         parents: req.body.parents,
       });
