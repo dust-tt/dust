@@ -1,9 +1,11 @@
+// Rollup configuration for building the library as a cjs bundle. This is used by front workers.
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import autoprefixer from "autoprefixer";
 import fs from "fs";
 import path from "path";
+import { rollup } from "rollup";
 import external from "rollup-plugin-peer-deps-external";
 import postcss from "rollup-plugin-postcss";
 import tailwindcss from "tailwindcss";
