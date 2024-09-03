@@ -249,7 +249,7 @@ async function handler(
 
       const listRes = await coreAPI.getTableRows({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
         offset,
         limit,

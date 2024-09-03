@@ -1252,14 +1252,14 @@ export class CoreAPI {
 
   async getTableRows({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
     limit,
     offset,
     filter,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
     limit: number;
     offset: number;
@@ -1279,7 +1279,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables/${encodeURIComponent(
         tableId
       )}/rows?limit=${limit}&offset=${offset}${qs}`,
