@@ -13,31 +13,26 @@ makeScript({}, async ({ execute }, logger) => {
   );
   const slackConfigurations: {
     whitelistedDomains: string[];
-    workspaceid: string;
+    workspaceId: string;
     configurationId: number;
   }[] = await connectorDB.query(
-    `SELECT sc.id as "configurationId", sc."whitelistedDomains" as "whitelistedDomains", c."workspaceId" as workspaceId FROM slack_configurations sc INNER JOIN connectors c ON sc."connectorId" = c.id WHERE c.type = 'slack' and sc."whitelistedDomains" IS NOT NULL`,
+    `SELECT sc.id AS "configurationId", sc."whitelistedDomains" AS "whitelistedDomains", c."workspaceId" AS "workspaceId" FROM slack_configurations AS sc INNER JOIN connectors AS c ON sc."connectorId" = c.id WHERE c.type = 'slack' and sc."whitelistedDomains" IS NOT NULL`,
     {
       type: QueryTypes.SELECT,
     }
   );
 
   for (const sc of slackConfigurations) {
-    const auth = await Authenticator.internalAdminForWorkspace(sc.workspaceid);
+    const auth = await Authenticator.internalAdminForWorkspace(sc.workspaceId);
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
       throw new Error(
-        `Failed to fetch global group for workspace ${sc.workspaceid}`
+        `Failed to fetch global group for workspace ${sc.workspaceId}`
       );
     }
-    const workspace = await Workspace.findOne({
-      where: { sId: sc.workspaceid },
-    });
-    if (!workspace) {
-      throw new Error(`Workspace not found for workspaceId ${sc.workspaceid}`);
-    }
+    const workspace = auth.getNonNullableWorkspace();
 
-    const groupId = makeSId("group", {
+    const groupId = GroupResource.modelIdToSId({
       id: groupRes.value.id,
       workspaceId: workspace.id,
     });
@@ -54,7 +49,7 @@ makeScript({}, async ({ execute }, logger) => {
 
     logger.info(
       {
-        workspaceId: sc.workspaceid,
+        workspaceId: sc.workspaceId,
         groupId: groupId,
         newDomains: newDomains,
       },
