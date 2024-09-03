@@ -21,6 +21,7 @@ import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { isResourceSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
@@ -270,6 +271,32 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
   getUsagesByAgents(auth: Authenticator) {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
+  }
+
+  // sId logic.
+
+  get sId(): string {
+    return DataSourceResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("data_source", {
+      id,
+      workspaceId,
+    });
+  }
+
+  static isDataSourceSId(sId: string): boolean {
+    return isResourceSId("data_source", sId);
   }
 
   // Serialization.
