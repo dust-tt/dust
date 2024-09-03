@@ -758,14 +758,14 @@ export class CoreAPI {
 
   async getDataSourceDocumentVersions({
     projectId,
-    dataSourceName,
+    dataSourceId,
     documentId,
     latest_hash,
     limit = 10,
     offset = 0,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     documentId: string;
     limit: number;
     offset: number;
@@ -791,7 +791,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents/${encodeURIComponent(
         documentId
       )}/versions?${params.toString()}`,
