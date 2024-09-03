@@ -165,7 +165,7 @@ export async function handlePostTableCsvUpsertRequest(
 
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+    const csvRowsRes = csv ? await rowsFromCsv(auth, csv) : null;
     if (csvRowsRes?.isErr()) {
       return apiError(req, res, {
         api_error: {
