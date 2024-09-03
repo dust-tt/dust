@@ -320,7 +320,7 @@ export async function upsertDocument({
   // We only load the number of documents if the limit is not -1 (unlimited).
   // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
   // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-  if (plan.limits.dataSources.documents.count != -1) {
+  if (plan.limits.dataSources.documents.count !== -1) {
     const documents = await coreAPI.getDataSourceDocuments({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
