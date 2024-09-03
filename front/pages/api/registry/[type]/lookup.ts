@@ -151,13 +151,7 @@ async function handler(
                 },
                 "Failed to lookup data source view."
               );
-              return apiError(req, res, {
-                status_code: 404,
-                api_error: {
-                  type: "data_source_not_found",
-                  message: "The data source requested was not found.",
-                },
-              });
+              return notFoundError();
             }
 
             res.status(200).json(dataSourceViewRes.value);
