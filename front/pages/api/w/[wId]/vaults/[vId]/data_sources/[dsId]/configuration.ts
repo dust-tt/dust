@@ -1,6 +1,8 @@
-import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  ConnectorConfiguration,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import {
-  assertNever,
   ConnectorsAPI,
   ioTsParsePayload,
   UpdateConnectorConfigurationTypeSchema,
@@ -14,33 +16,25 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { PostDataSourceConfigurationResBody } from "@app/pages/api/w/[wId]/data_sources/[name]/configuration";
 
-export type PatchVaultDataSourceResponseBody = {
-  dataSource: DataSourceType;
+export type GetDataSourceConfigurationResponseBody = {
+  configuration: ConnectorConfiguration;
 };
+
+export type PatchDataSourceConfigurationResponseBody =
+  GetDataSourceConfigurationResponseBody;
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<PostDataSourceConfigurationResBody | void>
+    WithAPIErrorResponse<
+      | GetDataSourceConfigurationResponseBody
+      | PatchDataSourceConfigurationResponseBody
+      | void
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const user = auth.user();
-
-  if (!owner || !plan || !user || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
-      },
-    });
-  }
-
   if (typeof req.query.vId !== "string") {
     return apiError(req, res, {
       status_code: 404,
@@ -61,33 +55,13 @@ async function handler(
       },
     });
   }
-  if (!auth.hasPermission([vault.acl()], "write")) {
+  if (!auth.hasPermission([vault.acl()], "read")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only the users that have `write` permission for the current vault can update a data source.",
-      },
-    });
-  }
-
-  if (vault.isSystem() && !auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Only the users that are `admins` for the current workspace can update a data source.",
-      },
-    });
-  } else if (vault.isGlobal() && !auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can update a data source.",
+          "Only the users that have `read` permission for the current vault can access a data source configuration.",
       },
     });
   }
@@ -119,56 +93,71 @@ async function handler(
       api_error: {
         type: "data_source_not_managed",
         message:
-          "Cannot update the configuration of this Data Source because it is not managed.",
+          "Cannot read/update the configuration of this Data Source because it is not managed.",
       },
     });
   }
-  switch (dataSource.connectorProvider) {
-    case "webcrawler": {
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can update the configuration of this Data Source.",
-          },
-        });
-      }
-      break;
-    }
-    case "confluence":
-    case "github":
-    case "google_drive":
-    case "intercom":
-    case "notion":
-    case "microsoft":
-    case "slack":
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `admins` for the current workspace can update the configuration of this Data Source.",
-          },
-        });
-      }
-      break;
 
-    default:
-      assertNever(dataSource.connectorProvider);
-  }
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
 
   switch (req.method) {
+    case "GET":
+      const connectorRes = await connectorsAPI.getConnector(
+        dataSource.connectorId
+      );
+      if (connectorRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "connector_not_found_error",
+            message: `An error occured while fetching the connector's configuration`,
+          },
+        });
+      }
+      return res.send({
+        configuration: connectorRes.value.configuration,
+      });
+
     case "PATCH":
+      if (!auth.hasPermission([vault.acl()], "write")) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that have `read` permission for the current vault can update a data source configuration.",
+          },
+        });
+      }
+
+      if (vault.isSystem() && !auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Only the users that are `admins` for the current workspace can update a data source configuration from system vault.",
+          },
+        });
+      } else if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can update a data source configuration.",
+          },
+        });
+      }
+
       switch (dataSource.connectorProvider) {
-        // Check which parameters are being updated here.
-        // Eg: For WebCrawler, all parameters can be updated, but the
-        // SlackConfiguration.pdfEnabled can only be updated
-        // from Poke (once this settings is moved to the new configuration system).
+        // Check which parameters are being updated here if you add a case.
+        // SlackConfiguration.botEnabled can only be updated from a Poke route.
         case "webcrawler": {
-          // Webcrawler configuration can be updated.
+          // For WebCrawler, all parameters can be updated.
           break;
         }
         default: {
@@ -197,11 +186,6 @@ async function handler(
         });
       }
 
-      const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsAPIConfig(),
-        logger
-      );
-
       const updateRes = await connectorsAPI.updateConfiguration({
         connectorId: dataSource.connectorId.toString(),
         configuration: { configuration: parseRes.value.configuration },
@@ -222,7 +206,7 @@ async function handler(
       }
 
       res.status(200).json({
-        connector: updateRes.value,
+        configuration: updateRes.value.configuration,
       });
       return;
 

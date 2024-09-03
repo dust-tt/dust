@@ -51,7 +51,7 @@ export function isFolder(
 
 export function isWebsite(
   ds: DataSource
-): ds is DataSource & { connectorProvider: "webcrawler" } & WithConnector {
+): ds is DataSource & { connectorProvider: "webcrawler" } {
   return ds.connectorProvider === "webcrawler";
 }
 

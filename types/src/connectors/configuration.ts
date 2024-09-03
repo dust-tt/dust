@@ -6,6 +6,12 @@ export type ConnectorConfiguration =
   | SlackConfigurationType
   | null;
 
+export function isWebCrawlerConfiguration(
+  config: ConnectorConfiguration | null
+): config is WebCrawlerConfigurationType {
+  return (config as WebCrawlerConfigurationType)?.crawlMode !== undefined;
+}
+
 export type ConnectorConfigurations = {
   webcrawler: WebCrawlerConfigurationType;
   notion: null;

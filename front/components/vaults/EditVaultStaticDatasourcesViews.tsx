@@ -78,7 +78,7 @@ export function EditVaultStaticDataSourcesViews({
         vault={vault}
         dataSources={dataSources}
         dataSourceView={null} // null for a website creation.
-        connectorConfiguration={null}
+        webCrawlerConfiguration={null} // null for a website creation.
       />
       <Button
         label={category === "folder" ? "Add folder" : "Add website"}

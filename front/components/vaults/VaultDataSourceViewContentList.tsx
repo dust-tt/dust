@@ -1,6 +1,5 @@
 import { DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
 import type {
-  ConnectorConfiguration,
   DataSourceViewType,
   PlanType,
   VaultType,
@@ -33,7 +32,6 @@ type RowData = {
 type VaultDataSourceViewContentListProps = {
   vault: VaultType;
   dataSourceView: DataSourceViewType;
-  connectorConfiguration: ConnectorConfiguration | null;
   plan: PlanType;
   isAdmin: boolean;
   onSelect: (parentId: string) => void;
@@ -60,7 +58,6 @@ export const VaultDataSourceViewContentList = ({
   owner,
   vault,
   dataSourceView,
-  connectorConfiguration,
   plan,
   isAdmin,
   onSelect,
@@ -137,7 +134,6 @@ export const VaultDataSourceViewContentList = ({
             owner={owner}
             vault={vault}
             dataSourceView={dataSourceView}
-            connectorConfiguration={connectorConfiguration}
           />
         )}
       </div>

@@ -12,7 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   APIError,
-  ConnectorConfiguration,
   CrawlingFrequency,
   DataSourceType,
   DataSourceViewCategory,
@@ -56,7 +55,7 @@ export default function VaultWebsiteModal({
   dataSources,
   vault,
   dataSourceView,
-  connectorConfiguration,
+  webCrawlerConfiguration,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
@@ -64,10 +63,22 @@ export default function VaultWebsiteModal({
   vault: VaultType;
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
-  connectorConfiguration: ConnectorConfiguration | null;
+  webCrawlerConfiguration: WebCrawlerConfigurationType | null;
 }) {
-  const webCrawlerConfiguration =
-    connectorConfiguration as WebCrawlerConfigurationType | null;
+  useEffect(() => {
+    if (webCrawlerConfiguration) {
+      setDataSourceUrl(webCrawlerConfiguration.url);
+      setMaxPages(webCrawlerConfiguration.maxPageToCrawl);
+      setMaxDepth(webCrawlerConfiguration.depth);
+      setCrawlMode(webCrawlerConfiguration.crawlMode);
+      setSelectedCrawlFrequency(webCrawlerConfiguration.crawlFrequency);
+      setHeaders(
+        Object.entries(webCrawlerConfiguration.headers).map(([key, value]) => {
+          return { key, value };
+        })
+      );
+    }
+  }, [webCrawlerConfiguration]);
 
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -76,9 +87,7 @@ export default function VaultWebsiteModal({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const [dataSourceUrl, setDataSourceUrl] = useState(
-    webCrawlerConfiguration?.url || ""
-  );
+  const [dataSourceUrl, setDataSourceUrl] = useState("");
   const [dataSourceUrlError, setDataSourceUrlError] = useState<string | null>(
     null
   );
@@ -93,27 +102,13 @@ export default function VaultWebsiteModal({
     null
   );
 
-  const [maxPages, setMaxPages] = useState<number | null>(
-    webCrawlerConfiguration?.maxPageToCrawl || 50
-  );
-  const [maxDepth, setMaxDepth] = useState<DepthOption>(
-    webCrawlerConfiguration ? webCrawlerConfiguration.depth : 2
-  );
-  const [crawlMode, setCrawlMode] = useState<"child" | "website">(
-    webCrawlerConfiguration?.crawlMode || "website"
-  );
+  const [maxPages, setMaxPages] = useState<number | null>(50);
+  const [maxDepth, setMaxDepth] = useState<DepthOption>(2);
+  const [crawlMode, setCrawlMode] = useState<"child" | "website">("website");
   const [selectedCrawlFrequency, setSelectedCrawlFrequency] =
-    useState<CrawlingFrequency>(
-      webCrawlerConfiguration?.crawlFrequency || "monthly"
-    );
+    useState<CrawlingFrequency>("monthly");
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
-
-  const existingHeaders = webCrawlerConfiguration?.headers
-    ? Object.entries(webCrawlerConfiguration.headers).map(([key, value]) => {
-        return { key, value };
-      })
-    : [];
-  const [headers, setHeaders] = useState(existingHeaders);
+  const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
 
   const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
     workspaceId: owner.sId,

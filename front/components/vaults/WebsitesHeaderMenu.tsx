@@ -1,31 +1,42 @@
 import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
 import type {
-  ConnectorConfiguration,
   DataSourceViewType,
   VaultType,
+  WebCrawlerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isWebCrawlerConfiguration } from "@dust-tt/types";
 import { useState } from "react";
 
 import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
-import { useDataSources } from "@app/lib/swr";
+import {
+  useDataSources,
+  useDataSourceViewConnectorConfiguration,
+} from "@app/lib/swr";
 
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;
   vault: VaultType;
   dataSourceView: DataSourceViewType;
-  connectorConfiguration: ConnectorConfiguration | null;
 };
 
 export const WebsitesHeaderMenu = ({
   owner,
   vault,
   dataSourceView,
-  connectorConfiguration,
 }: WebsitesHeaderMenuProps) => {
   const [showEditWebsiteModal, setShowEditWebsiteModal] = useState(false);
 
   const { dataSources } = useDataSources(owner);
+  const { configuration } = useDataSourceViewConnectorConfiguration({
+    dataSourceView,
+    owner,
+  });
+
+  let webCrawlerConfiguration: WebCrawlerConfigurationType | null = null;
+  if (isWebCrawlerConfiguration(configuration)) {
+    webCrawlerConfiguration = configuration;
+  }
 
   return (
     <>
@@ -38,7 +49,7 @@ export const WebsitesHeaderMenu = ({
         vault={vault}
         dataSources={dataSources}
         dataSourceView={dataSourceView}
-        connectorConfiguration={connectorConfiguration}
+        webCrawlerConfiguration={webCrawlerConfiguration}
       />
       <Button
         size="sm"
