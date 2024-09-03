@@ -1,8 +1,9 @@
 import { Dialog } from "@headlessui/react";
 import React, { useState } from "react";
 
+import { Citation } from "@sparkle/components/Citation";
+import { IconButton } from "@sparkle/components/IconButton";
 import { XCircleIcon } from "@sparkle/icons/solid";
-import { Citation, IconButton } from "@sparkle/index";
 
 interface ZoomableImageCitationWrapperProps {
   alt: string;

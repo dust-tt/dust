@@ -1,5 +1,12 @@
 import React, { ReactNode } from "react";
 
+import { Avatar } from "@sparkle/components/Avatar";
+import { CardButton } from "@sparkle/components/CardButton";
+import { Icon } from "@sparkle/components/Icon";
+import { IconButton } from "@sparkle/components/IconButton";
+import Spinner from "@sparkle/components/Spinner";
+import { Tooltip } from "@sparkle/components/Tooltip";
+import { XCircleIcon } from "@sparkle/icons";
 import { DocumentTextStrokeIcon, ImageStrokeIcon } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import {
@@ -12,16 +19,6 @@ import {
   SlackLogo,
   ZendeskLogo,
 } from "@sparkle/logo/platforms";
-
-import {
-  Avatar,
-  CardButton,
-  Icon,
-  IconButton,
-  Spinner,
-  Tooltip,
-  XCircleIcon,
-} from "..";
 
 export type CitationType =
   | "confluence"

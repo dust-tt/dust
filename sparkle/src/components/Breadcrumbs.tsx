@@ -1,14 +1,11 @@
 import type { ComponentType } from "react";
 import React from "react";
 
-import { SparkleContextLinkType } from "@sparkle/context";
-import {
-  ChevronRightIcon,
-  DropdownMenu,
-  Icon,
-  SparkleContext,
-  Tooltip,
-} from "@sparkle/index";
+import { DropdownMenu } from "@sparkle/components/DropdownMenu";
+import { Icon } from "@sparkle/components/Icon";
+import { Tooltip } from "@sparkle/components/Tooltip";
+import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
+import { ChevronRightIcon } from "@sparkle/icons";
 
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const LABEL_TRUNCATE_LENGTH_END = 30;

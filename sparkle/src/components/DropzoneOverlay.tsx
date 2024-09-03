@@ -1,7 +1,7 @@
 import Lottie, { LottieRefCurrentProps } from "lottie-react";
 import React, { useEffect, useRef, useState } from "react";
 
-import { Icon } from "@sparkle/components";
+import { Icon } from "@sparkle/components/Icon";
 import { ArrowUpOnSquareIcon } from "@sparkle/icons";
 import anim from "@sparkle/lottie/dragArea";
 

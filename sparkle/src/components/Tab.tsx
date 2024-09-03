@@ -5,7 +5,7 @@ import {
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
-import { ChevronRightIcon } from "@sparkle/index";
+import { ChevronRightIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";

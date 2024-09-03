@@ -1,10 +1,10 @@
 import { Transition } from "@headlessui/react";
 import React from "react";
 
+import { IconButton } from "@sparkle/components/IconButton";
 import { XMarkIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
-import { IconButton } from "..";
 import { Button } from "./Button";
 import { Chip } from "./Chip";
 
