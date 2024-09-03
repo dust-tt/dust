@@ -1155,12 +1155,12 @@ export class CoreAPI {
 
   async updateTableParents({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
     parents,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
     parents: string[];
   }): Promise<CoreAPIResponse<{ success: true }>> {
@@ -1168,7 +1168,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables/${encodeURIComponent(tableId)}/parents`,
       {
         method: "PATCH",
