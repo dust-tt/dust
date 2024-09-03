@@ -61,6 +61,7 @@ import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
+import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/[dsId]/configuration";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
 export const SWR_KEYS = {
@@ -1520,6 +1521,31 @@ export function useVaultDataSourceViews<
     mutateVaultDataSourceViews: mutate,
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
+  };
+}
+
+export function useDataSourceViewConnectorConfiguration({
+  dataSourceView,
+  owner,
+}: {
+  dataSourceView: DataSourceViewType | null;
+  owner: LightWorkspaceType;
+}) {
+  const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceConfigurationResponseBody> =
+    fetcher;
+  const disabled = !dataSourceView;
+
+  const { data, error } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+    dataSourceViewDocumentFetcher
+  );
+
+  return {
+    configuration: data ? data.configuration : null,
+    isDocumentLoading: !error && !data,
+    isDocumentError: error,
   };
 }
 
