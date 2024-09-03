@@ -137,6 +137,7 @@ AgentConfiguration.init(
     groupIds: {
       type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
+      defaultValue: [],
     },
   },
   {
