@@ -308,23 +308,6 @@ export function DocumentOrTableUploadOrEditModal({
     }
   };
 
-  if (isLoading) {
-    return (
-      <Modal
-        isOpen={isOpen}
-        onClose={() => onClose(false)}
-        hasChanged={true}
-        variant="side-md"
-        title={`Edit ${isTable ? "table" : "document"}`}
-        onSave={handleUpload}
-      >
-        <div className="flex justify-center py-4">
-          <Spinner variant="color" size="xs" />
-        </div>
-      </Modal>
-    );
-  }
-
   return (
     <Modal
       isOpen={isOpen}
@@ -335,201 +318,207 @@ export function DocumentOrTableUploadOrEditModal({
       onSave={handleUpload}
       isSaving={uploading}
     >
-      <Page.Vertical align="stretch">
-        <div className="space-y-4 p-4">
-          <div>
-            <Page.SectionHeader
-              title={`${isTable ? "Table" : "Document"} name`}
-            />
-            <Input
-              placeholder={isTable ? "table_name" : "Document title"}
-              name="name"
-              disabled={!!initialId}
-              value={tableOrDoc.name}
-              onChange={(value) =>
-                setTableOrDoc((prev) => ({ ...prev, name: value }))
-              }
-              error={
-                isTable && (!tableOrDoc.name || !isSlugified(tableOrDoc.name))
-                  ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
-                  : null
-              }
-              showErrorLabel={true}
-            />
-          </div>
-
-          {isTable ? (
+      {isLoading ? (
+        <div className="flex justify-center py-4">
+          <Spinner variant="color" size="xs" />
+        </div>
+      ) : (
+        <Page.Vertical align="stretch">
+          <div className="space-y-4 p-4">
             <div>
               <Page.SectionHeader
-                title="Description"
-                description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
-              />
-              <textarea
-                name="table-description"
-                placeholder="This table contains..."
-                rows={10}
-                value={tableOrDoc.description}
-                onChange={(e) =>
-                  setTableOrDoc((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                className={classNames(
-                  "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
-                  "border-structure-200 bg-structure-50",
-                  "focus:border-action-300 focus:ring-action-300"
-                )}
-              />
-            </div>
-          ) : (
-            <div>
-              <Page.SectionHeader
-                title="Associated URL"
-                description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
+                title={`${isTable ? "Table" : "Document"} name`}
               />
               <Input
-                placeholder="https://..."
-                name="sourceUrl"
-                value={tableOrDoc.sourceUrl}
+                placeholder={isTable ? "table_name" : "Document title"}
+                name="name"
+                disabled={!!initialId}
+                value={tableOrDoc.name}
                 onChange={(value) =>
-                  setTableOrDoc((prev) => ({ ...prev, sourceUrl: value }))
+                  setTableOrDoc((prev) => ({ ...prev, name: value }))
                 }
+                error={
+                  isTable && (!tableOrDoc.name || !isSlugified(tableOrDoc.name))
+                    ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
+                    : null
+                }
+                showErrorLabel={true}
               />
             </div>
-          )}
 
-          <div>
-            <Page.SectionHeader
-              title={isTable ? "CSV File" : "Text content"}
-              description={
-                isTable
-                  ? "Select the CSV file for data extraction. The maximum file size allowed is 50MB."
-                  : `Copy paste content or upload a file (text or PDF). Up to ${
-                      plan.limits.dataSources.documents.sizeMb === -1
-                        ? "2"
-                        : plan.limits.dataSources.documents.sizeMb
-                    } MB of raw text.`
-              }
-              action={{
-                label: uploading
-                  ? "Uploading..."
-                  : tableOrDoc.file || table
-                    ? "Replace file"
-                    : "Upload file",
-                variant: "primary",
-                icon: DocumentPlusIcon,
-                onClick: () => fileInputRef.current?.click(),
-              }}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              accept={isTable ? ".csv, .tsv" : ".txt, .pdf, .md, .csv"}
-              onChange={handleFileChange}
-            />
             {isTable ? (
-              isBigFile && (
-                <div className="flex flex-col gap-y-2 pt-4">
-                  <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-warning-500">
-                    <ExclamationCircleIcon />
-                    Warning: Large file (5MB+)
-                  </div>
-                  <div className="text-sm font-normal text-element-700">
-                    This file is large and may take a while to upload.
-                  </div>
-                </div>
-              )
+              <div>
+                <Page.SectionHeader
+                  title="Description"
+                  description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
+                />
+                <textarea
+                  name="table-description"
+                  placeholder="This table contains..."
+                  rows={10}
+                  value={tableOrDoc.description}
+                  onChange={(e) =>
+                    setTableOrDoc((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  className={classNames(
+                    "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
+                    "border-structure-200 bg-structure-50",
+                    "focus:border-action-300 focus:ring-action-300"
+                  )}
+                />
+              </div>
             ) : (
-              <textarea
-                name="text"
-                rows={10}
-                className={classNames(
-                  "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
-                  "border-structure-200 bg-structure-50",
-                  "focus:border-action-300 focus:ring-action-300"
-                )}
-                value={tableOrDoc.text}
-                onChange={(e) =>
-                  setTableOrDoc((prev) => ({ ...prev, text: e.target.value }))
-                }
-              />
+              <div>
+                <Page.SectionHeader
+                  title="Associated URL"
+                  description="The URL of the associated document (if any). Will be used to link users to the original document in assistants citations."
+                />
+                <Input
+                  placeholder="https://..."
+                  name="sourceUrl"
+                  value={tableOrDoc.sourceUrl}
+                  onChange={(value) =>
+                    setTableOrDoc((prev) => ({ ...prev, sourceUrl: value }))
+                  }
+                />
+              </div>
             )}
-          </div>
 
-          {!isTable && (
             <div>
               <Page.SectionHeader
-                title="Developer Options"
+                title={isTable ? "CSV File" : "Text content"}
+                description={
+                  isTable
+                    ? "Select the CSV file for data extraction. The maximum file size allowed is 50MB."
+                    : `Copy paste content or upload a file (text or PDF). Up to ${
+                        plan.limits.dataSources.documents.sizeMb === -1
+                          ? "2"
+                          : plan.limits.dataSources.documents.sizeMb
+                      } MB of raw text.`
+                }
                 action={{
-                  label: developerOptionsVisible ? "Hide" : "Show",
-                  variant: "tertiary",
-                  icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
-                  onClick: () =>
-                    setDeveloperOptionsVisible(!developerOptionsVisible),
+                  label: uploading
+                    ? "Uploading..."
+                    : tableOrDoc.file || table
+                      ? "Replace file"
+                      : "Upload file",
+                  variant: "primary",
+                  icon: DocumentPlusIcon,
+                  onClick: () => fileInputRef.current?.click(),
                 }}
               />
-              {developerOptionsVisible && (
-                <div className="pt-4">
-                  <Page.SectionHeader
-                    title=""
-                    description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
-                    action={{
-                      label: "Add tag",
-                      variant: "tertiary",
-                      icon: PlusIcon,
-                      onClick: () =>
-                        setTableOrDoc((prev) => ({
-                          ...prev,
-                          tags: [...prev.tags, ""],
-                        })),
-                    }}
-                  />
-                  {tableOrDoc.tags.map((tag, index) => (
-                    <div key={index} className="flex flex-grow flex-row">
-                      <div className="flex flex-1 flex-row gap-8">
-                        <div className="flex flex-1 flex-col">
-                          <Input
-                            className="w-full"
-                            placeholder="Tag"
-                            name="tag"
-                            value={tag}
-                            onChange={(value) => {
-                              const newTags = [...tableOrDoc.tags];
-                              newTags[index] = value;
-                              setTableOrDoc((prev) => ({
-                                ...prev,
-                                tags: newTags,
-                              }));
-                            }}
-                          />
-                        </div>
-                        <div className="flex">
-                          <Button
-                            label="Remove"
-                            icon={TrashIcon}
-                            variant="secondaryWarning"
-                            onClick={() => {
-                              const newTags = [...tableOrDoc.tags];
-                              newTags.splice(index, 1);
-                              setTableOrDoc((prev) => ({
-                                ...prev,
-                                tags: newTags,
-                              }));
-                            }}
-                            labelVisible={false}
-                          />
-                        </div>
-                      </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                accept={isTable ? ".csv, .tsv" : ".txt, .pdf, .md, .csv"}
+                onChange={handleFileChange}
+              />
+              {isTable ? (
+                isBigFile && (
+                  <div className="flex flex-col gap-y-2 pt-4">
+                    <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-warning-500">
+                      <ExclamationCircleIcon />
+                      Warning: Large file (5MB+)
                     </div>
-                  ))}
-                </div>
+                    <div className="text-sm font-normal text-element-700">
+                      This file is large and may take a while to upload.
+                    </div>
+                  </div>
+                )
+              ) : (
+                <textarea
+                  name="text"
+                  rows={10}
+                  className={classNames(
+                    "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
+                    "border-structure-200 bg-structure-50",
+                    "focus:border-action-300 focus:ring-action-300"
+                  )}
+                  value={tableOrDoc.text}
+                  onChange={(e) =>
+                    setTableOrDoc((prev) => ({ ...prev, text: e.target.value }))
+                  }
+                />
               )}
             </div>
-          )}
-        </div>
-      </Page.Vertical>
+
+            {!isTable && (
+              <div>
+                <Page.SectionHeader
+                  title="Developer Options"
+                  action={{
+                    label: developerOptionsVisible ? "Hide" : "Show",
+                    variant: "tertiary",
+                    icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
+                    onClick: () =>
+                      setDeveloperOptionsVisible(!developerOptionsVisible),
+                  }}
+                />
+                {developerOptionsVisible && (
+                  <div className="pt-4">
+                    <Page.SectionHeader
+                      title=""
+                      description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                      action={{
+                        label: "Add tag",
+                        variant: "tertiary",
+                        icon: PlusIcon,
+                        onClick: () =>
+                          setTableOrDoc((prev) => ({
+                            ...prev,
+                            tags: [...prev.tags, ""],
+                          })),
+                      }}
+                    />
+                    {tableOrDoc.tags.map((tag, index) => (
+                      <div key={index} className="flex flex-grow flex-row">
+                        <div className="flex flex-1 flex-row gap-8">
+                          <div className="flex flex-1 flex-col">
+                            <Input
+                              className="w-full"
+                              placeholder="Tag"
+                              name="tag"
+                              value={tag}
+                              onChange={(value) => {
+                                const newTags = [...tableOrDoc.tags];
+                                newTags[index] = value;
+                                setTableOrDoc((prev) => ({
+                                  ...prev,
+                                  tags: newTags,
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div className="flex">
+                            <Button
+                              label="Remove"
+                              icon={TrashIcon}
+                              variant="secondaryWarning"
+                              onClick={() => {
+                                const newTags = [...tableOrDoc.tags];
+                                newTags.splice(index, 1);
+                                setTableOrDoc((prev) => ({
+                                  ...prev,
+                                  tags: newTags,
+                                }));
+                              }}
+                              labelVisible={false}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Page.Vertical>
+      )}
     </Modal>
   );
 }
