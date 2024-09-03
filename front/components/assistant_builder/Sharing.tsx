@@ -25,7 +25,7 @@ import { useState } from "react";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
-import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
+import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 
 type ConfirmationModalDataType = {
   title: string;

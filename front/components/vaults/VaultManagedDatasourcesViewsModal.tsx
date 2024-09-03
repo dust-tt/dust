@@ -9,7 +9,7 @@ import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
-import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr";
+import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
 
 export default function VaultManagedDataSourcesViewsModal({
   vault,

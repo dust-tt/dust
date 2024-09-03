@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { HelpDrawer } from "@app/components/assistant/HelpDrawer";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useUserMetadata } from "@app/lib/swr";
+import { useUserMetadata } from "@app/lib/swr/user";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";

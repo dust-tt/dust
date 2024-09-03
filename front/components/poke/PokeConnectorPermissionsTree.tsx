@@ -5,7 +5,7 @@ import type {
 } from "@dust-tt/types";
 
 import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
-import { usePokeConnectorPermissions } from "@app/lib/swr";
+import { usePokeConnectorPermissions } from "@app/lib/swr/poke";
 
 export function PokePermissionTree({
   owner,

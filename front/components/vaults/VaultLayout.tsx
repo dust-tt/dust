@@ -23,7 +23,7 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useDataSourceViewContentNodes } from "@app/lib/swr";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 
 export interface VaultLayoutProps {
   gaTrackingId: string;

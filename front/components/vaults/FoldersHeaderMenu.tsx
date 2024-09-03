@@ -13,7 +13,7 @@ import { useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
 import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
-import { useDataSources } from "@app/lib/swr";
+import { useDataSources } from "@app/lib/swr/data_sources";
 
 type FoldersHeaderMenuProps = {
   owner: WorkspaceType;

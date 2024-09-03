@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useDataSourceViewContentNodes } from "@app/lib/swr";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourceResourceSelectorTree({

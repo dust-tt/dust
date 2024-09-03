@@ -4,7 +4,7 @@ import type { AppType } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
 
-import { useDatasets } from "@app/lib/swr";
+import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
 
 export default function DatasetPicker({

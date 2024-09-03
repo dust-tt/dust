@@ -34,7 +34,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useConversationMessages } from "@app/lib/swr";
+import { useConversationMessages } from "@app/lib/swr/conversations";
 
 interface ConversationContainerProps {
   conversationId: string | null;

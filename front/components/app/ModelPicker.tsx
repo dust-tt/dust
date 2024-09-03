@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { filterModelProviders, getProviderLLMModels } from "@app/lib/providers";
-import { useProviders } from "@app/lib/swr";
+import { useProviders } from "@app/lib/swr/apps";
 import { classNames } from "@app/lib/utils";
 
 export default function ModelPicker({
