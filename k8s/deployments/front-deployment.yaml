@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: front-deployment
 spec:
-  replicas: 6
+  replicas: 8
   selector:
     matchLabels:
       app: front
