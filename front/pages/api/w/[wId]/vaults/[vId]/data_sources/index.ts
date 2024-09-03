@@ -404,6 +404,7 @@ const handleDataSourceWithProvider = async ({
     const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+      auth,
       globalVault,
       dataSource,
       "custom"
@@ -412,6 +413,7 @@ const handleDataSourceWithProvider = async ({
 
   const dataSourceView =
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+      auth,
       dataSource.vault,
       dataSource
     );
@@ -622,6 +624,7 @@ const handleDataSourceWithoutProvider = async ({
 
   const dataSourceView =
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+      auth,
       dataSource.vault,
       dataSource
     );

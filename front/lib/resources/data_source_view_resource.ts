@@ -98,11 +98,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
+    auth: Authenticator,
     vault: VaultResource,
     dataSource: DataSourceResource,
     kind: DataSourceViewKind = "default"
   ) {
-    return this.makeNew(
+    const dataSourceView = await this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
@@ -112,6 +113,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       vault,
       dataSource
     );
+
+    await dataSourceView.setEditedBy(auth);
+
+    return dataSourceView;
   }
 
   // Fetching.
