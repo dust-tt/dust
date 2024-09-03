@@ -335,7 +335,6 @@ export function DocumentOrTableUploadOrEditModal({
       isOpen={isOpen}
       onClose={() => {
         onClose(false);
-        resetTableOrDoc();
       }}
       hasChanged={true}
       variant="side-md"
