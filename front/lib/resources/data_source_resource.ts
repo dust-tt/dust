@@ -304,7 +304,6 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   toJSON(): DataSourceType {
     return {
       id: this.id,
-      sId: this.name, // TODO(thomas 20240812) Migrate to a real sId
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,
