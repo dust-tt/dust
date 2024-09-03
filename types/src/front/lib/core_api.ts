@@ -1220,13 +1220,13 @@ export class CoreAPI {
 
   async getTableRow({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
     rowId,
     filter,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
     rowId: string;
     filter?: CoreAPISearchFilter | null;
@@ -1238,7 +1238,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(
         rowId
       )}${qs}`,
