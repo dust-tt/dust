@@ -13,7 +13,6 @@ import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -30,7 +29,6 @@ async function handler(
     WithAPIErrorResponse<
       | GetDataSourceConfigurationResponseBody
       | PatchDataSourceConfigurationResponseBody
-      | void
     >
   >,
   auth: Authenticator
@@ -45,16 +43,28 @@ async function handler(
     });
   }
 
-  const vault = await VaultResource.fetchById(auth, req.query.vId);
-  if (!vault) {
+  if (!req.query.dsId || typeof req.query.dsId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "vault_not_found",
-        message: "The vault you requested was not found.",
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
+
+  const dataSource = await DataSourceResource.fetchById(auth, req.query.dsId);
+  if (!dataSource || dataSource.vault.sId !== req.query.vId) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const vault = dataSource.vault;
   if (!auth.hasPermission([vault.acl()], "read")) {
     return apiError(req, res, {
       status_code: 403,
@@ -66,34 +76,18 @@ async function handler(
     });
   }
 
-  if (!req.query.dsId || typeof req.query.dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-  const dataSource = await DataSourceResource.fetchById(auth, req.query.dsId);
-  if (!dataSource) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  // Config is only for data sources with a connector provider.
-  if (!dataSource.connectorProvider || !dataSource.connectorId) {
+  // Only Slack & Webcrawler connectors have configurations.
+  // SlackConfiguration.botEnabled can only be updated from a Poke route.
+  // So these routes are currently only for Webcrawler connectors.
+  if (
+    !dataSource.connectorId ||
+    dataSource.connectorProvider !== "webcrawler"
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "data_source_not_managed",
-        message:
-          "Cannot read/update the configuration of this Data Source because it is not managed.",
+        message: "Cannot read/update the configuration of this Data Source.",
       },
     });
   }
@@ -151,25 +145,6 @@ async function handler(
               "Only the users that are `builders` for the current workspace can update a data source configuration.",
           },
         });
-      }
-
-      switch (dataSource.connectorProvider) {
-        // Check which parameters are being updated here if you add a case.
-        // SlackConfiguration.botEnabled can only be updated from a Poke route.
-        case "webcrawler": {
-          // For WebCrawler, all parameters can be updated.
-          break;
-        }
-        default: {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "data_source_error",
-              message:
-                "The configuration of this Data Source cannot be updated.",
-            },
-          });
-        }
       }
 
       const parseRes = ioTsParsePayload(

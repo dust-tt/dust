@@ -28,6 +28,7 @@ import {
   CrawlingFrequencies,
   DepthOptions,
   isDataSourceNameValid,
+  WEBCRAWLER_DEFAULT_CONFIGURATION,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -102,11 +103,19 @@ export default function VaultWebsiteModal({
     null
   );
 
-  const [maxPages, setMaxPages] = useState<number | null>(50);
-  const [maxDepth, setMaxDepth] = useState<DepthOption>(2);
-  const [crawlMode, setCrawlMode] = useState<"child" | "website">("website");
+  const [maxPages, setMaxPages] = useState<number | null>(
+    WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
+  );
+  const [maxDepth, setMaxDepth] = useState<DepthOption>(
+    WEBCRAWLER_DEFAULT_CONFIGURATION.depth
+  );
+  const [crawlMode, setCrawlMode] = useState<"child" | "website">(
+    WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode
+  );
   const [selectedCrawlFrequency, setSelectedCrawlFrequency] =
-    useState<CrawlingFrequency>("monthly");
+    useState<CrawlingFrequency>(
+      WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
+    );
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
 
@@ -133,10 +142,10 @@ export default function VaultWebsiteModal({
   };
 
   useEffect(() => {
-    if (isUrlValid(dataSourceUrl)) {
+    if (isUrlValid(dataSourceUrl) && !dataSourceName) {
       setDataSourceName(urlToDataSourceName(dataSourceUrl));
     }
-  }, [dataSourceUrl]);
+  }, [dataSourceUrl, dataSourceName]);
 
   const validateForm = useCallback(() => {
     let urlError = null;
@@ -154,7 +163,7 @@ export default function VaultWebsiteModal({
     );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
     if (nameExists) {
-      nameError = "A Folder with the same name already exists";
+      nameError = "A Website with the same name already exists";
     } else if (!dataSourceName.length) {
       nameError = "Please provide a name.";
     } else if (dataSourceNameRes.isErr()) {
@@ -221,6 +230,7 @@ export default function VaultWebsiteModal({
           description: "The website has been successfully created.",
         });
         await mutateVaultDataSourceViews();
+        setIsSaving(false);
         const response: PostVaultDataSourceResponseBody = await res.json();
         const { dataSourceView } = response;
         await router.push(
@@ -265,6 +275,7 @@ export default function VaultWebsiteModal({
       );
       if (res.ok) {
         setOpen(false);
+        setIsSaving(false);
         sendNotification({
           title: "Website updated",
           type: "success",
