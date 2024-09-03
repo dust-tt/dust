@@ -51,6 +51,10 @@ interface TableOrDocument {
   sourceUrl: string;
 }
 
+const supportedTableFormats = [".csv", ".tsv"].join(", ");
+
+const supportedDocumentFormats = [".txt", ".pdf", ".md", ".csv"].join(", ");
+
 export function DocumentOrTableUploadOrEditModal({
   dataSourceView,
   contentNode,
@@ -111,7 +115,6 @@ export function DocumentOrTableUploadOrEditModal({
           description: table.description,
         }));
       } else {
-        setUploading(true);
         try {
           const res = await fetch(
             `/api/w/${owner.sId}/data_sources/${
@@ -313,7 +316,10 @@ export function DocumentOrTableUploadOrEditModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => onClose(false)}
+      onClose={() => {
+        onClose(false);
+        resetTableOrDoc();
+      }}
       hasChanged={true}
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} ${isTable ? "table" : "document"}`}
@@ -422,7 +428,9 @@ export function DocumentOrTableUploadOrEditModal({
                 type="file"
                 ref={fileInputRef}
                 style={{ display: "none" }}
-                accept={isTable ? ".csv, .tsv" : ".txt, .pdf, .md, .csv"}
+                accept={
+                  isTable ? supportedTableFormats : supportedDocumentFormats
+                }
                 onChange={handleFileChange}
               />
               {isTable ? (
