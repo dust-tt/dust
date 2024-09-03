@@ -273,16 +273,6 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
   }
 
-  // Permissions.
-
-  canRead(auth: Authenticator) {
-    return auth.canRead([this.vault.acl()]);
-  }
-
-  canWrite(auth: Authenticator) {
-    return auth.isBuilder() && auth.canWrite([this.vault.acl()]);
-  }
-
   // sId logic.
 
   get sId(): string {

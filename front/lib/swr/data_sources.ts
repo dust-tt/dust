@@ -1,8 +1,4 @@
-import type {
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import type { LightContentNode, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
@@ -113,21 +109,22 @@ export function useDataSourceNodes(
 
 export function useDocument({
   workspaceId,
-  dataSourceView,
+  dataSourceName,
   documentId,
 }: {
   workspaceId: string;
-  dataSourceView: DataSourceViewType;
+  dataSourceName: string;
   documentId: string | null;
 }) {
   const documentFetcher: Fetcher<GetDocumentResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     documentId
-      ? `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${documentId}`
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/documents/${documentId}`
       : null,
     documentFetcher
   );
+
   return {
     document: useMemo(() => (data ? data.document : null), [data]),
     isDocumentLoading: !error && !data,

@@ -23,11 +23,7 @@ export const FrontDataSourceDocumentSection: t.RecursiveType<
   })
 );
 
-export type FrontDataSourceDocumentSectionType = t.TypeOf<
-  typeof FrontDataSourceDocumentSection
->;
-
-export const PatchDataSourceDocumentRequestBodySchema = t.type({
+export const PostDataSourceDocumentRequestBodySchema = t.type({
   timestamp: t.union([t.number, t.undefined, t.null]),
   tags: t.union([t.array(t.string), t.undefined, t.null]),
   parents: t.union([t.array(t.string), t.undefined, t.null]),
@@ -39,43 +35,6 @@ export const PatchDataSourceDocumentRequestBodySchema = t.type({
   async: t.union([t.boolean, t.undefined, t.null]),
 });
 
-export type PatchDataSourceDocumentRequestBody = t.TypeOf<
-  typeof PostDataSourceDocumentRequestBodySchema
->;
-
-export const PostDataSourceDocumentRequestBodySchema = t.intersection([
-  t.type({
-    name: t.string,
-  }),
-  PatchDataSourceDocumentRequestBodySchema,
-]);
-
 export type PostDataSourceDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceDocumentRequestBodySchema
->;
-
-export const PatchDataSourceTableRequestBodySchema = t.type({
-  name: t.string,
-  description: t.string,
-  timestamp: t.union([t.number, t.undefined, t.null]),
-  tags: t.union([t.array(t.string), t.undefined, t.null]),
-  parents: t.union([t.array(t.string), t.undefined, t.null]),
-  truncate: t.boolean,
-  async: t.union([t.boolean, t.undefined]),
-  csv: t.union([t.string, t.undefined]),
-});
-
-export type PatchDataSourceTableRequest = t.TypeOf<
-  typeof PatchDataSourceTableRequestBodySchema
->;
-
-export const PostDataSourceTableRequestBodySchema = t.intersection([
-  PatchDataSourceTableRequestBodySchema,
-  t.type({
-    csv: t.string,
-  }),
-]);
-
-export type PostDataSourceTableRequest = t.TypeOf<
-  typeof PostDataSourceTableRequestBodySchema
 >;

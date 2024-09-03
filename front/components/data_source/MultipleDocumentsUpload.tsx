@@ -48,7 +48,6 @@ export const MultipleDocumentsUpload = ({
 
   const handleUpsert = async (text: string, documentId: string) => {
     const body: PostDataSourceDocumentRequestBody = {
-      name: documentId,
       timestamp: null,
       parents: null,
       section: {
@@ -66,9 +65,9 @@ export const MultipleDocumentsUpload = ({
 
     try {
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${
+        `/api/w/${owner.sId}/data_sources/${
           dataSourceView.dataSource.name
-        }/documents`,
+        }/documents/${encodeURIComponent(documentId)}`,
         {
           method: "POST",
           headers: {
