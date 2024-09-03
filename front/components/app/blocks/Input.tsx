@@ -12,7 +12,7 @@ import { useContext, useState } from "react";
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useDataset } from "@app/lib/swr";
+import { useDataset } from "@app/lib/swr/datasets";
 import { shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";

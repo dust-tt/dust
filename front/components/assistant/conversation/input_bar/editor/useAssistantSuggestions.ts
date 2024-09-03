@@ -5,7 +5,7 @@ import type {
 import { useMemo } from "react";
 
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { useAgentConfigurations } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]

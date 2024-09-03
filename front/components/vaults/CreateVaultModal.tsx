@@ -18,7 +18,8 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { SWR_KEYS, useMembers } from "@app/lib/swr";
+import { useMembers } from "@app/lib/swr/memberships";
+import { SWR_KEYS } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 

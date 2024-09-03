@@ -14,7 +14,7 @@ import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
-import { useVaultInfo } from "@app/lib/swr";
+import { useVaultInfo } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {

@@ -9,7 +9,7 @@ import { useContext } from "react";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
-import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
+import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 
 export function DeleteAssistantDialog({
   owner,

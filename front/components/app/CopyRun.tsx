@@ -8,7 +8,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useMemo, useState } from "react";
 
 import { DisplayCurlRequest } from "@app/components/app/Deploy";
-import { useRunBlock } from "@app/lib/swr";
+import { useRunBlock } from "@app/lib/swr/apps";
 
 interface CopyRunProps {
   app: AppType;

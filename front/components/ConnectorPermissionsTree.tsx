@@ -20,10 +20,8 @@ import { useCallback, useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import {
-  useConnectorPermissions,
-  useDataSourceViewContentNodes,
-} from "@app/lib/swr";
+import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<

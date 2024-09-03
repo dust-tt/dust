@@ -50,13 +50,12 @@ import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { useApp } from "@app/lib/swr/apps";
+import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 import {
-  useAgentConfiguration,
-  useAgentUsage,
-  useApp,
   useDataSourceViewContentNodes,
   useDataSourceViews,
-} from "@app/lib/swr";
+} from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 

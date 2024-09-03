@@ -21,7 +21,8 @@ import { useContext, useState } from "react";
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
-import { useAgentConfiguration, useUser } from "@app/lib/swr";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useUser } from "@app/lib/swr/user";
 
 interface AssistantDetailsDropdownMenuProps {
   agentConfigurationId: string;

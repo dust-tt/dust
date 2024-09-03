@@ -9,10 +9,8 @@ import { isWebCrawlerConfiguration } from "@dust-tt/types";
 import { useState } from "react";
 
 import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
-import {
-  useDataSources,
-  useDataSourceViewConnectorConfiguration,
-} from "@app/lib/swr";
+import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
+import { useDataSources } from "@app/lib/swr/data_sources";
 
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;

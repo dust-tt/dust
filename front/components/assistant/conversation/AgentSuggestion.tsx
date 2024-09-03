@@ -10,7 +10,7 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurations } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 
 interface AgentSuggestionProps {
   conversationId: string;

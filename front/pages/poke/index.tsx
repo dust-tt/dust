@@ -20,7 +20,7 @@ import {
   isOldFreePlan,
   isProPlan,
 } from "@app/lib/plans/plan_codes";
-import { usePokeWorkspaces } from "@app/lib/swr";
+import { usePokeWorkspaces } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceType } from "@app/pages/api/poke/workspaces";
 

@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { useTables } from "@app/lib/swr";
+import { useTables } from "@app/lib/swr/tables";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
 export const PickTableInFolder = ({

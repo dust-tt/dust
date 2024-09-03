@@ -26,7 +26,8 @@ import config from "@app/lib/api/config";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useAgentConfigurations, useDataSources } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useDataSources } from "@app/lib/swr/data_sources";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

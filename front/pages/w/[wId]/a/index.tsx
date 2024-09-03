@@ -46,7 +46,7 @@ import {
   modelProviders,
   serviceProviders,
 } from "@app/lib/providers";
-import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr";
+import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{

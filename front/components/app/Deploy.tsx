@@ -15,7 +15,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Fragment, useState } from "react";
 
-import { useKeys } from "@app/lib/swr";
+import { useKeys } from "@app/lib/swr/apps";
 import { classNames } from "@app/lib/utils";
 
 const CodeEditor = dynamic(
