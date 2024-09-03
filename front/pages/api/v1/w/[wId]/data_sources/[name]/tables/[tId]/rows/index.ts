@@ -346,7 +346,7 @@ async function handler(
       // Upsert is succesful, retrieve the updated table.
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
       });
       if (tableRes.isErr()) {

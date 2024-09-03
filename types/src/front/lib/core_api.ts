@@ -1076,18 +1076,18 @@ export class CoreAPI {
 
   async getTable({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables/${encodeURIComponent(tableId)}`,
       {
         method: "GET",
