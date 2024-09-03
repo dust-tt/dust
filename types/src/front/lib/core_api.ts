@@ -1011,16 +1011,16 @@ export class CoreAPI {
   async dataSourceTokenize({
     text,
     projectId,
-    dataSourceName,
+    dataSourceId,
   }: {
     text: string;
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}/tokenize`,
+      )}/data_sources/${encodeURIComponent(dataSourceId)}/tokenize`,
       {
         method: "POST",
         headers: {

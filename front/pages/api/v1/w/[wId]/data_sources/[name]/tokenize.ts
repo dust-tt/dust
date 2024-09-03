@@ -84,7 +84,7 @@ async function handler(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const coreTokenizeRes = await coreAPI.dataSourceTokenize({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         text,
       });
       if (coreTokenizeRes.isErr()) {
