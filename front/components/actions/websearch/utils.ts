@@ -1,10 +1,10 @@
-import type { CitationType } from "@dust-tt/sparkle/dist/cjs/components/Citation";
+import type { Citation } from "@dust-tt/sparkle";
 import type { WebsearchActionType } from "@dust-tt/types";
 
 interface WebsearchResultCitation {
   href: string;
   title: string;
-  type: CitationType;
+  type: Exclude<React.ComponentProps<typeof Citation>["type"], undefined>;
 }
 
 export function makeWebsearchResultsCitations(
