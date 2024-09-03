@@ -266,7 +266,7 @@ export const DustProdActionRegistry = createActionRegistry({
   "table-header-parser": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "XvWdQlbdeR",
+      appId: "OJSd3KpoDU",
       appHash:
         "85088f3e0aacb9e454c700b18c9bfd8abaca46262db9a5abe1176ece3b2649ac",
     },
