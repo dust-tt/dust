@@ -16,11 +16,12 @@ import { Op } from "sequelize";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { isResourceSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
@@ -272,12 +273,37 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
   }
 
+  // sId logic.
+
+  get sId(): string {
+    return DataSourceResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("data_source", {
+      id,
+      workspaceId,
+    });
+  }
+
+  static isDataSourceSId(sId: string): boolean {
+    return isResourceSId("data_source", sId);
+  }
+
   // Serialization.
 
   toJSON(): DataSourceType {
     return {
       id: this.id,
-      sId: this.name, // TODO(thomas 20240812) Migrate to a real sId
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,
