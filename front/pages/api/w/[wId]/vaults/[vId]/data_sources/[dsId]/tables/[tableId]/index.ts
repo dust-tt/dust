@@ -126,8 +126,7 @@ async function handler(
     case "DELETE":
       const delRes = await deleteTable({
         owner: auth.getNonNullableWorkspace(),
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSource: dataSource.toJSON(),
         tableId,
       });
 

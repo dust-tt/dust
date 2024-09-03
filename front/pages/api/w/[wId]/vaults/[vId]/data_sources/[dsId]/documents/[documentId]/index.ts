@@ -172,7 +172,7 @@ async function handler(
 
       const deleteRes = await coreAPI.deleteDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
       });
 
