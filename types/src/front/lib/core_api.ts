@@ -1293,12 +1293,12 @@ export class CoreAPI {
 
   async deleteTableRow({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
     rowId,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
     rowId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
@@ -1306,7 +1306,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(
         rowId
       )}`,

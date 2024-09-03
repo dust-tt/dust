@@ -201,7 +201,7 @@ async function handler(
     case "DELETE":
       const deleteRes = await coreAPI.deleteTableRow({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
         rowId,
       });
