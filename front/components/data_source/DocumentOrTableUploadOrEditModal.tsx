@@ -96,8 +96,6 @@ export function DocumentOrTableUploadOrEditModal({
     });
   };
 
-  console.log(tableOrDoc)
-
   // TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
   useEffect(() => {
     const fetchData = async () => {
@@ -158,11 +156,11 @@ export function DocumentOrTableUploadOrEditModal({
     );
   }
 
-  const handleTableUpload = async () => {
+  const handleTableUpload = async (table: TableOrDocument) => {
     setUploading(true);
     try {
-      const fileContent = tableOrDoc.file
-        ? await handleFileUploadToText(tableOrDoc.file)
+      const fileContent = table.file
+        ? await handleFileUploadToText(table.file)
         : null;
       if (fileContent && fileContent.isErr()) {
         return new Err(fileContent.error);
@@ -178,8 +176,8 @@ export function DocumentOrTableUploadOrEditModal({
 
       const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`;
       const body = JSON.stringify({
-        name: tableOrDoc.name,
-        description: tableOrDoc.description,
+        name: table.name,
+        description: table.description,
         csv: csvContent,
         tableId: initialId,
         timestamp: null,
@@ -202,7 +200,7 @@ export function DocumentOrTableUploadOrEditModal({
       sendNotification({
         type: "success",
         title: `Table successfully ${initialId ? "updated" : "added"}`,
-        description: `Table ${tableOrDoc.name} was successfully ${initialId ? "updated" : "added"}.`,
+        description: `Table ${table.name} was successfully ${initialId ? "updated" : "added"}.`,
       });
     } catch (error) {
       sendNotification({
@@ -215,17 +213,17 @@ export function DocumentOrTableUploadOrEditModal({
     }
   };
 
-  const handleDocumentUpload = async () => {
+  const handleDocumentUpload = async (document: TableOrDocument) => {
     setUploading(true);
     try {
-      const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(tableOrDoc.name)}`;
+      const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(document.name)}`;
       const body: PostDataSourceDocumentRequestBody = {
         timestamp: null,
         parents: null,
-        section: { prefix: null, content: tableOrDoc.text, sections: [] },
+        section: { prefix: null, content: document.text, sections: [] },
         text: null,
-        source_url: tableOrDoc.sourceUrl || undefined,
-        tags: tableOrDoc.tags.filter(Boolean),
+        source_url: document.sourceUrl || undefined,
+        tags: document.tags.filter(Boolean),
         light_document_output: true,
         upsert_context: null,
         async: false,
@@ -245,7 +243,7 @@ export function DocumentOrTableUploadOrEditModal({
       sendNotification({
         type: "success",
         title: `Document successfully ${initialId ? "updated" : "added"}`,
-        description: `Document ${tableOrDoc.name} was successfully ${initialId ? "updated" : "added"}.`,
+        description: `Document ${document.name} was successfully ${initialId ? "updated" : "added"}.`,
       });
     } catch (error) {
       sendNotification({
@@ -261,9 +259,9 @@ export function DocumentOrTableUploadOrEditModal({
   const handleUpload = async () => {
     try {
       if (isTable) {
-        await handleTableUpload();
+        await handleTableUpload(tableOrDoc);
       } else {
-        await handleDocumentUpload();
+        await handleDocumentUpload(tableOrDoc);
       }
       onClose(true);
       resetTableOrDoc();
