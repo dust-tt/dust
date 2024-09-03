@@ -254,21 +254,21 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <div className="s-flex s-flex-col s-gap-3">
+        <div className="s-flex s-flex-col s-gap-3 s-max-w-xs">
           <div className="s-text-xl">Nav bar</div>
           <div>
             <Tree variant="navigator">
               <Tree.Item
-                label="Intercom"
+                label="Intercom  github.com-apache-incubator-devlake-tree-main-backend"
                 visual={IntercomLogo}
                 onItemClick={() => console.log("Clickable")}
                 isSelected={true}
                 size="md"
               >
                 <Tree variant="navigator" tailwindIconTextColor="s-text-brand">
-                  <Tree.Item label="item 1" visual={FolderIcon}>
+                  <Tree.Item label="item 1 with a very very very very very very very long text" visual={FolderIcon}>
                     <Tree variant="navigator">
-                      <Tree.Item label="item 1" visual={FolderIcon} />
+                      <Tree.Item label="item 1 with a very very very very very very very long text" visual={FolderIcon} type="leaf"/>
                       <Tree.Item label="item 2" visual={FolderIcon} />
                       <Tree.Item label="item 3" visual={FolderIcon} />
                     </Tree>

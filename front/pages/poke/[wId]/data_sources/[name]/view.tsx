@@ -30,7 +30,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const document = await coreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: context.query.documentId as string,
   });
 

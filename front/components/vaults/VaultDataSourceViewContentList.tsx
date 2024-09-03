@@ -5,7 +5,7 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRef, useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
@@ -38,12 +38,13 @@ type VaultDataSourceViewContentListProps = {
   parentId?: string;
 };
 
-const getTableColumns = () => {
+const getTableColumns = (): ColumnDef<RowData>[] => {
   return [
     {
       header: "Name",
       accessorKey: "title",
       id: "title",
+      sortingFn: "text", // built-in sorting function case-insensitive
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.title}</span>
@@ -135,6 +136,7 @@ export const VaultDataSourceViewContentList = ({
           columns={getTableColumns()}
           filter={dataSourceSearch}
           filterColumn="title"
+          initialColumnOrder={[{ desc: false, id: "title" }]}
         />
       )}
       <ContentActions

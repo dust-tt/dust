@@ -618,15 +618,15 @@ export class CoreAPI {
 
   async deleteDataSource({
     projectId,
-    dataSourceName,
+    dataSourceId,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}`,
+      )}/data_sources/${encodeURIComponent(dataSourceId)}`,
       {
         method: "DELETE",
       }
@@ -637,7 +637,7 @@ export class CoreAPI {
 
   async searchDataSource(
     projectId: string,
-    dataSourceName: string,
+    dataSourceId: string,
     payload: {
       query: string;
       topK: number;
@@ -650,7 +650,7 @@ export class CoreAPI {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}/search`,
+      )}/data_sources/${encodeURIComponent(dataSourceId)}/search`,
       {
         method: "POST",
         headers: {
@@ -671,13 +671,13 @@ export class CoreAPI {
   }
 
   async getDataSourceDocuments({
-    dataSourceName,
+    dataSourceId,
     limit,
     offset,
     projectId,
     viewFilter,
   }: {
-    dataSourceName: string;
+    dataSourceId: string;
     limit: number;
     offset: number;
     projectId: string;
@@ -703,7 +703,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents?${queryParams.toString()}`,
       {
         method: "GET",
@@ -713,13 +713,13 @@ export class CoreAPI {
   }
 
   async getDataSourceDocument({
-    dataSourceName,
+    dataSourceId,
     documentId,
     projectId,
     versionHash,
     viewFilter,
   }: {
-    dataSourceName: string;
+    dataSourceId: string;
     documentId: string;
     projectId: string;
     versionHash?: string | null;
@@ -746,7 +746,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/documents/${encodeURIComponent(documentId)}${qs ? `?${qs}` : ""}`,
       {
         method: "GET",

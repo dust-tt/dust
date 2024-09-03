@@ -65,7 +65,7 @@ async function main() {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const coreDeleteRes = await coreAPI.deleteDataSource({
           projectId: dustAPIProjectId,
-          dataSourceName: ds.name,
+          dataSourceId: ds.dustAPIDataSourceId,
         });
         if (coreDeleteRes.isErr()) {
           console.log("[x] Error deleting CoreAPI data source", ds);

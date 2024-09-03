@@ -142,8 +142,8 @@ async function getDataSourceDocument({
   }
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const docText = await coreAPI.getDataSourceDocument({
-    projectId: dataSource?.dustAPIProjectId,
-    dataSourceName: dataSourceName,
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     documentId,
   });
   if (docText.isErr()) {
