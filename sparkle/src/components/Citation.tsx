@@ -1,27 +1,24 @@
 import React, { ReactNode } from "react";
 
-import { DocumentText, Image } from "@sparkle/icons/stroke";
+import { Avatar } from "@sparkle/components/Avatar";
+import { CardButton } from "@sparkle/components/CardButton";
+import { Icon } from "@sparkle/components/Icon";
+import { IconButton } from "@sparkle/components/IconButton";
+import Spinner from "@sparkle/components/Spinner";
+import { Tooltip } from "@sparkle/components/Tooltip";
+import { XCircleIcon } from "@sparkle/icons";
+import { DocumentTextStrokeIcon, ImageStrokeIcon } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import {
-  Confluence,
-  Drive,
-  Github,
-  Intercom,
-  Microsoft,
-  Notion,
-  Slack,
-  Zendesk,
+  ConfluenceLogo,
+  DriveLogo,
+  GithubLogo,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
+  ZendeskLogo,
 } from "@sparkle/logo/platforms";
-
-import {
-  Avatar,
-  CardButton,
-  Icon,
-  IconButton,
-  Spinner,
-  Tooltip,
-  XCircleIcon,
-} from "..";
 
 export type CitationType =
   | "confluence"
@@ -51,16 +48,16 @@ interface CitationProps {
 }
 
 const typeIcons = {
-  confluence: Confluence,
-  document: DocumentText,
-  github: Github,
-  google_drive: Drive,
-  intercom: Intercom,
-  microsoft: Microsoft,
-  zendesk: Zendesk,
-  notion: Notion,
-  slack: Slack,
-  image: Image,
+  confluence: ConfluenceLogo,
+  document: DocumentTextStrokeIcon,
+  github: GithubLogo,
+  google_drive: DriveLogo,
+  intercom: IntercomLogo,
+  microsoft: MicrosoftLogo,
+  zendesk: ZendeskLogo,
+  notion: NotionLogo,
+  slack: SlackLogo,
+  image: ImageStrokeIcon,
 };
 
 const typeSizing = {

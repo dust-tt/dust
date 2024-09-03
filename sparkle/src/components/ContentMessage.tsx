@@ -1,8 +1,8 @@
 import React, { ComponentType } from "react";
 
+import { Icon } from "@sparkle/components/Icon";
+import { InformationCircleIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
-
-import { Icon, InformationCircleIcon } from "..";
 
 export interface ContentMessageProps {
   title: string;

@@ -1,2 +1,5 @@
-import "./styles/global.css";
-export * from "./_index";
+export * from "./components";
+export { SparkleContext } from "./context";
+export * from "./icons";
+export * from "./lib";
+export * from "./logo";

@@ -1,7 +1,12 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Drive, Github, Notion, Slack } from "@sparkle/logo/platforms";
+import {
+  DriveLogo,
+  GithubLogo,
+  NotionLogo,
+  SlackLogo,
+} from "@sparkle/logo/platforms";
 
 import {
   Avatar,
@@ -52,14 +57,14 @@ export const ListItemExample = () => (
       />
       <ContextItem
         title="Notion"
-        visual={<ContextItem.Visual visual={Notion} />}
+        visual={<ContextItem.Visual visual={NotionLogo} />}
         onClick={() => console.log("clicked item")}
       >
         <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
       </ContextItem>
       <ContextItem
         title="Drive"
-        visual={<ContextItem.Visual visual={Drive} />}
+        visual={<ContextItem.Visual visual={DriveLogo} />}
         onClick={() => console.log("clicked")}
       >
         <ContextItem.Description description="Hello you" />
@@ -71,7 +76,7 @@ export const ListItemExample = () => (
       />
       <ContextItem
         title="Slack"
-        visual={<ContextItem.Visual visual={Slack} />}
+        visual={<ContextItem.Visual visual={SlackLogo} />}
         action={
           <Button.List>
             <Button
@@ -95,7 +100,7 @@ export const ListItemExample = () => (
         title="Github"
         subElement={<>By: Stan</>}
         action={<SliderToggle size="xs" />}
-        visual={<ContextItem.Visual visual={Github} />}
+        visual={<ContextItem.Visual visual={GithubLogo} />}
       >
         <>
           <div className="s-py-2">

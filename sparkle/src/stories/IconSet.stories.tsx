@@ -32,7 +32,7 @@ export const SolidIconSet = () => (
         <div key={iconName}>
           <Icon visual={CurrentIcon} size="md" />
           <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-            {iconName + "Icon"}
+            {iconName}
           </div>
         </div>
       );
@@ -50,7 +50,7 @@ export const StrokeIconSet = () => (
         <div key={iconName}>
           <Icon visual={CurrentIcon} size="md" />
           <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-            {iconName + "Icon"}
+            {iconName}
           </div>
         </div>
       );

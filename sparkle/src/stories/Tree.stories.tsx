@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Dust } from "@sparkle/icons/solid";
+import { DustIcon } from "@sparkle/icons/solid";
 
 import {
   Button,
@@ -242,7 +242,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={Dust}
+                visual={DustIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: "unchecked",
@@ -299,7 +299,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item label="Notion" visual={NotionLogo} size="md" />
               <Tree.Item label="Slack" visual={SlackLogo} size="md" />
-              <Tree.Item label="Dust" visual={Dust} size="md" />
+              <Tree.Item label="Dust" visual={DustIcon} size="md" />
             </Tree>
           </div>
         </div>
@@ -569,7 +569,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={Dust}
+                visual={DustIcon}
                 checkbox={{
                   variant: "checkable",
                   checked: "unchecked",
@@ -617,7 +617,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item label="Notion" visual={NotionLogo} />
               <Tree.Item label="Slack" visual={SlackLogo} />
-              <Tree.Item label="Dust" visual={Dust} />
+              <Tree.Item label="Dust" visual={DustIcon} />
             </Tree>
           </div>
         </div>

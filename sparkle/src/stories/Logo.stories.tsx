@@ -1,16 +1,16 @@
 import React from "react";
 
-import { Div3D, Hover3D, LogoSquareColorLogoLayer2 } from "..";
+import { Div3D, Hover3D, LogoSquareColorLayer2Logo } from "..";
 import {
-  LogoHorizontalColor,
-  LogoHorizontalColorLayer1,
-  LogoHorizontalColorLayer2,
-  LogoHorizontalDark,
-  LogoHorizontalWhite,
-  LogoSquareColor,
-  LogoSquareColorLayer1,
-  LogoSquareDark,
-  LogoSquareWhite,
+  LogoHorizontalColorLayer1Logo,
+  LogoHorizontalColorLayer2Logo,
+  LogoHorizontalColorLogo,
+  LogoHorizontalDarkLogo,
+  LogoHorizontalWhiteLogo,
+  LogoSquareColorLayer1Logo,
+  LogoSquareColorLogo,
+  LogoSquareDarkLogo,
+  LogoSquareWhiteLogo,
 } from "../logo/dust";
 
 export default {
@@ -35,19 +35,19 @@ export const DustLogo = () => (
   <>
     <div style={gridStyle}>
       <div className="s-p-6">
-        <LogoHorizontalColor className="s-h-8 s-w-32" />
+        <LogoHorizontalColorLogo className="s-h-8 s-w-32" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
           LogoHorizontalColorLogo
         </div>
       </div>
       <div className="s-p-6">
-        <LogoHorizontalDark className="s-h-8 s-w-32" />
+        <LogoHorizontalDarkLogo className="s-h-8 s-w-32" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
           LogoHorizontalDarkLogo
         </div>
       </div>
       <div className="s-bg-slate-800 s-p-6">
-        <LogoHorizontalWhite className="s-h-8 s-w-32" />
+        <LogoHorizontalWhiteLogo className="s-h-8 s-w-32" />
         <div
           style={itemStyle as React.CSSProperties}
           className="s-text-sm s-text-white"
@@ -59,19 +59,19 @@ export const DustLogo = () => (
 
     <div style={gridStyle}>
       <div className="s-p-6">
-        <LogoSquareColor className="s-h-16 s-w-16" />
+        <LogoSquareColorLogo className="s-h-16 s-w-16" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
           LogoHorizontalColorLogo
         </div>
       </div>
       <div className="s-p-6">
-        <LogoSquareDark className="s-h-16 s-w-16" />
+        <LogoSquareDarkLogo className="s-h-16 s-w-16" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
           LogoHorizontalDarkLogo
         </div>
       </div>
       <div className="s-bg-slate-800 s-p-6">
-        <LogoSquareWhite className="s-h-16 s-w-16" />
+        <LogoSquareWhiteLogo className="s-h-16 s-w-16" />
         <div
           style={itemStyle as React.CSSProperties}
           className="s-text-sm s-text-white"
@@ -85,10 +85,10 @@ export const DustLogo = () => (
       <div className="s-p-6">
         <Hover3D className="s-relative s-h-8 s-w-32">
           <Div3D depth={0} className="s-h-8 s-w-32">
-            <LogoHorizontalColorLayer1 className="s-h-8 s-w-32" />
+            <LogoHorizontalColorLayer1Logo className="s-h-8 s-w-32" />
           </Div3D>
           <Div3D depth={25} className="s-absolute s-top-0">
-            <LogoHorizontalColorLayer2 className="s-h-8 s-w-32" />
+            <LogoHorizontalColorLayer2Logo className="s-h-8 s-w-32" />
           </Div3D>
         </Hover3D>
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
@@ -98,10 +98,10 @@ export const DustLogo = () => (
       <div className="s-p-6">
         <Hover3D className="s-relative s-h-16 s-w-16">
           <Div3D depth={0} className="s-h-16 s-w-16">
-            <LogoSquareColorLayer1 className="s-h-16 s-w-16" />
+            <LogoSquareColorLayer1Logo className="s-h-16 s-w-16" />
           </Div3D>
           <Div3D depth={25} className="s-absolute s-top-0">
-            <LogoSquareColorLogoLayer2 className="s-h-16 s-w-16" />
+            <LogoSquareColorLayer2Logo className="s-h-16 s-w-16" />
           </Div3D>
         </Hover3D>
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
