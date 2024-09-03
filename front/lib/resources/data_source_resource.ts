@@ -280,7 +280,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   }
 
   canWrite(auth: Authenticator) {
-    return auth.canWrite([this.vault.acl()]);
+    return auth.isBuilder() && auth.canWrite([this.vault.acl()]);
   }
 
   // sId logic.

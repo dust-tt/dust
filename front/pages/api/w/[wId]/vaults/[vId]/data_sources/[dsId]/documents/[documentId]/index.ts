@@ -15,6 +15,7 @@ import apiConfig from "@app/lib/api/config";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -70,7 +71,7 @@ async function handler(
 
   switch (req.method) {
     case "PATCH":
-      if (!auth.isBuilder() && !dataSource.canWrite(auth)) {
+      if (!dataSource.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -80,7 +81,7 @@ async function handler(
         });
       }
 
-      if (dataSource.connectorId) {
+      if (isManaged(dataSource) || isWebsite(dataSource)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -148,7 +149,7 @@ async function handler(
       return;
 
     case "DELETE":
-      if (!auth.isBuilder() && !dataSource.canWrite(auth)) {
+      if (!dataSource.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -173,7 +174,7 @@ async function handler(
       const deleteRes = await coreAPI.deleteDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        documentId: req.query.documentId as string,
+        documentId,
       });
 
       if (deleteRes.isErr()) {
