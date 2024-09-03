@@ -109,10 +109,6 @@ export function DocumentOrTableUploadOrEditModal({
     documentId: !isTable ? initialId ?? null : null,
   });
 
-  useEffect(() => {
-    setIsLoading(isTableLoading || isDocumentLoading);
-  }, [isDocumentLoading, isTableLoading]);
-
   const resetTableOrDoc = () => {
     setTableOrDoc({
       name: "",
