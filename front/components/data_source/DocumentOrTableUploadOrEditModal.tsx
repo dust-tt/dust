@@ -96,6 +96,8 @@ export function DocumentOrTableUploadOrEditModal({
     });
   };
 
+  console.log(tableOrDoc)
+
   // TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
   useEffect(() => {
     const fetchData = async () => {
@@ -263,8 +265,8 @@ export function DocumentOrTableUploadOrEditModal({
       } else {
         await handleDocumentUpload();
       }
-      resetTableOrDoc();
       onClose(true);
+      resetTableOrDoc();
     } catch (error) {
       // Error notifications are already handled in the individual functions
       console.error(error);
@@ -288,7 +290,7 @@ export function DocumentOrTableUploadOrEditModal({
         setUploading(false);
         return;
       }
-      console.log(">>>>> isTable", isTable);
+
       if (isTable) {
         setTableOrDoc((prev) => ({ ...prev, file: selectedFile }));
         setIsBigFile(selectedFile.size > BIG_FILE_SIZE);
@@ -402,11 +404,17 @@ export function DocumentOrTableUploadOrEditModal({
                       } MB of raw text.`
                 }
                 action={{
-                  label: uploading
-                    ? "Uploading..."
-                    : tableOrDoc.file || table
-                      ? "Replace file"
-                      : "Upload file",
+                  label: (() => {
+                    if (uploading) {
+                      return "Uploading...";
+                    } else if (tableOrDoc.file) {
+                      return tableOrDoc.file.name;
+                    } else if (initialId) {
+                      return "Replace file";
+                    } else {
+                      return "Upload file";
+                    }
+                  })(),
                   variant: "primary",
                   icon: DocumentPlusIcon,
                   onClick: () => fileInputRef.current?.click(),
