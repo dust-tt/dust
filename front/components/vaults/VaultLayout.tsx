@@ -12,7 +12,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { ComponentType } from "react";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -97,56 +97,75 @@ function VaultBreadCrumbs({
   dataSourceView?: DataSourceViewType;
   parentId?: string;
 }) {
-  const { nodes } = useDataSourceViewContentNodes({
+  const {
+    nodes: [currentFolder],
+  } = useDataSourceViewContentNodes({
     owner,
     dataSourceView,
     internalIds: parentId ? [parentId] : [],
   });
 
-  const { title: folderName, parentInternalId } = nodes[0] || {};
-
-  if (!category) {
-    return null;
-  }
+  const { nodes: folders } = useDataSourceViewContentNodes({
+    owner,
+    dataSourceView,
+    internalIds: currentFolder?.parentInternalIds || [],
+  });
 
   const items: {
     label: string;
     icon?: ComponentType;
     href?: string;
-  }[] = [
-    {
-      icon: vault.kind === "global" ? CompanyIcon : LockIcon,
-      label: vault.name,
-      href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
-    },
-    {
-      icon: CATEGORY_DETAILS[category].icon,
-      label: CATEGORY_DETAILS[category].label,
-      href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`,
-    },
-  ];
-  if (dataSourceView) {
-    items.push({
-      icon: getConnectorProviderLogoWithFallback(
-        dataSourceView.dataSource.connectorProvider,
-        FolderIcon
-      ),
-      label: getDataSourceNameFromView(dataSourceView),
-      href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
-    });
+  }[] = useMemo(() => {
+    if (!category) {
+      return [];
+    }
 
-    if (folderName) {
-      if (parentInternalId) {
+    const items = [
+      {
+        icon: vault.kind === "global" ? CompanyIcon : LockIcon,
+        label: vault.kind === "global" ? "Company Data" : vault.name,
+        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
+      },
+      {
+        icon: CATEGORY_DETAILS[category].icon,
+        label: CATEGORY_DETAILS[category].label,
+        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`,
+      },
+    ];
+
+    if (dataSourceView) {
+      if (category === "managed") {
+        // Remove the "Connected data" from breadcrumbs to avoid hiding the actual
+        // managed connection name
+
+        // Showing the actual managed connection name (e.g. microsoft, slack...) is
+        // more important and implies clearly that we are dealing with connected
+        // data
+        items.pop();
+      }
+
+      items.push({
+        icon: getConnectorProviderLogoWithFallback(
+          dataSourceView.dataSource.connectorProvider,
+          FolderIcon
+        ),
+        label: getDataSourceNameFromView(dataSourceView),
+        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
+      });
+
+      for (const node of [...folders].reverse()) {
         items.push({
-          label: "...",
-          href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentInternalId}`,
+          label: node.title,
+          href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
+          icon: FolderIcon,
         });
       }
-      items.push({
-        label: folderName,
-        icon: FolderIcon,
-      });
     }
+    return items;
+  }, [owner, vault, category, dataSourceView, folders]);
+
+  if (items.length === 0) {
+    return null;
   }
 
   return (

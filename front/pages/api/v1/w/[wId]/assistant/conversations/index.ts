@@ -102,7 +102,7 @@ async function handler(
     req.query.wId as string,
     getGroupIdsFromHeaders(req.headers)
   );
-  const { workspaceAuth } = authenticator;
+  let { workspaceAuth } = authenticator;
   const { keyAuth } = authenticator;
 
   if (
@@ -128,9 +128,6 @@ async function handler(
       },
     });
   }
-
-  // If the key is a valid workspace key, we can use the keyAuth.
-  let auth = keyAuth;
 
   switch (req.method) {
     case "POST":
@@ -187,13 +184,16 @@ async function handler(
       // associate the message with the provided user email if it belongs to the same workspace.
       const userEmailFromHeader = req.headers["x-api-user-email"];
       if (typeof userEmailFromHeader === "string") {
-        auth =
-          (await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
-            userEmail: userEmailFromHeader,
-          })) ?? auth;
+        workspaceAuth =
+          (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
+            workspaceAuth,
+            {
+              userEmail: userEmailFromHeader,
+            }
+          )) ?? workspaceAuth;
       }
 
-      let conversation = await createConversation(auth, {
+      let conversation = await createConversation(workspaceAuth, {
         title,
         visibility,
       });
@@ -208,7 +208,7 @@ async function handler(
         });
 
         const cfRes = await postNewContentFragment(
-          auth,
+          workspaceAuth,
           conversation,
           {
             ...contentFragment,
@@ -234,7 +234,7 @@ async function handler(
 
         newContentFragment = cfRes.value;
         const updatedConversation = await getConversation(
-          auth,
+          workspaceAuth,
           conversation.sId
         );
         if (updatedConversation) {
@@ -248,7 +248,7 @@ async function handler(
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
-          auth,
+          workspaceAuth,
           {
             conversation,
             content: message.content,
@@ -278,7 +278,7 @@ async function handler(
         // created as well, so pulling the conversation again will allow to have an up to date view
         // of the conversation with agent messages included so that the user of the API can start
         // streaming events from these agent messages directly.
-        const updated = await getConversation(auth, conversation.sId);
+        const updated = await getConversation(workspaceAuth, conversation.sId);
 
         if (!updated) {
           throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;

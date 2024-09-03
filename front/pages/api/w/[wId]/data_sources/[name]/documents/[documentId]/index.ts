@@ -152,7 +152,7 @@ async function handler(
       if (plan.limits.dataSources.documents.count != -1) {
         const documents = await coreAPI.getDataSourceDocuments({
           projectId: dataSource.dustAPIProjectId,
-          dataSourceName: dataSource.name,
+          dataSourceId: dataSource.dustAPIDataSourceId,
           limit: 1,
           offset: 0,
         });
@@ -207,7 +207,7 @@ async function handler(
       // Create document with the Dust internal API.
       const upsertRes = await coreAPI.upsertDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
         tags,
         parents: bodyValidation.right.parents || [],
@@ -238,7 +238,7 @@ async function handler(
     case "GET":
       const document = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
       });
 
@@ -283,7 +283,7 @@ async function handler(
 
       const deleteRes = await coreAPI.deleteDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: req.query.documentId as string,
       });
 

@@ -39,7 +39,7 @@ async function main() {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     await coreAPI.deleteDataSource({
       projectId: d.dustAPIProjectId,
-      dataSourceName: d.name,
+      dataSourceId: d.dustAPIDataSourceId,
     });
     console.log(`creating data source ${d.name} in core`);
     await coreAPI.createDataSource({

@@ -87,9 +87,9 @@ const TablesQueryActionConfigurationSchema = t.type({
   type: t.literal("tables_query_configuration"),
   tables: t.array(
     t.type({
-      workspaceId: t.string,
       dataSourceId: t.string,
       tableId: t.string,
+      workspaceId: t.string,
     })
   ),
 });

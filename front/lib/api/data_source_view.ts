@@ -2,6 +2,7 @@ import type {
   ContentNodesViewType,
   CoreAPIError,
   DataSourceViewContentNode,
+  DataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
@@ -54,7 +55,7 @@ export function filterAndCropContentNodesByView(
 }
 
 export async function getContentNodesForManagedDataSourceView(
-  dataSourceView: DataSourceViewResource,
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
     includeChildren,
     internalIds,
@@ -130,7 +131,7 @@ export async function getContentNodesForStaticDataSourceView(
 
   if (viewType === "documents") {
     const documentsRes = await coreAPI.getDataSourceDocuments({
-      dataSourceName: dataSource.name,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       limit,
       offset,
       projectId: dataSource.dustAPIProjectId,
@@ -159,7 +160,7 @@ export async function getContentNodesForStaticDataSourceView(
     return new Ok(documentsAsContentNodes);
   } else {
     const tablesRes = await coreAPI.getTables({
-      dataSourceName: dataSource.name,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       projectId: dataSource.dustAPIProjectId,
       viewFilter: dataSourceView.toViewFilter(),
     });

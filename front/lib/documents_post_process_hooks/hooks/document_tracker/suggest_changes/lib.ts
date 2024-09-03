@@ -233,7 +233,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Calling doc tracker retrieval action."
   );
   const retrievalResult = await callDocTrackerRetrievalAction(
-    owner,
+    auth,
     diffText,
     targetDocumentTokens
   );
@@ -276,7 +276,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   localLogger.info({ score }, "Calling doc tracker suggest changes action.");
 
   const suggestChangesResult = await callDocTrackerSuggestChangesAction(
-    owner,
+    auth,
     diffText,
     top1.chunks.map((c) => c.text).join("\n-------\n")
   );
@@ -372,7 +372,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   const incomingDocument = await coreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     documentId,
   });
   if (incomingDocument.isErr()) {

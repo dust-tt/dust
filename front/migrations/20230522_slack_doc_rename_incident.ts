@@ -29,7 +29,7 @@ async function main() {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const dds = await coreAPI.deleteDataSource({
           projectId: ds.dustAPIProjectId,
-          dataSourceName: ds.name,
+          dataSourceId: ds.dustAPIDataSourceId,
         });
 
         if (dds.isErr()) {
@@ -80,6 +80,8 @@ async function main() {
           name: dataSourceName,
           description: dataSourceDescription,
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          dustAPIDataSourceId:
+            dustDataSource.value.data_source.data_source_id.toString(),
           workspaceId: workspaceId,
         });
 

@@ -655,6 +655,17 @@ export async function garbageCollectorMarkAsSeen({
   const redisCli = await redisClient();
   const redisKey = redisGarbageCollectorKey(connector.id);
   if (pageIds.length > 0) {
+    // Temp: debug logging for a customer issue
+    const duplicatePageId = "167582ad-8d56-4f2d-a90c-bdb1289e55b6";
+    if (pageIds.find((id) => id === duplicatePageId)) {
+      localLogger.info(
+        {
+          pageIds: pageIds,
+        },
+        `Marking page id ${duplicatePageId} as seen`
+      );
+    }
+
     await redisCli.sAdd(`${redisKey}-pages`, pageIds);
   }
   if (databaseIds.length > 0) {
@@ -818,6 +829,21 @@ export async function garbageCollect({
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
       connector.id
     );
+
+    // Temp: debug logging for a customer issue
+    const duplicatePageId = "167582ad-8d56-4f2d-a90c-bdb1289e55b6";
+    if (
+      resourcesToCheck.find(
+        (r) => r.resourceType === "page" && r.resourceId === "duplicatePageId"
+      )
+    ) {
+      logger.info(
+        {
+          resourcesToCheck: resourcesToCheck,
+        },
+        `${duplicatePageId} is in the resources to check`
+      );
+    }
 
     const NOTION_UNHEALTHY_ERROR_CODES = [
       "internal_server_error",
@@ -1087,6 +1113,17 @@ async function findResourcesNotSeenInGarbageCollectionRun(
 
     return { pageIdsSeenInRun, databaseIdsSeenInRun };
   })();
+
+  // Temp: debug logging for a customer issue
+  const duplicatePageId = "167582ad-8d56-4f2d-a90c-bdb1289e55b6";
+  if (pageIdsSeenInRun.has(duplicatePageId)) {
+    logger.info(
+      {
+        pageIdsSeenInRun: pageIdsSeenInRun.entries(),
+      },
+      `${duplicatePageId} has been seen in this run`
+    );
+  }
 
   const pageSize = 500;
 

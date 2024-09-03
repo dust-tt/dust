@@ -132,7 +132,7 @@ export async function deleteDataSource(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDeleteRes = await coreAPI.deleteDataSource({
     projectId: dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSourceId: dataSource.dustAPIDataSourceId,
   });
   if (coreDeleteRes.isErr()) {
     // Same as above we proceed with the deletion if the data source is not found in core. Otherwise

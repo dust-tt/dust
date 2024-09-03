@@ -241,7 +241,7 @@ async function handler(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const data = await coreAPI.searchDataSource(
         dataSource.dustAPIProjectId,
-        dataSource.name,
+        dataSource.dustAPIDataSourceId,
         {
           query: query.query,
           topK: query.top_k,

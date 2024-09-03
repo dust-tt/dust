@@ -302,6 +302,7 @@ async function handler(
           connectorProvider: provider,
           description: dataSourceDescription,
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
           editedByUserId: user.id,
           name: dataSourceName,
           workspaceId: owner.id,
@@ -352,7 +353,7 @@ async function handler(
         await dataSource.delete(auth);
         const deleteRes = await coreAPI.deleteDataSource({
           projectId: dustProject.value.project.project_id.toString(),
-          dataSourceName: dustDataSource.value.data_source.data_source_id,
+          dataSourceId: dustDataSource.value.data_source.data_source_id,
         });
         if (deleteRes.isErr()) {
           logger.error(

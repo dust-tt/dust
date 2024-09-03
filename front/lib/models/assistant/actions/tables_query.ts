@@ -3,12 +3,14 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export class AgentTablesQueryConfiguration extends Model<
   InferAttributes<AgentTablesQueryConfiguration>,
@@ -89,12 +91,16 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare dataSourceWorkspaceId: string;
+  // TODO:(GROUPS_INFRA): `dataSourceId` should be a foreign key to `DataSource` model.
   declare dataSourceId: string;
   declare tableId: string;
 
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]
   >;
+
+  declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
 AgentTablesQueryConfigurationTable.init(
@@ -153,6 +159,17 @@ AgentTablesQueryConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
 AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
   onDelete: "CASCADE",
+});
+
+// Config <> Data source view.
+DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTable, {
+  foreignKey: { allowNull: true },
+  onDelete: "RESTRICT",
+});
+// TODO(GROUPS_INFRA): This should be a required relationship.
+AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
+  as: "dataSourceView",
+  foreignKey: { allowNull: true },
 });
 
 export class AgentTablesQueryAction extends Model<

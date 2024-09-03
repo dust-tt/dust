@@ -320,7 +320,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const coreDeleteRes = await coreAPI.deleteDataSource({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
       });
       if (coreDeleteRes.isErr()) {
         throw new Error(coreDeleteRes.error.message);
@@ -413,7 +413,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const getRes = await coreAPI.getDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: args.documentId,
       });
       if (getRes.isErr()) {
@@ -423,7 +423,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const delRes = await coreAPI.deleteDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: args.documentId,
       });
       if (delRes.isErr()) {

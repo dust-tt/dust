@@ -11,7 +11,6 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  ConnectorsAPI,
   CoreAPI,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
@@ -36,6 +35,7 @@ import {
 } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
+import { getContentNodesForManagedDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { tableKey } from "@app/lib/client/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -108,22 +108,23 @@ export async function buildInitialActions({
                 isSelectAll: sr.isSelectAll,
               };
             }
-            const connectorsAPI = new ConnectorsAPI(
-              config.getConnectorsAPIConfig(),
-              logger
-            );
-            const response = await connectorsAPI.getContentNodes({
-              connectorId: dataSourceView.dataSource.connectorId,
-              internalIds: sr.resources,
-            });
 
-            if (response.isErr()) {
-              throw response.error;
+            const nodesRes = await getContentNodesForManagedDataSourceView(
+              dataSourceView,
+              {
+                includeChildren: false,
+                internalIds: sr.resources,
+                viewType: "documents",
+              }
+            );
+
+            if (nodesRes.isErr()) {
+              throw nodesRes.error;
             }
 
             return {
               dataSourceView,
-              selectedResources: response.value.nodes,
+              selectedResources: nodesRes.value,
               isSelectAll: sr.isSelectAll,
             };
           }
@@ -199,7 +200,7 @@ export async function buildInitialActions({
 
           const coreAPITable = await coreAPI.getTable({
             projectId: dataSourceView.dataSource.dustAPIProjectId,
-            dataSourceName: dataSourceView.dataSource.name,
+            dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
             tableId: t.tableId,
           });
 

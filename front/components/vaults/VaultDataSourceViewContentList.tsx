@@ -2,9 +2,10 @@ import { DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   PlanType,
+  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRef, useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
@@ -28,6 +29,7 @@ type RowData = {
 };
 
 type VaultDataSourceViewContentListProps = {
+  vault: VaultType;
   dataSourceView: DataSourceViewType;
   plan: PlanType;
   isAdmin: boolean;
@@ -36,12 +38,13 @@ type VaultDataSourceViewContentListProps = {
   parentId?: string;
 };
 
-const getTableColumns = () => {
+const getTableColumns = (): ColumnDef<RowData>[] => {
   return [
     {
       header: "Name",
       accessorKey: "title",
       id: "title",
+      sortingFn: "text", // built-in sorting function case-insensitive
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
           <span className="font-bold">{info.row.original.title}</span>
@@ -52,11 +55,12 @@ const getTableColumns = () => {
 };
 
 export const VaultDataSourceViewContentList = ({
+  owner,
+  vault,
   dataSourceView,
   plan,
   isAdmin,
   onSelect,
-  owner,
   parentId,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
@@ -118,7 +122,12 @@ export const VaultDataSourceViewContentList = ({
           </>
         )}
         {isFolder(dataSourceView.dataSource) && (
-          <FoldersHeaderMenu contentActionsRef={contentActionsRef} />
+          <FoldersHeaderMenu
+            owner={owner}
+            vault={vault}
+            folder={dataSourceView.dataSource}
+            contentActionsRef={contentActionsRef}
+          />
         )}
       </div>
       {rows.length > 0 && (
@@ -127,6 +136,7 @@ export const VaultDataSourceViewContentList = ({
           columns={getTableColumns()}
           filter={dataSourceSearch}
           filterColumn="title"
+          initialColumnOrder={[{ desc: false, id: "title" }]}
         />
       )}
       <ContentActions

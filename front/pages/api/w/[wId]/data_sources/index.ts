@@ -198,6 +198,7 @@ async function handler(
           name: req.body.name,
           description: description,
           dustAPIProjectId: dustProject.value.project.project_id.toString(),
+          dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
           workspaceId: owner.id,
           assistantDefaultSelected: req.body.assistantDefaultSelected,
           editedByUserId: user.id,

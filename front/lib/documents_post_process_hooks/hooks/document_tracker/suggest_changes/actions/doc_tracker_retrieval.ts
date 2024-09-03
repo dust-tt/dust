@@ -1,7 +1,7 @@
-import type { WorkspaceType } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
+import type { Authenticator } from "@app/lib/auth";
 import { getTrackableDataSources } from "@app/lib/documents_post_process_hooks/hooks/document_tracker/lib";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 
@@ -9,21 +9,22 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 // it takes {input_text: string} as input
 // and returns an array of DocTrackerRetrievalActionValue as output
 export async function callDocTrackerRetrievalAction(
-  owner: WorkspaceType,
+  auth: Authenticator,
   inputText: string,
   targetDocumentTokens = 2000
 ): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);
 
-  config.SEMANTIC_SEARCH.data_sources = await getTrackableDataSources(owner);
+  config.SEMANTIC_SEARCH.data_sources = await getTrackableDataSources(
+    auth.getNonNullableWorkspace()
+  );
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
 
-  const res = await callAction({
+  const res = await callAction(auth, {
     action,
     config,
     input: { input_text: inputText },
-    owner,
     responseValueSchema: DocTrackerRetrievalActionValueSchema,
   });
 

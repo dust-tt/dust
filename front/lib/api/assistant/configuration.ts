@@ -17,6 +17,7 @@ import type {
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
+  TableDataSourceConfiguration,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -26,6 +27,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
 } from "@dust-tt/types";
+import assert from "assert";
 import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
@@ -41,7 +43,10 @@ import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configur
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
-import { fetchTableQueryActionConfigurations } from "@app/lib/api/assistant/configuration/table_query";
+import {
+  createTableDataSourceConfiguration,
+  fetchTableQueryActionConfigurations,
+} from "@app/lib/api/assistant/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
 import {
   getGlobalAgents,
@@ -57,10 +62,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
+import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
@@ -120,6 +122,29 @@ export async function getAgentConfiguration(
     variant: "full",
   });
   return res[0] || null;
+}
+
+/**
+ * Search agent configurations by name
+ *
+ */
+export async function searchAgentConfigurationsByName(
+  auth: Authenticator,
+  name: string
+): Promise<AgentConfiguration[] | []> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const agentConfigurations = await AgentConfiguration.findAll({
+    where: {
+      workspaceId: owner.id,
+      status: "active",
+      scope: { [Op.in]: ["workspace", "published"] },
+      name: {
+        [Op.iLike]: `%${name}%`,
+      },
+    },
+  });
+  return agentConfigurations || [];
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
@@ -933,11 +958,7 @@ export async function createAgentActionConfiguration(
       }
     | {
         type: "tables_query_configuration";
-        tables: Array<{
-          workspaceId: string;
-          dataSourceId: string;
-          tableId: string;
-        }>;
+        tables: TableDataSourceConfiguration[];
       }
     | {
         type: "process_configuration";
@@ -1035,18 +1056,12 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await Promise.all(
-          action.tables.map((table) =>
-            AgentTablesQueryConfigurationTable.create(
-              {
-                tablesQueryConfigurationId: tablesQueryConfig.id,
-                dataSourceId: table.dataSourceId,
-                dataSourceWorkspaceId: table.workspaceId,
-                tableId: table.tableId,
-              },
-              { transaction: t }
-            )
-          )
+
+        await createTableDataSourceConfiguration(
+          auth,
+          action.tables,
+          tablesQueryConfig,
+          t
         );
 
         return new Ok({
@@ -1165,17 +1180,11 @@ async function _createAgentDataSourcesConfigData(
   // Although we have the capability to support multiple workspaces,
   // currently, we only support one workspace, which is the one the user is in.
   // This allows us to use the current authenticator to fetch resources.
-  const allWorkspaceIds = [
-    ...new Set(dataSourceConfigurations.map((dsc) => dsc.workspaceId)),
-  ];
-  const hasUniqueAccessibleWorkspace =
-    allWorkspaceIds.length === 1 &&
-    auth.getNonNullableWorkspace().sId === allWorkspaceIds[0];
-  if (!hasUniqueAccessibleWorkspace) {
-    throw new Error(
-      "Can't create AgentDataSourcesConfig for retrieval: Multiple workspaces."
-    );
-  }
+  assert(
+    dataSourceConfigurations.every(
+      (dsc) => dsc.workspaceId === auth.getNonNullableWorkspace().sId
+    )
+  );
 
   // dsConfig contains this format:
   // [
