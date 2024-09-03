@@ -134,8 +134,7 @@ export async function handleDeleteTableByIdRequest(
 ) {
   const delRes = await deleteTable({
     owner,
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSource,
     tableId,
   });
 

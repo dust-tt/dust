@@ -265,7 +265,7 @@ async function handler(
 
       const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
         name,
         description,

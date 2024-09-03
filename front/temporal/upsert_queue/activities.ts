@@ -224,8 +224,7 @@ export async function upsertTableActivity(
 
   const tableRes = await upsertTableFromCsv({
     auth,
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSource,
     tableName: upsertQueueItem.tableName,
     tableDescription: upsertQueueItem.tableDescription,
     tableId: upsertQueueItem.tableId,

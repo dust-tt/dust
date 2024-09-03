@@ -317,7 +317,7 @@ async function handler(
       });
       const upsertRes = await coreAPI.upsertTableRows({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId: tableId,
         rows: rowsToUpsert,
         truncate,

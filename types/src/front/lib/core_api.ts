@@ -1034,7 +1034,7 @@ export class CoreAPI {
 
   async upsertTable({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
     name,
     description,
@@ -1043,7 +1043,7 @@ export class CoreAPI {
     parents,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
     name: string;
     description: string;
@@ -1054,7 +1054,7 @@ export class CoreAPI {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
-      )}/data_sources/${encodeURIComponent(dataSourceName)}/tables`,
+      )}/data_sources/${encodeURIComponent(dataSourceId)}/tables`,
       {
         method: "POST",
         headers: {
@@ -1132,18 +1132,18 @@ export class CoreAPI {
 
   async deleteTable({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables/${encodeURIComponent(tableId)}`,
       {
         method: "DELETE",
@@ -1186,13 +1186,13 @@ export class CoreAPI {
 
   async upsertTableRows({
     projectId,
-    dataSourceName,
+    dataSourceId,
     tableId,
     rows,
     truncate,
   }: {
     projectId: string;
-    dataSourceName: string;
+    dataSourceId: string;
     tableId: string;
     rows: CoreAPIRow[];
     truncate?: boolean;
@@ -1201,7 +1201,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables/${encodeURIComponent(tableId)}/rows`,
       {
         method: "POST",
