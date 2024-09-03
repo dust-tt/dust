@@ -248,15 +248,31 @@ async function isExternalUserAllowed(
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos,
+  // Whitelisted domains are in the format "domain:group_id".
   whitelistedDomains?: readonly string[]
-) {
+): Promise<{ authorized: boolean; groupIds: string[] }> {
   const { slackChannelId } = slackInfos;
 
   const userDomain = getSlackUserEmailDomainFromProfile(slackUserInfo);
-  // Ensure the domain matches exactly.
-  const isWhitelistedDomain = userDomain
-    ? whitelistedDomains?.includes(userDomain) ?? false
-    : false;
+
+  if (!userDomain || !whitelistedDomains) {
+    return { authorized: false, groupIds: [] };
+  }
+
+  const authorization = whitelistedDomains.reduce(
+    (acc, domain) => {
+      const [whitelistedDomain, whitelistedGroup] = domain.split(":");
+      if (userDomain === whitelistedDomain && whitelistedGroup) {
+        acc.authorized = true;
+        acc.groupIds.push(whitelistedGroup);
+      }
+      return acc;
+    },
+    {
+      authorized: false,
+      groupIds: [],
+    } as { authorized: boolean; groupIds: string[] }
+  );
 
   const slackConversationInfo = await getSlackConversationInfo(
     slackClient,
@@ -264,13 +280,15 @@ async function isExternalUserAllowed(
   );
 
   const isChannelPublic = !slackConversationInfo.channel?.is_private;
-  return isChannelPublic && isWhitelistedDomain;
+  if (!isChannelPublic) {
+    return { authorized: false, groupIds: [] };
+  }
+  return authorization;
 }
 
 async function isUserAllowed(
   connector: ConnectorResource,
-  slackUserInfo: SlackUserInfo,
-  whitelistedDomains?: readonly string[]
+  slackUserInfo: SlackUserInfo
 ) {
   const isMember = await isActiveMemberOfWorkspace(
     connector,
@@ -279,17 +297,6 @@ async function isUserAllowed(
   if (isMember) {
     return true;
   }
-
-  // To de-risk while releasing, we relies on an array of whitelisted domains.
-  // TODO(2024-02-08 flav) Remove once released is completed.
-  if (whitelistedDomains && whitelistedDomains.length > 0) {
-    const userDomain = getSlackUserEmailDomainFromProfile(slackUserInfo);
-
-    if (userDomain) {
-      return whitelistedDomains.includes(userDomain);
-    }
-  }
-
   return false;
 }
 
@@ -297,38 +304,17 @@ async function isSlackUserAllowed(
   slackUserInfo: SlackUserInfo,
   connector: ConnectorResource,
   slackClient: WebClient,
-  slackInfos: SlackInfos,
-  whitelistedDomains?: readonly string[]
+  slackInfos: SlackInfos
 ) {
-  const {
-    is_restricted,
-    is_stranger: isStranger,
-    is_ultra_restricted,
-    teamId,
-  } = slackUserInfo;
+  const { teamId } = slackUserInfo;
 
   const isInWorkspace = teamId === slackInfos.slackTeamId;
   if (!isInWorkspace) {
     return false;
   }
 
-  const isGuest = is_restricted || is_ultra_restricted;
-  const isExternal = isGuest || isStranger;
-  const isExternalAllowed =
-    isExternal &&
-    (await isExternalUserAllowed(
-      slackClient,
-      slackUserInfo,
-      slackInfos,
-      whitelistedDomains
-    ));
-
-  if (isExternalAllowed) {
-    return true;
-  }
-
   // Otherwise, ensure that the slack user is an active member in the workspace.
-  return isUserAllowed(connector, slackUserInfo, whitelistedDomains);
+  return isUserAllowed(connector, slackUserInfo);
 }
 
 export async function notifyIfSlackUserIsNotAllowed(
@@ -337,17 +323,39 @@ export async function notifyIfSlackUserIsNotAllowed(
   slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos,
   whitelistedDomains?: readonly string[]
-): Promise<boolean> {
+): Promise<{
+  authorized: boolean;
+  groupIds: string[];
+}> {
   if (!slackUserInfo) {
-    return false;
+    return { authorized: false, groupIds: [] };
   }
 
+  // Handle Slack users that we consider external to the Slack workspace,
+  // which can be eventually whitelisted via the `whitelistedDomains` list.
+  const {
+    is_restricted,
+    is_stranger: isStranger,
+    is_ultra_restricted,
+  } = slackUserInfo;
+  const isGuest = is_restricted || is_ultra_restricted;
+  const isExternal = isGuest || isStranger;
+  if (isExternal) {
+    // If the external user is allowed, they are allowed with a specific group id.
+    return isExternalUserAllowed(
+      slackClient,
+      slackUserInfo,
+      slackInfos,
+      whitelistedDomains
+    );
+  }
+
+  // Handle users that are not Slack external.
   const isAllowed = await isSlackUserAllowed(
     slackUserInfo,
     connector,
     slackClient,
-    slackInfos,
-    whitelistedDomains
+    slackInfos
   );
 
   if (!isAllowed) {
@@ -368,5 +376,6 @@ export async function notifyIfSlackUserIsNotAllowed(
     );
   }
 
-  return isAllowed;
+  // If the user is part of the Dust workspace, they are allowed without any explicit group id.
+  return { authorized: isAllowed, groupIds: [] };
 }
