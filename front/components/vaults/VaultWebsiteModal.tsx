@@ -142,10 +142,10 @@ export default function VaultWebsiteModal({
   };
 
   useEffect(() => {
-    if (isUrlValid(dataSourceUrl) && !dataSourceName) {
+    if (isUrlValid(dataSourceUrl) && !dataSourceView) {
       setDataSourceName(urlToDataSourceName(dataSourceUrl));
     }
-  }, [dataSourceUrl, dataSourceName]);
+  }, [dataSourceUrl, dataSourceView]);
 
   const validateForm = useCallback(() => {
     let urlError = null;

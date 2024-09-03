@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -64,8 +65,7 @@ async function handler(
     });
   }
 
-  const vault = dataSource.vault;
-  if (!auth.hasPermission([vault.acl()], "read")) {
+  if (!auth.hasPermission([dataSource.acl()], "read")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -79,10 +79,7 @@ async function handler(
   // Only Slack & Webcrawler connectors have configurations.
   // SlackConfiguration.botEnabled can only be updated from a Poke route.
   // So these routes are currently only for Webcrawler connectors.
-  if (
-    !dataSource.connectorId ||
-    dataSource.connectorProvider !== "webcrawler"
-  ) {
+  if (!dataSource.connectorId || !isWebsite(dataSource)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -116,27 +113,18 @@ async function handler(
       });
 
     case "PATCH":
-      if (!auth.hasPermission([vault.acl()], "write")) {
+      if (!auth.hasPermission([dataSource.acl()], "write")) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
             message:
-              "Only the users that have `read` permission for the current vault can update a data source configuration.",
+              "Only the users that have `write` permission for the current vault can update a data source configuration.",
           },
         });
       }
 
-      if (vault.isSystem() && !auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Only the users that are `admins` for the current workspace can update a data source configuration from system vault.",
-          },
-        });
-      } else if (!auth.isBuilder()) {
+      if (!auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
