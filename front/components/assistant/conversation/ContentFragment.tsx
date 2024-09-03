@@ -1,5 +1,4 @@
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
-import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type { ContentFragmentType } from "@dust-tt/types";
 import { isSupportedImageContentType } from "@dust-tt/types";
 
@@ -15,9 +14,7 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
     );
   }
 
-  const citationType: CitationType = ["dust-application/slack"].includes(
-    message.contentType
-  )
+  const citationType = ["dust-application/slack"].includes(message.contentType)
     ? "slack"
     : "document";
 

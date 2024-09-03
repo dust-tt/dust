@@ -4,7 +4,6 @@ import {
   EmojiPicker,
   ReactionIcon,
 } from "@dust-tt/sparkle";
-import type { EmojiSkinType } from "@dust-tt/sparkle/dist/esm/lib/avatar/types";
 import type {
   MessageReactionType,
   UserType,
@@ -248,7 +247,7 @@ function EmojiSelector({
           theme="light"
           previewPosition="none"
           data={emojiData ?? undefined}
-          onEmojiSelect={(emojiData: EmojiSkinType) => {
+          onEmojiSelect={(emojiData) => {
             const reaction = reactions.find((r) => r.emoji === emojiData.id);
             const hasReacted =
               (reaction &&
