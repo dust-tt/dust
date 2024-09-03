@@ -9,7 +9,7 @@ import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
-import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr";
+import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
 
 export default function VaultManagedDataSourcesViewsModal({
   vault,
@@ -66,7 +66,8 @@ export default function VaultManagedDataSourcesViewsModal({
           const systemDataSourceView =
             systemVaultDataSourceViews.find(
               (dsv) =>
-                dsv.dataSource.sId === config.dataSourceView.dataSource.sId
+                // TODO(DATASOURCE_SID): move to sId
+                dsv.dataSource.name === config.dataSourceView.dataSource.name
             ) ?? config.dataSourceView; // Fallback to make sure we are never undefined
 
           acc[systemDataSourceView.sId] = {

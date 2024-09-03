@@ -19,7 +19,7 @@ import { PickTablesManaged } from "@app/components/assistant_builder/PickTablesM
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import { isFolder } from "@app/lib/data_sources";
-import { useDataSourceNodes } from "@app/lib/swr";
+import { useDataSourceNodes } from "@app/lib/swr/data_sources";
 
 export default function AssistantBuilderTablesModal({
   isOpen,

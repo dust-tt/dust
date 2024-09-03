@@ -130,7 +130,16 @@ export const slack = async ({
         throw new Error("Missing --wId argument");
       }
       if (!whitelistedDomains) {
-        throw new Error("Missing --whitelistedDomains argument");
+        throw new Error(
+          "Missing --whitelistedDomains argument. Eg: --whitelistedDomains=example.com:group1,example2.com:group2"
+        );
+      }
+      for (const domain of whitelistedDomains.split(",")) {
+        if (domain.split(":").length !== 2) {
+          throw new Error(
+            `Invalid domain format: ${domain}. Eg: --whitelistedDomains=example.com:group1,example2.com:group2`
+          );
+        }
       }
 
       const connector = await ConnectorModel.findOne({

@@ -56,7 +56,7 @@ async function handler(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const tablesRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
       });
       if (tablesRes.isErr()) {
         logger.error(

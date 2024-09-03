@@ -1,6 +1,7 @@
 import React, { ComponentType, ReactNode, useState } from "react";
 
-import { ArrowDownSIcon, ArrowRightSIcon, Spinner } from "@sparkle/index";
+import Spinner from "@sparkle/components/Spinner";
+import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";

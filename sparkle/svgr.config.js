@@ -3,5 +3,5 @@ module.exports = {
   expandProps: true,
   replaceAttrValues: { "#020617": "currentColor" },
   typescript: true,
-  prettier: true,
+  prettier: false,
 };

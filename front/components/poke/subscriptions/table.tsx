@@ -35,7 +35,7 @@ import {
   isFreePlan,
   isProPlan,
 } from "@app/lib/plans/plan_codes";
-import { usePokePlans } from "@app/lib/swr";
+import { usePokePlans } from "@app/lib/swr/poke";
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;

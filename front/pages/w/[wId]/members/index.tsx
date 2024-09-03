@@ -49,7 +49,7 @@ import { handleMembersRoleChange } from "@app/lib/client/members";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
-import { useMembers } from "@app/lib/swr";
+import { useMembers } from "@app/lib/swr/memberships";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;

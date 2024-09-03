@@ -215,8 +215,7 @@ export async function handlePostTableCsvUpsertRequest(
 
   const tableRes = await upsertTableFromCsv({
     auth,
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceName,
+    dataSource,
     tableId,
     tableName: name,
     tableDescription: description,

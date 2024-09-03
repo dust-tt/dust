@@ -5,7 +5,7 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useDataSources } from "@app/lib/swr";
+import { useDataSources } from "@app/lib/swr/data_sources";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourcePicker({

@@ -11,7 +11,8 @@ import type {
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useAppStatus, useUser } from "@app/lib/swr";
+import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import { useUser } from "@app/lib/swr/user";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -181,19 +182,9 @@ function AppStatusBanner() {
   }
 
   return (
-    <div className="space-y-2 border-y border-orange-200 bg-orange-100 px-3 py-3 text-xs text-orange-900">
+    <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
       <div className="font-bold">{providerStatus.name}</div>
-      <div className="font-normal">
-        {providerStatus.description} More Info{" "}
-        <Link
-          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-          target="_blank"
-          className="underline"
-        >
-          here
-        </Link>
-        .
-      </div>
+      <div className="font-normal">{providerStatus.description}</div>
     </div>
   );
 }

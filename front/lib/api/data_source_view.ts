@@ -160,7 +160,7 @@ export async function getContentNodesForStaticDataSourceView(
     return new Ok(documentsAsContentNodes);
   } else {
     const tablesRes = await coreAPI.getTables({
-      dataSourceName: dataSource.name,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       projectId: dataSource.dustAPIProjectId,
       viewFilter: dataSourceView.toViewFilter(),
     });

@@ -249,7 +249,7 @@ async function handler(
 
       const listRes = await coreAPI.getTableRows({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
         offset,
         limit,
@@ -317,7 +317,7 @@ async function handler(
       });
       const upsertRes = await coreAPI.upsertTableRows({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId: tableId,
         rows: rowsToUpsert,
         truncate,
@@ -346,7 +346,7 @@ async function handler(
       // Upsert is succesful, retrieve the updated table.
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
       });
       if (tableRes.isErr()) {

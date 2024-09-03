@@ -1,4 +1,8 @@
-import type { CoreAPISearchFilter, Result } from "@dust-tt/types";
+import type {
+  CoreAPISearchFilter,
+  Result,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { Err, groupHasPermission, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,7 +14,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { DUST_REGISTRY_SECRET } = process.env;
 
@@ -41,7 +45,7 @@ type LookupDataSourceResponseBody = {
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<LookupDataSourceResponseBody>
+  res: NextApiResponse<WithAPIErrorResponse<LookupDataSourceResponseBody>>
 ): Promise<void> {
   if (!req.headers.authorization) {
     res.status(401).end();
@@ -66,8 +70,13 @@ async function handler(
     typeof dustWorkspaceId !== "string" ||
     typeof rawDustGroupIds !== "string"
   ) {
-    res.status(400).end();
-    return;
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Missing x-dust-workspace-id or x-dust-group-ids header.",
+      },
+    });
   }
 
   // Temporary instrumentation to track the origin of the request.
@@ -82,6 +91,15 @@ async function handler(
     case "GET":
       switch (req.query.type) {
         case "data_sources":
+          const notFoundError = () => {
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "data_source_not_found",
+                message: "The data source requested was not found.",
+              },
+            });
+          };
           const {
             data_source_id: dataSourceOrDataSourceViewId,
             workspace_id: workspaceId,
@@ -91,8 +109,7 @@ async function handler(
             typeof workspaceId !== "string" ||
             typeof dataSourceOrDataSourceViewId !== "string"
           ) {
-            res.status(400).end();
-            return;
+            return notFoundError();
           }
 
           const owner = await Workspace.findOne({
@@ -101,8 +118,7 @@ async function handler(
             },
           });
           if (!owner || dustWorkspaceId !== owner.sId) {
-            res.status(404).end();
-            return;
+            return notFoundError();
           }
 
           // Use admin auth to fetch the groups.
@@ -111,8 +127,7 @@ async function handler(
 
           const groups = await GroupResource.fetchByIds(auth, dustGroupIds);
           if (groups.isErr()) {
-            res.status(404).end();
-            return;
+            return notFoundError();
           }
 
           if (
@@ -136,8 +151,7 @@ async function handler(
                 },
                 "Failed to lookup data source view."
               );
-              res.status(404).end();
-              return;
+              return notFoundError();
             }
 
             res.status(200).json(dataSourceViewRes.value);
@@ -159,23 +173,30 @@ async function handler(
                 },
                 "Failed to lookup data source."
               );
-              res.status(404).end();
-              return;
+              return notFoundError();
             }
 
-            res.status(200).json(dataSourceRes.value);
-            return;
+            return res.status(200).json(dataSourceRes.value);
           }
-          return;
 
         default:
-          res.status(405).end();
-          return;
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Unsupported `type` parameter.",
+            },
+          });
       }
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
   }
 }
 
@@ -216,7 +237,7 @@ async function handleDataSourceView(
   const dataSource = dataSourceView.dataSource;
   return new Ok({
     project_id: parseInt(dataSource.dustAPIProjectId),
-    data_source_id: dataSource.name,
+    data_source_id: dataSource.dustAPIDataSourceId,
     view_filter: {
       tags: null,
       parents: {
@@ -280,7 +301,7 @@ async function handleDataSource(
   // if (hasAccessToDataSource) {
   return new Ok({
     project_id: parseInt(dataSource.dustAPIProjectId),
-    data_source_id: dataSource.name,
+    data_source_id: dataSource.dustAPIDataSourceId,
     view_filter: null,
   });
   // }

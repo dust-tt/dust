@@ -50,3 +50,12 @@ export type WebCrawlerConfiguration = t.TypeOf<
 >;
 
 export const WebCrawlerHeaderRedactedValue = "<REDACTED>";
+
+export const WEBCRAWLER_DEFAULT_CONFIGURATION: WebCrawlerConfigurationType = {
+  url: "",
+  depth: 2,
+  maxPageToCrawl: 50,
+  crawlMode: "website",
+  crawlFrequency: "monthly",
+  headers: {},
+};

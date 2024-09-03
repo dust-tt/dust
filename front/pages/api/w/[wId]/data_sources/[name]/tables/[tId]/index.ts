@@ -63,7 +63,7 @@ async function handler(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
       });
       if (tableRes.isErr()) {
@@ -134,8 +134,7 @@ export async function handleDeleteTableByIdRequest(
 ) {
   const delRes = await deleteTable({
     owner,
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSource,
     tableId,
   });
 

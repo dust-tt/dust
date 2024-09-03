@@ -1,9 +1,9 @@
 import React, { forwardRef } from "react";
 
 import { Icon } from "@sparkle/components/Icon";
+import { MagnifyingGlassStrokeIcon, XMarkIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
-import { MagnifyingGlassStrokeIcon, XMarkIcon } from "..";
 import { IconButton } from "./IconButton";
 
 const sizeClasses = {

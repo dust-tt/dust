@@ -189,7 +189,8 @@ export async function buildInitialActions({
       const coreAPITables: CoreAPITable[] = await Promise.all(
         action.tables.map(async (t) => {
           const dataSourceView = dataSourceViews.find(
-            (dsv) => dsv.dataSource.sId === t.dataSourceId
+            // TODO(DATASOURCE_SID): statefulness of dataSourceId on tables
+            (dsv) => dsv.dataSource.name === t.dataSourceId
           );
 
           if (!dataSourceView) {
@@ -200,7 +201,7 @@ export async function buildInitialActions({
 
           const coreAPITable = await coreAPI.getTable({
             projectId: dataSourceView.dataSource.dustAPIProjectId,
-            dataSourceName: dataSourceView.dataSource.name,
+            dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
             tableId: t.tableId,
           });
 

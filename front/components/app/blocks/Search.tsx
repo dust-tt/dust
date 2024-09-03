@@ -8,7 +8,7 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 
 import { filterServiceProviders } from "@app/lib/providers";
-import { useProviders } from "@app/lib/swr";
+import { useProviders } from "@app/lib/swr/apps";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";

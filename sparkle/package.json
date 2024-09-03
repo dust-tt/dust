@@ -1,9 +1,12 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.219",
+  "version": "0.2.220",
   "scripts": {
-    "build": "rm -rf dist && rollup -c",
-    "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
+    "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
+    "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
+    "build:esm": "npm run copy:esm && tsc && tsc-alias",
+    "copy:esm": "copyfiles -u 1 src/**/*.css src/**/*.svg src/**/*.png src/**/*.json dist/esm",
+    "build:cjs": "rollup -c",
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
     "format:check": "prettier --check .",
@@ -11,7 +14,7 @@
     "lint": "eslint ."
   },
   "main": "dist/cjs/index.js",
-  "types": "dist/cjs/index.d.ts",
+  "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "files": [
     "dist/",
@@ -45,6 +48,7 @@
     "autoprefixer": "^10.4.14",
     "babel-loader": "^9.1.3",
     "babel-preset-react-app": "^10.0.1",
+    "copyfiles": "^2.4.1",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-simple-import-sort": "^12.1.0",
@@ -60,7 +64,9 @@
     "sass-loader": "^13.3.2",
     "storybook": "^7.4.6",
     "tailwindcss": "^3.2.4",
+    "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
+    "typescript-transform-paths": "^3.4.7",
     "uuid": "^9.0.1"
   },
   "peerDependencies": {

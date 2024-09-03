@@ -24,7 +24,7 @@ import { useCallback, useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useWorkspaceEnterpriseConnection } from "@app/lib/swr";
+import { useWorkspaceEnterpriseConnection } from "@app/lib/swr/workspaces";
 import type { PostCreateEnterpriseConnectionRequestBodySchemaType } from "@app/pages/api/w/[wId]/enterprise-connection";
 
 interface EnterpriseConnectionDetailsProps {

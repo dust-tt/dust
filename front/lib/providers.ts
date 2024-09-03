@@ -2,7 +2,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 
 import type { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
 
-import type { useProviders } from "./swr";
+import type { useProviders } from "./swr/apps";
 
 type ModelProvider = {
   providerId: string;

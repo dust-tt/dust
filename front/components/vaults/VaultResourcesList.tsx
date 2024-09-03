@@ -31,7 +31,8 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useDataSources, useVaultDataSourceViews } from "@app/lib/swr";
+import { useDataSources } from "@app/lib/swr/data_sources";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {

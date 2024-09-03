@@ -1,7 +1,8 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 
-import { Button, ClipboardCheckIcon, ClipboardIcon } from "@sparkle/index";
+import { Button } from "@sparkle/components/Button";
+import { ClipboardCheckIcon, ClipboardIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 import { useCopyToClipboard } from "@sparkle/lib/utils";
 

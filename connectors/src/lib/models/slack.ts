@@ -20,6 +20,7 @@ export class SlackConfigurationModel extends Model<
   declare slackTeamId: string;
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
+  // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPattern?: string | null;
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { EditInvitationModal } from "@app/components/members/InvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
-import { useWorkspaceInvitations } from "@app/lib/swr";
+import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 
 export function InvitationsList({
   owner,

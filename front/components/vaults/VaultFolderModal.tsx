@@ -92,9 +92,10 @@ export default function VaultFolderModal({
     }
   };
 
-  const patchUpdateFolder = async (folderId: string) => {
+  // TODO(DATASOURCE_SID) - move to sId
+  const patchUpdateFolder = async (folderName: string) => {
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folderId}`,
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folderName}`,
       {
         method: "PATCH",
         headers: {
@@ -152,7 +153,8 @@ export default function VaultFolderModal({
     if (folder === null) {
       await postCreateFolder();
     } else {
-      await patchUpdateFolder(folder.sId);
+      // TODO(DATASOURCE_SID) - move to sId
+      await patchUpdateFolder(folder.name);
     }
   };
 
@@ -161,7 +163,8 @@ export default function VaultFolderModal({
       return;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folder.sId}`,
+      // TODO(DATASOURCE_SID) - move to sId
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folder.name}`,
       {
         method: "DELETE",
       }
