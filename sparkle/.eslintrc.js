@@ -15,6 +15,7 @@ module.exports = {
     "svgr.config.js",
     "postcss.config.js",
     "tailwind.config.js",
+    "svgr-*-template.js",
   ],
   rules: {
     curly: ["error", "all"],
