@@ -9,7 +9,8 @@ import type {
 import {
   CoreAPI,
   Err,
-  getLargeWhitelistedModel,
+  getSanitizedHeaders,
+  getSmallWhitelistedModel,
   guessDelimiter,
   Ok,
 } from "@dust-tt/types";
@@ -329,7 +330,7 @@ export async function rowsFromCsv(
 
   const action = DustProdActionRegistry["table-header-parser"];
 
-  const model = getLargeWhitelistedModel(auth.getNonNullableWorkspace());
+  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
   if (!model) {
     throw new Error("Could not find a whitelisted model for the workspace.");
   }
@@ -348,7 +349,7 @@ export async function rowsFromCsv(
     }),
   });
 
-  logger.info("Header detection result", res);
+  logger.info({ res }, "Header detection result");
 
   if (res.isErr()) {
     return new Err({
@@ -357,7 +358,7 @@ export async function rowsFromCsv(
     });
   }
 
-  header = res.value.headers;
+  header = getSanitizedHeaders(res.value.headers);
   const rowIndex = res.value.rowIndex;
 
   let i = 0;
