@@ -242,9 +242,7 @@ export default function VaultWebsiteModal({
       }
     } else if (dataSourceView) {
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          defaultDataSourceName
-        )}/configuration`,
+        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceId}/configuration`,
         {
           method: "PATCH",
           headers: {
