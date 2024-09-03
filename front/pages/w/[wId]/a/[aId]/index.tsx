@@ -41,7 +41,7 @@ import {
   moveBlockDown,
   moveBlockUp,
 } from "@app/lib/specification";
-import { useSavedRunStatus } from "@app/lib/swr";
+import { useSavedRunStatus } from "@app/lib/swr/apps";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps =

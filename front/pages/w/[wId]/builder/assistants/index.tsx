@@ -33,7 +33,7 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useAgentConfigurations } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { classNames, subFilter } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{

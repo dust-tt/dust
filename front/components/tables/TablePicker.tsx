@@ -5,7 +5,7 @@ import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
-import { useTables } from "@app/lib/swr";
+import { useTables } from "@app/lib/swr/tables";
 import { classNames } from "@app/lib/utils";
 
 export default function TablePicker({

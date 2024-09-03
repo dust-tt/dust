@@ -11,7 +11,7 @@ import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
-import { useUser } from "@app/lib/swr";
+import { useUser } from "@app/lib/swr/user";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 

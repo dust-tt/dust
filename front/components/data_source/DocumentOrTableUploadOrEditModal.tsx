@@ -32,7 +32,8 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { useDocument, useTable } from "@app/lib/swr";
+import { useDocument } from "@app/lib/swr/data_sources";
+import { useTable } from "@app/lib/swr/tables";
 import { classNames } from "@app/lib/utils";
 
 interface DocumentOrTableUploadOrEditModalProps {

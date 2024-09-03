@@ -11,7 +11,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
-import { useRunBlock } from "@app/lib/swr";
+import { useRunBlock } from "@app/lib/swr/apps";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 

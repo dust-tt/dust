@@ -6,7 +6,7 @@ import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ManageMembersModal } from "@app/components/vaults/ManageMembersModal";
-import { useVaultInfo } from "@app/lib/swr";
+import { useVaultInfo } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 

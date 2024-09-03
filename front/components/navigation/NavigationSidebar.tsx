@@ -11,7 +11,8 @@ import type {
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useAppStatus, useUser } from "@app/lib/swr";
+import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import { useUser } from "@app/lib/swr/user";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;

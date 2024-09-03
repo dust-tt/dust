@@ -26,7 +26,11 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useVaultDataSourceViews, useVaultInfo, useVaults } from "@app/lib/swr";
+import {
+  useVaultDataSourceViews,
+  useVaultInfo,
+  useVaults,
+} from "@app/lib/swr/vaults";
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;

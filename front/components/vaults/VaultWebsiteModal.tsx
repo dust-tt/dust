@@ -38,7 +38,7 @@ import React from "react";
 
 import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useVaultDataSourceViews } from "@app/lib/swr";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type {
   PostDataSourceWithProviderRequestBodySchema,
@@ -93,7 +93,7 @@ export default function VaultWebsiteModal({
     null
   );
 
-  const dataSourceId = dataSourceView ? dataSourceView.dataSource.sId : null;
+  const dataSourceId = dataSourceView ? dataSourceView.dataSource.name : null;
   const defaultDataSourceName = dataSourceView
     ? dataSourceView.dataSource.name
     : "";
@@ -159,7 +159,7 @@ export default function VaultWebsiteModal({
 
     // Validate Name
     const nameExists = dataSources.some(
-      (d) => d.name === dataSourceName && d.sId !== dataSourceId
+      (d) => d.name === dataSourceName && d.name !== dataSourceId
     );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
     if (nameExists) {

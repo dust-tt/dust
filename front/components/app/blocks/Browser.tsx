@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { filterServiceProviders } from "@app/lib/providers";
-import { useProviders } from "@app/lib/swr";
+import { useProviders } from "@app/lib/swr/apps";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";

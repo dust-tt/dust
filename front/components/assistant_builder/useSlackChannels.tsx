@@ -2,7 +2,7 @@ import type { DataSourceViewType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
-import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 
 interface useSlackChannelProps {
   agentConfigurationId: string | null;

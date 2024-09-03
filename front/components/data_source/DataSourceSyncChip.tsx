@@ -3,7 +3,7 @@ import type { ConnectorType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { useConnector } from "@app/lib/swr";
+import { useConnector } from "@app/lib/swr/connectors";
 import { timeAgoFrom } from "@app/lib/utils";
 
 export default function ConnectorSyncingChip({

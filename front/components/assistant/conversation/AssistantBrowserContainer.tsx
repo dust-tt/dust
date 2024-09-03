@@ -6,7 +6,7 @@ import type {
 import { useCallback } from "react";
 
 import { AssistantBrowser } from "@app/components/assistant/AssistantBrowser";
-import { useProgressiveAgentConfigurations } from "@app/lib/swr";
+import { useProgressiveAgentConfigurations } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 
 interface AssistantBrowserContainerProps {
