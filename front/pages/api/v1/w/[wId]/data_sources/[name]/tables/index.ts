@@ -168,7 +168,7 @@ async function handler(
     case "GET":
       const tablesRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
       });
 
       if (tablesRes.isErr()) {
@@ -230,7 +230,7 @@ async function handler(
 
       const tRes = await coreAPI.getTables({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
       });
 
       if (tRes.isErr()) {
@@ -265,7 +265,7 @@ async function handler(
 
       const upsertRes = await coreAPI.upsertTable({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
         name,
         description,

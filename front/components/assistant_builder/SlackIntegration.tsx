@@ -26,10 +26,10 @@ export function SlackIntegration({
   owner,
   slackDataSourceView,
 }: SlacIntegrationProps) {
-  const [newSelection, setNewSelection] = useState<SlackChannel[] | null>(null);
+  const [newSelection, setNewSelection] = useState<SlackChannel[]>([]);
 
   useEffect(() => {
-    if (existingSelection.length > 0 && newSelection === null) {
+    if (existingSelection.length > 0 && newSelection.length === 0) {
       setNewSelection(existingSelection);
     }
   }, [existingSelection, newSelection]);
@@ -51,34 +51,20 @@ export function SlackIntegration({
       const { internalId, title } = node;
 
       setNewSelection((prevSelection) => {
-        if (!prevSelection) {
-          return [];
-        }
-
-        // Create a copy of the previous selection.
-        const updatedSelection = [...prevSelection];
-
-        // Find the index of the channel in the selection.
-        const index = updatedSelection.findIndex(
-          (channel) => channel.slackChannelId === internalId
+        const channel = { slackChannelId: internalId, slackChannelName: title };
+        const index = prevSelection.findIndex(
+          (c) => c.slackChannelId === internalId
         );
 
-        if (newPermission === "read_write") {
-          // If the channel isn't already in the selection, add it.
-          if (index === -1) {
-            updatedSelection.push({
-              slackChannelId: internalId,
-              slackChannelName: title,
-            });
-          }
-        } else {
-          // If the channel is in the selection, remove it.
-          if (index !== -1) {
-            updatedSelection.splice(index, 1);
-          }
+        if (newPermission === "read_write" && index === -1) {
+          return [...prevSelection, channel];
         }
 
-        return updatedSelection;
+        if (newPermission !== "read_write" && index !== -1) {
+          return prevSelection.filter((_, i) => i !== index);
+        }
+
+        return prevSelection;
       });
     },
     [setNewSelection]

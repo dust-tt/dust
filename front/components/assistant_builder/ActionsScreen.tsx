@@ -979,7 +979,7 @@ function Capabilities({
     <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
       <Capability
         name="Web Search & Browse"
-        description="Assistant can search (Google)) and retrieve information from specific websites."
+        description="Assistant can search (Google) and retrieve information from specific websites."
         enabled={
           !!builderState.actions.find((a) => a.type === "WEB_NAVIGATION")
         }

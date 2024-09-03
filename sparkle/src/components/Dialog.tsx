@@ -1,7 +1,8 @@
 import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
 import React, { Fragment, useRef } from "react";
 
-import { ConfettiBackground, Spinner } from "@sparkle/index";
+import ConfettiBackground from "@sparkle/components/ConfettiBackground";
+import Spinner from "@sparkle/components/Spinner";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";

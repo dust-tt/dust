@@ -169,7 +169,7 @@ async function handler(
     case "GET":
       const rowRes = await coreAPI.getTableRow({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
         rowId,
       });
@@ -201,7 +201,7 @@ async function handler(
     case "DELETE":
       const deleteRes = await coreAPI.deleteTableRow({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
         rowId,
       });

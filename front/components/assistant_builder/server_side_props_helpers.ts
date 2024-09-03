@@ -200,7 +200,7 @@ export async function buildInitialActions({
 
           const coreAPITable = await coreAPI.getTable({
             projectId: dataSourceView.dataSource.dustAPIProjectId,
-            dataSourceName: dataSourceView.dataSource.name,
+            dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
             tableId: t.tableId,
           });
 

@@ -1,11 +1,7 @@
 import React from "react";
 
-import {
-  CheckCircleIcon,
-  IconButton,
-  XCircleIcon,
-  XMarkIcon,
-} from "@sparkle/index";
+import { IconButton } from "@sparkle/components/IconButton";
+import { CheckCircleIcon, XCircleIcon, XMarkIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";

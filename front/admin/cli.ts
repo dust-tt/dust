@@ -423,7 +423,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       const delRes = await coreAPI.deleteDataSourceDocument({
         projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         documentId: args.documentId,
       });
       if (delRes.isErr()) {

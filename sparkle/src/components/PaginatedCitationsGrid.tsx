@@ -1,9 +1,8 @@
 import { useState } from "react";
 import React from "react";
 
-import { CitationType } from "@sparkle/components/Citation";
+import { Citation, CitationType } from "@sparkle/components/Citation";
 import { Pagination } from "@sparkle/components/Pagination";
-import { Citation } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 interface CitationItem {

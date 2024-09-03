@@ -4,15 +4,20 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getSortedRowModel, SortingFn,
+  getSortedRowModel,
+  SortingFn,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
 
-import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
-import { Avatar, DropdownMenu, IconButton, MoreIcon } from "@sparkle/index";
-import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
+import { Avatar } from "@sparkle/components/Avatar";
+import {
+  DropdownItemProps,
+  DropdownMenu,
+} from "@sparkle/components/DropdownMenu";
+import { IconButton } from "@sparkle/components/IconButton";
+import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -35,7 +40,7 @@ interface DataTableProps<TData extends TBaseData> {
   filterColumn?: string;
   initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
-  sortingFn?: SortingFn<TData>
+  sortingFn?: SortingFn<TData>;
 }
 
 function shouldRenderColumn(

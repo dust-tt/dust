@@ -3,6 +3,7 @@ import type {
   CoreAPIRow,
   CoreAPIRowValue,
   CoreAPITable,
+  DataSourceType,
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -58,26 +59,26 @@ export type TableOperationError =
 
 export async function deleteTable({
   owner,
-  projectId,
-  dataSourceName,
+  dataSource,
   tableId,
 }: {
   owner: WorkspaceType;
-  projectId: string;
-  dataSourceName: string;
+  dataSource: DataSourceType;
   tableId: string;
 }): Promise<Result<null, TableOperationError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const deleteRes = await coreAPI.deleteTable({
-    projectId,
-    dataSourceName,
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     tableId,
   });
   if (deleteRes.isErr()) {
     logger.error(
       {
-        dataSourceName,
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        dataSourceName: dataSource.name,
         workspaceId: owner.id,
         error: deleteRes.error,
       },
@@ -101,7 +102,8 @@ export async function deleteTable({
   await AgentTablesQueryConfigurationTable.destroy({
     where: {
       dataSourceWorkspaceId: owner.sId,
-      dataSourceId: dataSourceName,
+      // TODO(DATASOURCE_SID); state storing the datasource name
+      dataSourceId: dataSource.name,
       tableId,
     },
   });
@@ -111,8 +113,7 @@ export async function deleteTable({
 
 export async function upsertTableFromCsv({
   auth,
-  projectId,
-  dataSourceName,
+  dataSource,
   tableName,
   tableDescription,
   tableId,
@@ -123,8 +124,7 @@ export async function upsertTableFromCsv({
   truncate,
 }: {
   auth: Authenticator;
-  projectId: string;
-  dataSourceName: string;
+  dataSource: DataSourceType;
   tableName: string;
   tableDescription: string;
   tableId: string;
@@ -166,10 +166,11 @@ export async function upsertTableFromCsv({
       logger.error(
         {
           ...errorDetails,
-          dataSourceName,
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          dataSourceName: dataSource.name,
           tableName,
           tableId,
-          projectId,
         },
         "CSV parsing error."
       );
@@ -190,10 +191,11 @@ export async function upsertTableFromCsv({
     logger.error(
       {
         ...errorDetails,
-        dataSourceName,
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        dataSourceName: dataSource.name,
         tableName,
         tableId,
-        projectId,
       },
       "CSV input validation error: too many rows."
     );
@@ -202,8 +204,8 @@ export async function upsertTableFromCsv({
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tableRes = await coreAPI.upsertTable({
-    projectId,
-    dataSourceName,
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     tableId,
     name: tableName,
     description: tableDescription,
@@ -221,11 +223,12 @@ export async function upsertTableFromCsv({
     logger.error(
       {
         ...errorDetails,
-        dataSourceName,
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        dataSourceName: dataSource.name,
         workspaceId: owner.id,
         tableId,
         tableName,
-        projectId,
       },
       "Error upserting table in CoreAPI."
     );
@@ -234,8 +237,8 @@ export async function upsertTableFromCsv({
 
   if (csvRows) {
     const rowsRes = await coreAPI.upsertTableRows({
-      projectId,
-      dataSourceName,
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
       tableId,
       rows: csvRows,
       truncate,
@@ -250,18 +253,19 @@ export async function upsertTableFromCsv({
       logger.error(
         {
           ...errorDetails,
-          dataSourceName,
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          dataSourceName: dataSource.name,
           workspaceId: owner.id,
           tableId,
           tableName,
-          projectId,
         },
         "Error upserting rows in CoreAPI."
       );
 
       const delRes = await coreAPI.deleteTable({
-        projectId,
-        dataSourceName,
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
         tableId,
       });
 
@@ -270,11 +274,12 @@ export async function upsertTableFromCsv({
           {
             type: "internal_server_error",
             coreAPIError: delRes.error,
-            dataSourceName,
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+            dataSourceName: dataSource.name,
             workspaceId: owner.id,
             tableId,
             tableName,
-            projectId,
           },
           "Failed to delete table after failed row upsert."
         );

@@ -26,7 +26,7 @@ export async function getPreviousDocumentVersion({
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const versions = await coreAPI.getDataSourceDocumentVersions({
     projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: documentId,
     limit: 1,
     offset: 1,

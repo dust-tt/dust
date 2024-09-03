@@ -9,11 +9,13 @@ module.exports = {
   ignorePatterns: [
     "rollup.config.js",
     "eslint.js",
+    ".eslintrc.js",
     "dist/",
     "node_modules/",
     "svgr.config.js",
     "postcss.config.js",
     "tailwind.config.js",
+    "svgr-*-template.js",
   ],
   rules: {
     curly: ["error", "all"],

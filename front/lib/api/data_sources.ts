@@ -372,7 +372,7 @@ export async function upsertDocument({
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
-    dataSourceName: dataSource.name,
+    dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: name,
     tags: nonNullTags,
     parents: parents || [],
