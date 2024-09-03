@@ -91,7 +91,11 @@ export function DocumentOrTableUploadOrEditModal({
   };
   // TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
   useEffect(() => {
-    if (initialId) {
+    const fetchData = async () => {
+      if (!initialId) {
+        resetTableOrDoc();
+        return;
+      }
       setIsLoading(true);
       if (table) {
         setTableOrDoc((prev) => ({
@@ -101,34 +105,31 @@ export function DocumentOrTableUploadOrEditModal({
         }));
       } else {
         setUploading(true);
-        void (async () => {
-          try {
-            const res = await fetch(
-              `/api/w/${owner.sId}/data_sources/${
-                dataSourceView.dataSource.name
-              }/documents/${encodeURIComponent(initialId)}`
-            );
-            if (res.ok) {
-              const document = await res.json();
-              setTableOrDoc((prev) => ({
-                ...prev,
-                name: initialId,
-                text: document.document.text,
-                tags: document.document.tags,
-                sourceUrl: document.document.source_url,
-              }));
-            }
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setUploading(false);
+        try {
+          const res = await fetch(
+            `/api/w/${owner.sId}/data_sources/${
+              dataSourceView.dataSource.name
+            }/documents/${encodeURIComponent(initialId)}`
+          );
+          if (res.ok) {
+            const document = await res.json();
+            setTableOrDoc((prev) => ({
+              ...prev,
+              name: initialId,
+              text: document.document.text,
+              tags: document.document.tags,
+              sourceUrl: document.document.source_url,
+            }));
           }
-        })();
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setUploading(false);
+        }
       }
       setIsLoading(false);
-    } else {
-      resetTableOrDoc();
-    }
+    };
+    void fetchData();
   }, [isTable, initialId, table, owner.sId, dataSourceView.dataSource.name]);
 
   const total = 0; // TODO: Get the total number of documents
