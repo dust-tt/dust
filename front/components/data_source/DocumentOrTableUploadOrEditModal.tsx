@@ -95,6 +95,7 @@ export function DocumentOrTableUploadOrEditModal({
       sourceUrl: "",
     });
   };
+
   // TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
   useEffect(() => {
     const fetchData = async () => {
@@ -103,7 +104,7 @@ export function DocumentOrTableUploadOrEditModal({
         return;
       }
       setIsLoading(true);
-      if (table) {
+      if (isTable && table) {
         setTableOrDoc((prev) => ({
           ...prev,
           name: table.name,
@@ -177,7 +178,7 @@ export function DocumentOrTableUploadOrEditModal({
       const body = JSON.stringify({
         name: tableOrDoc.name,
         description: tableOrDoc.description,
-        csv: undefined,
+        csv: csvContent,
         tableId: initialId,
         timestamp: null,
         tags: [],
@@ -216,7 +217,7 @@ export function DocumentOrTableUploadOrEditModal({
     setUploading(true);
     try {
       const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(tableOrDoc.name)}`;
-      const body = JSON.stringify({
+      const body: PostDataSourceDocumentRequestBody = {
         timestamp: null,
         parents: null,
         section: { prefix: null, content: tableOrDoc.text, sections: [] },
@@ -226,12 +227,13 @@ export function DocumentOrTableUploadOrEditModal({
         light_document_output: true,
         upsert_context: null,
         async: false,
-      } as PostDataSourceDocumentRequestBody);
+      };
+      const stringifiedBody = JSON.stringify(body);
 
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body,
+        body: stringifiedBody,
       });
 
       if (!res.ok) {
@@ -286,7 +288,7 @@ export function DocumentOrTableUploadOrEditModal({
         setUploading(false);
         return;
       }
-
+      console.log(">>>>> isTable", isTable);
       if (isTable) {
         setTableOrDoc((prev) => ({ ...prev, file: selectedFile }));
         setIsBigFile(selectedFile.size > BIG_FILE_SIZE);
