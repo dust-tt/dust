@@ -1098,11 +1098,11 @@ export class CoreAPI {
   }
 
   async getTables({
-    dataSourceName,
+    dataSourceId,
     projectId,
     viewFilter,
   }: {
-    dataSourceName: string;
+    dataSourceId: string;
     projectId: string;
     viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
@@ -1120,7 +1120,7 @@ export class CoreAPI {
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
-        dataSourceName
+        dataSourceId
       )}/tables?${queryParams.toString()}`,
       {
         method: "GET",
