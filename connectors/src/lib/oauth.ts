@@ -3,7 +3,10 @@ import { getOAuthConnectionAccessToken } from "@dust-tt/types";
 import type { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  isMicrosoftApplicationDisabledError,
+} from "@connectors/lib/error";
 
 // Most connectors are built on the assumption that errors are thrown with special handling of
 // selected errors such as ExternalOauthTokenError. This function is used to retrieve an OAuth
@@ -35,8 +38,11 @@ export async function getOAuthConnectionAccessTokenWithThrow({
       "Error retrieving access token"
     );
 
-    if (tokRes.error.code === "token_revoked_error") {
-      throw new ExternalOAuthTokenError();
+    if (
+      tokRes.error.code === "token_revoked_error" ||
+      isMicrosoftApplicationDisabledError(tokRes.error, provider)
+    ) {
+      throw new ExternalOAuthTokenError(new Error(tokRes.error.message));
     } else {
       throw new Error(`Error retrieving access token from ${provider}`);
     }

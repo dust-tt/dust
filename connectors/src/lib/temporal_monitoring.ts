@@ -130,19 +130,23 @@ export class ActivityInboundLogInterceptor
 
           const connector = await ConnectorResource.fetchById(connectorId);
 
-          if (connector) {
-            const connectorManager = getConnectorManager({
-              connectorId: connector.id,
-              connectorProvider: connector.type,
-            });
+          if (!connector) {
+            throw new Error(
+              `Unexpected: Connector with id ${connectorId} not found in the database.`
+            );
+          }
 
-            if (connectorManager) {
-              await connectorManager.stop();
-            } else {
-              this.logger.error(
-                `Connector manager not found for connector ${connector.id}`
-              );
-            }
+          const connectorManager = getConnectorManager({
+            connectorId: connector.id,
+            connectorProvider: connector.type,
+          });
+
+          if (connectorManager) {
+            await connectorManager.stop();
+          } else {
+            this.logger.error(
+              `Connector manager not found for connector ${connector.id}`
+            );
           }
         }
       }
