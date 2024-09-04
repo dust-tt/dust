@@ -70,7 +70,7 @@ export async function getDataSources(
   { includeEditedBy }: { includeEditedBy: boolean } = {
     includeEditedBy: false,
   }
-): Promise<DataSourceResource[]> {
+): Promise<DataSourceType[]> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -83,7 +83,7 @@ export async function getDataSources(
   const dataSources = await DataSourceResource.listByWorkspace(auth, {
     includeEditedBy,
   });
-  return dataSources.map((dataSource) => dataSource);
+  return dataSources.map((dataSource) => dataSource.toJSON());
 }
 
 export async function deleteDataSource(
