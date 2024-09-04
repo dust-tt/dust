@@ -31,7 +31,6 @@ const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,
-  dataSourceId: t.union([t.string, t.null, t.undefined]),
   dataSourceName: t.string,
   documentId: t.string,
   tags: t.union([t.array(t.string), t.null]),
@@ -44,7 +43,7 @@ export const EnqueueUpsertDocument = t.type({
 
 export const EnqueueUpsertTable = t.type({
   workspaceId: t.string,
-  dataSourceId: t.union([t.string, t.null, t.undefined]),
+  projectId: t.string,
   dataSourceName: t.string,
   tableId: t.string,
   tableName: t.string,
