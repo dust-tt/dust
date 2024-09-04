@@ -10,6 +10,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 export type DataSources = {
   connectorProvider: string | null;
   id: number;
+  sId: string;
   name: string;
   editedBy: string | undefined;
   editedAt: number | undefined;
@@ -22,23 +23,23 @@ export function makeColumnsForDataSources(
 ): ColumnDef<DataSources>[] {
   return [
     {
-      accessorKey: "id",
+      accessorKey: "sId",
       cell: ({ row }) => {
-        const name: string = row.getValue("name");
+        const sId: string = row.getValue("sId");
 
         return (
           <Link
             className="font-bold hover:underline"
-            href={`/poke/${owner.sId}/data_sources/${name}`}
+            href={`/poke/${owner.sId}/data_sources/${sId}`}
           >
-            {name}
+            {sId}
           </Link>
         );
       },
       header: ({ column }) => {
         return (
           <div className="flex space-x-2">
-            <p>Id</p>
+            <p>sId</p>
             <IconButton
               variant="tertiary"
               icon={ArrowsUpDownIcon}

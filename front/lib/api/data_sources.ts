@@ -38,7 +38,7 @@ export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
 
 export async function getDataSource(
   auth: Authenticator,
-  name: string,
+  nameOrId: string,
   { includeEditedBy }: { includeEditedBy: boolean } = {
     includeEditedBy: false,
   }
@@ -52,7 +52,7 @@ export async function getDataSource(
     return null;
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, name, {
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, nameOrId, {
     includeEditedBy,
     // TODO(DATASOURCE_SID): clean-up
     origin: "lib_api_get_data_source",
