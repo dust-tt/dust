@@ -38,7 +38,7 @@ main {
   }
 }
 
-.blinking-cursor> :not(pre):last-child::after {
+.blinking-cursor > :not(pre):last-child::after {
   content: "";
   width: 8px;
   height: 16px;
@@ -51,7 +51,6 @@ main {
 }
 
 @keyframes shake {
-
   10%,
   90% {
     transform: translate3d(-3px, -1px, 0);
