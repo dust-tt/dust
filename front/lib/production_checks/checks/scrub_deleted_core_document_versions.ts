@@ -100,7 +100,7 @@ async function getFiles({ bucket, path }: { bucket: Bucket; path: string }) {
 }
 
 async function deleteFile({ file }: { file: File }) {
-  return file.delete();
+  return (await file.exists()) && file.delete();
 }
 
 async function deleteFilesFromFolder(
