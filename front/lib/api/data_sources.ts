@@ -36,8 +36,10 @@ export async function getDataSource(
     return null;
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, name, {
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, name, {
     includeEditedBy,
+    // TODO(DATASOURCE_SID): clean-up
+    origin: "lib_api_get_data_source",
   });
 
   if (!dataSource) {
@@ -86,7 +88,14 @@ export async function deleteDataSource(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, dataSourceName);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dataSourceName,
+    {
+      // TODO(DATASOURCE_SID): clean-up
+      origin: "lib_api_delete_data_source",
+    }
+  );
 
   if (!dataSource) {
     return new Err({
