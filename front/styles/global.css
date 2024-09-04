@@ -1,3 +1,4 @@
+/* Only tailwind globals here, components and utilities in other file to handle priority */
 @tailwind base;
 
 html,
