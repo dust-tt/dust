@@ -29,9 +29,13 @@ export type DataSourceViewWithConnectorType = DataSourceViewType & {
   dataSource: DataSourceWithConnectorDetailsType;
 };
 
+export type DataSourceViewContentNode = BaseContentNode & {
+  parentInternalIds: string[] | null;
+};
+
 export type DataSourceViewSelectionConfiguration = {
   dataSourceView: DataSourceViewType;
-  selectedResources: LightContentNode[];
+  selectedResources: DataSourceViewContentNode[];
   isSelectAll: boolean;
 };
 
@@ -52,7 +56,3 @@ export type DataSourceViewSelectionConfigurations = Record<
 
 const DATA_SOURCE_VIEW_KINDS = ["default", "custom"] as const;
 export type DataSourceViewKind = (typeof DATA_SOURCE_VIEW_KINDS)[number];
-
-export type DataSourceViewContentNode = BaseContentNode & {
-  parentInternalIds: string[] | null;
-};

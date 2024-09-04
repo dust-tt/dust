@@ -16,7 +16,7 @@ import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 
-import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import DataSourceViewResourceSelectorTree from "@app/components/DataSourceViewResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 import {
@@ -196,11 +196,8 @@ function DataSourceViewSelector({
     (r) => r.internalId
   );
 
-  // TODO(GROUPS_INFRA): useParentResourcesById should use views not data sources.
   const { parentsById, setParentsById } = useParentResourcesById({
-    owner,
-    dataSource: dataSourceView.dataSource,
-    internalIds,
+    selectedResources: selectionConfiguration.selectedResources,
   });
 
   const selectedParents = [
@@ -266,7 +263,7 @@ function DataSourceViewSelector({
             }
       }
     >
-      <DataSourceResourceSelectorTree
+      <DataSourceViewResourceSelectorTree
         owner={owner}
         dataSourceView={dataSourceView}
         showExpand={config?.isNested ?? true}
