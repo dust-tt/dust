@@ -187,9 +187,9 @@ export const VaultDataSourceViewContentList = ({
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {
-          if (action === "CreateDocument") {
+          if (action === "DocumentUploadOrEdit") {
             setViewType("documents");
-          } else if (action === "CreateTable") {
+          } else if (action === "TableUploadOrEdit") {
             setViewType("tables");
           }
           await mutateDataSourceViewContentNodes();

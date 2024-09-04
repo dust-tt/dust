@@ -14,10 +14,8 @@ import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDoc
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 
 export type ContentActionKey =
-  | "EditDocument"
-  | "EditTable"
-  | "CreateDocument"
-  | "CreateTable"
+  | "DocumentUploadOrEdit"
+  | "TableUploadOrEdit"
   | "MultipleDocumentsUpload"
   | "DocumentOrTableDeleteDialog"
   | "TableUploadOrEditModal";
@@ -67,19 +65,14 @@ export const ContentActions = React.forwardRef<
         contentNode={currentAction.contentNode}
         dataSourceView={dataSourceView}
         isOpen={
-          currentAction.action === "EditDocument" ||
-          currentAction.action === "EditTable" ||
-          currentAction.action === "CreateDocument" ||
-          currentAction.action === "CreateTable"
+          currentAction.action === "DocumentUploadOrEdit" ||
+          currentAction.action === "TableUploadOrEdit"
         }
         onClose={onClose}
         owner={owner}
         plan={plan}
         viewType={
-          currentAction.action === "EditTable" ||
-          currentAction.action === "CreateTable"
-            ? "tables"
-            : "documents"
+          currentAction.action === "TableUploadOrEdit" ? "tables" : "documents"
         }
       />
       <MultipleDocumentsUpload
@@ -117,7 +110,9 @@ export const getMenuItems = (
         onClick: () => {
           contentActionsRef.current &&
             contentActionsRef.current?.callAction(
-              contentNode.type === "database" ? "EditTable" : "EditDocument",
+              contentNode.type === "database"
+                ? "TableUploadOrEdit"
+                : "DocumentUploadOrEdit",
               contentNode
             );
         },
