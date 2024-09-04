@@ -145,8 +145,9 @@ export function ConnectorPermissionsModal({
     setSaving(false);
   }
 
-  const { displayEditionModal } =
-    getRenderingConfigForConnectorProvider(connector.type);
+  const { displayEditionModal } = getRenderingConfigForConnectorProvider(
+    connector.type
+  );
 
   return (
     <Modal
