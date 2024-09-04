@@ -269,7 +269,12 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
-      const dataSource = await DataSourceResource.fetchByName(auth, args.name);
+      const dataSource = await DataSourceResource.fetchByNameOrId(
+        auth,
+        args.name,
+        // TODO(DATASOURCE_SID): Clean-up
+        { origin: "cli_delete" }
+      );
       if (!dataSource) {
         throw new Error(
           `DataSource not found: wId='${args.wId}' name='${args.name}'`
@@ -380,7 +385,14 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
-      const dataSource = await DataSourceResource.fetchByName(auth, args.name);
+      const dataSource = await DataSourceResource.fetchByNameOrId(
+        auth,
+        args.name,
+        {
+          // TODO(DATASOURCE_SID): Clean-up
+          origin: "cli_delete_document",
+        }
+      );
       if (!dataSource) {
         throw new Error(
           `DataSource not found: wId='${args.wId}' name='${args.name}'`

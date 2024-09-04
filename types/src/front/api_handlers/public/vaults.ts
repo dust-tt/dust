@@ -3,11 +3,13 @@ import * as t from "io-ts";
 import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
+  // TODO(DATASOURCE_SID): rename to `dataSourceId`
   dataSource: t.string,
   parentsIn: t.union([t.array(t.string), t.null]),
 });
 
 export const PostDataSourceViewSchema = t.type({
+  // TODO(DATASOURCE_SID): rename to `dataSourceId`
   name: t.string,
   parentsIn: t.union([t.array(t.string), t.null]),
 });

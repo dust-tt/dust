@@ -129,7 +129,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       isAdmin,
       isBuilder,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       connector,
       standardView,
       dustClientFacingUrl: config.getClientFacingUrl(),
@@ -607,6 +607,7 @@ function DatasourceTablesTabView({
                   workspaceId: owner.sId,
                   tableId: t.table_id,
                   dataSourceId: dataSource.name,
+                  dataSourceViewId: undefined,
                 })}
                 title={`${t.name} (${t.data_source_id})`}
                 visual={
@@ -1287,6 +1288,7 @@ function ManagedDataSourceView({
               dataSource={dataSource}
               permissionFilter="read"
               showExpand={CONNECTOR_CONFIGURATIONS[connectorProvider]?.isNested}
+              viewType="documents"
             />
           </div>
         </div>

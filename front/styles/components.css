@@ -1,0 +1,3 @@
+/* Tailwind components and utilities here, need to placed after sparkle.css to have more priority */
+@tailwind components;
+@tailwind utilities;

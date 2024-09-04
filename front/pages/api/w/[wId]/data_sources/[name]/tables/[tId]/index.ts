@@ -1,6 +1,5 @@
 import type {
   CoreAPITable,
-  DataSourceType,
   WithAPIErrorResponse,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -12,6 +11,7 @@ import { getDataSource } from "@app/lib/api/data_sources";
 import { deleteTable } from "@app/lib/api/tables";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -128,7 +128,7 @@ export async function handleDeleteTableByIdRequest(
     tableId,
   }: {
     owner: WorkspaceType;
-    dataSource: DataSourceType;
+    dataSource: DataSourceResource;
     tableId: string;
   }
 ) {

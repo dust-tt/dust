@@ -107,7 +107,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       owner,
       activeSubscription,
       subscriptions,
-      dataSources: orderDatasourceByImportance(dataSources),
+      dataSources: orderDatasourceByImportance(
+        dataSources.map((ds) => ds.toJSON())
+      ),
       agentConfigurations: agentConfigurations,
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],

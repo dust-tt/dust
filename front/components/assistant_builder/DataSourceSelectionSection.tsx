@@ -7,9 +7,10 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -23,16 +24,19 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { classNames } from "@app/lib/utils";
 
-export default function DataSourceSelectionSection({
-  owner,
-  dataSourceConfigurations,
-  openDataSourceModal,
-}: {
-  owner: WorkspaceType;
+interface DataSourceSelectionSectionProps {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   openDataSourceModal: () => void;
-  onDelete?: (name: string) => void;
-}) {
+  owner: LightWorkspaceType;
+  viewType: ContentNodesViewType;
+}
+
+export default function DataSourceSelectionSection({
+  dataSourceConfigurations,
+  openDataSourceModal,
+  owner,
+  viewType,
+}: DataSourceSelectionSectionProps) {
   const { dataSourceViews } = useContext(AssistantBuilderContext);
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -90,6 +94,7 @@ export default function DataSourceSelectionSection({
                 dsConfig.dataSourceView.dataSource.connectorProvider,
                 FolderIcon
               );
+
               return (
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}
@@ -115,6 +120,7 @@ export default function DataSourceSelectionSection({
                         setDocumentToDisplay(documentId);
                       }}
                       isSearchEnabled={false}
+                      viewType={viewType}
                     />
                   )}
                   {dsConfig.selectedResources.map((node) => {
@@ -175,6 +181,7 @@ export default function DataSourceSelectionSection({
                             setDocumentToDisplay(documentId);
                           }}
                           isSearchEnabled={false}
+                          viewType={viewType}
                         />
                       </Tree.Item>
                     );

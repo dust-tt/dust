@@ -57,18 +57,8 @@ export type AssistantBuilderDustAppConfiguration = {
 
 // TablesQuery configuration
 
-export type AssistantBuilderTableConfiguration = {
-  dataSourceId: string;
-  workspaceId: string;
-  tableId: string;
-  tableName: string;
-  connectorContentNodeInternalId?: string;
-};
-
-export type AssistantBuilderTablesQueryConfiguration = Record<
-  string,
-  AssistantBuilderTableConfiguration
->;
+export type AssistantBuilderTableConfiguration =
+  DataSourceViewSelectionConfigurations;
 
 // Process configuration
 
@@ -97,7 +87,7 @@ export type AssistantBuilderActionConfiguration = (
     }
   | {
       type: "TABLES_QUERY";
-      configuration: AssistantBuilderTablesQueryConfiguration;
+      configuration: AssistantBuilderTableConfiguration;
     }
   | {
       type: "PROCESS";
@@ -249,7 +239,7 @@ export function getDefaultDustAppRunActionConfiguration() {
 export function getDefaultTablesQueryActionConfiguration() {
   return {
     type: "TABLES_QUERY",
-    configuration: {} as AssistantBuilderTablesQueryConfiguration,
+    configuration: {} as AssistantBuilderTableConfiguration,
     name: DEFAULT_TABLES_QUERY_ACTION_NAME,
     description: "",
   } satisfies AssistantBuilderActionConfiguration;

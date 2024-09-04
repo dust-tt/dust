@@ -46,6 +46,7 @@ import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -235,14 +236,22 @@ export function AssistantDetails({
     );
 
   const ActionsSection = ({
+    isDustGlobalAgent,
     actions,
   }: {
+    isDustGlobalAgent: boolean;
     actions: AgentConfigurationType["actions"];
   }) => {
     const [retrievalActions, otherActions] = useMemo(() => {
       return actions.reduce(
         ([dataSources, otherActions], a) => {
-          if (isRetrievalConfiguration(a)) {
+          // Since Dust is configured with one search for all, plus individual searches for each managed data source,
+          // we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
+          // We use the `hidden_dust_search_` prefix to identify these additional searches.
+          if (
+            isRetrievalConfiguration(a) &&
+            (!isDustGlobalAgent || !a.name.startsWith("hidden_dust_search_"))
+          ) {
             dataSources.push(a);
           } else {
             otherActions.push(a);
@@ -254,7 +263,7 @@ export function AssistantDetails({
           [] as AgentActionConfigurationType[],
         ]
       );
-    }, [actions]);
+    }, [isDustGlobalAgent, actions]);
 
     return (
       !!actions.length && (
@@ -330,7 +339,10 @@ export function AssistantDetails({
     >
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
         <DescriptionSection />
-        <ActionsSection actions={agentConfiguration?.actions ?? []} />
+        <ActionsSection
+          isDustGlobalAgent={agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST}
+          actions={agentConfiguration?.actions ?? []}
+        />
         <InstructionsSection />
       </div>
     </ElementModal>
@@ -408,6 +420,7 @@ function DataSourceViewsSection({
                     setDocumentToDisplay(documentId);
                   }}
                   isSearchEnabled={false}
+                  viewType="documents"
                 />
               )}
               {dataSourceView && !isAllSelected && (
@@ -499,6 +512,7 @@ function DataSourceViewSelectedNodes({
               setDocumentToDisplay(documentId);
             }}
             isSearchEnabled={false}
+            viewType="documents"
           />
         </Tree.Item>
       ))}

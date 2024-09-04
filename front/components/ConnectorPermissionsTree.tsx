@@ -11,6 +11,7 @@ import {
 import type {
   BaseContentNode,
   ConnectorProvider,
+  ContentNodesViewType,
   DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
@@ -76,6 +77,7 @@ type DataSourcePermissionTreeChildrenProps = PermissionTreeChildrenBaseProps & {
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
   useConnectorPermissionsHook: typeof useConnectorPermissions;
+  viewType: ContentNodesViewType;
 };
 
 export function DataSourcePermissionTreeChildren({
@@ -85,14 +87,16 @@ export function DataSourcePermissionTreeChildren({
   parentId,
   permissionFilter,
   useConnectorPermissionsHook,
+  viewType,
   ...props
 }: DataSourcePermissionTreeChildrenProps) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissionsHook({
-      owner,
       dataSource,
-      parentId,
       filterPermission: permissionFilter || null,
+      owner,
+      parentId,
+      viewType,
     });
 
   // For data source permissions, we rely on the permission field to determine if a node is checked.
@@ -131,6 +135,7 @@ export function DataSourcePermissionTreeChildren({
           parentIsSelected={isParentNodeSelected}
           permissionFilter={permissionFilter}
           useConnectorPermissionsHook={useConnectorPermissionsHook}
+          viewType={viewType}
           {...props}
           // Disable search for children.
           isSearchEnabled={false}
@@ -145,20 +150,23 @@ type DataSourceViewPermissionTreeChildrenProps =
   PermissionTreeChildrenBaseProps & {
     dataSourceView: DataSourceViewType;
     permissionFilter?: ConnectorPermission;
+    viewType: ContentNodesViewType;
   };
 
 export function DataSourceViewPermissionTreeChildren({
   dataSourceView,
   owner,
   parentId,
+  viewType,
   ...props
 }: DataSourceViewPermissionTreeChildrenProps) {
   const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
     {
-      owner,
       dataSourceView,
-      internalIds: parentId ? [parentId] : [],
       includeChildren: true,
+      internalIds: parentId ? [parentId] : [],
+      owner,
+      viewType,
     }
   );
 
@@ -185,6 +193,7 @@ export function DataSourceViewPermissionTreeChildren({
           owner={owner}
           parentId={node.internalId}
           parentIsSelected={isParentNodeSelected}
+          viewType={viewType}
           {...props}
           // Disable search for children.
           isSearchEnabled={false}
@@ -414,23 +423,27 @@ function PermissionTreeChildren({
   );
 }
 
-export function PermissionTree({
-  owner,
-  dataSource,
-  permissionFilter,
-  canUpdatePermissions,
-  onPermissionUpdate,
-  showExpand,
-  isSearchEnabled,
-}: {
-  owner: LightWorkspaceType;
-  dataSource: DataSourceType;
-  permissionFilter?: ConnectorPermission;
+interface PermissionTreeProps {
   canUpdatePermissions?: boolean;
-  onPermissionUpdate?: onPermissionUpdateType;
-  showExpand?: boolean;
+  dataSource: DataSourceType;
   isSearchEnabled: boolean;
-}) {
+  onPermissionUpdate?: onPermissionUpdateType;
+  owner: LightWorkspaceType;
+  permissionFilter?: ConnectorPermission;
+  showExpand?: boolean;
+  viewType: ContentNodesViewType;
+}
+
+export function PermissionTree({
+  canUpdatePermissions,
+  dataSource,
+  isSearchEnabled,
+  onPermissionUpdate,
+  owner,
+  permissionFilter,
+  showExpand,
+  viewType,
+}: PermissionTreeProps) {
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
@@ -464,6 +477,7 @@ export function PermissionTree({
           }}
           useConnectorPermissionsHook={useConnectorPermissions}
           isSearchEnabled={isSearchEnabled}
+          viewType={viewType}
         />
       </div>
     </>

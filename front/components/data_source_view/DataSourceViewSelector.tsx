@@ -5,17 +5,18 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 
-import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import DataSourceViewResourceSelectorTree from "@app/components/DataSourceViewResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 import {
@@ -32,20 +33,22 @@ import {
 const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
 
-type DataSourceViewsSelectorProps = {
-  owner: WorkspaceType;
+interface DataSourceViewsSelectorProps {
+  owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
-};
+  viewType: ContentNodesViewType;
+}
 
 export function DataSourceViewsSelector({
   owner,
   dataSourceViews,
   selectionConfigurations,
   setSelectionConfigurations,
+  viewType,
 }: DataSourceViewsSelectorProps) {
   // Apply grouping if there are many data sources, and there are enough of each kind
   // So we don't show a long list of data sources to the user
@@ -93,6 +96,7 @@ export function DataSourceViewsSelector({
                   defaultSelectionConfiguration(dataSourceView)
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
               />
             ))}
         </Tree.Item>
@@ -114,6 +118,7 @@ export function DataSourceViewsSelector({
               defaultSelectionConfiguration(dataSourceView)
             }
             setSelectionConfigurations={setSelectionConfigurations}
+            viewType={viewType}
           />
         ))}
 
@@ -130,6 +135,7 @@ export function DataSourceViewsSelector({
                   defaultSelectionConfiguration(dataSourceView)
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
               />
             ))}
         </Tree.Item>
@@ -153,6 +159,7 @@ export function DataSourceViewsSelector({
                   defaultSelectionConfiguration(dataSourceView)
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
               />
             ))}
         </Tree.Item>
@@ -161,17 +168,21 @@ export function DataSourceViewsSelector({
   );
 }
 
-function DataSourceViewSelector({
-  owner,
-  selectionConfiguration,
-  setSelectionConfigurations,
-}: {
-  owner: WorkspaceType;
+interface DataSourceViewSelectorProps {
+  owner: LightWorkspaceType;
   selectionConfiguration: DataSourceViewSelectionConfiguration;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
-}) {
+  viewType: ContentNodesViewType;
+}
+
+function DataSourceViewSelector({
+  owner,
+  selectionConfiguration,
+  setSelectionConfigurations,
+  viewType,
+}: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
   const config = dataSourceView.dataSource.connectorProvider
     ? CONNECTOR_CONFIGURATIONS[dataSourceView.dataSource.connectorProvider]
@@ -185,11 +196,8 @@ function DataSourceViewSelector({
     (r) => r.internalId
   );
 
-  // TODO(GROUPS_INFRA): useParentResourcesById should use views not data sources.
   const { parentsById, setParentsById } = useParentResourcesById({
-    owner,
-    dataSource: dataSourceView.dataSource,
-    internalIds,
+    selectedResources: selectionConfiguration.selectedResources,
   });
 
   const selectedParents = [
@@ -231,18 +239,31 @@ function DataSourceViewSelector({
     };
   }, [dataSourceView, setParentsById, setSelectionConfigurations]);
 
+  const isTableView = viewType === "tables";
+
+  // Folders with viewType "documents" are always considered leaf items.
+  // For viewType "tables", folders are not leaf items because users need to select a specific table.
+  const isLeafItem = isFolder(dataSourceView.dataSource) && !isTableView;
+
+  // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
+  const hideCheckbox = isTableView && !isPartiallyChecked;
+
   return (
     <Tree.Item
       key={dataSourceView.dataSource.name}
       label={getDisplayNameForDataSource(dataSourceView.dataSource)}
       visual={LogoComponent}
-      type={isFolder(dataSourceView.dataSource) ? "leaf" : "node"}
-      checkbox={{
-        checked: checkedStatus,
-        onChange: onToggleSelectAll,
-      }}
+      type={isLeafItem ? "leaf" : "node"}
+      checkbox={
+        hideCheckbox
+          ? undefined
+          : {
+              checked: checkedStatus,
+              onChange: onToggleSelectAll,
+            }
+      }
     >
-      <DataSourceResourceSelectorTree
+      <DataSourceViewResourceSelectorTree
         owner={owner}
         dataSourceView={dataSourceView}
         showExpand={config?.isNested ?? true}
@@ -294,6 +315,7 @@ function DataSourceViewSelector({
           );
         }}
         parentIsSelected={selectionConfiguration.isSelectAll}
+        viewType={viewType}
       />
     </Tree.Item>
   );

@@ -226,22 +226,36 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       "limit" | "order"
     >
   ) {
-    const fileModelId = getResourceIdFromSId(id);
-    if (!fileModelId) {
-      return null;
-    }
+    const [dataSourceView] = await DataSourceViewResource.fetchByIds(
+      auth,
+      [id],
+      fetchDataSourceViewOptions
+    );
 
-    const [dataSource] = await this.baseFetch(
+    return dataSourceView ?? null;
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[],
+    fetchDataSourceViewOptions?: Omit<
+      FetchDataSourceViewOptions,
+      "limit" | "order"
+    >
+  ) {
+    const dataSourceViewModelIds = removeNulls(ids.map(getResourceIdFromSId));
+
+    const dataSourceViews = await this.baseFetch(
       auth,
       fetchDataSourceViewOptions,
       {
         where: {
-          id: fileModelId,
+          id: dataSourceViewModelIds,
         },
       }
     );
 
-    return dataSource ?? null;
+    return dataSourceViews ?? null;
   }
 
   // Updating.
@@ -322,6 +336,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     transaction?: Transaction
   ) {
+    // TODO(GROUPS_INFRA) Delete agent_data_source_configuration and agent_tables_query_configuration.
     return this.model.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,

@@ -24,7 +24,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.name as string);
+  const dataSource = await getDataSource(auth, context.params?.dsId as string);
   if (!dataSource) {
     return {
       notFound: true,
@@ -34,7 +34,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSource,
+      dataSource: dataSource.toJSON(),
     },
   };
 });

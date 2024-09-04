@@ -2,13 +2,12 @@ import { Hoverable } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
-import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
-import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
+import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderTablesQueryConfiguration,
+  AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
-import { tableKey } from "@app/lib/client/tables_query";
 
 export function hasErrorActionTablesQuery(
   action: AssistantBuilderActionConfiguration
@@ -26,11 +25,11 @@ export function ActionTablesQuery({
   setEdited,
 }: {
   owner: WorkspaceType;
-  actionConfiguration: AssistantBuilderTablesQueryConfiguration | null;
+  actionConfiguration: AssistantBuilderTableConfiguration | null;
   updateAction: (
     setNewAction: (
-      previousAction: AssistantBuilderTablesQueryConfiguration
-    ) => AssistantBuilderTablesQueryConfiguration
+      previousAction: AssistantBuilderTableConfiguration
+    ) => AssistantBuilderTableConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
 }) {
@@ -42,29 +41,25 @@ export function ActionTablesQuery({
 
   return (
     <>
-      <AssistantBuilderTablesModal
+      <AssistantBuilderDataSourceModal
         isOpen={showTableModal}
-        setOpen={(isOpen) => setShowTableModal(isOpen)}
+        setOpen={(isOpen) => {
+          setShowTableModal(isOpen);
+        }}
         owner={owner}
-        onSave={(tables, dataSourceView) => {
+        onSave={(newViewSelection) => {
           setEdited(true);
-          updateAction((previousAction) => {
-            const newTables = { ...previousAction };
-            if (dataSourceView.dataSource.connectorId) {
-              Object.keys(newTables)
-                .filter(
-                  (k) =>
-                    newTables[k].dataSourceId === dataSourceView.dataSource.name
-                )
-                .forEach((k) => delete newTables[k]);
-            }
-            for (const t of tables) {
-              newTables[tableKey(t)] = t;
-            }
-            return newTables;
+
+          // Update the action configuration with the new view selection.
+          // Table query action only supports one table.
+          updateAction(() => {
+            return {
+              ...newViewSelection,
+            };
           });
         }}
-        tablesQueryConfiguration={actionConfiguration}
+        initialDataSourceConfigurations={actionConfiguration}
+        viewType="tables"
       />
 
       <div className="text-sm text-element-700">
@@ -82,20 +77,13 @@ export function ActionTablesQuery({
         .
       </div>
 
-      <TablesSelectionSection
-        show={true}
-        tablesQueryConfiguration={actionConfiguration}
-        openTableModal={() => {
+      <DataSourceSelectionSection
+        owner={owner}
+        dataSourceConfigurations={actionConfiguration}
+        openDataSourceModal={() => {
           setShowTableModal(true);
         }}
-        onDelete={(key) => {
-          setEdited(true);
-          updateAction((previousAction) => {
-            const newTables = { ...previousAction };
-            delete newTables[key];
-            return newTables;
-          });
-        }}
+        viewType="tables"
       />
     </>
   );

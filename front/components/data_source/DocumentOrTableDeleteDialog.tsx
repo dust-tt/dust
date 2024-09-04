@@ -32,9 +32,8 @@ export const DocumentOrTableDeleteDialog = ({
 
   const handleDelete = async () => {
     try {
-      //TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
       setIsLoading(true);
-      const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
+      const endpoint = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
 
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {

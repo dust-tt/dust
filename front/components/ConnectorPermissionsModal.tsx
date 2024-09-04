@@ -137,6 +137,8 @@ export function ConnectorPermissionsModal({
                   }));
                 }}
                 showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
+                // List only document-type items when displaying permissions for a data source.
+                viewType="documents"
               />
             </div>
           </Page.Vertical>
