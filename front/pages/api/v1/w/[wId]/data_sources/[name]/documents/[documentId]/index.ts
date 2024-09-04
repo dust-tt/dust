@@ -415,6 +415,7 @@ async function handler(
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
             workspaceId: owner.sId,
+            dataSourceId: dataSource.sId,
             dataSourceName: dataSource.name,
             documentId: req.query.documentId as string,
             tags: bodyValidation.right.tags || [],
