@@ -1,7 +1,6 @@
 import type {
   CoreAPIDocument,
   CoreAPILightDocument,
-  DataSourceType,
   Result,
   UpsertContext,
 } from "@dust-tt/types";
@@ -25,6 +24,8 @@ import {
   launchUpsertDocumentWorkflow,
   launchUpsertTableWorkflow,
 } from "@app/temporal/upsert_queue/client";
+
+import type { DataSourceResource } from "./resources/data_source_resource";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -174,7 +175,7 @@ export async function runPostUpsertHooks({
   upsertContext,
 }: {
   workspaceId: string;
-  dataSource: DataSourceType;
+  dataSource: DataSourceResource;
   documentId: string;
   section: t.TypeOf<typeof FrontDataSourceDocumentSection>;
   document: CoreAPILightDocument | CoreAPIDocument;

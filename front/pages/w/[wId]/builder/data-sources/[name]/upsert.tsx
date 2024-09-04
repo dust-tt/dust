@@ -64,7 +64,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       readOnly,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       loadDocumentId: (context.query.documentId || null) as string | null,
       gaTrackingId: config.getGaTrackingId(),
     },

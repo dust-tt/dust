@@ -86,7 +86,7 @@ async function handler(
       return getManagedDataSourcePermissionsHandler(
         auth,
         // To make typescript happy.
-        { ...dataSource, connectorId: dataSource.connectorId },
+        { ...dataSource.toJSON(), connectorId: dataSource.connectorId },
         req,
         res
       );
