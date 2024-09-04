@@ -29,27 +29,22 @@ export const VaultFolderOrWebsiteModal: React.FC<ModalProps> = ({
 }) => {
   if (
     dataSourceView.category === "website" &&
-    dataSourceView.dataSource.connector
+    dataSourceView.dataSource.connector &&
+    isWebCrawlerConfiguration(dataSourceView.dataSource.connector.configuration)
   ) {
-    if (
-      isWebCrawlerConfiguration(
-        dataSourceView.dataSource.connector.configuration
-      )
-    ) {
-      return (
-        <VaultWebsiteModal
-          isOpen={isOpen}
-          setOpen={setOpen}
-          owner={owner}
-          vault={vault}
-          dataSources={dataSources}
-          dataSourceView={dataSourceView}
-          webCrawlerConfiguration={
-            dataSourceView.dataSource.connector.configuration
-          }
-        />
-      );
-    }
+    return (
+      <VaultWebsiteModal
+        isOpen={isOpen}
+        setOpen={setOpen}
+        owner={owner}
+        vault={vault}
+        dataSources={dataSources}
+        dataSourceView={dataSourceView}
+        webCrawlerConfiguration={
+          dataSourceView.dataSource.connector.configuration
+        }
+      />
+    );
   } else if (dataSourceView.category === "folder") {
     return (
       <VaultFolderModal
@@ -62,6 +57,5 @@ export const VaultFolderOrWebsiteModal: React.FC<ModalProps> = ({
       />
     );
   }
-
-  return null;
+  return <></>;
 };
