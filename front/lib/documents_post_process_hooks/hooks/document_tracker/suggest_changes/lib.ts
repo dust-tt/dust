@@ -47,7 +47,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
   const {
     upsertContext,
     auth,
-    dataSourceName,
+    dataSourceId,
     documentId,
     dataSourceConnectorProvider,
   } = params;
@@ -67,7 +67,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
 
   const localLogger = logger.child({
     workspaceId: owner.sId,
-    dataSourceName,
+    dataSourceId,
     documentId,
   });
 
@@ -85,7 +85,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
     }
   }
 
-  const dataSource = await getDatasource(auth, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceId);
 
   const docIsTracked = !!(await TrackedDocument.count({
     where: {
@@ -136,7 +136,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
 
 export async function documentTrackerSuggestChangesOnUpsert({
   auth,
-  dataSourceName,
+  dataSourceId,
   documentId,
   documentHash,
   documentSourceUrl,
@@ -148,7 +148,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   const localLogger = logger.child({
     workspaceId: owner.sId,
-    dataSourceName,
+    dataSourceId,
     documentId,
     documentHash,
   });
@@ -163,7 +163,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Running document_tracker_suggest_changes post upsert hook."
   );
 
-  const dataSource = await getDatasource(auth, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceId);
   const isDocTracked = !!(await TrackedDocument.count({
     where: {
       dataSourceId: dataSource.id,

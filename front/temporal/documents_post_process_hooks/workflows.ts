@@ -12,8 +12,8 @@ const { runPostUpsertHookActivity, runPostDeleteHookActivity } =
   });
 
 export async function runPostUpsertHooksWorkflow(
-  dataSourceName: string,
   workspaceId: string,
+  dataSourceId: string,
   documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
@@ -35,8 +35,8 @@ export async function runPostUpsertHooksWorkflow(
     }
 
     await runPostUpsertHookActivity(
-      dataSourceName,
       workspaceId,
+      dataSourceId,
       documentId,
       documentHash,
       dataSourceConnectorProvider,
@@ -46,15 +46,15 @@ export async function runPostUpsertHooksWorkflow(
 }
 
 export async function runPostDeleteHoosWorkflow(
-  dataSourceName: string,
   workspaceId: string,
+  dataSourceId: string,
   documentId: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
   hookType: DocumentsPostProcessHookType
 ) {
   await runPostDeleteHookActivity(
-    dataSourceName,
     workspaceId,
+    dataSourceId,
     documentId,
     dataSourceConnectorProvider,
     hookType

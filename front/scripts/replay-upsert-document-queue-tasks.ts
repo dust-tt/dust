@@ -52,10 +52,10 @@ makeScript(
         }
       }
 
-      const { workspaceId, dataSourceName, upsertQueueId, enqueueTimestamp } =
+      const { workspaceId, dataSourceId, upsertQueueId, enqueueTimestamp } =
         task;
 
-      const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceName}-${upsertQueueId}`;
+      const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
 
       logger.info(
         { workspaceId, workflowId },
@@ -72,7 +72,7 @@ makeScript(
       // The, we restart the workflow.
       await launchUpsertDocumentWorkflow({
         workspaceId,
-        dataSourceName,
+        dataSourceId,
         upsertQueueId,
         enqueueTimestamp,
       });

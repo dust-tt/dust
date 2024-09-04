@@ -180,7 +180,6 @@ export async function handlePostTableCsvUpsertRequest(
       upsertTable: {
         workspaceId: owner.sId,
         dataSourceId: dataSource.sId,
-        dataSourceName: dataSource.name,
         tableId,
         tableName: name,
         tableDescription: description,
