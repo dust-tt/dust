@@ -9,7 +9,7 @@ import { withRetries } from "@app/lib/utils/retries";
 
 interface NotionConnector {
   id: number;
-  dataSourceName: string;
+  dataSourceId: string;
   workspaceId: string;
   pausedAt: Date | null;
 }
@@ -18,7 +18,7 @@ async function listAllNotionConnectors() {
   const connectorsReplica = getConnectorReplicaDbConnection();
 
   const notionConnectors: NotionConnector[] = await connectorsReplica.query(
-    `SELECT id, "dataSourceName", "workspaceId", "pausedAt" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
+    `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
     }
