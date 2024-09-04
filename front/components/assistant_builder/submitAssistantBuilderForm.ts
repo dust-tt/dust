@@ -9,6 +9,7 @@ import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
+import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import type {
   AssistantBuilderActionConfiguration,
@@ -120,7 +121,19 @@ export async function submitAssistantBuilderForm({
             type: "tables_query_configuration",
             name: a.name,
             description: a.description,
-            tables: Object.values(a.configuration),
+            tables: Object.values(a.configuration).flatMap(
+              ({ dataSourceView, selectedResources }) => {
+                return selectedResources.map((resource) => ({
+                  dataSourceId: dataSourceView.dataSource.name,
+                  dataSourceViewId: dataSourceView.sId,
+                  workspaceId: owner.sId,
+                  tableId: getTableIdForContentNode(
+                    dataSourceView.dataSource,
+                    resource
+                  ),
+                }));
+              }
+            ),
           },
         ];
 

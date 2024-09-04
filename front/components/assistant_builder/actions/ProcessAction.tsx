@@ -375,6 +375,7 @@ export function ActionProcess({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
+        viewType="documents"
       />
 
       <div className="text-sm text-element-700">

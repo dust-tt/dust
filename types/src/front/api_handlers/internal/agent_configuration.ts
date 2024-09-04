@@ -86,20 +86,13 @@ const DustAppRunActionConfigurationSchema = t.type({
 const TablesQueryActionConfigurationSchema = t.type({
   type: t.literal("tables_query_configuration"),
   tables: t.array(
-    // TODO(GROUPS_INFRA) Make `dataSourceViewId` required.
-    t.union([
-      t.type({
-        dataSourceId: t.string,
-        dataSourceViewId: t.string,
-        tableId: t.string,
-        workspaceId: t.string,
-      }),
-      t.type({
-        dataSourceId: t.string,
-        tableId: t.string,
-        workspaceId: t.string,
-      }),
-    ])
+    t.type({
+      dataSourceId: t.string,
+      // TODO(GROUPS_INFRA) Make `dataSourceViewId` required.
+      dataSourceViewId: t.union([t.string, t.undefined, t.null]),
+      tableId: t.string,
+      workspaceId: t.string,
+    })
   ),
 });
 
