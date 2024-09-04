@@ -124,13 +124,13 @@ export function useDocument({
 
   const { data, error, mutate } = useSWRWithDefaults(
     documentId
-      ? `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${documentId}`
+      ? `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
       : null,
     documentFetcher
   );
   return {
     document: useMemo(() => (data ? data.document : null), [data]),
-    isDocumentLoading: !error && !data,
+    isDocumentLoading: documentId && !error && !data,
     isDocumentError: error,
     mutateDocument: mutate,
   };

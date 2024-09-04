@@ -59,18 +59,14 @@ export const FoldersHeaderMenu = ({
           <DropdownMenu.Item
             icon={DocumentTextIcon}
             onClick={() => {
-              contentActionsRef.current?.callAction(
-                "DocumentOrTableUploadOrEditModal"
-              );
+              contentActionsRef.current?.callAction("CreateDocument");
             }}
             label="Create a document"
           />
           <DropdownMenu.Item
             icon={TableIcon}
             onClick={() => {
-              contentActionsRef.current?.callAction(
-                "DocumentOrTableUploadOrEditModal"
-              );
+              contentActionsRef.current?.callAction("CreateTable");
             }}
             label="Create a table"
           />
