@@ -283,7 +283,7 @@ async function renderTableDataSourcesConfigurations(
           sr.resources.map(async (tableId) => {
             const coreAPITable = await coreAPI.getTable({
               projectId: dataSourceView.dataSource.dustAPIProjectId,
-              dataSourceName: dataSourceView.dataSource.name,
+              dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
               tableId,
             });
 
