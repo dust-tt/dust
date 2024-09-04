@@ -173,12 +173,14 @@ const SystemVaultItem = ({
   const router = useRouter();
 
   const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(itemPath);
+  const isAncestorToCurrentPage = router.asPath.startsWith(itemPath + "/");
 
   // Unfold the item if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
@@ -230,12 +232,14 @@ const VaultMenuItem = ({
   const router = useRouter();
 
   const vaultPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}`;
-  const isAncestorToCurrentPage = router.asPath.includes(vaultPath);
+  const isAncestorToCurrentPage = router.asPath.startsWith(vaultPath + "/");
 
   // Unfold the vault if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
@@ -349,12 +353,16 @@ const VaultCategoryItem = ({
   const router = useRouter();
 
   const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(vaultCategoryPath);
+  const isAncestorToCurrentPage = router.asPath.includes(
+    vaultCategoryPath + "/"
+  );
 
   // Unfold the vault's category if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
