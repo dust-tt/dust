@@ -466,14 +466,7 @@ function getDataSourceViewIdsFromActions(
           (dataSource) => dataSource.dataSourceViewId
         );
       } else if (action.type === "tables_query_configuration") {
-        return action.tables.map((table) => {
-          if (!("dataSourceViewId" in table)) {
-            throw new Error(
-              "Unexpected: table without dataSourceViewId in tables_query_configuration"
-            );
-          }
-          return table.dataSourceViewId;
-        });
+        return action.tables.map((table) => table.dataSourceViewId);
       }
       return [];
     })
