@@ -1,6 +1,6 @@
 import type { Meta } from "@storybook/react";
 import { ColumnDef } from "@tanstack/react-table";
-import React from "react";
+import React, { useMemo } from "react";
 
 import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
 
@@ -28,6 +28,9 @@ type Data = {
 };
 
 export const DataTableExample = () => {
+  const [currentPageNumber, setCurrentPageNumber] = React.useState(1);
+  const [itemsPerPage] = React.useState(2);
+
   const data: Data[] = [
     {
       name: "Marketing",
@@ -144,13 +147,22 @@ export const DataTableExample = () => {
     },
   ];
 
+  const rows = useMemo(() => {
+    return data.slice((currentPageNumber - 1) * itemsPerPage, (currentPageNumber) * itemsPerPage);
+  }, [data, currentPageNumber, itemsPerPage])
+
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <DataTable
-        data={data}
+        data={rows}
         columns={columns}
         initialColumnOrder={[{ id: "name", desc: false }]}
         columnsBreakpoints={{ lastUpdated: "sm" }}
+        paginationProps={{
+          itemsCount: data.length,
+          onButtonClick: (pageNumber) => setCurrentPageNumber(pageNumber),
+          maxItemsPerPage: 2
+        }}
       />
     </div>
   );

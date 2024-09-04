@@ -10,7 +10,7 @@ type Size = "sm" | "xs";
 
 const pagesShownInControls = 7;
 
-interface PaginationProps {
+export interface PaginationProps {
   itemsCount: number;
   maxItemsPerPage: number;
   onButtonClick: (pageNumber: number) => void;

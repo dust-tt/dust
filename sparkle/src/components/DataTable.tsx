@@ -11,13 +11,16 @@ import {
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
 
-import { Avatar } from "@sparkle/components/Avatar";
+import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
+import { PaginationProps } from "@sparkle/components/Pagination";
 import {
-  DropdownItemProps,
+  Avatar,
   DropdownMenu,
-} from "@sparkle/components/DropdownMenu";
-import { IconButton } from "@sparkle/components/IconButton";
-import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
+  IconButton,
+  MoreIcon,
+  Pagination,
+} from "@sparkle/index";
+import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -41,6 +44,7 @@ interface DataTableProps<TData extends TBaseData> {
   initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
   sortingFn?: SortingFn<TData>;
+  paginationProps: PaginationProps;
 }
 
 function shouldRenderColumn(
@@ -61,6 +65,7 @@ export function DataTable<TData extends TBaseData>({
   filterColumn,
   initialColumnOrder,
   columnsBreakpoints = {},
+  paginationProps,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
   const [sorting, setSorting] = useState<SortingState>(
@@ -80,6 +85,9 @@ export function DataTable<TData extends TBaseData>({
       columnFilters,
       sorting,
     },
+    ...(paginationProps && {
+      manualPagination: true,
+    }),
   });
 
   useEffect(() => {
@@ -89,81 +97,90 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <DataTable.Root className={className}>
-      <DataTable.Header>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <DataTable.Row key={headerGroup.id}>
-            {headerGroup.headers.map((header) => {
-              const breakpoint = columnsBreakpoints[header.id];
-              if (
-                !windowSize.width ||
-                !shouldRenderColumn(windowSize.width, breakpoint)
-              ) {
-                return null;
-              }
-              return (
-                <DataTable.Head
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  className={classNames(
-                    header.column.getCanSort() ? "s-cursor-pointer" : ""
-                  )}
-                >
-                  <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
+    <div className="s-mb-2 s-ml-2 s-flex s-flex-col s-gap-2">
+      <DataTable.Root className={className}>
+        <DataTable.Header>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <DataTable.Row key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                const breakpoint = columnsBreakpoints[header.id];
+                if (
+                  !windowSize.width ||
+                  !shouldRenderColumn(windowSize.width, breakpoint)
+                ) {
+                  return null;
+                }
+                return (
+                  <DataTable.Head
+                    key={header.id}
+                    onClick={header.column.getToggleSortingHandler()}
+                    className={classNames(
+                      header.column.getCanSort() ? "s-cursor-pointer" : ""
                     )}
-                    {header.column.getCanSort() && (
-                      <Icon
-                        visual={
-                          header.column.getIsSorted() === "asc"
-                            ? ArrowUpIcon
-                            : header.column.getIsSorted() === "desc"
-                              ? ArrowDownIcon
-                              : ArrowDownIcon
-                        }
-                        size="xs"
-                        className={classNames(
-                          "s-ml-1",
-                          header.column.getIsSorted()
-                            ? "s-opacity-100"
-                            : "s-opacity-0"
-                        )}
-                      />
-                    )}
-                  </div>
-                </DataTable.Head>
-              );
-            })}
-          </DataTable.Row>
-        ))}
-      </DataTable.Header>
-      <DataTable.Body>
-        {table.getRowModel().rows.map((row) => (
-          <DataTable.Row
-            key={row.id}
-            onClick={row.original.onClick}
-            moreMenuItems={row.original.moreMenuItems}
-          >
-            {row.getVisibleCells().map((cell) => {
-              const breakpoint = columnsBreakpoints[cell.column.id];
-              if (
-                !windowSize.width ||
-                !shouldRenderColumn(windowSize.width, breakpoint)
-              ) {
-                return null;
-              }
-              return (
-                <DataTable.Cell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </DataTable.Cell>
-              );
-            })}
-          </DataTable.Row>
-        ))}
-      </DataTable.Body>
-    </DataTable.Root>
+                  >
+                    <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                      {header.column.getCanSort() && (
+                        <Icon
+                          visual={
+                            header.column.getIsSorted() === "asc"
+                              ? ArrowUpIcon
+                              : header.column.getIsSorted() === "desc"
+                                ? ArrowDownIcon
+                                : ArrowDownIcon
+                          }
+                          size="xs"
+                          className={classNames(
+                            "s-ml-1",
+                            header.column.getIsSorted()
+                              ? "s-opacity-100"
+                              : "s-opacity-0"
+                          )}
+                        />
+                      )}
+                    </div>
+                  </DataTable.Head>
+                );
+              })}
+            </DataTable.Row>
+          ))}
+        </DataTable.Header>
+        <DataTable.Body>
+          {table.getRowModel().rows.map((row) => (
+            <DataTable.Row
+              key={row.id}
+              onClick={row.original.onClick}
+              moreMenuItems={row.original.moreMenuItems}
+            >
+              {row.getVisibleCells().map((cell) => {
+                const breakpoint = columnsBreakpoints[cell.column.id];
+                if (
+                  !windowSize.width ||
+                  !shouldRenderColumn(windowSize.width, breakpoint)
+                ) {
+                  return null;
+                }
+                return (
+                  <DataTable.Cell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </DataTable.Cell>
+                );
+              })}
+            </DataTable.Row>
+          ))}
+        </DataTable.Body>
+      </DataTable.Root>
+      {paginationProps && (
+        <Pagination
+          itemsCount={paginationProps.itemsCount}
+          maxItemsPerPage={paginationProps.maxItemsPerPage}
+          onButtonClick={paginationProps.onButtonClick}
+        />
+      )}
+    </div>
   );
 }
 
