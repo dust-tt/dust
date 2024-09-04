@@ -245,6 +245,9 @@ export function AssistantDetails({
     const [retrievalActions, otherActions] = useMemo(() => {
       return actions.reduce(
         ([dataSources, otherActions], a) => {
+          // Since Dust is configured with one search for all, plus individual searches for each managed data source,
+          // we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
+          // We use the `hidden_dust_search_` prefix to identify these additional searches.
           if (
             isRetrievalConfiguration(a) &&
             (!isDustGlobalAgent || !a.name.startsWith("hidden_dust_search_"))
