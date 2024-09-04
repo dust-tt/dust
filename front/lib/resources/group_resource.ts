@@ -174,6 +174,23 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new this(GroupModel, group.get());
   }
 
+  static async internalFetchWorkspaceSystemGroup(
+    workspaceId: ModelId
+  ): Promise<GroupResource> {
+    const group = await this.model.findOne({
+      where: {
+        workspaceId,
+        kind: "system",
+      },
+    });
+
+    if (!group) {
+      throw new Error("System group not found.");
+    }
+
+    return new this(GroupModel, group.get());
+  }
+
   // Fetchers
 
   private static async baseFetch(
