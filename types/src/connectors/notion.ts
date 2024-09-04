@@ -11,14 +11,14 @@ export type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
 export type NotionGarbageCollectionMode = "always" | "never";
 
 export function getNotionWorkflowId(
-  dataSourceInfo: { workspaceId: string; dataSourceName: string },
+  dataSourceInfo: { workspaceId: string; dataSourceId: string },
   gargbageCollectionMode: NotionGarbageCollectionMode
 ) {
   let wfName = "workflow-notion";
   if (gargbageCollectionMode === "always") {
     wfName += "-garbage-collector";
   }
-  return `${wfName}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
+  return `${wfName}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}`;
 }
 
 // Extractor types

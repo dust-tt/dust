@@ -57,25 +57,27 @@ export async function runCommand(adminCommand: AdminCommandType) {
 }
 
 export async function getConnectorOrThrow({
-  connectorType,
   workspaceId,
+  dataSourceId,
 }: {
-  connectorType: string;
   workspaceId: string | undefined;
+  dataSourceId: string | undefined;
 }): Promise<ConnectorModel> {
   if (!workspaceId) {
     throw new Error("Missing workspace ID (wId)");
   }
+  if (!dataSourceId) {
+    throw new Error("Missing dataSource ID (dsId)");
+  }
   const connector = await ConnectorModel.findOne({
     where: {
-      type: connectorType,
       workspaceId: workspaceId,
-      dataSourceName: "managed-" + connectorType,
+      dataSourceId: dataSourceId,
     },
   });
   if (!connector) {
     throw new Error(
-      `No connector found for ${connectorType} workspace with ID ${workspaceId}`
+      `No connector found for ${dataSourceId} workspace with ID ${workspaceId}`
     );
   }
   return connector;
@@ -98,6 +100,9 @@ export const connectors = async ({
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
+  if (!args.dsId) {
+    throw new Error("Missing --dsId argument");
+  }
   if (!args.dataSourceName) {
     throw new Error("Missing --dataSourceName argument");
   }
@@ -107,7 +112,7 @@ export const connectors = async ({
   const connector = await ConnectorModel.findOne({
     where: {
       workspaceId: `${args.wId}`,
-      dataSourceName: args.dataSourceName,
+      dataSourceId: args.dsId,
     },
   });
 
@@ -233,7 +238,7 @@ export const batch = async ({
           }).sync({ fromTs })
         );
         logger.info(
-          `[Admin] Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceName} - fromTs:${fromTs}`
+          `[Admin] Triggered for connector id:${connector.id} - ${connector.type} - workspace:${connector.workspaceId} - dataSource:${connector.dataSourceId} - fromTs:${fromTs}`
         );
       }
       return { success: true };

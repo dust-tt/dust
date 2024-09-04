@@ -14,6 +14,17 @@ export const CONNECTOR_PROVIDERS = [
   "webcrawler",
 ] as const;
 
+export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
+  confluence: "Confluence",
+  github: "GitHub",
+  google_drive: "Google Drive",
+  intercom: "Intercom",
+  notion: "Notion",
+  slack: "Slack",
+  microsoft: "Microsoft",
+  webcrawler: "Website",
+};
+
 export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
   ConnectorProvider,
   string

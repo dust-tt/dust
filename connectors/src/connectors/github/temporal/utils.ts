@@ -3,25 +3,25 @@ import type { ModelId } from "@dust-tt/types";
 import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 export function getFullSyncWorkflowId(dataSourceInfo: DataSourceInfo) {
-  return `workflow-github-full-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
+  return `workflow-github-full-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}`;
 }
 
 export function getReposSyncWorkflowId(dataSourceInfo: DataSourceInfo) {
-  return `workflow-github-repos-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
+  return `workflow-github-repos-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}`;
 }
 
 export function getCodeSyncWorkflowId(
   dataSourceInfo: DataSourceInfo,
   repoId: number
 ) {
-  return `workflow-github-code-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}`;
+  return `workflow-github-code-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}-${repoId}`;
 }
 
 export function getCodeSyncDailyCronWorkflowId(
   dataSourceInfo: DataSourceInfo,
   repoId: number
 ) {
-  return `workflow-github-code-sync-daily-cron-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}`;
+  return `workflow-github-code-sync-daily-cron-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}-${repoId}`;
 }
 
 export function getIssueSyncWorkflowId(
@@ -29,7 +29,7 @@ export function getIssueSyncWorkflowId(
   repoId: number,
   issueNumber: number
 ) {
-  return `workflow-github-issue-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${issueNumber}`;
+  return `workflow-github-issue-sync-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}-${repoId}-${issueNumber}`;
 }
 
 export function getDiscussionSyncWorkflowId(
@@ -38,7 +38,7 @@ export function getDiscussionSyncWorkflowId(
   repoId: number,
   discussionNumber: number
 ) {
-  return `workflow-github-discussion-sync-${connectorId}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${discussionNumber}`;
+  return `workflow-github-discussion-sync-${connectorId}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}-${repoId}-${discussionNumber}`;
 }
 
 export function getIssueGarbageCollectWorkflowId(
@@ -46,7 +46,7 @@ export function getIssueGarbageCollectWorkflowId(
   repoId: number,
   issueNumber: number
 ) {
-  return `workflow-github-issue-garbage-collect-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${issueNumber}`;
+  return `workflow-github-issue-garbage-collect-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}-${repoId}-${issueNumber}`;
 }
 
 export function getDiscussionGarbageCollectWorkflowId(
@@ -55,12 +55,12 @@ export function getDiscussionGarbageCollectWorkflowId(
   repoId: number,
   issueNumber: number
 ) {
-  return `workflow-github-discussion-garbage-collect-${connectorId}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}-${issueNumber}`;
+  return `workflow-github-discussion-garbage-collect-${connectorId}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}-${repoId}-${issueNumber}`;
 }
 
 export function getRepoGarbageCollectWorkflowId(
   dataSourceInfo: DataSourceInfo,
   repoId: number
 ) {
-  return `workflow-github-repo-garbage-collect-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}-${repoId}`;
+  return `workflow-github-repo-garbage-collect-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceId}-${repoId}`;
 }

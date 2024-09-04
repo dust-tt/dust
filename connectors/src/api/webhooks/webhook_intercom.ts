@@ -142,7 +142,7 @@ const _webhookIntercomAPIHandler = async (
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     intercomWorkspaceId,
     conversationId: conversation.id,
   };
@@ -238,7 +238,7 @@ const _webhookIntercomUninstallAPIHandler = async (
     workspaceId: dataSourceConfig.workspaceId,
     connectorId: connector.id,
     provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     intercomWorkspaceId,
   };
 
