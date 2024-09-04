@@ -94,6 +94,7 @@ export default function Vault({
   plan,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  console.log(parentId);
   return (
     <Page.Vertical gap="xl" align="stretch">
       <VaultDataSourceViewContentList
