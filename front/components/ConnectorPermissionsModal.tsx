@@ -33,7 +33,6 @@ interface ConnectorUiConfig {
 function getRenderingConfigForConnectorProvider(
   connectorProvider: ConnectorProvider
 ): ConnectorUiConfig {
-
   switch (connectorProvider) {
     case "confluence":
     case "google_drive":
