@@ -36,7 +36,10 @@ import type { InferGetServerSidePropsType } from "next";
 import * as React from "react";
 import { useContext, useMemo, useRef, useState } from "react";
 
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import {
+  ConnectorPermissionsModal,
+  getRenderingConfigForConnectorProvider,
+} from "@app/components/ConnectorPermissionsModal";
 import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -252,7 +255,15 @@ export default function DataSourcesView({
         readOnly,
         onButtonClick: (dataSource: DataSourceWithConnectorAndUsageType) => {
           setSelectedDataSource(dataSource);
-          setShowConnectorModal(true);
+          const { addDataWithConnection } =
+            getRenderingConfigForConnectorProvider(
+              dataSource.connectorProvider
+            );
+          if (addDataWithConnection) {
+            setShowEditionModal(true);
+          } else {
+            setShowConnectorModal(true);
+          }
         },
       })
     );

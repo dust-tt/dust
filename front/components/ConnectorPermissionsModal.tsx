@@ -26,11 +26,10 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
 
 interface ConnectorUiConfig {
   displayEditionModal: boolean;
-  displayManageConnectionButton: boolean;
-  postPermissionsUpdateMessage?: string;
+  addDataWithConnection: boolean;
 }
 
-function getRenderingConfigForConnectorProvider(
+export function getRenderingConfigForConnectorProvider(
   connectorProvider: ConnectorProvider
 ): ConnectorUiConfig {
   switch (connectorProvider) {
@@ -38,30 +37,21 @@ function getRenderingConfigForConnectorProvider(
     case "google_drive":
     case "microsoft":
       return {
-        displayManageConnectionButton: true,
+        addDataWithConnection: false,
         displayEditionModal: true,
       };
-
+    case "webcrawler":
     case "slack":
     case "intercom":
       return {
-        displayManageConnectionButton: true,
+        addDataWithConnection: false,
         displayEditionModal: false,
       };
     case "notion":
-      return {
-        displayEditionModal: true,
-        displayManageConnectionButton: false,
-      };
     case "github":
       return {
+        addDataWithConnection: true,
         displayEditionModal: true,
-        displayManageConnectionButton: false,
-      };
-    case "webcrawler":
-      return {
-        displayEditionModal: false,
-        displayManageConnectionButton: false,
       };
     default:
       assertNever(connectorProvider);
@@ -155,7 +145,7 @@ export function ConnectorPermissionsModal({
     setSaving(false);
   }
 
-  const { displayEditionModal, displayManageConnectionButton } =
+  const { displayEditionModal } =
     getRenderingConfigForConnectorProvider(connector.type);
 
   return (
@@ -171,24 +161,22 @@ export function ConnectorPermissionsModal({
       variant="side-md"
     >
       <div className="mx-auto max-w-4xl">
-        {displayManageConnectionButton && (
-          <div className="flex pr-4 pt-4">
-            <Button
-              className="ml-auto justify-self-end"
-              label="Edit permissions"
-              variant="tertiary"
-              icon={LockIcon}
-              onClick={() => {
-                if (displayEditionModal) {
-                  setShowEditionModal(true);
-                  onClose();
-                } else {
-                  void handleUpdatePermissions(connector, dataSource);
-                }
-              }}
-            />
-          </div>
-        )}
+        <div className="flex pr-4 pt-4">
+          <Button
+            className="ml-auto justify-self-end"
+            label="Edit permissions"
+            variant="tertiary"
+            icon={LockIcon}
+            onClick={() => {
+              if (displayEditionModal) {
+                setShowEditionModal(true);
+                onClose();
+              } else {
+                void handleUpdatePermissions(connector, dataSource);
+              }
+            }}
+          />
+        </div>
         <div className="flex flex-col pt-4">
           <Page.Vertical align="stretch" gap="xl">
             <Page.Header title="Make available to the workspace:" />
