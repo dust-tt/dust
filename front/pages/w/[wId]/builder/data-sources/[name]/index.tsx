@@ -607,6 +607,7 @@ function DatasourceTablesTabView({
                   workspaceId: owner.sId,
                   tableId: t.table_id,
                   dataSourceId: dataSource.name,
+                  dataSourceViewId: undefined,
                 })}
                 title={`${t.name} (${t.data_source_id})`}
                 visual={
