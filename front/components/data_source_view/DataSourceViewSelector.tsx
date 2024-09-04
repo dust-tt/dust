@@ -76,8 +76,6 @@ export function DataSourceViewsSelector({
     [dataSourceViews]
   );
 
-  console.log(">> orderDatasourceViews:", orderDatasourceViews);
-
   return (
     <Tree isLoading={false}>
       {groupManaged && (

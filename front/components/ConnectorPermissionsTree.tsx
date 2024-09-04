@@ -276,7 +276,7 @@ function PermissionTreeChildren({
   );
 
   return (
-    <div className="border-2 border-red-500">
+    <>
       {isSearchEnabled && (
         <>
           <div className="flex w-full flex-row">
@@ -419,7 +419,7 @@ function PermissionTreeChildren({
           );
         })}
       </Tree>
-    </div>
+    </>
   );
 }
 
