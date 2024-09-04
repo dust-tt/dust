@@ -3,7 +3,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   PlanType,
-  PostDataSourceDocumentRequestBody,
+  PostDataSourceWithNameDocumentRequestBody,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
@@ -47,7 +47,7 @@ export const MultipleDocumentsUpload = ({
   const sendNotification = useContext(SendNotificationsContext);
 
   const handleUpsert = async (text: string, documentId: string) => {
-    const body: PostDataSourceDocumentRequestBody = {
+    const body: PostDataSourceWithNameDocumentRequestBody = {
       name: documentId,
       timestamp: null,
       parents: null,

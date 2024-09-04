@@ -130,7 +130,6 @@ export default function DatasourceUpsert({
     setLoading(true);
 
     const body: PostDataSourceDocumentRequestBody = {
-      name: documentId,
       timestamp: null,
       parents: null,
       section: {

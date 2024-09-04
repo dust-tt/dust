@@ -3,7 +3,7 @@ import type {
   DocumentType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { PostDataSourceDocumentRequestBodySchema } from "@dust-tt/types";
+import { PostDataSourceWithNameDocumentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -81,9 +81,8 @@ async function handler(
         });
       }
 
-      const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        PostDataSourceWithNameDocumentRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);

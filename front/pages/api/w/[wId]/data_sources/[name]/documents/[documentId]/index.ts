@@ -99,6 +99,7 @@ async function handler(
 
       const upsertResult = await upsertDocument({
         ...bodyValidation.right,
+        name: documentId,
         dataSource,
         auth,
       });

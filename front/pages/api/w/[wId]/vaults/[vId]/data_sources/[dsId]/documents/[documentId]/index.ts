@@ -5,7 +5,7 @@ import type {
 } from "@dust-tt/types";
 import {
   CoreAPI,
-  PatchDataSourceDocumentRequestBodySchema,
+  PostDataSourceDocumentRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -91,7 +91,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchDataSourceDocumentRequestBodySchema.decode(
+      const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(
         req.body
       );
 
