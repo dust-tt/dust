@@ -156,11 +156,14 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async listWorkspaceVaults(
-    auth: Authenticator
+    auth: Authenticator,
+    adminsBypassACL: boolean = true
   ): Promise<VaultResource[]> {
     const vaults = await this.baseFetch(auth);
     return vaults.filter(
-      (vault) => auth.isAdmin() || auth.hasPermission([vault.acl()], "read")
+      (vault) =>
+        (auth.isAdmin() && adminsBypassACL) ||
+        auth.hasPermission([vault.acl()], "read")
     );
   }
 
