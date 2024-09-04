@@ -49,7 +49,7 @@ export async function upsertDocumentActivity(
   const logger = mainLogger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
-    dataSourceName: upsertQueueItem.dataSourceName,
+    dataSourceId: upsertQueueItem.dataSourceId,
     documentId: upsertQueueItem.documentId,
   });
 
