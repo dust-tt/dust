@@ -69,6 +69,7 @@ makeScript({}, async ({ execute }, logger) => {
         {
           workspaceId: c.workspaceId,
           connectorId: c.id,
+          dataSourceId: ds.sId,
           dataSourceName: ds.name,
           execute,
         },
