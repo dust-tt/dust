@@ -43,8 +43,8 @@ import logger from "@app/logger/logger";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleVaults = [
-    await VaultResource.fetchWorkspaceGlobalVault(auth),
-  ];
+    ...(await VaultResource.listWorkspaceVaults(auth)),
+  ].filter((vault) => !vault.isSystem());
 
   const [dsViews, allDustApps] = await Promise.all([
     DataSourceViewResource.listByVaults(auth, accessibleVaults),

@@ -1,4 +1,4 @@
-import { Modal } from "@dust-tt/sparkle";
+import { Button, ListCheckIcon, Modal } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -77,7 +77,25 @@ export default function AssistantBuilderDataSourceModal({
       variant="side-md"
       title="Manage data sources selection"
     >
-      <div className="w-full pt-12">
+      <div className="flex w-full justify-end pl-12 pr-2 pt-4">
+        <Button
+          variant="tertiary"
+          label="Select all visible"
+          icon={ListCheckIcon}
+          onClick={() => {
+            document
+              .querySelectorAll<HTMLInputElement>(
+                '#dataSourceViewsSelector div.is-collapsed label > input[type="checkbox"]:first-child'
+              )
+              .forEach((el) => {
+                if (!el.checked) {
+                  el.click();
+                }
+              });
+          }}
+        />
+      </div>
+      <div className="w-full pl-12 pt-3" id="dataSourceViewsSelector">
         <DataSourceViewsSelector
           dataSourceViews={supportedDataSourceViewsForViewType}
           owner={owner}

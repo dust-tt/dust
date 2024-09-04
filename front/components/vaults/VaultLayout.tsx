@@ -1,9 +1,4 @@
-import {
-  Breadcrumbs,
-  CompanyIcon,
-  FolderIcon,
-  LockIcon,
-} from "@dust-tt/sparkle";
+import { Breadcrumbs, FolderIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
@@ -24,6 +19,7 @@ import {
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { getVaultIcon } from "@app/lib/vaults";
 
 export interface VaultLayoutProps {
   gaTrackingId: string;
@@ -125,7 +121,7 @@ function VaultBreadCrumbs({
 
     const items = [
       {
-        icon: vault.kind === "global" ? CompanyIcon : LockIcon,
+        icon: getVaultIcon(vault),
         label: vault.kind === "global" ? "Company Data" : vault.name,
         href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
       },
