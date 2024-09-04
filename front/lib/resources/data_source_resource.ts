@@ -36,7 +36,6 @@ export type FetchDataSourceOrigin =
   | "post_upsert_hook_helper"
   | "post_upsert_hook_activities"
   | "lib_api_get_data_source"
-  | "lib_api_delete_data_source"
   | "cli_delete"
   | "cli_delete_document"
   | "vault_patch_content"

@@ -104,7 +104,7 @@ async function handler(
         ...bodyValidation.right,
         tableId,
         async: bodyValidation.right.async ?? false,
-        dataSource: dataSource.toJSON(),
+        dataSource,
         auth,
       });
 
@@ -126,7 +126,7 @@ async function handler(
     case "DELETE":
       const delRes = await deleteTable({
         owner: auth.getNonNullableWorkspace(),
-        dataSource: dataSource.toJSON(),
+        dataSource,
         tableId,
       });
 
