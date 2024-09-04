@@ -11,6 +11,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorProvider,
   DataSourceViewCategory,
   DataSourceViewWithConnectorType,
@@ -19,12 +20,16 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { ComponentType } from "react";
+import { useRouter } from "next/router";
+import type { ComponentType} from "react";
+import { useContext } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
@@ -181,8 +186,11 @@ export const VaultResourcesList = ({
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
     useState<DataSourceViewWithConnectorType | null>(null);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
+  const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -230,7 +238,8 @@ export const VaultResourcesList = ({
           variant: "warning",
           onClick: (e) => {
             e.stopPropagation();
-            // TODO: add deletion
+            setSelectedDataSourceView(r);
+            setShowDeleteConfirmDialog(true);
           },
         },
       ],
@@ -244,6 +253,36 @@ export const VaultResourcesList = ({
       </div>
     );
   }
+
+  const onDeleteFolderOrWebsite = async () => {
+    if (!selectedDataSourceView) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${selectedDataSourceView.dataSource.name}`,
+      { method: "DELETE" }
+    );
+
+    if (res.ok) {
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+      );
+      sendNotification({
+        type: "success",
+        title: `Successfully deleted ${selectedDataSourceView.category}`,
+        description: `${getDataSourceNameFromView(selectedDataSourceView)} was successfully deleted.`,
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: `Error deleting ${selectedDataSourceView.category}`,
+        description: `Error: ${err.error.message}`,
+      });
+    }
+
+    return res.ok;
+  };
 
   return (
     <>
@@ -302,14 +341,21 @@ export const VaultResourcesList = ({
               dataSources={dataSources}
             />
             {selectedDataSourceView && (
-              <VaultFolderOrWebsiteModal
-                isOpen={showFolderOrWebsiteModal}
-                setOpen={(isOpen) => setShowFolderOrWebsiteModal(isOpen)}
-                owner={owner}
-                vault={vault}
-                dataSources={dataSources}
-                dataSourceView={selectedDataSourceView}
-              />
+              <>
+                <VaultFolderOrWebsiteModal
+                  isOpen={showFolderOrWebsiteModal}
+                  setOpen={(isOpen) => setShowFolderOrWebsiteModal(isOpen)}
+                  owner={owner}
+                  vault={vault}
+                  dataSources={dataSources}
+                  dataSourceView={selectedDataSourceView}
+                />
+                <DeleteDataSourceDialog
+                  handleDelete={onDeleteFolderOrWebsite}
+                  isOpen={showDeleteConfirmDialog}
+                  setIsOpen={setShowDeleteConfirmDialog}
+                />
+              </>
             )}
           </>
         )}
