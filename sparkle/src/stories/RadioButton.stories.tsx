@@ -2,6 +2,7 @@ import { Meta } from "@storybook/react";
 import React from "react";
 
 import { RadioButton } from "@sparkle/components/RadioButton";
+import { LockIcon, PauseIcon, PlayIcon, StopIcon } from "@sparkle/icons";
 
 const meta = {
   title: "Primitives/RadioButton",
@@ -20,18 +21,30 @@ export const RadioButtonExamples = () => {
         name="test1"
         choices={[
           {
-            label: "yes",
-            value: "yes",
+            label: (
+              <>
+                <PauseIcon style={{ display: "inline" }} /> pause
+              </>
+            ),
+            value: "pause",
             disabled: false,
           },
           {
-            label: "no",
-            value: "no",
+            label: (
+              <>
+                <PlayIcon style={{ display: "inline" }} /> play
+              </>
+            ),
+            value: "play",
             disabled: false,
           },
           {
-            label: "maybe",
-            value: "maybe",
+            label: (
+              <>
+                <StopIcon style={{ display: "inline" }} /> stop
+              </>
+            ),
+            value: "stop",
             disabled: true,
           },
         ]}

@@ -11,7 +11,7 @@ export type RadioButtonProps = {
 };
 
 export type RadioButtonChoice = {
-  label: string;
+  label: React.JSX.Element | string;
   value: string;
   disabled: boolean;
 };
