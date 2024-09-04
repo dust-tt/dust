@@ -79,12 +79,10 @@ export async function fetchTableQueryActionConfigurations({
         tablesQueryConfigTables.map((table) => {
           const { dataSourceView } = table;
 
-          const dataSourceViewId = dataSourceView
-            ? DataSourceViewResource.modelIdToSId({
-                id: dataSourceView.id,
-                workspaceId: dataSourceView.workspaceId,
-              })
-            : null;
+          const dataSourceViewId = DataSourceViewResource.modelIdToSId({
+            id: dataSourceView.id,
+            workspaceId: dataSourceView.workspaceId,
+          });
 
           return {
             dataSourceId: table.dataSourceId,
