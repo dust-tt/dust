@@ -5,8 +5,10 @@ import {
   Cog6ToothIcon,
   DataTable,
   FolderIcon,
+  PencilSquareIcon,
   Searchbar,
   Spinner,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
@@ -17,7 +19,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useState } from "react";
@@ -27,6 +28,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
+import { VaultFolderOrWebsiteModal } from "@app/components/vaults/VaultFolderOrWebsiteModal";
 import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
@@ -175,6 +177,10 @@ export const VaultResourcesList = ({
   onSelect,
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
+    useState(false);
+  const [selectedDataSourceView, setSelectedDataSourceView] =
+    useState<DataSourceViewWithConnectorType | null>(null);
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
 
@@ -186,8 +192,6 @@ export const VaultResourcesList = ({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
-
-  const router = useRouter();
 
   // DataSources Views of the current vault.
   const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
@@ -210,13 +214,26 @@ export const VaultResourcesList = ({
       workspaceId: owner.sId,
       isAdmin,
       isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
-      buttonOnClick: (e) => {
-        e.stopPropagation();
-        // TODO(GROUPS_UI) Link to data source view.
-        void router.push(
-          `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
-        );
-      },
+      moreMenuItems: [
+        {
+          label: "Edit",
+          icon: PencilSquareIcon,
+          onClick: (e) => {
+            e.stopPropagation();
+            setSelectedDataSourceView(r);
+            setShowFolderOrWebsiteModal(true);
+          },
+        },
+        {
+          label: "Delete",
+          icon: TrashIcon,
+          variant: "warning",
+          onClick: (e) => {
+            e.stopPropagation();
+            // TODO: add deletion
+          },
+        },
+      ],
       onClick: () => onSelect(r.sId),
     })) || [];
 
@@ -276,13 +293,25 @@ export const VaultResourcesList = ({
           />
         )}
         {(category === "folder" || category === "website") && (
-          <EditVaultStaticDataSourcesViews
-            owner={owner}
-            plan={plan}
-            vault={vault}
-            category={category}
-            dataSources={dataSources}
-          />
+          <>
+            <EditVaultStaticDataSourcesViews
+              owner={owner}
+              plan={plan}
+              vault={vault}
+              category={category}
+              dataSources={dataSources}
+            />
+            {selectedDataSourceView && (
+              <VaultFolderOrWebsiteModal
+                isOpen={showFolderOrWebsiteModal}
+                setOpen={(isOpen) => setShowFolderOrWebsiteModal(isOpen)}
+                owner={owner}
+                vault={vault}
+                dataSources={dataSources}
+                dataSourceView={selectedDataSourceView}
+              />
+            )}
+          </>
         )}
       </div>
       {rows.length > 0 ? (
