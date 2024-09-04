@@ -101,7 +101,7 @@ async function getFiles({ bucket, path }: { bucket: Bucket; path: string }) {
 }
 
 async function deleteFile({ file }: { file: File }) {
-  if (!file.exists()) {
+  if (!(await file.exists())) {
     logger.error(
       { name: file.name, bucket: file.bucket.name, panic: true },
       "Delete: File does not exist. Can be ignored if single file, otherwise investigate"
