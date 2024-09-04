@@ -423,7 +423,7 @@ function PermissionTreeChildren({
   );
 }
 
-interface PermissionTreenProps {
+interface PermissionTreeProps {
   canUpdatePermissions?: boolean;
   dataSource: DataSourceType;
   isSearchEnabled: boolean;
@@ -443,7 +443,7 @@ export function PermissionTree({
   permissionFilter,
   showExpand,
   viewType,
-}: PermissionTreenProps) {
+}: PermissionTreeProps) {
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
