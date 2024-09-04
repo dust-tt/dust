@@ -16,7 +16,6 @@ import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSo
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -49,15 +48,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
-  const dataSourceUsageRes = await getDataSourceUsage({
-    auth,
-    dataSource,
-  });
+  const dataSourceUsageRes = await dataSource.getUsagesByAgents(auth);
+
   return {
     props: {
       owner,
       subscription,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       gaTrackingId: config.getGaTrackingId(),
       dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },

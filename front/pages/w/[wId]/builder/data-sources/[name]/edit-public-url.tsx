@@ -8,7 +8,6 @@ import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import WebsiteConfiguration from "@app/components/data_source/WebsiteConfiguration";
-import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -57,7 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     new ConnectorsAPI(config.getConnectorsAPIConfig(), logger).getConnector(
       dataSource.connectorId
     ),
-    getDataSourceUsage({ auth, dataSource }),
+    dataSource.getUsagesByAgents(auth),
   ]);
 
   if (connectorRes.isErr()) {
@@ -69,7 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dataSources,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,
       gaTrackingId: config.getGaTrackingId(),
