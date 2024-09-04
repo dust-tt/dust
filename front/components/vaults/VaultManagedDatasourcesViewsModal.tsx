@@ -112,6 +112,7 @@ export default function VaultManagedDataSourcesViewsModal({
             owner={owner}
             selectionConfigurations={selectionConfigurations}
             setSelectionConfigurations={setSelectionConfigurationsCallback}
+            viewType="documents"
           />
         </div>
       </div>
