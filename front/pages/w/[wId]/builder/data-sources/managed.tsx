@@ -10,13 +10,18 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
   DataSourceWithConnectorDetailsType,
   LightWorkspaceType,
   PlanType,
   Result,
   SubscriptionType,
+  UpdateConnectorRequestBody,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
   Err,
@@ -29,13 +34,15 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import * as React from "react";
-import { useMemo, useRef, useState } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
 import {
@@ -119,12 +126,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+  const user = auth.user();
 
-  if (!owner || !plan || !subscription) {
+  if (!owner || !plan || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -199,6 +208,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       gaTrackingId: config.getGaTrackingId(),
       dustClientFacingUrl: config.getClientFacingUrl(),
+      user,
     },
   };
 });
@@ -213,6 +223,7 @@ export default function DataSourcesView({
   plan,
   gaTrackingId,
   dustClientFacingUrl,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoadingByProvider, setIsLoadingByProvider] = useState(
     {} as Record<ConnectorProvider, boolean>
@@ -220,8 +231,11 @@ export default function DataSourcesView({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceWithConnectorAndUsageType | null>(null);
+  const [showEditionModal, setShowEditionModal] = useState(false);
+  const [showConnectorModal, setShowConnectorModal] = useState(false);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
+  const sendNotification = useContext(SendNotificationsContext);
 
   console.log(managedDataSources);
 
@@ -240,10 +254,83 @@ export default function DataSourcesView({
         readOnly,
         onButtonClick: (dataSource: DataSourceWithConnectorAndUsageType) => {
           setSelectedDataSource(dataSource);
+          setShowConnectorModal(true);
         },
       })
     );
   }, [isAdmin, isLoadingByProvider, owner, readOnly, managedDataSources]);
+
+  const updateConnectorConnectionId = async (
+    newConnectionId: string,
+    provider: string,
+    dataSource: DataSourceType
+  ) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId: newConnectionId,
+        } satisfies UpdateConnectorRequestBody),
+      }
+    );
+
+    if (res.ok) {
+      return { success: true, error: null };
+    }
+
+    const jsonErr = await res.json();
+    const error = jsonErr.error;
+
+    if (error.type === "connector_oauth_target_mismatch") {
+      return {
+        success: false,
+        error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
+      };
+    }
+    return {
+      success: false,
+      error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
+    };
+  };
+
+  const handleUpdatePermissions = async (
+    connector: ConnectorType,
+    dataSource: DataSourceType
+  ) => {
+    const provider = connector.type;
+
+    const connectionIdRes = await setupConnection({
+      dustClientFacingUrl,
+      owner,
+      provider,
+    });
+    if (connectionIdRes.isErr()) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: connectionIdRes.error.message,
+      });
+      return;
+    }
+
+    const updateRes = await updateConnectorConnectionId(
+      connectionIdRes.value,
+      provider,
+      dataSource
+    );
+    if (updateRes.error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: updateRes.error,
+      });
+      return;
+    }
+  };
   return (
     <AppLayout
       subscription={subscription}
@@ -323,15 +410,36 @@ export default function DataSourcesView({
           false
         )}
         {selectedDataSource && selectedDataSource.connector && (
-          <ConnectorPermissionsModal
-            owner={owner}
-            connector={selectedDataSource.connector}
-            dataSource={selectedDataSource}
-            isOpen={!!selectedDataSource}
-            onClose={() => {
-              setSelectedDataSource(null);
-            }}
-          />
+          <>
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={selectedDataSource.connector}
+              dataSource={selectedDataSource}
+              isOpen={showConnectorModal && !!selectedDataSource}
+              onClose={() => {
+                setShowConnectorModal(false);
+              }}
+              setShowEditionModal={setShowEditionModal}
+              handleUpdatePermissions={handleUpdatePermissions}
+            />
+            <DataSourceEditionModal
+              isOpen={showEditionModal}
+              onClose={() => setShowEditionModal(false)}
+              dataSource={selectedDataSource}
+              owner={owner}
+              user={user}
+              onEditPermissionsClick={() => {
+                if (!selectedDataSource.connector) {
+                  return;
+                }
+                void handleUpdatePermissions(
+                  selectedDataSource.connector,
+                  selectedDataSource
+                );
+              }}
+              dustClientFacingUrl={dustClientFacingUrl}
+            />
+          </>
         )}
       </Page.Vertical>
     </AppLayout>

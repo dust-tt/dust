@@ -1,11 +1,14 @@
-import { Modal, Page } from "@dust-tt/sparkle";
+import { Button, LockIcon, Modal, Page } from "@dust-tt/sparkle";
 import type {
+  ConnectorPermission,
   ConnectorProvider,
+  ConnectorType,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission, ConnectorType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { useContext, useState } from "react";
+import * as React from "react";
 import { useSWRConfig } from "swr";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -21,18 +24,94 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "intercom",
 ]);
 
+interface ConnectorUiConfig {
+  displayAddDataButton: boolean;
+  displayEditionModal: boolean;
+  displayManageConnectionButton: boolean;
+  addDataWithConnection: boolean;
+  displayWebcrawlerSettingsButton: boolean;
+  guideLink: string | null;
+  postPermissionsUpdateMessage?: string;
+}
+
+function getRenderingConfigForConnectorProvider(
+  connectorProvider: ConnectorProvider
+): ConnectorUiConfig {
+  const commonConfig = {
+    addDataWithConnection: false,
+    displayAddDataButton: true,
+    displayManageConnectionButton: true,
+    displayWebcrawlerSettingsButton: false,
+  };
+
+  switch (connectorProvider) {
+    case "confluence":
+    case "google_drive":
+    case "microsoft":
+      return {
+        ...commonConfig,
+        displayEditionModal: true,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+      };
+
+    case "slack":
+    case "intercom":
+      return {
+        ...commonConfig,
+        displayEditionModal: false,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+      };
+    case "notion":
+      return {
+        ...commonConfig,
+        addDataWithConnection: true,
+        displayEditionModal: true,
+        displayManageConnectionButton: false,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+        postPermissionsUpdateMessage:
+          "We've taken your edits into account. Notion permission edits may take up to 24 hours to be reflected on your workspace.",
+      };
+    case "github":
+      return {
+        ...commonConfig,
+        addDataWithConnection: true,
+        displayEditionModal: true,
+        displayManageConnectionButton: false,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+      };
+    case "webcrawler":
+      return {
+        addDataWithConnection: false,
+        displayAddDataButton: false,
+        displayEditionModal: false,
+        displayManageConnectionButton: false,
+        displayWebcrawlerSettingsButton: true,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+      };
+    default:
+      assertNever(connectorProvider);
+  }
+}
+
 export function ConnectorPermissionsModal({
   owner,
   connector,
   dataSource,
   isOpen,
   onClose,
+  setShowEditionModal,
+  handleUpdatePermissions,
 }: {
   owner: WorkspaceType;
   connector: ConnectorType;
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;
+  setShowEditionModal: (show: boolean) => void;
+  handleUpdatePermissions: (
+    connector: ConnectorType,
+    dataSource: DataSourceType
+  ) => Promise<void>;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -101,9 +180,12 @@ export function ConnectorPermissionsModal({
     setSaving(false);
   }
 
+  const { displayEditionModal, displayManageConnectionButton } =
+    getRenderingConfigForConnectorProvider(connector.type);
+
   return (
     <Modal
-      title="Add / Remove data"
+      title="Selected data sources"
       isOpen={isOpen}
       onClose={closeModal}
       onSave={save}
@@ -113,13 +195,28 @@ export function ConnectorPermissionsModal({
       hasChanged={!!Object.keys(updatedPermissionByInternalId).length}
       variant="side-md"
     >
-      <div className="mx-auto max-w-4xl text-left">
-        <div className="flex flex-col pt-12">
-          <Page.Vertical align="stretch" gap="xl">
-            <Page.Header
-              title="Make available to the workspace"
-              description={`Selected resources will be accessible to all members of the workspace.`}
+      <div className="mx-auto max-w-4xl">
+        {displayManageConnectionButton && (
+          <div className="flex pr-4 pt-4">
+            <Button
+              className="ml-auto justify-self-end"
+              label="Edit permissions"
+              variant="tertiary"
+              icon={LockIcon}
+              onClick={() => {
+                if (displayEditionModal) {
+                  setShowEditionModal(true);
+                  onClose();
+                } else {
+                  void handleUpdatePermissions(connector, dataSource);
+                }
+              }}
             />
+          </div>
+        )}
+        <div className="flex flex-col pt-4">
+          <Page.Vertical align="stretch" gap="xl">
+            <Page.Header title="Make available to the workspace:" />
             <div className="mx-2 mb-16 w-full">
               <PermissionTree
                 isSearchEnabled={
