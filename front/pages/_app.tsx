@@ -1,5 +1,4 @@
 import "@app/styles/global.css";
-import "@dust-tt/sparkle/dist/sparkle.css";
 
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
