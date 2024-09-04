@@ -21,7 +21,8 @@ import type { AssistantBuilderTableConfiguration } from "@app/components/assista
 import { isFolder } from "@app/lib/data_sources";
 import { useDataSourceNodes } from "@app/lib/swr/data_sources";
 
-export default function AssistantBuilderTablesModal({
+// TODO: Delete this file.
+export default function AssistantBuilderTablesModalLegacy({
   isOpen,
   setOpen,
   onSave,

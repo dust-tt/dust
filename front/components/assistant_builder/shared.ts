@@ -1,12 +1,16 @@
 import type {
+  CoreAPITable,
   DataSourceType,
+  DataSourceViewType,
   LightContentNode,
   TimeframeUnit,
 } from "@dust-tt/types";
 import type { ConnectorProvider } from "@dust-tt/types";
 import {
+  getGoogleSheetContentNodeInternalIdFromTableId,
   getGoogleSheetTableIdFromContentNodeInternalId,
   getMicrosoftSheetContentNodeInternalIdFromTableId,
+  getNotionDatabaseContentNodeInternalIdFromTableId,
   getNotionDatabaseTableIdFromContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
 } from "@dust-tt/types";
@@ -281,11 +285,13 @@ export function getTableIdForContentNode(
   if (contentNode.type !== "database") {
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
+
   switch (dataSource.connectorProvider) {
     case "notion":
       return getNotionDatabaseTableIdFromContentNodeInternalId(
         contentNode.internalId
       );
+
     case "google_drive":
       if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
         throw new Error(
@@ -295,10 +301,42 @@ export function getTableIdForContentNode(
       return getGoogleSheetTableIdFromContentNodeInternalId(
         contentNode.internalId
       );
+
     case "microsoft":
       return getMicrosoftSheetContentNodeInternalIdFromTableId(
         contentNode.internalId
       );
+
+    case null:
+      return contentNode.internalId;
+
+    default:
+      throw new Error(
+        `Provider ${dataSource.connectorProvider} is not supported`
+      );
+  }
+}
+
+export function getContentNodeInternalIdFromTableId(
+  dataSourceView: DataSourceViewType,
+  table: CoreAPITable
+): string {
+  const { dataSource } = dataSourceView;
+  const { table_id: tableId } = table;
+
+  switch (dataSource.connectorProvider) {
+    case "google_drive":
+      return getGoogleSheetContentNodeInternalIdFromTableId(tableId);
+
+    case "notion":
+      return getNotionDatabaseContentNodeInternalIdFromTableId(tableId);
+
+    case "microsoft":
+      return getMicrosoftSheetContentNodeInternalIdFromTableId(tableId);
+
+    case null:
+      return tableId;
+
     default:
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`

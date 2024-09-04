@@ -1,5 +1,6 @@
 import { Modal } from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -10,19 +11,23 @@ import { AssistantBuilderContext } from "@app/components/assistant_builder/Assis
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 
-export default function AssistantBuilderDataSourceModal({
-  isOpen,
-  setOpen,
-  owner,
-  onSave,
-  initialDataSourceConfigurations,
-}: {
-  isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
-  owner: WorkspaceType;
-  onSave: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
+interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
-}) {
+  isOpen: boolean;
+  onSave: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
+  owner: WorkspaceType;
+  setOpen: (isOpen: boolean) => void;
+  viewType: ContentNodesViewType;
+}
+
+export default function AssistantBuilderDataSourceModal({
+  initialDataSourceConfigurations,
+  isOpen,
+  onSave,
+  owner,
+  setOpen,
+  viewType = "documents",
+}: AssistantBuilderDataSourceModalProps) {
   const { dataSourceViews } = useContext(AssistantBuilderContext);
   const [hasChanged, setHasChanged] = useState(false);
 
@@ -67,6 +72,7 @@ export default function AssistantBuilderDataSourceModal({
           dataSourceViews={dataSourceViews}
           selectionConfigurations={selectionConfigurations}
           setSelectionConfigurations={setSelectionConfigurationsCallback}
+          viewType={viewType}
         />
       </div>
     </Modal>

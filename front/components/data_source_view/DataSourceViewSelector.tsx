@@ -5,10 +5,11 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
@@ -33,12 +34,13 @@ const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
 
 type DataSourceViewsSelectorProps = {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
+  viewType: ContentNodesViewType;
 };
 
 export function DataSourceViewsSelector({
@@ -46,6 +48,7 @@ export function DataSourceViewsSelector({
   dataSourceViews,
   selectionConfigurations,
   setSelectionConfigurations,
+  viewType,
 }: DataSourceViewsSelectorProps) {
   // Apply grouping if there are many data sources, and there are enough of each kind
   // So we don't show a long list of data sources to the user
@@ -73,6 +76,8 @@ export function DataSourceViewsSelector({
     [dataSourceViews]
   );
 
+  console.log(">> orderDatasourceViews:", orderDatasourceViews);
+
   return (
     <Tree isLoading={false}>
       {groupManaged && (
@@ -93,6 +98,7 @@ export function DataSourceViewsSelector({
                   defaultSelectionConfiguration(dataSourceView)
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
               />
             ))}
         </Tree.Item>
@@ -114,6 +120,7 @@ export function DataSourceViewsSelector({
               defaultSelectionConfiguration(dataSourceView)
             }
             setSelectionConfigurations={setSelectionConfigurations}
+            viewType={viewType}
           />
         ))}
 
@@ -130,6 +137,7 @@ export function DataSourceViewsSelector({
                   defaultSelectionConfiguration(dataSourceView)
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
               />
             ))}
         </Tree.Item>
@@ -153,6 +161,7 @@ export function DataSourceViewsSelector({
                   defaultSelectionConfiguration(dataSourceView)
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
               />
             ))}
         </Tree.Item>
@@ -161,17 +170,21 @@ export function DataSourceViewsSelector({
   );
 }
 
-function DataSourceViewSelector({
-  owner,
-  selectionConfiguration,
-  setSelectionConfigurations,
-}: {
-  owner: WorkspaceType;
+interface DataSourceViewSelectorProps {
+  owner: LightWorkspaceType;
   selectionConfiguration: DataSourceViewSelectionConfiguration;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
-}) {
+  viewType: ContentNodesViewType;
+}
+
+function DataSourceViewSelector({
+  owner,
+  selectionConfiguration,
+  setSelectionConfigurations,
+  viewType,
+}: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
   const config = dataSourceView.dataSource.connectorProvider
     ? CONNECTOR_CONFIGURATIONS[dataSourceView.dataSource.connectorProvider]
@@ -231,16 +244,29 @@ function DataSourceViewSelector({
     };
   }, [dataSourceView, setParentsById, setSelectionConfigurations]);
 
+  const isTableView = viewType === "tables";
+  console.log(
+    ">> checkedStatus:",
+    checkedStatus,
+    getDisplayNameForDataSource(dataSourceView.dataSource)
+  );
+
   return (
     <Tree.Item
       key={dataSourceView.dataSource.name}
       label={getDisplayNameForDataSource(dataSourceView.dataSource)}
       visual={LogoComponent}
-      type={isFolder(dataSourceView.dataSource) ? "leaf" : "node"}
-      checkbox={{
-        checked: checkedStatus,
-        onChange: onToggleSelectAll,
-      }}
+      type={
+        isFolder(dataSourceView.dataSource) && !isTableView ? "leaf" : "node"
+      }
+      checkbox={
+        isTableView && !isPartiallyChecked
+          ? undefined
+          : {
+              checked: checkedStatus,
+              onChange: onToggleSelectAll,
+            }
+      }
     >
       <DataSourceResourceSelectorTree
         owner={owner}
@@ -294,6 +320,7 @@ function DataSourceViewSelector({
           );
         }}
         parentIsSelected={selectionConfiguration.isSelectAll}
+        viewType={viewType}
       />
     </Tree.Item>
   );

@@ -11,6 +11,7 @@ import {
 import type {
   BaseContentNode,
   ConnectorProvider,
+  ContentNodesViewType,
   DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
@@ -145,12 +146,14 @@ type DataSourceViewPermissionTreeChildrenProps =
   PermissionTreeChildrenBaseProps & {
     dataSourceView: DataSourceViewType;
     permissionFilter?: ConnectorPermission;
+    viewType: ContentNodesViewType;
   };
 
 export function DataSourceViewPermissionTreeChildren({
   dataSourceView,
   owner,
   parentId,
+  viewType,
   ...props
 }: DataSourceViewPermissionTreeChildrenProps) {
   const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
@@ -159,6 +162,7 @@ export function DataSourceViewPermissionTreeChildren({
       dataSourceView,
       internalIds: parentId ? [parentId] : [],
       includeChildren: true,
+      viewType,
     }
   );
 
@@ -179,6 +183,7 @@ export function DataSourceViewPermissionTreeChildren({
       nodes={nodes}
       owner={owner}
       parentId={parentId}
+      viewType={viewType}
       renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
         <DataSourceViewPermissionTreeChildren
           dataSourceView={dataSourceView}
@@ -188,6 +193,7 @@ export function DataSourceViewPermissionTreeChildren({
           {...props}
           // Disable search for children.
           isSearchEnabled={false}
+          viewType={viewType}
         />
       )}
       {...props}
@@ -204,6 +210,7 @@ type PermissionTreeChildrenProps = PermissionTreeChildrenBaseProps & {
     r: BaseContentNode,
     { isParentNodeSelected }: { isParentNodeSelected: boolean }
   ) => React.ReactNode;
+  viewType: ContentNodesViewType;
 };
 
 function PermissionTreeChildren({
@@ -217,6 +224,7 @@ function PermissionTreeChildren({
   onPermissionUpdate,
   parentIsSelected,
   renderChildItem,
+  viewType,
 }: PermissionTreeChildrenProps) {
   const [search, setSearch] = useState("");
   // This is to control when to dislpay the "Select All" vs "unselect All" button.
@@ -267,7 +275,7 @@ function PermissionTreeChildren({
   );
 
   return (
-    <>
+    <div className="border-2 border-red-500">
       {isSearchEnabled && (
         <>
           <div className="flex w-full flex-row">
@@ -410,7 +418,7 @@ function PermissionTreeChildren({
           );
         })}
       </Tree>
-    </>
+    </div>
   );
 }
 
