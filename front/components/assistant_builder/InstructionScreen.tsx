@@ -5,6 +5,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { ContentMessageProps } from "@dust-tt/sparkle/dist/cjs/components/ContentMessage";
 import type {
   APIError,
   AssistantCreativityLevel,
@@ -660,7 +661,7 @@ function AnimatedSuggestion({
   afterEnter,
 }: {
   suggestion: string;
-  variant?: React.ComponentProps<typeof ContentMessage>["variant"];
+  variant?: ContentMessageProps["variant"];
   afterEnter?: () => void;
 }) {
   return (

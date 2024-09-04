@@ -10,7 +10,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 // TODO(2024-04-24 flav) Remove emoji-mart dependency from front.
-import type { EmojiMartData } from "@emoji-mart/data";
+import type { Emoji, EmojiMartData } from "@emoji-mart/data";
 import type { ComponentType, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -247,7 +247,7 @@ function EmojiSelector({
           theme="light"
           previewPosition="none"
           data={emojiData ?? undefined}
-          onEmojiSelect={(emojiData) => {
+          onEmojiSelect={(emojiData: Emoji) => {
             const reaction = reactions.find((r) => r.emoji === emojiData.id);
             const hasReacted =
               (reaction &&
