@@ -5,7 +5,6 @@ import {
   Cog6ToothIcon,
   DataTable,
   FolderIcon,
-  PencilSquareIcon,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -210,19 +209,13 @@ export const VaultResourcesList = ({
       workspaceId: owner.sId,
       isAdmin,
       isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
-      moreMenuItems: [
-        {
-          label: "Edit",
-          visual: <PencilSquareIcon />,
-          onClick: (e) => {
-            e.stopPropagation();
-            // TODO(GROUPS_UI) Link to data source view.
-            void router.push(
-              `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
-            );
-          },
-        },
-      ],
+      buttonOnClick: (e) => {
+        e.stopPropagation();
+        // TODO(GROUPS_UI) Link to data source view.
+        void router.push(
+          `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
+        );
+      },
       onClick: () => onSelect(r.sId),
     })) || [];
 
@@ -233,7 +226,6 @@ export const VaultResourcesList = ({
       </div>
     );
   }
-  console.log(rows);
 
   return (
     <>
