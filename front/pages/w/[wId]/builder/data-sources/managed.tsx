@@ -38,7 +38,6 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
-import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
