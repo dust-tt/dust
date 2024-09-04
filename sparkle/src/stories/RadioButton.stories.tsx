@@ -2,7 +2,7 @@ import { Meta } from "@storybook/react";
 import React from "react";
 
 import { RadioButton } from "@sparkle/components/RadioButton";
-import { LockIcon, PauseIcon, PlayIcon, StopIcon } from "@sparkle/icons";
+import { PauseIcon, PlayIcon, StopIcon } from "@sparkle/icons";
 
 const meta = {
   title: "Primitives/RadioButton",
