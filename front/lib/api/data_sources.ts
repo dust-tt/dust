@@ -427,7 +427,6 @@ export async function upsertTable({
       upsertTable: {
         workspaceId: auth.getNonNullableWorkspace().sId,
         dataSourceId: dataSource.sId,
-        dataSourceName: dataSource.name,
         tableId: nonNullTableId,
         tableName: name,
         tableDescription: description,

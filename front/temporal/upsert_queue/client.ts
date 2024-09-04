@@ -9,18 +9,18 @@ import { upsertDocumentWorkflow, upsertTableWorkflow } from "./workflows";
 
 export async function launchUpsertDocumentWorkflow({
   workspaceId,
-  dataSourceName,
+  dataSourceId,
   upsertQueueId,
   enqueueTimestamp,
 }: {
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceId: string;
   upsertQueueId: string;
   enqueueTimestamp: number;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceName}-${upsertQueueId}`;
+  const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
 
   try {
     await client.workflow.start(upsertDocumentWorkflow, {
@@ -29,7 +29,7 @@ export async function launchUpsertDocumentWorkflow({
       workflowId: workflowId,
       memo: {
         workspaceId,
-        dataSourceName,
+        dataSourceId,
         upsertQueueId,
       },
     });
@@ -54,18 +54,18 @@ export async function launchUpsertDocumentWorkflow({
 
 export async function launchUpsertTableWorkflow({
   workspaceId,
-  dataSourceName,
+  dataSourceId,
   upsertQueueId,
   enqueueTimestamp,
 }: {
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceId: string;
   upsertQueueId: string;
   enqueueTimestamp: number;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `upsert-queue-table-${workspaceId}-${dataSourceName}-${upsertQueueId}`;
+  const workflowId = `upsert-queue-table-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
 
   try {
     await client.workflow.start(upsertTableWorkflow, {
@@ -74,7 +74,7 @@ export async function launchUpsertTableWorkflow({
       workflowId: workflowId,
       memo: {
         workspaceId,
-        dataSourceName,
+        dataSourceId,
         upsertQueueId,
       },
     });

@@ -57,7 +57,7 @@ export async function upsertDocumentActivity(
     upsertQueueItem.workspaceId
   );
 
-  const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceName);
+  const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceId);
 
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it
@@ -182,7 +182,7 @@ export async function upsertTableActivity(
   const logger = mainLogger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
-    dataSourceName: upsertQueueItem.dataSourceName,
+    dataSourceId: upsertQueueItem.dataSourceId,
     tableId: upsertQueueItem.tableId,
   });
 
@@ -201,7 +201,7 @@ export async function upsertTableActivity(
     return;
   }
 
-  const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceName);
+  const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceId);
 
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it

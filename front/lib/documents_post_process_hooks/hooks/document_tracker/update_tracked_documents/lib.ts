@@ -18,7 +18,7 @@ const logger = mainLogger.child({
 export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
-  const { auth, dataSourceName, documentId, verb } = params;
+  const { auth, dataSourceId, documentId, verb } = params;
   const owner = auth.workspace();
 
   if (!owner) {
@@ -30,7 +30,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
 
   const localLogger = logger.child({
     workspaceId: owner.sId,
-    dataSourceName,
+    dataSourceId,
     documentId,
   });
 
@@ -38,7 +38,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
     return false;
   }
 
-  const dataSource = await getDatasource(auth, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceId);
 
   if (
     verb === "upsert" &&
@@ -75,7 +75,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
 
 export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
   auth,
-  dataSourceName,
+  dataSourceId,
   documentId,
   documentText,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
@@ -86,13 +86,13 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
   logger.info(
     {
       workspaceId: owner.sId,
-      dataSourceName,
+      dataSourceId,
       documentId,
     },
     "Running document_tracker_update_tracked_documents post upsert hook."
   );
 
-  const dataSource = await getDatasource(auth, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceId);
   if (
     TRACKABLE_CONNECTOR_TYPES.includes(
       dataSource.connectorProvider as ConnectorProvider
@@ -105,7 +105,7 @@ export async function documentTrackerUpdateTrackedDocumentsOnUpsert({
 
 export async function documentTrackerUpdateTrackedDocumentsOnDelete({
   auth,
-  dataSourceName,
+  dataSourceId,
   documentId,
 }: DocumentsPostProcessHookOnDeleteParams): Promise<void> {
   const owner = auth.workspace();
@@ -116,13 +116,13 @@ export async function documentTrackerUpdateTrackedDocumentsOnDelete({
   logger.info(
     {
       workspaceId: owner.sId,
-      dataSourceName,
+      dataSourceId,
       documentId,
     },
     "Running document_tracker_update_tracked_documents onDelete."
   );
 
-  const dataSource = await getDatasource(auth, dataSourceName);
+  const dataSource = await getDatasource(auth, dataSourceId);
 
   await TrackedDocument.destroy({
     where: {
