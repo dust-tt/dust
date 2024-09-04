@@ -138,6 +138,8 @@ Tree.Item = function ({
     isNavigatableSelected: "s-border-structure-200 s-bg-white",
   };
 
+  const isExpanded = childrenToRender && !effectiveCollapsed;
+
   return (
     <>
       <div
@@ -157,17 +159,15 @@ Tree.Item = function ({
             ? isSelected
               ? treeItemStyleClasses.isNavigatableSelected
               : treeItemStyleClasses.isNavigatableUnselected
-            : ""
+            : "",
+          isExpanded ? "is-expanded" : "is-collapsed",
+          type
         )}
         onClick={onItemClick ? onItemClick : undefined}
       >
         {type === "node" && (
           <IconButton
-            icon={
-              childrenToRender && !effectiveCollapsed
-                ? ArrowDownSIcon
-                : ArrowRightSIcon
-            }
+            icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
             size="xs"
             variant="secondary"
             onClick={(e) => {
