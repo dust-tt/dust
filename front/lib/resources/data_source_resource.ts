@@ -16,6 +16,7 @@ import { Op } from "sequelize";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
@@ -297,6 +298,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
         dataSourceId: this.id,
       },
       transaction,
+    });
+
+    // TODO(DATASOURCE_SID): state storing the datasource name.
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        dataSourceId: this.name,
+      },
     });
 
     await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
