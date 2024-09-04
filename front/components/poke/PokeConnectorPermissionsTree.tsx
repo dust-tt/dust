@@ -35,6 +35,7 @@ export function PokePermissionTree({
         displayDocumentSource={displayDocumentSource}
         useConnectorPermissionsHook={usePokeConnectorPermissions}
         isSearchEnabled={false}
+        viewType="documents"
       />
     </div>
   );

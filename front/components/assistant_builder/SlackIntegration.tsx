@@ -91,6 +91,7 @@ export function SlackIntegration({
       isSearchEnabled={false}
       customIsNodeChecked={customIsNodeChecked}
       useConnectorPermissionsHook={useConnectorPermissions}
+      viewType="documents"
     />
   );
 }

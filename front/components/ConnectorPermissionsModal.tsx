@@ -137,6 +137,7 @@ export function ConnectorPermissionsModal({
                   }));
                 }}
                 showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
+                viewType="documents"
               />
             </div>
           </Page.Vertical>

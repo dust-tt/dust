@@ -1287,6 +1287,7 @@ function ManagedDataSourceView({
               dataSource={dataSource}
               permissionFilter="read"
               showExpand={CONNECTOR_CONFIGURATIONS[connectorProvider]?.isNested}
+              viewType="documents"
             />
           </div>
         </div>
