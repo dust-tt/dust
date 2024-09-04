@@ -10,6 +10,7 @@ import {
   getCoreReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { withRetries } from "@app/lib/utils/retries";
+import logger from "@app/logger/logger";
 
 const { CORE_DATABASE_URI, SERVICE_ACCOUNT, DUST_DATA_SOURCES_BUCKET } =
   process.env;
@@ -100,7 +101,14 @@ async function getFiles({ bucket, path }: { bucket: Bucket; path: string }) {
 }
 
 async function deleteFile({ file }: { file: File }) {
-  return (await file.exists()) && file.delete();
+  if (!file.exists()) {
+    logger.error(
+      { name: file.name, bucket: file.bucket.name, panic: true },
+      "Delete: File does not exist. Can be ignored if single file, otherwise investigate"
+    );
+  } else {
+    return file.delete();
+  }
 }
 
 async function deleteFilesFromFolder(
