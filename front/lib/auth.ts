@@ -857,11 +857,17 @@ export async function getOrCreateSystemApiKey(
   let key = await KeyResource.fetchSystemKeyForWorkspace(workspace);
 
   if (!key) {
-    key = await KeyResource.makeNew({
-      workspaceId: workspace.id,
-      isSystem: true,
-      status: "active",
-    });
+    const group = await GroupResource.internalFetchWorkspaceSystemGroup(
+      workspace.id
+    );
+    key = await KeyResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        isSystem: true,
+        status: "active",
+      },
+      group
+    );
   }
 
   if (!key) {

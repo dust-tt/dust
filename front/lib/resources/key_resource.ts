@@ -15,6 +15,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
@@ -36,12 +37,16 @@ export class KeyResource extends BaseResource<KeyModel> {
     super(KeyModel, blob);
   }
 
-  static async makeNew(blob: Omit<CreationAttributes<KeyModel>, "secret">) {
+  static async makeNew(
+    blob: Omit<CreationAttributes<KeyModel>, "secret">,
+    group: GroupResource
+  ) {
     const new_id = Buffer.from(blake3(uuidv4())).toString("hex");
     const secret = `sk-${new_id.slice(0, 32)}`;
 
     const key = await KeyResource.model.create({
       ...blob,
+      groupId: group.id,
       secret,
     });
 

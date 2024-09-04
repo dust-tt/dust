@@ -88,14 +88,16 @@ async function handler(
         });
       }
 
-      const key = await KeyResource.makeNew({
-        name: name,
-        status: "active",
-        userId: user.id,
-        groupId: group.value.id,
-        workspaceId: owner.id,
-        isSystem: false,
-      });
+      const key = await KeyResource.makeNew(
+        {
+          name: name,
+          status: "active",
+          userId: user.id,
+          workspaceId: owner.id,
+          isSystem: false,
+        },
+        group.value
+      );
 
       res.status(201).json({
         key: key.toJSON(),
