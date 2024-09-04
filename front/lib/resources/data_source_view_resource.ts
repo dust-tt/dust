@@ -231,8 +231,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       "limit" | "order"
     >
   ) {
-    const fileModelId = getResourceIdFromSId(id);
-    if (!fileModelId) {
+    const dataSourceViewModelId = getResourceIdFromSId(id);
+    if (!dataSourceViewModelId) {
       return null;
     }
 
@@ -241,7 +241,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       fetchDataSourceViewOptions,
       {
         where: {
-          id: fileModelId,
+          id: dataSourceViewModelId,
         },
       }
     );

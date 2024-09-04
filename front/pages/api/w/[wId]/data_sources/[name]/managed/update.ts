@@ -43,9 +43,11 @@ async function handler(
   const user = auth.getNonNullableUser();
 
   // fetchByName enforces through auth the authorization (workspace here mainly).
-  const dataSource = await DataSourceResource.fetchByName(
+  const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
-    req.query.name as string
+    req.query.name as string,
+    // TOOD(DATASOURCE_SID): Clean-up and rename param as [dsId]
+    { origin: "data_source_managed_update" }
   );
   if (!dataSource) {
     return apiError(req, res, {

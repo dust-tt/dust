@@ -12,7 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export type DataSourcesUsageByAgent = Record<ModelId, number>;

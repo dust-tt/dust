@@ -2,6 +2,7 @@ import {
   Button,
   ContentMessage,
   DropdownMenu,
+  ExclamationCircleStrokeIcon,
   Input,
   Modal,
   Page,
@@ -27,6 +28,7 @@ import {
   CrawlingFrequencies,
   DepthOptions,
   isDataSourceNameValid,
+  WEBCRAWLER_DEFAULT_CONFIGURATION,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -36,7 +38,7 @@ import React from "react";
 
 import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useVaultDataSourceViews } from "@app/lib/swr";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type {
   PostDataSourceWithProviderRequestBodySchema,
@@ -47,7 +49,7 @@ const WEBSITE_CAT: DataSourceViewCategory = "website";
 
 // todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
 // this should be refactored to use the new design.
-export default function VaultCreateWebsiteModal({
+export default function VaultWebsiteModal({
   isOpen,
   setOpen,
   owner,
@@ -64,6 +66,21 @@ export default function VaultCreateWebsiteModal({
   dataSourceView: DataSourceViewType | null;
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
 }) {
+  useEffect(() => {
+    if (webCrawlerConfiguration) {
+      setDataSourceUrl(webCrawlerConfiguration.url);
+      setMaxPages(webCrawlerConfiguration.maxPageToCrawl);
+      setMaxDepth(webCrawlerConfiguration.depth);
+      setCrawlMode(webCrawlerConfiguration.crawlMode);
+      setSelectedCrawlFrequency(webCrawlerConfiguration.crawlFrequency);
+      setHeaders(
+        Object.entries(webCrawlerConfiguration.headers).map(([key, value]) => {
+          return { key, value };
+        })
+      );
+    }
+  }, [webCrawlerConfiguration]);
+
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
 
@@ -71,14 +88,13 @@ export default function VaultCreateWebsiteModal({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const [dataSourceUrl, setDataSourceUrl] = useState(
-    webCrawlerConfiguration?.url || ""
-  );
+  const [dataSourceUrl, setDataSourceUrl] = useState("");
   const [dataSourceUrlError, setDataSourceUrlError] = useState<string | null>(
     null
   );
 
-  const dataSourceId = dataSourceView ? dataSourceView.dataSource.id : null;
+  // TODO(DATASOURCE_SID): Move to dataSourceId = ... dataSourceView.dataSource.sId
+  const dsName = dataSourceView ? dataSourceView.dataSource.name : null;
   const defaultDataSourceName = dataSourceView
     ? dataSourceView.dataSource.name
     : "";
@@ -89,26 +105,20 @@ export default function VaultCreateWebsiteModal({
   );
 
   const [maxPages, setMaxPages] = useState<number | null>(
-    webCrawlerConfiguration?.maxPageToCrawl || 50
+    WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
   );
   const [maxDepth, setMaxDepth] = useState<DepthOption>(
-    webCrawlerConfiguration ? webCrawlerConfiguration.depth : 2
+    WEBCRAWLER_DEFAULT_CONFIGURATION.depth
   );
   const [crawlMode, setCrawlMode] = useState<"child" | "website">(
-    webCrawlerConfiguration?.crawlMode || "website"
+    WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode
   );
   const [selectedCrawlFrequency, setSelectedCrawlFrequency] =
     useState<CrawlingFrequency>(
-      webCrawlerConfiguration?.crawlFrequency || "monthly"
+      WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
     );
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
-
-  const existingHeaders = webCrawlerConfiguration?.headers
-    ? Object.entries(webCrawlerConfiguration.headers).map(([key, value]) => {
-        return { key, value };
-      })
-    : [];
-  const [headers, setHeaders] = useState(existingHeaders);
+  const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
 
   const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
     workspaceId: owner.sId,
@@ -133,10 +143,10 @@ export default function VaultCreateWebsiteModal({
   };
 
   useEffect(() => {
-    if (isUrlValid(dataSourceUrl)) {
+    if (isUrlValid(dataSourceUrl) && !dataSourceView) {
       setDataSourceName(urlToDataSourceName(dataSourceUrl));
     }
-  }, [dataSourceUrl]);
+  }, [dataSourceUrl, dataSourceView]);
 
   const validateForm = useCallback(() => {
     let urlError = null;
@@ -150,11 +160,15 @@ export default function VaultCreateWebsiteModal({
 
     // Validate Name
     const nameExists = dataSources.some(
-      (d) => d.name === dataSourceName && d.id !== dataSourceId
+      // TODO(DATASOURCE_SID): This line was kind of buggy because dataSourceId and sId was name but
+      // dataSourceId was not defined when it mattered (creation) and this not used during patching.
+      // (currently replacing back to .name the real real value for now showing that the line makes
+      // no sense). Will move to sId in subsequent PR.
+      (d) => d.name === dataSourceName && d.name !== dsName
     );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
     if (nameExists) {
-      nameError = "A Folder with the same name already exists";
+      nameError = "A Website with the same name already exists";
     } else if (!dataSourceName.length) {
       nameError = "Please provide a name.";
     } else if (dataSourceNameRes.isErr()) {
@@ -164,7 +178,7 @@ export default function VaultCreateWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceName, dataSourceId, dataSources, dataSourceUrl]);
+  }, [dataSourceName, dsName, dataSources, dataSourceUrl]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -221,6 +235,7 @@ export default function VaultCreateWebsiteModal({
           description: "The website has been successfully created.",
         });
         await mutateVaultDataSourceViews();
+        setIsSaving(false);
         const response: PostVaultDataSourceResponseBody = await res.json();
         const { dataSourceView } = response;
         await router.push(
@@ -236,11 +251,8 @@ export default function VaultCreateWebsiteModal({
         });
       }
     } else if (dataSourceView) {
-      // TODO(GROUPS_INFRA): this should be refactored to use a patch route under /vaults
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          defaultDataSourceName
-        )}/configuration`,
+        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dsName}/configuration`,
         {
           method: "PATCH",
           headers: {
@@ -268,15 +280,13 @@ export default function VaultCreateWebsiteModal({
       );
       if (res.ok) {
         setOpen(false);
+        setIsSaving(false);
         sendNotification({
           title: "Website updated",
           type: "success",
           description: "The website has been successfully updated.",
         });
         await mutateVaultDataSourceViews();
-        await router.push(
-          `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_sources/${dataSourceName}`
-        );
       } else {
         const err = (await res.json()) as { error: APIError };
         setIsSaving(false);
@@ -290,12 +300,12 @@ export default function VaultCreateWebsiteModal({
   };
 
   const handleDelete = async () => {
-    if (!dataSourceId) {
+    if (!dsName) {
       return;
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceId}}`,
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dsName}`,
       {
         method: "DELETE",
       }
@@ -303,6 +313,9 @@ export default function VaultCreateWebsiteModal({
     setIsSaving(false);
     if (res.ok) {
       await mutateVaultDataSourceViews();
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}`
+      );
     } else {
       const err = (await res.json()) as { error: APIError };
       sendNotification({
@@ -330,7 +343,7 @@ export default function VaultCreateWebsiteModal({
       variant="side-md"
       title="Create a website"
     >
-      <div className="w-full pt-12">
+      <div className="w-full pt-6">
         <div className="overflow-x-auto">
           <Modal
             isOpen={advancedSettingsOpened}
@@ -553,10 +566,17 @@ export default function VaultCreateWebsiteModal({
               </div>
               <Page.Layout direction="vertical" gap="md">
                 <Page.H variant="h3">Name</Page.H>
-                <Page.P>Give a name to this Data Source.</Page.P>
+                {webCrawlerConfiguration === null ? (
+                  <Page.P>Give a name to this Data Source.</Page.P>
+                ) : (
+                  <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                    <ExclamationCircleStrokeIcon />
+                    Website name cannot be changed.
+                  </p>
+                )}
                 <Input
                   placeholder=""
-                  value={dataSourceName}
+                  value={defaultDataSourceName}
                   onChange={(value) => setDataSourceName(value)}
                   error={dataSourceNameError}
                   name="dataSourceName"
@@ -566,7 +586,7 @@ export default function VaultCreateWebsiteModal({
                 />
               </Page.Layout>
 
-              <div className="flex">
+              <div className="flex gap-6">
                 <Button
                   label="Advanced settings"
                   variant="secondary"
@@ -574,25 +594,24 @@ export default function VaultCreateWebsiteModal({
                     setAdvancedSettingsOpened(true);
                   }}
                 ></Button>
+                {webCrawlerConfiguration && dsName && (
+                  <>
+                    <Button
+                      variant="secondaryWarning"
+                      icon={TrashIcon}
+                      label={"Delete this website"}
+                      onClick={() => {
+                        setIsDeleteModalOpen(true);
+                      }}
+                    />
+                    <DeleteDataSourceDialog
+                      handleDelete={handleDelete}
+                      isOpen={isDeleteModalOpen}
+                      setIsOpen={setIsDeleteModalOpen}
+                    />
+                  </>
+                )}
               </div>
-              {webCrawlerConfiguration && dataSourceId && (
-                <div className="flex py-16">
-                  <Button
-                    variant="secondaryWarning"
-                    icon={TrashIcon}
-                    label={"Delete this website"}
-                    onClick={() => {
-                      setIsDeleteModalOpen(true);
-                    }}
-                  />
-                  <DeleteDataSourceDialog
-                    handleDelete={handleDelete}
-                    isOpen={isDeleteModalOpen}
-                    setIsOpen={setIsDeleteModalOpen}
-                    dataSourceUsage={0} // TODO: get usage
-                  />
-                </div>
-              )}
             </Page.Layout>
           </div>
         </div>

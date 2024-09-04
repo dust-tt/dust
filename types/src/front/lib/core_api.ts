@@ -1078,17 +1078,25 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     tableId,
+    viewFilter,
   }: {
     projectId: string;
     dataSourceId: string;
     tableId: string;
+    viewFilter?: CoreAPISearchFilter | null;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
+    const queryParams = new URLSearchParams();
+
+    if (viewFilter) {
+      queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
         dataSourceId
-      )}/tables/${encodeURIComponent(tableId)}`,
+      )}/tables/${encodeURIComponent(tableId)}?${queryParams.toString()}`,
       {
         method: "GET",
       }

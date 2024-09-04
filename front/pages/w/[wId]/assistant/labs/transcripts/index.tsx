@@ -29,11 +29,9 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import {
-  useAgentConfigurations,
-  useConversations,
-  useLabsTranscriptsConfiguration,
-} from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useConversations } from "@app/lib/swr/conversations";
+import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 const defaultTranscriptConfigurationState = {

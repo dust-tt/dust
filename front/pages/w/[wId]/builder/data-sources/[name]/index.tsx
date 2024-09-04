@@ -55,7 +55,9 @@ import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useConnectorConfig, useDocuments, useTables } from "@app/lib/swr";
+import { useConnectorConfig } from "@app/lib/swr/connectors";
+import { useDocuments } from "@app/lib/swr/data_sources";
+import { useTables } from "@app/lib/swr/tables";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -1285,6 +1287,7 @@ function ManagedDataSourceView({
               dataSource={dataSource}
               permissionFilter="read"
               showExpand={CONNECTOR_CONFIGURATIONS[connectorProvider]?.isNested}
+              viewType="documents"
             />
           </div>
         </div>

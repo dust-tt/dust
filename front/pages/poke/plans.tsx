@@ -23,7 +23,7 @@ import {
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { usePokePlans } from "@app/lib/swr";
+import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(

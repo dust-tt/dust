@@ -22,7 +22,7 @@ const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
   vault: "vlt",
-  datasource: "dts",
+  data_source: "dts",
   data_source_view: "dsv",
 };
 
@@ -108,7 +108,7 @@ export function isResourceSId(
   resourceName: ResourceNameType,
   sId: string
 ): boolean {
-  return sId.startsWith(RESOURCES_PREFIX[resourceName]);
+  return sId.startsWith(`${RESOURCES_PREFIX[resourceName]}_`);
 }
 
 // Legacy behavior.

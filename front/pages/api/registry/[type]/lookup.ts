@@ -258,7 +258,12 @@ async function handleDataSource(
   dataSourceId: string,
   dustOrigin: string | null
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
-  const dataSource = await DataSourceResource.fetchByName(auth, dataSourceId);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dataSourceId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "registry_lookup" }
+  );
   if (!dataSource) {
     return new Err(new Error("Data source not found."));
   }

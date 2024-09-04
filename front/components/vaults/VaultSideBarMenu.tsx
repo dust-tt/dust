@@ -26,7 +26,11 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useVaultDataSourceViews, useVaultInfo, useVaults } from "@app/lib/swr";
+import {
+  useVaultDataSourceViews,
+  useVaultInfo,
+  useVaults,
+} from "@app/lib/swr/vaults";
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -142,6 +146,7 @@ const SystemVaultMenu = ({
           owner={owner}
           vault={vault}
           visual={item.visual}
+          tailwindIconTextColor={item.tailwindIconTextColor}
         />
       ))}
     </Tree>
@@ -156,12 +161,14 @@ const SystemVaultItem = ({
   owner,
   vault,
   visual,
+  tailwindIconTextColor,
 }: {
   category: DataSourceViewCategory;
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
   visual: IconType;
+  tailwindIconTextColor: string;
 }) => {
   const router = useRouter();
 
@@ -193,6 +200,7 @@ const SystemVaultItem = ({
       visual={visual}
       size="md"
       areActionsFading={false}
+      tailwindIconTextColor={tailwindIconTextColor}
     >
       {isExpanded && (
         <Tree isLoading={isVaultDataSourceViewsLoading}>
@@ -275,28 +283,23 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
       className?: string;
     }>;
     label: string;
-    tailwindIconTextColor: "text-element-700";
   };
 } = {
   managed: {
     icon: CloudArrowLeftRightIcon,
     label: "Connected Data",
-    tailwindIconTextColor: "text-element-700",
   },
   folder: {
     icon: FolderIcon,
-    label: "Files",
-    tailwindIconTextColor: "text-element-700",
+    label: "Folders",
   },
   website: {
     icon: GlobeAltIcon,
     label: "Websites",
-    tailwindIconTextColor: "text-element-700",
   },
   apps: {
     icon: CommandLineIcon,
     label: "Apps",
-    tailwindIconTextColor: "text-element-700",
   },
 };
 
@@ -329,7 +332,6 @@ const VaultDataSourceViewItem = ({
       onItemClick={() => router.push(dataSourceViewPath)}
       label={getDataSourceNameFromView(item)}
       visual={LogoComponent}
-      tailwindIconTextColor="text-element-700"
       areActionsFading={false}
     />
   );

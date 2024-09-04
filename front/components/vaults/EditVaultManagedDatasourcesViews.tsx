@@ -11,7 +11,7 @@ import React, { useState } from "react";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
-import { useVaultDataSourceViews } from "@app/lib/swr";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 
 export function EditVaultManagedDataSourcesViews({
   owner,

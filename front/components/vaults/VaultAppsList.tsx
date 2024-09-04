@@ -16,7 +16,7 @@ import * as React from "react";
 
 import { ManageAppSecretsButtonModal } from "@app/components/app/ManageAppSecretsButtonModal";
 import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
-import { useApps } from "@app/lib/swr";
+import { useApps } from "@app/lib/swr/apps";
 
 type RowData = {
   category: string;

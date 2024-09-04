@@ -304,7 +304,17 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Match found."
   );
 
-  const matchedDs = await DataSourceResource.fetchByName(auth, matchedDsName);
+  const matchedDs = await DataSourceResource.fetchByNameOrId(
+    auth,
+    matchedDsName,
+    // TODO(DATASOURCE_SID): clean-up we have an assumption here that core.data_source_id is
+    // retrievable in front. Here as name, in the future as sId. This should be a fetch by
+    // dustAPIDataSourceId but we need the project_id as well in the response which is not
+    // desirable.
+    {
+      origin: "document_tracker",
+    }
+  );
   if (!matchedDs) {
     throw new Error(
       `Could not find data source with name ${matchedDsName} and workspace ${owner.sId}`

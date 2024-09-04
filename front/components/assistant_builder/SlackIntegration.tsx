@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
 import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
-import { useConnectorPermissions } from "@app/lib/swr";
+import { useConnectorPermissions } from "@app/lib/swr/connectors";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
 
@@ -91,6 +91,7 @@ export function SlackIntegration({
       isSearchEnabled={false}
       customIsNodeChecked={customIsNodeChecked}
       useConnectorPermissionsHook={useConnectorPermissions}
+      viewType="documents"
     />
   );
 }

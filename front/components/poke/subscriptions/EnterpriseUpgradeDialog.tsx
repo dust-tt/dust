@@ -22,7 +22,7 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
-import { usePokePlans } from "@app/lib/swr";
+import { usePokePlans } from "@app/lib/swr/poke";
 
 export default function EnterpriseUpgradeDialog({
   disabled,

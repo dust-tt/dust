@@ -12,7 +12,7 @@ import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useMembers } from "@app/lib/swr";
+import { useMembers } from "@app/lib/swr/memberships";
 
 type RowData = {
   icon: string;
