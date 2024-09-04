@@ -4,11 +4,11 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isWebCrawlerConfiguration } from "@dust-tt/types";
 import React from "react";
 
 import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
 import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
+import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 
 interface ModalProps {
   isOpen: boolean;
@@ -27,11 +27,11 @@ export const VaultFolderOrWebsiteModal: React.FC<ModalProps> = ({
   dataSources,
   dataSourceView,
 }) => {
-  if (
-    dataSourceView.category === "website" &&
-    dataSourceView.dataSource.connector &&
-    isWebCrawlerConfiguration(dataSourceView.dataSource.connector.configuration)
-  ) {
+  const { configuration } = useDataSourceViewConnectorConfiguration({
+    dataSourceView,
+    owner,
+  });
+  if (dataSourceView.category === "website") {
     return (
       <VaultWebsiteModal
         isOpen={isOpen}
@@ -40,9 +40,7 @@ export const VaultFolderOrWebsiteModal: React.FC<ModalProps> = ({
         vault={vault}
         dataSources={dataSources}
         dataSourceView={dataSourceView}
-        webCrawlerConfiguration={
-          dataSourceView.dataSource.connector.configuration
-        }
+        webCrawlerConfiguration={configuration}
       />
     );
   } else if (dataSourceView.category === "folder") {

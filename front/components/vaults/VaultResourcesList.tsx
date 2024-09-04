@@ -19,6 +19,7 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isWebsiteOrFolder } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -49,7 +50,7 @@ type RowData = {
   workspaceId: string;
   isAdmin: boolean;
   isLoading?: boolean;
-  buttonOnClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  buttonOnClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
 };
 
@@ -196,6 +197,7 @@ export const VaultResourcesList = ({
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
+  const isStatic = isWebsiteOrFolder(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
@@ -222,27 +224,36 @@ export const VaultResourcesList = ({
       workspaceId: owner.sId,
       isAdmin,
       isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
-      moreMenuItems: [
-        {
-          label: "Edit",
-          icon: PencilSquareIcon,
-          onClick: (e) => {
-            e.stopPropagation();
-            setSelectedDataSourceView(r);
-            setShowFolderOrWebsiteModal(true);
+      ...(isStatic && {
+        moreMenuItems: [
+          {
+            label: "Edit",
+            icon: PencilSquareIcon,
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(r);
+              setShowFolderOrWebsiteModal(true);
+            },
           },
-        },
-        {
-          label: "Delete",
-          icon: TrashIcon,
-          variant: "warning",
-          onClick: (e) => {
-            e.stopPropagation();
-            setSelectedDataSourceView(r);
-            setShowDeleteConfirmDialog(true);
+          {
+            label: "Delete",
+            icon: TrashIcon,
+            variant: "warning",
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(r);
+              setShowDeleteConfirmDialog(true);
+            },
           },
-        },
-      ],
+        ],
+      }),
+      buttonOnClick: (e) => {
+        e.stopPropagation();
+        // TODO(GROUPS_UI): will be removed by https://github.com/dust-tt/tasks/issues/1237
+        void router.push(
+          `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
+        );
+      },
       onClick: () => onSelect(r.sId),
     })) || [];
 
@@ -280,7 +291,6 @@ export const VaultResourcesList = ({
         description: `Error: ${err.error.message}`,
       });
     }
-
     return res.ok;
   };
 
@@ -331,7 +341,7 @@ export const VaultResourcesList = ({
             isAdmin={isAdmin}
           />
         )}
-        {(category === "folder" || category === "website") && (
+        {isWebsiteOrFolder(category) && (
           <>
             <EditVaultStaticDataSourcesViews
               owner={owner}
