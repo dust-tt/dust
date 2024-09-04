@@ -1,4 +1,9 @@
+// Tailwind base globals
 import "@app/styles/global.css";
+// Use sparkle styles, override local globals
+import "@dust-tt/sparkle/dist/sparkle.css";
+// Local tailwind components override sparkle styles
+import "@app/styles/components.css";
 
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
