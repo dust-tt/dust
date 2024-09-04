@@ -25,68 +25,44 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
 ]);
 
 interface ConnectorUiConfig {
-  displayAddDataButton: boolean;
   displayEditionModal: boolean;
   displayManageConnectionButton: boolean;
-  addDataWithConnection: boolean;
-  displayWebcrawlerSettingsButton: boolean;
-  guideLink: string | null;
   postPermissionsUpdateMessage?: string;
 }
 
 function getRenderingConfigForConnectorProvider(
   connectorProvider: ConnectorProvider
 ): ConnectorUiConfig {
-  const commonConfig = {
-    addDataWithConnection: false,
-    displayAddDataButton: true,
-    displayManageConnectionButton: true,
-    displayWebcrawlerSettingsButton: false,
-  };
 
   switch (connectorProvider) {
     case "confluence":
     case "google_drive":
     case "microsoft":
       return {
-        ...commonConfig,
+        displayManageConnectionButton: true,
         displayEditionModal: true,
-        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
 
     case "slack":
     case "intercom":
       return {
-        ...commonConfig,
+        displayManageConnectionButton: true,
         displayEditionModal: false,
-        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     case "notion":
       return {
-        ...commonConfig,
-        addDataWithConnection: true,
         displayEditionModal: true,
         displayManageConnectionButton: false,
-        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
-        postPermissionsUpdateMessage:
-          "We've taken your edits into account. Notion permission edits may take up to 24 hours to be reflected on your workspace.",
       };
     case "github":
       return {
-        ...commonConfig,
-        addDataWithConnection: true,
         displayEditionModal: true,
         displayManageConnectionButton: false,
-        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     case "webcrawler":
       return {
-        addDataWithConnection: false,
-        displayAddDataButton: false,
         displayEditionModal: false,
         displayManageConnectionButton: false,
-        displayWebcrawlerSettingsButton: true,
-        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     default:
       assertNever(connectorProvider);

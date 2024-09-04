@@ -237,8 +237,6 @@ export default function DataSourcesView({
   const searchBarRef = useRef<HTMLInputElement>(null);
   const sendNotification = useContext(SendNotificationsContext);
 
-  console.log(managedDataSources);
-
   const connectionRows = useMemo(() => {
     const filteredRows = managedDataSources.filter(
       (ds) =>
