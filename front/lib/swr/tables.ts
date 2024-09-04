@@ -33,26 +33,15 @@ export function useTables({
 export function useTable({
   workspaceId,
   dataSourceView,
-  dataSourceName,
   tableId,
-}:
-  | {
-      workspaceId: string;
-      dataSourceView: DataSourceViewType;
-      dataSourceName?: undefined;
-      tableId: string | null;
-    }
-  | {
-      workspaceId: string;
-      dataSourceView?: undefined;
-      dataSourceName: string;
-      tableId: string | null;
-    }) {
+}: {
+  workspaceId: string;
+  dataSourceView: DataSourceViewType;
+  tableId: string | null;
+}) {
   const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
 
-  const endpoint = dataSourceView
-    ? `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/tables/${tableId}`
-    : `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`;
+  const endpoint = `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/tables/${tableId}`;
   const { data, error, mutate } = useSWRWithDefaults(
     tableId ? endpoint : null,
     tableFetcher

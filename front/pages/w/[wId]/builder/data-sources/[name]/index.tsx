@@ -55,7 +55,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import { useDocuments } from "@app/lib/swr/data_sources";
+import { useDataSourceDocuments } from "@app/lib/swr/data_sources";
 import { useTables } from "@app/lib/swr/tables";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -251,7 +251,7 @@ function DatasourceDocumentsTabView({
     isDocumentsLoading,
     isDocumentsError,
     mutateDocuments,
-  } = useDocuments(owner, dataSource, limit, offset);
+  } = useDataSourceDocuments(owner, dataSource, limit, offset);
   const [showDocumentsLimitPopup, setShowDocumentsLimitPopup] = useState(false);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
